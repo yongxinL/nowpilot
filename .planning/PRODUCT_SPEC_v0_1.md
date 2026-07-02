@@ -1,12 +1,1087 @@
+# NowPilot — Product Specification v0.1c
+
+**Document ID:** `PRODUCT_SPEC_v0_1c.md`  
+**Status:** Canonical implementation reference  
+**Date:** 2026-07-01  
+**Supersedes / merges:**
+- `PRODUCT_SPEC_v0_1_revised.md` / v0.1.1
+- `PRODUCT_SPEC_v0_1_2.md`
+- `PRODUCT_SPEC_v0_1_3.md`
+
+**Purpose:** This document is the single merged product specification for NowPilot v0.1. It preserves the complete v0.1.1 base specification and integrates the v0.1.2/v0.1.3 runtime hardening additions for cost-effective AI coding agents and runtime LLMs.
+
+**Target implementation agents:** Anthropic Claude Haiku, Google Gemini Flash, DeepSeek Flash, or equivalent cost-effective coding models.  
+**Target runtime providers:** Claude Haiku, Gemini Flash, DeepSeek Flash, Ollama, LM Studio, OpenAI-compatible endpoints, OpenAI, Anthropic, Gemini.  
+**Primary application:** Chrome MV3 Side Panel AI Assistant using WXT + React + TypeScript + Tailwind CSS + shadcn/ui + Tweakcn tokens.
+
+---
+
+## How to Use This v0.1c Specification
+
+This document intentionally has two layers:
+
+1. **Layer A — Canonical v0.1c merged rules and architecture**  
+   These sections appear first and override older v0.1.1 wording where there is a conflict.
+
+2. **Layer B — Full preserved v0.1.1 base specification**  
+   The complete v0.1.1 source appears later in Appendix Z. It remains valid for features, file paths, ServiceNow add-on requirements, original flows, storage, security, and implementation phases unless explicitly superseded by Layer A.
+
+### Authority Order
+
+When implementing, follow this exact priority order:
+
+```text
+v0.1c §0 Hard Rules
+> v0.1c §1 Cost-Effective Runtime AI Architecture
+> v0.1c §2 Context-Adaptive Execution
+> v0.1c §3 Persistent Memory Architecture
+> v0.1c §4 AI/MCP Transaction Logging
+> v0.1c §5 WXT/MV3/Styling Refinements
+> v0.1c §6 Master Implementation Phases
+> Appendix Z v0.1.1 Base Specification
+> Older generated specs v0.1.2/v0.1.3
+```
+
+### Why v0.1c Exists
+
+v0.1.1 is feature-complete and detailed, but it was not fully optimised for weak/cheap runtime models, small local context windows, or detailed AI/MCP tracing. v0.1.2 added cost-effective model and WXT/styling refinements. v0.1.3 added runtime Planner/Executor/Renderer, context tiering, memory architecture, and transaction logging. v0.1c consolidates all three into one file for AI coding agents.
+
+---
+
+# §0 — Hard Rules for Cost-Effective Coding Models
+
+## §0.1 Read Order
+
+If you are an AI coding agent, read in this order:
+
+1. §0 Hard Rules
+2. §1 Runtime AI Architecture
+3. §2 Context-Adaptive Execution
+4. §3 Persistent Memory Architecture
+5. §4 AI/MCP Transaction Logging
+6. §5 WXT/MV3/Styling Refinements
+7. §6 Master Implementation Phases
+8. Appendix Z only for the phase/feature you are implementing
+
+Do not read the full Appendix Z and attempt to implement everything at once.
+
+## §0.2 Non-Negotiable Rules
+
+- **DO NOT** invent file names. Use the exact file paths in §6 and Appendix Z.
+- **DO NOT** skip phases.
+- **DO NOT** implement multiple phases in one response unless explicitly requested.
+- **DO NOT** call AI providers from the background service worker.
+- **DO NOT** run MCP clients in the background service worker.
+- **DO NOT** use `innerHTML`, `dangerouslySetInnerHTML`, or `eval`.
+- **DO NOT** store conversation message bodies in `chrome.storage.local`.
+- **DO NOT** persist ServiceNow session tokens or API keys in IndexedDB or logs.
+- **DO NOT** log raw prompt bodies, raw tool inputs, raw tool outputs, cookies, clipboard text, ServiceNow raw case body, or API keys by default.
+- **DO NOT** let the LLM execute tools directly. The LLM may only request a tool through `PlannerService`; `ExecutorService` performs validation and execution.
+- **DO NOT** use large-model agent loops (`maxSteps=15`) for Haiku/Gemini Flash/DeepSeek Flash runtime workflows. Use the v0.1c limits in §1.4.
+- **DO NOT** use raw full history in prompts. All prompts pass through `ContextOptimizer`.
+- **DO NOT** use global CSS for page-injected UI. All page-injected add-on UI must render inside Shadow DOM.
+- **DO NOT** paraphrase canonical strings or prompts. Use `STR` and `PROMPTS` constants.
+
+## §0.3 Implementation Constraints for Low-Cost Coding Agents
+
+Cost-effective coding models are prone to missing late-section requirements. Therefore:
+
+- The **Master Implementation Phases in §6 are canonical**.
+- Appendix Z original phases are retained for detail, but §6 wins when they conflict.
+- Any module marked `@implementation-tier: sonnet-class` must be stubbed by Haiku/Flash/DeepSeek Flash implementers.
+- Every public boundary must have a Zod schema and at least one fixture test.
+- Every phase must have a verification command.
+
+## §0.4 Canonical Runtime Concepts Added in v0.1c
+
+| Concept | File | Purpose |
+|---|---|---|
+| `PlannerService` | `src/core/ai/PlannerService.ts` | Cheap JSON-only action planner |
+| `ExecutorService` | `src/core/ai/ExecutorService.ts` | Deterministic MCP/skill/built-in tool executor |
+| `RendererService` | `src/core/ai/RendererService.ts` | Final concise response renderer |
+| `ProviderRouter` | `src/core/ai/ProviderRouter.ts` | Provider selection, retry, fallback, circuit breaker |
+| `PromptCacheManager` | `src/core/ai/PromptCacheManager.ts` | Prompt cache segmentation and provider cache hints |
+| `StructuredOutput` | `src/core/ai/StructuredOutput.ts` | JSON mode / schema validation for non-chat calls |
+| `ChunkBuffer` | `src/core/ai/ChunkBuffer.ts` | rAF-batched streaming UI buffer |
+| `ModelContextTier` | `src/core/context/ModelContextTier.ts` | tiny/small/medium/large context classification |
+| `ContextOptimizer` | `src/core/context/ContextOptimizer.ts` | Dynamic token budget, compression, degradation |
+| `ContextCompressor` | `src/core/context/ContextCompressor.ts` | Structured text/page/case/history compression |
+| `MemoryEngine` | `src/core/memory/MemoryEngine.ts` | System-owned memory orchestration |
+| `ConversationMemoryStore` | `src/core/memory/ConversationMemoryStore.ts` | Per-conversation summary and recent turns |
+| `UserMemoryStore` | `src/core/memory/UserMemoryStore.ts` | Cross-session fact/preference/pattern memory |
+| `PreferenceMemoryStore` | `src/core/memory/PreferenceMemoryStore.ts` | User behaviour preferences |
+| `AITransactionLog` | `src/core/telemetry/AITransactionLog.ts` | AI/MCP/tool/provider operation trace |
+| `AITransactionLogDB` | `src/core/telemetry/AITransactionLogDB.ts` | IndexedDB trace persistence |
+| `TraceRedactor` | `src/core/telemetry/TraceRedactor.ts` | Redaction before logs/UI/export |
+| `DiagnosticsPanel` | `src/components/tools/DiagnosticsPanel.tsx` | Tools → Diagnostics UI |
+
+---
+
+# §1 — Cost-Effective Runtime AI Architecture
+
+## §1.1 Runtime Design Principle
+
+NowPilot must assume the active runtime model may be cheap, fast, weaker at reasoning, small-context, local, or configured as the user's only provider. The system must not rely on the model to remember, decide tool safety, or preserve state.
+
+Therefore, runtime AI uses:
+
+```text
+PlannerService → ExecutorService → RendererService
+```
+
+This supersedes any older assumption that a single unconstrained `AgentLoop(maxSteps=15)` should manage every runtime workflow.
+
+## §1.2 Planner → Executor → Renderer Flow
+
+```mermaid
+flowchart TD
+  User[User input] --> TxStart[AITransactionLog.start]
+  TxStart --> Memory[MemoryEngine]
+  Memory --> Context[ContextOptimizer]
+  Context --> Planner[PlannerService - cheap JSON planner]
+  Planner --> Decision{PlannerDecision}
+  Decision -->|answer| Renderer[RendererService]
+  Decision -->|run_tool| Executor[ExecutorService]
+  Decision -->|ask_clarification| Clarify[Clarification UI]
+  Executor --> ToolResult[Validated ToolExecutionResult]
+  ToolResult --> Renderer
+  Renderer --> Stream[ChunkBuffer + React UI]
+  Stream --> MemoryUpdate[MemoryEngine update]
+  MemoryUpdate --> TxDone[AITransactionLog.complete]
+```
+
+### PlannerService
+
+Planner decides exactly one of:
+
+```ts
+export const PlannerDecisionSchema = z.discriminatedUnion('action', [
+  z.object({ action: z.literal('answer'), reasonCode: z.string().max(64) }),
+  z.object({ action: z.literal('run_tool'), toolName: z.string().max(64), input: z.unknown() }),
+  z.object({ action: z.literal('ask_clarification'), question: z.string().max(200) }),
+]);
+```
+
+Planner rules:
+
+- Use `haiku` tier where available.
+- Return JSON only.
+- Do not explain reasoning.
+- Timeout: 3 seconds.
+- One malformed-JSON repair retry only.
+- If planner fails twice, fallback to `{ action: 'answer', reasonCode: 'planner_failed' }`.
+
+### ExecutorService
+
+Executor is deterministic and must:
+
+- reject unknown tool names,
+- validate input Zod schema,
+- check permission policy,
+- check model/context-tier capability,
+- run the tool with timeout,
+- validate output Zod schema,
+- return `ToolExecutionResult<T>`.
+
+The LLM never executes tools directly.
+
+### RendererService
+
+Renderer converts validated context/tool output into a concise user answer.
+
+Rules:
+
+- Use `flash` tier where available.
+- Do not invent missing tool results.
+- Use structured output for cards/tables/checklists.
+- Timeout: 5 seconds for normal answers.
+- Max normal output: 512 tokens unless feature overrides.
+
+## §1.3 Prompt Shape and Prompt Caching
+
+Every AI call must use this canonical section order:
+
+```text
+[SYSTEM: cached, canonical]
+[TOOL SCHEMAS: cached, canonical]
+[USER PREFERENCES: compact]
+[MEMORY: compact top-k]
+[CONTEXT: optimized]
+[TASK: small]
+[USER INPUT: current turn]
+```
+
+Rules:
+
+- Stable sections must be byte-identical across repeated calls where possible.
+- Tool schemas must be sorted by stable tool name.
+- Whitespace in cached prompt sections must be stable.
+- Current user input and in-flight assistant output are never cached.
+- Prompt cache hits/misses are logged in `AITransactionLog`.
+
+Provider-specific behaviour:
+
+- Anthropic-compatible providers: use cache-control hints where supported.
+- Gemini-compatible providers: use cached content handles where supported.
+- DeepSeek/OpenAI-compatible providers: use stable prompt hashes and provider-specific cache hints where supported.
+- Local LLMs: assume no provider-side cache, but still minimise local prompt payload.
+
+## §1.4 Agent Step Limits
+
+| Context tier | Max planner calls | Max tool calls | MCP chaining | Agent mode |
+|---|---:|---:|---|---|
+| `tiny` ≤4K | 1 | 1 | Disabled | Minimal mode only |
+| `small` 8K–16K | 2 | 1 | Disabled by default | Single-tool task |
+| `medium` 32K–128K | 3 | 2 | Enabled | Limited agent |
+| `large` ≥200K | 5 | 3 | Enabled | Full v0.1 agent |
+
+## §1.5 Provider Routing and Fallback
+
+`ProviderRouter` selects providers using cost, latency, reliability, privacy mode, configured priority, and provider availability.
+
+Fallback rules:
+
+- If only one provider exists, retry once only for retryable pre-first-token failures.
+- Do not silently switch from local to cloud when `allowCloudFallbackFromLocal=false`.
+- Never switch provider after first token has streamed.
+- Record every attempt in `ProviderTrace`.
+
+---
+
+# §2 — Context-Adaptive Execution
+
+## §2.1 Model Context Tiers
+
+```ts
+export type ModelContextTier = 'tiny' | 'small' | 'medium' | 'large';
+
+export function classifyModelContext(contextWindow: number): ModelContextTier {
+  if (contextWindow <= 4096) return 'tiny';
+  if (contextWindow <= 16384) return 'small';
+  if (contextWindow <= 131072) return 'medium';
+  return 'large';
+}
+```
+
+| Tier | Context window | Typical provider | Runtime strategy |
+|---|---:|---|---|
+| `tiny` | ≤4K | default Ollama/local model | Minimal mode, one tool max, aggressive compression |
+| `small` | 8K–16K | tuned local model | Summary + last few turns |
+| `medium` | 32K–128K | strong local/cloud model | Balanced context |
+| `large` | ≥200K | large cloud Flash/Haiku class | Full context with caching |
+
+## §2.2 Token Budget Formula
+
+```ts
+inputBudget = floor(modelContextWindow * 0.70)
+outputBudget = floor(modelContextWindow * 0.20)
+safetyMargin = floor(modelContextWindow * 0.10)
+```
+
+Dynamic distribution:
+
+| Tier | System | Tools | Memory | Context | History | User |
+|---|---:|---:|---:|---:|---:|---:|
+| `tiny` | 15% | 20% | 10% | 20% | 15% | 20% |
+| `small` | 10% | 15% | 10% | 25% | 20% | 20% |
+| `medium` | 8% | 12% | 10% | 30% | 25% | 15% |
+| `large` | 5% | 10% | 10% | 35% | 25% | 15% |
+
+## §2.3 ContextOptimizer Contract
+
+```ts
+export interface ContextOptimizerInput {
+  operationId: string;
+  model: string;
+  modelContextWindow: number;
+  userInput: string;
+  conversationId: string;
+  pageContext?: PageContext;
+  selectedToolSchemas: ToolSchemaRef[];
+  memoryHints: RetrievedMemory[];
+  preferences: UserPreferences;
+}
+
+export interface OptimizedContext {
+  tier: ModelContextTier;
+  inputBudget: number;
+  outputBudget: number;
+  sections: PromptSection[];
+  provenance: ContextProvenanceManifest;
+  minimalMode: boolean;
+}
+```
+
+All AI calls must consume `OptimizedContext`; direct prompt assembly in React components is forbidden.
+
+## §2.4 Degradation Pipeline
+
+When estimated tokens exceed budget:
+
+1. Drop debug-only context.
+2. Drop secondary notes and optional metadata.
+3. Summarise older history.
+4. Compress page/case context into structured fields.
+5. Trim tool schemas to relevant tools.
+6. Reduce memory injection top-k.
+7. Enter minimal mode.
+8. If still too large, return a typed `CONTEXT_TOO_LARGE` error with a user-facing explanation.
+
+## §2.5 Minimal Mode
+
+Minimal mode is mandatory for `tiny` models.
+
+Allowed:
+
+- compact system prompt,
+- compact preference profile,
+- top 3 user memories,
+- conversation summary ≤ 200 tokens,
+- last 1–2 turns,
+- at most one safe tool schema.
+
+Blocked:
+
+- multi-step agent,
+- MCP chaining,
+- CodeSearchSkill,
+- full note graph injection,
+- large research synthesis.
+
+---
+
+# §3 — Persistent Memory Architecture
+
+## §3.1 Memory Principle
+
+Memory is system-owned. The LLM does not own persistent memory.
+
+Memory has three layers:
+
+```text
+Conversation memory  → continuity inside one conversation
+User memory          → durable cross-session facts/preferences/patterns
+Preference memory    → behavioural settings and response style
+```
+
+## §3.2 Recommended Framework Choice
+
+Use a custom lightweight memory layer:
+
+```text
+Zustand       → runtime/UI state
+IndexedDB/idb → persistent large memory bodies
+MiniSearch    → local full-text retrieval
+MemoryEngine  → orchestration, scoring, summarisation, injection
+```
+
+Do **not** use LangChain, LlamaIndex, MemGPT, remote vector DBs, or embedding downloads in v0.1c.
+
+## §3.3 Conversation Memory
+
+```ts
+export interface ConversationMemory {
+  conversationId: string;
+  summary: string;
+  summaryTokens: number;
+  lastMessages: Array<{
+    role: 'user' | 'assistant' | 'tool';
+    content: string;
+    tokens: number;
+    timestamp: number;
+  }>;
+  updatedAt: number;
+}
+```
+
+Rules:
+
+- Keep last 2 turns for `tiny`.
+- Keep last 4 turns for `small`.
+- Keep last 6 turns for `medium`/`large`.
+- Summarise older messages after every 12 messages.
+- Store message bodies in IndexedDB only.
+
+## §3.4 User Memory
+
+```ts
+export interface UserMemoryFact {
+  id: string;
+  content: string;
+  type: 'fact' | 'preference' | 'pattern';
+  tags: string[];
+  confidence: number;
+  source: 'explicit' | 'inferred' | 'system';
+  createdAt: number;
+  updatedAt: number;
+  lastUsedAt?: number;
+  useCount: number;
+}
+```
+
+Retrieval scoring:
+
+```text
+score = keywordScore * 0.45
+      + tagScore * 0.25
+      + recencyScore * 0.15
+      + useCountScore * 0.10
+      + confidenceScore * 0.05
+```
+
+Injection rules:
+
+- top 5 memories maximum,
+- top 3 memories maximum in tiny mode,
+- total memory injection maximum 1000 tokens,
+- never inject secrets or raw customer data.
+
+## §3.5 Preference Memory
+
+```ts
+export interface UserPreferences {
+  responseStyle: 'concise' | 'balanced' | 'detailed';
+  preferredLanguage: string;
+  preferStructuredOutput: boolean;
+  allowCloudFallbackFromLocal: boolean;
+  defaultProviderId?: ProviderId;
+  toolAutonomy: 'ask_every_time' | 'allow_safe_tools' | 'manual_only';
+}
+```
+
+Preferences are injected as compact JSON, not verbose prose.
+
+---
+
+# §4 — AI/MCP Transaction Logging and Diagnostics
+
+## §4.1 Purpose
+
+Every AI, MCP, skill, tool, context, cache, fallback, and provider operation must be traceable for troubleshooting.
+
+`AITransactionLog` tracks:
+
+- operation ID,
+- provider/model,
+- prompt token breakdown,
+- context tier,
+- truncation/compression decisions,
+- prompt-cache hit/miss/write,
+- MCP/tool calls,
+- permission decisions,
+- retries/fallbacks,
+- errors,
+- first-token timing,
+- total duration.
+
+## §4.2 Storage and Retention
+
+| Mode | Enabled | Raw prompt/body | Retention |
+|---|---|---|---|
+| Lightweight metadata | Always | No | Last 200 transactions or 14 days |
+| Debug deep trace | User opt-in | Redacted previews only | Last 50 traces or 72 hours |
+
+## §4.3 Core Trace Types
+
+```ts
+export interface AITransaction {
+  id: string;
+  sessionId?: string;
+  conversationId?: string;
+  userTurnId?: string;
+  type: 'chat' | 'planner' | 'renderer' | 'structured_output' | 'mcp_tool' | 'builtin_tool' | 'skill' | 'proxy_fetch';
+  status: 'started' | 'streaming' | 'waiting_for_permission' | 'completed' | 'failed' | 'aborted' | 'retried' | 'fallback_used';
+  providerId?: ProviderId;
+  model?: string;
+  startedAt: number;
+  endedAt?: number;
+  durationMs?: number;
+  errorCode?: string;
+}
+```
+
+```ts
+export interface PromptTrace {
+  operationId: string;
+  promptTemplateId: string;
+  promptHash: string;
+  systemTokens: number;
+  toolSchemaTokens: number;
+  contextTokens: number;
+  memoryTokens: number;
+  historyTokens: number;
+  userInputTokens: number;
+  totalInputTokens: number;
+  maxContextWindow: number;
+  contextTier: ModelContextTier;
+  truncated: boolean;
+  truncatedSources: string[];
+  minimalMode: boolean;
+  promptCache: {
+    enabled: boolean;
+    cacheKey?: string;
+    hit: boolean;
+    write: boolean;
+    providerCacheId?: string;
+    estimatedSavedTokens?: number;
+  };
+}
+```
+
+```ts
+export interface ToolTrace {
+  operationId: string;
+  parentOperationId?: string;
+  toolName: string;
+  source: 'mcp' | 'builtin' | 'skill' | 'servicenow';
+  dangerous: boolean;
+  permission: {
+    required: boolean;
+    decision: 'allowed_once' | 'allowed_always' | 'denied' | 'not_required';
+    decidedAt?: number;
+  };
+  inputSchemaHash: string;
+  inputSizeBytes: number;
+  outputSchemaHash?: string;
+  outputSizeBytes?: number;
+  outputTokens?: number;
+  status: 'started' | 'completed' | 'failed' | 'timeout' | 'aborted';
+  startedAt: number;
+  endedAt?: number;
+  durationMs?: number;
+  error?: {
+    code: string;
+    message: string;
+    retryable: boolean;
+  };
+}
+```
+
+## §4.4 Redaction Rules
+
+`TraceRedactor` must redact before persistence, UI display, console logging, or export:
+
+```text
+API keys
+Bearer tokens
+JSESSIONID
+sysparm_ck
+g_ck
+ServiceNow raw case body
+clipboard text unless explicitly user-provided
+MCP auth headers
+raw prompt body by default
+raw tool input/output by default
+```
+
+Required patterns:
+
+```ts
+const REDACTION_PATTERNS = [
+  /sk-[A-Za-z0-9_-]+/g,
+  /key-[A-Za-z0-9_-]+/g,
+  /Bearer\s+[A-Za-z0-9._-]+/gi,
+  /JSESSIONID=[^;\s]+/gi,
+  /sysparm_ck[=:]\s*[^&\s]+/gi,
+  /g_ck[=:]\s*[^&\s]+/gi,
+];
+```
+
+## §4.5 Diagnostics UI
+
+Add `Tools → Diagnostics` with:
+
+- Recent AI Transactions
+- Provider Attempts
+- MCP Tool Calls
+- Prompt Cache Stats
+- Context Budget Viewer
+- Memory Retrieval Viewer
+- Failed Operations
+- Export Debug Bundle
+- Copy Operation ID
+- Copy Redacted Trace
+
+---
+
+# §5 — WXT, MV3, Styling, and Isolation Refinements
+
+## §5.1 Canonical WXT Entry Points
+
+```text
+src/entrypoints/background.ts
+src/entrypoints/sidepanel/index.html
+src/entrypoints/sidepanel/main.tsx
+src/entrypoints/content/core.ts
+src/entrypoints/popup/App.tsx
+```
+
+Background owns:
+
+- `chrome.sidePanel.setPanelBehavior`,
+- context menus,
+- `PROXY_FETCH`,
+- cookies,
+- alarms,
+- router startup.
+
+Side Panel owns:
+
+- AI streaming,
+- MCP runtime,
+- ProviderRouter,
+- PromptCacheManager,
+- ContextOptimizer,
+- MemoryEngine,
+- AITransactionLog,
+- IndexedDB.
+
+## §5.2 Background Service Worker Rules
+
+- Register listeners synchronously at module load.
+- Recreate alarms and context menus on every startup.
+- Never run LLM or MCP streams in the SW.
+- Use `Promise.race` plus `AbortController` for every async fetch.
+- PROXY_FETCH timeout remains 25 seconds unless feature-specific timeout is lower.
+- Side-panel LLM stream continues independent of SW restart.
+
+## §5.3 Side Panel Opening
+
+- Use `chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })` on install/startup.
+- Use `chrome.sidePanel.open({ tabId })` only inside a user gesture such as action click or context-menu click.
+- The Side Panel is global per browser window; URL-specific add-on tabs are filtered by `SidePanelPageRegistry` rather than per-tab panel paths.
+
+## §5.4 Styling Isolation
+
+Side Panel:
+
+- Tailwind v4 with `@tailwindcss/vite`.
+- shadcn/ui components copied into `src/components/ui`.
+- Tweakcn HSL variables mapped to `--np-*` tokens.
+
+Content Script injected add-on UI:
+
+- Must mount inside Shadow DOM.
+- Must use `adoptedStyleSheets`.
+- Must bridge Tweakcn variables onto `:host`.
+- Must pass Radix portal `container={portalHost}`.
+- Must not inject CSS into host page globals.
+
+Canonical Shadow mount:
+
+```ts
+export async function mountShadow(host: HTMLElement, opts: { dark: boolean }) {
+  const shadow = host.attachShadow({ mode: 'closed' });
+  shadow.adoptedStyleSheets = [await getSharedSheet(), buildTokenSheet(opts.dark)];
+  const portalHost = document.createElement('div');
+  portalHost.className = 'np-shadow-container';
+  shadow.appendChild(portalHost);
+  return { shadow, portalHost };
+}
+```
+
+---
+
+# §6 — Master Implementation Phases for v0.1c
+
+This section is canonical for AI coding agents. Appendix Z contributes details, but this phase list wins when there is conflict.
+
+## Phase 1 — MV3/WXT Runtime Foundation
+
+Create:
+
+```text
+wxt.config.ts
+src/entrypoints/background.ts
+src/entrypoints/sidepanel/index.html
+src/entrypoints/sidepanel/main.tsx
+src/entrypoints/content/core.ts
+src/core/runtime/RuntimeEnvelope.ts
+src/core/runtime/OperationId.ts
+src/core/runtime/BroadcastBus.ts
+src/core/runtime/PortReader.ts
+src/core/runtime/workerState.ts
+src/core/log/debugLog.ts
+src/core/i18n/strings.ts
+src/core/prompts/index.ts
+```
+
+Required tests:
+
+```text
+tests/core/runtime/RuntimeEnvelope.test.ts
+tests/core/runtime/OperationId.test.ts
+```
+
+DONE when:
+
+- Side Panel opens.
+- Background router registers synchronously.
+- RuntimeEnvelope fixtures parse.
+- No forbidden DOM APIs exist.
+
+## Phase 2 — Storage, Security, and WriteJournal
+
+Create:
+
+```text
+src/core/storage/Setting.ts
+src/core/storage/EncryptedStorage.ts
+src/core/storage/WriteJournal.ts
+src/core/storage/IndexedDBMigrator.ts
+src/core/security/KeyVault.ts
+src/core/security/redactSensitive.ts
+src/core/storage/ChatHistoryDB.ts
+src/core/storage/MemoryDB.ts
+src/core/storage/NotesDB.ts
+src/core/storage/ErrorStore.ts
+```
+
+DONE when:
+
+- WriteJournal recovery test passes.
+- API key encryption round-trip passes.
+- Message bodies are not in `chrome.storage.local`.
+
+## Phase 3 — Cost-Effective AI Runtime
+
+Create:
+
+```text
+src/core/ai/types.ts
+src/core/ai/ProviderRouter.ts
+src/core/ai/PromptCacheManager.ts
+src/core/ai/PlannerService.ts
+src/core/ai/ExecutorService.ts
+src/core/ai/RendererService.ts
+src/core/ai/StructuredOutput.ts
+src/core/ai/toolSchemas.ts
+src/core/ai/StreamAdapter.ts
+src/core/ai/ChunkBuffer.ts
+```
+
+DONE when:
+
+- Planner returns valid JSON decisions.
+- Executor rejects unknown tools.
+- Renderer respects output caps.
+- Provider fallback tests pass.
+
+## Phase 4 — Context-Adaptive Execution
+
+Create:
+
+```text
+src/core/context/ModelContextTier.ts
+src/core/context/TokenBudget.ts
+src/core/context/ContextOptimizer.ts
+src/core/context/ContextCompressor.ts
+src/core/context/ContextPack.ts
+src/core/context/ContextProvenanceManifest.ts
+```
+
+DONE when:
+
+- Tiny/small/medium/large tier tests pass.
+- Context overflow degrades instead of fails.
+- Minimal mode blocks MCP chaining.
+
+## Phase 5 — Persistent Memory Architecture
+
+Create:
+
+```text
+src/core/memory/MemoryEngine.ts
+src/core/memory/ConversationMemoryStore.ts
+src/core/memory/UserMemoryStore.ts
+src/core/memory/PreferenceMemoryStore.ts
+src/core/memory/MemoryScorer.ts
+src/core/memory/MemoryExtractor.ts
+src/core/search/MiniSearchIndex.ts
+```
+
+DONE when:
+
+- Conversation memory summary + recent turns retrieved.
+- User memory returns top 5 only.
+- Preference profile injects compact JSON.
+
+## Phase 6 — AI/MCP Transaction Logging and Diagnostics
+
+Create:
+
+```text
+src/core/telemetry/AITransactionLog.ts
+src/core/telemetry/AITransactionLogDB.ts
+src/core/telemetry/TraceRedactor.ts
+src/core/telemetry/PromptInspector.ts
+src/core/telemetry/TokenLedger.ts
+src/components/tools/DiagnosticsPanel.tsx
+src/components/tools/TransactionTraceView.tsx
+```
+
+DONE when:
+
+- Every provider call creates transaction, prompt, and provider traces.
+- Every tool call creates tool trace.
+- Redaction tests prove secrets are not persisted.
+- Diagnostics panel can copy operation ID.
+
+## Phase 7 — UI Shell, Chat, Notes, and Tools
+
+Create:
+
+```text
+src/components/layout/SidepanelShell.tsx
+src/components/pages/ChatPage.tsx
+src/components/pages/NotePage.tsx
+src/components/pages/AgentPage.tsx
+src/components/pages/ToolsPage.tsx
+src/hooks/useChat.ts
+src/hooks/useProviderRouter.ts
+src/hooks/useMemory.ts
+src/hooks/useDiagnostics.ts
+```
+
+DONE when:
+
+- Chat flow uses Planner → Executor → Renderer.
+- Streaming UI uses ChunkBuffer.
+- Tools page shows Diagnostics.
+
+## Phase 8 — Add-on and Content Script Runtime
+
+Create/complete:
+
+```text
+src/core/content/ContentScriptHost.ts
+src/core/content/SPANavigationWatcher.ts
+src/core/content/PageContextBridge.ts
+src/core/content/injectTokens.ts
+src/core/addons/AddonRegistry.ts
+src/addons/global/ResearchSkill.ts
+src/addons/global/SelectionContextMenu.ts
+src/addons/servicenow/**
+```
+
+DONE when:
+
+- Injected UI runs inside Shadow DOM.
+- ServiceNow add-on uses ServiceNowSessionAdapter.
+- ServiceNow API calls use PROXY_FETCH only.
+
+## Phase 9 — Hardening and Release
+
+Required test suites:
+
+```text
+tests/core/ai/PlannerService.test.ts
+tests/core/ai/ExecutorService.test.ts
+tests/core/ai/RendererService.test.ts
+tests/core/context/ContextOptimizer.test.ts
+tests/core/memory/MemoryEngine.test.ts
+tests/core/telemetry/AITransactionLog.test.ts
+tests/core/telemetry/TraceRedactor.test.ts
+tests/core/storage/WriteJournal.test.ts
+tests/isolation/no-style-bleed.test.ts
+```
+
+DONE when:
+
+- `pnpm run verify:all` passes.
+- `pnpm run test:perf` passes.
+- `pnpm run test:isolation` passes.
+
+---
+
+# §7 — Runtime Edge Cases and Mitigations
+
+## §7.1 User Has Only One AI Provider
+
+- ProviderRouter must not assume fallback exists.
+- Retry once only for retryable failures before first token.
+- If failure persists, show retry/configure-provider UI.
+- Memory, notes, and local search remain available offline.
+
+## §7.2 Local Model Small Context
+
+- Classify as `tiny` or `small`.
+- Enable minimal mode automatically.
+- Disable MCP chaining.
+- Cap memory injection.
+- Compress page/case context.
+
+## §7.3 Context Overflow
+
+- Degrade stepwise via ContextOptimizer.
+- Never send oversized prompt.
+- Record truncation in PromptTrace.
+- Show non-blocking notice only when quality may be affected.
+
+## §7.4 JSON Truncation
+
+- Detect malformed/incomplete JSON.
+- Retry once with smaller output cap and repair prompt.
+- If still broken, return typed schema error.
+
+## §7.5 Hallucinated Tool Call
+
+- Executor rejects unknown or invalid tools.
+- Log `TOOL_REJECTED`.
+- Renderer explains limitation briefly.
+
+## §7.6 Sudden Background Service Worker Termination
+
+- LLM stream continues because it lives in Side Panel.
+- PROXY_FETCH calls fail/retry only if safe GET.
+- Startup recreates alarms, context menus, router.
+- Diagnostics records background restart.
+
+## §7.7 Side Panel Resizing
+
+- Use container queries.
+- Single-column fallback below 380 px.
+- Use `overflow-anchor: none` for streaming tail.
+- CLS target ≤ 0.05.
+
+## §7.8 Multi-Window Side Panels
+
+- Use BroadcastBus primary election.
+- Only primary panel writes memory stores.
+- Secondary panels mirror read-only.
+- WriteJournal maintains idempotency.
+
+---
+
+# §8 — Required Verification Commands
+
+Each phase must define a real script. Minimum expected commands:
+
+```json
+{
+  "scripts": {
+    "verify:phase-1": "tsc --noEmit && vitest run tests/core/runtime",
+    "verify:phase-2": "tsc --noEmit && vitest run tests/core/storage tests/core/security",
+    "verify:phase-3": "tsc --noEmit && vitest run tests/core/ai",
+    "verify:phase-4": "tsc --noEmit && vitest run tests/core/context",
+    "verify:phase-5": "tsc --noEmit && vitest run tests/core/memory",
+    "verify:phase-6": "tsc --noEmit && vitest run tests/core/telemetry tests/components/DiagnosticsPanel.test.tsx",
+    "verify:all": "tsc --noEmit && vitest run && pnpm run lint"
+  }
+}
+```
+
+---
+
+# Appendix A — v0.1.2/v0.1.3 Consolidation Map
+
+The following concepts from v0.1.2 and v0.1.3 are fully integrated into v0.1c:
+
+| Source | Integrated concept | v0.1c section |
+|---|---|---|
+| v0.1.2 | Cost-effective model architecture | §1 |
+| v0.1.2 | Prompt caching | §1.3 |
+| v0.1.2 | Structured outputs | §1, §5, §6 |
+| v0.1.2 | WXT entry point refinement | §5 |
+| v0.1.2 | Tailwind/Tweakcn/Shadow DOM isolation | §5.4 |
+| v0.1.2 | API fallback | §1.5, §7.1 |
+| v0.1.3 | Planner → Executor → Renderer | §1 |
+| v0.1.3 | ContextOptimizer | §2 |
+| v0.1.3 | ModelContextTier | §2.1 |
+| v0.1.3 | Persistent memory architecture | §3 |
+| v0.1.3 | AITransactionLog | §4 |
+| v0.1.3 | Diagnostics UI | §4.5 |
+| v0.1.3 | MCP tool guardrails | §1.2, §4, §6 |
+
+---
+
+# Appendix B — Canonical Prompt Constants
+
+```ts
+export const PROMPTS = {
+  planner: {
+    system: 'Select exactly one action: answer, run_tool, or ask_clarification. Return JSON only. Do not explain.',
+    cacheable: true,
+    tier: 'haiku',
+  },
+  renderer: {
+    system: 'Answer using only the provided context and tool result. Be concise. If data is missing, say what is missing. Do not invent facts.',
+    cacheable: true,
+    tier: 'flash',
+  },
+  memoryExtractor: {
+    system: 'Extract durable user memory. Store only stable facts, preferences, or repeated patterns. Do not store secrets or raw customer data. Return JSON only.',
+    cacheable: true,
+    tier: 'haiku',
+  },
+  conversationSummarizer: {
+    system: 'Summarise prior conversation into compact durable context. Preserve decisions, preferences, open tasks, and unresolved questions. Return plain text summary only.',
+    cacheable: true,
+    tier: 'haiku',
+  },
+  repairJson: {
+    system: 'Repair the previous output into valid JSON matching the provided schema. Return JSON only.',
+    cacheable: true,
+    tier: 'haiku',
+  },
+  titleGen: {
+    system: 'Summarize this message as a 3-6 word title. Reply with the title only, no quotes.',
+    cacheable: false,
+    tier: 'haiku',
+  },
+} as const;
+```
+
+---
+
+# Appendix C — Canonical User Strings
+
+```ts
+export const STR = {
+  chat: {
+    loading: 'Connecting to provider...',
+    empty: 'Start a conversation',
+    errorRetry: 'Provider error. [Retry] [Switch Provider]',
+    offline: 'No network. Retrying when back online.',
+    contextReduced: 'Some context was compressed to fit the selected model.',
+    minimalMode: 'Minimal mode enabled for this model context size.',
+  },
+  diagnostics: {
+    title: 'Diagnostics',
+    copyOperationId: 'Copy operation ID',
+    exportDebugBundle: 'Export debug bundle',
+    noTransactions: 'No AI transactions yet.',
+  },
+  tools: {
+    rejected: 'Tool is not available or input schema is invalid.',
+    permissionDenied: 'Tool permission denied.',
+  },
+  memory: {
+    updated: 'Memory updated.',
+    disabled: 'Memory is disabled in Settings.',
+  },
+} as const;
+```
+
+---
+
+# Appendix Z — Full Preserved v0.1.1 Base Specification
+
+The following section preserves the original v0.1.1 base specification. It remains valid unless superseded by the v0.1c canonical sections above.
+
+
+
+---
+
 # NowPilot — Product Requirements Document
 
-**Version:** 0.1
+**Version:** 0.1.1
 **Date:** 2026-07-01
 **Status:** Active — primary implementation reference, architecture-hardening revision
 **Scope:** NowPilot v0.1 — Chrome Side Panel AI Assistant with add-on architecture
 **Supersedes:** NOWPILOT_PRODUCT_SPEC_V1.md (v1.1.0) and updates PRODUCT_SPEC_v0_1.md (v0.1.0)
 
-**Revision summary (v0.1):**
+**Revision summary (v0.1.1):**
 
 - Adds runtime state models for worker lifecycle, stream lifecycle, tab extraction, tool permission, and ServiceNow session readiness.
 - Adds cross-context operation IDs and reliability rules for MessageBus, BroadcastBus, PortReader, and PROXY_FETCH.
@@ -416,7 +1491,7 @@ Add-ons provide domain-specific and optional features:
 
 ---
 
-### Page Injection Rule (v0.1)
+### Page Injection Rule (v0.1.1)
 
 > Core owns **how injection works**.  
 > Add-ons own **what gets injected and where**.
@@ -433,7 +1508,7 @@ Add-ons provide domain-specific and optional features:
 
 ---
 
-### Important layering update (v0.1)
+### Important layering update (v0.1.1)
 
 Core must not directly know:
 
@@ -1050,7 +2125,7 @@ export const ENDPOINTS = {
 } as const;
 // User overrides are read from chrome.storage.local.np_endpoint_overrides and merged at load.
 
-// v0.1 note: provider defaults stay here. Domain add-ons should declare domain endpoints
+// v0.1.1 note: provider defaults stay here. Domain add-ons should declare domain endpoints
 // through EndpointRegistry where practical. ServiceNow endpoint semantics should live in
 // addons/servicenow/config/serviceNowEndpoints.ts, while core/endpoints.ts remains the
 // central resolver and validator.
@@ -1726,7 +2801,7 @@ SPA navigation triggers onNavigate()
 
 ***
 
-### Design Rules (v0.1)
+### Design Rules (v0.1.1)
 
 * ServiceNow logic MUST NOT exist in core modules
 * All token/session handling MUST go through `ServiceNowSessionAdapter`
@@ -1991,9 +3066,9 @@ Results cached in `chrome.storage.local`; `getInsights()` returns the cached arr
 ---
 
 
-## §19 — Architecture Hardening Updates (v0.1)
+## §19 — Architecture Hardening Updates (v0.1.1)
 
-This section applies the reliability, layering, operational, and diagram updates from the v0.1 architecture review. These updates do not change the product direction; they reduce implementation risk in cross-context coordination, split persistence, tool execution, side-panel maintainability, and ServiceNow authentication.
+This section applies the reliability, layering, operational, and diagram updates from the v0.1.1 architecture review. These updates do not change the product direction; they reduce implementation risk in cross-context coordination, split persistence, tool execution, side-panel maintainability, and ServiceNow authentication.
 
 ### 19.1 Fault Tolerance and Cross-Context Coordination
 
