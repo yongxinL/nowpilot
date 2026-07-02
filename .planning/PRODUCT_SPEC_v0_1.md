@@ -67,6 +67,9 @@ These rules are HARD BLOCKS. Violating any of them introduces bugs or security i
 - **DO NOT put domain-specific token semantics in core.** Core may store generic session values, but ServiceNow token names (`JSESSIONID`, `sysparmCK`, `g_ck`) and readiness logic live in `src/addons/servicenow/auth/ServiceNowSessionAdapter.ts`.
 - **DO NOT send cross-context messages without a correlation ID.** All MessageBus/BroadcastBus/PortReader/PROXY_FETCH requests use `RuntimeEnvelope<T>` with `id`, `type`, `createdAt`, `source`, and `payload`.
 - **DO NOT write multi-store conversation state without WriteJournal.** Memory metadata/body writes and eviction must be journaled.
+- **DO NOT inject UI directly from core modules.** All injected UI must be provided by add-ons.
+- **DO NOT manipulate page DOM outside Shadow DOM.** All injected UI must be isolated.
+- **DO NOT use site-specific selectors in core content scripts.**
 
 ### 0.2 Code Standards
 
@@ -348,9 +351,12 @@ Chrome Browser
 │   └── [page components]       — Chat, Note, Agent, Tools (Write/Ask/Research = slash commands)
 │
 ├── Content Scripts (per add-on registration)
-│   ├── Injected by ContentScriptHost (core)
+│   ├── ContentScriptHost       — generic page injection host (Shadow DOM mount)
+│   ├── InjectionLifecycle      — manages mount / update / unmount lifecycle
+│   ├── ShadowDomMount          — safe Shadow DOM creation (default: closed mode)
 │   ├── SPANavigationWatcher    — MutationObserver; fires onNavigate(url)
 │   ├── PageContextBridge       — sends extracted page data to side panel
+│   ├── InjectionRegistry       — maps add-ons to URL patterns and injection targets
 │   ├── Run in ISOLATED world by default
 │   └── window.g_ck bridge runs in MAIN world (world: 'MAIN')
 │
@@ -363,11 +369,87 @@ Chrome Browser
 
 **Rule:** Core never imports from add-ons. Add-ons only call core APIs.
 
-**Core owns:** AI providers, generic storage, messaging, context pipeline, agent engine, MCP client, Chrome API hosts, security utilities, registries, shared UI components, generic cookie/session infrastructure, WriteJournal, IndexedDB migrations, and runtime state models.
+---
 
-**Add-ons own:** site-specific context extraction, page injection components, site-specific skills, site-specific prompt templates, domain API clients, domain endpoint declarations, and domain-specific auth/session semantics.
+### Core owns (platform capabilities)
 
-**Important layering update (v0.1):** Core must not directly know ServiceNow token names, field names, table names, page DOM structure, or workflow prompts. `CORSProxy` remains core because it is generic infrastructure. ServiceNow token semantics move to `addons/servicenow/auth/ServiceNowSessionAdapter.ts`.
+Core provides reusable, domain-agnostic infrastructure:
+
+- AI runtime (ProviderRegistry, AgentLoop, SkillRunner, WorkflowRunner)
+- MCP client and tool orchestration
+- messaging (MessageBus, EventBus, BroadcastBus)
+- context pipeline (ContextWindowManager, ContextPack)
+- storage (Settings, IndexedDB, MemoryDB, NotesDB)
+- WriteJournal and IndexedDB migration system
+- runtime state models and operation tracking
+- Chrome API hosts (CORSProxy, ContextMenuHost, TabManager, etc.)
+- generic cookie/session infrastructure (`CookieSessionStore`)
+- shared UI components (ErrorBoundary, Toast, Markdown renderer)
+- prompt/template engine and slash command registry
+- telemetry, logging, and redaction utilities
+- registries (AddonRegistry, EndpointRegistry, KeymapRegistry)
+
+✅ **Page injection framework (Core responsibility):**
+- `ContentScriptHost`
+- injection lifecycle management (mount / update / unmount)
+- Shadow DOM creation and isolation
+- SPA navigation detection (`SPANavigationWatcher`)
+- page → panel communication (`PageContextBridge`)
+- injection registration (`InjectionRegistry`)
+
+---
+
+### Add-ons own (domain / feature logic)
+
+Add-ons provide domain-specific and optional features:
+
+- site-specific context extraction (`pageExtractor`)
+- injected page UI (React components rendered via Shadow DOM)
+- injection rules (URL matching, `shouldInject`)
+- site-specific skills (e.g., ServiceNow case analysis)
+- site-specific prompts/templates
+- domain API clients (e.g., ServiceNow Table API client)
+- domain endpoint declarations
+- domain-specific authentication/session semantics
+- domain-specific LLM Wiki content
+- add-on settings, pages, and keymaps
+
+---
+
+### Page Injection Rule (v0.1)
+
+> Core owns **how injection works**.  
+> Add-ons own **what gets injected and where**.
+
+- Core MUST NOT include:
+  - site-specific DOM selectors
+  - ServiceNow logic
+  - injected UI components
+
+- Add-ons MUST NOT:
+  - bypass `ContentScriptHost`
+  - manipulate DOM outside Shadow DOM
+  - implement their own injection lifecycle
+
+---
+
+### Important layering update (v0.1)
+
+Core must not directly know:
+
+- ServiceNow token names (`JSESSIONID`, `sysparmCK`, `g_ck`)
+- ServiceNow field names or table schemas
+- ServiceNow page DOM structure
+- ServiceNow workflow prompts
+
+`CORSProxy` remains in core because it is generic infrastructure.
+
+All ServiceNow-specific session logic must live in:
+
+```
+src/addons/servicenow/auth/ServiceNowSessionAdapter.ts
+
+```
 
 ### 4.3 File Structure
 
@@ -557,6 +639,56 @@ These modules live in `src/core/`. All must be built before any add-on that depe
 
 **Note:** `AddonSettingsStore`, `SidePanelPageRegistry`, and `KeymapRegistry` are scaffolded in Phase 1 (the SidepanelShell and Cmd+K palette depend on them) but only exercised once the ServiceNow add-on lands in Phase 7.
 
+### 4.6 Page Injection Architecture
+
+NowPilot supports controlled page injection through the core `ContentScriptHost`.
+
+#### Core Responsibilities (Injection Framework)
+
+Core manages the injection lifecycle and must remain domain-agnostic:
+
+- content script initialization
+- Shadow DOM mount creation (default: `mode: 'closed'`)
+- mount / update / unmount lifecycle
+- SPA navigation detection via `MutationObserver`
+- safe DOM write rules (no `innerHTML`)
+- z-index budget management (avoid UI conflicts)
+- injection cleanup on navigation/unload
+- page context bridge messaging to side panel
+
+Core MUST NOT include:
+- site-specific DOM selectors
+- site-specific UI components
+- ServiceNow-specific logic
+
+---
+
+#### Add-on Responsibilities (Injected Content)
+
+Add-ons define what to inject and where:
+
+- injected React components
+- scoped Shadow DOM styles
+- URL matching rules (`urlPatterns`)
+- page-specific context extraction
+- page-specific UI interactions and actions
+
+---
+
+#### Injection Flow
+
+```text
+Add-on declares injection target
+  ↓
+InjectionRegistry matches URL
+  ↓
+ContentScriptHost creates Shadow DOM
+  ↓
+Add-on render() executes
+  ↓
+SPA navigation triggers update/unmount
+```
+
 ---
 
 ## §5 — Feature Specification
@@ -600,16 +732,79 @@ These modules live in `src/core/`. All must be built before any add-on that depe
 interface Addon {
   id: string;
   name: string;
+
+  // Add-on scope
   scope: 'site' | 'global';
-  urlPatterns?: string[];                 // required when scope === 'site'
-  contentScript?: IContentAddon;          // Shadow DOM component
+
+  // High-level URL matching (required when scope === 'site')
+  urlPatterns?: string[];
+
+  // Page injection definition (Core handles lifecycle; Add-on provides content)
+  contentScript?: IContentAddon;
+
+  // Page context extraction (domain-specific)
   contextExtractor?: IContextExtractor;
+
+  // AI skills provided by the add-on
   skills?: ISkill[];
+
+  // Prompt templates provided by the add-on
   prompts?: PromptTemplate[];
-  styles?: string;                        // Shadow DOM scoped CSS
-  addonSettings?: z.ZodSchema<unknown>;   // per-addon settings schema
-  pages?: SidePanelPageRegistration[];    // tabs to add to nav rail
-  keymap?: KeymapRegistration[];          // keyboard shortcuts
+
+  // Scoped CSS for Shadow DOM injection
+  styles?: string;
+
+  // Add-on specific settings schema (validated via Zod)
+  addonSettings?: z.ZodSchema<unknown>;
+
+  // Additional side panel pages (nav rail tabs)
+  pages?: SidePanelPageRegistration[];
+
+  // Keyboard shortcuts
+  keymap?: KeymapRegistration[];
+}
+
+
+/**
+ * Page Injection Contract (Add-on side)
+ * 
+ * Core (ContentScriptHost) manages:
+ * - injection lifecycle
+ * - Shadow DOM mount
+ * - SPA navigation detection
+ * - cleanup
+ * 
+ * Add-on provides:
+ * - what to inject
+ * - where to inject
+ * - how to render UI
+ */
+interface IContentAddon {
+  id: string;
+
+  // URL match patterns for injection (fine-grained control)
+  matches: string[];
+
+  // Injection mode (fixed for v0.1)
+  mountMode: 'shadow-dom';
+
+  // Shadow DOM configuration
+  shadowMode?: 'open' | 'closed'; // default: 'closed'
+
+  // Optional z-index override for injected UI
+  zIndex?: number;
+
+  // Decide whether injection should occur for current page
+  shouldInject(ctx: PageContext): boolean;
+
+  // Render injected UI (React)
+  render(ctx: PageContext): React.ReactNode;
+
+  // Called when SPA navigation occurs
+  onNavigate?(ctx: PageContext): void;
+
+  // Cleanup when unmounted
+  cleanup?(): void;
 }
 ```
 
@@ -1434,23 +1629,124 @@ npm install fflate papaparse
 
 ### Phase 7 — ServiceNow Add-on (Weeks 14–16)
 
-**Goal:** SN add-on: token extraction, Table API, case skills, add-on settings.
+**Goal:**  
+ServiceNow add-on: token extraction, Table API integration, case skills, add-on settings, and page injection.
 
-**Files (PORT/REWRITE per §2.3):**
-- `src/addons/servicenow/index.ts` (uses AddonSettingsStore)
-- `src/addons/servicenow/content/{tokenBridge.ts, pageExtractor.ts}`
-- `src/addons/servicenow/lib/SNowTableClient.ts` (rate-limited)
-- `src/addons/servicenow/skills/{CaseAnalyzerSkill,CatchUpSkill,SentimentSkill,CodeSearchSkill}.ts` (CodeSearch §10.4)
-- `src/addons/servicenow/components/CaseInsightBox.tsx`
-- `src/core/chrome/{CookieSessionStore.ts, CORSProxy.ts}` — CORSProxy is generic (`PROXY_FETCH`, §6.9); CookieSessionStore and CORSProxy are generic core infrastructure. ServiceNowSessionAdapter owns SN-specific JSESSIONID/sysparmCK/g_ck semantics.
+---
 
-**Success:**
-- ✅ Tokens captured + cached on SN page load
-- ✅ CaseAnalyzerSkill returns structured analysis
-- ✅ `grep -r 'jsessionid\|sysparmCK' src/core/storage/Setting.ts` → zero (session storage only)
-- ✅ `grep -r 'SN_REST_REQUEST' src/` → zero (must use generic `PROXY_FETCH`)
-- ✅ SNowTableClient gated by RateLimiter
-- ✅ SN settings under `np_addon_servicenow`
+### Files (PORT/REWRITE per §2.3):
+
+- `src/addons/servicenow/index.ts`  
+  → add-on registration (skills, prompts, settings, injection, extractor)
+
+---
+
+#### Authentication & Endpoint Layer
+
+- `src/addons/servicenow/auth/ServiceNowSessionAdapter.ts`  
+  → owns ServiceNow session semantics (`JSESSIONID`, `sysparmCK`, `g_ck`)  
+  → validates session readiness  
+  → prepares authenticated headers for API calls  
+
+- `src/addons/servicenow/config/serviceNowEndpoints.ts`  
+  → ServiceNow host patterns  
+  → Table API endpoint builder  
+  → registered via `EndpointRegistry`
+
+---
+
+#### Content Script Layer (Page Integration)
+
+- `src/addons/servicenow/content/tokenBridge.ts`  
+  → MAIN-world script to read `window.g_ck` from ServiceNow pages  
+
+- `src/addons/servicenow/content/pageExtractor.ts`  
+  → extracts ServiceNow case/page context (fields, activity, metadata)  
+
+- `src/addons/servicenow/content/serviceNowInjection.ts`  
+  → defines page injection contract (`IContentAddon`)  
+  → controls:
+    - URL matching (`matches`)
+    - injection condition (`shouldInject`)
+    - rendering (`render`)
+    - SPA navigation handling (`onNavigate`)
+
+---
+
+#### API Layer
+
+- `src/addons/servicenow/lib/SNowTableClient.ts` (rate-limited)  
+  → ServiceNow Table API client  
+  → uses generic `PROXY_FETCH` via background  
+  → integrates with `RateLimiter`
+
+---
+
+#### Skills Layer
+
+- `src/addons/servicenow/skills/{CaseAnalyzerSkill, CatchUpSkill, SentimentSkill, CodeSearchSkill}.ts`  
+  → ServiceNow-specific AI skills  
+  → CodeSearch uses map-reduce pattern (see §10.4)
+
+---
+
+#### UI Layer (Injected)
+
+- `src/addons/servicenow/components/CaseInsightBox.tsx`  
+  → injected UI rendered inside Shadow DOM  
+  → displays AI-generated insights on case pages  
+
+---
+
+#### Core Dependencies (Reference Only)
+
+- `src/core/chrome/{CookieSessionStore.ts, CORSProxy.ts}`  
+  → generic core infrastructure (`PROXY_FETCH`, §6.9)  
+  → **no ServiceNow-specific logic allowed in core**  
+
+---
+
+### Injection Flow
+
+```text
+ServiceNow page load
+  ↓
+tokenBridge extracts g_ck (MAIN world)
+  ↓
+ServiceNowSessionAdapter validates session
+  ↓
+InjectionRegistry matches URL
+  ↓
+ContentScriptHost mounts Shadow DOM
+  ↓
+serviceNowInjection.render() → CaseInsightBox
+  ↓
+SPA navigation triggers onNavigate()
+````
+
+***
+
+### Design Rules (v0.1)
+
+* ServiceNow logic MUST NOT exist in core modules
+* All token/session handling MUST go through `ServiceNowSessionAdapter`
+* All API calls MUST use `PROXY_FETCH` (no direct SN REST usage)
+* All injected UI MUST render inside Shadow DOM
+* Injection lifecycle MUST be handled by Core (`ContentScriptHost`)
+* Add-on MUST NOT directly manipulate DOM outside Shadow DOM
+
+***
+
+### Success Criteria
+
+* ✅ Tokens captured and cached via `ServiceNowSessionAdapter` on page load
+* ✅ `CaseAnalyzerSkill` returns structured analysis
+* ✅ `grep -r 'jsessionid\\|sysparmCK' src/core/storage/Setting.ts` → zero (session storage only)
+* ✅ `grep -r 'SN_REST_REQUEST' src/` → zero (must use generic `PROXY_FETCH`)
+* ✅ `SNowTableClient` uses `RateLimiter`
+* ✅ Injection works via `serviceNowInjection.ts` and renders `CaseInsightBox`
+* ✅ SPA navigation updates injected UI correctly
+* ✅ ServiceNow settings stored under `np_addon_servicenow`
 
 ### Phase 8 — LLM Wiki + Insight Engine + TTS (Weeks 17–18) · implements Flow 8
 
