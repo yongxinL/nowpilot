@@ -1,205 +1,228 @@
-# NowPilot — Product Specification v0.1c
+# NowPilot — Product Specification v0.1c (Standalone)
 
-**Document ID:** `PRODUCT_SPEC_v0_1c.md`  
-**Status:** Canonical implementation reference  
-**Date:** 2026-07-01  
-**Supersedes / merges:**
-- `PRODUCT_SPEC_v0_1_revised.md` / v0.1.1
-- `PRODUCT_SPEC_v0_1_2.md`
-- `PRODUCT_SPEC_v0_1_3.md`
+**Document ID:** `PRODUCT_SPEC_v0_1c_FINAL.md`
+**Status:** Canonical, standalone implementation reference
+**Date:** 2026-07-01
+**Scope:** NowPilot v0.1 — Chrome MV3 Side Panel AI Assistant with add-on architecture
 
-**Purpose:** This document is the single merged product specification for NowPilot v0.1. It preserves the complete v0.1.1 base specification and integrates the v0.1.2/v0.1.3 runtime hardening additions for cost-effective AI coding agents and runtime LLMs.
+**Purpose:** This document is the single, self-contained product specification for NowPilot v0.1. It does not reference any prior document. Any AI coding agent implementing this spec must treat this file as authoritative and complete.
 
-**Target implementation agents:** Anthropic Claude Haiku, Google Gemini Flash, DeepSeek Flash, or equivalent cost-effective coding models.  
-**Target runtime providers:** Claude Haiku, Gemini Flash, DeepSeek Flash, Ollama, LM Studio, OpenAI-compatible endpoints, OpenAI, Anthropic, Gemini.  
-**Primary application:** Chrome MV3 Side Panel AI Assistant using WXT + React + TypeScript + Tailwind CSS + shadcn/ui + Tweakcn tokens.
+**Target implementation agents:** Anthropic Claude Haiku, Google Gemini Flash, DeepSeek Flash, or equivalent cost-effective coding models.
+**Target runtime providers:** Claude Haiku, Gemini Flash, DeepSeek Flash, Ollama, LM Studio, OpenAI-compatible endpoints, OpenAI, Anthropic, Gemini.
+**Primary application:** Chrome MV3 Side Panel AI Assistant using WXT + React + TypeScript + Tailwind CSS v4 + shadcn/ui + Tweakcn tokens.
 
 ---
 
-## How to Use This v0.1c Specification
+## How to Read This Specification
 
-This document intentionally has two layers:
+Read in this exact order:
 
-1. **Layer A — Canonical v0.1c merged rules and architecture**  
-   These sections appear first and override older v0.1.1 wording where there is a conflict.
+1. §0 — Hard Rules
+2. §1 — Cost-Effective Runtime AI Architecture
+3. §2 — Context-Adaptive Execution
+4. §3 — Persistent Memory Architecture
+5. §4 — AI/MCP Transaction Logging
+6. §5 — WXT / MV3 / Styling / Isolation
+7. §6 — Executive Summary & Scope
+8. §7 — Technology Stack
+9. §8 — Architecture Design
+10. §9 — Feature Specification
+11. §10 — AI & MCP Integration
+12. §11 — Critical User Flows
+13. §12 — Component State Matrix
+14. §13 — Concurrency Rules
+15. §14 — Skills & Tooling Framework
+16. §15 — Storage Architecture
+17. §16 — Security
+18. §17 — UI/UX Requirements
+19. §18 — Master Implementation Phases
+20. §19 — Runtime Edge Cases and Mitigations
+21. §20 — Runtime State Models & Cross-Context Coordination
+22. §21 — Data Models
+23. §22 — Performance Targets & Algorithms
+24. §23 — Key Technology Decisions (ADRs)
+25. §24 — Verification Commands
+26. Appendices A–L — canonical constants, type registry, and reference implementations
 
-2. **Layer B — Full preserved v0.1.1 base specification**  
-   The complete v0.1.1 source appears later in Appendix Z. It remains valid for features, file paths, ServiceNow add-on requirements, original flows, storage, security, and implementation phases unless explicitly superseded by Layer A.
-
-### Authority Order
-
-When implementing, follow this exact priority order:
-
-```text
-v0.1c §0 Hard Rules
-> v0.1c §1 Cost-Effective Runtime AI Architecture
-> v0.1c §2 Context-Adaptive Execution
-> v0.1c §3 Persistent Memory Architecture
-> v0.1c §4 AI/MCP Transaction Logging
-> v0.1c §5 WXT/MV3/Styling Refinements
-> v0.1c §6 Master Implementation Phases
-> Appendix Z v0.1.1 Base Specification
-> Older generated specs v0.1.2/v0.1.3
-```
-
-### Why v0.1c Exists
-
-v0.1.1 is feature-complete and detailed, but it was not fully optimised for weak/cheap runtime models, small local context windows, or detailed AI/MCP tracing. v0.1.2 added cost-effective model and WXT/styling refinements. v0.1.3 added runtime Planner/Executor/Renderer, context tiering, memory architecture, and transaction logging. v0.1c consolidates all three into one file for AI coding agents.
+Appendices C through L are **mandatory** reading for any AI coding agent. They contain the exact type schemas and reference implementations that eliminate hallucinated shapes.
 
 ---
+# §0 — Hard Rules (Non-Negotiable)
 
-# §0 — Hard Rules for Cost-Effective Coding Models
+These rules apply to every phase, every module, and every AI coding agent.
 
-## §0.1 Read Order
+## §0.1 Read Order and Scope
 
-If you are an AI coding agent, read in this order:
+- Read §§0–5 fully before writing any code.
+- Read §§6–17 as background for the feature being implemented.
+- Read §§18–24 and the relevant appendix for the current phase.
+- Do not implement more than one phase per response unless explicitly requested.
 
-1. §0 Hard Rules
-2. §1 Runtime AI Architecture
-3. §2 Context-Adaptive Execution
-4. §3 Persistent Memory Architecture
-5. §4 AI/MCP Transaction Logging
-6. §5 WXT/MV3/Styling Refinements
-7. §6 Master Implementation Phases
-8. Appendix Z only for the phase/feature you are implementing
+## §0.2 DO NOT Rules
 
-Do not read the full Appendix Z and attempt to implement everything at once.
+**Codegen safety:**
+- **DO NOT** invent file paths. Use only paths in §8 and §18.
+- **DO NOT** invent type names. Use Appendix C for every shape.
+- **DO NOT** invent tool names. Planner may only select tools from the enum passed by ExecutorService.
+- **DO NOT** invent provider IDs. The five valid IDs are `'openai' | 'anthropic' | 'gemini' | 'ollama' | 'openai-compatible'`.
+- **DO NOT** invent runtime model names. Resolve `tier: 'haiku' | 'flash'` through Appendix D.
 
-## §0.2 Non-Negotiable Rules
+**MV3 / Chrome:**
+- **DO NOT** call AI providers, MCP servers, or `EventSource` from the background service worker.
+- **DO NOT** open IndexedDB from the background service worker.
+- **DO NOT** use `setInterval` in the background service worker. Use `chrome.alarms`.
+- **DO NOT** set a custom `User-Agent` header in any `fetch()`.
+- **DO NOT** use remote code execution or `eval()`.
 
-- **DO NOT** invent file names. Use the exact file paths in §6 and Appendix Z.
-- **DO NOT** skip phases.
-- **DO NOT** implement multiple phases in one response unless explicitly requested.
-- **DO NOT** call AI providers from the background service worker.
-- **DO NOT** run MCP clients in the background service worker.
-- **DO NOT** use `innerHTML`, `dangerouslySetInnerHTML`, or `eval`.
-- **DO NOT** store conversation message bodies in `chrome.storage.local`.
-- **DO NOT** persist ServiceNow session tokens or API keys in IndexedDB or logs.
-- **DO NOT** log raw prompt bodies, raw tool inputs, raw tool outputs, cookies, clipboard text, ServiceNow raw case body, or API keys by default.
-- **DO NOT** let the LLM execute tools directly. The LLM may only request a tool through `PlannerService`; `ExecutorService` performs validation and execution.
-- **DO NOT** use large-model agent loops (`maxSteps=15`) for Haiku/Gemini Flash/DeepSeek Flash runtime workflows. Use the v0.1c limits in §1.4.
+**Storage / secrets:**
+- **DO NOT** store ServiceNow session tokens or API keys in `chrome.storage.local`. Use `chrome.storage.session` for tokens and AES-GCM-encrypted `chrome.storage.local` for API keys.
+- **DO NOT** store conversation message bodies in `chrome.storage.local`. Bodies live in IndexedDB `MemoryDB`.
+- **DO NOT** log raw prompt bodies, raw tool inputs/outputs, cookies, clipboard text, ServiceNow raw case body, or API keys by default. All logging goes through `TraceRedactor`.
+
+**UI / DOM:**
+- **DO NOT** use `innerHTML`, `dangerouslySetInnerHTML`, or `document.write`.
+- **DO NOT** inject CSS into host page globals. All page-injected UI mounts inside a Shadow DOM using `adoptedStyleSheets`.
+- **DO NOT** use `setTimeout`/`setInterval` for DOM polling in content scripts. Use `MutationObserver`.
+- **DO NOT** manipulate host page DOM from core modules. Only add-ons may render injected UI, and only inside Shadow DOM.
+
+**AI orchestration:**
+- **DO NOT** let the LLM execute tools directly. `PlannerService` may request tools; `ExecutorService` validates and runs them.
+- **DO NOT** use large-model agent loops (`maxSteps=15`) for Haiku/Gemini Flash/DeepSeek Flash. Use the tier caps in §1.4.
 - **DO NOT** use raw full history in prompts. All prompts pass through `ContextOptimizer`.
-- **DO NOT** use global CSS for page-injected UI. All page-injected add-on UI must render inside Shadow DOM.
-- **DO NOT** paraphrase canonical strings or prompts. Use `STR` and `PROMPTS` constants.
+
+**Package hygiene:**
+- **DO NOT** install `@anthropic-ai/sdk`, `openai`, or `@google/generative-ai` directly. Use `@ai-sdk/*` adapters only.
+- **DO NOT** install `framer-motion`. The correct package is `motion` (Framer Motion v12); import from `motion/react`.
+- **DO NOT** use `ulid` or `uuid`. Use native `crypto.randomUUID()`.
+
+**Layering:**
+- **DO NOT** import from `src/addons/**` inside `src/core/**`.
+- **DO NOT** put ServiceNow-specific token names (`JSESSIONID`, `sysparmCK`, `g_ck`) or DOM selectors in core. They live only in `src/addons/servicenow/**`.
+
+**Cross-context messaging:**
+- **DO NOT** send a cross-context message without a `RuntimeEnvelope<T>` (Appendix C, Appendix E).
+- **DO NOT** paraphrase canonical strings or prompts. Use `STR` (Appendix B) and `PROMPTS` (Appendix A) verbatim.
 
 ## §0.3 Implementation Constraints for Low-Cost Coding Agents
 
-Cost-effective coding models are prone to missing late-section requirements. Therefore:
+- Every public module boundary must have a Zod schema and at least one fixture test.
+- Every phase must define a real npm script under `verify:phase-N`.
+- Every module marked `@implementation-tier: sonnet-class` must be stubbed by Haiku/Flash implementers, not written.
+- Every catch block must call `debugLog(code, message, context)`. Empty catches are forbidden.
 
-- The **Master Implementation Phases in §6 are canonical**.
-- Appendix Z original phases are retained for detail, but §6 wins when they conflict.
-- Any module marked `@implementation-tier: sonnet-class` must be stubbed by Haiku/Flash/DeepSeek Flash implementers.
-- Every public boundary must have a Zod schema and at least one fixture test.
-- Every phase must have a verification command.
-
-## §0.4 Canonical Runtime Concepts Added in v0.1c
+## §0.4 Canonical Runtime Concepts
 
 | Concept | File | Purpose |
 |---|---|---|
 | `PlannerService` | `src/core/ai/PlannerService.ts` | Cheap JSON-only action planner |
 | `ExecutorService` | `src/core/ai/ExecutorService.ts` | Deterministic MCP/skill/built-in tool executor |
 | `RendererService` | `src/core/ai/RendererService.ts` | Final concise response renderer |
+| `AgentOrchestrator` | `src/core/ai/AgentOrchestrator.ts` | Planner → Executor loop with tier caps (Appendix I) |
 | `ProviderRouter` | `src/core/ai/ProviderRouter.ts` | Provider selection, retry, fallback, circuit breaker |
-| `PromptCacheManager` | `src/core/ai/PromptCacheManager.ts` | Prompt cache segmentation and provider cache hints |
-| `StructuredOutput` | `src/core/ai/StructuredOutput.ts` | JSON mode / schema validation for non-chat calls |
-| `ChunkBuffer` | `src/core/ai/ChunkBuffer.ts` | rAF-batched streaming UI buffer |
-| `ModelContextTier` | `src/core/context/ModelContextTier.ts` | tiny/small/medium/large context classification |
+| `TierResolver` | `src/core/ai/TierResolver.ts` | Maps `haiku`/`flash` tier → concrete `(providerId, model)` (Appendix D) |
+| `PromptCacheManager` | `src/core/ai/PromptCacheManager.ts` | Prompt cache segmentation and provider hints |
+| `PromptCacheAdapter` | `src/core/ai/PromptCacheAdapter.ts` | Per-provider cache-hint transformation (Appendix K) |
+| `StructuredOutput` | `src/core/ai/StructuredOutput.ts` | JSON mode + schema validation + one-shot repair (Appendix L) |
+| `ChunkBuffer` | `src/core/ai/ChunkBuffer.ts` | rAF-batched streaming UI buffer (Appendix J) |
+| `ModelContextTier` | `src/core/context/ModelContextTier.ts` | tiny/small/medium/large classification |
 | `ContextOptimizer` | `src/core/context/ContextOptimizer.ts` | Dynamic token budget, compression, degradation |
 | `ContextCompressor` | `src/core/context/ContextCompressor.ts` | Structured text/page/case/history compression |
 | `MemoryEngine` | `src/core/memory/MemoryEngine.ts` | System-owned memory orchestration |
-| `ConversationMemoryStore` | `src/core/memory/ConversationMemoryStore.ts` | Per-conversation summary and recent turns |
+| `ConversationMemoryStore` | `src/core/memory/ConversationMemoryStore.ts` | Per-conversation summary + recent turns |
 | `UserMemoryStore` | `src/core/memory/UserMemoryStore.ts` | Cross-session fact/preference/pattern memory |
-| `PreferenceMemoryStore` | `src/core/memory/PreferenceMemoryStore.ts` | User behaviour preferences |
+| `PreferenceMemoryStore` | `src/core/memory/PreferenceMemoryStore.ts` | User behavioural preferences |
 | `AITransactionLog` | `src/core/telemetry/AITransactionLog.ts` | AI/MCP/tool/provider operation trace |
 | `AITransactionLogDB` | `src/core/telemetry/AITransactionLogDB.ts` | IndexedDB trace persistence |
 | `TraceRedactor` | `src/core/telemetry/TraceRedactor.ts` | Redaction before logs/UI/export |
+| `WriteJournal` | `src/core/storage/WriteJournal.ts` | Multi-store consistency (metadata + IndexedDB body) |
+| `IndexedDBMigrator` | `src/core/storage/IndexedDBMigrator.ts` | Versioned migrations |
 | `DiagnosticsPanel` | `src/components/tools/DiagnosticsPanel.tsx` | Tools → Diagnostics UI |
 
 ---
-
 # §1 — Cost-Effective Runtime AI Architecture
 
 ## §1.1 Runtime Design Principle
 
 NowPilot must assume the active runtime model may be cheap, fast, weaker at reasoning, small-context, local, or configured as the user's only provider. The system must not rely on the model to remember, decide tool safety, or preserve state.
 
-Therefore, runtime AI uses:
+Runtime AI uses:
 
 ```text
 PlannerService → ExecutorService → RendererService
 ```
 
-This supersedes any older assumption that a single unconstrained `AgentLoop(maxSteps=15)` should manage every runtime workflow.
+with a bounded loop between Planner and Executor as defined in §1.4 and Appendix I.
 
 ## §1.2 Planner → Executor → Renderer Flow
 
 ```mermaid
 flowchart TD
-  User[User input] --> TxStart[AITransactionLog.start]
-  TxStart --> Memory[MemoryEngine]
-  Memory --> Context[ContextOptimizer]
-  Context --> Planner[PlannerService - cheap JSON planner]
-  Planner --> Decision{PlannerDecision}
-  Decision -->|answer| Renderer[RendererService]
-  Decision -->|run_tool| Executor[ExecutorService]
-  Decision -->|ask_clarification| Clarify[Clarification UI]
-  Executor --> ToolResult[Validated ToolExecutionResult]
-  ToolResult --> Renderer
-  Renderer --> Stream[ChunkBuffer + React UI]
-  Stream --> MemoryUpdate[MemoryEngine update]
-  MemoryUpdate --> TxDone[AITransactionLog.complete]
+    User[User input] --> TxStart[AITransactionLog.start]
+    TxStart --> Memory[MemoryEngine]
+    Memory --> Context[ContextOptimizer]
+    Context --> Orchestrator[AgentOrchestrator]
+    Orchestrator --> Planner[PlannerService]
+    Planner --> Decision{PlannerDecision}
+    Decision -->|answer or clarification| Renderer[RendererService]
+    Decision -->|run_tool| Executor[ExecutorService]
+    Executor --> ToolResult[ToolExecutionResult]
+    ToolResult --> Orchestrator
+    Renderer --> Stream[ChunkBuffer + React UI]
+    Stream --> MemoryUpdate[MemoryEngine.update]
+    MemoryUpdate --> TxDone[AITransactionLog.complete]
 ```
 
 ### PlannerService
 
-Planner decides exactly one of:
+Planner returns exactly one of the following, validated by Zod:
 
 ```ts
 export const PlannerDecisionSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('answer'), reasonCode: z.string().max(64) }),
-  z.object({ action: z.literal('run_tool'), toolName: z.string().max(64), input: z.unknown() }),
+  z.object({
+    action: z.literal('run_tool'),
+    toolName: z.string().max(64),   // ExecutorService supplies a closed z.enum at request time
+    input: z.unknown(),
+  }),
   z.object({ action: z.literal('ask_clarification'), question: z.string().max(200) }),
 ]);
 ```
 
-Planner rules:
-
-- Use `haiku` tier where available.
-- Return JSON only.
-- Do not explain reasoning.
+Rules:
+- Use `haiku` tier where available (Appendix D).
+- Return JSON only. Do not explain reasoning.
 - Timeout: 3 seconds.
-- One malformed-JSON repair retry only.
-- If planner fails twice, fallback to `{ action: 'answer', reasonCode: 'planner_failed' }`.
+- One malformed-JSON repair retry only (Appendix L).
+- If planner fails twice: fallback to `{ action: 'answer', reasonCode: 'planner_failed' }`.
+- ExecutorService **must** narrow `toolName` to a closed `z.enum` derived from the currently registered tools before passing the schema to the model.
 
 ### ExecutorService
 
-Executor is deterministic and must:
-
+Deterministic. It must:
 - reject unknown tool names,
-- validate input Zod schema,
+- validate input against the tool's Zod schema,
 - check permission policy,
 - check model/context-tier capability,
 - run the tool with timeout,
-- validate output Zod schema,
+- validate output against the tool's Zod output schema,
 - return `ToolExecutionResult<T>`.
 
 The LLM never executes tools directly.
 
 ### RendererService
 
-Renderer converts validated context/tool output into a concise user answer.
+Renderer converts validated context and tool output into a concise answer.
 
 Rules:
-
-- Use `flash` tier where available.
+- Use `flash` tier where available (Appendix D).
 - Do not invent missing tool results.
 - Use structured output for cards/tables/checklists.
 - Timeout: 5 seconds for normal answers.
-- Max normal output: 512 tokens unless feature overrides.
+- Max normal output: 512 tokens unless the feature overrides.
 
 ## §1.3 Prompt Shape and Prompt Caching
 
-Every AI call must use this canonical section order:
+Every AI call uses this canonical section order:
 
 ```text
 [SYSTEM: cached, canonical]
@@ -212,19 +235,13 @@ Every AI call must use this canonical section order:
 ```
 
 Rules:
-
 - Stable sections must be byte-identical across repeated calls where possible.
 - Tool schemas must be sorted by stable tool name.
-- Whitespace in cached prompt sections must be stable.
+- Whitespace in cached sections must be stable.
 - Current user input and in-flight assistant output are never cached.
 - Prompt cache hits/misses are logged in `AITransactionLog`.
 
-Provider-specific behaviour:
-
-- Anthropic-compatible providers: use cache-control hints where supported.
-- Gemini-compatible providers: use cached content handles where supported.
-- DeepSeek/OpenAI-compatible providers: use stable prompt hashes and provider-specific cache hints where supported.
-- Local LLMs: assume no provider-side cache, but still minimise local prompt payload.
+Provider-specific cache behaviour is implemented in `PromptCacheAdapter` — see Appendix K.
 
 ## §1.4 Agent Step Limits
 
@@ -233,21 +250,36 @@ Provider-specific behaviour:
 | `tiny` ≤4K | 1 | 1 | Disabled | Minimal mode only |
 | `small` 8K–16K | 2 | 1 | Disabled by default | Single-tool task |
 | `medium` 32K–128K | 3 | 2 | Enabled | Limited agent |
-| `large` ≥200K | 5 | 3 | Enabled | Full v0.1 agent |
+| `large` ≥200K | 5 | 3 | Enabled | Full agent |
+
+The `AgentOrchestrator` (Appendix I) is the only module allowed to enforce these caps.
 
 ## §1.5 Provider Routing and Fallback
 
 `ProviderRouter` selects providers using cost, latency, reliability, privacy mode, configured priority, and provider availability.
 
 Fallback rules:
-
 - If only one provider exists, retry once only for retryable pre-first-token failures.
 - Do not silently switch from local to cloud when `allowCloudFallbackFromLocal=false`.
-- Never switch provider after first token has streamed.
-- Record every attempt in `ProviderTrace`.
+- Never switch provider after `hasStreamedFirstToken === true`.
+- Record every attempt in `AITransactionLog`.
+
+State that `ProviderRouter` must track per operation:
+```ts
+interface RouterAttemptState {
+  operationId: string;
+  attempts: ProviderAttempt[];
+  hasStreamedFirstToken: boolean;
+  circuitBreakerOpen: Record<ProviderId, number>; // reopen after cool-down ms
+}
+```
+
+Retry / circuit breaker policy:
+- Retryable pre-first-token errors: `TIMEOUT`, `PROVIDER_5XX`, `NETWORK`, `RATE_LIMITED`.
+- Non-retryable: `AUTH`, `MODEL_UNKNOWN`, `SCHEMA_INVALID`, `HOST_NOT_PERMITTED`.
+- Circuit breaker: after 3 consecutive failures for a provider within 60 s, mark provider open for 5 minutes.
 
 ---
-
 # §2 — Context-Adaptive Execution
 
 ## §2.1 Model Context Tiers
@@ -256,8 +288,8 @@ Fallback rules:
 export type ModelContextTier = 'tiny' | 'small' | 'medium' | 'large';
 
 export function classifyModelContext(contextWindow: number): ModelContextTier {
-  if (contextWindow <= 4096) return 'tiny';
-  if (contextWindow <= 16384) return 'small';
+  if (contextWindow <= 4096)   return 'tiny';
+  if (contextWindow <= 16384)  return 'small';
   if (contextWindow <= 131072) return 'medium';
   return 'large';
 }
@@ -265,7 +297,7 @@ export function classifyModelContext(contextWindow: number): ModelContextTier {
 
 | Tier | Context window | Typical provider | Runtime strategy |
 |---|---:|---|---|
-| `tiny` | ≤4K | default Ollama/local model | Minimal mode, one tool max, aggressive compression |
+| `tiny` | ≤4K | default local model | Minimal mode, one tool max |
 | `small` | 8K–16K | tuned local model | Summary + last few turns |
 | `medium` | 32K–128K | strong local/cloud model | Balanced context |
 | `large` | ≥200K | large cloud Flash/Haiku class | Full context with caching |
@@ -273,7 +305,7 @@ export function classifyModelContext(contextWindow: number): ModelContextTier {
 ## §2.2 Token Budget Formula
 
 ```ts
-inputBudget = floor(modelContextWindow * 0.70)
+inputBudget  = floor(modelContextWindow * 0.70)
 outputBudget = floor(modelContextWindow * 0.20)
 safetyMargin = floor(modelContextWindow * 0.10)
 ```
@@ -282,10 +314,12 @@ Dynamic distribution:
 
 | Tier | System | Tools | Memory | Context | History | User |
 |---|---:|---:|---:|---:|---:|---:|
-| `tiny` | 15% | 20% | 10% | 20% | 15% | 20% |
-| `small` | 10% | 15% | 10% | 25% | 20% | 20% |
-| `medium` | 8% | 12% | 10% | 30% | 25% | 15% |
-| `large` | 5% | 10% | 10% | 35% | 25% | 15% |
+| `tiny`   | 15% | 20% | 10% | 20% | 15% | 20% |
+| `small`  | 10% | 15% | 10% | 25% | 20% | 20% |
+| `medium` |  8% | 12% | 10% | 30% | 25% | 15% |
+| `large`  |  5% | 10% | 10% | 35% | 25% | 15% |
+
+Token counting rule: use the provider-native counter when the SDK exposes it; else fall back to `Math.ceil(text.length / 4)` for English and `Math.ceil(text.length / 3)` for CJK.
 
 ## §2.3 ContextOptimizer Contract
 
@@ -296,9 +330,9 @@ export interface ContextOptimizerInput {
   modelContextWindow: number;
   userInput: string;
   conversationId: string;
-  pageContext?: PageContext;
-  selectedToolSchemas: ToolSchemaRef[];
-  memoryHints: RetrievedMemory[];
+  pageContext?: PageContext;               // Appendix C
+  selectedToolSchemas: ToolSchemaRef[];    // Appendix C
+  memoryHints: RetrievedMemory[];          // Appendix C
   preferences: UserPreferences;
 }
 
@@ -306,33 +340,31 @@ export interface OptimizedContext {
   tier: ModelContextTier;
   inputBudget: number;
   outputBudget: number;
-  sections: PromptSection[];
+  sections: PromptSection[];               // Appendix C
   provenance: ContextProvenanceManifest;
   minimalMode: boolean;
 }
 ```
 
-All AI calls must consume `OptimizedContext`; direct prompt assembly in React components is forbidden.
+Direct prompt assembly in React components is forbidden. All AI calls must consume an `OptimizedContext`.
 
 ## §2.4 Degradation Pipeline
 
 When estimated tokens exceed budget:
-
 1. Drop debug-only context.
 2. Drop secondary notes and optional metadata.
 3. Summarise older history.
 4. Compress page/case context into structured fields.
-5. Trim tool schemas to relevant tools.
+5. Trim tool schemas to the tools currently in scope.
 6. Reduce memory injection top-k.
 7. Enter minimal mode.
 8. If still too large, return a typed `CONTEXT_TOO_LARGE` error with a user-facing explanation.
 
 ## §2.5 Minimal Mode
 
-Minimal mode is mandatory for `tiny` models.
+Mandatory for `tiny` models.
 
 Allowed:
-
 - compact system prompt,
 - compact preference profile,
 - top 3 user memories,
@@ -341,32 +373,44 @@ Allowed:
 - at most one safe tool schema.
 
 Blocked:
-
 - multi-step agent,
 - MCP chaining,
 - CodeSearchSkill,
-- full note graph injection,
+- full note-graph injection,
 - large research synthesis.
 
----
+## §2.6 Context Provenance Manifest
 
+Every `OptimizedContext` carries a manifest recording where each section came from so `PromptInspector` can display provenance without the raw body.
+
+```ts
+export interface ContextProvenanceManifest {
+  sections: Array<{
+    kind: 'system' | 'tool_schemas' | 'preferences' | 'memory' | 'context' | 'task' | 'user_input';
+    sourceId: string;    // e.g. 'note:abc123', 'tab:42', 'summary:convo-9'
+    tokens: number;
+    truncated: boolean;
+    compressionApplied?: 'summarise' | 'structural' | 'topk';
+  }>;
+  totalTokens: number;
+  minimalMode: boolean;
+}
+```
+
+---
 # §3 — Persistent Memory Architecture
 
 ## §3.1 Memory Principle
 
-Memory is system-owned. The LLM does not own persistent memory.
-
-Memory has three layers:
+Memory is system-owned. The LLM does not own persistent memory. Three layers:
 
 ```text
 Conversation memory  → continuity inside one conversation
-User memory          → durable cross-session facts/preferences/patterns
+User memory          → durable cross-session facts / preferences / patterns
 Preference memory    → behavioural settings and response style
 ```
 
 ## §3.2 Recommended Framework Choice
-
-Use a custom lightweight memory layer:
 
 ```text
 Zustand       → runtime/UI state
@@ -395,7 +439,6 @@ export interface ConversationMemory {
 ```
 
 Rules:
-
 - Keep last 2 turns for `tiny`.
 - Keep last 4 turns for `small`.
 - Keep last 6 turns for `medium`/`large`.
@@ -410,7 +453,7 @@ export interface UserMemoryFact {
   content: string;
   type: 'fact' | 'preference' | 'pattern';
   tags: string[];
-  confidence: number;
+  confidence: number;         // 0..1
   source: 'explicit' | 'inferred' | 'system';
   createdAt: number;
   updatedAt: number;
@@ -419,21 +462,26 @@ export interface UserMemoryFact {
 }
 ```
 
-Retrieval scoring:
+Retrieval scoring — every sub-score must be normalised to `[0, 1]`:
 
 ```text
-score = keywordScore * 0.45
-      + tagScore * 0.25
-      + recencyScore * 0.15
-      + useCountScore * 0.10
-      + confidenceScore * 0.05
+keywordScore   = matchedQueryTerms / totalQueryTerms
+tagScore       = matchedTags / max(1, memoryTags.length)
+recencyScore   = clamp(1 - (now - updatedAt) / (30 * DAY), 0, 1)
+useCountScore  = min(1, useCount / 20)
+confidenceScore = confidence
+
+score = keywordScore   * 0.45
+      + tagScore       * 0.25
+      + recencyScore   * 0.15
+      + useCountScore  * 0.10
+      + confidenceScore* 0.05
 ```
 
 Injection rules:
-
 - top 5 memories maximum,
 - top 3 memories maximum in tiny mode,
-- total memory injection maximum 1000 tokens,
+- total memory injection ≤ 1000 tokens,
 - never inject secrets or raw customer data.
 
 ## §3.5 Preference Memory
@@ -452,7 +500,6 @@ export interface UserPreferences {
 Preferences are injected as compact JSON, not verbose prose.
 
 ---
-
 # §4 — AI/MCP Transaction Logging and Diagnostics
 
 ## §4.1 Purpose
@@ -460,7 +507,6 @@ Preferences are injected as compact JSON, not verbose prose.
 Every AI, MCP, skill, tool, context, cache, fallback, and provider operation must be traceable for troubleshooting.
 
 `AITransactionLog` tracks:
-
 - operation ID,
 - provider/model,
 - prompt token breakdown,
@@ -489,8 +535,10 @@ export interface AITransaction {
   sessionId?: string;
   conversationId?: string;
   userTurnId?: string;
-  type: 'chat' | 'planner' | 'renderer' | 'structured_output' | 'mcp_tool' | 'builtin_tool' | 'skill' | 'proxy_fetch';
-  status: 'started' | 'streaming' | 'waiting_for_permission' | 'completed' | 'failed' | 'aborted' | 'retried' | 'fallback_used';
+  type: 'chat' | 'planner' | 'renderer' | 'structured_output'
+      | 'mcp_tool' | 'builtin_tool' | 'skill' | 'proxy_fetch';
+  status: 'started' | 'streaming' | 'waiting_for_permission'
+        | 'completed' | 'failed' | 'aborted' | 'retried' | 'fallback_used';
   providerId?: ProviderId;
   model?: string;
   startedAt: number;
@@ -498,9 +546,7 @@ export interface AITransaction {
   durationMs?: number;
   errorCode?: string;
 }
-```
 
-```ts
 export interface PromptTrace {
   operationId: string;
   promptTemplateId: string;
@@ -526,9 +572,7 @@ export interface PromptTrace {
     estimatedSavedTokens?: number;
   };
 }
-```
 
-```ts
 export interface ToolTrace {
   operationId: string;
   parentOperationId?: string;
@@ -549,11 +593,21 @@ export interface ToolTrace {
   startedAt: number;
   endedAt?: number;
   durationMs?: number;
-  error?: {
-    code: string;
-    message: string;
-    retryable: boolean;
-  };
+  error?: { code: string; message: string; retryable: boolean };
+}
+
+export interface ProviderTrace {
+  operationId: string;
+  attempts: Array<{
+    providerId: ProviderId;
+    model: string;
+    startedAt: number;
+    endedAt?: number;
+    firstTokenAt?: number;
+    outcome: 'success' | 'retry' | 'fallback' | 'failed';
+    errorCode?: string;
+  }>;
+  circuitBreakerTriggered: boolean;
 }
 ```
 
@@ -589,7 +643,7 @@ const REDACTION_PATTERNS = [
 
 ## §4.5 Diagnostics UI
 
-Add `Tools → Diagnostics` with:
+`Tools → Diagnostics` (`src/components/tools/DiagnosticsPanel.tsx`) surfaces:
 
 - Recent AI Transactions
 - Provider Attempts
@@ -603,8 +657,7 @@ Add `Tools → Diagnostics` with:
 - Copy Redacted Trace
 
 ---
-
-# §5 — WXT, MV3, Styling, and Isolation Refinements
+# §5 — WXT, MV3, Styling, and Isolation
 
 ## §5.1 Canonical WXT Entry Points
 
@@ -612,29 +665,45 @@ Add `Tools → Diagnostics` with:
 src/entrypoints/background.ts
 src/entrypoints/sidepanel/index.html
 src/entrypoints/sidepanel/main.tsx
-src/entrypoints/content/core.ts
+src/entrypoints/content/core.content.ts
 src/entrypoints/popup/App.tsx
 ```
 
-Background owns:
+Background owns: `chrome.sidePanel.setPanelBehavior`, context menus, `PROXY_FETCH`, cookies, alarms, router startup.
 
-- `chrome.sidePanel.setPanelBehavior`,
-- context menus,
-- `PROXY_FETCH`,
-- cookies,
-- alarms,
-- router startup.
+Side Panel owns: AI streaming, MCP runtime, ProviderRouter, PromptCacheManager, ContextOptimizer, MemoryEngine, AITransactionLog, IndexedDB.
 
-Side Panel owns:
+Canonical WXT background entrypoint (mandatory shape):
+```ts
+// src/entrypoints/background.ts
+export default defineBackground({
+  type: 'module',
+  persistent: false,
+  main() {
+    BackgroundRouter.register();
+    LifecycleManager.register();
+    KeepAliveManager.register();
+    ContextMenuHost.recreateAll();
+  },
+});
+```
 
-- AI streaming,
-- MCP runtime,
-- ProviderRouter,
-- PromptCacheManager,
-- ContextOptimizer,
-- MemoryEngine,
-- AITransactionLog,
-- IndexedDB.
+Canonical content-script entrypoint:
+```ts
+// src/entrypoints/content/core.content.ts
+export default defineContentScript({
+  matches: ['<all_urls>'],
+  runAt: 'document_idle',
+  cssInjectionMode: 'ui',   // required for Shadow DOM + adoptedStyleSheets
+  world: 'ISOLATED',
+  async main(ctx) {
+    ctx.addEventListener(window, 'wxt:locationchange', onSpaNav);
+    await ContentScriptHost.mount(ctx);
+  },
+});
+```
+
+Complete `wxt.config.ts` — see **Appendix G**.
 
 ## §5.2 Background Service Worker Rules
 
@@ -642,88 +711,1000 @@ Side Panel owns:
 - Recreate alarms and context menus on every startup.
 - Never run LLM or MCP streams in the SW.
 - Use `Promise.race` plus `AbortController` for every async fetch.
-- PROXY_FETCH timeout remains 25 seconds unless feature-specific timeout is lower.
+- `PROXY_FETCH` timeout is 25 seconds unless a feature-specific timeout is lower.
 - Side-panel LLM stream continues independent of SW restart.
 
 ## §5.3 Side Panel Opening
 
-- Use `chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })` on install/startup.
-- Use `chrome.sidePanel.open({ tabId })` only inside a user gesture such as action click or context-menu click.
-- The Side Panel is global per browser window; URL-specific add-on tabs are filtered by `SidePanelPageRegistry` rather than per-tab panel paths.
+- Use `chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })` in `LifecycleManager.onInstalled` and `onStartup`.
+- Use `chrome.sidePanel.open({ tabId })` **only inside a user gesture** — action click or `contextMenus.onClicked`.
+- The Side Panel is global per browser window; URL-specific navigation is filtered by `SidePanelPageRegistry`.
 
 ## §5.4 Styling Isolation
 
-Side Panel:
+Two CSS entry points are mandatory:
 
-- Tailwind v4 with `@tailwindcss/vite`.
-- shadcn/ui components copied into `src/components/ui`.
-- Tweakcn HSL variables mapped to `--np-*` tokens.
+- **Side panel** (`src/entrypoints/sidepanel/main.css`) — full Tailwind including preflight, `@theme` mapping to `--np-*` tokens.
+- **Shadow DOM injected UI** (`src/entrypoints/content/shadow.css`) — Tailwind theme + utilities layers only, **preflight OFF**, tokens defined on `:host`.
 
-Content Script injected add-on UI:
+```css
+/* src/entrypoints/sidepanel/main.css */
+@import 'tailwindcss';
+@import './theme-tweakcn.css';
 
-- Must mount inside Shadow DOM.
-- Must use `adoptedStyleSheets`.
-- Must bridge Tweakcn variables onto `:host`.
-- Must pass Radix portal `container={portalHost}`.
+/* src/entrypoints/content/shadow.css */
+@layer theme, base, components, utilities;
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+@import './theme-tweakcn.css';
+@custom-variant dark (&:where(:host(.dark), :host(.dark) *));
+```
+
+Injected UI rules:
+- Must mount inside Shadow DOM using `mountShadow()` — see **Appendix H**.
+- Must use `adoptedStyleSheets` (not `<style>` tags in the host page).
+- Must bridge Tweakcn variables onto `:host` via `buildTokenSheet()` — see **Appendix H**.
+- Must pass Radix portal `container={portalHost}` via `PortalHostContext` — see **Appendix H**.
 - Must not inject CSS into host page globals.
 
-Canonical Shadow mount:
+Radix / shadcn portals: every wrapped shadcn primitive lives under `src/components/ui-shadow/` and reads `PortalHostContext`. Never import shadcn primitives directly into content-script UI.
 
-```ts
-export async function mountShadow(host: HTMLElement, opts: { dark: boolean }) {
-  const shadow = host.attachShadow({ mode: 'closed' });
-  shadow.adoptedStyleSheets = [await getSharedSheet(), buildTokenSheet(opts.dark)];
-  const portalHost = document.createElement('div');
-  portalHost.className = 'np-shadow-container';
-  shadow.appendChild(portalHost);
-  return { shadow, portalHost };
-}
+Tweakcn HSL variables map 1:1 onto shadcn tokens under the `--np-` prefix — see **Appendix F**.
+
+---
+# §6 — Executive Summary & Scope
+
+## §6.1 What NowPilot Is
+
+NowPilot is a privacy-first, extensible Chrome Side Panel AI assistant. It provides:
+- AI chat with streaming and abort,
+- atomic note-taking with wikilinks and a note graph,
+- agent workflows with tool-calling,
+- prompt templates and slash commands,
+- a personal knowledge layer.
+
+Everything runs locally against user-configured AI providers. No data leaves the user's machine unless they explicitly configure a cloud provider.
+
+## §6.2 Architecture Separation
+
+- **Core layer** — AI providers, storage, messaging, context pipeline, agent orchestration, MCP client, memory, transaction logging.
+- **Add-on layer** — site-specific page injection, extraction, skills. The ServiceNow add-on ships as the first-party add-on.
+
+Core never knows about specific websites. Add-ons never bypass core APIs.
+
+## §6.3 Design Principles
+
+- Privacy by default: local providers (Ollama, LM Studio) are first-class.
+- Extensible via add-ons: core is domain-agnostic.
+- Cost-effective by design: every prompt goes through `ContextOptimizer` and the Planner→Executor→Renderer pipeline.
+- Offline-capable: the extension works with local models only.
+
+## §6.4 Scope Fences
+
+In scope for v0.1c:
+- Side panel shell, chat, notes, agent, tools, first-run onboarding.
+- 5 provider adapters.
+- Persistent memory (conversation + user + preference).
+- 12 built-in MCP tools + external MCP client.
+- ServiceNow add-on.
+- Data export/import.
+- Prompt inspector and diagnostics.
+
+Out of scope for v0.1c (deferred to v0.5):
+- PDF chat.
+- Global internet-search page (replaced by ResearchSkill global add-on).
+- Embedding-based search (bag-of-words + MiniSearch is sufficient).
+- Snippet/template productivity suite.
+
+---
+# §7 — Technology Stack
+
+### §7.1 Extension Framework
+
+| Package | Version | Purpose |
+|---|---|---|
+| `wxt` | ^0.19 | MV3 scaffold, HMR, manifest generation |
+| `@wxt-dev/module-react` | ^0.3 | React integration |
+
+### §7.2 UI
+
+| Package | Version | Purpose |
+|---|---|---|
+| `react` / `react-dom` | ^19 | UI framework |
+| `tailwindcss` | ^4 | CSS with `@theme` config, no `tailwind.config.ts` |
+| `@tailwindcss/vite` | ^4 | Vite integration required for Tailwind v4 + WXT |
+| `shadcn/ui` | CLI only | Copy-paste primitives |
+| `@radix-ui/react-*` | varies | Accessible primitives |
+| `lucide-react` | ^0.400 | Icons |
+| `motion` | ^12 | Framer Motion v12; import from `motion/react`. **Do not install `framer-motion`.** |
+| `class-variance-authority` | ^0.7 | shadcn variant helper |
+| `clsx`, `tailwind-merge` | ^2 | Class utilities |
+
+### §7.3 State
+
+| Package | Version | Purpose |
+|---|---|---|
+| `zustand` | ^5 | Global side-panel store |
+| `immer` | ^10 | Immutable state updates |
+
+### §7.4 AI & Workflow
+
+| Package | Version | Purpose |
+|---|---|---|
+| `ai` | ^4 | Vercel AI SDK: `streamText`, tool calling, abort |
+| `@ai-sdk/openai` | ^1 | OpenAI + Ollama + OpenAI-compatible endpoints |
+| `@ai-sdk/anthropic` | ^1 | Anthropic Claude |
+| `@ai-sdk/google` | ^1 | Google Gemini |
+| `@modelcontextprotocol/sdk` | ^1 | MCP client — StreamableHTTP transport |
+| `zod` | ^3 | Boundary validation |
+| `zod-to-json-schema` | ^3 | Zod → JSON Schema for tool definitions |
+
+### §7.5 Storage
+
+| Package | Version | Purpose |
+|---|---|---|
+| `idb` | ^8 | Typed IndexedDB wrapper |
+
+### §7.6 Extraction & Text
+
+| Package | Version | Purpose |
+|---|---|---|
+| `@mozilla/readability` | ^0.5 | Article extraction |
+| `turndown` | ^7 | HTML → Markdown |
+| `dompurify` | ^3 | XSS sanitisation |
+
+### §7.7 Markdown
+
+| Package | Version | Purpose |
+|---|---|---|
+| `react-markdown` | ^9 | Safe markdown renderer |
+| `remark-gfm` | ^4 | GitHub-flavoured markdown |
+| `rehype-highlight` | ^7 | Code block highlighting |
+| `highlight.js` | ^11 | Highlighter |
+| `katex` | ^0.16 | Math rendering |
+
+### §7.8 Search & Data
+
+| Package | Version | Purpose |
+|---|---|---|
+| `minisearch` | ^7 | Local full-text search |
+| `d3-force` | ^3 | Note graph layout |
+| `fflate` | ^0.8 | ZIP export |
+| `papaparse` | ^5 | CSV parsing |
+
+### §7.9 Security & Testing & DX
+
+| Item | Purpose |
+|---|---|
+| `crypto.subtle` (native) | AES-GCM encryption |
+| `crypto.randomUUID()` (native) | ID generation |
+| `vitest`, `@testing-library/react`, `jsdom`, `msw` | Testing |
+| `typescript` ≥5.5, `strict: true` | Type safety |
+| `eslint`, `prettier` | Linting / formatting |
+
+---
+# §8 — Architecture Design
+
+## §8.1 Extension Contexts
+
+```
+Chrome Browser
+├── Background Service Worker (background.ts)                 [ephemeral]
+│   ├── BackgroundRouter          typed chrome.runtime.onMessage dispatcher
+│   ├── LifecycleManager          onInstalled, onStartup
+│   ├── KeepAliveManager          chrome.alarms + panel ping
+│   ├── ContextMenuHost           chrome.contextMenus registration
+│   ├── CookieSessionStore        generic chrome.cookies + storage.session
+│   └── CORSProxy                 PROXY_FETCH (§10.6)
+│
+├── Side Panel (sidepanel/main.tsx)                           [persistent while open]
+│   ├── ProviderRegistry / ProviderRouter / TierResolver
+│   ├── AgentOrchestrator + PlannerService + ExecutorService + RendererService
+│   ├── MCPClient + MCPRegistry + NowPilotMainServer (12 tools)
+│   ├── ContextOptimizer + ContextCompressor + ContextPack
+│   ├── MemoryEngine + Conversation/User/PreferenceMemoryStore
+│   ├── AITransactionLog + AITransactionLogDB + TraceRedactor
+│   ├── StorageLayer (ChatHistoryDB, NotesDB, MemoryDB, ErrorStore, WriteJournal)
+│   ├── MessageBus (cross-context), EventBus (in-panel), BroadcastBus (windows)
+│   └── UI shell: Chat / Note / Agent / Tools
+│
+├── Content Scripts (per add-on)
+│   ├── ContentScriptHost         mounts Shadow DOM
+│   ├── SPANavigationWatcher      MutationObserver
+│   ├── PageContextBridge         extracted context → side panel
+│   ├── ISOLATED world by default
+│   └── MAIN world only for domain-specific globals (e.g. window.g_ck)
+│
+└── Add-ons
+    ├── Site-specific  (urlPatterns match)
+    └── Global         (all pages)
+```
+
+## §8.2 Core vs Add-on Boundary
+
+Core owns:
+- AI runtime, MCP, messaging, context, storage, migrations, WriteJournal,
+- Chrome API hosts (CORSProxy, ContextMenuHost, TabManager),
+- generic session infrastructure (`CookieSessionStore`),
+- shared UI (ErrorBoundary, Toast, PortableMarkdown),
+- prompt/template/slash engines,
+- telemetry, redaction,
+- registries (AddonRegistry, EndpointRegistry, KeymapRegistry),
+- injection framework (`ContentScriptHost`, `SPANavigationWatcher`, `PageContextBridge`).
+
+Add-ons own:
+- site-specific context extraction,
+- injected page UI (rendered via Shadow DOM),
+- injection rules,
+- site-specific skills, prompts, endpoints, session semantics,
+- add-on settings, pages, keymaps.
+
+Rules:
+- Core MUST NOT import from `src/addons/**`.
+- Add-ons MUST NOT bypass `ContentScriptHost`.
+- Add-ons MUST NOT manipulate DOM outside their Shadow DOM.
+
+## §8.3 File Structure
+
+```
+nowpilot/
+├── wxt.config.ts                            # Appendix G
+├── src/
+│   ├── entrypoints/
+│   │   ├── background.ts
+│   │   ├── sidepanel/{index.html, main.tsx, main.css}
+│   │   ├── content/{core.content.ts, shadow.css}
+│   │   └── popup/App.tsx
+│   │
+│   ├── core/
+│   │   ├── ai/
+│   │   │   ├── types.ts, PlannerService.ts, ExecutorService.ts, RendererService.ts
+│   │   │   ├── AgentOrchestrator.ts, ProviderRouter.ts, TierResolver.ts
+│   │   │   ├── PromptCacheManager.ts, PromptCacheAdapter.ts
+│   │   │   ├── StructuredOutput.ts, ChunkBuffer.ts, StreamAdapter.ts, toolSchemas.ts
+│   │   │   ├── ILLMProvider.ts, ProviderRegistry.ts
+│   │   │   └── providers/{OpenAI,Anthropic,Gemini,Ollama,OpenAICompat}Provider.ts
+│   │   ├── mcp/{MCPClient.ts, MCPRegistry.ts, mcpToVercelAI.ts, NowPilotMainServer.ts}
+│   │   ├── context/
+│   │   │   ├── ModelContextTier.ts, TokenBudget.ts, ContextOptimizer.ts
+│   │   │   ├── ContextCompressor.ts, ContextPack.ts, ContextProvenanceManifest.ts
+│   │   ├── memory/
+│   │   │   ├── MemoryEngine.ts, ConversationMemoryStore.ts, UserMemoryStore.ts
+│   │   │   ├── PreferenceMemoryStore.ts, MemoryScorer.ts, MemoryExtractor.ts
+│   │   ├── telemetry/
+│   │   │   ├── AITransactionLog.ts, AITransactionLogDB.ts, TraceRedactor.ts
+│   │   │   └── PromptInspector.ts, TokenLedger.ts
+│   │   ├── storage/
+│   │   │   ├── Setting.ts, EncryptedStorage.ts, WriteJournal.ts, IndexedDBMigrator.ts
+│   │   │   ├── ChatHistoryDB.ts, NotesDB.ts, MemoryDB.ts, ErrorStore.ts
+│   │   ├── security/{KeyVault.ts, redactSensitive.ts}
+│   │   ├── runtime/{RuntimeEnvelope.ts, OperationId.ts, BroadcastBus.ts, PortReader.ts, workerState.ts}
+│   │   ├── messaging/{MessageBus.ts}
+│   │   ├── events/{EventBus.ts}
+│   │   ├── content/{ContentScriptHost.ts, SPANavigationWatcher.ts, PageContextBridge.ts, mountShadow.ts, buildTokenSheet.ts, loadSharedSheet.ts}
+│   │   ├── chrome/{CookieSessionStore.ts, CORSProxy.ts, ContextMenuHost.ts, TabManager.ts, NotificationsManager.ts, OmniboxHandler.ts, ClipboardHelper.ts, Scheduler.ts}
+│   │   ├── prompts/{PromptManager.ts, TemplateEngine.ts, builtinTemplates.ts, index.ts}
+│   │   ├── slash/SlashCommandRegistry.ts
+│   │   ├── search/MiniSearchIndex.ts
+│   │   ├── notes/{NoteGraph.ts, LinkParser.ts, noteExpander.ts}
+│   │   ├── extraction/{IContentStrategy.ts, ContentExtractor.ts, DefaultWebPageStrategy.ts}
+│   │   ├── output/{StructuredOutputRenderer.ts, OutputFormatter.ts}
+│   │   ├── webhooks/WebhookManager.ts
+│   │   ├── data/DataPortability.ts
+│   │   ├── insights/InsightEngine.ts
+│   │   ├── http/Requester.ts
+│   │   ├── registry/{AddonRegistry.ts, Registry.ts, AddonSettingsStore.ts, SidePanelPageRegistry.ts}
+│   │   ├── input/KeymapRegistry.ts
+│   │   ├── speech/SpeechSynthesisService.ts
+│   │   ├── utils/RateLimiter.ts
+│   │   ├── config/{endpoints.ts, EndpointRegistry.ts, FeatureFlags.ts, localModelCapabilities.ts}
+│   │   ├── log/debugLog.ts
+│   │   ├── i18n/strings.ts
+│   │   └── components/{ErrorBoundary.tsx, Toast.tsx, PortableMarkdown.tsx}
+│   │
+│   ├── addons/
+│   │   ├── global/{SelectionContextMenu.ts, ResearchSkill.ts}
+│   │   └── servicenow/
+│   │       ├── index.ts
+│   │       ├── auth/ServiceNowSessionAdapter.ts
+│   │       ├── config/serviceNowEndpoints.ts
+│   │       ├── content/{tokenBridge.ts, pageExtractor.ts, serviceNowInjection.ts}
+│   │       ├── lib/SNowTableClient.ts
+│   │       ├── skills/{CaseAnalyzerSkill,CatchUpSkill,SentimentSkill,CodeSearchSkill}.ts
+│   │       └── components/CaseInsightBox.tsx
+│   │
+│   ├── components/
+│   │   ├── layout/SidepanelShell.tsx
+│   │   ├── pages/{ChatPage,NotePage,AgentPage,ToolsPage}.tsx
+│   │   ├── tools/{DiagnosticsPanel.tsx, TransactionTraceView.tsx}
+│   │   ├── notes/{BacklinksPanel,WikilinkAutocomplete,NoteGraphView}.tsx
+│   │   ├── patterns/{ChatMessage,HistoryListItem,ToolCard,SkillMessageRenderer,SourceCard}.tsx
+│   │   ├── ui/               # raw shadcn primitives (side panel only)
+│   │   └── ui-shadow/        # portal-aware shadcn wrappers (Shadow DOM only)
+│   │
+│   ├── hooks/{useChat.ts, useStreamingLLM.ts, useProviderRouter.ts, useMemory.ts, useDiagnostics.ts, useConversations.ts, useAddonContext.ts}
+│   └── types/{messages.ts, storage.ts, errors.ts, addon.ts}
+│
+└── tests/  (see §24)
 ```
 
 ---
+# §9 — Feature Specification
 
-# §6 — Master Implementation Phases for v0.1c
+## §9.1 Core Features
 
-This section is canonical for AI coding agents. Appendix Z contributes details, but this phase list wins when there is conflict.
+| Feature | Priority | Notes |
+|---|---|---|
+| Side panel shell + nav rail | P0 | Chat / Note / Agent / Tools; add-on tabs via `SidePanelPageRegistry` |
+| Theme system | P0 | light / dark / auto |
+| Feature flags | P0 | `chrome.storage.local.np_flags` |
+| First-run onboarding | P0 | Flow 9 |
+| Settings page | P0 | Providers, prompts, skills/MCP, data, diagnostics |
+| AI chat streaming with abort | P0 | Via `useStreamingLLM` (Appendix J) |
+| 5 AI providers | P0 | See §10 |
+| Model selector | P0 | Per-provider |
+| Chat history | P0 | Sessions, search, star, restore, delete |
+| Prompt templates + slash | P1 | `{{variable}}` interpolation |
+| `/write` preset | P1 | Slash command; no dedicated page |
+| `/ask` preset | P1 | Slash command over pinned-tab/page context |
+| Notes with wikilinks | P0 | CRUD, tags, backlinks, graph |
+| Note + chat-history search | P1 | Via Cmd+K; MiniSearch backed |
+| LLM Wiki | P1 | Suggest links / expand / concepts (user-triggered) |
+| Agent mode | P1 | AgentOrchestrator + permission prompts |
+| Tab pinning | P1 | Max 10 |
+| Selection context menu | P1 | Right-click → Ask AI |
+| Research (global tool) | P1 | See §9.3 |
+| Structured output renderers | P1 | JSON / table / checklist / report |
+| Data export/import | P1 | JSON / ZIP; sanitised (no API keys) |
+| Webhook manager | P2 | Outbound POST with retry queue |
+| Prompt inspector | P1 | Traces + token usage + cost |
+| Insight engine | P2 | Nightly, read-only |
+| Personal Knowledge RAG | P1 | MiniSearch + bag-of-words cosine |
+| Text-to-speech | P2 | Reads AI responses aloud |
+| Keyboard shortcuts | P1 | `KeymapRegistry` + Cmd+K palette |
+| Add-on nav tabs | P1 | `SidePanelPageRegistry` |
+
+## §9.2 Add-on Contract
+
+```ts
+export interface Addon {
+  id: string;
+  name: string;
+  scope: 'site' | 'global';
+  urlPatterns?: string[];               // required when scope === 'site'
+  contentScript?: IContentAddon;
+  contextExtractor?: IContextExtractor; // Appendix C
+  skills?: ISkill[];
+  prompts?: PromptTemplate[];
+  styles?: string;
+  addonSettings?: z.ZodSchema<unknown>;
+  pages?: SidePanelPageRegistration[];
+  keymap?: KeymapRegistration[];
+}
+
+export interface IContentAddon {
+  id: string;
+  matches: string[];
+  mountMode: 'shadow-dom';
+  shadowMode?: 'open' | 'closed';       // default: 'closed'
+  zIndex?: number;
+  shouldInject(ctx: PageContext): boolean;
+  render(ctx: PageContext): React.ReactNode;
+  onNavigate?(ctx: PageContext): void;
+  cleanup?(): void;
+}
+```
+
+Every add-on module that uses a concept from an external inspiration source **must include a self-contained description in-line**; there are no external `references/` folders in this project.
+
+## §9.3 Research Global Tool
+
+- Lives at `src/addons/global/ResearchSkill.ts`.
+- `inputSchema`: `{ query: string; maxSources?: number }`.
+- Uses in priority order:
+  1. user-connected MCP web-search server via `MCPClient`,
+  2. a built-in web-search MCP tool if configured,
+  3. graceful failure otherwise — never silently fall back to model-only answers.
+- `outputSchema`: `{ answer: string; sources: Array<{ title: string; url: string; snippet: string }> }`.
+- Subject to `PermissionGate` and `RateLimiter`.
+
+## §9.4 ServiceNow Add-on Features
+
+| Feature | Priority | Notes |
+|---|---|---|
+| JSESSIONID extraction | P0 | Via `CookieSessionStore` + `ServiceNowSessionAdapter` |
+| sysparmCK extraction | P0 | MAIN-world content script → adapter → CookieSessionStore |
+| Case context extraction | P0 | `IContextExtractor` implementation |
+| Table API client | P0 | `SNowTableClient` uses `PROXY_FETCH` + `RateLimiter` |
+| CaseAnalyzerSkill | P0 | AI analysis of case details |
+| CatchUpSkill | P0 | 24h activity digest |
+| SentimentSkill | P1 | Case communication sentiment |
+| CodeSearchSkill | P1 | Map-reduce over scripts; needs ≥16K context (§14.4) |
+| CaseInsightBox | P1 | Shadow DOM panel on case pages |
+| Scoped CSS enhancements | P1 | Inside Shadow DOM only |
+
+---
+# §10 — AI & MCP Integration
+
+## §10.1 Provider Interface
+
+```ts
+// src/core/ai/ILLMProvider.ts
+import type { LanguageModel } from 'ai';
+
+export type ProviderId = 'openai' | 'anthropic' | 'gemini' | 'ollama' | 'openai-compatible';
+
+export interface ILLMProvider {
+  id: ProviderId;
+  name: string;
+  chat(messages: LLMMessage[], options: LLMOptions): AsyncIterable<LLMStreamChunk>;
+  getModels(): Promise<ModelInfo[]>;
+  validateConfig(config: ProviderConfig): Promise<boolean>;
+  getAISDKModel(model: string): LanguageModel;
+}
+```
+
+Types `LLMMessage`, `LLMOptions`, `LLMStreamChunk`, `ModelInfo`, `ProviderConfig` are defined in Appendix C.
+
+## §10.2 Five Provider Implementations
+
+| Provider ID | Adapter | Default baseURL | Supports tools |
+|---|---|---|---|
+| `openai` | `@ai-sdk/openai` `createOpenAI` | `https://api.openai.com/v1` | Yes |
+| `anthropic` | `@ai-sdk/anthropic` `createAnthropic` | `https://api.anthropic.com` | Yes |
+| `gemini` | `@ai-sdk/google` `createGoogleGenerativeAI` | Google Cloud | Yes |
+| `ollama` | `@ai-sdk/openai` `createOpenAI` | `http://localhost:11434/v1` | Model-dependent |
+| `openai-compatible` | `@ai-sdk/openai` `createOpenAI` | user-supplied | Model-dependent |
+
+Ollama: pass `apiKey: 'ollama'`. Default context is 2048 tokens — warn the user (Flow 5).
+
+`ProviderRegistry` computes `resolvedBaseURL = customBaseURL ?? baseURL` once at construction. Providers only read `resolvedBaseURL`.
+
+## §10.3 Provider Config Schema
+
+```ts
+export const ProviderConfigSchema = z.object({
+  id: z.enum(['openai','anthropic','gemini','ollama','openai-compatible']),
+  label: z.string().trim().min(1).max(50),
+  apiKey: z.string().optional(),
+  baseURL: z.string().url(),
+  customBaseURL: z.string().url().optional(),
+  models: z.array(z.string().min(1)).min(1).max(10)
+           .refine(a => new Set(a).size === a.length, 'models must be unique'),
+  contextWindow: z.number().int().min(1024).max(2_000_000),
+  supportsTools: z.boolean(),
+  enabled: z.boolean(),
+  priority: z.number().int().min(0),
+  lastValidated: z.number().int().optional(),
+});
+```
+
+## §10.4 MCP Client
+
+- Lives in the side panel only. Never in the SW.
+- Uses `@modelcontextprotocol/sdk` `Client` + `StreamableHTTPClientTransport`.
+- Never hand-roll SSE parsing.
+- First-time tool call triggers a permission dialog (Flow 2). Allow/deny persisted in `np_mcp_permissions`.
+- Dangerous tools always prompt regardless of allow list.
+
+## §10.5 NowPilotMainServer — 12 Built-in Tools
+
+Registered by `MCPRegistry` at startup. Each has a Zod `inputSchema` and a `dangerous` flag.
+
+| # | Tool name | Input | dangerous | Effect |
+|---|---|---|---|---|
+| 1 | `get-page-content` | `{ tabId?: number }` | no | Active/pinned tab context |
+| 2 | `search-notes` | `{ query: string; limit?: number }` | no | MiniSearch over notes |
+| 3 | `create-note` | `{ title: string; content: string; tags?: string[] }` | yes | Writes to NotesDB |
+| 4 | `get-chat-history` | `{ sessionId?: string; limit?: number }` | no | Recent messages |
+| 5 | `pin-tab` | `{ tabId: number }` | no | Pins as context (max 10) |
+| 6 | `read-clipboard` | `{}` | no | Reads clipboard |
+| 7 | `write-clipboard` | `{ text: string }` | yes | Writes clipboard |
+| 8 | `get-provider-info` | `{}` | no | Active provider + model + limits |
+| 9 | `run-skill` | `{ skillId: string; input: unknown }` | yes | Runs a registered skill |
+| 10 | `list-skills` | `{}` | no | Lists registered skills |
+| 11 | `export-data` | `{ scopes: string[] }` | yes | Export bundle (no API keys) |
+| 12 | `execute-webhook` | `{ event: string; payload: unknown }` | yes | Fires a webhook |
+
+## §10.6 `endpoints.ts`
+
+```ts
+// src/core/config/endpoints.ts — the ONLY place external URLs may appear.
+export const ENDPOINTS = {
+  openai:    'https://api.openai.com/v1',
+  anthropic: 'https://api.anthropic.com',
+  gemini:    'https://generativelanguage.googleapis.com',
+  ollama:    'http://localhost:11434/v1',
+} as const;
+```
+
+User overrides live in `chrome.storage.local.np_endpoint_overrides` and are merged at load.
+
+Domain add-ons register their endpoints through `EndpointRegistry`. ServiceNow endpoints live in `src/addons/servicenow/config/serviceNowEndpoints.ts`.
+
+## §10.7 CORSProxy — Generic Cross-Origin Fetch
+
+Runs in the background SW. Message name is generic: `PROXY_FETCH`.
+
+```ts
+// src/types/messages.ts
+export interface ProxyFetchRequest {
+  type: 'PROXY_FETCH';
+  addonId: string;
+  url: string;
+  method: 'GET'|'POST'|'PUT'|'PATCH'|'DELETE';
+  headers?: Record<string,string>;   // User-Agent stripped
+  body?: string;
+  credentials?: 'include' | 'omit';   // default 'include'
+}
+export interface ProxyFetchResponse {
+  ok: boolean; status: number; body: string; error?: string;
+}
+```
+
+Rules:
+1. `BackgroundRouter` validates `sender.id === chrome.runtime.id`.
+2. The SW checks `url` host against declared `host_permissions`; unknown host → `{ ok:false, status:0, error:'HOST_NOT_PERMITTED' }`.
+3. Wrapped in a 25 s `Promise.race` timeout.
+4. Per-add-on `RateLimiter` keyed by `addonId`.
+5. Never logs request or response bodies.
+
+---
+# §11 — Critical User Flows
+
+These flows are authoritative. When phase tasks conflict with flows, flows win.
+
+## Flow 1 — Send a Chat Message
+WHEN: user presses Enter / clicks Send.
+IF no provider configured → modal: "Configure an AI provider in Settings first."
+ELSE:
+1. `useChat` runs slash-check: `input.match(/^\/([a-z-]+)\b\s*(.*)$/s)`. If match and command found → route to handler.
+2. Assemble context via `ContextOptimizer` (pinned tabs, current page, notes, history).
+3. Call `AgentOrchestrator.runTurn(input, ctx)`.
+4. Stream `LLMStreamChunk` through `ChunkBuffer` → render via `PortableMarkdown`.
+5. On stream end: append message to `ChatHistoryDB`. On first message of a session, generate a title (Flow 1a). Fire `EventBus.emit('chat:message-saved', { sessionId })`.
+6. On provider error: toast `[Retry] [Switch Provider] [Open Settings]`.
+
+## Flow 1a — Title Generation
+WHEN: first assistant message of a session completes.
+DO:
+1. One LLM call using `PROMPTS.titleGen`, `temperature: 0`, `maxTokens: 16`.
+2. User content = first user message truncated to 500 chars.
+3. On success: `session.title = result.trim().slice(0, 60)`.
+4. On error / empty / timeout (3s): `session.title = firstUserMessage.slice(0, 40) + '…'`. Never block save on titling.
+
+## Flow 2 — Tool Call Permission
+WHEN: agent requests a tool not in allow list OR any tool with `dangerous: true`.
+DO:
+1. Pause the stream.
+2. Dialog: "NowPilot wants to call `<toolName>`: `<description>`" with `[Allow once]` `[Allow always]`.
+3. Allow once → call tool; do not persist.
+4. Allow always → persist `{ toolName, allow: true, grantedAt }` in `np_mcp_permissions`; then call. Dangerous tools persist allow but STILL prompt next time.
+5. Dismiss → inject `tool_result: { error: 'PERMISSION_DENIED' }`; LLM informs user.
+6. Resume stream after result injected.
+
+## Flow 3 — Save a Note with Wikilinks
+WHEN: user saves a note containing `[[Some Other Note]]`.
+DO:
+1. `LinkParser.parseLinks(content)` → `[{ targetTitle, raw }]`.
+2. `LinkParser.resolveLinks(targets, allNotes)` matches case-insensitive title → `noteId` or unresolved.
+3. Tie-break: multiple notes with same title → link the most recently `updated`; show disambiguation chip.
+4. `NotesDB.put(note)` writes `note.links = [resolvedNoteId...]`. Always recomputed.
+5. Backlinks never stored — computed at query time via `by-link` index.
+6. Fire `EventBus.emit('note:saved', { noteId })`; search index updates async.
+
+## Flow 4 — Tab Pinning
+WHEN: user clicks "Pin this tab".
+IF `tab.url` starts with `chrome://` / `chrome-extension://` → toast "Cannot pin this page."
+DO:
+1. `chrome.tabs.query({ active: true, currentWindow: true })`.
+2. `chrome.scripting.executeScript({ target:{tabId}, files:['content-script-bundle.js'] })`. 5 s timeout.
+3. Send `EXTRACT_PAGE_CONTENT` via `RuntimeEnvelope`.
+4. Content script extracts via `DefaultWebPageStrategy` → `TabContext`.
+5. `ContextManager.pin(tabId, tabContext)`.
+6. Toolbar shows chip. Max 10 → toast "Maximum 10 pinned tabs. Remove one first."
+
+## Flow 5 — Local Model Context Warning
+WHEN: user selects an Ollama model.
+DO:
+1. `validateConfig()` sends a short test request.
+2. If reported context window ≤ 4096 tokens → settings warning:
+   "Ollama is using a 2048-token context. For 128K, create a Modelfile with `PARAMETER num_ctx 131072`."
+3. Provide "Copy Modelfile" button:
+   ```
+   FROM <model>
+   PARAMETER num_ctx 131072
+   ```
+
+## Flow 6 — Data Export
+WHEN: user clicks "Export data".
+DO:
+1. Dialog with checkboxes: Notes, Chat history, Memory, Prompts, Settings.
+2. Collect from IndexedDB + `chrome.storage.local`.
+3. Sanitise: deep-clone settings; `delete` `apiKey` from every `ProviderConfig`. Assert no bundle string matches `/sk-|key-/`.
+4. Serialise JSON; if > 1 MB, ZIP with `fflate`.
+5. Download via `showSaveFilePicker()` or anchor click.
+
+## Flow 7 — Webhook Fire
+WHEN: a registered webhook event occurs.
+DO:
+1. `WebhookManager.fire(event, payload)`.
+2. `POST url` JSON, 5 s timeout.
+3. 2xx → done. Fail → retry queue (max 3, backoff 30 s / 5 min / 30 min).
+4. Log every attempt in `AITransactionLog` with `type: 'proxy_fetch'`.
+
+## Flow 8 — Keyboard Shortcut
+WHEN: user presses a registered combo.
+DO:
+1. `KeymapRegistry` global `keydown` listener matches.
+2. Match → call handler, `preventDefault()`.
+3. No match + `Cmd+K` → open command palette (Flow 10).
+
+## Flow 9 — First-Run Onboarding
+WHEN: `LifecycleManager.onInstalled` fires OR side panel opens with zero configured providers.
+DO:
+1. Render `OnboardingModal` over a disabled ChatPage. Step 1: welcome + privacy.
+2. Step 2: pick a provider (radio: OpenAI / Anthropic / Gemini / Ollama / OpenAI-compatible).
+3. Step 3: enter API key or baseURL. Key is AES-GCM encrypted on save.
+4. Step 4: `validateConfig()` → "Testing connection…" → "Connected" or "Connection failed: [error]".
+5. On success: persist `ProviderConfig`, `enabled: true`, `priority: 0`; close modal; focus composer.
+6. "Skip for now" allowed → ChatPage shows the no-provider modal until configured.
+
+## Flow 10 — Command Palette (Cmd+K)
+WHEN: user presses `Cmd+K` (mac) / `Ctrl+K` (win) with no higher-priority match.
+DO: open overlay with commands, filter as user types. v0.1 command set:
+
+| Command | Action |
+|---|---|
+| New chat | Start fresh session |
+| Search history | Chat-history search |
+| Switch provider | Provider/model selector |
+| Open settings | Settings page |
+| Toggle theme | light → dark → auto |
+| Pin current tab | Runs Flow 4 |
+| New note | NotePage in create mode |
+| Search notes | Note search |
+| Open diagnostics | Tools → Diagnostics |
+
+Plus any add-on shortcuts. Enter runs; Esc closes.
+
+---
+# §12 — Component State Matrix
+
+Every page must render these states with these exact strings (from `STR` in Appendix B).
+
+| Component | Loading | Empty | Error | Success |
+|---|---|---|---|---|
+| ChatPage | "Connecting to provider..." | "Start a conversation" | "Provider error. [Retry] [Switch Provider]" | Message stream visible |
+| NotePage | "Loading notes..." | "No notes yet. Press + to create one." | "Failed to load notes. [Retry]" | Note list |
+| AgentPage | "Preparing agent..." | "Describe a task and the agent will plan steps" | "Agent error: [message]. [Retry]" | Step progress visible |
+| Research (Tools) | "Researching..." | "Enter a research question" | "Research failed: no web-search tool connected. [Open Settings]" | Answer + SourceCards |
+| ChatHistoryDB load | Skeleton shimmer | "No conversations yet" | "Failed to load history" | Conversation list |
+| MCP tool call | "Calling [toolName]..." | — | "Tool failed: [error]. [Retry tool]" | Tool result card |
+| Tab pin | "Extracting page content..." | — | "Cannot pin this page. Try a regular web page." | Page title + remove |
+| Provider validation | "Testing connection..." | — | "Connection failed: [error]" | "Connected" |
+| Onboarding | "Testing connection..." | — | "Connection failed: [error]" | "Connected" → focus composer |
+| DiagnosticsPanel | "Loading diagnostics..." | "No AI transactions yet." | "Failed to load traces" | Transaction list |
+
+---
+# §13 — Concurrency and Race-Condition Rules
+
+1. **One stream per session.** `useStreamingLLM` aborts the active stream before starting a new one.
+2. **IndexedDB writes are transactions.** Use a single `idb` transaction for stores that must stay consistent.
+3. **Background SW fetch wrapped in 25 s `Promise.race`**, returning `{ error: 'TIMEOUT' }`.
+4. **Tab context timeout 5 s.** `executeScript` + round-trip must finish in 5 s or cancel.
+5. **Abort propagation.** One `AbortController` signal threaded through `AgentOrchestrator`, `PlannerService`, `ExecutorService`, `RendererService`, and every `fetch()`.
+6. **Settings writes serialized.** Never write two `Setting<T>` keys concurrently; `await` sequentially.
+7. **Memory writes single-writer.** `MemoryEngine` writes only from the primary side panel. Cross-window coordination via `BroadcastBus` primary election with `version` check.
+8. **EventBus handlers are synchronous.** Handlers may spawn internal Promises but must never let errors escape.
+9. **RateLimiter is per-instance.** Each add-on owns its limiter; never shared.
+10. **`hasStreamedFirstToken` per operation.** Once true, `ProviderRouter` must never switch provider.
+
+---
+# §14 — Skills & Tooling Framework
+
+## §14.1 Skill Interface
+
+```ts
+export interface ISkill {
+  id: string;
+  name: string;
+  description: string;
+  requiredContext: (keyof SkillContext)[];
+  inputSchema: z.ZodSchema<unknown>;
+  outputSchema: z.ZodSchema<unknown>;
+  execute(context: SkillContext): AsyncIterable<SkillResult>;
+  abort(): void;
+}
+
+export interface SkillContext {
+  provider: ILLMProvider;
+  model: string;
+  abortSignal: AbortSignal;
+  pageData?: TabContext;
+  caseData?: SNowCaseData;
+  uploadedFiles?: FileContext[];
+  chatHistory?: LLMMessage[];
+  noteContext?: NoteContext[];
+}
+
+export interface SkillResult {
+  type: 'text' | 'structured' | 'card-grid' | 'list' | 'error' | 'action';
+  content: string;
+  data?: unknown;
+  cards?: SkillCard[];
+  actions?: SkillAction[];
+}
+```
+
+## §14.2 Slash Command Parsing
+
+```ts
+const m = input.match(/^\/([a-z-]+)\b\s*(.*)$/s);
+if (m) {
+  const handler = SlashCommandRegistry.get(m[1]);
+  if (handler) { handler.execute(m[2]); return; }
+}
+// No match → LLM verbatim
+```
+
+Palette sections: Skills, Templates, Macros, Commands. Triggered by `/` in composer.
+
+## §14.3 Macros (data, not code; no `eval`)
+
+Each step is one of:
+- `{ type: 'skill', skillId, input }`
+- `{ type: 'mcp', toolName, input }`
+- `{ type: 'save-note', titleTemplate }`
+
+`WorkflowRunner` executes sequentially. Step N output is available as `{{step_N_output}}` in step N+1.
+
+## §14.4 CodeSearchSkill Chunking Contract
+
+Marked `@implementation-tier: sonnet-class` — Haiku/Flash implementers must stub with `{ type:'error', content:'CODESEARCH_NEEDS_LARGE_MODEL' }`.
+
+Full implementation shape (for Sonnet-class agents):
+1. **Input schema:** `{ query: string; scriptScope?: string; maxResults?: number }`.
+2. Fetch candidate scripts via `SNowTableClient`, rate-limited.
+3. **Map:** split each script into ≤ 8K-token windows by line boundaries. For each window, one LLM call: "Does this code match `<query>`? Return JSON `{match:boolean, lines:[start,end], reason}`."
+4. **Reduce:** collect matches, sort by relevance, cap at `maxResults` (default 20).
+5. **Output schema:** `{ matches: Array<{ scriptName: string; lines:[number,number]; snippet: string; reason: string }> }`.
+6. Abort: each window call receives `ctx.abortSignal`; reduce halts on abort.
+7. **Model gate:** if active model context < 16K → `SkillResult{ type:'error', content:'CODESEARCH_NEEDS_16K_CONTEXT' }`.
+
+---
+# §15 — Storage Architecture
+
+## §15.1 Storage Backends
+
+```
+chrome.storage.local  (10MB limit)
+  np_providers          ProviderConfig[]                     (encrypted apiKey fields)
+  np_flags              FeatureFlags
+  np_mcp_servers        MCPServerConfig[]
+  np_mcp_permissions    Record<toolName,{allow,grantedAt}>
+  np_conversation_meta  ConversationMeta[]                   (LRU 10 active + 100 archived)
+  np_facts              Fact[]                                (max 500, LRU)
+  np_templates          PromptTemplate[]
+  np_macros             Macro[]
+  np_install_secret     string                               (32 random bytes)
+  np_debug_mode         boolean
+  np_endpoint_overrides Record<string,string>
+  np_keymap             KeymapRegistration[]
+  np_addon_<addonId>    unknown                              (AddonSettingsStore)
+
+chrome.storage.session  (cleared on browser close)
+  np_jsessionid         string
+  np_sysparm_ck         string
+  np_token_ttl          number
+  np_active_stream      { conversationId, operationId, startedAt }   (SW-restart recovery)
+
+chrome.storage.sync  (≤8KB per key)
+  np_theme              'light'|'dark'|'auto'
+  np_language           string
+
+IndexedDB  (side panel only)
+  ChatHistoryDB
+    sessions  { id, title, created, updated, starred, preview }
+    messages  { sessionId, role, content, timestamp, metadata }
+  NotesDB
+    notes     { id, title, content, created, updated, tags[], links[], source, aiMeta, version }
+    concepts  { slug, label, summary, noteIds[], aliases[], updatedAt }
+  MemoryDB
+    messages  { conversationId, seq, role, content, timestamp }   keyPath [conversationId, seq]
+    userFacts UserMemoryFact[]
+    conversationSummaries { conversationId, summary, updatedAt }
+  ErrorStore (debug only, FIFO max 100)
+  WriteJournalDB
+    entries   WriteJournalEntry[]
+  AITransactionLogDB
+    transactions AITransaction[]
+    promptTraces  PromptTrace[]
+    toolTraces    ToolTrace[]
+    providerTraces ProviderTrace[]
+```
+
+Message bodies never live in `chrome.storage.local`. Splitting metadata (local) from bodies (IndexedDB) is required so the 10 MB ceiling is never breached.
+
+## §15.2 API Key Encryption
+
+```ts
+// src/core/storage/EncryptedStorage.ts
+// installSecret: 32 random bytes, generated once → np_install_secret
+// per-key: random 16-byte salt + 12-byte IV
+// derivedKey: PBKDF2(installSecret + extensionId, salt, 100000, SHA-256) → AES-GCM-256
+// NEVER use navigator.userAgent or any value that changes on browser update.
+```
+
+## §15.3 LRU Eviction (MemoryEngine)
+
+- Max 10 conversations with `status: 'active'`. > 10 → archive oldest.
+- Max 100 conversations with `status: 'archived'`. > 100 → evict oldest (meta + MemoryDB range) via `WriteJournal.operation = 'evict-conversation'`.
+- Compactor runs when `messageCount % 12 === 0` (a "turn" = user+assistant pair, so 6 turns = 12 messages): keep head (system + first 2) + LLM summary of middle + tail (last 4).
+- Archive after 30 minutes idle.
+
+---
+# §16 — Security
+
+## §16.1 XSS Prevention
+
+| Attack vector | Mitigation |
+|---|---|
+| AI response in chat | `PortableMarkdown` (`react-markdown`) — never `dangerouslySetInnerHTML` |
+| Content-script DOM writes | `DOMPurify.sanitize()` with `SAFE_CONTENT_CONFIG` |
+| MCP tool results | Rendered as data strings through React JSX |
+| User prompt text | React-managed input state; no eval |
+
+```ts
+const SAFE_CONTENT_CONFIG = {
+  ALLOWED_TAGS: ['p','br','b','i','em','strong','code','pre','ul','ol','li','a','span','div'],
+  ALLOWED_ATTR: ['href','class','target','rel'],
+  FORCE_BODY: true,
+};
+```
+
+## §16.2 Message Security (enforced by BackgroundRouter)
+
+```ts
+if (sender.id !== chrome.runtime.id) return false;
+if (!MessageTypeValues.includes(message.type)) return false;   // Appendix E
+```
+
+## §16.3 Content Security Policy
+
+```json
+"content_security_policy": {
+  "extension_pages": "script-src 'self'; object-src 'self'; connect-src *"
+}
+```
+
+No `unsafe-eval`. `connect-src *` is required for user-configured MCP servers and local LLM endpoints.
+
+## §16.4 Manifest Permissions
+
+```ts
+permissions: [
+  'sidePanel','storage','cookies','alarms','tabs',
+  'scripting','contextMenus','notifications','declarativeNetRequest'
+],
+host_permissions: [
+  '*://*.service-now.com/*',
+  '*://support.servicenow.com/*'
+]
+```
+
+Add-ons declare extra host permissions via `urlPatterns`.
+
+## §16.5 Secret Redaction
+
+`TraceRedactor.redact(value)` MUST run before:
+- writing to `AITransactionLogDB`,
+- writing to `ErrorStore`,
+- writing to `debugLog`,
+- rendering in `DiagnosticsPanel`,
+- exporting a debug bundle.
+
+See §4.4 for the mandatory patterns.
+
+---
+# §17 — UI/UX Requirements
+
+## §17.1 Side Panel Layout
+
+Side panel is 400 px wide (Chrome default). All UI must work at this width.
+
+- **Nav rail** — 48 px, icon-only, tooltips.
+- **Core tabs** — `Chat | Note | Agent | Tools`.
+- Add-on tabs (from `SidePanelPageRegistry`) are appended and hidden when URL does not match.
+- **Global overlays** — model selector, prompt template picker, chat-history BottomSheet, Cmd+K palette, Toasts, permission dialogs.
+
+Container queries below 380 px collapse to a single column. Use `overflow-anchor: none` for the streaming tail. CLS target ≤ 0.05.
+
+## §17.2 Design Tokens
+
+Side panel `main.css`:
+```css
+@import 'tailwindcss';
+@theme {
+  --color-np-background:            hsl(var(--tweakcn-background));
+  --color-np-foreground:            hsl(var(--tweakcn-foreground));
+  --color-np-primary:               hsl(var(--tweakcn-primary));
+  --color-np-primary-foreground:    hsl(var(--tweakcn-primary-foreground));
+  /* full mapping in Appendix F */
+}
+```
+
+Shadow DOM `shadow.css` does **not** load preflight. Tokens live on `:host`. See Appendix H.
+
+## §17.3 Component Requirements
+
+- Every page wrapped in `<ErrorBoundary>` → "Something went wrong [Reload]".
+- All interactive elements have accessible labels.
+- Keyboard navigation for major flows (Tab / Enter / Escape / Cmd+K).
+- Loading uses skeleton shimmer, not spinners, for content areas.
+- Toasts: max 3 visible; auto-dismiss 5 s (errors persist until dismissed).
+- All AI text rendered through `<PortableMarkdown>`.
+- English only in v0.1; `t('key')` abstraction in `src/core/i18n/strings.ts` for future i18n.
+
+## §17.4 Shadow DOM for Add-on Injection
+
+Canonical mount is `mountShadow()` (Appendix H). z-index budget for injected UI: 2147483600–2147483647.
+
+Add-on injected components MUST be imported from `src/components/ui-shadow/`, not `src/components/ui/`, so Radix portals attach to the Shadow DOM host, not the page body.
+
+---
+# §18 — Master Implementation Phases
+
+This is the single canonical phase plan. Do not implement more than one phase per response unless explicitly requested.
 
 ## Phase 1 — MV3/WXT Runtime Foundation
 
-Create:
-
+**Create:**
 ```text
-wxt.config.ts
+wxt.config.ts                                       # Appendix G
 src/entrypoints/background.ts
 src/entrypoints/sidepanel/index.html
 src/entrypoints/sidepanel/main.tsx
-src/entrypoints/content/core.ts
-src/core/runtime/RuntimeEnvelope.ts
+src/entrypoints/sidepanel/main.css
+src/entrypoints/content/core.content.ts
+src/entrypoints/content/shadow.css
+src/core/runtime/RuntimeEnvelope.ts                 # Appendix C + E
 src/core/runtime/OperationId.ts
 src/core/runtime/BroadcastBus.ts
 src/core/runtime/PortReader.ts
 src/core/runtime/workerState.ts
+src/core/messaging/MessageBus.ts
+src/core/events/EventBus.ts
 src/core/log/debugLog.ts
-src/core/i18n/strings.ts
-src/core/prompts/index.ts
+src/core/i18n/strings.ts                            # Appendix B
+src/core/prompts/index.ts                           # Appendix A
+src/core/registry/{AddonRegistry, Registry, AddonSettingsStore, SidePanelPageRegistry}.ts
+src/core/input/KeymapRegistry.ts
+src/core/components/{ErrorBoundary, Toast, PortableMarkdown}.tsx
+src/components/layout/SidepanelShell.tsx
+src/components/OnboardingModal.tsx                  # Flow 9
+src/components/pages/ChatPage.tsx                   # skeleton only
 ```
 
-Required tests:
-
+**Required tests:**
 ```text
 tests/core/runtime/RuntimeEnvelope.test.ts
 tests/core/runtime/OperationId.test.ts
+tests/core/events/EventBus.test.ts
 ```
 
-DONE when:
+**DONE when:**
+- Side panel opens; onboarding appears on fresh install.
+- Background router registers listeners synchronously.
+- `RuntimeEnvelope` fixtures parse.
+- Cmd+K palette opens with the Flow 10 command set.
+- `grep -r 'innerHTML\|dangerouslySetInnerHTML' src/` → zero.
+- `grep 'framer-motion' package.json` → zero.
+- `pnpm run verify:phase-1` passes.
 
-- Side Panel opens.
-- Background router registers synchronously.
-- RuntimeEnvelope fixtures parse.
-- No forbidden DOM APIs exist.
+## Phase 2 — Storage, Security, WriteJournal
 
-## Phase 2 — Storage, Security, and WriteJournal
-
-Create:
-
+**Create:**
 ```text
 src/core/storage/Setting.ts
 src/core/storage/EncryptedStorage.ts
@@ -735,42 +1716,66 @@ src/core/storage/ChatHistoryDB.ts
 src/core/storage/MemoryDB.ts
 src/core/storage/NotesDB.ts
 src/core/storage/ErrorStore.ts
+src/core/utils/RateLimiter.ts
+src/core/http/Requester.ts
 ```
 
-DONE when:
+**Required tests:**
+```text
+tests/core/storage/WriteJournal.test.ts
+tests/core/storage/EncryptedStorage.test.ts
+tests/core/storage/IndexedDBMigrator.test.ts
+tests/core/utils/RateLimiter.test.ts
+```
 
+**DONE when:**
 - WriteJournal recovery test passes.
 - API key encryption round-trip passes.
-- Message bodies are not in `chrome.storage.local`.
+- No message body appears in `chrome.storage.local`.
+- Migration from v1 → v2 fixture passes.
 
 ## Phase 3 — Cost-Effective AI Runtime
 
-Create:
-
+**Create:**
 ```text
 src/core/ai/types.ts
+src/core/ai/ILLMProvider.ts
+src/core/ai/ProviderRegistry.ts
+src/core/ai/providers/{OpenAI,Anthropic,Gemini,Ollama,OpenAICompat}Provider.ts
 src/core/ai/ProviderRouter.ts
+src/core/ai/TierResolver.ts                         # Appendix D
 src/core/ai/PromptCacheManager.ts
+src/core/ai/PromptCacheAdapter.ts                   # Appendix K
 src/core/ai/PlannerService.ts
 src/core/ai/ExecutorService.ts
 src/core/ai/RendererService.ts
-src/core/ai/StructuredOutput.ts
+src/core/ai/AgentOrchestrator.ts                    # Appendix I
+src/core/ai/StructuredOutput.ts                     # Appendix L
 src/core/ai/toolSchemas.ts
 src/core/ai/StreamAdapter.ts
-src/core/ai/ChunkBuffer.ts
+src/core/ai/ChunkBuffer.ts                          # Appendix J
 ```
 
-DONE when:
+**Required tests:**
+```text
+tests/core/ai/PlannerService.test.ts
+tests/core/ai/ExecutorService.test.ts
+tests/core/ai/RendererService.test.ts
+tests/core/ai/AgentOrchestrator.test.ts
+tests/core/ai/ProviderRouter.test.ts
+tests/core/ai/StructuredOutput.test.ts
+```
 
-- Planner returns valid JSON decisions.
+**DONE when:**
+- Planner returns valid JSON decisions with closed toolName enum.
 - Executor rejects unknown tools.
 - Renderer respects output caps.
-- Provider fallback tests pass.
+- Provider fallback + circuit breaker tests pass.
+- Structured output one-shot repair works.
 
 ## Phase 4 — Context-Adaptive Execution
 
-Create:
-
+**Create:**
 ```text
 src/core/context/ModelContextTier.ts
 src/core/context/TokenBudget.ts
@@ -780,16 +1785,22 @@ src/core/context/ContextPack.ts
 src/core/context/ContextProvenanceManifest.ts
 ```
 
-DONE when:
+**Required tests:**
+```text
+tests/core/context/ContextOptimizer.test.ts
+tests/core/context/ContextCompressor.test.ts
+tests/core/context/TokenBudget.test.ts
+```
 
+**DONE when:**
 - Tiny/small/medium/large tier tests pass.
-- Context overflow degrades instead of fails.
+- Context overflow degrades instead of failing.
 - Minimal mode blocks MCP chaining.
+- `ContextProvenanceManifest` is attached to every `OptimizedContext`.
 
 ## Phase 5 — Persistent Memory Architecture
 
-Create:
-
+**Create:**
 ```text
 src/core/memory/MemoryEngine.ts
 src/core/memory/ConversationMemoryStore.ts
@@ -800,16 +1811,22 @@ src/core/memory/MemoryExtractor.ts
 src/core/search/MiniSearchIndex.ts
 ```
 
-DONE when:
+**Required tests:**
+```text
+tests/core/memory/MemoryEngine.test.ts
+tests/core/memory/MemoryScorer.test.ts
+tests/core/memory/UserMemoryStore.test.ts
+```
 
-- Conversation memory summary + recent turns retrieved.
-- User memory returns top 5 only.
+**DONE when:**
+- Conversation summary + recent turns retrieved.
+- User memory returns top 5 only (top 3 in tiny mode).
 - Preference profile injects compact JSON.
+- Memory retrieval scores are all in `[0, 1]`.
 
-## Phase 6 — AI/MCP Transaction Logging and Diagnostics
+## Phase 6 — Transaction Logging and Diagnostics
 
-Create:
-
+**Create:**
 ```text
 src/core/telemetry/AITransactionLog.ts
 src/core/telemetry/AITransactionLogDB.ts
@@ -820,184 +1837,623 @@ src/components/tools/DiagnosticsPanel.tsx
 src/components/tools/TransactionTraceView.tsx
 ```
 
-DONE when:
+**Required tests:**
+```text
+tests/core/telemetry/AITransactionLog.test.ts
+tests/core/telemetry/TraceRedactor.test.ts
+tests/components/DiagnosticsPanel.test.tsx
+```
 
-- Every provider call creates transaction, prompt, and provider traces.
-- Every tool call creates tool trace.
-- Redaction tests prove secrets are not persisted.
+**DONE when:**
+- Every provider call creates transaction / prompt / provider traces.
+- Every tool call creates a tool trace.
+- Redaction test proves secrets are not persisted.
 - Diagnostics panel can copy operation ID.
 
-## Phase 7 — UI Shell, Chat, Notes, and Tools
+## Phase 7 — UI Shell, Chat, Notes, Tools
 
-Create:
-
+**Create:**
 ```text
-src/components/layout/SidepanelShell.tsx
-src/components/pages/ChatPage.tsx
+src/components/pages/ChatPage.tsx                   # full
 src/components/pages/NotePage.tsx
 src/components/pages/AgentPage.tsx
 src/components/pages/ToolsPage.tsx
+src/components/notes/{BacklinksPanel,WikilinkAutocomplete,NoteGraphView}.tsx
+src/components/patterns/{ChatMessage,HistoryListItem,ToolCard,SkillMessageRenderer,SourceCard}.tsx
+src/components/ui/                                  # shadcn primitives
+src/components/ui-shadow/                           # portal-aware wrappers
 src/hooks/useChat.ts
+src/hooks/useStreamingLLM.ts                        # Appendix J
 src/hooks/useProviderRouter.ts
 src/hooks/useMemory.ts
 src/hooks/useDiagnostics.ts
+src/core/prompts/{PromptManager, TemplateEngine, builtinTemplates}.ts
+src/core/slash/SlashCommandRegistry.ts
+src/core/notes/{LinkParser, NoteGraph}.ts
 ```
 
-DONE when:
+**Required tests:**
+```text
+tests/hooks/useStreamingLLM.test.ts
+tests/components/ChatPage.test.tsx
+tests/core/notes/LinkParser.test.ts
+```
 
+**DONE when:**
 - Chat flow uses Planner → Executor → Renderer.
-- Streaming UI uses ChunkBuffer.
+- Streaming UI uses `ChunkBuffer`.
+- `/write` and `/ask` presets work.
+- Note wikilinks resolve with tie-break rule.
 - Tools page shows Diagnostics.
 
 ## Phase 8 — Add-on and Content Script Runtime
 
-Create/complete:
-
+**Create/complete:**
 ```text
 src/core/content/ContentScriptHost.ts
 src/core/content/SPANavigationWatcher.ts
 src/core/content/PageContextBridge.ts
-src/core/content/injectTokens.ts
-src/core/addons/AddonRegistry.ts
-src/addons/global/ResearchSkill.ts
-src/addons/global/SelectionContextMenu.ts
-src/addons/servicenow/**
+src/core/content/mountShadow.ts                     # Appendix H
+src/core/content/buildTokenSheet.ts                 # Appendix H
+src/core/content/loadSharedSheet.ts                 # Appendix H
+src/core/extraction/{IContentStrategy, ContentExtractor, DefaultWebPageStrategy}.ts
+src/core/chrome/{CookieSessionStore, CORSProxy, ContextMenuHost, TabManager, NotificationsManager, ClipboardHelper, Scheduler}.ts
+src/core/output/{StructuredOutputRenderer, OutputFormatter}.ts
+src/core/data/DataPortability.ts
+src/core/webhooks/WebhookManager.ts
+src/addons/global/{SelectionContextMenu, ResearchSkill}.ts
+src/addons/servicenow/**                            # full add-on tree per §8.3
 ```
 
-DONE when:
-
-- Injected UI runs inside Shadow DOM.
-- ServiceNow add-on uses ServiceNowSessionAdapter.
-- ServiceNow API calls use PROXY_FETCH only.
-
-## Phase 9 — Hardening and Release
-
-Required test suites:
-
+**Required tests:**
 ```text
-tests/core/ai/PlannerService.test.ts
-tests/core/ai/ExecutorService.test.ts
-tests/core/ai/RendererService.test.ts
-tests/core/context/ContextOptimizer.test.ts
-tests/core/memory/MemoryEngine.test.ts
-tests/core/telemetry/AITransactionLog.test.ts
-tests/core/telemetry/TraceRedactor.test.ts
-tests/core/storage/WriteJournal.test.ts
+tests/core/content/ContentScriptHost.test.ts
+tests/core/content/mountShadow.test.ts
+tests/addons/servicenow/ServiceNowSessionAdapter.test.ts
 tests/isolation/no-style-bleed.test.ts
 ```
 
-DONE when:
+**DONE when:**
+- Injected UI runs inside Shadow DOM.
+- ServiceNow add-on uses `ServiceNowSessionAdapter`.
+- ServiceNow API calls use `PROXY_FETCH` only.
+- Right-click selection → "Ask AI" flow works.
+- `/research` runs via `ResearchSkill`.
 
+## Phase 9 — Hardening and Release
+
+**Required test suites:**
+```text
+tests/core/ai/**
+tests/core/context/**
+tests/core/memory/**
+tests/core/telemetry/**
+tests/core/storage/**
+tests/isolation/no-style-bleed.test.ts
+tests/perf/*
+```
+
+**DONE when:**
 - `pnpm run verify:all` passes.
 - `pnpm run test:perf` passes.
 - `pnpm run test:isolation` passes.
+- Content script bundle < 100 KB.
+- Side panel initial paint < 300 ms.
+- First token < 2 s local / < 3 s cloud.
 
 ---
+# §19 — Runtime Edge Cases and Mitigations
 
-# §7 — Runtime Edge Cases and Mitigations
-
-## §7.1 User Has Only One AI Provider
-
-- ProviderRouter must not assume fallback exists.
+## §19.1 User Has Only One AI Provider
+- `ProviderRouter` must not assume fallback exists.
 - Retry once only for retryable failures before first token.
-- If failure persists, show retry/configure-provider UI.
+- On persistent failure: show retry / configure-provider UI.
 - Memory, notes, and local search remain available offline.
 
-## §7.2 Local Model Small Context
-
-- Classify as `tiny` or `small`.
+## §19.2 Local Model Small Context
+- Classify as `tiny` or `small` via `ModelContextTier`.
 - Enable minimal mode automatically.
 - Disable MCP chaining.
 - Cap memory injection.
 - Compress page/case context.
 
-## §7.3 Context Overflow
-
-- Degrade stepwise via ContextOptimizer.
-- Never send oversized prompt.
-- Record truncation in PromptTrace.
+## §19.3 Context Overflow
+- Degrade stepwise via `ContextOptimizer`.
+- Never send an oversized prompt.
+- Record truncation in `PromptTrace.truncatedSources`.
 - Show non-blocking notice only when quality may be affected.
 
-## §7.4 JSON Truncation
-
+## §19.4 JSON Truncation
 - Detect malformed/incomplete JSON.
-- Retry once with smaller output cap and repair prompt.
+- Retry once with smaller output cap and `PROMPTS.repairJson`.
 - If still broken, return typed schema error.
 
-## §7.5 Hallucinated Tool Call
-
-- Executor rejects unknown or invalid tools.
-- Log `TOOL_REJECTED`.
+## §19.5 Hallucinated Tool Call
+- Executor rejects unknown / invalid tools with `TOOL_REJECTED`.
 - Renderer explains limitation briefly.
 
-## §7.6 Sudden Background Service Worker Termination
-
-- LLM stream continues because it lives in Side Panel.
-- PROXY_FETCH calls fail/retry only if safe GET.
+## §19.6 Background SW Termination
+- LLM stream continues in side panel.
+- `PROXY_FETCH` calls fail / retry only if marked safe by caller.
 - Startup recreates alarms, context menus, router.
 - Diagnostics records background restart.
+- `useStreamingLLM` persists `np_active_stream` to `chrome.storage.session`; a re-opened panel calls `AITransactionLog.markAborted(operationId)` on recovery.
 
-## §7.7 Side Panel Resizing
-
-- Use container queries.
-- Single-column fallback below 380 px.
-- Use `overflow-anchor: none` for streaming tail.
+## §19.7 Side Panel Resizing
+- Container queries; single-column fallback below 380 px.
+- `overflow-anchor: none` for streaming tail.
 - CLS target ≤ 0.05.
 
-## §7.8 Multi-Window Side Panels
-
-- Use BroadcastBus primary election.
-- Only primary panel writes memory stores.
+## §19.8 Multi-Window Side Panels
+- `BroadcastBus` primary election.
+- Only the primary panel writes memory stores.
 - Secondary panels mirror read-only.
-- WriteJournal maintains idempotency.
+- `WriteJournal` maintains idempotency.
+
+## §19.9 Provider Deleted While Active
+- Fall back to lowest-`priority` enabled provider.
+- If none: show Flow 1 no-provider modal.
+
+## §19.10 IndexedDB Blocked
+- Catch open error → `IDB_BLOCKED` toast.
+- Degrade to in-memory session (no persistence).
+
+## §19.11 Abort During Permission Prompt
+- Dismiss → inject `PERMISSION_DENIED` tool result → end stream cleanly.
+
+## §19.12 Two Side Panels (Two Windows)
+- Enforce single-writer rule via `BroadcastBus`.
+- Last-write-wins with `version` check on all memory writes.
+
+## §19.13 Prompt Cache Miss Cascade
+- If provider reports zero cache hit for 5 consecutive requests, `PromptCacheManager` disables cache hints for 60 s to avoid overhead.
 
 ---
+# §20 — Runtime State Models & Cross-Context Coordination
 
-# §8 — Required Verification Commands
+## §20.1 RuntimeEnvelope
 
-Each phase must define a real script. Minimum expected commands:
+All cross-context messages carry a `RuntimeEnvelope<T>` (Appendix C). All responses use `ResponseEnvelope<T>` (Appendix E).
+
+## §20.2 Idempotency Keys
+
+| Operation | Idempotency key |
+|---|---|
+| Save chat message | `sessionId + seq` |
+| Save memory body | `conversationId + seq` |
+| Evict conversation | `conversationId + evictionVersion` |
+| Save note | `note.id + note.version` |
+| Webhook retry | `eventId` |
+| PROXY_FETCH | Never retried unless caller marks request retry-safe. |
+
+## §20.3 WriteJournal Operations
+
+Closed set of operation names:
+
+```ts
+type WriteJournalOperation =
+  | 'append-memory-message'
+  | 'evict-conversation'
+  | 'archive-conversation'
+  | 'compact-conversation'
+  | 'save-note-with-links'
+  | 'update-user-memory'
+  | 'export-data';
+```
+
+`append-memory-message` order:
+```text
+1. Create WriteJournalEntry(status='pending')
+2. Write MemoryDB.messages[conversationId, seq]
+3. Update np_conversation_meta.messageCount and lastAccessed
+4. Mark WriteJournalEntry(status='completed')
+```
+
+`evict-conversation` order:
+```text
+1. Create WriteJournalEntry(status='pending')
+2. Mark conversation meta as 'evicting'
+3. Delete MemoryDB range for conversationId
+4. Remove meta record
+5. Mark WriteJournalEntry(status='completed')
+```
+
+On side-panel startup, load incomplete journal entries, resume safe operations or reconcile from source-of-truth stores, log recovery result, warn user only if user-visible data may be affected.
+
+## §20.4 IndexedDB Migration Policy
+
+```ts
+export interface IndexedDBMigration {
+  fromVersion: number;
+  toVersion: number;
+  description: string;
+  migrate(db: IDBPDatabase, tx: IDBPTransaction): Promise<void>;
+}
+```
+
+Rules:
+- Every IndexedDB database declares a numeric `DB_VERSION`.
+- Every version bump includes a migration function.
+- Migrations are deterministic and idempotent where practical.
+- Migration failures record `IDB_MIGRATION_FAILED` in `ErrorStore` and enter degraded mode.
+
+## §20.5 Background Worker State
+
+```ts
+export type BackgroundWorkerState =
+  | { state: 'cold-starting'; startedAt: number }
+  | { state: 'ready'; startedAt: number; alarmsReady: boolean; routerReady: boolean }
+  | { state: 'degraded'; reason: 'ALARMS_MISSING' | 'ROUTER_ERROR' | 'SESSION_UNAVAILABLE'; message: string }
+  | { state: 'shutting-down'; reason: 'IDLE' | 'RELOAD' | 'UNKNOWN' };
+```
+
+New error codes:
+```text
+BACKGROUND_START_FAILED
+BACKGROUND_ROUTER_REGISTER_FAILED
+BACKGROUND_ALARM_RECREATE_FAILED
+BACKGROUND_CONTEXT_MENU_RECREATE_FAILED
+BACKGROUND_PROXY_TIMEOUT
+BACKGROUND_STATE_DEGRADED
+```
+
+## §20.6 Active Stream State
+
+```ts
+export type ActiveStreamState =
+  | { state: 'idle' }
+  | { state: 'preparing'; sessionId: string; operationId: string }
+  | { state: 'streaming'; sessionId: string; operationId: string; startedAt: number }
+  | { state: 'waiting-for-permission'; sessionId: string; operationId: string; toolName: string }
+  | { state: 'aborting'; sessionId: string; operationId: string }
+  | { state: 'completed'; sessionId: string; operationId: string }
+  | { state: 'failed'; sessionId: string; operationId: string; code: string; message: string };
+```
+
+## §20.7 Tab Extraction State
+
+```ts
+export type TabExtractionState =
+  | { state: 'idle'; tabId?: number }
+  | { state: 'injecting'; tabId: number; operationId: string }
+  | { state: 'extracting'; tabId: number; operationId: string }
+  | { state: 'pinned'; tabId: number; title: string; extractedAt: number }
+  | { state: 'failed'; tabId?: number; code: 'UNSUPPORTED_URL' | 'TIMEOUT' | 'CONTENT_EXTRACT_FAILED'; message: string };
+```
+
+## §20.8 Tool Permission State
+
+```ts
+export type ToolPermissionState =
+  | { state: 'not-required'; toolName: string }
+  | { state: 'prompting'; toolName: string; dangerous: boolean; operationId: string }
+  | { state: 'allowed-once'; toolName: string; operationId: string }
+  | { state: 'allowed-always'; toolName: string; grantedAt: number }
+  | { state: 'denied'; toolName: string; operationId: string; reason: 'USER_DENIED' | 'PANEL_CLOSED' | 'TIMEOUT' };
+```
+
+## §20.9 ServiceNow Session State
+
+```ts
+export type ServiceNowSessionState =
+  | { state: 'unknown' }
+  | { state: 'missing'; missing: Array<'JSESSIONID' | 'sysparmCK'> }
+  | { state: 'partial'; available: Array<'JSESSIONID' | 'sysparmCK'>; missing: Array<'JSESSIONID' | 'sysparmCK'> }
+  | { state: 'ready'; instanceHost: string; tokenTtl: number }
+  | { state: 'expired'; instanceHost: string; expiredAt: number }
+  | { state: 'error'; code: string; message: string };
+```
+
+## §20.10 Provider Retry / Circuit Breaker
+
+| Error code | Retryable pre-first-token | Circuit-breaker vote |
+|---|---|---|
+| `TIMEOUT` | Yes | 1 |
+| `PROVIDER_5XX` | Yes | 1 |
+| `NETWORK` | Yes | 1 |
+| `RATE_LIMITED` | Yes (with jitter) | 0 |
+| `AUTH` | No | 3 (open immediately) |
+| `MODEL_UNKNOWN` | No | 0 |
+| `SCHEMA_INVALID` | No | 0 |
+| `HOST_NOT_PERMITTED` | No | 0 |
+
+After 3 votes within 60 s, provider marked open for 5 minutes.
+
+## §20.11 Add-on Certification Checklist
+
+Every add-on PR must confirm:
+- No import from `src/core/**` breaks the "core does not import from add-ons" rule.
+- All page injection goes through `ContentScriptHost`.
+- All Radix / shadcn primitives are imported from `src/components/ui-shadow/`.
+- All storage keys are prefixed `np_addon_<addonId>`.
+- All API calls use `PROXY_FETCH` (never bare `fetch()` to a cross-origin host).
+- All secrets pass through `TraceRedactor` before any log.
+- Add-on declares a Zod `addonSettings` schema.
+- Add-on registers at least one fixture test under `tests/addons/<id>/`.
+
+---
+# §21 — Data Models
+
+## §21.1 Chat
+
+```ts
+export interface ChatSession {
+  id: string;                    // crypto.randomUUID()
+  title: string;                 // Flow 1a
+  created: number;
+  updated: number;
+  starred: boolean;
+  preview: string;               // first 200 chars of last message
+}
+
+export interface ChatMessage {
+  id: string;
+  sessionId: string;
+  role: 'system'|'user'|'assistant'|'tool';
+  content: string;
+  timestamp: number;
+  metadata?: {
+    model?: string;
+    promptTokens?: number;
+    completionTokens?: number;
+    skillId?: string;
+    toolName?: string;
+  };
+}
+```
+
+## §21.2 Note
+
+```ts
+export interface Note {
+  id: string;
+  title: string;
+  content: string;               // Markdown
+  created: number;
+  updated: number;
+  tags: string[];
+  links: string[];               // resolved noteId[]; recomputed every save
+  source: {
+    kind: 'manual'|'voice'|'chat-export'|'template';
+    conversationId?: string;
+    templateId?: string;
+  };
+  aiMeta: {
+    suggestedLinks: Array<{ targetId: string; confidence: number; reason: string }>;
+    concepts: string[];
+    lastWikiRunAt?: number;
+  };
+  version: number;
+}
+```
+
+## §21.3 Conversation Metadata + Memory Bodies
+
+```ts
+export type ConversationStatus = 'active' | 'archived';
+
+// chrome.storage.local.np_conversation_meta
+export interface ConversationMeta {
+  id: string;
+  title: string;
+  status: ConversationStatus;
+  topic?: string;                // LLM-classified
+  created: number;
+  lastAccessed: number;
+  messageCount: number;          // drives compaction (% 12 === 0)
+}
+
+// MemoryDB.messages
+export interface MemoryMessage {
+  conversationId: string;
+  seq: number;
+  role: LLMMessage['role'];
+  content: string;
+  timestamp: number;
+}
+```
+
+## §21.4 Fact
+
+```ts
+export interface Fact {
+  id: string;
+  content: string;
+  confidence: number;            // 0..1
+  source: 'extracted'|'explicit';
+  created: number;
+}
+```
+
+## §21.5 Insight
+
+```ts
+export interface Insight {
+  id: string;
+  kind: 'tag-trend' | 'activity' | 'skill-usage';
+  label: string;                 // e.g. "Most-used tag (30d): #incident"
+  value: number | string;
+  computedAt: number;
+}
+```
+
+## §21.6 Built-in Tool Descriptor
+
+```ts
+export interface BuiltinTool {
+  name: string;
+  description: string;
+  inputSchema: z.ZodSchema<unknown>;
+  outputSchema: z.ZodSchema<unknown>;
+  dangerous: boolean;
+}
+```
+
+## §21.7 NowPilot Error
+
+```ts
+export interface NowPilotError {
+  code: string;
+  message: string;
+  context?: Record<string, unknown>;
+  timestamp: number;
+}
+```
+
+Canonical error codes (closed set — do not invent new ones without adding here first):
+
+```
+SESSION_TOKEN_MISSING
+PROVIDER_FETCH_FAILED
+PROVIDER_AUTH
+PROVIDER_5XX
+PROVIDER_RATE_LIMITED
+PROVIDER_MODEL_UNKNOWN
+MCP_TOOL_ERROR
+STORAGE_READ_FAILED
+CONTENT_EXTRACT_FAILED
+CONTEXT_PACK_TRUNCATED
+CONTEXT_TOO_LARGE
+PERMISSION_DENIED
+TIMEOUT
+RATE_LIMITED
+KEYMAP_CONFLICT
+TOOL_UNAVAILABLE
+TOOL_REJECTED
+IDB_BLOCKED
+IDB_MIGRATION_FAILED
+RESEARCH_NO_TOOL
+HOST_NOT_PERMITTED
+STRUCTURED_OUTPUT_FAILED
+SCHEMA_INVALID
+NETWORK
+PLANNER_FAILED
+CODESEARCH_NEEDS_16K_CONTEXT
+CODESEARCH_NEEDS_LARGE_MODEL
+BACKGROUND_START_FAILED
+BACKGROUND_ROUTER_REGISTER_FAILED
+BACKGROUND_ALARM_RECREATE_FAILED
+BACKGROUND_CONTEXT_MENU_RECREATE_FAILED
+BACKGROUND_PROXY_TIMEOUT
+BACKGROUND_STATE_DEGRADED
+```
+
+---
+# §22 — Performance Targets & Algorithms
+
+## §22.1 Performance Targets
+
+| Metric | Target |
+|---|---|
+| Side panel initial paint | < 300 ms |
+| First AI token (local Ollama) | < 2 s |
+| First AI token (cloud) | < 3 s |
+| MiniSearch over 1,000 notes | < 50 ms |
+| Wikilink autocomplete | < 50 ms p95 (≤ 5,000 notes) |
+| `resolveLinks()` | < 20 ms |
+| IndexedDB write batch | ≤ 5 s or 10 messages, whichever first |
+| Content script bundle | < 100 KB |
+| Background SW fetch timeout | 25 s (hard) |
+| Tab context extraction | 5 s (hard) |
+| EventBus dispatch | < 1 ms (synchronous) |
+| ChunkBuffer flush rate | max every 16 ms (upgrade to 33 ms if enqueue > 8 kB/s) |
+
+## §22.2 Context Overflow Rules
+
+When `ContextPack` exceeds budget:
+1. Drop longest block.
+2. Drop last 20 %.
+3. Keep only first paragraph + first heading.
+4. Return empty with `truncated: true`; toast: `"Content was too large to include in AI context."`
+
+Per-source budgets (tokens): Webpage 2,000 · Note 500 · Current page (SN) 300 · JSON 1,000.
+
+## §22.3 NoteGraph Cosine Similarity
+
+`topKSimilar(note, k = 5)` — bag-of-words cosine, no library:
+
+1. Tokenise: `content.toLowerCase().match(/[a-z0-9]{3,}/g)` (drop < 3 chars).
+2. Remove the fixed 50-word English stop-word list shipped inline in `NoteGraph.ts`.
+3. Per-note term-frequency map; cosine = `dot(a,b) / (||a|| * ||b||)`.
+4. Rank descending; ties broken by `updated` descending, then `id` ascending.
+5. Notes with < 3 tokens return last. Default `k = 5`.
+
+## §22.4 InsightEngine Analyses
+
+Runs nightly via `Scheduler` (read-only; never on user interaction). v0.1c produces exactly three `Insight` values:
+
+- `tag-trend` — top tag by note count over the last 30 days.
+- `activity` — busiest chat day-of-week over the last 30 days.
+- `skill-usage` — most-invoked skill over the last 30 days (from `PromptInspector` logs).
+
+Results cached in `chrome.storage.local`. Anything richer is deferred.
+
+---
+# §23 — Key Technology Decisions (ADRs)
+
+| Decision | Choice | Rationale |
+|---|---|---|
+| Extension framework | WXT | Type-safe, HMR, cross-browser, no cloud dependency |
+| UI framework | React 19 | Streaming renders via concurrent mode; shadcn ecosystem |
+| CSS | Tailwind v4 + `np-` tokens via `@theme` | Prefix prevents host CSS conflicts |
+| Components | shadcn/ui | Copy-paste, no runtime dependency |
+| State | Zustand | 1 KB, no boilerplate, works outside React |
+| AI SDK | Vercel AI SDK + custom orchestrator | Streaming/abort/tools; lighter than LangChain |
+| AI providers | `@ai-sdk/*` only | Single codepath for 5 providers |
+| Runtime orchestration | `PlannerService → ExecutorService → RendererService` | Cheap models can't drive `maxSteps=15` loops safely |
+| Tier resolution | `TierResolver` (Appendix D) | Prevents hallucinated model names |
+| Animation | `motion` | Do not install `framer-motion` — v12 is published under `motion` |
+| MCP transport | StreamableHTTP from side panel | EventSource unavailable in SW |
+| Built-in tools | NowPilotMainServer (12) in side panel | Available without external server |
+| AI calls location | Side panel only | SW ~30 s timeout kills streaming |
+| Chat storage | IndexedDB via `idb` | 10 MB `chrome.storage.local` insufficient |
+| Memory storage | Metadata in `chrome.storage.local`; bodies in `MemoryDB` | Split prevents 10 MB overflow |
+| API key storage | `chrome.storage.local` + AES-GCM | Encrypted at rest |
+| Session tokens | `chrome.storage.session` | Cleared on browser close |
+| Token estimation | Provider-native counters; fallback 4 chars ≈ 1 token | Accurate; zero dependency |
+| Note search | MiniSearch + bag-of-words cosine | No server, no model download |
+| Embedding search | Deferred | 40 MB model download not justified |
+| XSS protection | `PortableMarkdown` + DOMPurify | Eliminates `innerHTML` |
+| Generic proxy | `PROXY_FETCH` in SW | Reusable across add-ons |
+| Scheduler | `chrome.alarms` | Persists across SW restarts |
+| Shadow DOM | All injected UI via `ContentScriptHost` | Prevents CSS conflicts both directions |
+| In-panel messaging | `EventBus` | Avoids `chrome.runtime` overhead |
+| Cross-context messaging | `MessageBus` + `BroadcastBus` + `RuntimeEnvelope` | Typed and sender-validated |
+| Add-on settings isolation | `AddonSettingsStore` namespaced | Prevents key collisions |
+| Keyboard shortcuts | `KeymapRegistry` | Conflict detection |
+| Split preflight CSS | Two CSS entrypoints | Side panel needs preflight; Shadow DOM must not have it |
+| Portal isolation | `PortalHostContext` + `ui-shadow/` wrappers | Prevents Radix portals from leaking into host DOM |
+| Dark mode in Shadow DOM | Class strategy on `:host` | `prefers-color-scheme` cannot be forced per host |
+
+---
+# §24 — Verification Commands
+
+Each phase must define a real script. Minimum expected commands in `package.json`:
 
 ```json
 {
   "scripts": {
-    "verify:phase-1": "tsc --noEmit && vitest run tests/core/runtime",
-    "verify:phase-2": "tsc --noEmit && vitest run tests/core/storage tests/core/security",
+    "verify:phase-1": "tsc --noEmit && vitest run tests/core/runtime tests/core/events",
+    "verify:phase-2": "tsc --noEmit && vitest run tests/core/storage tests/core/security tests/core/utils",
     "verify:phase-3": "tsc --noEmit && vitest run tests/core/ai",
     "verify:phase-4": "tsc --noEmit && vitest run tests/core/context",
     "verify:phase-5": "tsc --noEmit && vitest run tests/core/memory",
     "verify:phase-6": "tsc --noEmit && vitest run tests/core/telemetry tests/components/DiagnosticsPanel.test.tsx",
-    "verify:all": "tsc --noEmit && vitest run && pnpm run lint"
+    "verify:phase-7": "tsc --noEmit && vitest run tests/hooks tests/components/ChatPage.test.tsx tests/core/notes",
+    "verify:phase-8": "tsc --noEmit && vitest run tests/core/content tests/addons tests/isolation",
+    "verify:phase-9": "tsc --noEmit && vitest run && pnpm run lint",
+    "verify:all":     "tsc --noEmit && vitest run && pnpm run lint",
+    "test:perf":      "vitest run tests/perf",
+    "test:isolation": "vitest run tests/isolation"
   }
 }
 ```
 
 ---
-
-# Appendix A — v0.1.2/v0.1.3 Consolidation Map
-
-The following concepts from v0.1.2 and v0.1.3 are fully integrated into v0.1c:
-
-| Source | Integrated concept | v0.1c section |
-|---|---|---|
-| v0.1.2 | Cost-effective model architecture | §1 |
-| v0.1.2 | Prompt caching | §1.3 |
-| v0.1.2 | Structured outputs | §1, §5, §6 |
-| v0.1.2 | WXT entry point refinement | §5 |
-| v0.1.2 | Tailwind/Tweakcn/Shadow DOM isolation | §5.4 |
-| v0.1.2 | API fallback | §1.5, §7.1 |
-| v0.1.3 | Planner → Executor → Renderer | §1 |
-| v0.1.3 | ContextOptimizer | §2 |
-| v0.1.3 | ModelContextTier | §2.1 |
-| v0.1.3 | Persistent memory architecture | §3 |
-| v0.1.3 | AITransactionLog | §4 |
-| v0.1.3 | Diagnostics UI | §4.5 |
-| v0.1.3 | MCP tool guardrails | §1.2, §4, §6 |
-
----
-
-# Appendix B — Canonical Prompt Constants
+# Appendix A — Canonical Prompt Constants
 
 ```ts
+// src/core/prompts/index.ts
 export const PROMPTS = {
   planner: {
     system: 'Select exactly one action: answer, run_tool, or ask_clarification. Return JSON only. Do not explain.',
@@ -1033,10 +2489,10 @@ export const PROMPTS = {
 ```
 
 ---
-
-# Appendix C — Canonical User Strings
+# Appendix B — Canonical User Strings
 
 ```ts
+// src/core/i18n/strings.ts
 export const STR = {
   chat: {
     loading: 'Connecting to provider...',
@@ -1045,893 +2501,76 @@ export const STR = {
     offline: 'No network. Retrying when back online.',
     contextReduced: 'Some context was compressed to fit the selected model.',
     minimalMode: 'Minimal mode enabled for this model context size.',
+    noProvider: 'Configure an AI provider in Settings first.',
+    maxPinnedTabs: 'Maximum 10 pinned tabs. Remove one first.',
+    cannotPin: 'Cannot pin this page. Try a regular web page.',
   },
   diagnostics: {
     title: 'Diagnostics',
     copyOperationId: 'Copy operation ID',
     exportDebugBundle: 'Export debug bundle',
     noTransactions: 'No AI transactions yet.',
+    loading: 'Loading diagnostics...',
   },
   tools: {
     rejected: 'Tool is not available or input schema is invalid.',
     permissionDenied: 'Tool permission denied.',
+    researchNoTool: 'Research failed: no web-search tool connected. [Open Settings]',
   },
   memory: {
     updated: 'Memory updated.',
     disabled: 'Memory is disabled in Settings.',
   },
+  onboarding: {
+    testing: 'Testing connection...',
+    connected: 'Connected',
+    failed: 'Connection failed: [error]',
+  },
+  notes: {
+    loading: 'Loading notes...',
+    empty: 'No notes yet. Press + to create one.',
+    loadFailed: 'Failed to load notes. [Retry]',
+  },
+  agent: {
+    loading: 'Preparing agent...',
+    empty: 'Describe a task and the agent will plan steps',
+    error: 'Agent error: [message]. [Retry]',
+  },
 } as const;
 ```
 
 ---
-
-# Appendix Z — Full Preserved v0.1.1 Base Specification
-
-The following section preserves the original v0.1.1 base specification. It remains valid unless superseded by the v0.1c canonical sections above.
-
-
-
----
-
-# NowPilot — Product Requirements Document
-
-**Version:** 0.1.1
-**Date:** 2026-07-01
-**Status:** Active — primary implementation reference, architecture-hardening revision
-**Scope:** NowPilot v0.1 — Chrome Side Panel AI Assistant with add-on architecture
-**Supersedes:** NOWPILOT_PRODUCT_SPEC_V1.md (v1.1.0) and updates PRODUCT_SPEC_v0_1.md (v0.1.0)
-
-**Revision summary (v0.1.1):**
-
-- Adds runtime state models for worker lifecycle, stream lifecycle, tab extraction, tool permission, and ServiceNow session readiness.
-- Adds cross-context operation IDs and reliability rules for MessageBus, BroadcastBus, PortReader, and PROXY_FETCH.
-- Adds IndexedDB migration/versioning policy.
-- Adds WriteJournal / operation outbox for multi-store consistency between chrome.storage.local metadata and IndexedDB bodies.
-- Hardens background service worker startup, alarm recreation, and degraded-state reporting.
-- Hardens tool orchestration with explicit tool execution/result envelopes, timeout policy, and PromptInspector tool traces.
-- Adds side-panel internal service boundaries to avoid side-panel monolith growth.
-- Splits ServiceNow-specific session semantics out of core into the ServiceNow add-on while keeping generic session/cookie infrastructure in core.
-- Adds provider retry/backoff/circuit-breaker policy.
-- Adds observability retention and redaction policy.
-- Adds context provenance manifest to PromptInspector.
-- Adds add-on certification checklist.
-- Adds architecture diagrams and runtime sequence diagrams.
-
----
-
-## ⚡ AI Model Quickstart — READ THIS FIRST
-
-**If you are a cost-effective AI model (Haiku, Gemini Flash, Deepseek Flash, Minimax) implementing this spec:**
-
-1. Read §0 (Rules) completely before touching any code.
-2. Read §0.4 (Canonical Names) — whenever you are unsure of a name, this table wins.
-3. Read §7 (Critical User Flows) — these define canonical behavior for every feature.
-4. Read §8 (Component State Matrix) — use the exact text strings shown.
-5. Read §9 (Concurrency Rules) — these prevent MV3-specific runtime bugs.
-6. Then follow §14 (MVP Roadmap) phase by phase. Each phase is a file-level checklist.
-
-**Authority order when documents conflict:**
-`§0 Rules` > `§0.4 Canonical Names` > `§7 Flows` > `§6 code examples` > `§14 phase tasks`.
-
-**If you are unsure about any decision, stop and ask. Do not guess.**
-
----
-
-## §0 — Rules (Non-Negotiable)
-
-These rules are HARD BLOCKS. Violating any of them introduces bugs or security issues.
-
-### 0.1 DO NOT Rules
-
-- **DO NOT use `innerHTML`** anywhere. Use React JSX, `textContent`, or `DOMPurify.sanitize()`.
-- **DO NOT use `setTimeout` or `setInterval` for DOM polling** in content scripts. Use `MutationObserver`.
-- **DO NOT store session tokens** (`jsessionid`, `sysparmCK`) in `chrome.storage.local`. Use `chrome.storage.session`.
-- **DO NOT make AI provider `fetch()` calls from `background.ts`**. All AI calls go in the side panel page. Only exception: CORS-bypass proxy requests via the generic `PROXY_FETCH` message handler (§6.9).
-- **DO NOT use `eval()`**. If a dependency requires `eval()`, choose a different dependency.
-- **DO NOT hardcode URLs inline**. All external URLs go through `src/core/config/endpoints.ts` (contents in §6.8).
-- **DO NOT use empty catch blocks** (`catch (e) {}`). Every catch must call `debugLog(code, message, context)`.
-- **DO NOT install `@anthropic-ai/sdk`, `openai`, or `@google/generative-ai`** separately. Use `@ai-sdk/*` adapters only.
-- **DO NOT install `framer-motion`.** The animation package is `motion` (Framer Motion v12, published under the `motion` name). Import from `motion/react`.
-- **DO NOT use `setInterval` in the background SW**. Use `chrome.alarms` — alarms persist across SW restarts.
-- **DO NOT open IndexedDB from the background SW**. IndexedDB access from SW is unreliable across restart cycles.
-- **DO NOT set a custom `User-Agent` header** in any `fetch()` call.
-- **DO NOT use `dangerouslySetInnerHTML`** in any React component.
-- **DO NOT import from add-on modules in core**. Core never imports from add-ons.
-- **DO NOT use `EventSource` in the background SW**. Use `fetch` + `ReadableStream` for streaming.
-- **DO NOT store conversation message bodies in `chrome.storage.local`.** Only metadata lives there; bodies live in IndexedDB (see §11).
-- **DO NOT put domain-specific token semantics in core.** Core may store generic session values, but ServiceNow token names (`JSESSIONID`, `sysparmCK`, `g_ck`) and readiness logic live in `src/addons/servicenow/auth/ServiceNowSessionAdapter.ts`.
-- **DO NOT send cross-context messages without a correlation ID.** All MessageBus/BroadcastBus/PortReader/PROXY_FETCH requests use `RuntimeEnvelope<T>` with `id`, `type`, `createdAt`, `source`, and `payload`.
-- **DO NOT write multi-store conversation state without WriteJournal.** Memory metadata/body writes and eviction must be journaled.
-- **DO NOT inject UI directly from core modules.** All injected UI must be provided by add-ons.
-- **DO NOT manipulate page DOM outside Shadow DOM.** All injected UI must be isolated.
-- **DO NOT use site-specific selectors in core content scripts.**
-
-### 0.2 Code Standards
-
-1. Every file has a single named export. No barrel files that re-export everything.
-2. All public APIs are typed with Zod schemas at their boundaries.
-3. Every module is ≤ 200 LOC unless it is a React component (≤ 350 LOC).
-4. Tests are written before implementation for all core modules listed in Phase 9 (§14).
-5. File paths in this spec are prescriptive — create the exact path shown.
-6. `tsconfig.json` must have `"strict": true`. Zero type errors before any PR.
-7. Code examples in this spec are authoritative **once their referenced symbols resolve** (see §0.4). Where a code example uses a helper, the helper name in §0.4 is canonical.
-8. Each add-on module that uses a concept from a proprietary reference codebase must include an `@inspired-by` header comment naming the source file (see §2.3).
-
-### 0.3 Architecture Constraints (MV3 platform — cannot be changed)
-
-1. **AI streaming lives in the side panel**, not the background SW (Chrome may terminate the SW after ~30s idle).
-2. **MCP client lives in the side panel** (`EventSource` unavailable in SW).
-3. **`chrome.cookies` and CORS-bypass fetch live in the background SW** (extension privileges required).
-4. **IndexedDB opens from the side panel**, not from the SW.
-5. **`chrome.alarms` minimum period is 1 minute.** For the sub-minute keepalive ping, the open side panel uses `setInterval` to message the SW; the SW itself only uses `chrome.alarms`.
-6. **Content scripts run in an isolated world.** To read `window.g_ck`, inject a MAIN-world script via `world: 'MAIN'`.
-7. **Manifest MV3 forbids remote code execution.** Bundle all dependencies locally.
-8. **Background SW startup must be restart-safe.** Register BackgroundRouter synchronously, recreate required alarms/context menus on every startup, and report degraded state if required infrastructure cannot be restored.
-9. **Cross-context operations must be observable.** Every message or operation crossing side panel/background/content/add-on boundaries must carry an operation/correlation ID and log structured errors through debugLog.
-10. **Side panel is the single writer for memory state.** Any operation spanning `chrome.storage.local.np_conversation_meta` and IndexedDB `MemoryDB.messages` must use WriteJournal and recovery logic.
-
-### 0.4 Canonical Names (single source of truth)
-
-When any other section is ambiguous about a name, **this table wins**.
-
-**Provider registry IDs** (exact string literals, used everywhere — storage, config, switch statements):
-```
-'openai' | 'anthropic' | 'gemini' | 'ollama' | 'openai-compatible'
-```
-File names differ for brevity (`GeminiProvider.ts`, `OpenAICompatProvider.ts`) but the **ID strings above never change**.
-
-**Agent-loop helper function names** (used in §6.4 `agentLoop`):
-| Canonical name | File | Purpose |
-|---|---|---|
-| `stepsToTools(skills, ctxFactory)` | `core/ai/toolAdapter.ts` | Skills → Vercel AI SDK `tool()[]` |
-| `mcpToVercelAI(mcpTools)` | `core/mcp/mcpToVercelAI.ts` | MCP tool schemas → Vercel AI SDK `tool()[]` |
-
-> The §6.4 example previously used `skillsToAiTools` / `mcpToolsToAiTools`. Those names are **deprecated**; use the canonical names above.
-
-**Provider method for AI SDK model handle:** `ILLMProvider.getAISDKModel(model: string): LanguageModel` (added to the interface in §6.1).
-
-**Stream chunk type:** the canonical chunk yielded to UI is `LLMStreamChunk` (§6.1). `agentLoop` MUST map Vercel AI SDK `fullStream` parts to `LLMStreamChunk` before yielding (mapping table in §6.4).
-
-**Storage key prefix:** all `chrome.storage` keys are prefixed `np_`. Add-on settings keys: `np_addon_<addonId>`.
-
-**Runtime operation envelope:** all cross-context messages use `RuntimeEnvelope<T>` from `core/runtime/RuntimeState.ts`.
-
-**Generic vs ServiceNow session names:**
-
-| Concept | Canonical owner | Notes |
-|---|---|---|
-| `CookieSessionStore` | `core/chrome/CookieSessionStore.ts` | Generic `chrome.cookies` and `chrome.storage.session` helper; no ServiceNow token semantics. |
-| `ServiceNowSessionAdapter` | `addons/servicenow/auth/ServiceNowSessionAdapter.ts` | Owns `JSESSIONID`, `sysparmCK`, `g_ck`, ServiceNow session readiness, and ServiceNow auth header preparation. |
-| `WriteJournal` | `core/storage/WriteJournal.ts` | Operation outbox for multi-store consistency. |
-| `IndexedDBMigrator` | `core/storage/IndexedDBMigrator.ts` | DB versioning and migration policy. |
-
-**Package names that smaller models commonly get wrong:**
-| Use | Correct package | Wrong (DO NOT install) |
-|---|---|---|
-| Animation | `motion` | `framer-motion` |
-| IDs | native `crypto.randomUUID()` | `ulid`, `uuid` |
-| Anthropic | `@ai-sdk/anthropic` | `@anthropic-ai/sdk` |
-| OpenAI | `@ai-sdk/openai` | `openai` |
-| Gemini | `@ai-sdk/google` | `@google/generative-ai` |
-
----
-
-## §1 — Executive Summary
-
-NowPilot is a privacy-first, extensible Chrome Side Panel AI assistant. It provides AI chat, atomic note-taking, agent workflows, prompt management, and a personal knowledge layer — all running locally or against user-configured AI providers, with no data leaving the user's machine unless they explicitly configure a cloud provider.
-
-The architecture separates a stable **core layer** (AI providers, storage, messaging, context pipeline, agent engine, MCP client) from optional **add-ons** (site-specific page injection, context extraction, and skills). The ServiceNow add-on ships as the first first-party add-on.
-
-**Design principles:**
-- Privacy by default: local AI providers (Ollama, LM Studio) are first-class citizens.
-- Extensible by add-ons: core never knows about specific websites.
-- Cost-effective implementation: each module is small, typed, and independently testable.
-- No cloud dependency: the extension works fully offline with local models.
-
-**Versioning note:** Anything marked "deferred" in this document targets **v0.5** (next milestone after v0.1). There is no separate "v2" track in this document; all future-deferral language uses "v0.5".
-
----
-
-## §2 — Reference Analysis
-
-### 2.1 Prior Art Consolidated
-
-NowPilot consolidates prior tools. Their patterns inform but do not constrain the architecture:
-
-| Tool | Key patterns retained | Anti-patterns eliminated |
-|---|---|---|
-| snTools | Session token extraction, CORS proxy pattern, case analysis logic | 10,000-line monolith, `innerHTML` everywhere, hardcoded URLs, empty catches |
-| Presto | CSS enhancement via Shadow DOM, feature toggles, case insight cards | `setTimeout` polling, global CSS injection, no error boundaries |
-| LLM Sidebar | Tab pinning, content extraction strategy pattern, streaming from side panel | YouTube/Google Docs extractors (not needed for v0.1) |
-
-### 2.2 Packages Rejected
-
-Authoritative list. (The core-packages reference document Part 4 is informational; this table governs.)
-
-| Package | Reason |
-|---|---|
-| `@anthropic-ai/sdk`, `openai`, `@google/generative-ai` | Redundant with `@ai-sdk/*` — creates parallel codepaths |
-| `langchain`, `langchainjs`, LangGraph, Mastra, Inngest | Too heavy, server-first; Vercel AI SDK `streamText({maxSteps})` IS the agent loop |
-| `redux`, `@reduxjs/toolkit` | Excessive boilerplate; Zustand (1KB) is sufficient |
-| `axios` | Unnecessary; native `fetch` + `Requester` wrapper is sufficient |
-| `marked` + `DOMPurify` (for chat) | `react-markdown` eliminates innerHTML risk entirely |
-| `ulid`, `uuid` | `crypto.randomUUID()` is native in Chrome extensions |
-| `tiktoken`, `gpt-tokenizer` | 4-chars-≈-1-token heuristic is accurate enough; no library needed |
-| `@xenova/transformers` | 40MB+ model; bag-of-words cosine is sufficient for v0.1 |
-| `framer-motion` | Published as `motion` (v12); installing both causes duplicate React context |
-| Plasmo framework | Cloud dependency, proprietary storage; WXT is cleaner |
-| `tw-animate-css` | Deferred to v0.5 |
-| `pdfjs-dist` / `pdfjs` | PDF chat removed from v0.1 (§5.4); no PDF dependency at all |
-
-### 2.3 Reference Codebase Map
-
-The `references/` folder contains six codebases. Only three are needed for v0.1. Strategy codes: **PORT** (lift code with minor edits), **REWRITE** (reuse logic, rebuild structure), **GREENFIELD-ref** (build new, reference for behavior), **DEFER** (not in v0.1).
-
-| Reference                                         | Strategy                   | What to take                                                                 | Where it lands                                                                                  |
-| ------------------------------------------------- | -------------------------- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `references/llm-sidebar/src/scripts/strategies/`  | **PORT**                   | `IContentStrategy.ts`, `DefaultWebPageStrategy.ts` (drop YouTube/GoogleDocs) | `src/core/extraction/`                                                                          |
-| `references/llm-sidebar` (panel)                  | **GREENFIELD-ref**         | Tab-pinning + side-panel SSE streaming patterns                              | `src/components/pages/ChatPage.tsx`, Flow 4                                                     |
-| `references/snTools/content.js` + `background.js` | **REWRITE**                | JSESSIONID + g_ck token bridge, CORS proxy                                   | `src/addons/servicenow/content/tokenBridge.ts`, `src/addons/servicenow/auth/ServiceNowSessionAdapter.ts, src/core/chrome/{CookieSessionStore,CORSProxy}.ts` |
-| `references/snTools/analyzer.js`                  | **REWRITE**                | Case analysis prompt + parse logic                                           | `CaseAnalyzerSkill.ts`                                                                          |
-| `references/snTools/catchup.js`                   | **REWRITE**                | 24h digest logic                                                             | `CatchUpSkill.ts`                                                                               |
-| `references/snTools/sentiment.js`                 | **REWRITE**                | Sentiment scoring logic                                                      | `SentimentSkill.ts`                                                                             |
-| `references/snTools/codesearch.js` (429KB)        | **REWRITE (Sonnet-class)** | Code search query + result parse; see §10.4 chunking contract                | `CodeSearchSkill.ts`                                                                            |
-| `references/Presto/enhanced_experience.*`         | **GREENFIELD-ref**         | Case insight cards, Shadow-DOM CSS, feature toggles                          | `CaseInsightBox.tsx` (P1)                                                                       |
-| `references/GQM`                                  | **DEFER**                  | —                                                                            | not in v0.1                                                                                     |
-| `references/TextBlaze`                            | **DEFER (v0.5)**           | Snippet/template productivity layer                                          | not in v0.1                                                                                     |
-| `references/snUtils`                              | **DEFER (v0.5)**           | Script sync, code editor, autocomplete                                       | not in v0.1                                                                                     |
-
-**Rule:** Any file in the REWRITE/GREENFIELD-ref rows must carry an `@inspired-by references/<path>` header comment (§0.2 rule 8).
-
----
-
-## §3 — Technology Stack
-
-### 3.1 Extension Framework
-
-| Package | Version | Purpose |
-|---|---|---|
-| `wxt` | ^0.19 | MV3 scaffold, HMR, manifest gen, cross-browser |
-| `@wxt-dev/module-react` | ^0.3 | React integration |
-
-### 3.2 UI
-
-| Package | Version | Purpose |
-|---|---|---|
-| `react` | ^19 | UI framework |
-| `react-dom` | ^19 | DOM rendering |
-| `tailwindcss` | ^4 | CSS; CSS-based `@theme` config, no tailwind.config.ts |
-| `@tailwindcss/vite` | ^4 | Vite integration (required for Tailwind v4 + WXT) |
-| `shadcn/ui` | CLI only | Copy-paste component primitives |
-| `@radix-ui/react-*` | varies | Accessible primitives (shadcn foundation) |
-| `lucide-react` | ^0.400 | Icons |
-| `motion` | ^12 | Animations (Framer Motion v12; import from `motion/react`) |
-| `class-variance-authority` | ^0.7 | shadcn variant helper |
-| `clsx` | ^2 | Class name utility |
-| `tailwind-merge` | ^2 | Tailwind class conflict resolution |
-
-### 3.3 State Management
-
-| Package | Version | Purpose |
-|---|---|---|
-| `zustand` | ^5 | Global side panel store; works outside React components |
-| `immer` | ^10 | Immutable state updates in Zustand |
-
-> **Decision note:** Zustand is ~1KB, no boilerplate, works outside React components (useful for `MessageBus`/`EventBus` handlers updating store state). Jotai adds complexity for a store-shaped architecture; Redux is overkill.
-
-### 3.4 AI & Workflow
-
-| Package | Version | Purpose |
-|---|---|---|
-| `ai` | ^4 | Vercel AI SDK — `streamText`, tool calling, abort |
-| `@ai-sdk/openai` | ^1 | OpenAI + Ollama + OpenAI-compatible endpoints |
-| `@ai-sdk/anthropic` | ^1 | Anthropic Claude (cloud or local) |
-| `@ai-sdk/google` | ^1 | Google Gemini (cloud only) |
-| `@modelcontextprotocol/sdk` | ^1 | MCP client — StreamableHTTP transport |
-| `zod` | ^3 | Schema validation for all boundaries |
-| `zod-to-json-schema` | ^3 | Zod → JSON Schema for LLM tool definitions |
-
-### 3.5 Storage
-
-| Package | Version | Purpose |
-|---|---|---|
-| `idb` | ^8 | Typed IndexedDB wrapper |
-
-### 3.6 Content Extraction & Text Processing
-
-| Package | Version | Purpose |
-|---|---|---|
-| `@mozilla/readability` | ^0.5 | Article extraction from any webpage |
-| `turndown` | ^7 | HTML → Markdown |
-| `dompurify` | ^3 | XSS sanitization for DOM writes |
-
-### 3.7 Markdown & Document Rendering
-
-| Package | Version | Purpose |
-|---|---|---|
-| `react-markdown` | ^9 | Renders AI responses safely (no innerHTML) |
-| `remark-gfm` | ^4 | GitHub Flavored Markdown |
-| `rehype-highlight` | ^7 | Code block syntax highlighting |
-| `highlight.js` | ^11 | Syntax highlighter (rehype-highlight peer dep) |
-| `katex` | ^0.16 | Math rendering |
-
-### 3.8 Search & Notes
-
-| Package | Version | Purpose |
-|---|---|---|
-| `minisearch` | ^7 | Client-side full-text search; no server |
-| `d3-force` | ^3 | Force-directed graph layout for Note Graph |
-
-### 3.9 Data & Serialization
-
-| Package | Version | Purpose |
-|---|---|---|
-| `fflate` | ^0.8 | ZIP for data export (8KB gzipped) |
-| `papaparse` | ^5 | CSV parsing for import/export |
-
-### 3.10 Security
-
-| Item | Purpose |
-|---|---|
-| `crypto.subtle` (native) | AES-GCM encryption — no package needed |
-| `crypto.randomUUID()` (native) | ID generation — no package needed |
-
-### 3.11 Testing
-
-| Package | Version | Purpose |
-|---|---|---|
-| `vitest` | ^2 | Unit testing |
-| `@testing-library/react` | ^16 | React component testing |
-| `@testing-library/user-event` | ^14 | User interaction simulation |
-| `jsdom` | ^25 | DOM environment for Vitest |
-| `msw` | ^2 | Mock Service Worker — intercepts fetch in tests |
-
-### 3.12 Developer Experience
-
-| Package | Version | Purpose |
-|---|---|---|
-| `typescript` | ^5.5 | `strict: true` required |
-| `@types/chrome` | ^0.0.270 | Chrome API type definitions |
-| `@types/dompurify` | ^3 | DOMPurify types |
-| `eslint` | ^9 | Linting |
-| `@typescript-eslint/parser` | ^8 | TypeScript ESLint parser |
-| `prettier` | ^3 | Formatting |
-
----
-
-## §4 — Architecture Design
-
-### 4.1 Extension Contexts
-
-```
-Chrome Browser
-├── Background Service Worker (background.ts)
-│   ├── CookieSessionStore      — generic chrome.cookies + token cache (chrome.storage.session)
-│   ├── CORSProxy               — fetch with credentials:include for cross-origin SN requests
-│   ├── LifecycleManager        — onInstalled, onStartup, chrome.alarms keepalive
-│   ├── KeepAliveManager        — chrome.alarms ping (receives 20s setInterval from panel)
-│   ├── BackgroundRouter        — typed chrome.runtime.onMessage dispatcher (sender-validated)
-│   └── ContextMenuHost         — chrome.contextMenus registration (batch from addons)
-│
-├── Side Panel (sidepanel/main.tsx) — React SPA
-│   ├── ProviderRegistry        — 5 AI providers (all calls from here)
-│   ├── AgentEngine             — AgentLoop, SkillRegistry, SkillRunner, WorkflowRunner
-│   ├── MCPClient               — StreamableHTTP, tool discovery (NOT in SW)
-│   ├── NowPilotMainServer      — 12 built-in MCP tools
-│   ├── ContextWindowManager    — budget allocation, sliding window, compaction
-│   ├── StorageLayer            — IndexedDB (ChatHistoryDB, NotesDB, ErrorStore, MemoryDB, WriteJournal)
-│   ├── MemoryStore             — Conversation metadata in chrome.storage.local; bodies in MemoryDB; writes via WriteJournal
-│   ├── MessageBus              — typed cross-context messaging
-│   ├── EventBus                — in-process pub/sub within side panel page
-│   └── [page components]       — Chat, Note, Agent, Tools (Write/Ask/Research = slash commands)
-│
-├── Content Scripts (per add-on registration)
-│   ├── ContentScriptHost       — generic page injection host (Shadow DOM mount)
-│   ├── InjectionLifecycle      — manages mount / update / unmount lifecycle
-│   ├── ShadowDomMount          — safe Shadow DOM creation (default: closed mode)
-│   ├── SPANavigationWatcher    — MutationObserver; fires onNavigate(url)
-│   ├── PageContextBridge       — sends extracted page data to side panel
-│   ├── InjectionRegistry       — maps add-ons to URL patterns and injection targets
-│   ├── Run in ISOLATED world by default
-│   └── window.g_ck bridge runs in MAIN world (world: 'MAIN')
-│
-└── Add-ons (registered at startup via AddonRegistry)
-    ├── Site-specific (urlPatterns match)
-    └── Global (all pages)
-```
-
-### 4.2 Core vs Add-on Boundary
-
-**Rule:** Core never imports from add-ons. Add-ons only call core APIs.
-
----
-
-### Core owns (platform capabilities)
-
-Core provides reusable, domain-agnostic infrastructure:
-
-- AI runtime (ProviderRegistry, AgentLoop, SkillRunner, WorkflowRunner)
-- MCP client and tool orchestration
-- messaging (MessageBus, EventBus, BroadcastBus)
-- context pipeline (ContextWindowManager, ContextPack)
-- storage (Settings, IndexedDB, MemoryDB, NotesDB)
-- WriteJournal and IndexedDB migration system
-- runtime state models and operation tracking
-- Chrome API hosts (CORSProxy, ContextMenuHost, TabManager, etc.)
-- generic cookie/session infrastructure (`CookieSessionStore`)
-- shared UI components (ErrorBoundary, Toast, Markdown renderer)
-- prompt/template engine and slash command registry
-- telemetry, logging, and redaction utilities
-- registries (AddonRegistry, EndpointRegistry, KeymapRegistry)
-
-✅ **Page injection framework (Core responsibility):**
-- `ContentScriptHost`
-- injection lifecycle management (mount / update / unmount)
-- Shadow DOM creation and isolation
-- SPA navigation detection (`SPANavigationWatcher`)
-- page → panel communication (`PageContextBridge`)
-- injection registration (`InjectionRegistry`)
-
----
-
-### Add-ons own (domain / feature logic)
-
-Add-ons provide domain-specific and optional features:
-
-- site-specific context extraction (`pageExtractor`)
-- injected page UI (React components rendered via Shadow DOM)
-- injection rules (URL matching, `shouldInject`)
-- site-specific skills (e.g., ServiceNow case analysis)
-- site-specific prompts/templates
-- domain API clients (e.g., ServiceNow Table API client)
-- domain endpoint declarations
-- domain-specific authentication/session semantics
-- domain-specific LLM Wiki content
-- add-on settings, pages, and keymaps
-
----
-
-### Page Injection Rule (v0.1.1)
-
-> Core owns **how injection works**.  
-> Add-ons own **what gets injected and where**.
-
-- Core MUST NOT include:
-  - site-specific DOM selectors
-  - ServiceNow logic
-  - injected UI components
-
-- Add-ons MUST NOT:
-  - bypass `ContentScriptHost`
-  - manipulate DOM outside Shadow DOM
-  - implement their own injection lifecycle
-
----
-
-### Important layering update (v0.1.1)
-
-Core must not directly know:
-
-- ServiceNow token names (`JSESSIONID`, `sysparmCK`, `g_ck`)
-- ServiceNow field names or table schemas
-- ServiceNow page DOM structure
-- ServiceNow workflow prompts
-
-`CORSProxy` remains in core because it is generic infrastructure.
-
-All ServiceNow-specific session logic must live in:
-
-```
-src/addons/servicenow/auth/ServiceNowSessionAdapter.ts
-
-```
-
-### 4.3 File Structure
-
-```
-nowpilot/
-├── src/
-│   ├── entrypoints/
-│   │   ├── background.ts                   # Background SW
-│   │   ├── sidepanel/{index.html, main.tsx}
-│   │   ├── content/core.ts                 # Loaded by ContentScriptHost
-│   │   └── popup/App.tsx
-│   │
-│   ├── core/                               # NEVER imports from add-ons/
-│   │   ├── background/{router.ts, lifecycle.ts, keepalive.ts}
-│   │   ├── content/{ContentScriptHost.ts, SPANavigationWatcher.ts, PageContextBridge.ts}
-│   │   ├── ai/
-│   │   │   ├── ILLMProvider.ts, ProviderRegistry.ts
-│   │   │   ├── providers/{OpenAIProvider,AnthropicProvider,GeminiProvider,OllamaProvider,OpenAICompatProvider}.ts
-│   │   │   ├── AgentLoop.ts, SkillRegistry.ts, SkillRunner.ts, StepContext.ts
-│   │   │   ├── toolAdapter.ts, PermissionGate.ts, WorkflowRunner.ts
-│   │   ├── mcp/{MCPClient.ts, MCPRegistry.ts, mcpToVercelAI.ts, NowPilotMainServer.ts}
-│   │   ├── context/{ContextWindowManager,ContextPack,ContextManager,compactHistory,estimateTokens}.ts
-│   │   ├── storage/{Setting,EncryptedStorage,ChatHistoryDB,NotesDB,ErrorStore,MemoryDB,WriteJournal,IndexedDBMigrator}.ts
-│   │   ├── memory/{types.ts, MemoryStore.ts, compactor.ts}
-│   │   ├── notes/{NoteGraph.ts, LinkParser.ts, noteExpander.ts}
-│   │   ├── extraction/{IContentStrategy.ts, ContentExtractor.ts, DefaultWebPageStrategy.ts}
-│   │   ├── prompts/{PromptManager.ts, TemplateEngine.ts, builtinTemplates.ts}
-│   │   ├── slash/SlashCommandRegistry.ts
-│   │   ├── messaging/{MessageBus.ts, PortReader.ts, BroadcastBus.ts}
-│   │   ├── events/EventBus.ts
-│   │   ├── chrome/{CookieSessionStore,CORSProxy,ContextMenuHost,TabManager,NotificationsManager,OmniboxHandler,ClipboardHelper,Scheduler}.ts
-│   │   ├── output/{StructuredOutputRenderer.ts, OutputFormatter.ts}
-│   │   ├── webhooks/WebhookManager.ts
-│   │   ├── data/DataPortability.ts
-│   │   ├── telemetry/{TokenLedger.ts, PromptInspector.ts}
-│   │   ├── insights/InsightEngine.ts
-│   │   ├── security/secureStore.ts
-│   │   ├── http/Requester.ts
-│   │   ├── search/MiniSearchIndex.ts
-│   │   ├── speech/SpeechSynthesisService.ts
-│   │   ├── input/KeymapRegistry.ts
-│   │   ├── utils/RateLimiter.ts
-│   │   ├── registry/{AddonRegistry.ts, Registry.ts, AddonSettingsStore.ts, SidePanelPageRegistry.ts}
-│   │   ├── config/{endpoints.ts, EndpointRegistry.ts, FeatureFlags.ts, localModelCapabilities.ts}
-│   │   ├── log/debugLog.ts
-│   │   ├── i18n/i18n.ts
-│   │   └── components/{ErrorBoundary.tsx, Toast.tsx, PortableMarkdown.tsx}
-│   │
-│   ├── addons/                             # NEVER imported by core/
-│   │   ├── global/{SelectionContextMenu.ts, ResearchSkill.ts}
-│   │   └── servicenow/
-│   │       ├── index.ts
-│   │       ├── auth/ServiceNowSessionAdapter.ts
-│   │       ├── config/serviceNowEndpoints.ts
-│   │       ├── content/{tokenBridge.ts, pageExtractor.ts}
-│   │       ├── lib/SNowTableClient.ts
-│   │       ├── skills/{CaseAnalyzerSkill,CatchUpSkill,SentimentSkill,CodeSearchSkill}.ts
-│   │       └── components/CaseInsightBox.tsx
-│   │
-│   ├── components/
-│   │   ├── layout/SidepanelShell.tsx
-│   │   ├── pages/{ChatPage,NotePage,AgentPage,ToolsPage}.tsx
-│   │   ├── notes/{BacklinksPanel,WikilinkAutocomplete,NoteGraphView}.tsx
-│   │   ├── patterns/{ChatMessage,HistoryListItem,ToolCard,SkillMessageRenderer,SourceCard}.tsx
-│   │   └── ui/                            # shadcn copy-paste components
-│   │
-│   ├── hooks/{useChat,useProvider,useStorage,useMCP,useAddonContext,useConversations}.ts
-│   └── types/{messages.ts, storage.ts, errors.ts, addon.ts}
-│
-├── tests/
-├── wxt.config.ts
-├── src/index.css                           # Tailwind v4 @theme config
-└── tsconfig.json                           # strict: true
-```
-
-### 4.4 System Design Diagram
-
-```
-╔════════════════════════════════════════════════════════════════════════════════╗
-║  CHROME BROWSER PROCESS                                                          ║
-║                                                                                  ║
-║  ┌────────────────────────────────────────────────────────────────────────┐    ║
-║  │  BACKGROUND SERVICE WORKER (background.ts)        [ephemeral, ~30s idle] │    ║
-║  │  ┌────────────────┐ ┌────────────────┐ ┌────────────────┐               │    ║
-║  │  │ BackgroundRouter│ │ LifecycleMgr   │ │ KeepAliveMgr   │               │    ║
-║  │  │ typed onMessage │ │ onInstalled/   │ │ chrome.alarms  │               │    ║
-║  │  │ sender-validated│ │ onStartup      │ │ + 20s panel    │               │    ║
-║  │  └───────┬─────────┘ └────────────────┘ │ setInterval    │               │    ║
-║  │          │                               └────────────────┘               │    ║
-║  │  ┌───────▼────────┐ ┌────────────────┐ ┌────────────────┐                │    ║
-║  │  │ CookieSessionStore  │ │   CORSProxy    │ │ ContextMenuHost│                │    ║
-║  │  │ chrome.cookies  │ │ PROXY_FETCH    │ │ batch register │                │    ║
-║  │  │ storage.session │ │ credentials:inc│ │ from add-ons   │                │    ║
-║  │  └────────────────┘ └───────┬────────┘ └────────────────┘                │    ║
-║  └──────────────────────────────┼─────────────────────────────────────────-─┘    ║
-║         chrome.runtime.onMessage │ (MessageBus)   ▲ chrome.runtime.Port           ║
-║         ═════════════════════════╪════════════════╪═══════════════════════════    ║
-║                                  ▼                 │ (PortReader → AsyncIterable)  ║
-║  ┌────────────────────────────────────────────────────────────────────────┐    ║
-║  │  SIDE PANEL (sidepanel/main.tsx — React SPA)            [persistent]     │    ║
-║  │                                                                          │    ║
-║  │  MESSAGING:  MessageBus (cross-ctx) · PortReader (stream) ·              │    ║
-║  │              BroadcastBus (panel↔team-tab) · EventBus (same-page)        │    ║
-║  │  ───────────────────────────────────────────────────────────────────   │    ║
-║  │  AI AGENT ENGINE                                                         │    ║
-║  │    ProviderRegistry → {OpenAI,Anthropic,Gemini,Ollama,OpenAICompat}     │    ║
-║  │    AgentLoop(streamText maxSteps:15) ← toolAdapter.stepsToTools          │    ║
-║  │      ├ SkillRegistry → SkillRunner → ISkill.execute()                    │    ║
-║  │      ├ MCPRegistry → MCPClient → NowPilotMainServer(12 tools)            │    ║
-║  │      │     └ mcpToVercelAI                                               │    ║
-║  │      ├ PermissionGate (pause stream → confirm dialog)                    │    ║
-║  │      └ WorkflowRunner (Macro[] sequential, data-only, no eval)           │    ║
-║  │  ───────────────────────────────────────────────────────────────────   │    ║
-║  │  CONTEXT PIPELINE                                                        │    ║
-║  │    ContextWindowManager (budget ratios §6.7)                             │    ║
-║  │    ContextPack: sanitize→extract→convert→compress→budget                │    ║
-║  │    ContextManager (tabId→TabContext; pinned max 10)                      │    ║
-║  │    ContentExtractor → IContentStrategy → DefaultWebPageStrategy          │    ║
-║  │    compactHistory (head+summary+tail) · estimateTokens (4ch≈1tok)        │    ║
-║  │  ───────────────────────────────────────────────────────────────────   │    ║
-║  │  STORAGE LAYER (side panel only)                                         │    ║
-║  │    IndexedDB(idb): ChatHistoryDB · NotesDB · ErrorStore ·                │    ║
-║  │                    MemoryDB (conversation message bodies)                │    ║
-║  │    chrome.storage.local: MemoryStore(meta) · Setting<T> ·               │    ║
-║  │                    EncryptedStorage(AES-GCM) · FeatureFlags · Facts      │    ║
-║  │    chrome.storage.session: CookieSessionStore (JSESSIONID, sysparmCK)       │    ║
-║  │    chrome.storage.sync: theme, language                                 │    ║
-║  │  ───────────────────────────────────────────────────────────────────   │    ║
-║  │  KNOWLEDGE: NoteGraph · LinkParser · noteExpander · MiniSearchIndex<T>   │    ║
-║  │  PROMPT/SLASH: PromptManager · TemplateEngine · SlashCommandRegistry     │    ║
-║  │  OUTPUT/OBS: StructuredOutputRenderer · OutputFormatter · TokenLedger ·  │    ║
-║  │              PromptInspector · InsightEngine · debugLog                  │    ║
-║  │  SHELL/UI: SidepanelShell · SidePanelPageRegistry · ErrorBoundary ·      │    ║
-║  │            Toast · PortableMarkdown · KeymapRegistry(Cmd+K) ·            │    ║
-║  │            SpeechSynthesisService · useAddonContext()                    │    ║
-║  └──────────────────────────────────────────────────────────────────────-─┘    ║
-║                          ▲ chrome.scripting.executeScript                        ║
-║         ═════════════════╪══════════════════════════════════════════════════    ║
-║                          ▼                                                        ║
-║  ┌────────────────────────────────────────────────────────────────────────┐    ║
-║  │  CONTENT SCRIPT LAYER (per-tab; injected by ContentScriptHost)          │    ║
-║  │    ContentScriptHost (Shadow DOM, z-index budget)                        │    ║
-║  │    SPANavigationWatcher (MutationObserver → onNavigate)                  │    ║
-║  │    PageContextBridge (TabContext → side panel via MessageBus)            │    ║
-║  │    [ISOLATED] add-on content scripts   [MAIN] tokenBridge reads g_ck     │    ║
-║  └────────────────────────────────────────────────────────────────────────┘    ║
-║                                                                                  ║
-║  ┌────────────────────────────────────────────────────────────────────────┐    ║
-║  │  ADD-ON LAYER (via AddonRegistry; never imported by core)               │    ║
-║  │    AddonRegistry · AddonSettingsStore<T> · RateLimiter ·                 │    ║
-║  │    SelectionContextMenu (right-click → Ask AI) · ResearchSkill (/research) │    ║
-║  │    ┌── ServiceNow Add-on ────────────────────────────────────────┐     │    ║
-║  │    │ tokenBridge · pageExtractor · SNowTableClient(→CORSProxy) ·   │     │    ║
-║  │    │ CaseAnalyzer · CatchUp · Sentiment · CodeSearch · CaseInsight │     │    ║
-║  │    └──────────────────────────────────────────────────────────────┘     │    ║
-║  └────────────────────────────────────────────────────────────────────────┘    ║
-║                                                                                  ║
-║  CHROME API HOSTS (SW wrappers; add-ons never call chrome.* directly):           ║
-║    ContextMenuHost · TabManager · NotificationsManager · OmniboxHandler ·        ║
-║    ClipboardHelper · Scheduler · WebhookManager · DataPortability                ║
-╚════════════════════════════════════════════════════════════════════════════════╝
-
-Communication legend:
-  chrome.runtime.onMessage  → MessageBus (typed, sender-validated by BackgroundRouter)
-  chrome.runtime.Port       → PortReader (AsyncIterable streaming SW↔panel)
-  BroadcastChannel          → BroadcastBus (side panel ↔ team tabs)
-  EventBus.emit/on          → in-process, same side-panel page only
-  chrome.scripting          → ContentScriptHost injection
-  IndexedDB (idb)           → ChatHistoryDB, NotesDB, ErrorStore, MemoryDB
-```
-
-### 4.5 Core Utilities Reference
-
-These modules live in `src/core/`. All must be built before any add-on that depends on them. Summaries only; full API in the core-packages reference document.
-
-| Module | File | One-line contract | Phase |
-|---|---|---|---|
-| `EventBus` | `core/events/EventBus.ts` | Typed in-process pub/sub; same-page only; synchronous handlers | 1 |
-| `AddonSettingsStore<T>` | `core/registry/AddonSettingsStore.ts` | `for<T>(addonId, schema, defaults)`; key `np_addon_<id>` | 1 |
-| `SidePanelPageRegistry` | `core/registry/SidePanelPageRegistry.ts` | Add-ons register nav tabs; shown when URL matches | 1 |
-| `KeymapRegistry` | `core/input/KeymapRegistry.ts` | Global keydown listener; Cmd+K palette; conflict detection | 1 |
-| `ErrorBoundary` / `Toast` / `PortableMarkdown` | `core/components/*` | Error fallback / toasts / XSS-safe markdown | 1 |
-| `RateLimiter` | `core/utils/RateLimiter.ts` | `for(key,{maxPerMinute,maxBurst})`; token bucket; respects AbortSignal | 2 |
-| `MiniSearchIndex<T>` | `core/search/MiniSearchIndex.ts` | Typed minisearch factory | 3 |
-| `SelectionContextMenu` | `addons/global/SelectionContextMenu.ts` | Global add-on; right-click selection → Ask AI | 6 |
-| `SpeechSynthesisService` | `core/speech/SpeechSynthesisService.ts` | TTS only; `speak/stop/isSpeaking` | 8 |
-
-**Note:** `AddonSettingsStore`, `SidePanelPageRegistry`, and `KeymapRegistry` are scaffolded in Phase 1 (the SidepanelShell and Cmd+K palette depend on them) but only exercised once the ServiceNow add-on lands in Phase 7.
-
-### 4.6 Page Injection Architecture
-
-NowPilot supports controlled page injection through the core `ContentScriptHost`.
-
-#### Core Responsibilities (Injection Framework)
-
-Core manages the injection lifecycle and must remain domain-agnostic:
-
-- content script initialization
-- Shadow DOM mount creation (default: `mode: 'closed'`)
-- mount / update / unmount lifecycle
-- SPA navigation detection via `MutationObserver`
-- safe DOM write rules (no `innerHTML`)
-- z-index budget management (avoid UI conflicts)
-- injection cleanup on navigation/unload
-- page context bridge messaging to side panel
-
-Core MUST NOT include:
-- site-specific DOM selectors
-- site-specific UI components
-- ServiceNow-specific logic
-
----
-
-#### Add-on Responsibilities (Injected Content)
-
-Add-ons define what to inject and where:
-
-- injected React components
-- scoped Shadow DOM styles
-- URL matching rules (`urlPatterns`)
-- page-specific context extraction
-- page-specific UI interactions and actions
-
----
-
-#### Injection Flow
-
-```text
-Add-on declares injection target
-  ↓
-InjectionRegistry matches URL
-  ↓
-ContentScriptHost creates Shadow DOM
-  ↓
-Add-on render() executes
-  ↓
-SPA navigation triggers update/unmount
-```
-
----
-
-## §5 — Feature Specification
-
-### 5.1 Core Features (always available)
-
-| Feature | Description | Priority |
-|---|---|---|
-| Side panel shell | Nav rail, theme, Cmd+K palette, error boundaries | P0 |
-| Theme system | Light / dark / auto | P0 |
-| Feature flags | Per-feature enable/disable via chrome.storage.local | P0 |
-| First-run onboarding | Welcome + provider setup (Flow 9) | P0 |
-| Settings page | General, providers, prompts, skills/MCP, data | P0 |
-| AI chat (streaming) | Multi-turn with abort, message actions | P0 |
-| 5 AI providers | OpenAI, Anthropic, Gemini, Ollama, OpenAI-compatible | P0 |
-| Model selector | Per-provider model list | P0 |
-| Chat history | Named sessions, search, star, restore, delete | P0 |
-| Prompt templates | Slash command picker, `{{variable}}` interpolation | P1 |
-| Write preset | Built-in prompt template; `/write` slash command (style/length/language) | P1 |
-| Ask preset | Built-in prompt template; `/ask` over pinned-tab/page context + SourceCards | P1 |
-| Notes (atomic) | CRUD, tags, `[[wikilinks]]`, backlinks, graph view | P0 |
-| Note/history search | Full-text over notes + chat history (MiniSearch); surfaced in Cmd+K, no dedicated page | P1 |
-| LLM Wiki | Suggest links, expand note, extract concepts (user-triggered) | P1 |
-| Agent mode | Multi-step tool calling, permission prompts, WorkflowRunner | P1 |
-| Tab pinning | Pin up to 10 browser tabs as AI context | P1 |
-| Context menu | Right-click selection → Ask AI (SelectionContextMenu) | P1 |
-| Research (global tool) | Web research via skill + MCP/web-search tools; replaces the old Search page (see §5.4) | P1 |
-| Structured output | JSON, table, checklist, report renderers | P1 |
-| Data export/import | Notes, chat history, memory as JSON/ZIP | P1 |
-| Webhook manager | Outbound POST on events; retry queue | P2 |
-| Prompt inspector | Tool logs, token usage, cost estimate, debug mode | P1 |
-| Insight engine | Pattern detection over time (nightly scheduled) | P2 |
-| Personal Knowledge Layer | RAG over notes via MiniSearch + bag-of-words | P1 |
-| SpeechSynthesis (TTS) | Reads AI responses aloud; offline | P2 |
-| Keyboard shortcuts | KeymapRegistry; Cmd+K palette; add-on extensible | P1 |
-| Add-on nav tabs | SidePanelPageRegistry; dynamic nav rail from add-ons | P1 |
-
-### 5.2 Add-on Contract
-
-```typescript
-interface Addon {
-  id: string;
-  name: string;
-
-  // Add-on scope
-  scope: 'site' | 'global';
-
-  // High-level URL matching (required when scope === 'site')
-  urlPatterns?: string[];
-
-  // Page injection definition (Core handles lifecycle; Add-on provides content)
-  contentScript?: IContentAddon;
-
-  // Page context extraction (domain-specific)
-  contextExtractor?: IContextExtractor;
-
-  // AI skills provided by the add-on
-  skills?: ISkill[];
-
-  // Prompt templates provided by the add-on
-  prompts?: PromptTemplate[];
-
-  // Scoped CSS for Shadow DOM injection
-  styles?: string;
-
-  // Add-on specific settings schema (validated via Zod)
-  addonSettings?: z.ZodSchema<unknown>;
-
-  // Additional side panel pages (nav rail tabs)
-  pages?: SidePanelPageRegistration[];
-
-  // Keyboard shortcuts
-  keymap?: KeymapRegistration[];
+# Appendix C — Canonical Type Registry (MANDATORY)
+
+Every type declared here is the single source of truth. If a module needs a shape that is not in this appendix, it must be added here before implementation.
+
+```ts
+// src/core/runtime/RuntimeEnvelope.ts
+export interface RuntimeEnvelope<T = unknown> {
+  id: string;                     // crypto.randomUUID()
+  type: MessageTypeValue;         // Appendix E
+  createdAt: number;
+  source: 'sidepanel' | 'background' | 'content' | 'addon';
+  target?: 'sidepanel' | 'background' | 'content' | 'addon';
+  payload: T;
 }
 
+export type ResponseEnvelope<T = unknown> =
+  | { id: string; ok: true;  data: T }
+  | { id: string; ok: false; error: { code: string; message: string; retryable: boolean } };
 
-/**
- * Page Injection Contract (Add-on side)
- * 
- * Core (ContentScriptHost) manages:
- * - injection lifecycle
- * - Shadow DOM mount
- * - SPA navigation detection
- * - cleanup
- * 
- * Add-on provides:
- * - what to inject
- * - where to inject
- * - how to render UI
- */
-interface IContentAddon {
-  id: string;
+// src/core/ai/types.ts
+export type ProviderId =
+  | 'openai' | 'anthropic' | 'gemini' | 'ollama' | 'openai-compatible';
 
-  // URL match patterns for injection (fine-grained control)
-  matches: string[];
-
-  // Injection mode (fixed for v0.1)
-  mountMode: 'shadow-dom';
-
-  // Shadow DOM configuration
-  shadowMode?: 'open' | 'closed'; // default: 'closed'
-
-  // Optional z-index override for injected UI
-  zIndex?: number;
-
-  // Decide whether injection should occur for current page
-  shouldInject(ctx: PageContext): boolean;
-
-  // Render injected UI (React)
-  render(ctx: PageContext): React.ReactNode;
-
-  // Called when SPA navigation occurs
-  onNavigate?(ctx: PageContext): void;
-
-  // Cleanup when unmounted
-  cleanup?(): void;
+export interface ContentBlock {
+  type: 'text' | 'image' | 'tool_use' | 'tool_result';
+  text?: string;
+  imageUrl?: string;
+  toolName?: string;
+  toolInput?: unknown;
+  toolResult?: unknown;
 }
-```
-
-### 5.3 ServiceNow Add-on Features
-
-| Feature | Priority | Notes |
-|---|---|---|
-| JSESSIONID extraction | P0 | Via CookieSessionStore (core SW) + ServiceNowSessionAdapter (add-on semantics) |
-| sysparmCK extraction | P0 | Via MAIN-world content script → ServiceNowSessionAdapter → CookieSessionStore |
-| Case context extraction | P0 | IContextExtractor impl reading case DOM |
-| Table API client | P0 | SNowTableClient via CORSProxy; rate-limited by RateLimiter |
-| CaseAnalyzerSkill | P0 | AI analysis of case details |
-| CatchUpSkill | P0 | 24h case activity digest |
-| SentimentSkill | P1 | Case communication sentiment |
-| CodeSearchSkill | P1 | ServiceNow code search; chunking contract §10.4; needs Sonnet-class agent |
-| CaseInsightBox | P1 | Shadow DOM panel on case pages |
-| CSS enhancements | P1 | Scoped visual improvements |
-
-### 5.4 RESOLVED — Placement of Write / Ask / Search / PDF / Research
-
-**Status: DECIDED (George, 2026-06-28).** Decisions below are final for v0.1.
-
-| Surface | Decision | Implementation |
-|---|---|---|
-| **Write** | **Built-in prompt preset** | `core/prompts/builtinTemplates.ts`, surfaced via `/write` slash command (style/length/language params). No page. |
-| **Ask** | **Built-in prompt preset** | `/ask` slash command; runs over pinned-tab/page context with SourceCard rendering. No page. |
-| **Search page** | **REMOVED** | The old Search page intended to search the *internet*, which overlaps with Research. Note/chat-history search is retained as a Cmd+K capability backed by `MiniSearchIndex`. No `SearchPage.tsx`. |
-| **Research** | **NEW — global tool** | A `ResearchSkill` (global add-on) that performs web research via skill + MCP/web-search tools. Lives under `addons/global/`; surfaced in `ToolsPage` and via `/research`. See below. |
-| **PDF chat** | **REMOVED** | No longer required. `PDFPage.tsx`, `FileDB`, and `pdfjs-dist` are dropped from v0.1. |
-
-**Resulting core nav rail:** `Chat | Note | Agent | Tools`. Write/Ask/Research are slash commands; Research + structured-output/inspector live under Tools.
-
-**Research (global tool) contract:**
-- Lives at `src/addons/global/ResearchSkill.ts` — a `global`-scope add-on (runs on any page; no `urlPatterns`).
-- `inputSchema`: `{ query: string, maxSources?: number }`.
-- Uses, in priority order: (1) any user-connected MCP web-search server via `MCPClient`; (2) a built-in web-search MCP tool if configured; (3) graceful failure message if neither is available (no silent fallback to model-only answers).
-- `outputSchema`: `{ answer: string, sources: Array<{ title: string; url: string; snippet: string }> }`, rendered with `SourceCard`.
-- Subject to `PermissionGate` (web fetch is a dangerous tool) and `RateLimiter`.
-
-**Why Research is a global add-on, not core:** it depends on *external* tools (MCP web-search servers) the user connects, which is exactly the add-on extension surface. Write/Ask/note-search depend only on core stores and stay core.
-
-**Removed files** (were in §4.3 / Phase 5): `WritePage.tsx`, `AskPage.tsx`, `SearchPage.tsx`, `PDFPage.tsx`, `FileDB.ts`. Removed package: `pdfjs-dist`.
-
----
-
-## §6 — AI & MCP Integration Architecture
-
-### 6.1 Provider Interface
-
-```typescript
-// src/core/ai/ILLMProvider.ts
-import type { LanguageModel } from 'ai';
 
 export interface LLMMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
@@ -1943,11 +2582,10 @@ export interface LLMOptions {
   maxTokens?: number;
   temperature?: number;
   stream?: boolean;
-  tools?: ToolDefinition[];
+  tools?: BuiltinTool[];
   abortSignal?: AbortSignal;
 }
 
-// Canonical chunk shape yielded to the UI. AgentLoop maps Vercel fullStream → this. (§6.4)
 export interface LLMStreamChunk {
   type: 'text' | 'tool_use' | 'tool_result' | 'done' | 'error';
   content: string;
@@ -1963,1248 +2601,169 @@ export interface ModelInfo {
   group: 'local' | 'cloud';
 }
 
-export interface ILLMProvider {
-  id: 'openai' | 'anthropic' | 'gemini' | 'ollama' | 'openai-compatible';
+export interface ProviderConfig {
+  id: ProviderId;
+  label: string;
+  apiKey?: string;               // AES-GCM encrypted at rest
+  baseURL: string;
+  customBaseURL?: string;
+  models: string[];
+  contextWindow: number;
+  supportsTools: boolean;
+  enabled: boolean;
+  priority: number;
+  lastValidated?: number;
+}
+
+// src/core/content/PageContext.ts
+export interface PageContext {
+  url: string;
+  origin: string;
+  hostname: string;
+  title: string;
+  html?: string;                  // sanitized, optional
+  markdown?: string;              // derived by Turndown
+  meta: Record<string, string>;
+  extractedAt: number;
+  addonId?: string;               // when an add-on produced enriched fields
+  addonFields?: Record<string, unknown>;
+}
+
+export interface TabContext {
+  tabId: number;
+  windowId: number;
+  page: PageContext;
+  pinnedAt?: number;
+}
+
+export interface SNowCaseData {
+  caseId: string;
+  number: string;
+  shortDescription: string;
+  description: string;
+  state: string;
+  priority: string;
+  assignedTo?: string;
+  openedAt: number;
+  updatedAt: number;
+  latestComments: Array<{ author: string; body: string; at: number }>;
+  workNotes: Array<{ author: string; body: string; at: number }>;
+}
+
+export interface FileContext {
+  id: string;
   name: string;
-  chat(messages: LLMMessage[], options: LLMOptions): AsyncIterable<LLMStreamChunk>;
-  getModels(): Promise<ModelInfo[]>;
-  validateConfig(config: ProviderConfig): Promise<boolean>;
-  getAISDKModel(model: string): LanguageModel;   // returns the @ai-sdk/* model handle
-}
-```
-
-### 6.2 Five Provider Implementations
-
-All providers use Vercel AI SDK adapters. No raw vendor SDKs.
-
-| Provider ID | AI SDK adapter | Default baseURL | Supports tools |
-|---|---|---|---|
-| `openai` | `@ai-sdk/openai` `createOpenAI` | `https://api.openai.com/v1` | Yes |
-| `anthropic` | `@ai-sdk/anthropic` `createAnthropic` | `https://api.anthropic.com` | Yes |
-| `gemini` | `@ai-sdk/google` `createGoogleGenerativeAI` | Fixed (Google Cloud) | Yes |
-| `ollama` | `@ai-sdk/openai` `createOpenAI` | `http://localhost:11434/v1` | Model-dependent |
-| `openai-compatible` | `@ai-sdk/openai` `createOpenAI` | User-supplied | Model-dependent |
-
-**Ollama note:** pass `apiKey: 'ollama'` (non-empty string required by SDK even though Ollama ignores it). Default context is 2048 tokens — warn user to set `num_ctx` in a Modelfile for 128K (Flow 5).
-
-**baseURL precedence:** `ProviderRegistry` computes `resolvedBaseURL = customBaseURL ?? baseURL` once at construction. Providers only ever read `resolvedBaseURL`.
-
-### 6.3 Provider Config Schema
-
-```typescript
-const ProviderConfigSchema = z.object({
-  id: z.enum(['openai', 'anthropic', 'gemini', 'ollama', 'openai-compatible']),
-  label: z.string().trim().min(1).max(50),
-  apiKey: z.string().optional(),              // AES-GCM encrypted at rest
-  baseURL: z.string().url(),                  // default filled by ProviderRegistry
-  customBaseURL: z.string().url().optional(), // user override; replaces baseURL
-  models: z.array(z.string().min(1)).min(1).max(10)
-            .refine(a => new Set(a).size === a.length, 'models must be unique'),
-  contextWindow: z.number().int().min(1024).max(2_000_000),
-  supportsTools: z.boolean(),
-  enabled: z.boolean(),
-  priority: z.number().int().min(0),          // sort order; lower = higher priority
-  lastValidated: z.number().int().optional(),
-});
-```
-
-### 6.4 Agent Loop (with canonical mapping)
-
-```typescript
-// src/core/ai/AgentLoop.ts
-import { streamText } from 'ai';
-import { stepsToTools } from './toolAdapter';        // canonical (§0.4)
-import { mcpToVercelAI } from '../mcp/mcpToVercelAI';  // canonical (§0.4)
-import type { LLMStreamChunk } from './ILLMProvider';
-
-export async function* agentLoop(
-  prompt: string,
-  ctx: StepContext,
-): AsyncIterable<LLMStreamChunk> {
-  const result = streamText({
-    model: ctx.provider.getAISDKModel(ctx.model),
-    prompt,
-    tools: { ...mcpToVercelAI(ctx.mcp), ...stepsToTools(ctx.skills, () => ctx) },
-    maxSteps: 15,
-    abortSignal: ctx.abortSignal,
-    onStepFinish: ({ stepType, toolCalls }) =>
-      ctx.progress(`${stepType}: ${toolCalls?.length ?? 0} tool calls`),
-  });
-
-  for await (const part of result.fullStream) {
-    yield mapPartToChunk(part);   // mapping below
-  }
+  mime: string;
+  sizeBytes: number;
+  textPreview?: string;           // sanitized
 }
 
-// Canonical mapping: Vercel AI SDK fullStream part → LLMStreamChunk
-function mapPartToChunk(part: any): LLMStreamChunk {
-  switch (part.type) {
-    case 'text-delta':  return { type: 'text',        content: part.textDelta };
-    case 'tool-call':   return { type: 'tool_use',    content: '', toolName: part.toolName, toolInput: part.args };
-    case 'tool-result': return { type: 'tool_result', content: '', toolName: part.toolName, toolInput: part.result };
-    case 'finish':      return { type: 'done',        content: '' };
-    case 'error':       return { type: 'error',       content: String(part.error) };
-    default:            return { type: 'text',        content: '' };
-  }
+export interface NoteContext {
+  id: string;
+  title: string;
+  snippet: string;                // ≤ 500 chars
+  tags: string[];
+  score: number;                  // 0..1 relevance
 }
-```
 
-### 6.5 StepContext
-
-```typescript
-export interface StepContext {
-  provider: ILLMProvider;
-  model: string;
-  abortSignal: AbortSignal;
-  permissions: PermissionChecker;
-  progress: (msg: string) => void;
-  log: (msg: string) => void;
-  mcp: MCPClient;
-  memory: MemoryStore;
-  skills: ISkill[];
-}
-```
-
-### 6.6 MCP Client + NowPilotMainServer (12 built-in tools)
-
-- Lives in the side panel page only. Never in the background SW.
-- Uses `@modelcontextprotocol/sdk` `Client` + `StreamableHTTPClientTransport`.
-- Never hand-roll SSE parsing — the SDK handles `data:`/`event:`/`id:` framing.
-- First-time tool call triggers a permission dialog (Flow 2). Allow/deny stored in `np_mcp_permissions`.
-- Dangerous tools (write/delete/post) always prompt, regardless of allow list.
-
-`NowPilotMainServer` (`core/mcp/NowPilotMainServer.ts`) exposes 12 built-in tools as Vercel AI SDK `tool()` definitions, available without any external MCP server. Registered by `MCPRegistry` at startup. Each has a Zod `inputSchema` and a `dangerous` flag gating Flow 2.
-
-| # | Tool name | Input (Zod) | dangerous | Effect |
-|---|---|---|---|---|
-| 1 | `get-page-content` | `{ tabId?: number }` | no | Returns active/pinned tab TabContext text |
-| 2 | `search-notes` | `{ query: string, limit?: number }` | no | MiniSearch over notes |
-| 3 | `create-note` | `{ title: string, content: string, tags?: string[] }` | **yes** | Writes a note to NotesDB |
-| 4 | `get-chat-history` | `{ sessionId?: string, limit?: number }` | no | Returns recent messages |
-| 5 | `pin-tab` | `{ tabId: number }` | no | Pins a tab as context (max 10) |
-| 6 | `read-clipboard` | `{}` | no | Reads clipboard text |
-| 7 | `write-clipboard` | `{ text: string }` | **yes** | Writes clipboard text |
-| 8 | `get-provider-info` | `{}` | no | Active provider + model + limits |
-| 9 | `run-skill` | `{ skillId: string, input: unknown }` | **yes** | Invokes a registered skill |
-| 10 | `list-skills` | `{}` | no | Lists registered skills |
-| 11 | `export-data` | `{ scopes: string[] }` | **yes** | Builds an export bundle (no API keys) |
-| 12 | `execute-webhook` | `{ event: string, payload: unknown }` | **yes** | Fires a registered webhook |
-
-### 6.7 Context Window Management
-
-```typescript
-// src/core/context/ContextWindowManager.ts
-// Priority (high→low); drops lowest first:
-//  1. System prompt (always kept)
-//  2. Pinned tabs (≤10, ~2K each, hard cap 20K total)
-//  3. Active note + 1-hop backlinks (hard cap 2K)
-//  4. Recent chat history — last 6 turns (always kept)
-//  5. Older chat history — summarized by compactHistory()
-//  6. Current page auto-extract (≤2K)
-
-const CONTEXT_BUDGET_RATIOS = {
-  systemPrompt: 0.05, pinnedTabs: 0.35, notes: 0.10,
-  recentHistory: 0.15, olderHistory: 0.25, currentPage: 0.10,
-};
-export function estimateTokens(text: string): number { return Math.ceil(text.length / 4); }
-```
-
-### 6.8 endpoints.ts contents (NEW — resolves "URLs never listed")
-
-```typescript
-// src/core/config/endpoints.ts — the ONLY place external URLs may appear.
-export const ENDPOINTS = {
-  openai:    'https://api.openai.com/v1',
-  anthropic: 'https://api.anthropic.com',
-  gemini:    'https://generativelanguage.googleapis.com',
-  ollama:    'http://localhost:11434/v1',
-  serviceNow: {
-    hosts: ['*://*.service-now.com/*', '*://support.servicenow.com/*'],
-    tableApi: (instance: string, table: string) => `https://${instance}/api/now/table/${table}`,
-  },
-} as const;
-// User overrides are read from chrome.storage.local.np_endpoint_overrides and merged at load.
-
-// v0.1.1 note: provider defaults stay here. Domain add-ons should declare domain endpoints
-// through EndpointRegistry where practical. ServiceNow endpoint semantics should live in
-// addons/servicenow/config/serviceNowEndpoints.ts, while core/endpoints.ts remains the
-// central resolver and validator.
-```
-
-### 6.9 CORSProxy — generic authenticated cross-origin fetch (NEW)
-
-`CORSProxy` (`core/chrome/CORSProxy.ts`) is **generic core infrastructure**, not ServiceNow-specific. It runs in the background SW (where extension privileges allow `credentials: 'include'` cross-origin fetch) and serves **any** add-on that needs authenticated requests to a host the side panel cannot reach directly.
-
-**Message name is generic: `PROXY_FETCH`** (was `SN_REST_REQUEST`). The ServiceNow add-on is just the first caller.
-
-```typescript
-// types/messages.ts
-interface ProxyFetchRequest {
-  type: 'PROXY_FETCH';
-  addonId: string;                 // caller add-on; used for logging + RateLimiter scoping
-  url: string;                     // MUST match a host the add-on declared in host_permissions
-  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
-  headers?: Record<string, string>;   // User-Agent is stripped (§0.1)
-  body?: string;
-  credentials?: 'include' | 'omit';    // default 'include'
-}
-interface ProxyFetchResponse { ok: boolean; status: number; body: string; error?: string }
-```
-
-**Rules:**
-1. `BackgroundRouter` validates `sender.id === chrome.runtime.id` before dispatch (§12.2).
-2. The SW checks `url`'s host against the union of declared `host_permissions`; a host not declared by any installed add-on → `{ ok:false, status:0, error:'HOST_NOT_PERMITTED' }`. **No open proxy.**
-3. Wrapped in the 25s `Promise.race` timeout (§9.3).
-4. Per-add-on `RateLimiter` keyed by `addonId` (§4.5).
-5. The proxy never logs request bodies or response bodies to `ErrorStore` (may contain tokens/PII); only `{ addonId, host, status }`.
-
-**ServiceNow usage:** `SNowTableClient` sends `PROXY_FETCH` with `addonId: 'servicenow'` and a `*.service-now.com` URL; `CookieSessionStore` injects the `JSESSIONID` cookie + `sysparmCK` header before the SW fetch. Future add-ons (e.g. a Jira or GitHub add-on) reuse the same `PROXY_FETCH` path with their own declared hosts — no new message type needed.
-
----
-
-## §7 — Critical User Flows
-
-Authoritative behaviors. When phase tasks conflict with these flows, these flows win.
-
-### Flow 1 — Send a Chat Message
-
-WHEN: User presses Enter / clicks Send.
-IF no provider configured → modal: "Configure an AI provider in Settings first."
-ELSE:
-1. `useChat` runs slash check: `input.match(/^\/([a-z-]+)\b\s*(.*)$/s)`. If match and command found → route to handler. Else → LLM.
-2. Assemble context via `ContextWindowManager.assemble()` (pinned tabs, current page, notes, history).
-3. Call `ProviderRegistry.getActive().chat(messages, options)` from the side panel.
-4. Stream `LLMStreamChunk`s via `agentLoop` → render progressively in `ChatMessage` using `PortableMarkdown`.
-5. On stream end: append message to `ChatHistoryDB`. On the **first** message of a session, generate a title (see Flow 1a). Fire `EventBus.emit('chat:message-saved', { sessionId })`.
-6. On provider error: toast `[Retry] [Switch Provider] [Open Settings]`.
-
-EXPECT: tokens stream visually; abort button visible during stream.
-
-### Flow 1a — Title Generation (resolves N3)
-
-WHEN: first assistant message of a session completes.
-DO:
-1. One LLM call, `temperature: 0`, `maxTokens: 16`, system prompt **verbatim**:
-   `"Summarize this message as a 3-6 word title. Reply with the title only, no quotes."`
-2. User content = the first user message (truncated to 500 chars).
-3. On success: `session.title = result.trim().slice(0, 60)`.
-4. On empty/error/timeout(3s): `session.title = firstUserMessage.slice(0, 40) + '…'`. **Never block session save on titling.**
-
-### Flow 2 — Tool Call Permission
-
-WHEN: agent requests a tool not in the allow list, OR any tool with `dangerous: true`.
-DO:
-1. Pause the stream.
-2. Dialog: "NowPilot wants to call `<toolName>`: `<description>`" with `[Allow once]` `[Allow always]`.
-3. Allow once → call tool; do NOT persist.
-4. Allow always → persist `{ toolName, allow: true, grantedAt }` in `np_mcp_permissions`; then call. (Dangerous tools persist allow but STILL prompt next time.)
-5. Dismiss → inject `tool_result: { error: 'PERMISSION_DENIED' }`; LLM informs user.
-6. Resume stream after tool result injected.
-EDGE: if user dismisses by closing the panel mid-prompt → treat as deny, end stream cleanly.
-
-### Flow 3 — Save a Note with Wikilinks
-
-WHEN: user saves a note containing `[[Some Other Note]]`.
-DO:
-1. `LinkParser.parseLinks(content)` → `[{ targetTitle, raw }]`.
-2. `LinkParser.resolveLinks(targets, allNotes)` matches case-insensitive title → `noteId` or unresolved.
-3. **Tie-break:** if multiple notes share a title, link the most recently `updated`; surface a disambiguation chip on the link.
-4. `NotesDB.put(note)` writes `note.links = [resolvedNoteId...]`. `links[]` always recomputed from content; never hand-edited.
-5. Backlinks never stored — computed at query time via `by-link` index.
-6. Fire `EventBus.emit('note:saved', { noteId })`; search index updates async.
-
-### Flow 4 — Tab Pinning
-
-WHEN: user clicks "Pin this tab".
-IF `tab.url` starts with `chrome://` / `chrome-extension://` → toast "Cannot pin this page."
-DO:
-1. `chrome.tabs.query({ active: true, currentWindow: true })`.
-2. `chrome.scripting.executeScript({ target:{tabId}, files:['content-script-bundle.js'] })`. 5s timeout.
-3. Send `EXTRACT_PAGE_CONTENT`.
-4. Content script: `ContentExtractor.select(url)` → strategy → extract → `TabContext`.
-5. `ContextManager.pin(tabId, tabContext)`.
-6. Show in ChatPage toolbar. Max 10 (else toast "Maximum 10 pinned tabs. Remove one first.").
-
-### Flow 5 — Local Model Context Warning
-
-WHEN: user selects an Ollama model.
-DO:
-1. `validateConfig()` sends a short test request.
-2. If reported context window ≤ 4096 tokens → settings warning: "Ollama is using a 2048-token context. For 128K, create a Modelfile with `PARAMETER num_ctx 131072`." (single threshold: **4096**.)
-3. Copy-to-clipboard button for the Modelfile content.
-
-### Flow 6 — Data Export
-
-WHEN: user clicks "Export data".
-DO:
-1. Dialog with checkboxes: Notes, Chat history, Memory, Prompts, Settings.
-2. Collect from IndexedDB + chrome.storage.local.
-3. **Sanitize:** deep-clone settings, `delete` `apiKey` from every `ProviderConfig`; assert no bundle string matches `/sk-|key-/`. Abort export if assertion fails.
-4. Serialize JSON; if > 1MB, ZIP with `fflate`.
-5. Download via `window.showSaveFilePicker()` or anchor click.
-
-### Flow 7 — Webhook Fire
-
-WHEN: a registered webhook event occurs.
-DO:
-1. `WebhookManager.fire(event, payload)`.
-2. `POST url` JSON, 5s timeout.
-3. 2xx → done.
-4. Fail → retry queue (max 3, backoff 30s/5m/30m).
-5. Log to `PromptInspector` regardless.
-
-### Flow 8 — Keyboard Shortcut
-
-WHEN: user presses a registered combo.
-DO:
-1. `KeymapRegistry` global `keydown` listener matches registered shortcuts.
-2. Match → call handler, `preventDefault()`.
-3. No match + `Cmd+K` → open command palette (Flow 10).
-
-### Flow 9 — First-Run Onboarding (NEW — resolves missing P0 flow)
-
-WHEN: `LifecycleManager.onInstalled` fires (fresh install), OR side panel opens with zero configured providers.
-DO:
-1. Render `OnboardingModal` over a disabled ChatPage. Step 1: welcome + privacy note.
-2. Step 2: pick a provider (radio: OpenAI / Anthropic / Gemini / Ollama / OpenAI-compatible).
-3. Step 3: enter API key (or baseURL for Ollama/compatible). Key is AES-GCM encrypted on save.
-4. Step 4: `validateConfig()` → "Testing connection…" → "Connected" or "Connection failed: [error]".
-5. On success: persist `ProviderConfig`, set `enabled: true, priority: 0`, close modal, focus composer.
-6. "Skip for now" allowed → ChatPage shows the no-provider modal from Flow 1 until configured.
-EXPECT: a brand-new user reaches a working chat without reading docs.
-
-### Flow 10 — Command Palette (Cmd+K) (NEW — resolves missing command set)
-
-WHEN: user presses `Cmd+K` (mac) / `Ctrl+K` (win) with no higher-priority registered match.
-DO: open overlay listing commands, filtered as the user types. v0.1 command set:
-| Command | Action |
-|---|---|
-| New chat | Clears composer, starts a fresh session |
-| Search history | Opens chat-history search |
-| Switch provider | Opens model/provider selector |
-| Open settings | Navigates to Settings page |
-| Toggle theme | Cycles light → dark → auto |
-| Pin current tab | Runs Flow 4 |
-| New note | Opens NotePage in create mode |
-Plus any add-on shortcuts registered via `KeymapRegistry`. Enter runs; Esc closes.
-
----
-
-## §8 — Component State Matrix
-
-Every page must render these exact states with these exact strings.
-
-| Component | Loading | Empty | Error | Success |
-|---|---|---|---|---|
-| ChatPage | "Connecting to provider..." | "Start a conversation" | "Provider error. [Retry] [Switch Provider]" | Message stream visible |
-| NotePage | "Loading notes..." | "No notes yet. Press + to create one." | "Failed to load notes. [Retry]" | Note list |
-| AgentPage | "Preparing agent..." | "Describe a task and the agent will plan steps" | "Agent error: [message]. [Retry]" | Step progress visible |
-| Research (Tools) | "Researching..." | "Enter a research question" | "Research failed: no web-search tool connected. [Open Settings]" | Answer + SourceCards |
-| ChatHistoryDB load | Skeleton shimmer | "No conversations yet" | "Failed to load history" | Conversation list |
-| MCP tool call | "Calling [toolName]..." | — | "Tool failed: [error]. [Retry tool]" | Tool result card |
-| Tab pin | "Extracting page content..." | — | "Cannot pin this page. Try a regular web page." | Page title + remove button |
-| Provider validation | "Testing connection..." | — | "Connection failed: [error]" | "Connected" |
-| Onboarding | "Testing connection..." | — | "Connection failed: [error]" | "Connected" → composer focus |
-
----
-
-## §9 — Concurrency and Race-Condition Rules
-
-1. **One stream per session.** `useChat` aborts the active stream before starting a new one.
-2. **IndexedDB writes are transactions.** Use a single `idb` transaction for stores that must stay consistent.
-3. **Background SW fetch wrapped in 25s `Promise.race`** returning `{ error: 'TIMEOUT' }`. (Chrome may kill the SW ~30s idle; the 25s cap leaves a 5s margin.)
-4. **Tab context timeout 5s.** `executeScript` + round-trip must finish in 5s or cancel.
-5. **Abort propagation.** One `AbortController` signal threaded through `streamText`, `StepContext.abortSignal`, and every `fetch()` in skill `execute`.
-6. **Settings writes serialized.** Never write two `Setting<T>` keys concurrently; `await` sequentially.
-7. **Memory writes single-writer.** `MemoryStore` metadata and `MemoryDB` bodies are written from the side panel only; eviction completes before the next append. Cross-window coordination via `BroadcastBus` (last-write-wins with `version` check).
-8. **EventBus handlers are synchronous.** Handlers must not await directly — spawn an internal Promise; never let errors escape the handler (catch + `debugLog`).
-9. **RateLimiter is per-instance.** Each add-on owns its limiter; never shared.
-
----
-
-## §10 — Skills & Tooling Framework
-
-### 10.1 Skill Interface
-
-```typescript
-export interface ISkill {
-  id: string;                           // slug, e.g. 'case-analyzer'
+// src/core/prompts/types.ts
+export interface PromptTemplate {
+  id: string;
   name: string;
   description: string;
-  requiredContext: (keyof SkillContext)[];
-  inputSchema: z.ZodSchema<unknown>;
-  outputSchema: z.ZodSchema<unknown>;
-  execute(context: SkillContext): AsyncIterable<SkillResult>;
-  abort(): void;
+  slash?: string;                 // e.g. '/write'
+  variables: Array<{
+    name: string;
+    kind: 'string' | 'number' | 'enum';
+    values?: string[];
+    default?: string | number;
+    required: boolean;
+  }>;
+  systemTemplate: string;         // {{variable}} interpolation
+  userTemplate: string;
 }
 
-export interface SkillContext {
-  provider: ILLMProvider;
-  model: string;
-  abortSignal: AbortSignal;
-  pageData?: TabContext;
-  caseData?: SNowCaseData;
-  uploadedFiles?: FileContext[];
-  chatHistory?: LLMMessage[];
-  noteContext?: NoteContext[];
-}
-
-export interface SkillResult {
-  type: 'text' | 'structured' | 'card-grid' | 'list' | 'error' | 'action';
-  content: string;
-  data?: unknown;
-  cards?: SkillCard[];
-  actions?: SkillAction[];
-}
-```
-
-### 10.2 Slash Command Parsing
-
-```typescript
-const m = input.match(/^\/([a-z-]+)\b\s*(.*)$/s);
-if (m) {
-  const handler = SlashCommandRegistry.get(m[1]);
-  if (handler) { handler.execute(m[2]); return; }
-}
-// No match → send to LLM verbatim
-```
-Unified palette sections: Skills, Templates, Macros, Commands. Triggered by `/` in composer.
-
-### 10.3 Macros (data, not code; no eval)
-
-Each step is one of:
-- `{ type: 'skill', skillId, input }`
-- `{ type: 'mcp', toolName, input }`
-- `{ type: 'save-note', titleTemplate }`
-
-`WorkflowRunner` executes sequentially. Step N output available as `{{step_N_output}}` in step N+1.
-
-### 10.4 CodeSearchSkill Chunking Contract (resolves N4)
-
-`codesearch.js` reference is 429KB (~107K tokens) — too large for a single context. Implementation is **map-reduce** and flagged Sonnet-class:
-1. **Input schema:** `{ query: string, scriptScope?: string, maxResults?: number }`.
-2. Fetch candidate scripts via `SNowTableClient` (Table API), rate-limited by `RateLimiter`.
-3. **Map:** split each script into ≤8K-token windows (by line boundaries; never mid-token). For each window, one LLM call: "Does this code match `<query>`? Return JSON `{match:boolean, lines:[start,end], reason}`."
-4. **Reduce:** collect matches, sort by relevance, cap at `maxResults` (default 20).
-5. **Output schema:** `{ matches: Array<{ scriptName, lines:[number,number], snippet:string, reason:string }> }`.
-6. Abort: each window call receives `ctx.abortSignal`; reduce halts on abort.
-7. **Model gate:** if active provider's model context window < 16K, `SkillResult{ type:'error', content:'CodeSearch needs a model with ≥16K context.' }`.
-
----
-
-## §11 — Storage Architecture
-
-### 11.1 Storage Backends
-
-```
-chrome.storage.local  (10MB limit)
-  np_providers          ProviderConfig[]            (encrypted apiKey fields)
-  np_flags              FeatureFlags
-  np_mcp_servers        MCPServerConfig[]
-  np_mcp_permissions    Record<toolName,{allow,grantedAt}>
-  np_conversation_meta  ConversationMeta[]          (LRU 10 active + 100 archived; NO message bodies)
-  np_facts              Fact[]                      (max 500, LRU)
-  np_templates          PromptTemplate[]
-  np_macros             Macro[]
-  np_install_secret     string                      (32 random bytes, once)
-  np_debug_mode         boolean
-  np_endpoint_overrides Record<string,string>
-  np_keymap             KeymapRegistration[]
-  np_addon_<addonId>    unknown                     (AddonSettingsStore namespaced)
-
-chrome.storage.session  (cleared on browser close)
-  np_jsessionid         string
-  np_sysparm_ck         string
-  np_token_ttl          number
-
-chrome.storage.sync  (≤8KB per key)
-  np_theme              'light'|'dark'|'auto'
-  np_language           string
-
-IndexedDB  (effectively unlimited, side panel only)
-  ChatHistoryDB
-    sessions  { id, title, created, updated, starred, preview }
-    messages  { sessionId, role, content, timestamp, metadata }
-  NotesDB
-    notes     { id, title, content, created, updated, tags[], links[], source, aiMeta, version }
-    concepts  { slug, label, summary, noteIds[], aliases[], updatedAt }
-  MemoryDB                          (NEW — resolves C1; conversation bodies live here, NOT in storage.local)
-    messages  { conversationId, seq, role, content, timestamp }   // keyPath [conversationId, seq]
-  ErrorStore  (debug mode only, FIFO max 100)
-    errors    { code, message, context, timestamp }
-  WriteJournalDB
-    entries   WriteJournalEntry[]       // multi-store operation recovery and consistency
-```
-
-**Why C1 matters:** 100 archived conversations × full message arrays would exceed the 10MB `chrome.storage.local` ceiling that §17.3 warns about. Splitting bodies into `MemoryDB` keeps `chrome.storage.local` bounded to lightweight metadata.
-
-### 11.2 MemoryStore split (C1 detail)
-
-- `chrome.storage.local.np_conversation_meta` holds `ConversationMeta[]` (no bodies).
-- `MemoryDB.messages` holds bodies keyed `[conversationId, seq]`.
-- Reads: metadata first (fast list), bodies lazily by conversationId.
-- LRU eviction deletes from BOTH the meta array and the `MemoryDB` range for that conversation, in one logical operation.
-
-### 11.3 API Key Encryption
-
-```typescript
-// src/core/storage/EncryptedStorage.ts
-// installSecret: 32 random bytes, once → chrome.storage.local.np_install_secret
-// per-key: random 16-byte salt + 12-byte IV
-// derivedKey: PBKDF2(installSecret + extensionId, salt, 100000, SHA-256) → AES-GCM-256
-// NEVER use navigator.userAgent as key material (changes on browser update → undecryptable)
-```
-
-### 11.4 LRU Eviction (MemoryStore)
-
-- Max 10 `status: 'active'`. >10 → archive oldest.
-- Max 100 `status: 'archived'`. >100 → evict oldest (meta + MemoryDB range).
-- Compactor runs when `messageCount % 12 === 0` (a "turn" = one user+assistant pair, so 6 turns = 12 messages): keep head (system + first 2) + LLM summary of middle + tail (last 4).
-- Archive after 30 minutes idle.
-
----
-
-## §12 — Security Architecture
-
-### 12.1 XSS Prevention
-
-| Attack vector | Mitigation |
-|---|---|
-| AI response in chat | `PortableMarkdown` (`react-markdown`) — never `dangerouslySetInnerHTML` |
-| Content script DOM writes | `DOMPurify.sanitize()` with SAFE_CONTENT_CONFIG |
-| MCP tool results | Rendered through React JSX as data strings |
-| User prompt text | React-managed input state, no eval |
-| PDF content | Sanitized before storage |
-
-```typescript
-const SAFE_CONTENT_CONFIG = {
-  ALLOWED_TAGS: ['p','br','b','i','em','strong','code','pre','ul','ol','li','a','span','div'],
-  ALLOWED_ATTR: ['href','class','target','rel'],
-  FORCE_BODY: true,
-};
-```
-
-### 12.2 Message Security (enforced centrally by BackgroundRouter)
-
-```typescript
-if (sender.id !== chrome.runtime.id) return false;
-if (!Object.values(MessageTypes).includes(message.type)) return false;
-```
-
-### 12.3 Content Security Policy
-
-```json
-"content_security_policy": {
-  "extension_pages": "script-src 'self'; object-src 'self'; connect-src *"
-}
-```
-No `unsafe-eval`. `connect-src *` required for user-configured MCP servers + local LLM endpoints.
-
-### 12.4 Manifest Permissions
-
-```typescript
-permissions: ['sidePanel','storage','cookies','alarms','tabs','scripting','contextMenus','notifications','declarativeNetRequest'],
-host_permissions: ['*://*.service-now.com/*','*://support.servicenow.com/*']
-```
-Add-ons declare extra host permissions via `urlPatterns`; users are informed at install.
-
----
-
-## §13 — UI/UX Requirements
-
-### 13.1 Side Panel Layout
-
-400px wide (Chrome default). All UI works at this width.
-**Nav rail** (48px, icon-only, tooltips): core tabs fixed; add-on tabs from `SidePanelPageRegistry` appended, hidden when URL doesn't match.
-**Core tabs:** `Chat | Note | Agent | Tools` (Write/Ask/Research are slash commands; Research, structured output, and inspector live under Tools; note/chat-history search is reached via Cmd+K).
-**Global overlays:** model selector, prompt template picker, chat-history BottomSheet, Cmd+K palette, Toasts.
-
-### 13.2 Design Tokens
-
-```css
-@import 'tailwindcss';
-@theme {
-  --color-np-primary-500: var(--primary);
-  --color-np-neutral-200: var(--border);
-  /* additional np- prefixed tokens */
-}
-/* Omit @import 'tailwindcss/preflight' to avoid resetting host page styles */
-```
-`np-` prefix on all custom tokens to avoid host-page conflicts.
-
-### 13.3 Component Requirements
-
-- Every page wrapped in `<ErrorBoundary>` (from `core/components/`) → "Something went wrong [Reload]".
-- All interactive elements have accessible labels.
-- Keyboard nav works for all major flows (Tab/Enter/Escape/Cmd+K).
-- Loading uses skeleton shimmer, not spinners, for content areas.
-- Toasts: max 3 visible; auto-dismiss 5s (errors persist until dismissed).
-- All AI text rendered through `<PortableMarkdown>`. No ad-hoc markdown.
-- English only in v0.1; `t('key')` abstraction in place for future i18n.
-
-### 13.4 Shadow DOM for Add-on Injection (managed by ContentScriptHost)
-
-```typescript
-const host = document.createElement('div');
-host.id = 'np-addon-mount';
-document.body.appendChild(host);
-const shadow = host.attachShadow({ mode: 'closed' });
-// render React into shadow
-```
-z-index budget: 2147483600–2147483647.
-
----
-
-## §14 — MVP Roadmap & Implementation Phases
-
-Each phase references the Flows (§7) it implements. Test-first for all core modules (Phase 9 lists tests).
-
-### Phase 1 — Foundation (Weeks 1–2) · implements Flow 1, Flow 9, Flow 10
-
-**Goal:** Side panel shell + working AI chat on OpenAI + onboarding + core infra.
-
-```bash
-npx wxt@latest init nowpilot --template react-ts
-npm install dompurify @types/dompurify motion lucide-react katex idb minisearch
-npm install ai @ai-sdk/openai @ai-sdk/anthropic @ai-sdk/google
-npm install @modelcontextprotocol/sdk zod zod-to-json-schema
-npm install zustand immer react-markdown remark-gfm rehype-highlight highlight.js
-npm install clsx tailwind-merge class-variance-authority
-```
-
-**Files:**
-- `src/core/config/endpoints.ts` (contents per §6.8)
-- `src/types/{messages.ts, errors.ts}`
-- `src/core/ai/ILLMProvider.ts` (incl. `getAISDKModel`)
-- `src/core/ai/providers/{OpenAI,Anthropic,Gemini,Ollama,OpenAICompat}Provider.ts`
-- `src/core/ai/ProviderRegistry.ts` (computes `resolvedBaseURL`)
-- `src/core/storage/{EncryptedStorage.ts, Setting.ts}`
-- `src/core/log/debugLog.ts`
-- `src/core/registry/{AddonRegistry.ts, Registry.ts, AddonSettingsStore.ts, SidePanelPageRegistry.ts}`
-- `src/core/events/EventBus.ts`
-- `src/core/input/KeymapRegistry.ts`
-- `src/core/background/{router.ts, lifecycle.ts, keepalive.ts}`
-- `src/core/components/{ErrorBoundary.tsx, Toast.tsx, PortableMarkdown.tsx}`
-- `src/entrypoints/background.ts` (uses BackgroundRouter/Lifecycle/KeepAlive)
-- `src/entrypoints/sidepanel/main.tsx`
-- `src/components/layout/SidepanelShell.tsx` (reads SidePanelPageRegistry)
-- `src/components/pages/ChatPage.tsx` (uses PortableMarkdown)
-- `src/components/OnboardingModal.tsx` (Flow 9)
-
-**Success:**
-- ✅ Side panel opens, renders ChatPage; onboarding appears on fresh install
-- ✅ OpenAI chat streams; responses render via PortableMarkdown
-- ✅ Cmd+K opens palette with the §Flow 10 command set
-- ✅ `grep -r 'innerHTML\|dangerouslySetInnerHTML' src/` → zero
-- ✅ `grep -r 'framer-motion' package.json` → zero (must be `motion`)
-- ✅ `npx tsc --noEmit` → zero errors; `tsconfig` strict: true
-
-### Phase 2 — All Providers + Storage (Weeks 3–4) · implements Flow 5
-
-**Goal:** All 5 providers. Chat history + conversation memory persist (split storage). Rate limiting.
-
-```bash
-npm install @mozilla/readability turndown
-```
-
-**Files:**
-- `src/core/messaging/{MessageBus.ts, PortReader.ts, BroadcastBus.ts}`
-- `src/core/storage/{ChatHistoryDB.ts, NotesDB.ts, ErrorStore.ts, MemoryDB.ts}`  ← MemoryDB is new (C1)
-- `src/core/memory/{types.ts, MemoryStore.ts, compactor.ts}` (meta in storage.local, bodies in MemoryDB)
-- `src/core/context/{estimateTokens.ts, compactHistory.ts, ContextWindowManager.ts}`
-- `src/core/http/Requester.ts`
-- `src/core/utils/RateLimiter.ts`
-- Complete remaining provider files
-
-**Success:**
-- ✅ All 5 providers stream
-- ✅ Sessions persist across browser restart
-- ✅ `grep -rn 'np_conversation' src/` → message bodies NOT stored in chrome.storage.local
-- ✅ History BottomSheet searchable by title
-
-### Phase 3 — Notes + Prompts + Search (Weeks 5–6) · implements Flow 3
-
-**Goal:** Atomic notes + wikilinks. Prompt templates + slash. MiniSearch index. Search page.
-
-```bash
-npm install d3-force @types/d3-force
-```
-
-**Files:**
-- `src/core/notes/{LinkParser.ts, NoteGraph.ts}` (cosine per §17.4)
-- `src/core/search/MiniSearchIndex.ts`
-- `src/core/prompts/{PromptManager.ts, TemplateEngine.ts, builtinTemplates.ts}` (incl. /write, /ask presets)
-- `src/core/slash/SlashCommandRegistry.ts`
-- `src/components/pages/NotePage.tsx`
-- `src/components/notes/{BacklinksPanel.tsx, WikilinkAutocomplete.tsx, NoteGraphView.tsx}` (d3-force, ≤200 nodes)
-
-**Success:**
-- ✅ `[[wikilink]]` creates `links[]` after save; tie-break to most-recently-updated
-- ✅ BacklinksPanel shows inbound links
-- ✅ `EventBus.emit('note:saved')` updates search index
-- ✅ `/` opens slash palette; `/write` and `/ask` presets work
-- ✅ Note/chat-history search reachable from Cmd+K (no dedicated page)
-
-### Phase 4 — Agent Mode + MCP (Weeks 7–9) · implements Flow 2
-
-**Goal:** Multi-step agent + external MCP. Permission gate. 12 built-in tools.
-
-**Files:**
-- `src/core/ai/{AgentLoop.ts, SkillRegistry.ts, SkillRunner.ts, StepContext.ts, toolAdapter.ts, PermissionGate.ts, WorkflowRunner.ts}`
-- `src/core/mcp/{MCPClient.ts, MCPRegistry.ts, mcpToVercelAI.ts, NowPilotMainServer.ts}` (12 tools §6.6)
-- `src/components/pages/AgentPage.tsx`
-- `src/components/patterns/ToolCard.tsx`
-
-**Success:**
-- ✅ Agent calls external MCP tool, includes result
-- ✅ 12 NowPilotMainServer tools available without external server
-- ✅ Permission dialog appears before any tool call; dangerous tools always prompt
-- ✅ `grep -r 'MCPClient' src/entrypoints/background.ts` → zero (side panel only)
-- ✅ Abort works mid-stream
-
-### Phase 5 — Context + Tab Pinning (Weeks 10–11) · implements Flow 4
-
-**Goal:** Multi-tab context. Content-script infra. (PDF chat removed per §5.4.)
-
-```bash
-npm install fflate papaparse
-```
-
-**Files:**
-- `src/core/content/{ContentScriptHost.ts, SPANavigationWatcher.ts, PageContextBridge.ts}`
-- `src/core/extraction/{IContentStrategy.ts, ContentExtractor.ts, DefaultWebPageStrategy.ts}` (PORT from llm-sidebar §2.3)
-- `src/core/context/{ContextPack.ts, ContextManager.ts}`
-- Update `ChatPage.tsx` — pin-tabs UI, context indicator
-
-**Success:**
-- ✅ Pinning a tab includes content in next request
-- ✅ Context overflow drops lowest-priority with toast
-- ✅ `SPANavigationWatcher` fires on SPA route change
-
-### Phase 6 — Chrome API Hosts + Structured Output (Weeks 12–13) · implements Flow 6, Flow 7
-
-**Goal:** Context menu, webhooks, structured output, export. Selection add-on.
-
-**Files:**
-- `src/core/chrome/{ContextMenuHost.ts, TabManager.ts, NotificationsManager.ts, OmniboxHandler.ts, ClipboardHelper.ts, Scheduler.ts}`
-- `src/core/output/{StructuredOutputRenderer.ts, OutputFormatter.ts}`
-- `src/core/webhooks/WebhookManager.ts`
-- `src/core/data/DataPortability.ts`
-- `src/core/telemetry/{TokenLedger.ts, PromptInspector.ts}`
-- `src/addons/global/SelectionContextMenu.ts`
-- `src/addons/global/ResearchSkill.ts` — web research via skill + MCP/web-search tools (§5.4)
-- Update `ToolsPage.tsx` — health check, debug mode, inspector, Research entry
-
-**Success:**
-- ✅ Right-click selection → "Ask AI" opens panel with selection quoted
-- ✅ Webhook fires on `note-saved`
-- ✅ Export valid JSON, no API keys (assertion passes)
-- ✅ SelectionContextMenu registers as global add-on
-- ✅ `/research` runs ResearchSkill; returns answer + SourceCards, or a clear "no web-search tool connected" error
-
-### Phase 7 — ServiceNow Add-on (Weeks 14–16)
-
-**Goal:**  
-ServiceNow add-on: token extraction, Table API integration, case skills, add-on settings, and page injection.
-
----
-
-### Files (PORT/REWRITE per §2.3):
-
-- `src/addons/servicenow/index.ts`  
-  → add-on registration (skills, prompts, settings, injection, extractor)
-
----
-
-#### Authentication & Endpoint Layer
-
-- `src/addons/servicenow/auth/ServiceNowSessionAdapter.ts`  
-  → owns ServiceNow session semantics (`JSESSIONID`, `sysparmCK`, `g_ck`)  
-  → validates session readiness  
-  → prepares authenticated headers for API calls  
-
-- `src/addons/servicenow/config/serviceNowEndpoints.ts`  
-  → ServiceNow host patterns  
-  → Table API endpoint builder  
-  → registered via `EndpointRegistry`
-
----
-
-#### Content Script Layer (Page Integration)
-
-- `src/addons/servicenow/content/tokenBridge.ts`  
-  → MAIN-world script to read `window.g_ck` from ServiceNow pages  
-
-- `src/addons/servicenow/content/pageExtractor.ts`  
-  → extracts ServiceNow case/page context (fields, activity, metadata)  
-
-- `src/addons/servicenow/content/serviceNowInjection.ts`  
-  → defines page injection contract (`IContentAddon`)  
-  → controls:
-    - URL matching (`matches`)
-    - injection condition (`shouldInject`)
-    - rendering (`render`)
-    - SPA navigation handling (`onNavigate`)
-
----
-
-#### API Layer
-
-- `src/addons/servicenow/lib/SNowTableClient.ts` (rate-limited)  
-  → ServiceNow Table API client  
-  → uses generic `PROXY_FETCH` via background  
-  → integrates with `RateLimiter`
-
----
-
-#### Skills Layer
-
-- `src/addons/servicenow/skills/{CaseAnalyzerSkill, CatchUpSkill, SentimentSkill, CodeSearchSkill}.ts`  
-  → ServiceNow-specific AI skills  
-  → CodeSearch uses map-reduce pattern (see §10.4)
-
----
-
-#### UI Layer (Injected)
-
-- `src/addons/servicenow/components/CaseInsightBox.tsx`  
-  → injected UI rendered inside Shadow DOM  
-  → displays AI-generated insights on case pages  
-
----
-
-#### Core Dependencies (Reference Only)
-
-- `src/core/chrome/{CookieSessionStore.ts, CORSProxy.ts}`  
-  → generic core infrastructure (`PROXY_FETCH`, §6.9)  
-  → **no ServiceNow-specific logic allowed in core**  
-
----
-
-### Injection Flow
-
-```text
-ServiceNow page load
-  ↓
-tokenBridge extracts g_ck (MAIN world)
-  ↓
-ServiceNowSessionAdapter validates session
-  ↓
-InjectionRegistry matches URL
-  ↓
-ContentScriptHost mounts Shadow DOM
-  ↓
-serviceNowInjection.render() → CaseInsightBox
-  ↓
-SPA navigation triggers onNavigate()
-````
-
-***
-
-### Design Rules (v0.1.1)
-
-* ServiceNow logic MUST NOT exist in core modules
-* All token/session handling MUST go through `ServiceNowSessionAdapter`
-* All API calls MUST use `PROXY_FETCH` (no direct SN REST usage)
-* All injected UI MUST render inside Shadow DOM
-* Injection lifecycle MUST be handled by Core (`ContentScriptHost`)
-* Add-on MUST NOT directly manipulate DOM outside Shadow DOM
-
-***
-
-### Success Criteria
-
-* ✅ Tokens captured and cached via `ServiceNowSessionAdapter` on page load
-* ✅ `CaseAnalyzerSkill` returns structured analysis
-* ✅ `grep -r 'jsessionid\\|sysparmCK' src/core/storage/Setting.ts` → zero (session storage only)
-* ✅ `grep -r 'SN_REST_REQUEST' src/` → zero (must use generic `PROXY_FETCH`)
-* ✅ `SNowTableClient` uses `RateLimiter`
-* ✅ Injection works via `serviceNowInjection.ts` and renders `CaseInsightBox`
-* ✅ SPA navigation updates injected UI correctly
-* ✅ ServiceNow settings stored under `np_addon_servicenow`
-
-### Phase 8 — LLM Wiki + Insight Engine + TTS (Weeks 17–18) · implements Flow 8
-
-**Goal:** AI note features. Pattern detection. TTS.
-
-**Files:**
-- `src/core/notes/noteExpander.ts` (internal Step, NOT LLM-callable)
-- `src/core/insights/InsightEngine.ts` (read-only, scheduled; §17.5)
-- `src/core/speech/SpeechSynthesisService.ts`
-- Update `NotePage.tsx` — Suggest Links, Expand, Concept Glossary
-
-**Success:**
-- ✅ "Suggest links" populates `note.aiMeta.suggestedLinks[]`
-- ✅ `grep 'noteExpander' src/core/ai/AgentLoop.ts` → zero (not LLM-callable)
-- ✅ InsightEngine runs via Scheduler only, never on user interaction
-- ✅ TTS reads last response; stop() works
-
-### Phase 9 — Polish, Tests, CI (Weeks 19–20)
-
-**Files:**
-- `tests/core/storage/Setting.test.ts` (≥3)
-- `tests/core/storage/EncryptedStorage.test.ts` (≥5)
-- `tests/core/memory/MemoryStore.test.ts` (≥6, incl. meta/body split)
-- `tests/core/ai/AgentLoop.test.ts` (≥2, incl. fullStream→LLMStreamChunk mapping)
-- `tests/core/context/ContextPack.test.ts` (≥4)
-- `tests/core/notes/LinkParser.test.ts` (≥3)
-- `tests/core/events/EventBus.test.ts` (≥3)
-- `tests/core/utils/RateLimiter.test.ts` (≥3)
-- `tests/core/registry/AddonSettingsStore.test.ts` (≥3)
-
-**Success:**
-- ✅ `npx vitest run` passes; `npx tsc --noEmit` zero
-- ✅ Content script bundle < 100KB
-- ✅ Side panel paint < 300ms; first token < 2s local / < 3s cloud
-- ✅ MiniSearch over 1,000 notes < 50ms
-- ✅ Zero `innerHTML`/`eval()`/`dangerouslySetInnerHTML`
-
----
-
-## §15 — Phase Index (was Feature Prioritization Matrix)
-
-Pure index of where each feature is built. Priorities live in §5.1; this maps feature → phase.
-
-| Phase | Features |
-|---|---|
-| 1 | Shell, BackgroundRouter/Lifecycle/KeepAlive, EventBus, AddonSettingsStore, SidePanelPageRegistry, KeymapRegistry+Cmd+K, ErrorBoundary/Toast/PortableMarkdown, OpenAI chat, onboarding |
-| 2 | 5 providers, EncryptedStorage, ChatHistoryDB, MemoryDB (split), ContextWindowManager, BroadcastBus, RateLimiter |
-| 3 | Notes+wikilinks, MiniSearchIndex, prompt templates+slash, Write/Ask presets, Cmd+K note/history search |
-| 4 | Agent mode, MCP client, NowPilotMainServer (12 tools), PermissionGate |
-| 5 | ContentScriptHost/SPANavigationWatcher/PageContextBridge, tab pinning, ContextPack |
-| 6 | Chrome API hosts, SelectionContextMenu, ResearchSkill (global), structured output, export/import, webhooks, inspector/ledger |
-| 7 | ServiceNow add-on (all skills), session token extraction |
-| 8 | LLM Wiki, InsightEngine, TTS |
-| 9 | Tests + CI |
-
----
-
-## §16 — Complete Data Models
-
-### Session and Message (ChatHistoryDB)
-```typescript
-interface ChatSession {
-  id: string;           // crypto.randomUUID()
-  title: string;        // auto-generated (Flow 1a)
-  created: number; updated: number;
-  starred: boolean;
-  preview: string;      // first 200 chars of last message
-}
-interface ChatMessage {
-  id: string; sessionId: string;
-  role: 'system'|'user'|'assistant'|'tool';
-  content: string; timestamp: number;
-  metadata?: { model?: string; promptTokens?: number; completionTokens?: number; skillId?: string; toolName?: string };
-}
-```
-
-### Note (NotesDB)
-```typescript
-interface Note {
-  id: string; title: string; content: string;     // Markdown
-  created: number; updated: number;
-  tags: string[];
-  links: string[];                                 // resolved noteId[]; recomputed every save
-  source: { kind: 'manual'|'voice'|'chat-export'|'template'; conversationId?: string; templateId?: string };
-  aiMeta: { suggestedLinks: Array<{ targetId: string; confidence: number; reason: string }>; concepts: string[]; lastWikiRunAt?: number };
-  version: number;
-}
-```
-
-### Provider Config — see §6.3 (Zod is authoritative)
-
-### Conversation — SPLIT (resolves C1)
-```typescript
-type ConversationStatus = 'active' | 'archived';
-
-// chrome.storage.local.np_conversation_meta — lightweight, no bodies
-interface ConversationMeta {
-  id: string; title: string;
-  status: ConversationStatus;
-  topic?: string;                 // LLM-classified
-  created: number; lastAccessed: number;
-  messageCount: number;           // drives compaction (% 12 === 0)
-}
-// MemoryDB.messages — bodies, keyPath [conversationId, seq]
-interface MemoryMessage { conversationId: string; seq: number; role: LLMMessage['role']; content: string; timestamp: number }
-
-interface Fact { id: string; content: string; confidence: number; source: 'extracted'|'explicit'; created: number }
-```
-
-### Insight (resolves N2)
-```typescript
-// InsightEngine output — concrete v0.1 shape (no vague "patterns")
-interface Insight {
+export interface Macro {
   id: string;
-  kind: 'tag-trend' | 'activity' | 'skill-usage';
-  label: string;          // human-readable, e.g. "Most-used tag (30d): #incident"
-  value: number | string;
-  computedAt: number;
+  name: string;
+  description: string;
+  steps: Array<
+    | { type: 'skill';    skillId: string;    input: Record<string, unknown> }
+    | { type: 'mcp';      toolName: string;   input: Record<string, unknown> }
+    | { type: 'save-note';titleTemplate: string }
+  >;
 }
-```
 
-### Built-in MCP Tool descriptor
-```typescript
-interface BuiltinTool { name: string; description: string; inputSchema: z.ZodSchema<unknown>; dangerous: boolean }
-```
-
-### NowPilot Error
-```typescript
-interface NowPilotError { code: string; message: string; context?: Record<string, unknown>; timestamp: number }
-// Codes: SESSION_TOKEN_MISSING, PROVIDER_FETCH_FAILED, MCP_TOOL_ERROR, STORAGE_READ_FAILED,
-//        CONTENT_EXTRACT_FAILED, CONTEXT_PACK_TRUNCATED, PERMISSION_DENIED, TIMEOUT,
-//        RATE_LIMITED, KEYMAP_CONFLICT, TOOL_UNAVAILABLE, IDB_BLOCKED, RESEARCH_NO_TOOL, HOST_NOT_PERMITTED
-```
-
----
-
-## §17 — Performance, Algorithms & Edge Cases
-
-### 17.1 Performance Targets
-
-| Metric | Target |
-|---|---|
-| Side panel initial paint | < 300ms |
-| First AI token (local Ollama) | < 2s |
-| First AI token (cloud) | < 3s |
-| MiniSearch over 1,000 notes | < 50ms |
-| Wikilink autocomplete | < 50ms p95 (≤5,000 notes) |
-| `resolveLinks()` | < 20ms |
-| IndexedDB write batch | ≤ 5s or 10 messages, whichever first |
-| Content script bundle | < 100KB |
-| Background SW fetch timeout | 25s (hard) |
-| Tab context extraction | 5s (hard) |
-| EventBus dispatch | < 1ms (synchronous) |
-
-### 17.2 Context Overflow Rules
-
-When `ContextPack` exceeds budget: (1) drop longest block; (2) drop last 20%; (3) keep only first paragraph + first heading; (4) return empty, `truncated: true`, toast "Content was too large to include in AI context."
-Per-source budgets (tokens): Webpage 2,000 · Note 500 · Current page (SN) 300 · JSON 1,000.
-
-### 17.3 Edge Cases
-
-| Situation | Handling |
-|---|---|
-| SW killed mid-stream | `PortReader` throws `PortDisconnectedError` → surface AI error |
-| Ollama not running | `validateConfig()` fails → "Ollama is not running. Start it with `ollama serve`." |
-| Side panel re-mounts | `useChat` restores last active conversation from MemoryStore |
-| 10 pinned tabs | Toast "Maximum 10 pinned tabs. Remove one first." |
-| Note >800 words + 3+ wikilinks | Non-blocking chip "Consider splitting this note." |
-| MCP server unreachable | Toast w/ retry; log to PromptInspector |
-| storage.local ≥ 8MB (80% of 10MB) | Warning in ToolsPage; suggest export + clear history |
-| Ollama default 2048 ctx | Settings warning w/ Modelfile (Flow 5) |
-| EventBus handler throws | Catch + `debugLog`; never crash emitter |
-| RateLimiter.acquire() w/ aborted signal | Throw `AbortError` immediately |
-| SPA navigation on SN page | `SPANavigationWatcher` fires `onNavigate`; add-on re-extracts |
-| Two add-ons register same shortcut | `KeymapRegistry` throws `KeymapConflictError`; later add-on wins w/ warning |
-| NowPilotMainServer tool unavailable | Tool result `{ error: 'TOOL_UNAVAILABLE' }`; agent informs user |
-| **Provider deleted while active** (NEW) | Fall back to lowest-`priority` enabled provider; if none → Flow 1 no-provider modal |
-| **Research with no web-search tool connected** | `RESEARCH_NO_TOOL` → "No web-search tool connected. [Open Settings]" (no silent model-only fallback) |
-| **PROXY_FETCH to undeclared host** | `HOST_NOT_PERMITTED` → request rejected in SW; never a fallback open fetch |
-| **IndexedDB blocked (private mode/quota)** (NEW) | Catch `idb` open error → `IDB_BLOCKED` toast; degrade to in-memory session |
-| **Abort during permission prompt** (NEW) | Dismiss prompt → inject `PERMISSION_DENIED` → end stream cleanly (Flow 2 edge) |
-| **Two side panels (two windows)** (NEW) | Single-writer rule (§9.7); BroadcastBus last-write-wins w/ `version` check |
-
-### 17.4 NoteGraph cosine similarity (resolves N1)
-
-`topKSimilar(note, k = 5)` — bag-of-words cosine, no library:
-1. Tokenize: `content.toLowerCase().match(/[a-z0-9]{3,}/g)` (drop <3 chars).
-2. Remove a fixed 50-word English stopword list (shipped inline in `NoteGraph.ts`).
-3. Per-note term-frequency map; cosine = dot(a,b)/(‖a‖·‖b‖).
-4. Rank desc; ties broken by `updated` desc, then `id` asc.
-5. Notes with <3 tokens return last. Default `k = 5`.
-
-### 17.5 InsightEngine analyses (resolves N2)
-
-`runAnalysis()` runs nightly via `Scheduler` (read-only; never on user interaction). v0.1 produces exactly three `Insight`s:
-- `tag-trend`: top tag by note count over last 30 days.
-- `activity`: busiest chat day-of-week over last 30 days.
-- `skill-usage`: most-invoked skill over last 30 days (from PromptInspector logs).
-Results cached in `chrome.storage.local`; `getInsights()` returns the cached array. Anything richer → v0.5.
-
----
-
-## §18 — Key Technology Decisions (ADRs)
-
-| Decision | Choice | Rationale |
-|---|---|---|
-| Extension framework | WXT | Type-safe, HMR, cross-browser, no cloud dependency |
-| UI framework | React 19 | Streaming renders via concurrent mode; shadcn ecosystem |
-| CSS | Tailwind v4 + `np-` tokens via `@theme` | Prefix prevents host CSS conflicts; no config.ts |
-| Components | shadcn/ui | Copy-paste, no runtime dep |
-| State | Zustand | 1KB, no boilerplate, works outside React |
-| AI workflow | Vercel AI SDK + thin layer | Streaming/abort/tools/adapters; lighter than LangChain |
-| AI providers | `@ai-sdk/*` only | Single codepath for 5 providers |
-| Animation | `motion` (not framer-motion) | Same lib, single package; avoids duplicate React context |
-| MCP transport | StreamableHTTP from side panel | EventSource unavailable in SW |
-| Built-in tools | NowPilotMainServer (12) in side panel | Available without external server; same permission gate |
-| AI calls location | Side panel only | SW ~30s timeout kills streaming |
-| Local LLM | Ollama / LM Studio (OpenAI-compatible) | Privacy-first; same adapter as OpenAI |
-| Chat storage | IndexedDB via `idb` | 10MB storage.local insufficient |
-| **Memory storage** | **Metadata in storage.local; bodies in MemoryDB (IndexedDB)** | **100 archived × full arrays would exceed 10MB (C1 fix)** |
-| API key storage | storage.local + AES-GCM | Encrypted at rest, sandboxed |
-| Session tokens | storage.session | Cleared on close; never persisted |
-| Token estimation | 4 chars ≈ 1 token | Accurate enough; zero dep |
-| Note search | MiniSearch + bag-of-words cosine | No server/model download; fast ≤5,000 notes |
-| Embedding search | Deferred to v0.5 | 40MB model download |
-| XSS protection | PortableMarkdown + DOMPurify | Eliminates innerHTML; shared component enforces consistency |
-| SN auth | Browser session reuse | No separate login/credentials |
-| SN API calls | Background SW CORS proxy | Cross-origin fetch + cookies need SW |
-| SN rate limiting | RateLimiter per add-on | Prevents runaway loops burning quota |
-| ServiceNow features | Add-on, not core | Core must not know specific sites |
-| Write/Ask | Built-in prompt presets, not pages (§5.4) | Pure prompt+params; no unique state |
-| Search vs Research | Internet-search page removed; Research is a global add-on; note/history search is a Cmd+K core capability (§5.4) | Web research depends on external MCP tools → add-on surface |
-| PDF chat | Removed from v0.1 (§5.4) | No longer required |
-| Generic proxy | `PROXY_FETCH` (not `SN_REST_REQUEST`); CORSProxy is reusable core (§6.9) | Future add-ons reuse one proxy path with their own declared hosts |
-| Scheduler | `chrome.alarms` | Persists across SW restarts |
-| Shadow DOM | All add-on UI (ContentScriptHost) | Prevents CSS conflicts both directions |
-| In-process messaging | EventBus | Avoids chrome.runtime overhead within panel |
-| Cross-context messaging | MessageBus + BroadcastBus | Typed; sender-validated by BackgroundRouter |
-| Add-on settings isolation | AddonSettingsStore namespaced | Prevents key collisions |
-| Keyboard shortcuts | KeymapRegistry | Centralized; unregistered on disable; conflict detection |
-
----
-
-
-## §19 — Architecture Hardening Updates (v0.1.1)
-
-This section applies the reliability, layering, operational, and diagram updates from the v0.1.1 architecture review. These updates do not change the product direction; they reduce implementation risk in cross-context coordination, split persistence, tool execution, side-panel maintainability, and ServiceNow authentication.
-
-### 19.1 Fault Tolerance and Cross-Context Coordination
-
-NowPilot state spans the side panel, background service worker, content scripts, add-ons, `chrome.storage.*`, and IndexedDB. Therefore, fault tolerance depends on reliable message delivery, idempotent operations, correct write ordering, worker restart recovery, and partial-write recovery.
-
-**Required rule:** every cross-context request uses a runtime envelope.
-
-```ts
-export interface RuntimeEnvelope<T> {
-  id: string; // crypto.randomUUID()
-  type: string;
-  createdAt: number;
-  source: 'sidepanel' | 'background' | 'content' | 'addon';
-  target?: 'sidepanel' | 'background' | 'content' | 'addon';
-  payload: T;
+// src/core/input/KeymapRegistry.ts
+export interface KeymapRegistration {
+  id: string;
+  when?: 'always' | 'in-composer' | 'in-note';
+  combo: string;                  // e.g. 'Cmd+K', 'Ctrl+Enter'
+  description: string;
+  handlerId: string;              // resolved through KeymapRegistry
 }
-```
 
-**Required rule:** all mutating operations must be idempotent where practical.
+// src/core/registry/SidePanelPageRegistry.ts
+export interface SidePanelPageRegistration {
+  id: string;
+  label: string;
+  icon: string;                   // lucide icon name
+  urlPatterns?: string[];         // undefined = always visible
+  component: React.ComponentType;
+  order: number;
+}
 
-| Operation | Idempotency key |
-|---|---|
-| Save chat message | `sessionId + seq` |
-| Save memory body | `conversationId + seq` |
-| Evict conversation | `conversationId + evictionVersion` |
-| Save note | `note.id + note.version` |
-| Webhook retry | `eventId` |
-| PROXY_FETCH | Not automatically retried unless caller marks request retry-safe. |
+// src/core/config/FeatureFlags.ts
+export interface FeatureFlags {
+  research: boolean;
+  webhooks: boolean;
+  insights: boolean;
+  tts: boolean;
+  serviceNowAddon: boolean;
+}
 
-**Required rule:** every cross-context failure must call `debugLog(code, message, context)` with an operation ID and sanitized context. Never log request bodies, response bodies, API keys, browser cookies, session tokens, or raw ServiceNow case content.
+// src/core/mcp/MCPRegistry.ts
+export interface MCPServerConfig {
+  id: string;
+  label: string;
+  url: string;
+  authHeader?: string;            // stored in EncryptedStorage
+  enabled: boolean;
+  autoConnect: boolean;
+  lastConnectedAt?: number;
+}
 
-### 19.2 Runtime State Models
+// src/core/memory/types.ts
+export interface RetrievedMemory {
+  id: string;
+  content: string;
+  type: 'fact' | 'preference' | 'pattern';
+  tags: string[];
+  score: number;                  // 0..1
+}
 
-#### Background Worker State
+// src/core/ai/toolSchemas.ts
+export interface ToolSchemaRef {
+  name: string;
+  description: string;
+  jsonSchema: unknown;            // pre-computed from Zod
+  dangerous: boolean;
+  source: 'builtin' | 'mcp' | 'skill' | 'servicenow';
+}
 
-```ts
-export type BackgroundWorkerState =
-  | { state: 'cold-starting'; startedAt: number }
-  | { state: 'ready'; startedAt: number; alarmsReady: boolean; routerReady: boolean }
-  | { state: 'degraded'; reason: 'ALARMS_MISSING' | 'ROUTER_ERROR' | 'SESSION_UNAVAILABLE'; message: string }
-  | { state: 'shutting-down'; reason: 'IDLE' | 'RELOAD' | 'UNKNOWN' };
-```
+// src/core/context/ContextOptimizer.ts
+export interface PromptSection {
+  kind: 'system' | 'tool_schemas' | 'preferences' | 'memory' | 'context' | 'task' | 'user_input';
+  text: string;
+  tokens: number;
+  stable: boolean;                // eligible for provider prompt cache
+  sourceId: string;
+}
 
-#### Active Stream State
-
-```ts
-export type ActiveStreamState =
-  | { state: 'idle' }
-  | { state: 'preparing'; sessionId: string; operationId: string }
-  | { state: 'streaming'; sessionId: string; operationId: string; startedAt: number }
-  | { state: 'waiting-for-permission'; sessionId: string; operationId: string; toolName: string }
-  | { state: 'aborting'; sessionId: string; operationId: string }
-  | { state: 'completed'; sessionId: string; operationId: string }
-  | { state: 'failed'; sessionId: string; operationId: string; code: string; message: string };
-```
-
-#### Tab Extraction State
-
-```ts
-export type TabExtractionState =
-  | { state: 'idle'; tabId?: number }
-  | { state: 'injecting'; tabId: number; operationId: string }
-  | { state: 'extracting'; tabId: number; operationId: string }
-  | { state: 'pinned'; tabId: number; title: string; extractedAt: number }
-  | { state: 'failed'; tabId?: number; code: 'UNSUPPORTED_URL' | 'TIMEOUT' | 'CONTENT_EXTRACT_FAILED'; message: string };
-```
-
-#### Tool Permission State
-
-```ts
-export type ToolPermissionState =
-  | { state: 'not-required'; toolName: string }
-  | { state: 'prompting'; toolName: string; dangerous: boolean; operationId: string }
-  | { state: 'allowed-once'; toolName: string; operationId: string }
-  | { state: 'allowed-always'; toolName: string; grantedAt: number }
-  | { state: 'denied'; toolName: string; operationId: string; reason: 'USER_DENIED' | 'PANEL_CLOSED' | 'TIMEOUT' };
-```
-
-#### ServiceNow Session State
-
-```ts
-export type ServiceNowSessionState =
-  | { state: 'unknown' }
-  | { state: 'missing'; missing: Array<'JSESSIONID' | 'sysparmCK'> }
-  | { state: 'partial'; available: Array<'JSESSIONID' | 'sysparmCK'>; missing: Array<'JSESSIONID' | 'sysparmCK'> }
-  | { state: 'ready'; instanceHost: string; tokenTtl: number }
-  | { state: 'expired'; instanceHost: string; expiredAt: number }
-  | { state: 'error'; code: string; message: string };
-```
-
-### 19.3 Background Worker Lifecycle Hardening
-
-Required startup sequence:
-
-```text
-Background worker starts
-  → register BackgroundRouter synchronously
-  → load minimal config
-  → ensure alarms exist
-  → ensure context menus exist
-  → initialize generic CORSProxy
-  → initialize CookieSessionStore
-  → report ready/degraded state
-```
-
-New error codes:
-
-```text
-BACKGROUND_START_FAILED
-BACKGROUND_ROUTER_REGISTER_FAILED
-BACKGROUND_ALARM_RECREATE_FAILED
-BACKGROUND_CONTEXT_MENU_RECREATE_FAILED
-BACKGROUND_PROXY_TIMEOUT
-BACKGROUND_STATE_DEGRADED
-```
-
-Default v0.1 behavior remains broad-compatible: `chrome.alarms` + side-panel keepalive ping. If a minimum Chrome version is set in the future, NowPilot may optimize for shorter supported alarm periods. Required alarms must still be recreated on every worker startup.
-
-### 19.4 Split Persistence Consistency and WriteJournal
-
-Add:
-
-```text
-src/core/storage/WriteJournal.ts
-```
-
-```ts
+// src/core/storage/WriteJournal.ts
 export interface WriteJournalEntry {
   id: string;
-  operation:
-    | 'append-memory-message'
-    | 'evict-conversation'
-    | 'archive-conversation'
-    | 'compact-conversation'
-    | 'save-note-with-links'
-    | 'export-data';
+  operation: WriteJournalOperation;
   status: 'pending' | 'applying' | 'completed' | 'failed' | 'rolled-back';
   createdAt: number;
   updatedAt: number;
@@ -3216,714 +2775,807 @@ export interface WriteJournalEntry {
     error?: string;
   }>;
 }
+
+// src/types/messages.ts
+export interface ProxyFetchRequest {
+  type: 'PROXY_FETCH';
+  addonId: string;
+  url: string;
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+  headers?: Record<string, string>;
+  body?: string;
+  credentials?: 'include' | 'omit';
+}
+
+export interface ProxyFetchResponse {
+  ok: boolean;
+  status: number;
+  body: string;
+  error?: string;
+}
+
+// src/core/extraction/IContentStrategy.ts
+export interface IContextExtractor {
+  id: string;
+  supports(url: string): boolean;
+  extract(document: Document): Promise<PageContext>;
+}
 ```
 
-Append-memory-message write order:
+Every module must import types from these files. Locally-defined shapes that duplicate any of the above are a review-blocker.
 
-```text
-1. Create WriteJournalEntry(status='pending')
-2. Write MemoryDB.messages[conversationId, seq]
-3. Update np_conversation_meta.messageCount and lastAccessed
-4. Mark WriteJournalEntry(status='completed')
-```
-
-Evict-conversation write order:
-
-```text
-1. Create WriteJournalEntry(status='pending')
-2. Mark conversation meta as 'evicting'
-3. Delete MemoryDB range for conversationId
-4. Remove meta record
-5. Mark WriteJournalEntry(status='completed')
-```
-
-On side-panel startup, load incomplete journal entries, resume safe operations or reconcile from source-of-truth stores, log recovery result, and show a warning only if user-visible data may be affected.
-
-### 19.5 IndexedDB Migration Policy
-
-Add:
-
-```text
-src/core/storage/IndexedDBMigrator.ts
-```
+---
+# Appendix D — Tier → Model Resolver Table
 
 ```ts
-export interface IndexedDBMigration {
-  fromVersion: number;
-  toVersion: number;
-  description: string;
-  migrate(db: IDBPDatabase, tx: IDBPTransaction): Promise<void>;
+// src/core/ai/TierResolver.ts
+import type { ProviderId } from './types';
+
+export type ModelTier = 'haiku' | 'flash';
+
+export interface TierCandidate {
+  providerId: ProviderId;
+  model: string;
+}
+
+export const TIER_TO_MODEL_CANDIDATES: Record<ModelTier, TierCandidate[]> = {
+  haiku: [
+    { providerId: 'anthropic',         model: 'claude-haiku-4-latest' },
+    { providerId: 'openai-compatible', model: 'deepseek-chat' },
+    { providerId: 'ollama',            model: 'llama3.2:3b' },
+  ],
+  flash: [
+    { providerId: 'gemini',            model: 'gemini-2.5-flash' },
+    { providerId: 'anthropic',         model: 'claude-haiku-4-latest' },
+    { providerId: 'openai-compatible', model: 'deepseek-chat' },
+    { providerId: 'ollama',            model: 'qwen2.5:7b' },
+  ],
+} as const;
+
+export interface TierResolveInput {
+  tier: ModelTier;
+  configuredProviders: Array<{ id: ProviderId; models: string[]; enabled: boolean; priority: number }>;
+  privacyMode: 'local-only' | 'prefer-local' | 'cloud-ok';
+}
+
+export interface TierResolveResult {
+  providerId: ProviderId;
+  model: string;
+  fallbackChain: TierCandidate[];  // in order the router will try
+}
+
+export function resolveTier(input: TierResolveInput): TierResolveResult | null {
+  const candidates = TIER_TO_MODEL_CANDIDATES[input.tier].filter(c => {
+    if (input.privacyMode === 'local-only') return c.providerId === 'ollama' || c.providerId === 'openai-compatible';
+    return true;
+  });
+  const enabled = input.configuredProviders.filter(p => p.enabled).sort((a, b) => a.priority - b.priority);
+  const chosen: TierCandidate[] = [];
+  for (const c of candidates) {
+    const cfg = enabled.find(p => p.id === c.providerId);
+    if (cfg && cfg.models.includes(c.model)) chosen.push(c);
+  }
+  if (chosen.length === 0) return null;
+  return { providerId: chosen[0].providerId, model: chosen[0].model, fallbackChain: chosen.slice(1) };
 }
 ```
 
 Rules:
+- The resolver never invents a model name.
+- If no candidate matches, callers must handle `null` (typically by using the user's `defaultProviderId` and default model).
+- Planner/Renderer must call `resolveTier` at request time, not at module load.
 
-- Every IndexedDB database declares a numeric `DB_VERSION`.
-- Every version bump includes a migration function.
-- Migrations are deterministic and idempotent where practical.
-- Destructive migrations are forbidden in v0.1 unless explicitly approved.
-- Migration failures log `IDB_MIGRATION_FAILED` and degrade gracefully.
-
-### 19.6 Tool Orchestration Hardening
+---
+# Appendix E — MessageType Registry and Port Protocol
 
 ```ts
-export interface ToolExecutionEnvelope<TInput> {
+// src/core/runtime/MessageType.ts
+export const MessageType = {
+  PROXY_FETCH:          'PROXY_FETCH',
+  EXTRACT_PAGE_CONTENT: 'EXTRACT_PAGE_CONTENT',
+  OPEN_SIDE_PANEL:      'OPEN_SIDE_PANEL',
+  SESSION_TOKEN_UPDATE: 'SESSION_TOKEN_UPDATE',
+  BACKGROUND_STATE:     'BACKGROUND_STATE',
+  KEEPALIVE_PING:       'KEEPALIVE_PING',
+  PORT_STREAM_START:    'PORT_STREAM_START',
+  PORT_STREAM_CHUNK:    'PORT_STREAM_CHUNK',
+  PORT_STREAM_END:      'PORT_STREAM_END',
+  PORT_STREAM_ABORT:    'PORT_STREAM_ABORT',
+  ADDON_EVENT:          'ADDON_EVENT',
+} as const;
+
+export type MessageTypeValue = typeof MessageType[keyof typeof MessageType];
+export const MessageTypeValues = Object.values(MessageType) as MessageTypeValue[];
+```
+
+## Response Envelope
+
+Every request-response call over `chrome.runtime.sendMessage` MUST use `ResponseEnvelope<T>` (Appendix C).
+
+`BackgroundRouter` skeleton:
+
+```ts
+export const BackgroundRouter = {
+  register() {
+    chrome.runtime.onMessage.addListener((msg: RuntimeEnvelope<unknown>, sender, sendResponse) => {
+      if (sender.id !== chrome.runtime.id) return false;
+      if (!MessageTypeValues.includes(msg.type)) return false;
+      dispatch(msg).then(resp => sendResponse(resp));
+      return true; // async
+    });
+  },
+};
+```
+
+## Long-Lived Port Streaming Protocol
+
+Used when the SW must stream data to the side panel (rare in NowPilot; the panel does its own streaming, but SW-originated events like session-token updates use this).
+
+```ts
+// Message flow, all wrapped in RuntimeEnvelope:
+// 1. PORT_STREAM_START  { operationId, kind: 'session-tokens' }
+// 2. PORT_STREAM_CHUNK  { operationId, data: unknown }         // 0..N times
+// 3. PORT_STREAM_END    { operationId, ok: boolean, error? }
+```
+
+`PortReader` presents this as an `AsyncIterable<T>`:
+
+```ts
+// src/core/runtime/PortReader.ts
+export function readPort<T>(port: chrome.runtime.Port): AsyncIterable<T> {
+  const queue: T[] = [];
+  let done = false;
+  let err: unknown = null;
+  let notify: (() => void) | null = null;
+
+  port.onMessage.addListener((env: RuntimeEnvelope<any>) => {
+    if (env.type === MessageType.PORT_STREAM_CHUNK) queue.push(env.payload.data as T);
+    else if (env.type === MessageType.PORT_STREAM_END) { done = true; if (!env.payload.ok) err = env.payload.error; }
+    notify?.();
+  });
+  port.onDisconnect.addListener(() => { done = true; err = err ?? new Error('PORT_DISCONNECTED'); notify?.(); });
+
+  return {
+    [Symbol.asyncIterator]() {
+      return {
+        async next(): Promise<IteratorResult<T>> {
+          while (queue.length === 0 && !done) await new Promise<void>(res => { notify = res; });
+          if (queue.length > 0) return { value: queue.shift()!, done: false };
+          if (err) throw err;
+          return { value: undefined as any, done: true };
+        },
+      };
+    },
+  };
+}
+```
+
+---
+# Appendix F — Tweakcn → `np-*` Token Mapping
+
+Tweakcn ships HSL variables under standard shadcn names. NowPilot re-exports them as `--np-*` to prevent collisions with host-page CSS variables.
+
+| shadcn variable | NowPilot token |
+|---|---|
+| `--background` | `--np-background` |
+| `--foreground` | `--np-foreground` |
+| `--card` | `--np-card` |
+| `--card-foreground` | `--np-card-foreground` |
+| `--popover` | `--np-popover` |
+| `--popover-foreground` | `--np-popover-foreground` |
+| `--primary` | `--np-primary` |
+| `--primary-foreground` | `--np-primary-foreground` |
+| `--secondary` | `--np-secondary` |
+| `--secondary-foreground` | `--np-secondary-foreground` |
+| `--muted` | `--np-muted` |
+| `--muted-foreground` | `--np-muted-foreground` |
+| `--accent` | `--np-accent` |
+| `--accent-foreground` | `--np-accent-foreground` |
+| `--destructive` | `--np-destructive` |
+| `--destructive-foreground` | `--np-destructive-foreground` |
+| `--border` | `--np-border` |
+| `--input` | `--np-input` |
+| `--ring` | `--np-ring` |
+| `--radius` | `--np-radius` |
+
+Side panel `theme-tweakcn.css`:
+
+```css
+:root {
+  --np-background:          210 20% 98%;
+  --np-foreground:           222 15% 12%;
+  --np-primary:              221 83% 53%;
+  --np-primary-foreground:   0   0%  100%;
+  /* … remaining 16 tokens with Tweakcn HSL triples … */
+  --np-radius:               0.5rem;
+}
+.dark {
+  --np-background:           222 20% 10%;
+  --np-foreground:           210 20% 96%;
+  /* … dark palette … */
+}
+```
+
+Shadow DOM host mapping (see Appendix H) applies the same tokens on `:host` and `:host(.dark)`.
+
+---
+# Appendix G — Complete `wxt.config.ts`
+
+```ts
+// wxt.config.ts
+import { defineConfig } from 'wxt';
+import tailwindcss from '@tailwindcss/vite';
+
+export default defineConfig({
+  srcDir: 'src',
+  modules: ['@wxt-dev/module-react'],
+  manifest: {
+    name: 'NowPilot',
+    description: 'AI-native Chrome Side Panel assistant',
+    permissions: [
+      'sidePanel','storage','cookies','alarms','tabs',
+      'scripting','contextMenus','notifications','declarativeNetRequest',
+    ],
+    host_permissions: [
+      '*://*.service-now.com/*',
+      '*://support.servicenow.com/*',
+    ],
+    side_panel: { default_path: 'sidepanel.html' },
+    action:     { default_title: 'Open NowPilot' },
+    content_security_policy: {
+      extension_pages: "script-src 'self'; object-src 'self'; connect-src *",
+    },
+    web_accessible_resources: [
+      { resources: ['assets/*'], matches: ['<all_urls>'] },
+    ],
+  },
+  vite: () => ({
+    plugins: [tailwindcss()],
+    build: {
+      cssCodeSplit: true,   // side panel CSS must NOT ship to content script
+      target: 'chrome120',
+      sourcemap: 'inline',
+    },
+  }),
+});
+```
+
+Rules:
+- `cssCodeSplit: true` is **mandatory** — the side panel bundle (with preflight) must never leak into the content script bundle.
+- `target: 'chrome120'` matches the minimum supported Chrome for `chrome.sidePanel.open`.
+- Do not add `web_accessible_resources` for anything except `assets/*`.
+
+---
+# Appendix H — Shadow DOM Isolation Kit
+
+## H.1 `mountShadow`
+
+```ts
+// src/core/content/mountShadow.ts
+import { getSharedSheet } from './loadSharedSheet';
+import { buildTokenSheet } from './buildTokenSheet';
+
+export interface MountShadowOptions { dark: boolean; }
+export interface MountedShadow { shadow: ShadowRoot; portalHost: HTMLElement; }
+
+export async function mountShadow(host: HTMLElement, opts: MountShadowOptions): Promise<MountedShadow> {
+  host.classList.toggle('dark', opts.dark);
+  const shadow = host.attachShadow({ mode: 'closed' });
+  const shared = await getSharedSheet();
+  const tokens = buildTokenSheet(opts.dark);
+  shadow.adoptedStyleSheets = [shared, tokens];
+
+  const portalHost = document.createElement('div');
+  portalHost.className = 'np-shadow-container';
+  portalHost.style.cssText = 'all: initial; display: contents;';
+  shadow.appendChild(portalHost);
+  return { shadow, portalHost };
+}
+```
+
+## H.2 `getSharedSheet`
+
+```ts
+// src/core/content/loadSharedSheet.ts
+let cached: CSSStyleSheet | null = null;
+
+export async function getSharedSheet(): Promise<CSSStyleSheet> {
+  if (cached) return cached;
+  const [tailwind, katex, hljs] = await Promise.all([
+    fetch(chrome.runtime.getURL('assets/shadow.css')).then(r => r.text()),
+    fetch(chrome.runtime.getURL('assets/katex.min.css')).then(r => r.text()),
+    fetch(chrome.runtime.getURL('assets/highlight.min.css')).then(r => r.text()),
+  ]);
+  const s = new CSSStyleSheet();
+  await s.replace([tailwind, katex, hljs].join('\n'));
+  cached = s;
+  return s;
+}
+```
+
+## H.3 `buildTokenSheet`
+
+```ts
+// src/core/content/buildTokenSheet.ts
+export function buildTokenSheet(_dark: boolean): CSSStyleSheet {
+  const s = new CSSStyleSheet();
+  const light = `
+    :host {
+      --np-background:         210 20% 98%;
+      --np-foreground:         222 15% 12%;
+      --np-primary:            221 83% 53%;
+      --np-primary-foreground: 0   0%  100%;
+      /* remaining 16 tokens per Appendix F */
+      --np-radius: 0.5rem;
+    }`;
+  const darkRule = `
+    :host(.dark) {
+      --np-background:         222 20% 10%;
+      --np-foreground:         210 20% 96%;
+      /* dark palette per Appendix F */
+    }`;
+  s.replaceSync(light + darkRule);
+  return s;
+}
+```
+
+## H.4 Portal-aware shadcn wrappers
+
+```tsx
+// src/components/ui-shadow/PortalContext.tsx
+import { createContext, useContext } from 'react';
+
+export const PortalHostContext = createContext<HTMLElement | null>(null);
+export const usePortalHost = () => useContext(PortalHostContext);
+```
+
+```tsx
+// src/components/ui-shadow/Dialog.tsx
+// Representative wrapper — repeat for Popover, Tooltip, Select, DropdownMenu, HoverCard, Toast.
+import * as DialogPrimitive from '@radix-ui/react-dialog';
+import { usePortalHost } from './PortalContext';
+
+export function Dialog({ children, ...props }: React.ComponentProps<typeof DialogPrimitive.Root>) {
+  return <DialogPrimitive.Root {...props}>{children}</DialogPrimitive.Root>;
+}
+export function DialogContent({ children, ...props }: React.ComponentProps<typeof DialogPrimitive.Content>) {
+  const host = usePortalHost();
+  return (
+    <DialogPrimitive.Portal container={host ?? undefined}>
+      <DialogPrimitive.Overlay className="np-overlay" />
+      <DialogPrimitive.Content {...props}>{children}</DialogPrimitive.Content>
+    </DialogPrimitive.Portal>
+  );
+}
+```
+
+## H.5 Mounting the app inside the shadow
+
+```tsx
+// src/core/content/ContentScriptHost.ts (excerpt)
+const { shadow, portalHost } = await mountShadow(host, { dark: prefersDark() });
+const reactRoot = createRoot(portalHost);
+reactRoot.render(
+  <PortalHostContext.Provider value={portalHost}>
+    <AddonUI />
+  </PortalHostContext.Provider>,
+);
+```
+
+Rules:
+- Add-on injected UI MUST import primitives from `src/components/ui-shadow/`, never from `src/components/ui/`.
+- Do not include `@import 'tailwindcss/preflight'` in `shadow.css`.
+- Dark mode is toggled by adding/removing the `dark` class on the shadow host element.
+
+---
+# Appendix I — `AgentOrchestrator` Reference Implementation
+
+```ts
+// src/core/ai/AgentOrchestrator.ts
+import { PlannerService } from './PlannerService';
+import { ExecutorService } from './ExecutorService';
+import { RendererService } from './RendererService';
+import type { OptimizedContext } from '../context/ContextOptimizer';
+import type { ToolExecutionResult } from './types';
+
+export interface AgentTurnInput {
   operationId: string;
-  toolName: string;
-  source: 'builtin' | 'mcp' | 'skill' | 'macro';
-  dangerous: boolean;
-  input: TInput;
-  startedAt: number;
+  userInput: string;
+  context: OptimizedContext;
+  abortSignal: AbortSignal;
+  tier: {
+    plannerCap: number;   // §1.4
+    toolCap: number;
+    mcpChaining: boolean;
+  };
+}
+
+export interface AgentTurnOutput {
+  operationId: string;
+  streamedText: string;
+  toolResults: ToolExecutionResult<unknown>[];
+  reasonCode: string;
+}
+
+export async function runAgentTurn(input: AgentTurnInput): Promise<AgentTurnOutput> {
+  const toolResults: ToolExecutionResult<unknown>[] = [];
+  let plannerCalls = 0;
+  let toolCalls = 0;
+
+  while (true) {
+    if (input.abortSignal.aborted) throw new DOMException('aborted', 'AbortError');
+    if (plannerCalls >= input.tier.plannerCap) {
+      return await finish('planner_cap_reached');
+    }
+    plannerCalls++;
+    const decision = await PlannerService.plan({
+      operationId: input.operationId,
+      context: input.context,
+      userInput: input.userInput,
+      toolResults,
+      abortSignal: input.abortSignal,
+    });
+
+    if (decision.action === 'answer' || decision.action === 'ask_clarification') {
+      return await finish(
+        decision.action === 'answer'
+          ? (decision as any).reasonCode
+          : 'ask_clarification'
+      );
+    }
+    if (toolCalls >= input.tier.toolCap) {
+      return await finish('tool_cap_reached');
+    }
+    toolCalls++;
+    const result = await ExecutorService.execute({
+      operationId: input.operationId,
+      toolName: (decision as any).toolName,
+      input: (decision as any).input,
+      abortSignal: input.abortSignal,
+    });
+    toolResults.push(result);
+    // Loop back to Planner with tool result appended.
+  }
+
+  async function finish(reasonCode: string): Promise<AgentTurnOutput> {
+    const rendered = await RendererService.render({
+      operationId: input.operationId,
+      context: input.context,
+      userInput: input.userInput,
+      toolResults,
+      abortSignal: input.abortSignal,
+    });
+    return {
+      operationId: input.operationId,
+      streamedText: rendered.text,
+      toolResults,
+      reasonCode,
+    };
+  }
+}
+```
+
+Rules:
+- `AgentOrchestrator` is the **only** module allowed to enforce the tier caps in §1.4.
+- No component or hook may call `PlannerService` directly.
+- The `AbortSignal` is passed through unchanged to every downstream service.
+
+---
+# Appendix J — Streaming Kit
+
+## J.1 `ChunkBuffer`
+
+```ts
+// src/core/ai/ChunkBuffer.ts
+export interface ChunkBuffer {
+  enqueue(delta: string): void;
+  onFlush(cb: (text: string) => void): () => void;   // returns unsubscribe
+  flushNow(): void;
+  reset(): void;
+}
+
+export function createChunkBuffer(): ChunkBuffer {
+  let pending = '';
+  let full = '';
+  let rafId: number | null = null;
+  const listeners = new Set<(t: string) => void>();
+  let byteRate = 0;
+  let lastMeasure = performance.now();
+
+  function schedule() {
+    if (rafId !== null) return;
+    rafId = requestAnimationFrame(() => {
+      rafId = null;
+      full += pending;
+      pending = '';
+      for (const cb of listeners) cb(full);
+    });
+  }
+
+  return {
+    enqueue(delta) {
+      pending += delta;
+      byteRate += delta.length;
+      const now = performance.now();
+      if (now - lastMeasure > 1000) { byteRate = delta.length; lastMeasure = now; }
+      // Back-pressure: slow flush to 33 ms if rate is high
+      if (byteRate > 8_000 && rafId === null) {
+        rafId = setTimeout(() => {
+          rafId = null; full += pending; pending = '';
+          listeners.forEach(cb => cb(full));
+        }, 33) as unknown as number;
+      } else {
+        schedule();
+      }
+    },
+    onFlush(cb) { listeners.add(cb); return () => listeners.delete(cb); },
+    flushNow() {
+      if (rafId !== null) { cancelAnimationFrame(rafId as number); rafId = null; }
+      full += pending; pending = '';
+      listeners.forEach(cb => cb(full));
+    },
+    reset() {
+      pending = ''; full = '';
+      if (rafId !== null) { cancelAnimationFrame(rafId as number); rafId = null; }
+    },
+  };
+}
+```
+
+## J.2 `useStreamingLLM`
+
+```ts
+// src/hooks/useStreamingLLM.ts
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { createChunkBuffer, type ChunkBuffer } from '../core/ai/ChunkBuffer';
+import { runAgentTurn } from '../core/ai/AgentOrchestrator';
+import type { ActiveStreamState } from '../core/runtime/workerState';
+
+export function useStreamingLLM(conversationId: string) {
+  const bufferRef = useRef<ChunkBuffer>(createChunkBuffer());
+  const abortRef  = useRef<AbortController | null>(null);
+  const [text, setText] = useState('');
+  const [state, setState] = useState<ActiveStreamState>({ state: 'idle' });
+
+  useEffect(() => bufferRef.current.onFlush(setText), []);
+
+  const send = useCallback(async (userInput: string, ctxBuilder: () => Promise<any>) => {
+    abortRef.current?.abort();
+    abortRef.current = new AbortController();
+    bufferRef.current.reset();
+    const operationId = crypto.randomUUID();
+
+    await chrome.storage.session.set({
+      np_active_stream: { conversationId, operationId, startedAt: Date.now() },
+    });
+    setState({ state: 'streaming', sessionId: conversationId, operationId, startedAt: Date.now() });
+
+    try {
+      const context = await ctxBuilder();
+      const result = await runAgentTurn({
+        operationId, userInput, context,
+        abortSignal: abortRef.current.signal,
+        tier: pickTierCaps(context),
+      });
+      for (const ch of chunkStringForEffect(result.streamedText)) {
+        bufferRef.current.enqueue(ch);
+      }
+      bufferRef.current.flushNow();
+      setState({ state: 'completed', sessionId: conversationId, operationId });
+    } catch (e: any) {
+      setState({
+        state: 'failed', sessionId: conversationId, operationId,
+        code: e?.code ?? 'STREAM_FAILED', message: e?.message ?? 'Unknown error',
+      });
+    } finally {
+      await chrome.storage.session.remove('np_active_stream');
+    }
+  }, [conversationId]);
+
+  const abort = useCallback(() => { abortRef.current?.abort(); }, []);
+
+  // SW-restart recovery: if a stream was interrupted, mark it aborted on mount.
+  useEffect(() => {
+    (async () => {
+      const v = await chrome.storage.session.get('np_active_stream');
+      if (v.np_active_stream && v.np_active_stream.conversationId === conversationId) {
+        setState({
+          state: 'failed', sessionId: conversationId,
+          operationId: v.np_active_stream.operationId,
+          code: 'STREAM_INTERRUPTED', message: 'Previous stream was interrupted.',
+        });
+        await chrome.storage.session.remove('np_active_stream');
+      }
+    })();
+  }, [conversationId]);
+
+  return { text, state, send, abort };
+}
+
+function chunkStringForEffect(s: string): Iterable<string> { return s.match(/.{1,32}/g) ?? []; }
+function pickTierCaps(_ctx: any) { return { plannerCap: 3, toolCap: 2, mcpChaining: true }; }
+```
+
+Rules:
+- One `AbortController` per conversation.
+- Every stream persists a recovery record so a re-opened panel can reconcile.
+- `ChunkBuffer` is the only allowed path from stream chunks to React state.
+
+---
+# Appendix K — `PromptCacheAdapter` per Provider
+
+```ts
+// src/core/ai/PromptCacheAdapter.ts
+import type { ProviderId } from './types';
+import type { PromptSection } from '../context/ContextOptimizer';
+
+export interface CacheAdaptedPrompt {
+  providerRequestSections: unknown;   // provider-specific shape
+  cacheKeyHash: string;               // for AITransactionLog
+  strategy: 'anthropic-ephemeral' | 'gemini-cachedContent' | 'prefix-only';
+}
+
+const ANTHROPIC_MAX_BREAKPOINTS = 4;
+const GEMINI_MIN_CACHED_TOKENS = 32_768;
+
+export function applyCacheHints(
+  providerId: ProviderId,
+  sections: PromptSection[],
+): CacheAdaptedPrompt {
+  switch (providerId) {
+    case 'anthropic': {
+      // Mark up to 4 stable section boundaries with cache_control: ephemeral.
+      let marked = 0;
+      const out = sections.map((s) => {
+        if (s.stable && marked < ANTHROPIC_MAX_BREAKPOINTS) {
+          marked++;
+          return { ...s, cache_control: { type: 'ephemeral' as const } };
+        }
+        return s;
+      });
+      return {
+        providerRequestSections: out,
+        cacheKeyHash: hashStableSections(sections),
+        strategy: 'anthropic-ephemeral',
+      };
+    }
+    case 'gemini': {
+      const stable = sections.filter(s => s.stable);
+      const stableTokens = stable.reduce((n, s) => n + s.tokens, 0);
+      if (stableTokens >= GEMINI_MIN_CACHED_TOKENS) {
+        return {
+          providerRequestSections: {
+            cachedContent: stable,
+            inline: sections.filter(s => !s.stable),
+          },
+          cacheKeyHash: hashStableSections(stable),
+          strategy: 'gemini-cachedContent',
+        };
+      }
+      return {
+        providerRequestSections: { inline: sections },
+        cacheKeyHash: hashStableSections(stable),
+        strategy: 'prefix-only',
+      };
+    }
+    case 'openai':
+    case 'openai-compatible':
+    case 'ollama':
+    default: {
+      // Server-side prefix caching only. Guarantee deterministic ordering.
+      const ordered = [...sections].sort(stableFirst);
+      return {
+        providerRequestSections: ordered,
+        cacheKeyHash: hashStableSections(ordered.filter(s => s.stable)),
+        strategy: 'prefix-only',
+      };
+    }
+  }
+}
+
+function stableFirst(a: PromptSection, b: PromptSection) {
+  if (a.stable !== b.stable) return a.stable ? -1 : 1;
+  return a.kind.localeCompare(b.kind);
+}
+
+function hashStableSections(sections: Array<Pick<PromptSection, 'text' | 'stable'>>): string {
+  const stable = sections.filter(s => s.stable).map(s => s.text).join('\u0000');
+  let h = 2166136261;
+  for (let i = 0; i < stable.length; i++) {
+    h ^= stable.charCodeAt(i);
+    h = (h * 16777619) >>> 0;
+  }
+  return h.toString(16).padStart(8, '0');
+}
+```
+
+Rules:
+- Only stable sections are eligible for cache hints.
+- `cacheKeyHash` is recorded in `PromptTrace.promptCache.cacheKey` (§4.3).
+- Below the Gemini 32,768-token minimum, fall back to prefix-only.
+
+---
+# Appendix L — Structured Output Repair Loop
+
+```ts
+// src/core/ai/StructuredOutput.ts
+import { z } from 'zod';
+import { zodToJsonSchema } from 'zod-to-json-schema';
+import type { ProviderId } from './types';
+import { PROMPTS } from '../prompts';
+
+export interface StructuredOutputContext {
+  operationId: string;
+  providerId: ProviderId;
+  model: string;
+  timeoutMs: number;
+  callProviderJsonMode: (prompt: string, jsonSchema: unknown, signal: AbortSignal) => Promise<string>;
   abortSignal: AbortSignal;
 }
 
-export interface ToolExecutionResult<TOutput> {
-  operationId: string;
-  toolName: string;
-  ok: boolean;
-  output?: TOutput;
-  error?: {
-    code: string;
-    message: string;
-    retryable: boolean;
+export async function requestJson<T>(
+  schema: z.ZodSchema<T>,
+  prompt: string,
+  ctx: StructuredOutputContext,
+): Promise<T> {
+  const jsonSchema = zodToJsonSchema(schema);
+
+  const attempt = async (p: string): Promise<string> => {
+    const ac = new AbortController();
+    const onAbort = () => ac.abort();
+    ctx.abortSignal.addEventListener('abort', onAbort);
+    const to = setTimeout(() => ac.abort(), ctx.timeoutMs);
+    try {
+      return await ctx.callProviderJsonMode(p, jsonSchema, ac.signal);
+    } finally {
+      clearTimeout(to);
+      ctx.abortSignal.removeEventListener('abort', onAbort);
+    }
   };
-  durationMs: number;
+
+  const first = await attempt(prompt);
+  const parsedFirst = safeParse(schema, first);
+  if (parsedFirst.ok) return parsedFirst.data;
+
+  // One-shot repair
+  const repairPrompt = `${PROMPTS.repairJson.system}
+Schema: ${JSON.stringify(jsonSchema)}
+Broken: ${first}`;
+  const second = await attempt(repairPrompt);
+  const parsedSecond = safeParse(schema, second);
+  if (parsedSecond.ok) return parsedSecond.data;
+
+  const err: any = new Error('STRUCTURED_OUTPUT_FAILED');
+  err.code = 'STRUCTURED_OUTPUT_FAILED';
+  err.retryable = false;
+  err.raw = { first, second };
+  throw err;
 }
-```
 
-Tool timeout policy:
-
-| Tool type | Timeout |
-|---|---:|
-| Built-in read tool | 10s |
-| Built-in write tool | 15s |
-| MCP external tool | 30s unless server config overrides lower |
-| ServiceNow Table API tool | 25s via `PROXY_FETCH` |
-| CodeSearch map window | Per-window configurable; default 45s |
-| Webhook execution | 5s |
-
-PromptInspector must show operation ID, tool name, source, dangerous flag, permission decision, start/end time, duration, result status, and sanitized error.
-
-### 19.7 Side Panel Internal Service Boundaries
-
-Required side-panel layout:
-
-```text
-Side Panel Runtime
-  UI Shell
-    - SidepanelShell
-    - route/page rendering
-    - overlays
-
-  Application Services
-    - ChatService
-    - NoteService
-    - AgentService
-    - ToolService
-    - ProviderService
-    - ContextService
-    - SettingsService
-
-  Infrastructure Services
-    - StorageService
-    - MessagingService
-    - TelemetryService
-    - AddonHostService
-```
-
-Suggested files:
-
-```text
-src/core/services/
-  ChatService.ts
-  NoteService.ts
-  AgentService.ts
-  ToolService.ts
-  ProviderService.ts
-  ContextService.ts
-  SettingsService.ts
-  StorageService.ts
-  MessagingService.ts
-  TelemetryService.ts
-  AddonHostService.ts
+function safeParse<T>(schema: z.ZodSchema<T>, raw: string):
+  | { ok: true; data: T }
+  | { ok: false; error: unknown }
+{
+  try {
+    // Strip common wrappers cheap models emit.
+    const cleaned = raw.trim()
+      .replace(/^```(?:json)?/i, '')
+      .replace(/```$/, '')
+      .trim();
+    const parsed = JSON.parse(cleaned);
+    const res = schema.safeParse(parsed);
+    return res.success ? { ok: true, data: res.data } : { ok: false, error: res.error };
+  } catch (e) {
+    return { ok: false, error: e };
+  }
+}
 ```
 
 Rules:
-
-- React components call hooks or services, not low-level storage/messaging directly.
-- Hooks may coordinate UI state but should not contain domain-heavy business logic.
-- Services expose typed methods and typed results.
-- Add-on pages call registered APIs, not private internals.
-- If a hook exceeds 150 LOC or imports more than three infrastructure modules, extract an application service.
-
-### 19.8 ServiceNow Session Hardening and Layer Move
-
-Updated layering:
-
-```text
-core/chrome/CookieSessionStore.ts
-  - generic storage.session helper
-  - generic cookie lookup helper
-  - no ServiceNow token names
-  - no ServiceNow host assumptions beyond caller-provided host
-
-addons/servicenow/auth/ServiceNowSessionAdapter.ts
-  - owns JSESSIONID/sysparmCK/g_ck semantics
-  - knows ServiceNow host patterns
-  - validates session readiness
-  - prepares ServiceNow auth headers
-  - calls CookieSessionStore
-```
-
-Token storage rules:
-
-- `JSESSIONID` only in `chrome.storage.session`.
-- `sysparmCK` only in `chrome.storage.session`.
-- Token TTL stored as `np_token_ttl` or add-on-scoped equivalent.
-- Tokens must never be written to `chrome.storage.local`, IndexedDB, logs, PromptInspector bodies, or export bundles.
-
-`PROXY_FETCH` rules for ServiceNow:
-
-- `SNowTableClient` sends `addonId: 'servicenow'`.
-- `CORSProxy` validates URL host against declared host permissions.
-- `CORSProxy` strips `User-Agent` if present.
-- `CORSProxy` never logs request/response bodies.
-- ServiceNow session headers are prepared by the ServiceNow adapter, not hardcoded in the proxy.
-
-### 19.9 Provider Retry, Backoff, and Circuit Breaker Policy
-
-| Operation | Retry? | Policy |
-|---|---:|---|
-| Provider validation | Yes | Max 1 retry after 500ms for network errors only. |
-| Chat stream start | Yes | Max 1 retry before first token only. |
-| Chat stream after first token | No | Surface partial failure; user can retry manually. |
-| Title generation | No | 3s timeout then fallback title. |
-| MCP tool discovery | Yes | Max 2 retries with 1s/3s backoff. |
-| External MCP tool call | No automatic retry | Tool/client decides based on idempotency. |
-| PROXY_FETCH | No automatic retry | Caller may retry only safe GET requests. |
-
-```ts
-export type ProviderRuntimeState =
-  | { state: 'healthy' }
-  | { state: 'degraded'; failureCount: number; lastFailureAt: number }
-  | { state: 'open'; openedAt: number; reason: string }
-  | { state: 'half-open'; testStartedAt: number };
-```
-
-Default UX: do not silently switch providers. Show a user decision prompt because privacy and cost expectations can differ between local and cloud models.
-
-### 19.10 Observability Retention and Redaction Policy
-
-Add:
-
-```text
-src/core/security/redactSensitive.ts
-```
-
-Required redaction patterns:
-
-```text
-/sk-[A-Za-z0-9_-]+/
-/key-[A-Za-z0-9_-]+/
-/JSESSIONID=[^;\s]+/
-/sysparm_ck[=:]\s*[^&\s]+/i
-/x-user-token[=:]\s*[^&\s]+/i
-```
-
-`ErrorStore` remains debug-mode only, FIFO max 100 entries, with entries older than 14 days purged when debug mode is active. `PromptInspector` stores sanitized metadata by default, retains the last 50 prompt/tool traces, and does not retain raw prompt bodies unless debug mode is enabled.
-
-### 19.11 Context Provenance in PromptInspector
-
-```ts
-export interface ContextProvenanceManifest {
-  operationId: string;
-  createdAt: number;
-  model: string;
-  contextWindow: number;
-  estimatedTokens: number;
-  sources: Array<{
-    sourceType:
-      | 'system-prompt'
-      | 'pinned-tab'
-      | 'current-page'
-      | 'note'
-      | 'backlink'
-      | 'recent-history'
-      | 'older-history-summary';
-    sourceId?: string;
-    title?: string;
-    originalTokens: number;
-    includedTokens: number;
-    truncated: boolean;
-    dropped: boolean;
-    reason?: string;
-  }>;
-}
-```
-
-PromptInspector must show total estimated tokens, token budget by source type, included sources, dropped sources, truncated sources, and compaction summary status.
-
-### 19.12 Add-on Certification Checklist
-
-Every add-on must pass this checklist before being considered valid.
-
-Manifest / permission:
-
-- [ ] Declares `id`, `name`, and `scope`.
-- [ ] Site add-ons declare `urlPatterns`.
-- [ ] Host permissions are minimal and explicit.
-- [ ] No add-on calls `chrome.*` directly unless explicitly allowed by a core API contract.
-- [ ] External URLs are declared through endpoint registration.
-
-Runtime contract:
-
-- [ ] Uses `AddonSettingsStore<T>` for settings.
-- [ ] Uses add-on namespaced keys: `np_addon_<addonId>`.
-- [ ] Uses `RateLimiter` for external/API calls.
-- [ ] Uses `debugLog` for all caught errors.
-- [ ] Provides Zod schemas for public skill inputs/outputs.
-- [ ] Does not use `innerHTML`, `dangerouslySetInnerHTML`, or `eval`.
-- [ ] Uses Shadow DOM for injected UI.
-- [ ] Handles abort signals in long-running operations.
-
-Security:
-
-- [ ] Does not persist session tokens in `storage.local` or IndexedDB.
-- [ ] Does not log request/response bodies containing sensitive data.
-- [ ] Does not register open-ended proxy hosts.
-- [ ] Does not expose sensitive data through UI without user action.
-- [ ] Dangerous tools are marked `dangerous: true`.
-
-UX:
-
-- [ ] Provides loading/empty/error/success states where UI is visible.
-- [ ] Uses shared `Toast`, `ErrorBoundary`, and `PortableMarkdown` where applicable.
-- [ ] Provides accessible labels for interactive UI.
-- [ ] Keymaps are registered through `KeymapRegistry`.
-- [ ] Shortcut collisions are handled according to registry rules.
-
-Tests:
-
-- [ ] Add-on registration test.
-- [ ] Settings schema validation test.
-- [ ] Skill input/output schema test.
-- [ ] RateLimiter behavior test for external calls.
-- [ ] Error redaction test if handling sensitive data.
-- [ ] PermissionGate test for dangerous tools.
-
-### 19.13 Architecture Diagrams
-
-#### Diagram 1 — NowPilot Container Architecture
-
-Use this to explain runtime boundaries between Side Panel, Background Service Worker, Content Scripts, Add-ons, Storage, and External Systems.
-
-```mermaid
-flowchart TB
-  User((User))
-
-  subgraph Chrome["Chrome Browser / MV3 Extension"]
-    subgraph BG["Background Service Worker<br/>(Privileged Control Plane)"]
-      BackgroundRouter["BackgroundRouter<br/>typed onMessage + sender validation"]
-      LifecycleManager["LifecycleManager<br/>onInstalled / onStartup"]
-      KeepAliveManager["KeepAliveManager<br/>chrome.alarms + panel ping"]
-      CookieSessionStore["CookieSessionStore<br/>generic cookies + storage.session"]
-      CORSProxy["CORSProxy<br/>generic PROXY_FETCH"]
-      ContextMenuHost["ContextMenuHost<br/>context menu registration"]
-    end
-
-    subgraph Panel["Side Panel React SPA<br/>(Main Application Runtime)"]
-      Shell["SidepanelShell<br/>Nav rail / Cmd+K / overlays"]
-      Services["Application Services<br/>Chat / Note / Agent / Tool / Context"]
-      ProviderRegistry["ProviderRegistry<br/>OpenAI / Anthropic / Gemini / Ollama / Compatible"]
-      AgentEngine["Agent Engine<br/>AgentLoop / SkillRunner / WorkflowRunner"]
-      MCP["MCP Runtime<br/>MCPClient / MCPRegistry / NowPilotMainServer"]
-      ContextPipeline["Context Pipeline<br/>ContextWindowManager / ContextPack / ContextManager"]
-      StorageLayer["Storage Layer<br/>ChatHistoryDB / NotesDB / MemoryDB / ErrorStore / WriteJournal"]
-      PromptInspector["PromptInspector<br/>tool trace + context manifest"]
-    end
-
-    subgraph CS["Content Script Layer<br/>(Per-tab Edge Adapter)"]
-      ContentHost["ContentScriptHost<br/>Shadow DOM mount"]
-      SPAWatcher["SPANavigationWatcher<br/>MutationObserver"]
-      PageBridge["PageContextBridge<br/>TabContext to panel"]
-      MainWorldBridge["MAIN-world token bridge<br/>reads window.g_ck"]
-    end
-
-    subgraph Addons["Add-on Layer"]
-      GlobalAddon["Global Add-ons<br/>SelectionContextMenu / ResearchSkill"]
-      SNAddon["ServiceNow Add-on<br/>SessionAdapter / pageExtractor / SNowTableClient / Skills / CaseInsightBox"]
-    end
-  end
-
-  subgraph Stores["Local Storage Backends"]
-    Local["chrome.storage.local<br/>settings / metadata / flags / templates"]
-    Session["chrome.storage.session<br/>session tokens / TTL"]
-    Sync["chrome.storage.sync<br/>theme / language"]
-    IDB["IndexedDB<br/>chat bodies / notes / memory / errors / write journal"]
-  end
-
-  subgraph External["External Systems"]
-    AIProviders["AI Providers<br/>OpenAI / Anthropic / Gemini / Ollama / Compatible"]
-    MCPServers["External MCP Servers"]
-    ServiceNow["ServiceNow<br/>Table API / support UI"]
-  end
-
-  User --> Shell
-  Shell --> Services
-  Services --> ProviderRegistry
-  Services --> AgentEngine
-  Services --> ContextPipeline
-  Services --> StorageLayer
-  Services --> PromptInspector
-
-  ProviderRegistry --> AIProviders
-  AgentEngine --> ProviderRegistry
-  AgentEngine --> MCP
-  MCP --> MCPServers
-  MCP --> AgentEngine
-
-  ContextPipeline --> PageBridge
-  StorageLayer --> IDB
-  StorageLayer --> Local
-  CookieSessionStore --> Session
-  Shell --> Sync
-
-  Panel <--> BackgroundRouter
-  BackgroundRouter --> CORSProxy
-  BackgroundRouter --> CookieSessionStore
-  BackgroundRouter --> ContextMenuHost
-  LifecycleManager --> KeepAliveManager
-
-  CS --> Panel
-  SNAddon --> CS
-  GlobalAddon --> ContextMenuHost
-  SNAddon --> CORSProxy
-  CORSProxy --> ServiceNow
-  MainWorldBridge --> SNAddon
-```
-
-#### Diagram 2 — Core vs Add-on Boundary
-
-Use this to enforce the rule that Core provides reusable capabilities while Add-ons provide domain behavior.
-
-```mermaid
-flowchart LR
-  subgraph Core["src/core<br/>Reusable Platform Capabilities"]
-    CoreAI["AI Runtime<br/>ProviderRegistry / AgentLoop / SkillRegistry"]
-    CoreMCP["MCP Runtime<br/>MCPClient / NowPilotMainServer"]
-    CoreContext["Context Pipeline<br/>ContextWindowManager / ContentExtractor"]
-    CoreStorage["Storage<br/>EncryptedStorage / DBs / WriteJournal / Migrator"]
-    CoreMessaging["Messaging<br/>MessageBus / BroadcastBus / EventBus / PortReader"]
-    CoreChrome["Chrome API Hosts<br/>CORSProxy / CookieSessionStore / ContextMenuHost / Scheduler"]
-    CoreRegistry["Registries<br/>AddonRegistry / SidePanelPageRegistry / AddonSettingsStore"]
-    CoreUI["Shared UI<br/>ErrorBoundary / Toast / PortableMarkdown"]
-  end
-
-  subgraph Global["src/addons/global<br/>Global Add-ons"]
-    Selection["SelectionContextMenu"]
-    Research["ResearchSkill<br/>/research"]
-  end
-
-  subgraph SN["src/addons/servicenow<br/>ServiceNow Add-on"]
-    SNIndex["index.ts<br/>registers add-on"]
-    SNAuth["ServiceNowSessionAdapter<br/>JSESSIONID / sysparmCK / g_ck semantics"]
-    SNToken["tokenBridge.ts<br/>MAIN-world token extraction"]
-    SNExtractor["pageExtractor.ts<br/>case page context"]
-    SNClient["SNowTableClient<br/>uses PROXY_FETCH"]
-    SNSkills["Skills<br/>CaseAnalyzer / CatchUp / Sentiment / CodeSearch"]
-    SNUI["CaseInsightBox<br/>Shadow DOM UI"]
-  end
-
-  CoreRegistry --> Global
-  CoreRegistry --> SN
-
-  Global --> CoreAI
-  Global --> CoreMCP
-  Global --> CoreChrome
-  Global --> CoreUI
-
-  SN --> CoreAI
-  SN --> CoreContext
-  SN --> CoreChrome
-  SN --> CoreMessaging
-  SN --> CoreUI
-
-  SNClient --> CoreChrome
-  SNSkills --> CoreAI
-  SNExtractor --> CoreContext
-  SNAuth --> CoreChrome
-
-  Core -. "MUST NOT import add-ons" .-> SN
-  Core -. "MUST NOT import add-ons" .-> Global
-```
-
-#### Diagram 3 — Runtime Flow Diagrams
-
-##### Send Chat Message
-
-```mermaid
-sequenceDiagram
-  actor User
-  participant ChatPage
-  participant UseChat as useChat
-  participant Slash as SlashCommandRegistry
-  participant Context as ContextWindowManager
-  participant Provider as ProviderRegistry
-  participant LLM as Active LLM Provider
-  participant DB as ChatHistoryDB
-  participant Events as EventBus
-
-  User->>ChatPage: Press Enter / Send
-  ChatPage->>UseChat: submit(input)
-  UseChat->>Slash: check slash command
-
-  alt Slash command found
-    Slash-->>UseChat: handler
-    UseChat->>Slash: execute(args)
-  else Normal chat
-    UseChat->>Context: assemble()
-    Context-->>UseChat: ContextPack + ContextManifest
-    UseChat->>Provider: getActive()
-    Provider-->>UseChat: active provider
-    UseChat->>LLM: chat(messages, options)
-    loop Streaming
-      LLM-->>ChatPage: LLMStreamChunk
-      ChatPage-->>User: render via PortableMarkdown
-    end
-    UseChat->>DB: save user + assistant messages
-    alt First message in session
-      UseChat->>LLM: generate 3-6 word title
-      LLM-->>UseChat: title or fallback
-    end
-    UseChat->>Events: emit chat:message-saved
-  end
-```
-
-##### Agent Tool Call
-
-```mermaid
-sequenceDiagram
-  actor User
-  participant AgentPage
-  participant AgentLoop
-  participant Provider as ProviderRegistry
-  participant ToolAdapter as stepsToTools / mcpToVercelAI
-  participant Permission as PermissionGate
-  participant Tool as SkillRunner / MCP Tool / Built-in Tool
-  participant Inspector as PromptInspector
-  participant UI as ToolCard / ChatMessage
-
-  User->>AgentPage: Describe task
-  AgentPage->>AgentLoop: run(prompt, StepContext)
-  AgentLoop->>Provider: getAISDKModel(model)
-  Provider-->>AgentLoop: LanguageModel
-
-  AgentLoop->>ToolAdapter: merge skills + MCP tools
-  ToolAdapter-->>AgentLoop: Vercel AI tools
-
-  loop maxSteps <= 15
-    AgentLoop->>Provider: streamText(...)
-    Provider-->>AgentLoop: text-delta / tool-call / tool-result
-
-    alt Tool call requested
-      AgentLoop->>Permission: check(toolName, dangerous)
-      alt Needs approval
-        Permission-->>User: Allow once / Allow always / Deny
-      end
-
-      alt Allowed
-        AgentLoop->>Tool: execute(ToolExecutionEnvelope)
-        Tool-->>AgentLoop: ToolExecutionResult
-        AgentLoop->>Inspector: record tool trace
-        AgentLoop-->>UI: render tool result
-      else Denied
-        AgentLoop-->>Provider: inject PERMISSION_DENIED tool_result
-        AgentLoop->>Inspector: record denied tool trace
-      end
-    else Text delta
-      AgentLoop-->>UI: LLMStreamChunk text
-    end
-  end
-```
-
-##### Tab Pinning
-
-```mermaid
-sequenceDiagram
-  actor User
-  participant ChatPage
-  participant TabManager
-  participant ContentHost as ContentScriptHost
-  participant Extractor as ContentExtractor
-  participant Bridge as PageContextBridge
-  participant Context as ContextManager
-  participant Inspector as PromptInspector
-
-  User->>ChatPage: Click Pin this tab
-  ChatPage->>TabManager: query active tab
-  TabManager-->>ChatPage: tabId + url
-
-  alt Unsupported URL
-    ChatPage-->>User: Toast Cannot pin this page
-  else Regular web page
-    ChatPage->>ContentHost: executeScript(tabId)
-    ContentHost->>Extractor: EXTRACT_PAGE_CONTENT
-    Extractor-->>Bridge: TabContext
-    Bridge-->>ChatPage: extracted TabContext
-    ChatPage->>Context: pin(tabId, TabContext)
-    Context-->>ChatPage: pinned
-    ChatPage->>Inspector: record source available for context manifest
-  end
-```
-
-##### ServiceNow PROXY_FETCH
-
-```mermaid
-sequenceDiagram
-  participant SNPage as ServiceNow Page
-  participant TokenBridge as tokenBridge MAIN world
-  participant SNAuth as ServiceNowSessionAdapter
-  participant Client as SNowTableClient
-  participant Bus as MessageBus
-  participant Router as BackgroundRouter
-  participant Store as CookieSessionStore
-  participant Proxy as CORSProxy
-  participant SNAPI as ServiceNow Table API
-
-  SNPage->>TokenBridge: window.g_ck available
-  TokenBridge->>SNAuth: send g_ck/sysparmCK
-  SNAuth->>Store: store generic session value in storage.session
-
-  Client->>SNAuth: require ready session
-  SNAuth->>Store: read JSESSIONID + sysparmCK values
-  Store-->>SNAuth: session values
-  SNAuth-->>Client: ServiceNowSessionState ready
-
-  Client->>Bus: PROXY_FETCH(addonId='servicenow', url, method)
-  Bus->>Router: runtime message
-  Router->>Router: validate sender.id + message type
-  Router->>Proxy: dispatch PROXY_FETCH
-  Proxy->>Proxy: validate host permission
-  Proxy->>SNAPI: fetch(credentials: include, sanitized headers)
-  SNAPI-->>Proxy: response
-  Proxy-->>Client: ProxyFetchResponse
-```
-
-### 19.14 Phase and Test Updates
-
-Phase 1 additions:
-
-```text
-src/core/runtime/RuntimeState.ts
-src/core/runtime/OperationId.ts
-src/core/background/workerState.ts
-```
-
-Phase 2 additions:
-
-```text
-src/core/storage/IndexedDBMigrator.ts
-src/core/storage/WriteJournal.ts
-```
-
-Phase 4 additions:
-
-```text
-ToolExecutionEnvelope
-ToolExecutionResult
-PromptInspector tool trace
-```
-
-Phase 5 additions:
-
-```text
-TabExtractionState
-ContextProvenanceManifest pinned-tab source status
-```
-
-Phase 7 additions:
-
-```text
-core/chrome/CookieSessionStore.ts
-addons/servicenow/auth/ServiceNowSessionAdapter.ts
-addons/servicenow/config/serviceNowEndpoints.ts
-```
-
-Additional Phase 9 tests:
-
-```text
-tests/core/runtime/RuntimeState.test.ts
-tests/core/storage/IndexedDBMigrator.test.ts
-tests/core/storage/WriteJournal.test.ts
-tests/core/telemetry/PromptInspectorContextManifest.test.ts
-tests/core/registry/AddonCertification.test.ts
-tests/addons/servicenow/auth/ServiceNowSessionAdapter.test.ts
-tests/core/chrome/CORSProxy.test.ts
-```
-
-### 19.15 Open Discussion Topics
-
-These decisions remain open before implementation freeze:
-
-1. **Minimum Chrome version / keepalive strategy** — keep broad compatibility or set a minimum Chrome version for shorter alarm-period optimization.
-2. **WriteJournal scope** — v0.1 memory-only scope versus notes/export/webhook inclusion.
-3. **Provider circuit-breaker UX** — show user prompt versus automatic provider fallback. Recommended: show user prompt.
-4. **ServiceNow endpoint registration** — recommended: move ServiceNow endpoint declarations into the ServiceNow add-on now and keep resolver/validation in core.
-5. **Add-on certification enforcement** — documentation-only versus tests/lint rules. Recommended: documentation + tests first, lint/import-boundary enforcement later.
-
-## §20 — Review Resolution Log
-
-Status of every issue raised in the prior critical review.
-
-### ✅ Fixed in this v0.1
-
-| ID | Issue | Resolution |
-|---|---|---|
-| C1 | MemoryStore bodies in storage.local would exceed 10MB | Split: meta in storage.local, bodies in `MemoryDB` (§11.1–11.2, §16, §18) |
-| C2 | Provider ID naming ambiguity | §0.4 canonical IDs; Zod enum is source of truth |
-| C3 | `LLMStreamChunk` vs Vercel `fullStream` shape | §6.4 explicit `mapPartToChunk` table |
-| C4 | tw-animate-css/scrubPII deferral target conflict | §1: all deferrals target v0.5 |
-| C5 | `motion` vs framer-motion | §0.1 + §0.4 DO NOT install framer-motion |
-| N1 | NoteGraph cosine unspecified | §17.4 full algorithm + stopwords + tie-break |
-| N2 | InsightEngine "patterns" undefined | §17.5 three concrete analyses + Insight type §16 |
-| N3 | Title-gen prompt/failure undefined | Flow 1a verbatim prompt + fallback |
-| N4 | CodeSearchSkill unspecified P0 | §10.4 map-reduce chunking; demoted to P1 + model gate |
-| G1 | core/background/ missing | In §4.1/§4.3/Phase 1 |
-| G2 | NowPilotMainServer 12 tools absent | §6.6 full table |
-| G3 | EventBus/utilities absent | §4.5 + phases |
-| G4 | endpoints.ts contents missing | §6.8 |
-| G5 | Onboarding had no flow | Flow 9 |
-| G6 | Cmd+K had no command list | Flow 10 |
-| G7 | Settings page had no phase | Provider tab in Phase 1 (onboarding) + extended later |
-| A1 | Ollama threshold 4096 vs 2048 | Flow 5: single threshold 4096 |
-| A2 | 25s vs 30s SW timeout | §9.3 relationship stated (25s cap, ~30s kill) |
-| A3 | "every 6 turns" trigger undefined | §11.4: `messageCount % 12 === 0` |
-| A4 | Export key-strip undefined | Flow 6: delete apiKey + regex assertion |
-| A5 | "near 10MB" vague | §17.3: ≥ 8MB (80%) |
-| Blocker | `skillsToAiTools`/`mcpToolsToAiTools` mismatch | §0.4 + §6.4 use `stepsToTools`/`mcpToVercelAI` |
-| Blocker | `getAISDKModel` missing from interface | Added to `ILLMProvider` §6.1 |
-| Edge | provider-deleted / IDB-blocked / abort-during-prompt / two-windows / research-no-tool / host-not-permitted | §17.3 rows |
-
-### ✅ Resolved by George (Q4, 2026-06-28)
-
-| ID | Decision | Where applied |
-|---|---|---|
-| §5.4-Write | Write → built-in `/write` prompt preset (no page) | §5.1, §5.4, §4.3, Phase 3 |
-| §5.4-Ask | Ask → built-in `/ask` prompt preset (no page) | §5.1, §5.4, §4.3, Phase 3 |
-| §5.4-Search | Search page REMOVED (was internet search; overlaps Research). Note/chat-history search retained as Cmd+K capability only | §5.1, §5.4, §8, §13.1, §15, Phase 3 |
-| §5.4-Research | NEW Research global tool (`ResearchSkill`, `/research`, MCP/web-search) | §5.1, §5.4, §4.3/§4.4 diagram, §8, Phase 6 |
-| §5.4-PDF | PDF chat REMOVED (`PDFPage`, `FileDB`, `pdfjs-dist` dropped) | §3.7, §0.4, §4.3/§4.4, §8, §11, Phase 5 |
-| Proxy | `SN_REST_REQUEST` → generic `PROXY_FETCH`; CORSProxy is reusable core infra with host-permission enforcement | §0.1, §6.9 (new), §4.4 diagram, Phase 7 |
-
-### 🚫 Not fixed / out of scope for v0.1
-
-| Item | Reason |
-|---|---|
-| Embedding-based semantic note search | Deferred to v0.5 (40MB model); bag-of-words sufficient |
-| TextBlaze / snUtils / GQM reference integration | Deferred to v0.5 (§2.3) |
-| M365 Copilot as first-class provider | Rejected earlier (no tool-use; use `custom`/openai-compatible) |
-| i18n languages beyond English | `t()` scaffold present; languages are data, added later |
+- Exactly one repair attempt. Further failures throw `STRUCTURED_OUTPUT_FAILED`.
+- `PROMPTS.repairJson.system` (Appendix A) is canonical. Do not paraphrase.
+- The provider adapter must set the provider's JSON mode flag natively (`response_format: { type: 'json_schema' }`, `responseSchema`, etc.).
 
 ---
 
-*End of NowPilot Product Specification v0.1.0.*
+End of NowPilot Product Specification v0.1c.
