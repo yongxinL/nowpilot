@@ -5,7 +5,8 @@
     "moduleResolution": "bundler",
     "target": "ESNext",
     "module": "ESNext",
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "types": ["chrome", "wxt"]
   },
   "include": ["src", "*.config.ts", "tests"]
 }
