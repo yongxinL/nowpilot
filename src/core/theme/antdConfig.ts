@@ -8,6 +8,8 @@ export interface AntdConfigOptions {
   compact: boolean;
 }
 
+export type XProviderThemeConfig = Omit<ThemeConfig, 'components'>;
+
 export function getAntdConfig(options: AntdConfigOptions): ThemeConfig {
   const { mode, compact } = options;
   const algorithm = mode === 'dark' ? [darkAlgorithm] : [defaultAlgorithm];
@@ -15,4 +17,9 @@ export function getAntdConfig(options: AntdConfigOptions): ThemeConfig {
     algorithm.push(compactAlgorithm);
   }
   return { algorithm };
+}
+
+export function getXProviderConfig(options: AntdConfigOptions): XProviderThemeConfig {
+  const cfg = getAntdConfig(options);
+  return { algorithm: cfg.algorithm };
 }
