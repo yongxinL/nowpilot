@@ -1985,7 +1985,7 @@ src/entrypoints/background.ts
 src/entrypoints/sidepanel/{index.html, main.tsx}
 src/entrypoints/app/{index.html, main.tsx}                          [NEW]
 src/entrypoints/content/core.content.ts                             # extraction-only
-src/core/theme/{ThemeStore.ts, antdConfig.ts}                       [NEW]
+src/core/theme/{ThemeStore.ts, antdConfig.ts}                       [NEW — antdConfig.ts also exports XProvider theme passthrough]
 src/core/workspace/{WorkspaceStore.ts, WorkspaceRouter.ts, WorkspaceSync.ts}   [NEW]
 src/core/runtime/RuntimeEnvelope.ts                 # Appendix C + E
 src/core/runtime/OperationId.ts
@@ -2029,6 +2029,8 @@ tests/core/theme/ThemeStore.test.ts
 - `grep -r 'innerHTML|dangerouslySetInnerHTML' src/` -> zero.
 - `grep 'tailwind|shadcn|@radix-ui' package.json` -> zero.
 - `grep 'framer-motion' package.json` -> zero.
+- `grep '"antd"\|"@ant-design/icons"\|"@ant-design/x"\|"@ant-design/x-markdown"' package.json` -> all four present at major versions `^6`/`^6`/`^2`/`^2`; `grep '@ant-design/x-sdk\|@ant-design/x-card' package.json` -> zero.
+- `antdConfig.ts` exports both a `ConfigProvider` config (existing) and an `xProviderConfig`/token passthrough consumed by `XProvider`; both surfaces render without AntD version-mismatch console warnings.
 - `pnpm run verify:phase-1` passes.
 
 ## Phase 2 — Storage, Security, WriteJournal, Workspace Persistence
@@ -2207,7 +2209,7 @@ src/components/pages/NotesPage.tsx                  # Full App only
 src/components/pages/OptionsPage.tsx                # Full App only
 src/components/options/{ProvidersSection, ModelsSection, MCPSection, PromptsSection, SlashSection, MemorySection, ImportExportSection, FeatureFlagsSection, AddonSettingsSection}.tsx
 src/components/notes/{BacklinksPanel, WikilinkAutocomplete, NoteGraphView}.tsx
-src/components/patterns/{ChatMessage, HistoryListItem, ToolCard, SkillMessageRenderer, SourceCard}.tsx
+src/components/patterns/{ChatMessage, HistoryListItem, ToolCard, SkillMessageRenderer, SourceCard}.tsx  # built on @ant-design/x (Bubble, ThoughtChain, Think, Sources, FileCard) + @ant-design/x-markdown
 src/hooks/useChat.ts
 src/hooks/useStreamingLLM.ts                        # Appendix J
 src/hooks/useProviderRouter.ts
@@ -2227,13 +2229,18 @@ tests/hooks/useStreamingLLM.test.ts
 tests/hooks/useWorkspace.test.ts
 tests/components/ChatPage.test.tsx
 tests/components/OptionsPage.test.tsx
+tests/components/patterns/ChatMessage.test.tsx      # verifies Bubble + XMarkdown render, no x-sdk/x-card imports
 tests/core/notes/LinkParser.test.ts
 ```
 
 **DONE when:**
 
 - Chat flow uses Planner -> Executor -> Renderer on both surfaces.
-- Streaming UI uses `ChunkBuffer`.
+- Streaming UI uses `ChunkBuffer`, rendered through `@ant-design/x` `Bubble`/`Bubble.List` with `@ant-design/x-markdown` as the message renderer (replaces `PortableMarkdown`'s old `react-markdown` path for chat content; `PortableMarkdown` may remain for non-chat surfaces such as Notes).
+- `ToolCard` uses `ThoughtChain`/`Think` to visualize the Planner→Executor loop (§1.2, Appendix I) instead of a plain text status line.
+- `SourceCard` uses `@ant-design/x` `Sources`; file/attachment context (pinned tabs, uploaded files) uses `FileCard`.
+- `ChatPage`/`AgentPage` composer uses `@ant-design/x` `Sender`; slash-command suggestions use `Suggestion`.
+- No component under `src/components/patterns/**` or `src/components/pages/**` imports `@ant-design/x-sdk` or `@ant-design/x-card` (`grep -r '@ant-design/x-sdk\|@ant-design/x-card' src/components/` -> zero).
 - `/write` and `/ask` presets work.
 - Note wikilinks resolve with tie-break rule (Full App Notes page).
 - Options page shows all sub-sections with functional forms.
