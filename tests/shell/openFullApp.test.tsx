@@ -59,7 +59,7 @@ describe('SHELL-05 — "Open Full App" button in Side Panel', () => {
         expect.objectContaining({ url: FULL_APP_URL }),
       );
     });
-    expect(FULL_APP_URL).toContain('app.html');
+    expect(FULL_APP_URL).toContain('standalone.html');
   });
 
   it('button is wired through openFullApp() (single workspace handoff source of truth)', async () => {

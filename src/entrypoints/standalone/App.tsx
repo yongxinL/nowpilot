@@ -7,19 +7,15 @@ import { ErrorBoundary } from '../../core/components/ErrorBoundary';
 import { fullAppPageRegistry } from '../../core/registries/FullAppPageRegistry';
 import { openFullApp } from '../../core/routing/workspaceRouter';
 import { CommandPalette } from '../../core/commands/commandPalette';
-import { OnboardingModal } from '../../core/onboarding/OnboardingModal';
-import { useProviderStore } from '../../core/stores/providerStore';
 import { ChatPage } from '../../core/pages/ChatPage';
 import { AgentPage } from '../../core/pages/AgentPage';
 import { NotesPage } from '../../core/pages/NotesPage';
-import { OptionsPage } from '../../core/pages/OptionsPage';
 const { Header, Content, Sider } = Layout;
 const { Text } = Typography;
 
 fullAppPageRegistry.register({ id: 'chat', label: 'Chat', component: ChatPage, order: 1 });
 fullAppPageRegistry.register({ id: 'agent', label: 'Agent', component: AgentPage, order: 2 });
 fullAppPageRegistry.register({ id: 'notes', label: 'Notes', component: NotesPage, order: 3 });
-fullAppPageRegistry.register({ id: 'options', label: 'Options', component: OptionsPage, order: 4 });
 
 const modeCycle: Record<ThemeMode, ThemeMode> = {
   auto: 'light',
@@ -44,7 +40,7 @@ const commands = [
   {
     id: 'open-options',
     label: 'Open Options',
-    action: () => openFullApp(),
+    action: () => chrome.runtime.openOptionsPage(),
   },
   {
     id: 'toggle-theme',
@@ -61,11 +57,9 @@ export function FullAppApp() {
   const mode = useThemeStore((s) => s.mode);
   const setMode = useThemeStore((s) => s.setMode);
   const activeSurface = useWorkspaceStore((s) => s.activeSurface);
-  const activeProvider = useWorkspaceStore((s) => s.activeProvider);
   const [activePage, setActivePage] = useState('chat');
   const [collapsed, setCollapsed] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(false);
 
   const antdConfig = getAntdConfig({ mode, compact: false });
 
@@ -77,12 +71,6 @@ export function FullAppApp() {
       useWorkspaceStore.getState().setActiveSurface('fullapp');
     }
   }, [activeSurface]);
-
-  useEffect(() => {
-    if (activeProvider === null) {
-      setShowOnboarding(true);
-    }
-  }, [activeProvider]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -97,14 +85,6 @@ export function FullAppApp() {
 
   const handleToggleTheme = () => {
     setMode(modeCycle[mode]);
-  };
-
-  const handleOnboardingComplete = () => {
-    const provider = useProviderStore.getState().selectedProvider;
-    if (provider) {
-      useWorkspaceStore.getState().setActiveProvider(provider);
-    }
-    setShowOnboarding(false);
   };
 
   return (
@@ -142,7 +122,6 @@ export function FullAppApp() {
           </Layout>
         </ErrorBoundary>
         <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} commands={commands} />
-        <OnboardingModal open={showOnboarding} onComplete={handleOnboardingComplete} />
       </App>
     </ConfigProvider>
   );

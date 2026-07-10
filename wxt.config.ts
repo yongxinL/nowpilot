@@ -15,15 +15,20 @@ export default defineConfig({
     },
     commands: {
       'open-command-palette': {
+        description: 'Open the NowPilot command palette',
         suggested_key: {
           default: 'Ctrl+Shift+K',
-          mac: 'Cmd+Shift+K',
+          mac: 'Command+Shift+K',
         },
       },
     },
+    options_ui: {
+      page: 'options.html',
+      open_in_tab: true,
+    },
     web_accessible_resources: [
       {
-        resources: ['app.html'],
+        resources: ['standalone.html'],
         matches: ['<all_urls>'],
       },
     ],

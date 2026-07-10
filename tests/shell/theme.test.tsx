@@ -46,7 +46,7 @@ describe('Shell Theme Integration', () => {
   });
 
   it('renders FullAppApp without crashing', async () => {
-    const { FullAppApp } = await import('../../src/entrypoints/app/App');
+    const { FullAppApp } = await import('../../src/entrypoints/standalone/App');
     const { container } = render(React.createElement(FullAppApp));
     expect(container.querySelector('.ant-layout')).toBeDefined();
   });

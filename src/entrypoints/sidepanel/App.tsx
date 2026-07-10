@@ -2,13 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { ConfigProvider, App, Layout, Menu, Button, Space, Typography } from 'antd';
 import { ThemeMode, useThemeStore } from '../../core/stores/themeStore';
 import { getAntdConfig } from '../../core/theme/antdConfig';
-import { useWorkspaceStore } from '../../core/stores/workspaceStore';
 import { ErrorBoundary } from '../../core/components/ErrorBoundary';
 import { sidePanelPageRegistry } from '../../core/registries/SidePanelPageRegistry';
 import { openFullApp } from '../../core/routing/workspaceRouter';
 import { CommandPalette } from '../../core/commands/commandPalette';
-import { OnboardingModal } from '../../core/onboarding/OnboardingModal';
-import { useProviderStore } from '../../core/stores/providerStore';
 import { ChatPage } from '../../core/pages/ChatPage';
 import { AgentPage } from '../../core/pages/AgentPage';
 const { Header, Content, Footer, Sider } = Layout;
@@ -40,7 +37,7 @@ const commands = [
   {
     id: 'open-options',
     label: 'Open Options',
-    action: () => openFullApp(),
+    action: () => chrome.runtime.openOptionsPage(),
   },
   {
     id: 'toggle-theme',
@@ -56,21 +53,13 @@ const commands = [
 export function SidePanelApp() {
   const mode = useThemeStore((s) => s.mode);
   const setMode = useThemeStore((s) => s.setMode);
-  const activeProvider = useWorkspaceStore((s) => s.activeProvider);
   const [activePage, setActivePage] = useState('chat');
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(false);
 
   const antdConfig = getAntdConfig({ mode, compact: true });
 
   const pages = sidePanelPageRegistry.getAll();
   const activeComponent = pages.find((p) => p.id === activePage);
-
-  useEffect(() => {
-    if (activeProvider === null) {
-      setShowOnboarding(true);
-    }
-  }, [activeProvider]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -89,14 +78,6 @@ export function SidePanelApp() {
 
   const handleOpenFullApp = () => {
     openFullApp();
-  };
-
-  const handleOnboardingComplete = () => {
-    const provider = useProviderStore.getState().selectedProvider;
-    if (provider) {
-      useWorkspaceStore.getState().setActiveProvider(provider);
-    }
-    setShowOnboarding(false);
   };
 
   return (
@@ -135,7 +116,6 @@ export function SidePanelApp() {
           </Layout>
         </ErrorBoundary>
         <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} commands={commands} />
-        <OnboardingModal open={showOnboarding} onComplete={handleOnboardingComplete} />
       </App>
     </ConfigProvider>
   );

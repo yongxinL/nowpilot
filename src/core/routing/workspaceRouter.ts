@@ -4,7 +4,7 @@ let _fullAppUrl: string | undefined;
 
 export function getFullAppUrl(): string {
   if (!_fullAppUrl) {
-    _fullAppUrl = chrome.runtime.getURL('/app.html');
+    _fullAppUrl = chrome.runtime.getURL('/standalone.html');
   }
   return _fullAppUrl;
 }

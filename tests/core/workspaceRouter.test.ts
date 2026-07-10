@@ -9,19 +9,19 @@ describe('WorkspaceRouter', () => {
   });
 
   it('FULL_APP_URL is constructed via chrome.runtime.getURL', () => {
-    expect(FULL_APP_URL).toBe('/app.html');
+    expect(FULL_APP_URL).toBe('/standalone.html');
   });
 
   it('openFullApp calls chrome.tabs.query with the full app url', async () => {
     (chrome.tabs.query as ReturnType<typeof vi.fn>).mockResolvedValue([]);
     await openFullApp();
-    expect(chrome.tabs.query).toHaveBeenCalledWith({ url: '/app.html' });
+    expect(chrome.tabs.query).toHaveBeenCalledWith({ url: '/standalone.html' });
   });
 
   it('creates new tab when no existing tabs found', async () => {
     (chrome.tabs.query as ReturnType<typeof vi.fn>).mockResolvedValue([]);
     await openFullApp();
-    expect(chrome.tabs.create).toHaveBeenCalledWith({ url: '/app.html' });
+    expect(chrome.tabs.create).toHaveBeenCalledWith({ url: '/standalone.html' });
   });
 
   it('focuses existing tab instead of creating new one', async () => {
@@ -49,6 +49,6 @@ describe('WorkspaceRouter', () => {
       { windowId: 5 },
     ]);
     await openFullApp();
-    expect(chrome.tabs.create).toHaveBeenCalledWith({ url: '/app.html' });
+    expect(chrome.tabs.create).toHaveBeenCalledWith({ url: '/standalone.html' });
   });
 });

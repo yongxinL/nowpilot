@@ -37,7 +37,7 @@ vi.mock('../../src/core/registries/FullAppPageRegistry', () => ({
       { id: 'chat', label: 'Chat', component: () => React.createElement('div', null, 'Chat'), order: 1 },
       { id: 'agent', label: 'Agent', component: () => React.createElement('div', null, 'Agent'), order: 2 },
       { id: 'notes', label: 'Notes', component: () => React.createElement('div', null, 'Notes'), order: 3 },
-      { id: 'options', label: 'Options', component: () => React.createElement('div', null, 'Options'), order: 4 },
+
     ],
     register: vi.fn(),
   },
@@ -67,7 +67,7 @@ describe('THEME-04 — Theme propagates across surfaces via shared ThemeStore', 
 
     cleanup();
 
-    const { FullAppApp } = await import('../../src/entrypoints/app/App');
+    const { FullAppApp } = await import('../../src/entrypoints/standalone/App');
     render(React.createElement(FullAppApp));
 
     const fullAppBtn = await screen.findByText('Dark');
@@ -77,7 +77,7 @@ describe('THEME-04 — Theme propagates across surfaces via shared ThemeStore', 
   it('reading theme mode in Full App reflects the value Side Panel last set (shared store proves cross-surface coupling)', async () => {
     useThemeStore.setState({ mode: 'dark' });
 
-    const { FullAppApp } = await import('../../src/entrypoints/app/App');
+    const { FullAppApp } = await import('../../src/entrypoints/standalone/App');
     render(React.createElement(FullAppApp));
 
     const darkButton = await screen.findByText('Dark');
