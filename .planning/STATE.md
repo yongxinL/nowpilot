@@ -69,6 +69,11 @@ Recent decisions affecting current work:
 - Content scripts extraction-only in v0.1 (no UI rendering, no Shadow DOM)
 - Planner→Executor→Renderer pipeline with tier caps for cost-effective AI models
 - No embedding-based search in v0.1 (bag-of-words + MiniSearch sufficient)
+- WXT `defineBackground` uses explicit import from `wxt/utils/define-background` (v0.20 auto-import types not generated)
+- Side Panel uses XProvider + compactAlgorithm, Full App uses XProvider + defaultAlgorithm (no ConfigProvider)
+- debugLog uses `typeof __DEV__ === 'undefined' || __DEV__` guard for test/production compatibility
+- TypeScript 7.0.2 used but typescript-eslint ecosystem lagging — ESLint uses simplified flat config
+- WorkspaceRouter FULL_APP_URL uses lazy getter function for test compatibility
 
 ### Pending Todos
 
