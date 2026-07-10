@@ -702,7 +702,7 @@ export function OnboardingModal({ open }: { open: boolean }) {
 | A4 | Zustand `persist` middleware with custom async storage adapter works correctly with chrome.storage (Promises) | Architecture Patterns | LOW — Zustand persist docs confirm async storage support; widely used pattern |
 | A5 | WXT v0.20.27 is backward-compatible enough with v0.19 that migration is trivial | Pitfalls | LOW — same major version line; config file changes are well-documented in changelog |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Full App tab manifest registration**
    - What we know: WXT supports unlisted HTML pages via `entrypoints/app.html`. These are accessible at `chrome.runtime.getURL('/app.html')`.
