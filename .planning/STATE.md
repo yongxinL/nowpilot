@@ -1,0 +1,83 @@
+---
+gsd_state_version: '1.0'
+status: planning
+progress:
+  total_phases: 9
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
+---
+
+# Project State
+
+## Project Reference
+
+See: .planning/PROJECT.md (updated 2026-07-10)
+
+**Core value:** Everything runs locally against user-configured providers. No data leaves the user's machine unless they explicitly configure a cloud provider.
+**Current focus:** Phase 1 — MV3/WXT Runtime + AntD Shells + Workspace
+
+## Current Position
+
+Phase: 1 of 9 (MV3/WXT Runtime + AntD Shells + Workspace)
+Plan: TBD (not yet planned)
+Status: Ready to plan
+Last activity: 2026-07-10 — ROADMAP.md created, REQUIREMENTS.md traceability established
+
+Progress: [░░░░░░░░░░] 0%
+
+## Performance Metrics
+
+**Velocity:**
+- Total plans completed: 0
+- Average duration: N/A
+- Total execution time: 0 hours
+
+**By Phase:**
+
+| Phase | Plans | Total | Avg/Plan |
+|-------|-------|-------|----------|
+| - | - | - | - |
+
+**Recent Trend:**
+- N/A (no plans executed yet)
+
+*Updated after each plan completion*
+
+## Accumulated Context
+
+### Decisions
+
+Decisions are logged in PROJECT.md Key Decisions table.
+Recent decisions affecting current work:
+
+- Ant Design v6 + Ant Design X 2.x adopted as sole design system (replaces tailwind/shadcn stack)
+- `@ant-design/x-markdown` for markdown rendering (replaces react-markdown/remark/rehype stack)
+- `@ant-design/x-sdk` NOT adopted — duplicates ProviderRouter/AgentOrchestrator/ContextOptimizer
+- Two surfaces (Side Panel + Full App Tab) with shared WorkspaceStore
+- Content scripts extraction-only in v0.1 (no UI rendering, no Shadow DOM)
+- Planner→Executor→Renderer pipeline with tier caps for cost-effective AI models
+- No embedding-based search in v0.1 (bag-of-words + MiniSearch sufficient)
+
+### Pending Todos
+
+None yet.
+
+### Blockers/Concerns
+
+None.
+
+## Deferred Items
+
+Items acknowledged and carried forward from previous milestone close:
+
+| Category | Item | Status | Deferred At |
+|----------|------|--------|-------------|
+| *(none)* | | | |
+
+## Session Continuity
+
+Last session: 2026-07-10
+Stopped at: ROADMAP.md and STATE.md created; ready for Phase 1 planning
+Resume file: None
