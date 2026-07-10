@@ -48,10 +48,12 @@ Phase 9 (Hardening + Release)
 ## Phase Details
 
 ### Phase 1: MV3/WXT Runtime + AntD Shells + Workspace
+
 **Goal**: A fully scaffolded Chrome extension with both UI surfaces mounted, theme system active, workspace coordination working, and first-run onboarding in place.
 **Depends on**: Nothing (first phase)
 **Requirements**: SETUP-01, SETUP-02, SETUP-03, SETUP-04, SETUP-05, SETUP-06, WRKSP-01, WRKSP-02, WRKSP-03, WRKSP-04, WRKSP-06, SHELL-01, SHELL-02, SHELL-03, SHELL-04, SHELL-05, SHELL-06, THEME-01, THEME-02, THEME-03, THEME-04, THEME-05, THEME-06, CMD-01, CMD-02, CMD-03, ONBD-01, ONBD-02, ONBD-03, HARD-05, HARD-06, HARD-08, HARD-09, HARD-10, ADDON-10
 **Success Criteria** (what must be TRUE):
+
   1. Side panel opens and first-run onboarding appears on fresh install with no provider configured
   2. Full App tab opens from Side Panel with workspace state handed off correctly, and re-opening deduplicates existing tabs
   3. Background service worker registers all listeners synchronously at module load; no async gaps
@@ -59,86 +61,116 @@ Phase 9 (Hardening + Release)
   5. Theme toggle (light/dark/auto) affects both surfaces immediately via ConfigProvider without CSS class manipulation
   6. Zero instances of `innerHTML`, `dangerouslySetInnerHTML`, `tailwind`, `shadcn`, `@radix-ui`, or `framer-motion` in the codebase
    7. Core never imports from addons (ADDON-10 enforced by layered directory structure)
+
 **Plans:** 7 plans
 Plans:
+**Wave 1**
+
 - [ ] 01-01a-PLAN.md — Package manifest & dependency installation (SETUP-02/05/06)
 - [ ] 01-01b-PLAN.md — WXT config, MV3 manifest & tooling configs (SETUP-01/03/04, ADDON-10)
 - [ ] 01-01c-PLAN.md — Entry point stubs, icons & addons boundary (SETUP-01)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 01-02-PLAN.md — Core Stores, Background SW, Safety Utilities (THEME-01, WRKSP-01, HARD-05/06/08/09/10)
 - [ ] 01-03-PLAN.md — Messaging, Routing, Keymaps, Page Registries (WRKSP-02/03, SHELL-03/04, CMD-03)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 01-04-PLAN.md — Shell Layouts, Theme Integration, Skeleton Pages (THEME-02..06, SHELL-01/02/05/06)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 01-05-PLAN.md — Command Palette & Onboarding (CMD-01/02, ONBD-01/02/03)
+
 **UI hint**: yes
 
 ### Phase 2: Storage, Security, WriteJournal, Workspace Persistence
+
 **Goal**: The split-storage strategy is operational — message bodies in IndexedDB, metadata in chrome.storage.local, API keys encrypted with AES-GCM, and WriteJournal ensures multi-store consistency.
 **Depends on**: Phase 1
 **Requirements**: WRKSP-05, STOR-01, STOR-02, STOR-03, STOR-04, STOR-05, STOR-06, STOR-07
 **Success Criteria** (what must be TRUE):
+
   1. WriteJournal recovery test passes — interrupted multi-store operations replay correctly and reach a consistent state
   2. API key encryption round-trip passes — encrypt → persist → decrypt produces the original key, with unique salt/IV per key
   3. No message body or raw API key appears in chrome.storage.local (only metadata and encrypted payloads)
   4. IndexedDB migration from v1 fixture to v2 fixture passes idempotently
   5. Workspace state persists across page reload (Side Panel close/reopen) and cross-surface handoff (Side Panel → Full App)
   6. ChatHistoryDB, NotesDB, MemoryDB, ErrorStore, and AITransactionLogDB all open successfully with correct schema versions
+
 **Plans**: TBD
 
 ### Phase 3: Cost-Effective AI Runtime
+
 **Goal**: The full AI runtime pipeline is operational — all 5 providers connect via ProviderRouter, the Planner→Executor→Renderer pipeline executes with tier caps, streaming works through ChunkBuffer, and prompt caching is configured per provider.
 **Depends on**: Phase 2
 **Requirements**: PROV-01, PROV-02, PROV-03, PROV-04, PROV-05, PROV-06, PROV-07, AIRN-01, AIRN-02, AIRN-03, AIRN-04, AIRN-05, AIRN-06, AIRN-07, AIRN-08, AIRN-09
 **Success Criteria** (what must be TRUE):
+
   1. PlannerService returns valid JSON decisions with a closed `toolName` enum (answer, run_tool, or ask_clarification) within 3s timeout
   2. ExecutorService rejects unknown tool names and validates all tool inputs/outputs against Zod schemas
   3. ProviderRouter correctly selects, retries (pre-first-token only), and falls back across providers; circuit breaker opens after 3 consecutive failures in 60s
   4. AgentOrchestrator enforces tier caps — planner calls capped at 1 (tiny) to 5 (large), tool calls at 1 to 3
   5. StructuredOutput one-shot JSON repair correctly handles truncated/malformed planner output
   6. ChunkBuffer delivers rAF-batched streaming text; AbortSignal propagates through the full Planner→Executor→Renderer chain
+
 **Plans**: TBD
 
 ### Phase 4: Context-Adaptive Execution
+
 **Goal**: The ContextOptimizer wraps every AI call with tier-aware token budgets, dynamic section distribution, an 8-step degradation pipeline, and minimal mode for tiny models. Every OptimizedContext carries a provenance manifest.
 **Depends on**: Phase 3
 **Requirements**: CTXT-01, CTXT-02, CTXT-03, CTXT-04, CTXT-05, CTXT-06, CTXT-07
 **Success Criteria** (what must be TRUE):
+
   1. ModelContextTier correctly classifies all models across the 4 tiers (tiny ≤4K, small 8K–16K, medium 32K–128K, large ≥200K)
   2. Token budgets follow the 70/20/10 formula and distribute correctly across system/tools/memory/context/history/user per tier
   3. Context overflow triggers the degradation pipeline stepwise — dropping debug context first, then compression, then minimal mode — never sending an oversized prompt
   4. Minimal mode blocks MCP chaining, caps memory injection at top-3, and restricts to one safe tool schema
   5. Every OptimizedContext carries a ContextProvenanceManifest recording section source, token count, and truncation decisions
+
 **Plans**: TBD
 
 ### Phase 5: Persistent Memory Architecture
+
 **Goal**: The system-owned MemoryEngine orchestrates conversation summaries, cross-session user facts (5-factor scored), and preference injection — the LLM never directly reads or writes memory.
 **Depends on**: Phase 4
 **Requirements**: MEM-01, MEM-02, MEM-03, MEM-04, MEM-05, MEM-06, MEM-07
 **Success Criteria** (what must be TRUE):
+
   1. ConversationMemoryStore returns per-conversation summaries with recent turns (2–6 based on tier)
   2. UserMemoryStore returns top-5 scored facts (top-3 in tiny mode) with all sub-scores in [0, 1] range
   3. PreferenceMemoryStore injects UserPreferences as compact JSON (not verbose prose) into every AI call
   4. MemoryExtractor runs as a separate Haiku-tier call after each turn, extracting facts with 5-factor scoring
   5. Memory is shared across surfaces — Side Panel and Full App read the same stores through MemoryEngine
   6. Memory writes are single-writer — only the primary surface (via BroadcastBus election) writes; auto-summarise triggers after every 12 messages
+
 **Plans**: TBD
 
 ### Phase 6: Transaction Logging and Diagnostics
+
 **Goal**: Every AI, MCP, tool, and provider operation is traceable with operation IDs, redacted traces, and a DiagnosticsPanel in Full App → Options with export capabilities.
 **Depends on**: Phase 3
 **Requirements**: TELE-01, TELE-02, TELE-03, TELE-04, TELE-05, TELE-06, TELE-07, DATA-03
 **Success Criteria** (what must be TRUE):
+
   1. Every provider call creates AITransaction + PromptTrace + ProviderTrace records with operation IDs
   2. Every tool call (built-in, MCP, skill) creates a ToolTrace with permission decision and outcome
   3. TraceRedactor correctly redacts API keys, Bearer tokens, JSESSIONID, sysparmCK, g_ck, MCP auth headers, and raw bodies before persistence
   4. DiagnosticsPanel in Full App → Options renders transaction list with copyable operation IDs, provider timelines, and prompt cache statistics
   5. Error toasts in Side Panel include "Open Diagnostics" link that opens Full App to the relevant trace
   6. Debug bundle can be exported as sanitized JSON/ZIP from Diagnostics
+
 **Plans**: TBD
 
 ### Phase 7: Full Chat, Agent, Notes, Options Pages
+
 **Goal**: Both surfaces have complete, functional page sets. Chat uses Planner→Executor→Renderer with streaming. Agent displays ThoughtChain. Notes (Full App only) supports wikilinks, backlinks, and graph. Options covers 11 sub-sections.
 **Depends on**: Phase 5, Phase 6
 **Requirements**: CHAT-01, CHAT-02, CHAT-03, CHAT-04, CHAT-05, CHAT-06, CHAT-07, CHAT-08, CHAT-09, AGNT-01, AGNT-02, AGNT-03, AGNT-04, AGNT-05, AGNT-06, AGNT-07, AGNT-08, NOTE-01, NOTE-02, NOTE-03, NOTE-04, NOTE-05, NOTE-06, NOTE-07, OPT-01, OPT-02, OPT-03, OPT-04, OPT-05, OPT-06, OPT-07, OPT-08, OPT-09, OPT-10, OPT-11
 **Success Criteria** (what must be TRUE):
+
   1. Chat flow (Flow 1) works on both surfaces — user sends message → ContextOptimizer assembles → AgentOrchestrator.runTurn() → ChunkBuffer streams → PortableMarkdown renders; abort cancels mid-stream
   2. Streaming UI uses `@ant-design/x` Bubble/Sender/Conversations and `@ant-design/x-markdown` for markdown with LaTeX, mermaid, and code highlighting
   3. First-message title generation runs at temperature 0, max 16 tokens, non-blocking; conversation list persists in ChatHistoryDB
@@ -147,14 +179,17 @@ Plans:
   6. Notes (Full App only) support full CRUD with wikilinks resolving via LinkParser, backlinks panel showing referencing notes, and d3-force graph visualization (≥3 notes)
   7. Options page shows all 11 sub-sections with functional forms — Providers (with test connection), Models, MCP Servers, Prompt Templates, Slash Commands, Memory, Diagnostics, Import/Export, Feature Flags, Add-on Settings, About
   8. Options accessible only from Full App (not Side Panel), enforcing the surface separation rule
+
 **Plans**: TBD
 **UI hint**: yes
 
 ### Phase 8: Add-ons and Content Script Runtime (Extraction-Only)
+
 **Goal**: The add-on system is fully operational — Write, TeamGQM, and ServiceNow add-ons register their pages and skills through typed registries. Content scripts extract page context without rendering any UI. Data export/import works.
 **Depends on**: Phase 7
 **Requirements**: ADDON-01, ADDON-02, ADDON-03, ADDON-04, ADDON-05, ADDON-06, ADDON-07, ADDON-08, ADDON-09, CONT-01, CONT-02, CONT-03, CONT-04, CONT-05, CONT-06, CMD-04, DATA-01, DATA-02
 **Success Criteria** (what must be TRUE):
+
   1. Content-script bundle contains zero React, zero AntD, zero UI code — verified by `tests/isolation/no-content-script-ui.test.ts` grepping the build output
   2. ServiceNow add-on extracts JSESSIONID via CookieSessionStore + ServiceNowSessionAdapter and sysparmCK from MAIN world; all API calls go through PROXY_FETCH
   3. Write add-on renders in Side Panel with all quick actions (Rewrite, Summarize, Draft customer update, Draft internal note, Explain, Action plan)
@@ -162,24 +197,29 @@ Plans:
   5. Right-click selection → "Ask AI" opens Side Panel with selection text prefilled
   6. `/research` command runs via ResearchSkill (MCP web-search or built-in tool; graceful failure if no search tool connected)
   7. Data export produces sanitized JSON/ZIP (no API keys); import merges with conflict resolution
+
 **Plans**: TBD
 **UI hint**: yes
 
 ### Phase 9: Hardening and Release
+
 **Goal**: All performance targets met, isolation invariants verified, bundle sizes within budget, and the "Looks Done But Isn't" checklist cleared for production release.
 **Depends on**: Phase 8
 **Requirements**: HARD-01, HARD-02, HARD-03, HARD-04, HARD-07
 **Success Criteria** (what must be TRUE):
+
   1. `pnpm run verify:all` passes — all test suites, type checking, and lint rules across every phase
   2. `pnpm run test:perf` passes — Side Panel initial paint < 300ms, Full App initial paint < 500ms, first token < 2s local / < 3s cloud
   3. `pnpm run test:isolation` passes — content script bundle < 50 KB, no cross-surface imports, no restricted imports
   4. WCAG AA contrast ratios verified across all UI surfaces — all interactive elements have focus rings and keyboard navigation
   5. All "Looks Done But Isn't" checklist items verified: abort handling (all 5 providers), offline mode (Ollama-only), multi-window, extension update data survival, quota exhaustion degradation, concurrent stream prevention, provider-deleted-while-streaming, keyboard navigation, memory pressure over 8-hour sessions
+
 **Plans**: TBD
 
 ## Parallel Execution Note
 
 Phases 4 (Context-Adaptive Execution) and 6 (Transaction Logging) both depend on Phase 3 but not on each other. After Phase 3 completes, these two phases can be executed concurrently via separate workstreams:
+
 - Workstream A: Phase 4 → Phase 5 → Phase 7
 - Workstream B: Phase 6 → merge into Phase 7
 
