@@ -1,8 +1,9 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { SidePanelApp } from './App';
 
 ReactDOM.createRoot(document.getElementById('app')!).render(
   <React.StrictMode>
-    <h1>NowPilot Side Panel</h1>
+    <SidePanelApp />
   </React.StrictMode>,
 );
