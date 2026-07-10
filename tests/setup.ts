@@ -1,7 +1,7 @@
-import { vi, beforeAll } from 'vitest';
+import { vi } from 'vitest';
 
-beforeAll(() => {
-  const mockStorage = {
+vi.stubGlobal('chrome', {
+  storage: {
     sync: {
       get: vi.fn().mockResolvedValue({}),
       set: vi.fn().mockResolvedValue(undefined),
@@ -16,34 +16,31 @@ beforeAll(() => {
       addListener: vi.fn(),
       removeListener: vi.fn(),
     },
-  };
-
-  vi.stubGlobal('chrome', {
-    storage: mockStorage,
-    runtime: {
-      getURL: vi.fn((path: string) => path),
-      onInstalled: {
-        addListener: vi.fn(),
-      },
-      onMessage: {
-        addListener: vi.fn(),
-      },
+  },
+  runtime: {
+    getURL: vi.fn((path: string) => path),
+    onInstalled: {
+      addListener: vi.fn(),
     },
-    commands: {
-      onCommand: {
-        addListener: vi.fn(),
-      },
+    onMessage: {
+      addListener: vi.fn(),
     },
-    tabs: {
-      query: vi.fn().mockResolvedValue([]),
-      create: vi.fn().mockResolvedValue({ id: 1 }),
-      update: vi.fn().mockResolvedValue({}),
+  },
+  commands: {
+    onCommand: {
+      addListener: vi.fn(),
     },
-    windows: {
-      update: vi.fn().mockResolvedValue({}),
-    },
-    sidePanel: {
-      open: vi.fn().mockResolvedValue(undefined),
-    },
-  });
+  },
+  tabs: {
+    query: vi.fn().mockResolvedValue([]),
+    create: vi.fn().mockResolvedValue({ id: 1 }),
+    update: vi.fn().mockResolvedValue({}),
+  },
+  windows: {
+    update: vi.fn().mockResolvedValue({}),
+  },
+  sidePanel: {
+    open: vi.fn().mockResolvedValue(undefined),
+    setPanelBehavior: vi.fn().mockResolvedValue(undefined),
+  },
 });
