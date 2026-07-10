@@ -59,11 +59,13 @@ Phase 9 (Hardening + Release)
   5. Theme toggle (light/dark/auto) affects both surfaces immediately via ConfigProvider without CSS class manipulation
   6. Zero instances of `innerHTML`, `dangerouslySetInnerHTML`, `tailwind`, `shadcn`, `@radix-ui`, or `framer-motion` in the codebase
    7. Core never imports from addons (ADDON-10 enforced by layered directory structure)
-**Plans:** 5 plans
+**Plans:** 7 plans
 Plans:
-- [ ] 01-01-PLAN.md — Project Scaffold, Dependencies, & Build Configuration (SETUP-01..06, ADDON-10)
+- [ ] 01-01a-PLAN.md — Package manifest & dependency installation (SETUP-02/05/06)
+- [ ] 01-01b-PLAN.md — WXT config, MV3 manifest & tooling configs (SETUP-01/03/04, ADDON-10)
+- [ ] 01-01c-PLAN.md — Entry point stubs, icons & addons boundary (SETUP-01)
 - [ ] 01-02-PLAN.md — Core Stores, Background SW, Safety Utilities (THEME-01, WRKSP-01, HARD-05/06/08/09/10)
-- [ ] 01-03-PLAN.md — Messaging, Routing, Keymaps, Page Registries (WRKSP-02/03/04/06, SHELL-03/04, CMD-03)
+- [ ] 01-03-PLAN.md — Messaging, Routing, Keymaps, Page Registries (WRKSP-02/03, SHELL-03/04, CMD-03)
 - [ ] 01-04-PLAN.md — Shell Layouts, Theme Integration, Skeleton Pages (THEME-02..06, SHELL-01/02/05/06)
 - [ ] 01-05-PLAN.md — Command Palette & Onboarding (CMD-01/02, ONBD-01/02/03)
 **UI hint**: yes
@@ -187,7 +189,7 @@ Phase 7 depends on both Phase 5 and Phase 6 being complete, acting as the conver
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. MV3/WXT Runtime + AntD Shells + Workspace | 5/5 | Not started | - |
+| 1. MV3/WXT Runtime + AntD Shells + Workspace | 0/7 | Not started | - |
 | 2. Storage, Security, WriteJournal, Workspace Persistence | 0/TBD | Not started | - |
 | 3. Cost-Effective AI Runtime | 0/TBD | Not started | - |
 | 4. Context-Adaptive Execution | 0/TBD | Not started | - |
