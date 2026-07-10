@@ -180,6 +180,7 @@ dist
 *.vsix
 
 # WXT and references
+.wxt/
 references/
 .output/
 dist/
