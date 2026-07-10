@@ -2,15 +2,17 @@
 
 **Document ID:** `PRODUCT_SPEC_v0_1.md`
 **Status:** Canonical, standalone implementation reference
-**Date:** 2026-07-02
+**Date:** 2026-07-10 (Rev. A — AntD v6 / Ant Design X adoption)
 **Version:** v0.1
 **Scope:** NowPilot v0.1 — Chrome MV3 AI Assistant using Side Panel + Full App Tab. Add-on architecture preserved. Page injection deferred to v0.2+.
+
+**Revision note (Rev. A):** v0.1 now targets **Ant Design v6** and **Ant Design X 2.x** (component library + `x-markdown`) instead of AntD v5 with a hand-assembled markdown stack. `@ant-design/x-sdk`'s chat-data-flow layer (`useXChat`, `ChatProvider`) and `@ant-design/x-card` (A2UI) are explicitly **not** adopted in v0.1 — see §0.2 and §25.6 for rationale.
 
 **Purpose:** This document is the single, self-contained product specification for NowPilot v0.1. It does not reference any prior document. Any AI coding agent implementing this spec must treat this file as authoritative and complete.
 
 **Target implementation agents:** Anthropic Claude Haiku, Google Gemini Flash, DeepSeek Flash, or equivalent cost-effective coding models.
 **Target runtime providers:** Claude Haiku, Gemini Flash, DeepSeek Flash, Ollama, LM Studio, OpenAI-compatible endpoints, OpenAI, Anthropic, Gemini.
-**Primary application:** Chrome MV3 extension using WXT + React + TypeScript + Ant Design v5.
+**Primary application:** Chrome MV3 extension using WXT + React + TypeScript + Ant Design v6 + Ant Design X 2.x.
 
 ---
 
@@ -43,7 +45,7 @@ Read in this exact order:
 23. §22 — Performance Targets & Algorithms
 24. §23 — Key Technology Decisions (ADRs)
 25. §24 — Verification Commands
-26. §25 — Future Page Injection Architecture (Deferred)
+26. §25 — Future Page Injection Architecture & Deferred UI Features
 27. Appendices A–M — canonical constants, type registry, and reference implementations
 
 Appendices C, E, F, G, I, J, K, L, and M are **mandatory** reading for any AI coding agent.
@@ -104,6 +106,8 @@ These rules apply to every phase, every module, and every AI coding agent.
 - **DO NOT** install `@anthropic-ai/sdk`, `openai`, or `@google/generative-ai` directly. Use `@ai-sdk/*` adapters only.
 - **DO NOT** install `framer-motion`. The correct package is `motion` (Framer Motion v12); import from `motion/react`.
 - **DO NOT** use `ulid` or `uuid`. Use native `crypto.randomUUID()`.
+- **DO NOT** install `@ant-design/x-sdk`, or use its `useXChat`, `useXConversations`, `ChatProvider`, `OpenAIChatProvider`, or `DeepSeekChatProvider` exports. These duplicate `ProviderRouter`/`AgentOrchestrator`/`ContextOptimizer` and would let UI code call providers directly, violating the rule above and §2.3. `@ant-design/x` **presentation** components (`Bubble`, `Sender`, `Conversations`, `ThoughtChain`, etc.) and `@ant-design/x-markdown` are approved — see §7.2 and §23.
+- **DO NOT** install or use `@ant-design/x-card`. A2UI dynamic-surface generation is deferred to v0.2+ (§25.6).
 
 **Layering:**
 - **DO NOT** import from `src/addons/**` inside `src/core/**`.
@@ -790,7 +794,7 @@ Opening rules:
 
 ## §5.5 Ant Design Setup
 
-NowPilot uses Ant Design v5 as its primary design system. Both surfaces mount an `AntdApp` provider inside a `ConfigProvider`.
+NowPilot uses Ant Design v6 as its primary design system, with Ant Design X 2.x presentation components (`Bubble`, `Sender`, `Conversations`, `ThoughtChain`, etc. — §7.2, §9) for Chat/Agent surfaces. Both surfaces mount an `AntdApp` provider inside a `ConfigProvider`, and any screen using Ant Design X components additionally wraps them in `XProvider` (from `@ant-design/x`) so chat components share the same theme tokens, locale, and density as the rest of the surface.
 
 Side Panel:
 
@@ -965,16 +969,15 @@ See §25 for the future page-injection reintroduction plan.
 | Package | Version | Purpose |
 |---|---|---|
 | `react` / `react-dom` | `^19` | UI framework |
-| `antd` | `^5` | Ant Design v5 — primary component library |
-| `@ant-design/icons` | `^5` | Ant Design icon set |
+| `antd` | `^6` | Ant Design v6 — primary component library |
+| `@ant-design/icons` | `^6` | Ant Design icon set (must match `antd` major version) |
+| `@ant-design/x` | `^2` | Ant Design X — AI chat presentation components (`Bubble`, `Sender`, `Conversations`, `Prompts`, `Welcome`, `Attachments`, `Suggestion`, `Actions`, `ThoughtChain`, `Think`, `FileCard`, `Sources`, `Folder`) |
+| `@ant-design/x-markdown` | `^2` | Streaming-aware Markdown renderer with built-in LaTeX, mermaid, and code-highlight plugins. Replaces `react-markdown`/`remark-gfm`/`rehype-highlight`/`highlight.js`/`katex`. |
 | `motion` | `^12` | Framer Motion v12; import from `motion/react`. **Do not install `framer-motion`.** |
-| `react-markdown` | `^9` | Safe markdown renderer for chat/notes |
-| `remark-gfm` | `^4` | GitHub-flavoured markdown |
-| `rehype-highlight` | `^7` | Code block highlighting |
-| `highlight.js` | `^11` | Highlighter |
-| `katex` | `^0.16` | Math rendering |
 
-**Explicitly removed from v0.1:** `tailwindcss`, `@tailwindcss/vite`, `shadcn/ui`, `@radix-ui/react-*`, `class-variance-authority`, `clsx`, `tailwind-merge`.
+**Explicitly removed from v0.1:** `tailwindcss`, `@tailwindcss/vite`, `shadcn/ui`, `@radix-ui/react-*`, `class-variance-authority`, `clsx`, `tailwind-merge`, `react-markdown`, `remark-gfm`, `rehype-highlight`, `highlight.js`, `katex` (superseded by `@ant-design/x-markdown`).
+
+**Explicitly not adopted in v0.1 (see §0.2, §23, §25.6):** `@ant-design/x-sdk`, `@ant-design/x-card`.
 
 ## §7.3 State
 
@@ -1210,7 +1213,7 @@ nowpilot/
 │   │   ├── pages/{ChatPage, AgentPage, NotesPage, OptionsPage}.tsx
 │   │   ├── options/{Providers, Models, MCP, Prompts, Slash, Diagnostics, Memory, ImportExport, FeatureFlags, AddonSettings}Section.tsx
 │   │   ├── notes/{BacklinksPanel, WikilinkAutocomplete, NoteGraphView}.tsx
-│   │   ├── patterns/{ChatMessage, HistoryListItem, ToolCard, SkillMessageRenderer, SourceCard}.tsx
+│   │   ├── patterns/{ChatMessage, HistoryListItem, ToolCard, SkillMessageRenderer, SourceCard}.tsx  # built on @ant-design/x (Bubble, ThoughtChain, Sources, FileCard) + @ant-design/x-markdown
 │   │   └── OnboardingModal.tsx
 │   │
 │   ├── hooks/{useChat, useStreamingLLM, useProviderRouter, useMemory, useDiagnostics, useConversations, useAddonContext, useWorkspace, useTheme}.ts
@@ -1935,6 +1938,7 @@ function resolveDark(mode: ThemeMode): boolean {
 Rules:
 - Use `theme.darkAlgorithm` for dark mode. Do not manipulate CSS classes for AntD components.
 - Side Panel adds `theme.compactAlgorithm`; Full App does not.
+- Any surface rendering `@ant-design/x` components wraps them in `XProvider`, fed the same `theme`/`token` object returned by `getAntdConfig` so Ant Design X components stay visually consistent with the rest of the surface.
 - All imperative APIs (`message`, `notification`, `Modal.confirm`) MUST be accessed through `App.useApp()`; static imports are forbidden.
 - Icons from `@ant-design/icons` only (or `motion` for animated icons).
 
@@ -2808,8 +2812,12 @@ Runs nightly via `Scheduler`. v0.1 produces exactly three `Insight` values:
 |---|---|---|
 | Extension framework | WXT | Type-safe, HMR, cross-browser, no cloud dependency |
 | UI framework | React 19 | Streaming renders via concurrent mode |
-| **UI component library** | **Ant Design v5** | Enterprise-grade data components, mature forms/tables, accessibility, i18n, familiar to enterprise users |
-| **Theming** | AntD `ConfigProvider` + Zustand `ThemeStore` | Centralized token system, dark mode via `theme.darkAlgorithm`, per-surface compact toggle |
+| **UI component library** | **Ant Design v6** | Enterprise-grade data components, mature forms/tables, accessibility, i18n; v6 is a compatible upgrade over v5 (React ≥18, CSS-variable theming by default, official `antd` CLI + machine-readable `DESIGN.md` reduce AI-coding-agent hallucination risk on the newer major) |
+| **AI chat components** | **Ant Design X 2.x** (`@ant-design/x`) — presentation components only | `Bubble`, `Sender`, `Conversations`, `ThoughtChain`, `Think`, `Attachments`, `Suggestion`, `Sources`, `FileCard` map directly onto Chat/Agent UI needs; requires antd v6 (x@1.x on antd v5 is maintenance-only, no new features) |
+| **Markdown/streaming rendering** | **`@ant-design/x-markdown`** | Purpose-built for incremental/streaming content (pairs naturally with `ChunkBuffer`); built-in LaTeX/mermaid/code-highlight plugins replace 5 separate packages |
+| **AI chat data flow** | **NOT** `@ant-design/x-sdk` — kept `AgentOrchestrator`/`ProviderRouter`/`ContextOptimizer` | `x-sdk`'s `useXChat`/`ChatProvider` calls providers directly from the UI layer, duplicating and bypassing the Planner→Executor→Renderer pipeline, `ContextOptimizer`, `MemoryEngine`, and `AITransactionLog` |
+| **Dynamic agent-generated UI (A2UI)** | **Deferred to v0.2+** — not `@ant-design/x-card` in v0.1 | A2UI's `createSurface`/`updateComponents`/`updateDataModel` command stream is a materially harder JSON target than the 3-action `PlannerDecisionSchema`; unsafe for Haiku/Flash-class planners today (§25.6) |
+| **Theming** | AntD `ConfigProvider` + `XProvider` + Zustand `ThemeStore` | Centralized token system, dark mode via `theme.darkAlgorithm`, per-surface compact toggle; `XProvider` propagates the same tokens to Ant Design X components |
 | **Two UI surfaces** | Side Panel + Full App Tab | Side Panel = daily workflow, Full App = deep work / config / diagnostics |
 | **Shared workspace** | `WorkspaceStore` (Zustand) + `BroadcastBus` | Single source of truth across surfaces; cross-surface handoff |
 | **Content scripts** | Extraction-only in v0.1 | No UI in host pages; simpler bundle; page injection deferred to v0.2+ |
@@ -2837,7 +2845,7 @@ Runs nightly via `Scheduler`. v0.1 produces exactly three `Insight` values:
 | Cross-context messaging | `MessageBus` + `BroadcastBus` + `RuntimeEnvelope` | Typed and sender-validated |
 | Add-on settings isolation | `AddonSettingsStore` namespaced | Prevents key collisions |
 | Keyboard shortcuts | `KeymapRegistry` | Conflict detection |
-| Icons | `@ant-design/icons` + `motion` for animation | Consistent AntD ecosystem |
+| Icons | `@ant-design/icons` v6 + `motion` for animation | Consistent AntD ecosystem; v6 icon set includes built-in Anthropic/Claude/Gemini/DeepSeek/Ollama marks useful for the provider selector |
 | Options placement | Full App only | Side panel stays lightweight |
 | Diagnostics placement | Full App → Options | Deep work surface |
 | Notes placement | Full App only | Rich workspace needs full viewport |
@@ -2884,7 +2892,7 @@ The `tests/isolation/no-content-script-ui.test.ts` verifies the content-script b
 
 ---
 
-# §25 — Future Page Injection Architecture (Deferred)
+# §25 — Future Page Injection Architecture & Deferred UI Features
 
 ## §25.1 Why Deferred
 
@@ -2956,6 +2964,25 @@ When page injection is reintroduced:
 - ESLint rule enforces: `no-restricted-imports: { patterns: ['antd', '@ant-design/*'], paths: ['src/addons/**', 'src/components/ui-shadow/**'] }`.
 
 This preserves the **hybrid architecture** as a design invariant.
+
+## §25.6 `@ant-design/x-card` / A2UI — Deferred to v0.2+
+
+### Why Deferred
+
+`@ant-design/x-card` implements Google's [A2UI protocol](https://a2ui.org/) — a declarative, streaming command format (`createSurface`, `updateComponents`, `updateDataModel`, `deleteSurface`) that lets an LLM describe an interactive UI (forms, charts, multi-step flows) as JSON, rendered by pre-registered native components from a `Catalog`. It is deliberately **not** adopted in v0.1 for one core reason:
+
+- **JSON-generation difficulty mismatch.** NowPilot's entire cost-effective-runtime design (§1.1–§1.4) is built around keeping the JSON a Haiku/Flash/DeepSeek-class model must emit as small and constrained as possible — `PlannerDecisionSchema` is a 3-branch discriminated union, and `StructuredOutput` (Appendix L) budgets for exactly one repair attempt. A2UI's adjacency-list component trees plus JSON-Pointer data bindings across `createSurface`/`updateComponents`/`updateDataModel` messages are a much larger and more error-prone generation target. Shipping it in v0.1 would undermine the "smaller models need explicit guardrails" principle the rest of this spec is built on.
+- **New canonical types not yet in Appendix C.** `Catalog`, `Surface`, `ActionPayload`, and the v0.8/v0.9 command unions would need to be added to the mandatory type registry, plus new `WriteJournalOperation`/error codes for surface lifecycle — a design surface big enough to warrant its own addendum spec, not a mid-stream insertion.
+- **Overlaps with existing `SkillResult` card/table/checklist rendering.** §1.2 already gives `RendererService` a path to structured cards/tables via Zod schemas rendered through ordinary React/AntD components. A2UI is a superset of this (agent-driven, interactive, two-way data binding) but the simpler mechanism is sufficient for v0.1's feature set (§9).
+
+### What Is Preserved for Future Adoption
+
+- `RendererService`'s "use structured output for cards/tables/checklists" rule (§1.2) and `SkillResult.type: 'card-grid' | 'list'` (§14.1) are compatible stepping stones — a v0.2+ `AgentOrchestrator` extension could route `medium`/`large`-tier models only into an A2UI-generation path while `tiny`/`small` tiers stay on the current `PlannerDecisionSchema`.
+- `@ant-design/x-card` is `antd`/`@ant-design/x`-adjacent (same design tokens, same `XProvider`), so no separate UI framework decision is required to add it later — only new Zod schemas, canonical types, and an agent-side capability gate analogous to `CodeSearchSkill`'s `@implementation-tier: sonnet-class` marker (§14.4).
+
+### Reintroduction Trigger
+
+Revisit in v0.2+ once: (a) the v0.1 baseline is stable in production, and (b) a concrete feature need exists (e.g. agent-generated ServiceNow case forms, interactive multi-step Write-add-on wizards) that plain card/table rendering can't satisfy.
 
 ---
 
@@ -3578,7 +3605,7 @@ export function readPort<T>(port: chrome.runtime.Port): AsyncIterable<T> {
 
 # Appendix F — Ant Design Theme System
 
-This appendix **replaces** the v0.1c Tweakcn HSL variable mapping. NowPilot v0.1 uses Ant Design v5 tokens exclusively.
+This appendix **replaces** the v0.1c Tweakcn HSL variable mapping. NowPilot v0.1 uses Ant Design v6 tokens exclusively (consumed by both `ConfigProvider` and `XProvider` for Ant Design X components).
 
 ## F.1 Central Theme Store
 
@@ -3806,6 +3833,8 @@ export default defineConfig({
         output: {
           manualChunks(id) {
             if (id.includes('node_modules/antd')) return 'antd';
+            if (id.includes('node_modules/@ant-design/x-markdown')) return 'antd-x-markdown';
+            if (id.includes('node_modules/@ant-design/x')) return 'antd-x';
             if (id.includes('node_modules/@ant-design')) return 'ant-icons';
             if (id.includes('node_modules/react')) return 'react';
           },
@@ -3817,9 +3846,9 @@ export default defineConfig({
 ```
 
 Rules:
-- `target: 'chrome120'` matches the minimum supported Chrome for `chrome.sidePanel.open`.
+- `target: 'chrome120'` matches the minimum supported Chrome for `chrome.sidePanel.open`. AntD v6 requires React ≥18 (this project uses React 19) and uses CSS-variable theming by default — no additional Chrome version constraint beyond `chrome120`.
 - No `@tailwindcss/vite` plugin (removed from v0.1c).
-- The content-script bundle MUST NOT include `antd`, `react`, or `react-dom`. Enforced by `tests/isolation/no-content-script-ui.test.ts`.
+- The content-script bundle MUST NOT include `antd`, `@ant-design/x`, `@ant-design/x-markdown`, `react`, or `react-dom`. Enforced by `tests/isolation/no-content-script-ui.test.ts`.
 
 ---
 
