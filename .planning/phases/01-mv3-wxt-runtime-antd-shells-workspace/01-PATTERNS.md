@@ -146,6 +146,37 @@
 
 ---
 
+### `src/core/theme/antdConfig.ts` (utility, pure function — theme config factory)
+
+**Pattern source:** PRODUCT_SPEC §5.5, 01-RESEARCH.md Pattern 2
+
+**Core pattern — centralised theme config consumed by ConfigProvider:**
+```typescript
+// Source: PRODUCT_SPEC §5.5 — getAntdConfig produces ConfigProvider theme props
+import { type ThemeConfig, theme } from 'antd';
+import type { ThemeMode } from '../stores/themeStore';
+
+const { defaultAlgorithm, darkAlgorithm, compactAlgorithm } = theme;
+
+export interface AntdConfigOptions {
+  mode: ThemeMode;
+  compact: boolean;
+}
+
+export function getAntdConfig(options: AntdConfigOptions): ThemeConfig {
+  const { mode, compact } = options;
+  const algorithm = mode === 'dark' ? [darkAlgorithm] : [defaultAlgorithm];
+  if (compact) {
+    algorithm.push(compactAlgorithm);
+  }
+  return { algorithm };
+}
+```
+
+**Rationale:** Centralises theme algorithm logic so both surfaces share the same config. In later phases, `getAntdConfig` can be extended to pass theme tokens to `XProvider` for AntD X subtrees (Chat/Agent) without duplicating algorithm selection.
+
+---
+
 ### `src/core/stores/themeStore.ts` (store, CRUD — chrome.storage.sync)
 
 **Pattern source:** RESEARCH.md lines 208-248
@@ -237,44 +268,45 @@ export const useWorkspaceStore = create<WorkspaceState>()(
 
 ---
 
+### `src/core/theme/antdConfig.ts` (utility, pure function — theme config factory)
+
+**Pattern source:** PRODUCT_SPEC §5.5, 01-RESEARCH.md Pattern 2
+
+See the antdConfig.ts entry under `src/core/stores/themeStore.ts` section above.
+
+---
+
 ### `src/entrypoints/sidepanel/App.tsx`, `src/entrypoints/app/App.tsx`, `src/entrypoints/popup/App.tsx` (component, request-response — React render)
 
-**Pattern source:** RESEARCH.md lines 253-278, 458-487
+**Pattern source:** PRODUCT_SPEC §5.5, 01-RESEARCH.md Pattern 3
 
 **Imports pattern:**
 ```typescript
-import { XProvider } from '@ant-design/x';
-import { App } from 'antd';          // AntD App for useApp() imperative APIs
-import { theme } from 'antd';
+import { ConfigProvider, App } from 'antd';  // AntD ConfigProvider at root
+import { getAntdConfig } from '@/core/theme/antdConfig';
 import { useThemeStore } from '@/core/stores/themeStore';
 ```
 
-**Core pattern — XProvider wrapping with theme algorithm:**
+**Core pattern — ConfigProvider wrapping with antdConfig:**
 ```typescript
-const { defaultAlgorithm, darkAlgorithm, compactAlgorithm } = theme;
-
 export function SidePanelApp() {
   const mode = useThemeStore((s) => s.mode);
-
-  const algorithm = (() => {
-    if (mode === 'dark') return [darkAlgorithm, compactAlgorithm];
-    return [defaultAlgorithm, compactAlgorithm];
-  })();
+  const antdConfig = getAntdConfig({ mode, compact: true });
 
   return (
-    <XProvider theme={{ algorithm }}>
+    <ConfigProvider {...antdConfig}>
       <App>
         <SidePanelLayout />
       </App>
-    </XProvider>
+    </ConfigProvider>
   );
 }
 ```
 
-**Key rules (from RESEARCH.md anti-patterns):**
-- Use ONLY `XProvider` at root — NOT both `XProvider` + `ConfigProvider` (XProvider extends ConfigProvider)
-- `App` MUST be nested inside `XProvider` for `useApp()` to work
-- Side Panel uses `compactAlgorithm`; Full App uses `defaultAlgorithm` (RESEARCH.md line 475)
+**Key rules:**
+- Surface root uses `ConfigProvider` — NOT `XProvider` (XProvider is deferred to Phase 7 for Chat/Agent subtrees)
+- Side Panel passes `compact: true`; Full App passes `compact: false`
+- `App` MUST be nested inside `ConfigProvider` for `useApp()` to work
 - Never import `sidepanel/App.tsx` from `app/App.tsx` or vice versa
 - NEVER use `message.success()` statically — always use `App.useApp()` hook
 
@@ -720,7 +752,8 @@ These patterns are explicitly prohibited and must NOT appear in any file:
 | Anti-Pattern | Source | Why Forbidden |
 |--------------|--------|---------------|
 | `async` `main()` in `defineBackground` | RESEARCH.md lines 371, 413-416 | Listeners must be registered synchronously — async main creates event gaps |
-| Nesting `ConfigProvider` + `XProvider` | RESEARCH.md lines 375, 450-453 | XProvider extends ConfigProvider; nesting both causes conflicts |
+| XProvider at surface root in Phase 1 | PRODUCT_SPEC §5.5, RESEARCH.md line 375 | In v0.1 Phase 1, surface root uses ConfigProvider (via antdConfig.ts). XProvider is only needed around Chat/Agent subtrees in Phase 7+ when AntD X components are used. |
+| Nesting `ConfigProvider` + `XProvider` at same level | RESEARCH.md lines 375, 450-453 | XProvider extends ConfigProvider; nesting both at same level causes conflicts — since surface root is ConfigProvider and XProvider wraps subtrees, this is naturally avoided |
 | `dangerouslySetInnerHTML` or `innerHTML` | RESEARCH.md lines 373, 801 | HARD-10 — XSS prevention; use AntD Typography instead |
 | Static `message.success()` / `Modal.confirm()` | RESEARCH.md lines 374 | Must use `App.useApp()` hook for imperative APIs in AntD v6 |
 | CSS class manipulation for theming | RESEARCH.md lines 375 | Use ConfigProvider `theme.algorithm` instead |

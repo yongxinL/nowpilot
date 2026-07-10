@@ -1,13 +1,12 @@
 import React from 'react';
-import { XProvider } from '@ant-design/x';
-import { App, theme, Button, Space, Typography } from 'antd';
+import { ConfigProvider, App, Button, Space, Typography } from 'antd';
+import { getAntdConfig } from '../../core/theme/antdConfig';
 import { openFullApp } from '../../core/routing/workspaceRouter';
 
-const { defaultAlgorithm, darkAlgorithm, compactAlgorithm } = theme;
 const { Text, Title } = Typography;
 
 export function PopupApp() {
-  const algorithm = [defaultAlgorithm, compactAlgorithm];
+  const antdConfig = getAntdConfig({ mode: 'auto', compact: true });
 
   const handleOpenSidePanel = () => {
     chrome.sidePanel.open({} as never);
@@ -18,7 +17,7 @@ export function PopupApp() {
   };
 
   return (
-    <XProvider theme={{ algorithm }}>
+    <ConfigProvider {...antdConfig}>
       <App>
         <div style={{ width: 250, padding: 16 }}>
           <Title level={4}>NowPilot</Title>
@@ -32,6 +31,6 @@ export function PopupApp() {
           </Space>
         </div>
       </App>
-    </XProvider>
+    </ConfigProvider>
   );
 }

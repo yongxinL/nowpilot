@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { XProvider } from '@ant-design/x';
-import { App, theme, Layout, Menu, Button, Space, Typography } from 'antd';
+import { ConfigProvider, App, Layout, Menu, Button, Space, Typography } from 'antd';
 import { ThemeMode, useThemeStore } from '../../core/stores/themeStore';
+import { getAntdConfig } from '../../core/theme/antdConfig';
 import { useWorkspaceStore } from '../../core/stores/workspaceStore';
 import { ErrorBoundary } from '../../core/components/ErrorBoundary';
 import { sidePanelPageRegistry } from '../../core/registries/SidePanelPageRegistry';
@@ -11,8 +11,6 @@ import { OnboardingModal } from '../../core/onboarding/OnboardingModal';
 import { useProviderStore } from '../../core/stores/providerStore';
 import { ChatPage } from '../../core/pages/ChatPage';
 import { AgentPage } from '../../core/pages/AgentPage';
-
-const { defaultAlgorithm, darkAlgorithm, compactAlgorithm } = theme;
 const { Header, Content, Footer, Sider } = Layout;
 const { Text } = Typography;
 
@@ -63,7 +61,7 @@ export function SidePanelApp() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
-  const algorithm = [mode === 'dark' ? darkAlgorithm : defaultAlgorithm, compactAlgorithm];
+  const antdConfig = getAntdConfig({ mode, compact: true });
 
   const pages = sidePanelPageRegistry.getAll();
   const activeComponent = pages.find((p) => p.id === activePage);
@@ -102,7 +100,7 @@ export function SidePanelApp() {
   };
 
   return (
-    <XProvider theme={{ algorithm }}>
+    <ConfigProvider {...antdConfig}>
       <App>
         <ErrorBoundary>
           <Layout style={{ height: '100vh' }}>
@@ -139,6 +137,6 @@ export function SidePanelApp() {
         <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} commands={commands} />
         <OnboardingModal open={showOnboarding} onComplete={handleOnboardingComplete} />
       </App>
-    </XProvider>
+    </ConfigProvider>
   );
 }

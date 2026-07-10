@@ -2,18 +2,19 @@
 phase: 01-mv3-wxt-runtime-antd-shells-workspace
 plan: 02
 subsystem: core-infrastructure
-tags: [stores, background, error-boundary, messaging, logging]
+tags: [stores, theme-config, background, error-boundary, messaging, logging]
 key-files:
   - src/core/stores/themeStore.ts
   - src/core/stores/workspaceStore.ts
+  - src/core/theme/antdConfig.ts
   - src/core/utils/debugLog.ts
   - src/core/components/ErrorBoundary.tsx
   - src/core/messaging/runtimeEnvelope.ts
   - src/entrypoints/background.ts
 metrics:
-  test_files: 6
-  total_tests: 25
-  passing_tests: 25
+  test_files: 7
+  total_tests: 29
+  passing_tests: 29
   hard_08_compliant: true
   hard_10_clean: true
 ---
@@ -35,7 +36,7 @@ metrics:
 
 ## Self-Check: PASSED
 
-- [x] All 25 tests pass (themeStore 4, workspaceStore 4, background 5, debugLog 3, ErrorBoundary 4, runtimeEnvelope 5)
+- [x] All 29 tests pass (themeStore 4, antdConfig 4, workspaceStore 4, background 5, debugLog 3, ErrorBoundary 4, runtimeEnvelope 5)
 - [x] `pnpm tsc --noEmit` exits 0
 - [x] background.ts main() is non-async (HARD-08)
 - [x] Zero instances of innerHTML/dangerouslySetInnerHTML (HARD-10)
@@ -44,3 +45,4 @@ metrics:
 - [x] debugLog gated on `__DEV__`, called from ErrorBoundary.componentDidCatch (HARD-09)
 - [x] ThemeStore state shape is `{ mode }` only (< 100 bytes sync)
 - [x] WorkspaceStore state shape is 4 metadata fields only (no message bodies)
+- [x] antdConfig.ts exports getAntdConfig producing ThemeConfig with correct algorithm selection

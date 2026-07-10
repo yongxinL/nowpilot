@@ -41,6 +41,7 @@ created: 2026-07-10
 | {N}-01-01 | 01 | 1 | SETUP-01 | — | N/A | smoke | `pnpm wxt build` | ❌ W0 | ⬜ pending |
 | {N}-01-02 | 01 | 1 | SETUP-03 | — | N/A | static | `pnpm tsc --noEmit` | ❌ W0 | ⬜ pending |
 | {N}-01-03 | 01 | 1 | THEME-01 | — | N/A | unit | `vitest run tests/core/themeStore.test.ts` | ❌ W0 | ⬜ pending |
+| {N}-01-03b | — | 1 | THEME-02, §5.5 | — | antdConfig.ts exports getAntdConfig with correct algorithm | unit | `vitest run tests/core/antdConfig.test.ts` | ❌ W0 | ⬜ pending |
 | {N}-01-04 | 01 | 1 | THEME-02 | — | N/A | integration | `vitest run tests/shell/theme.test.tsx` | ❌ W0 | ⬜ pending |
 | {N}-01-05 | 01 | 1 | WRKSP-01 | — | N/A | unit | `vitest run tests/core/workspaceStore.test.ts` | ❌ W0 | ⬜ pending |
 | {N}-01-06 | 01 | 1 | WRKSP-03 | — | N/A | integration | `vitest run tests/core/workspaceRouter.test.ts` | ❌ W0 | ⬜ pending |
@@ -49,6 +50,7 @@ created: 2026-07-10
 | {N}-01-09 | 01 | 1 | HARD-08 | T-1-03 | Synchronous SW listener registration at module load | unit | `vitest run tests/core/background.test.ts` | ❌ W0 | ⬜ pending |
 | {N}-01-10 | 01 | 1 | HARD-10 | T-1-01 | No innerHTML/dangerouslySetInnerHTML in codebase | static | `grep -r 'innerHTML\|dangerouslySetInnerHTML' src/` | ❌ W0 | ⬜ pending |
 | {N}-01-11 | 01 | 1 | ADDON-10 | T-1-08 | Core never imports from addons/ | static | `grep -r "from.*addons/" src/core/` | ❌ W0 | ⬜ pending |
+| {N}-01-11b | — | — | §0.2, SETUP-06 | — | @ant-design/x-sdk and @ant-design/x-card absent from package.json | static | `grep '@ant-design/x-sdk\|@ant-design/x-card' package.json` → zero | ❌ W0 | ⬜ pending |
 | {N}-01-12 | 01 | 1 | ONBD-01 | — | N/A | integration | `vitest run tests/shell/onboarding.test.tsx` | ❌ W0 | ⬜ pending |
 | {N}-01-13 | 01 | 1 | CMD-01 | — | N/A | integration | `vitest run tests/shell/commandPalette.test.tsx` | ❌ W0 | ⬜ pending |
 
@@ -64,6 +66,7 @@ created: 2026-07-10
 - [ ] ESLint config — linting setup
 - [ ] Prettier config — formatting setup
 - [ ] `tests/core/themeStore.test.ts` — covers THEME-01
+- [ ] `tests/core/antdConfig.test.ts` — covers THEME-02 (antdConfig.ts exports ConfigProvider-config)
 - [ ] `tests/core/workspaceStore.test.ts` — covers WRKSP-01
 - [ ] `tests/core/workspaceRouter.test.ts` — covers WRKSP-03
 - [ ] `tests/core/runtimeEnvelope.test.ts` — covers HARD-05
@@ -84,6 +87,9 @@ created: 2026-07-10
 | Cmd+K opens command palette in both surfaces | CMD-01 | Keyboard shortcut in Chrome — requires real browser | Press Cmd+K/Ctrl+Shift+K in Side Panel and Full App, verify command palette appears |
 | Theme toggle affects both surfaces immediately | THEME-02 | Cross-surface visual verification — requires real browser | Toggle theme in Side Panel, verify Full App updates; toggle in Full App, verify Side Panel updates |
 | Cross-surface workspace handoff | WRKSP-03 | Multi-surface state sync — requires real Chrome | Select conversation in Side Panel, open Full App, verify conversation and workspace state match |
+| antdConfig.ts exports getAntdConfig consumed by ConfigProvider | THEME-02, §5.5 | Config structure — unit test confirms | `pnpm vitest run tests/core/antdConfig.test.ts` |
+| No AntD version-mismatch console warnings | §5.5 | Visual — requires real browser | Load side panel, Full App, popup; check console for "version mismatch" or "context" warnings |
+| @ant-design/x-sdk and @ant-design/x-card absent from package.json | §0.2 | Static | `grep '@ant-design/x-sdk\|@ant-design/x-card' package.json` → zero |
 
 ---
 

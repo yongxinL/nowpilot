@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { XProvider } from '@ant-design/x';
-import { App, theme, Layout, Menu, Button, Space, Typography } from 'antd';
+import { ConfigProvider, App, Layout, Menu, Button, Space, Typography } from 'antd';
 import { ThemeMode, useThemeStore } from '../../core/stores/themeStore';
+import { getAntdConfig } from '../../core/theme/antdConfig';
 import { useWorkspaceStore } from '../../core/stores/workspaceStore';
 import { ErrorBoundary } from '../../core/components/ErrorBoundary';
 import { fullAppPageRegistry } from '../../core/registries/FullAppPageRegistry';
@@ -13,8 +13,6 @@ import { ChatPage } from '../../core/pages/ChatPage';
 import { AgentPage } from '../../core/pages/AgentPage';
 import { NotesPage } from '../../core/pages/NotesPage';
 import { OptionsPage } from '../../core/pages/OptionsPage';
-
-const { defaultAlgorithm, darkAlgorithm } = theme;
 const { Header, Content, Sider } = Layout;
 const { Text } = Typography;
 
@@ -69,7 +67,7 @@ export function FullAppApp() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
-  const algorithm = [mode === 'dark' ? darkAlgorithm : defaultAlgorithm];
+  const antdConfig = getAntdConfig({ mode, compact: false });
 
   const pages = fullAppPageRegistry.getAll();
   const activeComponent = pages.find((p) => p.id === activePage);
@@ -110,7 +108,7 @@ export function FullAppApp() {
   };
 
   return (
-    <XProvider theme={{ algorithm }}>
+    <ConfigProvider {...antdConfig}>
       <App>
         <ErrorBoundary>
           <Layout style={{ height: '100vh' }}>
@@ -146,6 +144,6 @@ export function FullAppApp() {
         <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} commands={commands} />
         <OnboardingModal open={showOnboarding} onComplete={handleOnboardingComplete} />
       </App>
-    </XProvider>
+    </ConfigProvider>
   );
 }

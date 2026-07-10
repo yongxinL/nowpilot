@@ -58,9 +58,11 @@ Phase 9 (Hardening + Release)
   2. Full App tab opens from Side Panel with workspace state handed off correctly, and re-opening deduplicates existing tabs
   3. Background service worker registers all listeners synchronously at module load; no async gaps
   4. Cmd+K command palette opens on both surfaces with the full command set (Open Full App, Focus Side Panel, Open Options)
-  5. Theme toggle (light/dark/auto) affects both surfaces immediately via ConfigProvider without CSS class manipulation
-  6. Zero instances of `innerHTML`, `dangerouslySetInnerHTML`, `tailwind`, `shadcn`, `@radix-ui`, or `framer-motion` in the codebase
-   7. Core never imports from addons (ADDON-10 enforced by layered directory structure)
+  5. Theme toggle (light/dark/auto) affects both surfaces immediately via ConfigProvider + antdConfig without CSS class manipulation
+  6. antdConfig.ts exports getAntdConfig consumed by ConfigProvider; both surfaces render without AntD version-mismatch warnings
+  7. Zero instances of `innerHTML`, `dangerouslySetInnerHTML`, `tailwind`, `shadcn`, `@radix-ui`, or `framer-motion` in the codebase
+  8. `@ant-design/x-sdk` and `@ant-design/x-card` absent from package.json
+  9. Core never imports from addons (ADDON-10 enforced by layered directory structure)
 
 **Plans:** 7 plans
 Plans:

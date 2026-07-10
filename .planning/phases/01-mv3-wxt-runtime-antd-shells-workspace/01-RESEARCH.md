@@ -247,36 +247,64 @@ export const useThemeStore = create<ThemeState>()(
 );
 ```
 
-### Pattern 2: XProvider Wrapping Both Surfaces
-**What:** `XProvider` (extends `ConfigProvider`) wraps each surface's React tree with theme algorithm and density.
-**When to use:** In both `sidepanel/App.tsx` and `app/App.tsx`.
+### Pattern 2: antdConfig.ts — Centralised Theme Config
+**What:** A single utility module that produces `ConfigProvider` props based on mode and density. Each surface calls `getAntdConfig({ mode, compact })` and spreads the result onto `<ConfigProvider>`. The same config is also consumable by `XProvider` (used in Phase 7+ for Chat/Agent subtrees).
+**When to use:** In every surface `App.tsx` (sidepanel, app, popup). Created in Phase 1 alongside `ThemeStore`.
+**Location:** `src/core/theme/antdConfig.ts`
 **Example:**
 ```typescript
-// Source: ant.design docs (customize-theme) + x.ant.design (XProvider)
-// entrypoints/sidepanel/App.tsx
-import { XProvider } from '@ant-design/x';
-import { theme } from 'antd';
-import { useThemeStore } from '@/core/stores/themeStore';
+// Source: PRODUCT_SPEC §5.5 — shared theme config across both surfaces
+// core/theme/antdConfig.ts
+import { type ThemeConfig, theme } from 'antd';
+import type { ThemeMode } from '../stores/themeStore';
 
 const { defaultAlgorithm, darkAlgorithm, compactAlgorithm } = theme;
 
+export interface AntdConfigOptions {
+  mode: ThemeMode;
+  compact: boolean;
+}
+
+export function getAntdConfig(options: AntdConfigOptions): ThemeConfig {
+  const { mode, compact } = options;
+  const algorithm = mode === 'dark' ? [darkAlgorithm] : [defaultAlgorithm];
+  if (compact) {
+    algorithm.push(compactAlgorithm);
+  }
+  return { algorithm };
+}
+```
+
+### Pattern 3: ConfigProvider + AntdApp at Surface Root
+**What:** Each surface's `App.tsx` mounts `ConfigProvider` (with config from `antdConfig.ts`) wrapping `AntdApp`. `XProvider` is **not** used at the surface root — it is added later (Phase 7) around Chat/Agent subtrees that use Ant Design X components like `Bubble`, `Sender`, `Conversations`.
+**When to use:** In `sidepanel/App.tsx` (compact density), `app/App.tsx` (default density), and `popup/App.tsx` (compact density).
+**Example:**
+```typescript
+// Source: PRODUCT_SPEC §5.5 — ConfigProvider at root, XProvider deferred to Phase 7
+// entrypoints/sidepanel/App.tsx
+import { ConfigProvider, App } from 'antd';
+import { getAntdConfig } from '@/core/theme/antdConfig';
+import { useThemeStore } from '@/core/stores/themeStore';
+
 export function SidePanelApp() {
   const mode = useThemeStore((s) => s.mode);
-
-  const algorithm = (() => {
-    if (mode === 'dark') return [darkAlgorithm, compactAlgorithm];
-    return [defaultAlgorithm, compactAlgorithm]; // 'light' or 'auto'
-  })();
+  const antdConfig = getAntdConfig({ mode, compact: true });
 
   return (
-    <XProvider theme={{ algorithm }}>
-      <App>  {/* AntD App for useApp() imperative APIs */}
+    <ConfigProvider {...antdConfig}>
+      <App>
         <SidePanelLayout />
       </App>
-    </XProvider>
+    </ConfigProvider>
   );
 }
 ```
+
+**Rules:**
+- Surface root uses `ConfigProvider` — NOT `XProvider` (XProvider is for AntD X subtrees only, Phase 7)
+- `AntdApp` is nested inside `ConfigProvider` for `App.useApp()` imperative APIs
+- Side Panel passes `compact: true`; Full App passes `compact: false`
+- Never nest `ConfigProvider` inside `XProvider` or vice versa at the same level
 
 ### Pattern 3: BroadcastBus via chrome.storage.onChanged
 **What:** Cross-surface state synchronization using chrome.storage as the shared bus.
@@ -374,6 +402,7 @@ export default defineBackground(() => {
 - **Static `message.success()` / `Modal.confirm()`:** Always use `App.useApp()` hook or the `App` component wrapper for imperative APIs. Static methods don't receive ConfigProvider context in AntD v6. [CITED: ant.design/components/app]
 - **CSS class manipulation for theming:** Use ConfigProvider's `theme.algorithm` for light/dark switching. Don't toggle CSS classes on `<html>` or `<body>`. [CITED: ant.design/docs/react/customize-theme]
 - **Importing from `@ant-design/x-sdk` or `@ant-design/x-card`:** These are explicitly out of scope per PROJECT.md decisions. They must not appear in `package.json` or imports.
+- **XProvider at surface root:** In v0.1, the surface root uses `ConfigProvider` (from `antdConfig.ts`), NOT `XProvider`. `XProvider` is only wrapped around Chat/Agent subtrees in Phase 7. Using `XProvider` at surface root before AntD X components are needed causes an unnecessary dependency on `@ant-design/x` context and may mask version-mismatch warnings that `ConfigProvider` would surface.
 
 ## Don't Hand-Roll
 
@@ -456,32 +485,26 @@ export default defineBackground(() => {
 
 Verified patterns from official sources:
 
-### Theme Configuration (THEME-02, THEME-03)
+### Theme Configuration (THEME-02, THEME-03) — Via antdConfig.ts
 ```typescript
+// Source: PRODUCT_SPEC §5.5 — centralised theme config via antdConfig.ts
 // Source: ant.design/docs/react/customize-theme (preset algorithms)
 // Source: ant.design/components/app (App.useApp pattern)
 
-import { XProvider } from '@ant-design/x';
-import { App, theme } from 'antd';
+import { ConfigProvider, App } from 'antd';
+import { getAntdConfig } from '@/core/theme/antdConfig';
 import { useThemeStore } from '@/core/stores/themeStore';
-
-const { defaultAlgorithm, darkAlgorithm, compactAlgorithm } = theme;
 
 export function SurfaceRoot({ children, density }: { children: React.ReactNode; density: 'compact' | 'default' }) {
   const mode = useThemeStore((s) => s.mode);
-
-  const algorithm = (() => {
-    const base = mode === 'dark' ? [darkAlgorithm] : [defaultAlgorithm];
-    if (density === 'compact') base.push(compactAlgorithm);
-    return base;
-  })();
+  const antdConfig = getAntdConfig({ mode, compact: density === 'compact' });
 
   return (
-    <XProvider theme={{ algorithm }}>
+    <ConfigProvider {...antdConfig}>
       <App>
         {children}
       </App>
-    </XProvider>
+    </ConfigProvider>
   );
 }
 ```
