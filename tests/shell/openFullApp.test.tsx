@@ -1,32 +1,35 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import React from 'react';
-import { render, cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
+import { render, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { useThemeStore } from '../../src/core/stores/themeStore';
 import { useWorkspaceStore } from '../../src/core/stores/workspaceStore';
-import { getFullAppUrl } from '../../src/core/routing/workspaceRouter';
+import { getStandaloneUrl } from '../../src/core/routing/workspaceRouter';
 
-vi.mock('../../src/core/registries/SidePanelPageRegistry', () => ({
-  SidePanelPageRegistry: class {
-    pages = new Map();
+vi.mock('../../src/core/registries/SidepanelPageRegistry', () => {
+  class SidepanelPageRegistry {
+    pages = new Map<string, { id: string; label: string; component: React.ComponentType; order?: number }>();
     register(page: { id: string; label: string; component: React.ComponentType; order?: number }) {
       this.pages.set(page.id, page);
     }
     getAll() {
       return Array.from(this.pages.values());
     }
-  },
-  sidePanelPageRegistry: {
-    getAll: () => [
-      { id: 'chat', label: 'Chat', component: () => React.createElement('div', null, 'Chat'), order: 1 },
-      { id: 'agent', label: 'Agent', component: () => React.createElement('div', null, 'Agent'), order: 2 },
-    ],
-    register: vi.fn(),
-  },
-}));
+  }
+  const registry = new SidepanelPageRegistry();
+  registry.register({ id: 'chat', label: 'Chat', component: () => React.createElement('div', null, 'ChatPage'), order: 1 });
+  registry.register({ id: 'agent', label: 'Agent', component: () => React.createElement('div', null, 'AgentPage'), order: 2 });
+  return { SidepanelPageRegistry, sidepanelPageRegistry: registry };
+});
 
-const FULL_APP_URL: string = getFullAppUrl();
+const STANDALONE_URL: string = getStandaloneUrl();
 
-describe('SHELL-05 — "Open Full App" button in Side Panel', () => {
+function findAllByLabelText(container: HTMLElement, text: string): HTMLElement[] {
+  return Array.from(container.querySelectorAll('[aria-label]')).filter(
+    (el) => el.getAttribute('aria-label') === text,
+  ) as HTMLElement[];
+}
+
+describe('SHELL-05 — "Open Standalone" action in Side Panel', () => {
   beforeEach(async () => {
     useThemeStore.setState({ mode: 'auto' });
     useWorkspaceStore.setState({
@@ -45,30 +48,30 @@ describe('SHELL-05 — "Open Full App" button in Side Panel', () => {
     vi.clearAllMocks();
   });
 
-  it('clicking the "Open Full App" button calls chrome.tabs.create with the Full App URL', async () => {
+  it('clicking the "Open Standalone" button calls chrome.tabs.create with the standalone URL', async () => {
     const { SidePanelApp } = await import('../../src/entrypoints/sidepanel/App');
-    render(React.createElement(SidePanelApp));
+    const { container } = render(React.createElement(SidePanelApp));
 
-    const openButtons = await screen.findAllByText('Open Full App');
+    const openButtons = findAllByLabelText(container, 'Open Standalone');
     expect(openButtons.length).toBeGreaterThan(0);
 
     fireEvent.click(openButtons[0]);
 
     await waitFor(() => {
       expect(chrome.tabs.create).toHaveBeenCalledWith(
-        expect.objectContaining({ url: FULL_APP_URL }),
+        expect.objectContaining({ url: STANDALONE_URL }),
       );
     });
-    expect(FULL_APP_URL).toContain('standalone.html');
+    expect(STANDALONE_URL).toContain('standalone.html');
   });
 
-  it('button is wired through openFullApp() (single workspace handoff source of truth)', async () => {
+  it('action is wired through openStandalone() (single workspace handoff source of truth)', async () => {
     const { SidePanelApp } = await import('../../src/entrypoints/sidepanel/App');
-    render(React.createElement(SidePanelApp));
+    const { container } = render(React.createElement(SidePanelApp));
 
     (chrome.tabs.create as ReturnType<typeof vi.fn>).mockClear();
 
-    const openButton = (await screen.findAllByText('Open Full App'))[0];
+    const openButton = findAllByLabelText(container, 'Open Standalone')[0];
     fireEvent.click(openButton);
 
     await waitFor(() => {

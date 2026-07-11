@@ -8,7 +8,7 @@ export interface PageDefinition {
   order?: number;
 }
 
-export class FullAppPageRegistry {
+export class StandalonePageRegistry {
   private pages = new Map<string, PageDefinition>();
 
   register(page: PageDefinition): void {
@@ -32,4 +32,4 @@ export class FullAppPageRegistry {
   }
 }
 
-export const fullAppPageRegistry = new FullAppPageRegistry();
+export const standalonePageRegistry = new StandalonePageRegistry();

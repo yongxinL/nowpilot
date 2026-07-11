@@ -16,11 +16,17 @@ describe('RuntimeEnvelope', () => {
   });
 
   it('accepts messages from all valid sources', () => {
-    const sources = ['background', 'sidepanel', 'fullapp', 'popup'] as const;
+    const sources = ['background', 'sidepanel', 'standalone', 'popup'] as const;
     for (const source of sources) {
       const result = validateEnvelope({ type: 't', source, payload: null });
       expect(result.source).toBe(source);
     }
+  });
+
+  it('rejects legacy "fullapp" source', () => {
+    expect(() =>
+      validateEnvelope({ type: 'test', source: 'fullapp', payload: null }),
+    ).toThrow('Invalid message envelope');
   });
 
   it('rejects a message with missing fields', () => {

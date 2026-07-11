@@ -8,7 +8,7 @@ export interface PageDefinition {
   order?: number;
 }
 
-export class SidePanelPageRegistry {
+export class SidepanelPageRegistry {
   private pages = new Map<string, PageDefinition>();
 
   register(page: PageDefinition): void {
@@ -32,4 +32,4 @@ export class SidePanelPageRegistry {
   }
 }
 
-export const sidePanelPageRegistry = new SidePanelPageRegistry();
+export const sidepanelPageRegistry = new SidepanelPageRegistry();

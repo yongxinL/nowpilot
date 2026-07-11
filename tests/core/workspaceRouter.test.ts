@@ -1,26 +1,26 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { openFullApp, getFullAppUrl } from '../../src/core/routing/workspaceRouter';
+import { openStandalone, getStandaloneUrl } from '../../src/core/routing/workspaceRouter';
 
-const FULL_APP_URL: string = getFullAppUrl();
+const STANDALONE_URL: string = getStandaloneUrl();
 
 describe('WorkspaceRouter', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('FULL_APP_URL is constructed via chrome.runtime.getURL', () => {
-    expect(FULL_APP_URL).toBe('/standalone.html');
+  it('STANDALONE_URL is constructed via chrome.runtime.getURL', () => {
+    expect(STANDALONE_URL).toBe('/standalone.html');
   });
 
-  it('openFullApp calls chrome.tabs.query with the full app url', async () => {
+  it('openStandalone calls chrome.tabs.query with the standalone url', async () => {
     (chrome.tabs.query as ReturnType<typeof vi.fn>).mockResolvedValue([]);
-    await openFullApp();
+    await openStandalone();
     expect(chrome.tabs.query).toHaveBeenCalledWith({ url: '/standalone.html' });
   });
 
   it('creates new tab when no existing tabs found', async () => {
     (chrome.tabs.query as ReturnType<typeof vi.fn>).mockResolvedValue([]);
-    await openFullApp();
+    await openStandalone();
     expect(chrome.tabs.create).toHaveBeenCalledWith({ url: '/standalone.html' });
   });
 
@@ -28,7 +28,7 @@ describe('WorkspaceRouter', () => {
     (chrome.tabs.query as ReturnType<typeof vi.fn>).mockResolvedValue([
       { id: 42, windowId: 7 },
     ]);
-    await openFullApp();
+    await openStandalone();
     expect(chrome.tabs.create).not.toHaveBeenCalled();
     expect(chrome.tabs.update).toHaveBeenCalledWith(42, { active: true });
     expect(chrome.windows.update).toHaveBeenCalledWith(7, { focused: true });
@@ -39,7 +39,7 @@ describe('WorkspaceRouter', () => {
       { id: 1, windowId: 10 },
       { id: 2, windowId: 20 },
     ]);
-    await openFullApp();
+    await openStandalone();
     expect(chrome.tabs.create).not.toHaveBeenCalled();
     expect(chrome.tabs.update).toHaveBeenCalledWith(1, { active: true });
   });
@@ -48,7 +48,7 @@ describe('WorkspaceRouter', () => {
     (chrome.tabs.query as ReturnType<typeof vi.fn>).mockResolvedValue([
       { windowId: 5 },
     ]);
-    await openFullApp();
+    await openStandalone();
     expect(chrome.tabs.create).toHaveBeenCalledWith({ url: '/standalone.html' });
   });
 });

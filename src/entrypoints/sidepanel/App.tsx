@@ -1,18 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { ConfigProvider, App, Layout, Menu, Button, Space, Typography } from 'antd';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ErrorBoundary } from '../../core/components/ErrorBoundary';
 import { ThemeMode, useThemeStore } from '../../core/stores/themeStore';
 import { getAntdConfig } from '../../core/theme/antdConfig';
-import { ErrorBoundary } from '../../core/components/ErrorBoundary';
-import { sidePanelPageRegistry } from '../../core/registries/SidePanelPageRegistry';
-import { openFullApp } from '../../core/routing/workspaceRouter';
 import { CommandPalette } from '../../core/commands/commandPalette';
-import { ChatPage } from '../../core/pages/ChatPage';
-import { AgentPage } from '../../core/pages/AgentPage';
-const { Header, Content, Footer, Sider } = Layout;
-const { Text } = Typography;
-
-sidePanelPageRegistry.register({ id: 'chat', label: 'Chat', component: ChatPage, order: 1 });
-sidePanelPageRegistry.register({ id: 'agent', label: 'Agent', component: AgentPage, order: 2 });
+import { sidepanelPageRegistry } from '../../core/registries/SidepanelPageRegistry';
+import { openStandalone } from '../../core/routing/workspaceRouter';
+import { SidepanelRoot } from '../../components/sidepanel/SidepanelRoot';
+import { findNavItem } from '../../core/navigation/navigationSelectors';
+import '../../core/registries/registerNowPilotCorePages';
 
 const modeCycle: Record<ThemeMode, ThemeMode> = {
   auto: 'light',
@@ -20,14 +15,13 @@ const modeCycle: Record<ThemeMode, ThemeMode> = {
   dark: 'auto',
 };
 
-const modeLabels: Record<ThemeMode, string> = {
-  auto: 'Auto',
-  light: 'Light',
-  dark: 'Dark',
-};
-
 const commands = [
-  { id: 'open-full-app', label: 'Open Full App', action: () => openFullApp(), shortcut: '⌘⇧F' },
+  {
+    id: 'open-standalone',
+    label: 'Open Standalone',
+    action: () => openStandalone(),
+    shortcut: '⌘⇧F',
+  },
   {
     id: 'focus-side-panel',
     label: 'Focus Side Panel',
@@ -51,15 +45,7 @@ const commands = [
 ];
 
 export function SidePanelApp() {
-  const mode = useThemeStore((s) => s.mode);
-  const setMode = useThemeStore((s) => s.setMode);
-  const [activePage, setActivePage] = useState('chat');
   const [paletteOpen, setPaletteOpen] = useState(false);
-
-  const antdConfig = getAntdConfig({ mode, compact: true });
-
-  const pages = sidePanelPageRegistry.getAll();
-  const activeComponent = pages.find((p) => p.id === activePage);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -72,51 +58,30 @@ export function SidePanelApp() {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
-  const handleToggleTheme = () => {
-    setMode(modeCycle[mode]);
-  };
-
-  const handleOpenFullApp = () => {
-    openFullApp();
+  const pages = useMemo(() => sidepanelPageRegistry.getAll(), []);
+  const renderActivePage = (item: ReturnType<typeof findNavItem>) => {
+    if (!item) return null;
+    const match = pages.find((p) => p.id === item.id);
+    const PageComponent = match?.component;
+    if (!PageComponent) {
+      return (
+        <div style={{ padding: 16 }} aria-label={`${item.label} placeholder`}>
+          <strong>{item.label}</strong>
+          <p style={{ marginTop: 8 }}>This page is a placeholder.</p>
+        </div>
+      );
+    }
+    return <PageComponent />;
   };
 
   return (
-    <ConfigProvider {...antdConfig}>
-      <App>
-        <ErrorBoundary>
-          <Layout style={{ height: '100vh' }}>
-            <Header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px' }}>
-              <Text strong style={{ fontSize: 16 }}>NowPilot</Text>
-              <Space>
-                <Button size="small" onClick={handleToggleTheme}>
-                  {modeLabels[mode]}
-                </Button>
-                <Button size="small" onClick={handleOpenFullApp}>
-                  Open Full App
-                </Button>
-              </Space>
-            </Header>
-            <Layout>
-              <Sider width={160} style={{ background: 'transparent' }}>
-                <Menu
-                  mode="inline"
-                  selectedKeys={[activePage]}
-                  items={pages.map((p) => ({ key: p.id, label: p.label }))}
-                  onClick={({ key }) => setActivePage(key)}
-                  style={{ borderRight: 0 }}
-                />
-              </Sider>
-              <Content style={{ padding: 16, overflow: 'auto' }}>
-                {activeComponent && <activeComponent.component />}
-              </Content>
-            </Layout>
-            <Footer style={{ padding: '8px 16px', borderTop: '1px solid rgba(0,0,0,0.06)' }}>
-              <Text type="secondary">Type a message...</Text>
-            </Footer>
-          </Layout>
-        </ErrorBoundary>
-        <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} commands={commands} />
-      </App>
-    </ConfigProvider>
+    <ErrorBoundary>
+      <SidepanelRoot renderActivePage={renderActivePage} />
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        commands={commands}
+      />
+    </ErrorBoundary>
   );
 }

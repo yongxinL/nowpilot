@@ -14,6 +14,15 @@ Object.defineProperty(window, 'matchMedia', {
   })),
 });
 
+if (typeof (globalThis as any).ResizeObserver === 'undefined') {
+  class MockResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+  (globalThis as any).ResizeObserver = MockResizeObserver;
+}
+
 vi.stubGlobal('chrome', {
   storage: {
     sync: {

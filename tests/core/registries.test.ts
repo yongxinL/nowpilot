@@ -1,17 +1,17 @@
-import { describe, it, expect, vi } from 'vitest';
-import { SidePanelPageRegistry } from '../../src/core/registries/SidePanelPageRegistry';
-import { FullAppPageRegistry } from '../../src/core/registries/FullAppPageRegistry';
+import { describe, it, expect } from 'vitest';
+import { SidepanelPageRegistry } from '../../src/core/registries/SidepanelPageRegistry';
+import { StandalonePageRegistry } from '../../src/core/registries/StandalonePageRegistry';
 
 describe('Page Registries', () => {
   it('both registries start empty', () => {
-    const side = new SidePanelPageRegistry();
-    const full = new FullAppPageRegistry();
+    const side = new SidepanelPageRegistry();
+    const standalone = new StandalonePageRegistry();
     expect(side.getAll()).toEqual([]);
-    expect(full.getAll()).toEqual([]);
+    expect(standalone.getAll()).toEqual([]);
   });
 
   it('register adds a page with id, label, and component', () => {
-    const registry = new SidePanelPageRegistry();
+    const registry = new SidepanelPageRegistry();
     const Component = () => null;
     registry.register({ id: 'chat', label: 'Chat', component: Component });
     const pages = registry.getAll();
@@ -21,7 +21,7 @@ describe('Page Registries', () => {
   });
 
   it('register with duplicate id throws Error', () => {
-    const registry = new FullAppPageRegistry();
+    const registry = new StandalonePageRegistry();
     const Component = () => null;
     registry.register({ id: 'notes', label: 'Notes', component: Component });
     expect(() => {
@@ -30,7 +30,7 @@ describe('Page Registries', () => {
   });
 
   it('getAll returns pages sorted by ascending order', () => {
-    const registry = new SidePanelPageRegistry();
+    const registry = new SidepanelPageRegistry();
     const A = () => null;
     const B = () => null;
     const C = () => null;
@@ -42,7 +42,7 @@ describe('Page Registries', () => {
   });
 
   it('pages with undefined order sort after numbered orders', () => {
-    const registry = new FullAppPageRegistry();
+    const registry = new StandalonePageRegistry();
     const A = () => null;
     const B = () => null;
     registry.register({ id: 'b', label: 'B', component: B });
@@ -52,19 +52,19 @@ describe('Page Registries', () => {
   });
 
   it('independent registries do not affect each other', () => {
-    const side = new SidePanelPageRegistry();
-    const full = new FullAppPageRegistry();
+    const side = new SidepanelPageRegistry();
+    const standalone = new StandalonePageRegistry();
     const Comp = () => null;
     side.register({ id: 'side-only', label: 'Side', component: Comp });
-    full.register({ id: 'full-only', label: 'Full', component: Comp });
+    standalone.register({ id: 'standalone-only', label: 'Standalone', component: Comp });
     expect(side.getAll()).toHaveLength(1);
     expect(side.getAll()[0].id).toBe('side-only');
-    expect(full.getAll()).toHaveLength(1);
-    expect(full.getAll()[0].id).toBe('full-only');
+    expect(standalone.getAll()).toHaveLength(1);
+    expect(standalone.getAll()[0].id).toBe('standalone-only');
   });
 
   it('unregister removes page from getAll', () => {
-    const registry = new SidePanelPageRegistry();
+    const registry = new SidepanelPageRegistry();
     const Comp = () => null;
     registry.register({ id: 'removable', label: 'Remove', component: Comp });
     expect(registry.getAll()).toHaveLength(1);

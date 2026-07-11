@@ -3,11 +3,16 @@ import { Card, Typography } from 'antd';
 
 const { Title, Text } = Typography;
 
-export function OptionsPage() {
+export interface OptionsPageProps {
+  sectionId?: string;
+}
+
+export function OptionsPage({ sectionId = 'providers' }: OptionsPageProps) {
   return (
     <Card>
       <Title level={3}>Options</Title>
-      <Text type="secondary">Coming soon</Text>
+      <Text type="secondary">Section: {sectionId}</Text>
+      <p style={{ marginTop: 8 }}>Settings rendering is scaffolded. Detailed sections arrive in a later phase.</p>
     </Card>
   );
 }

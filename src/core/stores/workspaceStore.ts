@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import type { Surface } from '../navigation/navigationTypes';
 
-export type Surface = 'sidepanel' | 'fullapp' | 'popup';
+export type { Surface } from '../navigation/navigationTypes';
 
 export interface WorkspaceState {
   workspaceId: string | null;

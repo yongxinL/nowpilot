@@ -26,10 +26,18 @@ describe('WorkspaceStore', () => {
     expect(chrome.storage.session.set).toHaveBeenCalled();
   });
 
-  it('setActiveSurface updates to fullapp and persists', () => {
-    useWorkspaceStore.getState().setActiveSurface('fullapp');
-    expect(useWorkspaceStore.getState().activeSurface).toBe('fullapp');
+  it('setActiveSurface updates to standalone and persists', () => {
+    useWorkspaceStore.getState().setActiveSurface('standalone');
+    expect(useWorkspaceStore.getState().activeSurface).toBe('standalone');
     expect(chrome.storage.session.set).toHaveBeenCalled();
+  });
+
+  it('Surface values restricted to sidepanel/standalone/popup', () => {
+    const valid: Array<'sidepanel' | 'standalone' | 'popup'> = ['sidepanel', 'standalone', 'popup'];
+    for (const s of valid) {
+      useWorkspaceStore.getState().setActiveSurface(s);
+      expect(useWorkspaceStore.getState().activeSurface).toBe(s);
+    }
   });
 
   it('state shape contains only lightweight metadata fields', () => {

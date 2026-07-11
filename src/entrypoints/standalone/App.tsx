@@ -1,21 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { ConfigProvider, App, Layout, Menu, Button, Space, Typography } from 'antd';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ErrorBoundary } from '../../core/components/ErrorBoundary';
 import { ThemeMode, useThemeStore } from '../../core/stores/themeStore';
 import { getAntdConfig } from '../../core/theme/antdConfig';
-import { useWorkspaceStore } from '../../core/stores/workspaceStore';
-import { ErrorBoundary } from '../../core/components/ErrorBoundary';
-import { fullAppPageRegistry } from '../../core/registries/FullAppPageRegistry';
-import { openFullApp } from '../../core/routing/workspaceRouter';
 import { CommandPalette } from '../../core/commands/commandPalette';
-import { ChatPage } from '../../core/pages/ChatPage';
-import { AgentPage } from '../../core/pages/AgentPage';
-import { NotesPage } from '../../core/pages/NotesPage';
-const { Header, Content, Sider } = Layout;
-const { Text } = Typography;
-
-fullAppPageRegistry.register({ id: 'chat', label: 'Chat', component: ChatPage, order: 1 });
-fullAppPageRegistry.register({ id: 'agent', label: 'Agent', component: AgentPage, order: 2 });
-fullAppPageRegistry.register({ id: 'notes', label: 'Notes', component: NotesPage, order: 3 });
+import { standalonePageRegistry } from '../../core/registries/StandalonePageRegistry';
+import { StandaloneRoot } from '../../components/standalone/StandaloneRoot';
+import { findNavItem } from '../../core/navigation/navigationSelectors';
+import '../../core/registries/registerNowPilotCorePages';
 
 const modeCycle: Record<ThemeMode, ThemeMode> = {
   auto: 'light',
@@ -23,14 +14,13 @@ const modeCycle: Record<ThemeMode, ThemeMode> = {
   dark: 'auto',
 };
 
-const modeLabels: Record<ThemeMode, string> = {
-  auto: 'Auto',
-  light: 'Light',
-  dark: 'Dark',
-};
-
 const commands = [
-  { id: 'open-full-app', label: 'Open Full App', action: () => openFullApp(), shortcut: '⌘⇧F' },
+  {
+    id: 'open-standalone',
+    label: 'Focus Standalone',
+    action: () => window.focus(),
+    shortcut: '⌘⇧F',
+  },
   {
     id: 'focus-side-panel',
     label: 'Focus Side Panel',
@@ -53,24 +43,8 @@ const commands = [
   },
 ];
 
-export function FullAppApp() {
-  const mode = useThemeStore((s) => s.mode);
-  const setMode = useThemeStore((s) => s.setMode);
-  const activeSurface = useWorkspaceStore((s) => s.activeSurface);
-  const [activePage, setActivePage] = useState('chat');
-  const [collapsed, setCollapsed] = useState(false);
+export function StandaloneApp() {
   const [paletteOpen, setPaletteOpen] = useState(false);
-
-  const antdConfig = getAntdConfig({ mode, compact: false });
-
-  const pages = fullAppPageRegistry.getAll();
-  const activeComponent = pages.find((p) => p.id === activePage);
-
-  useEffect(() => {
-    if (activeSurface === 'fullapp') {
-      useWorkspaceStore.getState().setActiveSurface('fullapp');
-    }
-  }, [activeSurface]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -83,46 +57,30 @@ export function FullAppApp() {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
-  const handleToggleTheme = () => {
-    setMode(modeCycle[mode]);
+  const pages = useMemo(() => standalonePageRegistry.getAll(), []);
+  const renderActivePage = (item: ReturnType<typeof findNavItem>) => {
+    if (!item) return null;
+    const match = pages.find((p) => p.id === item.id);
+    const PageComponent = match?.component;
+    if (!PageComponent) {
+      return (
+        <div style={{ padding: 24 }} aria-label={`${item.label} placeholder`}>
+          <h1 style={{ marginTop: 0 }}>{item.label}</h1>
+          <p>This page is a placeholder.</p>
+        </div>
+      );
+    }
+    return <PageComponent />;
   };
 
   return (
-    <ConfigProvider {...antdConfig}>
-      <App>
-        <ErrorBoundary>
-          <Layout style={{ height: '100vh' }}>
-            <Sider
-              collapsible
-              collapsed={collapsed}
-              onCollapse={setCollapsed}
-              width={200}
-            >
-              <Menu
-                mode="inline"
-                selectedKeys={[activePage]}
-                items={pages.map((p) => ({ key: p.id, label: p.label }))}
-                onClick={({ key }) => setActivePage(key)}
-              />
-            </Sider>
-            <Layout>
-              <Header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px' }}>
-                <Text strong style={{ fontSize: 18 }}>NowPilot</Text>
-                <Space>
-                  <Text type="secondary">{activeSurface}</Text>
-                  <Button size="small" onClick={handleToggleTheme}>
-                    {modeLabels[mode]}
-                  </Button>
-                </Space>
-              </Header>
-              <Content style={{ padding: 24, overflow: 'auto' }}>
-                {activeComponent && <activeComponent.component />}
-              </Content>
-            </Layout>
-          </Layout>
-        </ErrorBoundary>
-        <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} commands={commands} />
-      </App>
-    </ConfigProvider>
+    <ErrorBoundary>
+      <StandaloneRoot renderActivePage={renderActivePage} />
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        commands={commands}
+      />
+    </ErrorBoundary>
   );
 }

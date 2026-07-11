@@ -1,0 +1,95 @@
+import React from 'react';
+import { describe, it, expect, vi } from 'vitest';
+import { render } from '@testing-library/react';
+import { ConfigProvider } from 'antd';
+import {
+  StandaloneNavbar,
+} from '../../src/components/standalone/StandaloneNavbar';
+
+function setup(jsx: React.ReactElement) {
+  return render(React.createElement(ConfigProvider, null, jsx));
+}
+
+describe('StandaloneNavbar render structure', () => {
+  it('expanded density renders Switch to Side Panel and project name', () => {
+    const { container } = setup(
+      React.createElement(StandaloneNavbar, {
+        density: 'expanded',
+        activeId: 'chat',
+        onSelect: () => {},
+        onCollapseToggle: () => {},
+        onSwitchToSidePanel: () => {},
+        onOpenOptions: () => {},
+      }),
+    );
+    expect(container.querySelector('[data-standalone-navbar-density="expanded"]')).toBeTruthy();
+    expect(container.querySelector('[data-standalone-action="switch-to-sidepanel"]')).toBeTruthy();
+    expect(container.querySelector('[data-standalone-action="collapse"]')).toBeTruthy();
+    expect(document.body.textContent).toContain('NowPilot');
+  });
+
+  it('collapsed density renders logo only and Expand navbar', () => {
+    const { container } = setup(
+      React.createElement(StandaloneNavbar, {
+        density: 'collapsed',
+        activeId: 'chat',
+        onSelect: () => {},
+        onCollapseToggle: () => {},
+        onSwitchToSidePanel: () => {},
+        onOpenOptions: () => {},
+      }),
+    );
+    expect(container.querySelector('[data-standalone-navbar-density="collapsed"]')).toBeTruthy();
+    expect(container.querySelector('[data-standalone-action="expand"]')).toBeTruthy();
+  });
+
+  it('Options action is present in both densities', () => {
+    const { container } = setup(
+      React.createElement(StandaloneNavbar, {
+        density: 'expanded',
+        activeId: 'chat',
+        onSelect: () => {},
+        onCollapseToggle: () => {},
+        onSwitchToSidePanel: () => {},
+        onOpenOptions: () => {},
+      }),
+    );
+    expect(container.querySelector('[data-standalone-action="open-options"]')).toBeTruthy();
+  });
+
+  it('User avatar menu is rendered in expanded standalone', () => {
+    const { container } = setup(
+      React.createElement(StandaloneNavbar, {
+        density: 'expanded',
+        activeId: 'chat',
+        onSelect: () => {},
+        onCollapseToggle: () => {},
+        onSwitchToSidePanel: () => {},
+        onOpenOptions: () => {},
+      }),
+    );
+    expect(container.querySelector('[aria-label^="User menu"]')).toBeTruthy();
+  });
+});
+
+describe('Surface toggle actions', () => {
+  it('Switch to Side Panel action calls handler when invoked', () => {
+    let called = 0;
+    const { container } = setup(
+      React.createElement(StandaloneNavbar, {
+        density: 'expanded',
+        activeId: 'chat',
+        onSelect: () => {},
+        onCollapseToggle: () => {},
+        onSwitchToSidePanel: () => {
+          called += 1;
+        },
+        onOpenOptions: () => {},
+      }),
+    );
+    const button = container.querySelector('[data-standalone-action="switch-to-sidepanel"]');
+    expect(button).toBeTruthy();
+    (button as HTMLElement).click();
+    expect(called).toBe(1);
+  });
+});

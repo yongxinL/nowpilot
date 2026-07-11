@@ -1,16 +1,16 @@
 import { debugLog } from '../utils/debugLog';
 
-let _fullAppUrl: string | undefined;
+let _standaloneUrl: string | undefined;
 
-export function getFullAppUrl(): string {
-  if (!_fullAppUrl) {
-    _fullAppUrl = chrome.runtime.getURL('/standalone.html');
+export function getStandaloneUrl(): string {
+  if (!_standaloneUrl) {
+    _standaloneUrl = chrome.runtime.getURL('/standalone.html');
   }
-  return _fullAppUrl;
+  return _standaloneUrl;
 }
 
-export async function openFullApp(): Promise<void> {
-  const url = getFullAppUrl();
+export async function openStandalone(): Promise<void> {
+  const url = getStandaloneUrl();
   const existingTabs = await chrome.tabs.query({ url });
 
   if (existingTabs.length > 0) {
@@ -18,11 +18,11 @@ export async function openFullApp(): Promise<void> {
     if (tab.id != null) {
       await chrome.tabs.update(tab.id, { active: true });
       await chrome.windows.update(tab.windowId, { focused: true });
-      debugLog('info', 'WorkspaceRouter: focused existing Full App tab', { tabId: tab.id });
+      debugLog('info', 'WorkspaceRouter: focused existing Standalone tab', { tabId: tab.id });
       return;
     }
   }
 
   const newTab = await chrome.tabs.create({ url });
-  debugLog('info', 'WorkspaceRouter: created new Full App tab', { tabId: newTab.id });
+  debugLog('info', 'WorkspaceRouter: created new Standalone tab', { tabId: newTab.id });
 }
