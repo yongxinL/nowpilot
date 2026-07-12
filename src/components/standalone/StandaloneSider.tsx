@@ -7,6 +7,8 @@ import { SiderTrigger } from '../sider/SiderTrigger';
 import { UserAvatarMenu } from '../common/UserAvatarMenu';
 import { StandaloneSiderHeader } from './StandaloneSiderHeader';
 
+export const STANDALONE_NAVBAR_WIDTH = 240;
+
 export interface StandaloneSiderProps {
   density: 'expanded' | 'collapsed';
   activeId: string;
@@ -25,7 +27,7 @@ export function StandaloneSider({
   onOpenOptions,
 }: StandaloneSiderProps) {
   const { token } = theme.useToken();
-  const width = density === 'expanded' ? 240 : 56;
+  const width = density === 'expanded' ? STANDALONE_NAVBAR_WIDTH : 56;
 
   const containerStyle: CSSProperties = {
     width,
@@ -37,18 +39,58 @@ export function StandaloneSider({
     backgroundColor: 'transparent',
     transition: `width ${token.motionDurationMid} ${token.motionEaseOut}`,
     overflow: 'hidden',
+    flexShrink: 0,
   };
 
   const menuStyle: CSSProperties =
     density === 'expanded'
-      ? { display: 'flex', flexDirection: 'column', gap: 8, flex: 1, overflowY: 'auto', padding: '12px 16px' }
-      : { display: 'flex', flexDirection: 'column', gap: 8, flex: 1, overflowY: 'auto', padding: '12px 8px' };
+      ? {
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
+          flex: 1,
+          minHeight: 0,
+          overflowY: 'auto',
+          padding: '12px 16px',
+        }
+      : {
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
+          flex: 1,
+          minHeight: 0,
+          overflowY: 'auto',
+          padding: '12px 8px',
+        };
+
+  const footerExpandedStyle: CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    marginTop: 'auto',
+    paddingRight: 16,
+    paddingLeft: 24,
+    paddingTop: 8,
+    paddingBottom: 8,
+    gap: 4,
+    flexShrink: 0,
+  };
+
+  const footerCollapsedStyle: CSSProperties = {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    marginTop: 'auto',
+    padding: '0 8px 8px',
+    gap: 4,
+    flexShrink: 0,
+  };
 
   return (
     <aside
       role="navigation"
       aria-label="Standalone sider"
       data-standalone-sider-density={density}
+      data-standalone-sider-width={width}
       style={containerStyle}
     >
       <StandaloneSiderHeader
@@ -64,6 +106,7 @@ export function StandaloneSider({
         onSelect={onSelect}
         showGroups={density === 'expanded'}
         showArrows={density === 'expanded'}
+        showSeparator={density === 'expanded'}
         style={menuStyle}
       />
 
@@ -71,17 +114,18 @@ export function StandaloneSider({
         <div
           role="group"
           aria-label="Standalone sider footer"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            marginTop: 16,
-            paddingRight: 16,
-            paddingLeft: 32,
-            paddingBottom: 6,
-            gap: 0,
-          }}
+          data-standalone-sider-footer="expanded"
+          style={footerExpandedStyle}
         >
-          <div style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div
+            style={{
+              width: 32,
+              height: 32,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
             <UserAvatarMenu
               size="default"
               onSelect={(key) => {
@@ -117,13 +161,8 @@ export function StandaloneSider({
         <div
           role="group"
           aria-label="Standalone sider footer"
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            marginTop: 12,
-            padding: '0 8px 4px',
-          }}
+          data-standalone-sider-footer="collapsed"
+          style={footerCollapsedStyle}
         >
           <button
             type="button"
@@ -146,7 +185,16 @@ export function StandaloneSider({
           >
             <SettingOutlined style={{ fontSize: 16 }} />
           </button>
-          <div style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', order: 3 }}>
+          <div
+            style={{
+              width: 32,
+              height: 32,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              order: 3,
+            }}
+          >
             <UserAvatarMenu
               size="small"
               onSelect={(key) => {

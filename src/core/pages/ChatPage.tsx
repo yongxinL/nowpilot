@@ -1,13 +1,31 @@
 import React from 'react';
-import { Card, Typography } from 'antd';
+import type { CSSProperties } from 'react';
 
-const { Title, Text } = Typography;
+const cardStyle: CSSProperties = {
+  width: '100%',
+  height: '100%',
+  boxSizing: 'border-box',
+  padding: '0',
+};
+
+const titleStyle: CSSProperties = {
+  margin: 0,
+  fontSize: 32,
+  fontWeight: 600,
+  lineHeight: '40px',
+};
+
+const subtitleStyle: CSSProperties = {
+  marginTop: 8,
+  fontSize: 12,
+  color: 'var(--ant-color-text-secondary)',
+};
 
 export function ChatPage() {
   return (
-    <Card>
-      <Title level={3}>Chat</Title>
-      <Text type="secondary">Coming soon</Text>
-    </Card>
+    <div style={cardStyle} data-page-empty-state="chat">
+      <h1 style={titleStyle}>Chat</h1>
+      <p style={subtitleStyle}>Coming soon</p>
+    </div>
   );
 }

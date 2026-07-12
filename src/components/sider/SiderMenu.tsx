@@ -4,6 +4,7 @@ import type { CSSProperties } from 'react';
 import { selectNavItems } from '../../core/navigation/navigationSelectors';
 import type { NowPilotNavItem } from '../../core/navigation/navigationTypes';
 import { SiderMenuItem } from './SiderMenuItem';
+import { NavbarSeparator } from './NavbarSeparator';
 
 export interface SiderMenuProps {
   surface: 'standalone' | 'sidepanel';
@@ -12,6 +13,7 @@ export interface SiderMenuProps {
   onSelect: (item: NowPilotNavItem) => void;
   showGroups?: boolean;
   showArrows?: boolean;
+  showSeparator?: boolean;
   style?: CSSProperties;
 }
 
@@ -22,6 +24,7 @@ export function SiderMenu({
   onSelect,
   showGroups = false,
   showArrows = false,
+  showSeparator = false,
   style,
 }: SiderMenuProps) {
   const { token } = theme.useToken();
@@ -45,15 +48,8 @@ export function SiderMenu({
         />
       ))}
 
-      {showGroups && addonItems.length > 0 && (
-        <div
-          role="separator"
-          style={{
-            height: 1,
-            backgroundColor: token.colorBorderSecondary,
-            margin: '8px 0',
-          }}
-        />
+      {showGroups && addonItems.length > 0 && showSeparator && (
+        <NavbarSeparator surface={surface} />
       )}
 
       {addonItems.map((item) => (
@@ -67,6 +63,17 @@ export function SiderMenu({
           showArrow={showArrows && item.showArrowInStandaloneExpanded === true}
         />
       ))}
+
+      {showGroups && !showSeparator && addonItems.length > 0 && (
+        <div
+          role="separator"
+          style={{
+            height: 1,
+            backgroundColor: token.colorBorderSecondary,
+            margin: '8px 0',
+          }}
+        />
+      )}
     </div>
   );
 }

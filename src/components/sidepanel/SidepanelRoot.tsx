@@ -7,9 +7,10 @@ import { openStandalone } from '../../core/routing/workspaceRouter';
 import type { NowPilotNavItem } from '../../core/navigation/navigationTypes';
 import { ErrorBoundary } from '../../core/components/ErrorBoundary';
 import { SidepanelContent } from './SidepanelContent';
-import { SidepanelSider } from './SidepanelSider';
+import { SidepanelSider, SIDEPANEL_NARROW_MAX_WIDTH } from './SidepanelSider';
 import { SiderTrigger } from '../sider/SiderTrigger';
 import { SiderPopup } from '../sider/SiderPopup';
+import { ApplicationFrame } from '../common/ApplicationFrame';
 
 export interface SidepanelRootProps {
   initialActiveId?: string;
@@ -17,7 +18,7 @@ export interface SidepanelRootProps {
   renderActivePage?: (item: NowPilotNavItem) => React.ReactNode;
 }
 
-const NARROW_MAX = 400;
+const NARROW_MAX = SIDEPANEL_NARROW_MAX_WIDTH;
 
 export function SidepanelRoot({ initialActiveId, initialCollapsed, renderActivePage }: SidepanelRootProps) {
   const mode = useThemeStore((s) => s.mode);
@@ -75,51 +76,47 @@ export function SidepanelRoot({ initialActiveId, initialCollapsed, renderActiveP
 
   return (
     <ConfigProvider {...antdConfig}>
-      <div
-        ref={containerRef}
-        role="application"
-        aria-label="NowPilot Side Panel"
-        data-surface="sidepanel"
-        data-density={density}
-        data-measured-width={Math.round(measuredWidth)}
-        style={{
-          width: '100%',
-          height: '100vh',
-          display: 'flex',
-          flexDirection: 'row',
-          alignItems: 'stretch',
-          background: 'var(--ant-color-bg-layout, transparent)',
-        }}
-      >
-        <ErrorBoundary>
-          <SidepanelContent activeNavId={activeId}>
-            {renderActivePage ? renderActivePage({ id: activeId, label: '', icon: null, group: 'core', order: 0, surfaces: ['sidepanel'] } as NowPilotNavItem) : null}
-          </SidepanelContent>
-          {density !== 'collapsed' ? (
-            <SidepanelSider
-              density={density === 'narrow' ? 'narrow' : 'expanded'}
-              activeId={activeId}
-              onSelect={handleSelect}
-              onCollapse={handleCollapse}
-              onOpenStandalone={handleOpenStandalone}
-              onOpenOptions={handleOpenOptions}
-            />
-          ) : null}
-          {density === 'collapsed' ? (
-            <>
-              <SiderTrigger mode="collapsed-float" onActivate={() => setPopupOpen((v) => !v)} />
-              <SiderPopup
-                open={popupOpen}
-                onOpenChange={setPopupOpen}
+      <div ref={containerRef} style={{ width: '100%', height: '100%' }}>
+        <ApplicationFrame surface="sidepanel">
+          <ErrorBoundary>
+            <SidepanelContent activeNavId={activeId}>
+              {renderActivePage
+                ? renderActivePage({
+                    id: activeId,
+                    label: '',
+                    icon: null,
+                    group: 'core',
+                    order: 0,
+                    surfaces: ['sidepanel'],
+                  } as NowPilotNavItem)
+                : null}
+            </SidepanelContent>
+            {density !== 'collapsed' ? (
+              <SidepanelSider
+                density={density === 'narrow' ? 'narrow' : 'expanded'}
                 activeId={activeId}
                 onSelect={handleSelect}
-                onExpand={handleExpand}
+                onCollapse={handleCollapse}
                 onOpenStandalone={handleOpenStandalone}
                 onOpenOptions={handleOpenOptions}
               />
-            </>
-          ) : null}
-        </ErrorBoundary>
+            ) : null}
+            {density === 'collapsed' ? (
+              <>
+                <SiderTrigger mode="collapsed-float" onActivate={() => setPopupOpen((v) => !v)} />
+                <SiderPopup
+                  open={popupOpen}
+                  onOpenChange={setPopupOpen}
+                  activeId={activeId}
+                  onSelect={handleSelect}
+                  onExpand={handleExpand}
+                  onOpenStandalone={handleOpenStandalone}
+                  onOpenOptions={handleOpenOptions}
+                />
+              </>
+            ) : null}
+          </ErrorBoundary>
+        </ApplicationFrame>
       </div>
     </ConfigProvider>
   );

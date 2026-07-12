@@ -1,88 +1,79 @@
 import { Tooltip, theme } from 'antd';
-import { ArrowLeftOutlined, ArrowRightOutlined, ExpandOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, ExpandOutlined } from '@ant-design/icons';
 import type { CSSProperties } from 'react';
 
-export interface SidepanelSiderHeaderProps {
+export interface SwitchbarTopbarProps {
   density: 'expanded' | 'narrow';
   onCollapse: () => void;
   onOpenStandalone: () => void;
 }
 
-const btnBase: CSSProperties = {
+const containerStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'row',
+  gap: 6,
+  paddingTop: 4,
+  paddingBottom: 8,
+  paddingLeft: 0,
+  paddingRight: 0,
+  justifyContent: 'center',
+  alignItems: 'center',
+  flexShrink: 0,
+};
+
+const buttonBaseStyle: CSSProperties = {
   width: 14,
   height: 14,
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
-  borderRadius: 2,
-  color: 'var(--ant-color-text-secondary, #666)',
+  borderRadius: 4,
   cursor: 'pointer',
-  background: 'var(--ant-color-fill-tertiary, rgba(0,0,0,0.04))',
   border: 'none',
   fontSize: 10,
+  flexShrink: 0,
 };
 
 export function SidepanelSiderHeader({
   density,
   onCollapse,
   onOpenStandalone,
-}: SidepanelSiderHeaderProps) {
-  if (density === 'expanded') {
-    return (
-      <div
-        role="toolbar"
-        aria-label="Sidepanel sider header"
-        style={{ display: 'flex', gap: 6 }}
-      >
-        <Tooltip title="Collapse panel">
-          <button
-            type="button"
-            aria-label="Collapse panel"
-            onClick={onCollapse}
-            style={btnBase}
-            data-sidepanel-action="collapse"
-          >
-            <ArrowLeftOutlined style={{ fontSize: 10 }} />
-          </button>
-        </Tooltip>
-        <Tooltip title="Open Standalone">
-          <button
-            type="button"
-            aria-label="Open Standalone"
-            onClick={onOpenStandalone}
-            style={btnBase}
-            data-sidepanel-action="open-standalone"
-          >
-            <ExpandOutlined style={{ fontSize: 10 }} />
-          </button>
-        </Tooltip>
-      </div>
-    );
-  }
+}: SwitchbarTopbarProps) {
+  const { token } = theme.useToken();
+
+  const buttonStyle: CSSProperties = {
+    ...buttonBaseStyle,
+    backgroundColor: token.colorFillTertiary,
+    color: token.colorTextSecondary,
+  };
+
+  const tooltipPlacement = density === 'expanded' ? 'top' : 'left';
 
   return (
     <div
       role="toolbar"
-      aria-label="Sidepanel sider header"
-      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}
+      aria-label="Switchbar topbar"
+      data-switchbar-topbar="true"
+      data-switchbar-topbar-density={density}
+      style={containerStyle}
     >
-      <Tooltip title="Collapse panel" placement="left">
+      <Tooltip title="Collapse panel" placement={tooltipPlacement}>
         <button
           type="button"
           aria-label="Collapse panel"
           onClick={onCollapse}
-          style={btnBase}
+          style={buttonStyle}
           data-sidepanel-action="collapse"
         >
           <ArrowLeftOutlined style={{ fontSize: 10 }} />
         </button>
       </Tooltip>
-      <Tooltip title="Open Standalone" placement="left">
+      <Tooltip title="Open Standalone" placement={tooltipPlacement}>
         <button
           type="button"
           aria-label="Open Standalone"
           onClick={onOpenStandalone}
-          style={btnBase}
+          style={buttonStyle}
           data-sidepanel-action="open-standalone"
         >
           <ExpandOutlined style={{ fontSize: 10 }} />

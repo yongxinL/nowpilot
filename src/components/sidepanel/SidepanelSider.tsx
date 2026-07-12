@@ -8,6 +8,10 @@ import { SidepanelSiderHeader } from './SidepanelSiderHeader';
 
 export type SidepanelSiderDensity = 'expanded' | 'narrow';
 
+export const SIDEPANEL_SWITCHBAR_WIDTH = 60;
+export const SIDEPANEL_NARROW_WIDTH = 44;
+export const SIDEPANEL_NARROW_MAX_WIDTH = 400;
+
 export interface SidepanelSiderProps {
   density: SidepanelSiderDensity;
   activeId: string;
@@ -26,7 +30,7 @@ export function SidepanelSider({
   onOpenOptions,
 }: SidepanelSiderProps) {
   const { token } = theme.useToken();
-  const width = density === 'expanded' ? 60 : 44;
+  const width = density === 'expanded' ? SIDEPANEL_SWITCHBAR_WIDTH : SIDEPANEL_NARROW_WIDTH;
 
   const containerStyle: CSSProperties = {
     width,
@@ -36,23 +40,36 @@ export function SidepanelSider({
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    gap: 16,
+    gap: 0,
     paddingTop: 20,
     paddingBottom: 12,
     background: 'transparent',
     transition: `width ${token.motionDurationMid} ${token.motionEaseOut}`,
     overflow: 'hidden',
+    flexShrink: 0,
   };
 
   const menuStyle: CSSProperties = {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    gap: 16,
+    gap: 4,
     flex: 1,
     minHeight: 0,
     overflowY: 'auto',
     width: '100%',
+    padding: '12px 0',
+  };
+
+  const footerStyle: CSSProperties = {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    marginTop: 'auto',
+    paddingTop: 8,
+    flexShrink: 0,
   };
 
   return (
@@ -60,6 +77,7 @@ export function SidepanelSider({
       role="navigation"
       aria-label="Side panel sider"
       data-sidepanel-sider-density={density}
+      data-sidepanel-sider-width={width}
       style={containerStyle}
     >
       <SidepanelSiderHeader
@@ -73,20 +91,17 @@ export function SidepanelSider({
         density={density}
         activeId={activeId}
         onSelect={onSelect}
-        showGroups={false}
+        showGroups={true}
         showArrows={false}
+        showSeparator={true}
         style={menuStyle}
       />
 
       <div
         role="group"
-        aria-label="Footer"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 4,
-        }}
+        aria-label="Sidepanel sider footer"
+        data-sidepanel-sider-footer="true"
+        style={footerStyle}
       >
         <button
           type="button"

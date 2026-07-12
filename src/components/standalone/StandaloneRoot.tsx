@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
-import { ConfigProvider } from 'antd';
+import { ConfigProvider, theme } from 'antd';
 import { getAntdConfig } from '../../core/theme/antdConfig';
 import { useThemeStore } from '../../core/stores/themeStore';
 import { useWorkspaceStore } from '../../core/stores/workspaceStore';
 import { ErrorBoundary } from '../../core/components/ErrorBoundary';
 import type { NowPilotNavItem } from '../../core/navigation/navigationTypes';
 import { WorkspaceStatusBar } from '../common/WorkspaceStatusBar';
-import { StandaloneSider } from './StandaloneSider';
+import { ApplicationFrame } from '../common/ApplicationFrame';
+import { StandaloneSider, STANDALONE_NAVBAR_WIDTH } from './StandaloneSider';
 import { StandaloneContent } from './StandaloneContent';
 
 export interface StandaloneRootProps {
@@ -24,6 +25,7 @@ export function StandaloneRoot({
 }: StandaloneRootProps) {
   const mode = useThemeStore((s) => s.mode);
   const setActiveSurface = useWorkspaceStore((s) => s.setActiveSurface);
+  const activeProvider = useWorkspaceStore((s) => s.activeProvider);
   const [collapsed, setCollapsed] = useState<boolean>(initialCollapsed);
   const [activeId, setActiveId] = useState<string>(initialActiveId ?? 'chat');
 
@@ -48,21 +50,7 @@ export function StandaloneRoot({
 
   return (
     <ConfigProvider {...antdConfig}>
-      <div
-        role="application"
-        aria-label="NowPilot Standalone"
-        data-surface="standalone"
-        data-density={density}
-        style={{
-          width: '100%',
-          height: '100vh',
-          display: 'flex',
-          flexDirection: 'row',
-          alignItems: 'stretch',
-          padding: '12px 12px 12px 0',
-          background: 'var(--ant-color-bg-layout, transparent)',
-        }}
-      >
+      <ApplicationFrame surface="standalone">
         <ErrorBoundary>
           <StandaloneSider
             density={density}
@@ -72,28 +60,63 @@ export function StandaloneRoot({
             onSwitchToSidePanel={handleSwitchToSidePanel}
             onOpenOptions={handleOpenOptions}
           />
-          <div
-            style={{
-              flex: 1,
-              minWidth: 0,
-              display: 'flex',
-              flexDirection: 'column',
-              borderRadius: 12,
-              overflow: 'hidden',
-              background: 'var(--ant-color-bg-container, transparent)',
+          <StandaloneContentWrapper
+            activeId={activeId}
+            renderActivePage={renderActivePage}
+            statusBar={{
+              ...(statusBar ?? {}),
+              providerName: statusBar?.providerName ?? activeProvider ?? undefined,
             }}
-          >
-            <StandaloneContent
-              activeNavId={activeId}
-              footer={<WorkspaceStatusBar surface="standalone" {...(statusBar ?? {})} />}
-            >
-              {renderActivePage
-                ? renderActivePage({ id: activeId, label: '', icon: null, group: 'core', order: 0, surfaces: ['standalone'] } as NowPilotNavItem)
-                : null}
-            </StandaloneContent>
-          </div>
+            navbarWidth={collapsed ? 56 : STANDALONE_NAVBAR_WIDTH}
+          />
         </ErrorBoundary>
-      </div>
+      </ApplicationFrame>
     </ConfigProvider>
+  );
+}
+
+function StandaloneContentWrapper({
+  activeId,
+  renderActivePage,
+  statusBar,
+  navbarWidth: _navbarWidth,
+}: {
+  activeId: string;
+  renderActivePage?: (item: NowPilotNavItem) => React.ReactNode;
+  statusBar?: Omit<React.ComponentProps<typeof WorkspaceStatusBar>, 'surface'>;
+  navbarWidth: number;
+}) {
+  const { token } = theme.useToken();
+  return (
+    <div
+      data-standalone-content-shell="true"
+      style={{
+        flex: 1,
+        minWidth: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        borderRadius: 16,
+        overflow: 'hidden',
+        background: token.colorBgContainer,
+        boxShadow: token.boxShadowSecondary,
+        margin: '12px 12px 12px 0',
+      }}
+    >
+      <StandaloneContent
+        activeNavId={activeId}
+        footer={<WorkspaceStatusBar surface="standalone" flush {...(statusBar ?? {})} />}
+      >
+        {renderActivePage
+          ? renderActivePage({
+              id: activeId,
+              label: '',
+              icon: null,
+              group: 'core',
+              order: 0,
+              surfaces: ['standalone'],
+            } as NowPilotNavItem)
+          : null}
+      </StandaloneContent>
+    </div>
   );
 }

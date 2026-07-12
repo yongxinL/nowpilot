@@ -1,6 +1,7 @@
 import { Tooltip, theme } from 'antd';
 import type { CSSProperties, KeyboardEvent } from 'react';
 import type { NowPilotNavItem } from '../../core/navigation/navigationTypes';
+import { NavItemSuffixArrow } from './NavItemSuffixArrow';
 
 export interface SiderMenuItemRenderContext {
   surface: 'sidepanel' | 'standalone';
@@ -24,6 +25,7 @@ const ICON_BOX: CSSProperties = {
   width: 20,
   height: 20,
   fontSize: 20,
+  lineHeight: 0,
   flexShrink: 0,
 };
 
@@ -50,8 +52,15 @@ function HorizontalMenuItem({
   const isActive = active === true;
 
   const bgStyle: CSSProperties = isActive
-    ? { backgroundColor: token.colorFillContent, color: token.colorPrimary }
+    ? { backgroundColor: token.colorFillSecondary, color: token.colorPrimary }
     : { backgroundColor: 'transparent', color: token.colorTextSecondary };
+
+  const iconColor: CSSProperties = {
+    color: isActive ? token.colorPrimary : token.colorTextSecondary,
+  };
+
+  const buttonPadding: string = showLabel ? '10px 16px' : '10px 0';
+  const buttonJustify: CSSProperties['justifyContent'] = showLabel ? 'flex-start' : 'center';
 
   const content = (
     <div
@@ -70,25 +79,38 @@ function HorizontalMenuItem({
         ...bgStyle,
         display: 'flex',
         alignItems: 'center',
+        justifyContent: buttonJustify,
         gap: 0,
         width: '100%',
-        padding: '10px 16px',
-        borderRadius: 12,
+        padding: buttonPadding,
+        borderRadius: token.borderRadiusLG,
         font: 'inherit',
         fontWeight: 600,
         fontSize: 14,
         lineHeight: '20px',
-        textAlign: 'left',
+        textAlign: showLabel ? 'left' : 'center',
         outline: 'none',
         cursor: 'pointer',
         transition: `background-color ${token.motionDurationMid} ${token.motionEaseOut}, color ${token.motionDurationMid} ${token.motionEaseOut}`,
         ...(item.disabled ? { opacity: 0.4, cursor: 'not-allowed' } : {}),
       }}
       onMouseEnter={(e) => {
-        if (!isActive && !item.disabled) (e.currentTarget as HTMLElement).style.backgroundColor = token.colorFillTertiary;
+        if (!isActive && !item.disabled) {
+          (e.currentTarget as HTMLElement).style.backgroundColor = token.colorFillTertiary;
+          const iconSpan = (e.currentTarget as HTMLElement).querySelector(
+            '[data-nav-item-icon="true"]',
+          ) as HTMLElement | null;
+          if (iconSpan) iconSpan.style.color = token.colorText;
+        }
       }}
       onMouseLeave={(e) => {
-        if (!isActive) (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
+        if (!isActive) {
+          (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
+          const iconSpan = (e.currentTarget as HTMLElement).querySelector(
+            '[data-nav-item-icon="true"]',
+          ) as HTMLElement | null;
+          if (iconSpan) iconSpan.style.color = token.colorTextSecondary;
+        }
       }}
       onFocus={(e) => {
         e.currentTarget.style.boxShadow = `0 0 0 2px ${token.colorPrimaryBg}`;
@@ -97,7 +119,9 @@ function HorizontalMenuItem({
         e.currentTarget.style.boxShadow = 'none';
       }}
     >
-      <span style={ICON_BOX}>{item.icon}</span>
+      <span data-nav-item-icon="true" style={{ ...ICON_BOX, ...iconColor }}>
+        {item.icon}
+      </span>
       {showLabel && (
         <span
           style={{
@@ -112,26 +136,17 @@ function HorizontalMenuItem({
           {buttonLabel}
         </span>
       )}
-      {showArrow && showLabel && (
-        <span
-          aria-hidden
-          style={{
-            color: token.colorTextTertiary,
-            fontSize: 12,
-            flexShrink: 0,
-          }}
-        >
-          ›
-        </span>
-      )}
+      {showArrow && showLabel && <NavItemSuffixArrow />}
     </div>
   );
 
   if (showLabel) return content;
   return (
-    <Tooltip title={tooltipLabel} placement={surface === 'sidepanel' ? 'left' : 'right'}>
-      {content}
-    </Tooltip>
+    <div style={{ width: '100%' }}>
+      <Tooltip title={tooltipLabel} placement={surface === 'sidepanel' ? 'left' : 'right'}>
+        {content}
+      </Tooltip>
+    </div>
   );
 }
 
@@ -143,82 +158,97 @@ function VerticalMenuItem({
   onClick,
   token,
 }: SiderMenuItemProps & { token: any }) {
-  const showLabel = density === 'expanded';
+  const isAddon = item.group === 'addons';
+  const showLabel = density === 'expanded' && !isAddon;
   const tooltipLabel = item.tooltip ?? item.label;
   const buttonLabel = item.shortLabel ?? item.label;
 
   const isActive = active === true;
 
-  return (
-    <Tooltip title={tooltipLabel} placement="left">
+  const button = (
+    <div
+      role="button"
+      tabIndex={0}
+      aria-label={tooltipLabel}
+      aria-current={isActive ? 'page' : undefined}
+      aria-disabled={item.disabled}
+      data-nav-id={item.id}
+      data-surface={surface}
+      data-density={density}
+      data-active={isActive ? 'true' : 'false'}
+      onClick={() => onClick(item)}
+      onKeyDown={(e) => handleKeyDown(e, () => onClick(item))}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 4,
+        width: '100%',
+        padding: 0,
+        borderRadius: 8,
+        font: 'inherit',
+        background: 'transparent',
+        cursor: 'pointer',
+        outline: 'none',
+        transition: `opacity ${token.motionDurationMid} ${token.motionEaseOut}`,
+        ...(item.disabled ? { opacity: 0.4, cursor: 'not-allowed' } : {}),
+      }}
+    >
       <div
-        role="button"
-        tabIndex={0}
-        aria-label={tooltipLabel}
-        aria-current={isActive ? 'page' : undefined}
-        aria-disabled={item.disabled}
-        data-nav-id={item.id}
-        data-surface={surface}
-        data-density={density}
-        data-active={isActive ? 'true' : 'false'}
-        onClick={() => onClick(item)}
-        onKeyDown={(e) => handleKeyDown(e, () => onClick(item))}
         style={{
           display: 'flex',
-          flexDirection: 'column',
           alignItems: 'center',
-          gap: 0,
-          width: '100%',
-          padding: 0,
-          borderRadius: 8,
-          font: 'inherit',
-          background: 'transparent',
-          cursor: 'pointer',
-          outline: 'none',
-          transition: `opacity ${token.motionDurationMid} ${token.motionEaseOut}`,
-          ...(item.disabled ? { opacity: 0.4, cursor: 'not-allowed' } : {}),
+          justifyContent: 'center',
+          width: 36,
+          height: 36,
+          borderRadius: 10,
+          background: isActive ? token.colorFillSecondary : 'transparent',
+          color: isActive ? token.colorPrimary : token.colorTextSecondary,
+          transition: `background-color ${token.motionDurationMid} ${token.motionEaseOut}, color ${token.motionDurationMid} ${token.motionEaseOut}`,
+        }}
+        onMouseEnter={(e) => {
+          if (!isActive && !item.disabled) {
+            (e.currentTarget as HTMLElement).style.backgroundColor = token.colorFillTertiary;
+            (e.currentTarget as HTMLElement).style.color = token.colorText;
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (!isActive) {
+            (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
+            (e.currentTarget as HTMLElement).style.color = token.colorTextSecondary;
+          }
         }}
       >
-        <div
+        <span data-nav-item-icon="true" style={{ ...ICON_BOX, color: 'inherit' }}>
+          {item.icon}
+        </span>
+      </div>
+      {showLabel && (
+        <span
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: 36,
-            height: 36,
-            borderRadius: 8,
-            background: isActive ? token.colorFillContent : 'transparent',
+            maxWidth: 50,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            fontSize: 11,
+            lineHeight: '11px',
+            letterSpacing: '-0.2px',
             color: isActive ? token.colorPrimary : token.colorTextSecondary,
-            transition: `background-color ${token.motionDurationMid} ${token.motionEaseOut}, color ${token.motionDurationMid} ${token.motionEaseOut}`,
-          }}
-          onMouseEnter={(e) => {
-            if (!isActive && !item.disabled) (e.currentTarget as HTMLElement).style.backgroundColor = token.colorFillTertiary;
-          }}
-          onMouseLeave={(e) => {
-            if (!isActive) (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
+            fontWeight: 600,
           }}
         >
-          <span style={ICON_BOX}>{item.icon}</span>
-        </div>
-        {showLabel && (
-          <span
-            style={{
-              marginTop: 4,
-              maxWidth: 50,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              fontSize: 11,
-              lineHeight: '11px',
-              letterSpacing: '-0.2px',
-              color: isActive ? token.colorPrimary : token.colorTextSecondary,
-            }}
-          >
-            {buttonLabel}
-          </span>
-        )}
-      </div>
-    </Tooltip>
+          {buttonLabel}
+        </span>
+      )}
+    </div>
+  );
+
+  return (
+    <div style={{ width: '100%' }}>
+      <Tooltip title={tooltipLabel} placement="left">
+        {button}
+      </Tooltip>
+    </div>
   );
 }
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Button, Tooltip, theme } from 'antd';
-import { ArrowLeftOutlined, MenuFoldOutlined } from '@ant-design/icons';
+import { Tooltip, theme } from 'antd';
+import { ArrowLeftOutlined } from '@ant-design/icons';
+import type { CSSProperties } from 'react';
 
 export interface StandaloneSiderHeaderProps {
   density: 'expanded' | 'collapsed';
@@ -8,9 +9,50 @@ export interface StandaloneSiderHeaderProps {
   onSwitchToSidePanel: () => void;
 }
 
+const collapsedLogoStyle: CSSProperties = {
+  width: 24,
+  height: 24,
+  borderRadius: 6,
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  color: '#fff',
+  fontWeight: 700,
+  fontSize: 12,
+};
+
+const collapsedContainerStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: '12px 8px 8px',
+};
+
+const expandedContainerStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 12,
+  paddingRight: 16,
+  paddingLeft: 24,
+  paddingTop: 12,
+  paddingBottom: 12,
+};
+
+const actionButtonStyle: CSSProperties = {
+  width: 20,
+  height: 20,
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  borderRadius: 6,
+  cursor: 'pointer',
+  border: 'none',
+  flexShrink: 0,
+};
+
 export function StandaloneSiderHeader({
   density,
-  onCollapseToggle,
+  onCollapseToggle: _onCollapseToggle,
   onSwitchToSidePanel,
 }: StandaloneSiderHeaderProps) {
   const { token } = theme.useToken();
@@ -27,31 +69,21 @@ export function StandaloneSiderHeader({
       <div
         role="banner"
         aria-label="Standalone sider header"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '14px',
-        }}
+        style={collapsedContainerStyle}
         data-standalone-sider-header-density="collapsed"
       >
-        <div
-          aria-label="NowPilot logo"
-          style={{
-            width: 24,
-            height: 24,
-            borderRadius: token.borderRadius,
-            background: `linear-gradient(135deg, ${token.colorPrimary}, ${token.colorInfo})`,
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#fff',
-            fontWeight: 700,
-            fontSize: 12,
-          }}
-        >
-          N
-        </div>
+        <Tooltip title="NowPilot" placement="right">
+          <div
+            aria-label="NowPilot logo"
+            style={{
+              ...collapsedLogoStyle,
+              background: `linear-gradient(135deg, ${token.colorPrimary}, ${token.colorInfo})`,
+            }}
+            data-standalone-logo="collapsed"
+          >
+            N
+          </div>
+        </Tooltip>
       </div>
     );
   }
@@ -60,33 +92,21 @@ export function StandaloneSiderHeader({
     <div
       role="banner"
       aria-label="Standalone sider header"
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        paddingRight: 16,
-        paddingLeft: 26,
-      }}
+      style={expandedContainerStyle}
       data-standalone-sider-header-density="expanded"
     >
-      <div
-        aria-label="NowPilot logo"
-        style={{
-          width: 24,
-          height: 24,
-          borderRadius: token.borderRadius,
-          background: `linear-gradient(135deg, ${token.colorPrimary}, ${token.colorInfo})`,
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: '#fff',
-          fontWeight: 700,
-          fontSize: 12,
-          padding: '12px 0',
-        }}
-      >
-        N
-      </div>
+      <Tooltip title="NowPilot" placement="right">
+        <div
+          aria-label="NowPilot logo"
+          style={{
+            ...collapsedLogoStyle,
+            background: `linear-gradient(135deg, ${token.colorPrimary}, ${token.colorInfo})`,
+          }}
+          data-standalone-logo="expanded"
+        >
+          N
+        </div>
+      </Tooltip>
       <span
         style={{
           flex: 1,
@@ -102,36 +122,18 @@ export function StandaloneSiderHeader({
         NowPilot
       </span>
       <Tooltip title={`Switch to Side Panel (${isMac ? '⌘' : 'Ctrl'}+Shift+S)`}>
-        <Button
-          type="text"
-          size="small"
-          aria-label="Switch to Side Panel"
-          icon={<ArrowLeftOutlined />}
-          onClick={onSwitchToSidePanel}
-          data-standalone-action="switch-to-sidepanel"
-        />
-      </Tooltip>
-      <Tooltip title="Collapse sider">
         <button
           type="button"
-          aria-label="Collapse sider"
-          onClick={onCollapseToggle}
+          aria-label="Switch to Side Panel"
+          onClick={onSwitchToSidePanel}
           style={{
-            width: 20,
-            height: 20,
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: 6,
-            backgroundColor: token.colorFillTertiary,
+            ...actionButtonStyle,
+            backgroundColor: 'transparent',
             color: token.colorTextSecondary,
-            cursor: 'pointer',
-            border: 'none',
-            flexShrink: 0,
           }}
-          data-standalone-action="collapse"
+          data-standalone-action="switch-to-sidepanel"
         >
-          <MenuFoldOutlined style={{ fontSize: 12 }} />
+          <ArrowLeftOutlined style={{ fontSize: 12 }} />
         </button>
       </Tooltip>
     </div>

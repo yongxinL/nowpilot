@@ -24,7 +24,8 @@ describe('StandaloneSider render structure', () => {
     );
     expect(container.querySelector('[data-standalone-sider-density="expanded"]')).toBeTruthy();
     expect(container.querySelector('[data-standalone-action="switch-to-sidepanel"]')).toBeTruthy();
-    expect(container.querySelector('[data-standalone-action="collapse"]')).toBeTruthy();
+    // Collapse/expand toggle moved to footer (no collapse button in header)
+    expect(container.querySelector('[data-sider-action="expand"]')).toBeTruthy();
     expect(document.body.textContent).toContain('NowPilot');
   });
 

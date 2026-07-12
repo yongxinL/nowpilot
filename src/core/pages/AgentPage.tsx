@@ -1,13 +1,31 @@
 import React from 'react';
-import { Card, Typography } from 'antd';
+import type { CSSProperties } from 'react';
 
-const { Title, Text } = Typography;
+const cardStyle: CSSProperties = {
+  width: '100%',
+  height: '100%',
+  boxSizing: 'border-box',
+  padding: '0',
+};
+
+const titleStyle: CSSProperties = {
+  margin: 0,
+  fontSize: 32,
+  fontWeight: 600,
+  lineHeight: '40px',
+};
+
+const subtitleStyle: CSSProperties = {
+  marginTop: 8,
+  fontSize: 12,
+  color: 'var(--ant-color-colorTextSecondary, rgba(0,0,0,0.45))',
+};
 
 export function AgentPage() {
   return (
-    <Card>
-      <Title level={3}>Agent</Title>
-      <Text type="secondary">Coming soon</Text>
-    </Card>
+    <div style={cardStyle} data-page-empty-state="agent">
+      <h1 style={titleStyle}>Agent</h1>
+      <p style={subtitleStyle}>Coming soon</p>
+    </div>
   );
 }
