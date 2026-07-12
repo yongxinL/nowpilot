@@ -70,10 +70,10 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **AIRN-03**: RendererService — concise response renderer (flash tier, 512 token cap, 5s timeout)
 - [ ] **AIRN-04**: AgentOrchestrator — Planner→Executor loop with tier caps (1-5 planner calls)
 - [ ] **AIRN-05**: StructuredOutput — JSON mode + schema validation + one-shot repair (Appendix L)
-- [ ] **AIRN-06**: ChunkBuffer — rAF-batched streaming UI buffer (Appendix J)
+- [x] **AIRN-06**: ChunkBuffer — rAF-batched streaming UI buffer (Appendix J)
 - [ ] **AIRN-07**: PromptCacheManager — cache segmentation and provider hints
 - [ ] **AIRN-08**: PromptCacheAdapter — per-provider cache-hint transformation (Appendix K)
-- [ ] **AIRN-09**: Abort propagation through Planner→Executor→Renderer via single AbortController
+- [x] **AIRN-09**: Abort propagation through Planner→Executor→Renderer via single AbortController
 
 ### Context-Adaptive Execution
 
@@ -267,10 +267,10 @@ Requirements for initial release. Each maps to roadmap phases.
 | AIRN-03 | Phase 3 | Pending |
 | AIRN-04 | Phase 3 | Pending |
 | AIRN-05 | Phase 3 | Pending |
-| AIRN-06 | Phase 3 | Pending |
+| AIRN-06 | Phase 3 | Complete |
 | AIRN-07 | Phase 3 | Pending |
 | AIRN-08 | Phase 3 | Pending |
-| AIRN-09 | Phase 3 | Pending |
+| AIRN-09 | Phase 3 | Complete |
 | CTXT-01 | Phase 4 | Pending |
 | CTXT-02 | Phase 4 | Pending |
 | CTXT-03 | Phase 4 | Pending |
