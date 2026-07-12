@@ -108,16 +108,16 @@ Plans:
 
 - [ ] 02-01-PLAN.md — Install idb v8.0.3 dependency and update test infrastructure for storage/crypto mocking
 
-**Wave 1** — Core Infrastructure (parallel)
+**Wave 1** — Core Infrastructure + Utilities (parallel)
 
 - [ ] 02-02-PLAN.md — IndexedDBManager with DBSchema, DB_VERSION, and getDB() singleton (STOR-01, STOR-05)
 - [ ] 02-03-PLAN.md — EncryptedStorage AES-GCM wrapper with PBKDF2 key derivation (STOR-02)
+- [ ] 02-06-PLAN.md — RateLimiter token bucket utility (STOR-06)
 
 **Wave 2** — Builders (parallel)
 
 - [ ] 02-04-PLAN.md — IndexedDBMigrator with v1-initial-schema migration (STOR-04, STOR-05)
 - [ ] 02-05-PLAN.md — WriteJournalEntry types + WriteJournal coordinator (STOR-03, STOR-07)
-- [ ] 02-06-PLAN.md — RateLimiter token bucket utility (STOR-06)
 
 **Wave 3** — Consumers (parallel)
 
