@@ -22,7 +22,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **WRKSP-02**: BroadcastBus enables cross-surface messaging between Side Panel and Full App
 - [ ] **WRKSP-03**: WorkspaceRouter opens Full App tab, deduplicates existing tabs
 - [ ] **WRKSP-04**: Primary writer election via chrome.storage.session with heartbeat (3s)
-- [ ] **WRKSP-05**: Workspace state persists across page reload and cross-surface handoff
+- [x] **WRKSP-05**: Workspace state persists across page reload and cross-surface handoff
 - [ ] **WRKSP-06**: Full App has priority over Side Panel in writer election tie-break
 
 ### Shell & Navigation
@@ -234,7 +234,7 @@ Requirements for initial release. Each maps to roadmap phases.
 | WRKSP-02 | Phase 1 | Pending |
 | WRKSP-03 | Phase 1 | Pending |
 | WRKSP-04 | Phase 1 | Pending |
-| WRKSP-05 | Phase 2 | Pending |
+| WRKSP-05 | Phase 2 | Complete |
 | WRKSP-06 | Phase 1 | Pending |
 | SHELL-01 | Phase 1 | Pending |
 | SHELL-02 | Phase 1 | Pending |
