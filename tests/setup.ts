@@ -35,12 +35,19 @@ vi.stubGlobal('chrome', {
       set: vi.fn().mockResolvedValue(undefined),
       remove: vi.fn().mockResolvedValue(undefined),
     },
+    local: {
+      get: vi.fn().mockResolvedValue({}),
+      set: vi.fn().mockResolvedValue(undefined),
+      remove: vi.fn().mockResolvedValue(undefined),
+      getBytesInUse: vi.fn().mockResolvedValue(0),
+    },
     onChanged: {
       addListener: vi.fn(),
       removeListener: vi.fn(),
     },
   },
   runtime: {
+    id: 'test-extension-id',
     getURL: vi.fn((path: string) => path),
     onInstalled: {
       addListener: vi.fn(),
@@ -67,3 +74,19 @@ vi.stubGlobal('chrome', {
     setPanelBehavior: vi.fn().mockResolvedValue(undefined),
   },
 });
+
+if (typeof globalThis.crypto === 'undefined' || !(globalThis.crypto as any).subtle) {
+  vi.stubGlobal('crypto', {
+    getRandomValues: vi.fn((arr: Uint8Array) => {
+      for (let i = 0; i < arr.length; i++) arr[i] = Math.floor(Math.random() * 256);
+      return arr;
+    }),
+    subtle: {
+      encrypt: vi.fn(),
+      decrypt: vi.fn(),
+      deriveKey: vi.fn(),
+      importKey: vi.fn(),
+      generateKey: vi.fn(),
+    },
+  });
+}
