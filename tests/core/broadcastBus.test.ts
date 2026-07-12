@@ -50,4 +50,28 @@ describe('BroadcastBus', () => {
 
     expect(handler).not.toHaveBeenCalled();
   });
+
+  it('dispatches WORKSPACE_UPDATED when np_workspace changes in local storage', () => {
+    initBroadcastBus();
+    const handler = vi.fn();
+    onBroadcastMessage(handler);
+
+    const listener = (chrome.storage.onChanged.addListener as ReturnType<typeof vi.fn>).mock
+      .calls[0][0];
+    listener({ np_workspace: { newValue: { workspaceId: 'test' } } }, 'local');
+
+    expect(handler).toHaveBeenCalledWith({ np_workspace: { newValue: { workspaceId: 'test' } } });
+  });
+
+  it('does NOT dispatch for local changes without np_workspace', () => {
+    initBroadcastBus();
+    const handler = vi.fn();
+    onBroadcastMessage(handler);
+
+    const listener = (chrome.storage.onChanged.addListener as ReturnType<typeof vi.fn>).mock
+      .calls[0][0];
+    listener({ some_other_key: { newValue: 'val' } }, 'local');
+
+    expect(handler).not.toHaveBeenCalled();
+  });
 });
