@@ -12,7 +12,9 @@ Everything runs locally against user-configured providers. No data leaves the us
 
 ### Validated
 
-(None yet — ship to validate)
+- [x] **WriteJournal + IndexedDBMigrator** — multi-store consistency, versioned migrations *(Phase 2)*
+- [x] **Split storage strategy** — message bodies in IndexedDB, metadata in chrome.storage.local *(Phase 2)*
+- [x] **Encrypted API keys** — AES-GCM-256 via EncryptedStorage with PBKDF2 derivation *(Phase 2)*
 
 ### Active
 
@@ -26,7 +28,7 @@ Everything runs locally against user-configured providers. No data leaves the us
 - [ ] **Persistent memory** — ConversationMemoryStore, UserMemoryStore, PreferenceMemoryStore, MemoryEngine
 - [ ] **12 built-in MCP tools + external MCP client** — StreamableHTTP transport
 - [ ] **AITransactionLog** — telemetry, prompt traces, tool traces, provider traces, TraceRedactor
-- [ ] **WriteJournal + IndexedDBMigrator** — multi-store consistency, versioned migrations
+
 - [ ] **Side Panel shell** — Chat, Agent, Write (add-on), TeamGQM (add-on), Open Full App
 - [ ] **Full App shell** — Chat, Agent, Notes, TeamGQM, Options (AntD Layout with Sider nav)
 - [ ] **Shared WorkspaceStore** — cross-surface Zustand store, BroadcastBus sync, WorkspaceRouter handoff
@@ -102,4 +104,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-10 after initialization*
+*Last updated: 2026-07-12*
