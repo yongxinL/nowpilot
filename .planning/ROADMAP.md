@@ -138,7 +138,7 @@ Plans:
   5. StructuredOutput one-shot JSON repair correctly handles truncated/malformed planner output
   6. ChunkBuffer delivers rAF-batched streaming text; AbortSignal propagates through the full Planner→Executor→Renderer chain
 
-**Plans:** 7/9 plans executed
+**Plans:** 8/9 plans executed
 
 **Wave 0** — Setup
 
@@ -149,7 +149,7 @@ Plans:
 - [x] 03-02-PLAN.md — ProviderRegistry + modelDiscovery + 5 provider adapter factories
 - [x] 03-03-PLAN.md — ToolRegistry + PermissionService + 3 fixture tools
 - [x] 03-05-PLAN.md — ChunkBuffer + AbortManager streaming infrastructure
-- [ ] 03-08-PLAN.md — PromptCacheManager + PromptCacheAdapter
+- [x] 03-08-PLAN.md — PromptCacheManager + PromptCacheAdapter
 
 **Wave 2** — Router
 
@@ -281,7 +281,7 @@ Phase 7 depends on both Phase 5 and Phase 6 being complete, acting as the conver
 |-------|----------------|--------|-----------|
 | 1. MV3/WXT Runtime + AntD Shells + Workspace | 7/7 | ✓ Complete | 2026-07-10 |
 | 2. Storage, Security, WriteJournal, Workspace Persistence | 8/8 | Complete    | 2026-07-12 |
-| 3. Cost-Effective AI Runtime | 7/9 | In Progress|  |
+| 3. Cost-Effective AI Runtime | 8/9 | In Progress|  |
 | 4. Context-Adaptive Execution | 0/TBD | Not started | - |
 | 5. Persistent Memory Architecture | 0/TBD | Not started | - |
 | 6. Transaction Logging and Diagnostics | 0/TBD | Not started | - |

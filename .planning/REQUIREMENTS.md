@@ -71,8 +71,8 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **AIRN-04**: AgentOrchestrator — Planner→Executor loop with tier caps (1-5 planner calls)
 - [x] **AIRN-05**: StructuredOutput — JSON mode + schema validation + one-shot repair (Appendix L)
 - [x] **AIRN-06**: ChunkBuffer — rAF-batched streaming UI buffer (Appendix J)
-- [ ] **AIRN-07**: PromptCacheManager — cache segmentation and provider hints
-- [ ] **AIRN-08**: PromptCacheAdapter — per-provider cache-hint transformation (Appendix K)
+- [x] **AIRN-07**: PromptCacheManager — cache segmentation and provider hints
+- [x] **AIRN-08**: PromptCacheAdapter — per-provider cache-hint transformation (Appendix K)
 - [x] **AIRN-09**: Abort propagation through Planner→Executor→Renderer via single AbortController
 
 ### Context-Adaptive Execution
@@ -268,8 +268,8 @@ Requirements for initial release. Each maps to roadmap phases.
 | AIRN-04 | Phase 3 | Complete |
 | AIRN-05 | Phase 3 | Complete |
 | AIRN-06 | Phase 3 | Complete |
-| AIRN-07 | Phase 3 | Pending |
-| AIRN-08 | Phase 3 | Pending |
+| AIRN-07 | Phase 3 | Complete |
+| AIRN-08 | Phase 3 | Complete |
 | AIRN-09 | Phase 3 | Complete |
 | CTXT-01 | Phase 4 | Pending |
 | CTXT-02 | Phase 4 | Pending |
