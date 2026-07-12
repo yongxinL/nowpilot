@@ -7,20 +7,42 @@
  *
  * No singleton — consumers (AgentOrchestrator) create instances.
  */
-
-// Stub: will be implemented in GREEN phase
 export class ChunkBuffer {
+  private buffer: string[] = [];
+  private rafId: number | null = null;
+
   constructor(private onFlush: (text: string) => void) {}
 
-  push(_text: string): void {
-    // Stub — no-op
+  push(text: string): void {
+    this.buffer.push(text);
+    this.scheduleFlush();
   }
 
   flush(): void {
-    // Stub — no-op
+    if (this.rafId !== null) {
+      cancelAnimationFrame(this.rafId);
+      this.rafId = null;
+    }
+    if (this.buffer.length > 0) {
+      const combined = this.buffer.join('');
+      this.buffer = [];
+      this.onFlush(combined);
+    }
   }
 
   destroy(): void {
-    // Stub — no-op
+    if (this.rafId !== null) {
+      cancelAnimationFrame(this.rafId);
+      this.rafId = null;
+    }
+    this.buffer = [];
+  }
+
+  private scheduleFlush(): void {
+    if (this.rafId !== null) return; // already scheduled
+    this.rafId = requestAnimationFrame(() => {
+      this.rafId = null;
+      this.flush();
+    });
   }
 }
