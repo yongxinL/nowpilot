@@ -6,14 +6,14 @@ current_phase: 02
 current_phase_name: storage-security-writejournal-workspace-persistence
 status: executing
 stopped_at: Completed 02-01-PLAN.md (storage test infrastructure)
-last_updated: "2026-07-12T08:43:52.368Z"
+last_updated: "2026-07-12T08:51:19.147Z"
 last_activity: 2026-07-12
 last_activity_desc: Phase 02 execution started
 progress:
   total_phases: 9
   completed_phases: 1
   total_plans: 15
-  completed_plans: 8
+  completed_plans: 9
   percent: 11
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-10)
 ## Current Position
 
 Phase: 02 (storage-security-writejournal-workspace-persistence) — EXECUTING
-Plan: 2 of 8
+Plan: 3 of 8
 Status: Ready to execute
 Last activity: 2026-07-12 — Phase 02 execution started
 
@@ -55,6 +55,7 @@ Progress: [████░░░░░░] 11% (1/9 phases)
 
 *Updated after each plan completion*
 | Phase 02-storage-security-writejournal-workspace-persistence P01 | 3min | 2 tasks | 3 files |
+| Phase 02-storage-security-writejournal-workspace-persistence P02 | 7min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -76,6 +77,9 @@ Recent decisions affecting current work:
 - TypeScript 7.0.2 used but typescript-eslint ecosystem lagging — ESLint uses simplified flat config
 - WorkspaceRouter FULL_APP_URL uses lazy getter function for test compatibility
 - [Phase 02-storage-security-writejournal-workspace-persistence]: Conditional crypto stub: vi.stubGlobal('crypto', ...) only when globalThis.crypto is undefined or has no subtle — Node.js 20+ provides native crypto.subtle in jsdom, no mock needed
+- [Phase 02]: Used module-level let dbInstance instead of class+singleton (per RESEARCH.md Pattern 1) for correct IndexedDB connection lifecycle management — IndexedDB connection management requires singleton at module scope to handle blocking/terminated callbacks correctly. Class+singleton pattern would make the db handle inaccessible from lifecycle callbacks.
+- [Phase 02]: Added @ path alias to tsconfig.json for vitest/vite path resolution compatibility in test files using vi.mock hoisting — Vitest v4 vi.mock hoisting transforms static imports into dynamic imports that run before module initialization, causing relative path resolution failures. The @ alias configured in vitest.config.ts needed tsconfig.json paths to match for TypeScript compilation.
+- [Phase 02]: Used vi.hoisted() pattern for mock variable declaration in vitest tests — Vitest v4 vi.mock factory cannot reference module-level variables defined after the mock call (hoisting rules). vi.hoisted() enables shared mutable state between mock factory and test assertions.
 
 ### Pending Todos
 
@@ -95,6 +99,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-12T08:43:52.360Z
+Last session: 2026-07-12T08:51:19.139Z
 Stopped at: Completed 02-01-PLAN.md (storage test infrastructure)
 Resume file: None
