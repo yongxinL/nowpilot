@@ -138,7 +138,28 @@ Plans:
   5. StructuredOutput one-shot JSON repair correctly handles truncated/malformed planner output
   6. ChunkBuffer delivers rAF-batched streaming text; AbortSignal propagates through the full Planner→Executor→Renderer chain
 
-**Plans**: TBD
+**Plans:** 9 plans
+
+**Wave 0** — Setup
+- [ ] 03-01-PLAN.md — Package installation (AI SDK v4 + jsonrepair) + type definitions + config
+
+**Wave 1** — Foundation (parallel)
+- [ ] 03-02-PLAN.md — ProviderRegistry + modelDiscovery + 5 provider adapter factories
+- [ ] 03-03-PLAN.md — ToolRegistry + PermissionService + 3 fixture tools
+- [ ] 03-05-PLAN.md — ChunkBuffer + AbortManager streaming infrastructure
+- [ ] 03-08-PLAN.md — PromptCacheManager + PromptCacheAdapter
+
+**Wave 2** — Router
+- [ ] 03-04-PLAN.md — CircuitBreaker + TierResolver + ProviderRouter
+
+**Wave 3** — Pipeline Services
+- [ ] 03-06-PLAN.md — StructuredOutput + PlannerService + ExecutorService + RendererService
+
+**Wave 4** — Orchestrator
+- [ ] 03-07-PLAN.md — AgentOrchestrator with Planner→Executor→Renderer loop
+
+**Wave 5** — Integration
+- [ ] 03-09-PLAN.md — Store integration (providerStore extension) + background SW verification
 
 ### Phase 4: Context-Adaptive Execution
 
