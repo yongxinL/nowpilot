@@ -180,7 +180,25 @@ Plans:
   4. Minimal mode blocks MCP chaining, caps memory injection at top-3, and restricts to one safe tool schema
   5. Every OptimizedContext carries a ContextProvenanceManifest recording section source, token count, and truncation decisions
 
-**Plans**: TBD
+**Plans:** 5 plans
+Plans:
+
+**Wave 1** — Foundation (parallel)
+
+- [ ] 04-01-PLAN.md — Foundation types (contextTypes, ModelContextTier, ContextProvenanceManifest) — CTXT-01
+- [ ] 04-02-PLAN.md — TokenEstimator (char-based + CJK detection + safety margin) — CTXT-02
+
+**Wave 2** — Compressor
+
+- [ ] 04-03-PLAN.md — ContextCompressor (LLM summarization + heuristic compression) — CTXT-07
+
+**Wave 3** — Core Optimizer
+
+- [ ] 04-04-PLAN.md — ContextOptimizer (budget, distribution, degradation pipeline, minimal mode) — CTXT-02/03/04/05/06
+
+**Wave 4** — Integration
+
+- [ ] 04-05-PLAN.md — AgentOrchestrator.runWithContext() + OrchestratorEvent extension — CTXT-04
 
 ### Phase 5: Persistent Memory Architecture
 
@@ -282,7 +300,7 @@ Phase 7 depends on both Phase 5 and Phase 6 being complete, acting as the conver
 | 1. MV3/WXT Runtime + AntD Shells + Workspace | 7/7 | ✓ Complete | 2026-07-10 |
 | 2. Storage, Security, WriteJournal, Workspace Persistence | 8/8 | Complete    | 2026-07-12 |
 | 3. Cost-Effective AI Runtime | 9/9 | Complete    | 2026-07-12 |
-| 4. Context-Adaptive Execution | 0/TBD | Not started | - |
+| 4. Context-Adaptive Execution | 0/5 | Not started | - |
 | 5. Persistent Memory Architecture | 0/TBD | Not started | - |
 | 6. Transaction Logging and Diagnostics | 0/TBD | Not started | - |
 | 7. Full Chat, Agent, Notes, Options Pages | 0/TBD | Not started | - |
