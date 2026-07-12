@@ -3,6 +3,13 @@ import { z } from 'zod';
 export const CostTier = z.enum(['haiku', 'flash', 'sonnet', 'opus']);
 export type CostTierType = z.infer<typeof CostTier>;
 
+export interface DiscoveredModel {
+  modelId: string;
+  contextWindow?: number;
+  supportsStructuredOutput?: boolean;
+  supportsToolUse?: boolean;
+}
+
 export interface ModelCapabilities {
   text: boolean;
   image: boolean;
