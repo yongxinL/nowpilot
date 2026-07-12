@@ -5,6 +5,8 @@ import type { PlannerService } from '../../../../src/core/ai/pipeline/PlannerSer
 import type { ExecutorService } from '../../../../src/core/ai/pipeline/ExecutorService';
 import type { RendererService } from '../../../../src/core/ai/pipeline/RendererService';
 import type { ProviderRouter } from '../../../../src/core/ai/router/ProviderRouter';
+import type { OptimizedContext } from '../../../../src/core/context/contextTypes';
+import { createManifest } from '../../../../src/core/context/ContextProvenanceManifest';
 
 import { AgentOrchestrator } from '../../../../src/core/ai/pipeline/AgentOrchestrator';
 
@@ -398,5 +400,150 @@ describe('AgentOrchestrator', () => {
       expect.any(Array),
       expect.any(AbortSignal),
     );
+  });
+
+  // -------------------------------------------------------------------------
+  // runWithContext tests
+  // -------------------------------------------------------------------------
+
+  function createOptimizedContext(overrides?: Partial<OptimizedContext>): OptimizedContext {
+    return {
+      operationId: 'test-op-1',
+      tier: 'small',
+      inputBudget: 11468,
+      outputBudget: 3276,
+      safetyMargin: 1640,
+      sections: [
+        { kind: 'system_prompt', sourceId: 'sys', content: 'You are helpful.', priority: 0 },
+        { kind: 'user_input', sourceId: 'user', content: 'Hello', priority: 1 },
+      ],
+      provenance: createManifest({
+        operationId: 'test-op-1',
+        tier: 'small',
+        inputBudget: 11468,
+        outputBudget: 3276,
+        safetyMargin: 1640,
+      }),
+      minimalMode: false,
+      ...overrides,
+    };
+  }
+
+  describe('runWithContext', () => {
+    function createOrchestratorWithMocks() {
+      const p = createMockPlanner();
+      (p.plan as ReturnType<typeof vi.fn>).mockResolvedValue(MOCK_ANSWER);
+      const e = createMockExecutor();
+      const r = createMockRenderer();
+      (r.render as ReturnType<typeof vi.fn>).mockReturnValue(
+        eventGen([{ type: 'text-delta', text: 'Hello' }, { type: 'text-complete', fullText: 'Hello' }]),
+      );
+      const rt = createMockRouter();
+      return { orchestrator: new AgentOrchestrator(p, e, r, rt), planner: p, executor: e, renderer: r, router: rt };
+    }
+
+    it('happy path — returns answer', async () => {
+      const { orchestrator: ao, planner: p } = createOrchestratorWithMocks();
+      const ctx = createOptimizedContext();
+
+      const events = await collectEvents(
+        ao.runWithContext(ctx, ['test-provider']),
+      );
+
+      expect(events.length).toBeGreaterThan(0);
+      expect(p.plan).toHaveBeenCalled();
+    });
+
+    it('emits context-degraded info event for degradation steps 3-6', async () => {
+      const { orchestrator: ao } = createOrchestratorWithMocks();
+      const prov = createManifest({
+        operationId: 'test-op-1', tier: 'small', inputBudget: 100, outputBudget: 20, safetyMargin: 10,
+      });
+      prov.degradationSteps = ['degradation_step_3' as any];
+      const ctx = createOptimizedContext({ provenance: prov });
+
+      const events = await collectEvents(
+        ao.runWithContext(ctx, ['test-provider']),
+      );
+
+      const degraded = events.find((e) => e.type === 'context-degraded');
+      expect(degraded).toBeDefined();
+      if (degraded && degraded.type === 'context-degraded') {
+        expect(degraded.level).toBe('info');
+      }
+    });
+
+    it('emits context-degraded warning event for minimal mode', async () => {
+      const { orchestrator: ao } = createOrchestratorWithMocks();
+      const prov = createManifest({
+        operationId: 'test-op-1', tier: 'tiny', inputBudget: 100, outputBudget: 20, safetyMargin: 10,
+      });
+      prov.minimalMode = true;
+      const ctx = createOptimizedContext({ tier: 'tiny', minimalMode: true, provenance: prov });
+
+      const events = await collectEvents(
+        ao.runWithContext(ctx, ['test-provider']),
+      );
+
+      const degraded = events.find((e) => e.type === 'context-degraded');
+      expect(degraded).toBeDefined();
+      if (degraded && degraded.type === 'context-degraded') {
+        expect(degraded.level).toBe('warning');
+      }
+    });
+
+    it('silent for degradation steps 1-2 (no events)', async () => {
+      const { orchestrator: ao } = createOrchestratorWithMocks();
+      const prov = createManifest({
+        operationId: 'test-op-1', tier: 'small', inputBudget: 100, outputBudget: 20, safetyMargin: 10,
+      });
+      prov.degradationSteps = ['degradation_step_1' as any, 'degradation_step_2' as any];
+      const ctx = createOptimizedContext({ provenance: prov });
+
+      const events = await collectEvents(
+        ao.runWithContext(ctx, ['test-provider']),
+      );
+
+      const degraded = events.find((e) => e.type === 'context-degraded');
+      expect(degraded).toBeUndefined();
+    });
+
+    it('section distribution sends system_prompt to planner', async () => {
+      const { orchestrator: ao, planner: p } = createOrchestratorWithMocks();
+      const ctx = createOptimizedContext({
+        sections: [
+          { kind: 'system_prompt', sourceId: 'sys', content: 'You are helpful.', priority: 0 },
+          { kind: 'task_instructions', sourceId: 'task', content: 'Do the thing.', priority: 1 },
+          { kind: 'user_input', sourceId: 'user', content: 'Hello world', priority: 2 },
+          { kind: 'workspace_context', sourceId: 'ws', content: 'Project context', priority: 3 },
+          { kind: 'page_context', sourceId: 'page', content: 'Page info', priority: 4 },
+          { kind: 'conversation_history', sourceId: 'hist', content: 'Previous chat', priority: 5 },
+        ],
+      });
+
+      await collectEvents(
+        ao.runWithContext(ctx, ['test-provider']),
+      );
+
+      const planCall = (p.plan as ReturnType<typeof vi.fn>).mock.calls[0];
+      const systemPrompt = planCall[2];
+      const userMessage = planCall[3];
+      expect(systemPrompt).toContain('You are helpful.');
+      expect(systemPrompt).toContain('Do the thing.');
+      expect(userMessage).toContain('Hello world');
+      expect(userMessage).toContain('Project context');
+    });
+
+    it('AbortManager created per runWithContext operation', async () => {
+      const { orchestrator: ao } = createOrchestratorWithMocks();
+      const ctx = createOptimizedContext();
+      ao.cancel();
+
+      const events = await collectEvents(
+        ao.runWithContext(ctx, ['test-provider']),
+      );
+
+      expect(events.length).toBeGreaterThan(0);
+    });
   });
 });

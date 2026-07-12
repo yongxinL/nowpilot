@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { ModelContextTier } from '../../context/contextTypes';
 
 export const PlannerAction = z.enum(['answer', 'run_tool', 'ask_clarification']);
 
@@ -23,4 +24,6 @@ export type OrchestratorEvent =
   | { type: 'tool-result'; toolName: string; result: ToolExecutionResult }
   | { type: 'text-delta'; text: string }
   | { type: 'text-complete'; fullText: string }
-  | { type: 'error'; message: string };
+  | { type: 'error'; message: string }
+  | { type: 'context-degraded'; level: 'info' | 'warning'; message: string; step?: number; tier?: ModelContextTier }
+  | { type: 'context-error'; code: 'CONTEXT_TOO_LARGE'; estimatedTokens: number; budget: number; message: string };
