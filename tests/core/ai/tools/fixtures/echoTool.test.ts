@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { echoTool } from '../../../../src/core/ai/tools/fixtures/echoTool';
-import { counterTool } from '../../../../src/core/ai/tools/fixtures/counterTool';
-import { getTimeTool } from '../../../../src/core/ai/tools/fixtures/getTimeTool';
+import { echoTool } from '../../../../../src/core/ai/tools/fixtures/echoTool';
+import { counterTool } from '../../../../../src/core/ai/tools/fixtures/counterTool';
+import { getTimeTool } from '../../../../../src/core/ai/tools/fixtures/getTimeTool';
 
 describe('echoTool', () => {
   it('executes and echoes input text unchanged', async () => {
