@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 02
 current_phase_name: storage-security-writejournal-workspace-persistence
 status: executing
-stopped_at: Completed 02-06-PLAN.md (RateLimiter)
-last_updated: "2026-07-12T09:05:21.335Z"
+stopped_at: Completed 02-04-PLAN.md (IndexedDBMigrator)
+last_updated: "2026-07-12T09:10:46.307Z"
 last_activity: 2026-07-12
 last_activity_desc: Phase 02 execution started
 progress:
   total_phases: 9
   completed_phases: 1
   total_plans: 15
-  completed_plans: 11
+  completed_plans: 12
   percent: 11
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-10)
 ## Current Position
 
 Phase: 02 (storage-security-writejournal-workspace-persistence) — EXECUTING
-Plan: 5 of 8
+Plan: 6 of 8
 Status: Ready to execute
 Last activity: 2026-07-12 — Phase 02 execution started
 
@@ -58,6 +58,7 @@ Progress: [████░░░░░░] 11% (1/9 phases)
 | Phase 02-storage-security-writejournal-workspace-persistence P02 | 7min | 2 tasks | 3 files |
 | Phase 02 P03 | 7min | 2 tasks | 2 files |
 | Phase 02 P06 | 1min | 2 tasks | 2 files |
+| Phase 02 P04 | 2min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -83,6 +84,8 @@ Recent decisions affecting current work:
 - [Phase 02]: Added @ path alias to tsconfig.json for vitest/vite path resolution compatibility in test files using vi.mock hoisting — Vitest v4 vi.mock hoisting transforms static imports into dynamic imports that run before module initialization, causing relative path resolution failures. The @ alias configured in vitest.config.ts needed tsconfig.json paths to match for TypeScript compilation.
 - [Phase 02]: Used vi.hoisted() pattern for mock variable declaration in vitest tests — Vitest v4 vi.mock factory cannot reference module-level variables defined after the mock call (hoisting rules). vi.hoisted() enables shared mutable state between mock factory and test assertions.
 - [Phase 02]: EncryptedPayload uses number[] for salt/iv/ciphertext instead of ArrayBuffer for chrome.storage JSON compatibility — ArrayBuffer is not JSON-serializable; chrome.storage.local requires JSON-compatible values
+- [Phase 02-storage-security-writejournal-workspace-persistence]: getMigrationsBetween() filter uses m.toVersion > fromVersion (not m.fromVersion <= fromVersion as originally specified in the plan) to correctly match intended semantics demonstrated by test cases
+- [Phase 02-storage-security-writejournal-workspace-persistence]: migrate() uses oldVersion/newVersion params rather than a transaction object — migration runs inside idb upgrade callback where a transaction is already active
 
 ### Pending Todos
 
@@ -102,6 +105,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-12T09:05:21.327Z
-Stopped at: Completed 02-06-PLAN.md (RateLimiter)
+Last session: 2026-07-12T09:10:46.299Z
+Stopped at: Completed 02-04-PLAN.md (IndexedDBMigrator)
 Resume file: None

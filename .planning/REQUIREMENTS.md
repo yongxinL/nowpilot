@@ -48,7 +48,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **STOR-01**: Split storage — IndexedDB for message bodies, chrome.storage.local for metadata, chrome.storage.session for tokens
 - [x] **STOR-02**: AES-GCM encrypted API key storage via EncryptedStorage (PBKDF2 + per-key salt/IV)
 - [ ] **STOR-03**: WriteJournal for multi-store consistency with idempotent operations
-- [ ] **STOR-04**: IndexedDBMigrator with versioned, idempotent migrations
+- [x] **STOR-04**: IndexedDBMigrator with versioned, idempotent migrations
 - [x] **STOR-05**: ChatHistoryDB, NotesDB, MemoryDB, ErrorStore, AITransactionLogDB
 - [x] **STOR-06**: RateLimiter per add-on instance
 - [ ] **STOR-07**: No message bodies in chrome.storage.local
@@ -251,7 +251,7 @@ Requirements for initial release. Each maps to roadmap phases.
 | STOR-01 | Phase 2 | Complete |
 | STOR-02 | Phase 2 | Complete |
 | STOR-03 | Phase 2 | Pending |
-| STOR-04 | Phase 2 | Pending |
+| STOR-04 | Phase 2 | Complete |
 | STOR-05 | Phase 2 | Complete |
 | STOR-06 | Phase 2 | Complete |
 | STOR-07 | Phase 2 | Pending |
