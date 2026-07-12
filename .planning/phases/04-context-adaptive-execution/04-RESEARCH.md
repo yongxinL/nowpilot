@@ -557,19 +557,19 @@ function getStepDescription(step: DegradationStep): string {
 | A3 | The ContextCompressor's LLM summarization path can use the same ProviderRouter that PlannerService uses, selecting Haiku/Flash models | Architecture Patterns — Summarization | If ProviderRouter doesn't expose search by cost tier independently of the orchestrator's tier caps, ContextCompressor may need a direct ProviderRegistry reference instead. MEDIUM impact — would require design adjustment |
 | A4 | The `OrchestratorEvent` union type extension won't break existing consumers if we add `context-degraded` and `context-error` events with explicit handling | Common Pitfalls — Pitfall 5 | If consumers use `default` or non-exhaustive handlers, new events would be silently dropped. MEDIUM impact — degradation info would be lost to UI |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **ContextCompressor LLM summarization model selection**
+1. **(RESOLVED) ContextCompressor LLM summarization model selection**
    - What we know: D-03 specifies LLM-based summarization for medium/large tiers. The project has ProviderRouter for model selection.
    - What's unclear: Should ContextCompressor use ProviderRouter (which has tier caps and circuit breakers) or a lightweight direct model selection? Using ProviderRouter adds circuit breaker and retry, which may be overkill for a side-call. Direct selection is simpler but bypasses retry logic.
    - Recommendation: Inject a separate lightweight model accessor (not full ProviderRouter) that ContextCompressor can call for summarization. This avoids coupling ContextCompressor to the main pipeline's routing concerns.
 
-2. **TokenEstimator interface shape**
+2. **(RESOLVED) TokenEstimator interface shape**
    - What we know: D-06 says "standalone module, injected into ContextOptimizer, exposes `estimateTokens(text: string): number`." The PRODUCT_SPEC says "use the provider-native counter when available; else fall back to char-based."
    - What's unclear: Should `estimateTokens()` be synchronous (char-based only, for pre-flight estimation) or also have an async method for provider-native post-hoc counting? Pre-flight estimation must be sync — it runs before the AI call. Post-hoc counting is for telemetry.
    - Recommendation: `estimateTokens(text: string): number` is synchronous — returns the char-based estimate. No async variant. Provider-native counts come from `result.usage` in the AI SDK response and are captured by telemetry (Phase 6), not by TokenEstimator.
 
-3. **Degradation pipeline step granularity vs. plan granularity**
+3. **(RESOLVED) Degradation pipeline step granularity vs. plan granularity**
    - What we know: The 8-step pipeline is defined in PRODUCT_SPEC §2.4. Each step is a distinct operation with different logic.
    - What's unclear: Should each step be a private method on ContextOptimizer, or should the pipeline be a separate DegradationPipeline class? The decision affects testability and file organization.
    - Recommendation: Make each degradation step a private method on ContextOptimizer. The steps are tightly coupled (each depends on the output of the previous step) and share access to the section list, tier, and input. A separate class would require passing all this state. Private methods are sufficient for testability — tests call `.optimize()` with inputs that trigger specific degradation steps.

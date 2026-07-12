@@ -21,7 +21,7 @@ created: 2026-07-13
 | **Config file** | vitest.config.ts |
 | **Quick run command** | `npx vitest run tests/core/context/` |
 | **Full suite command** | `npx vitest run` |
-| **Estimated runtime** | ~30 seconds |
+| **Estimated runtime** | ~30 seconds (borderline — full suite is ~30s; per-task `npx vitest run tests/core/context/ModelContextTier.test.ts` is <5s and preferred for task-level feedback) |
 
 ---
 
