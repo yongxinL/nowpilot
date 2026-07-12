@@ -8,7 +8,7 @@ NowPilot v0.1 is a privacy-first, extensible Chrome MV3 AI assistant. The 9-phas
 
 - [x] **Phase 1: MV3/WXT Runtime + AntD Shells + Workspace** — Extension scaffold, both UI surfaces, theme, workspace coordination, onboarding
 - [x] **Phase 2: Storage, Security, WriteJournal, Workspace Persistence** — Split-storage strategy, encrypted API keys, idempotent migrations (completed 2026-07-12)
-- [ ] **Phase 3: Cost-Effective AI Runtime** — 5 providers, Planner→Executor→Renderer pipeline, AgentOrchestrator, tier caps
+- [x] **Phase 3: Cost-Effective AI Runtime** — 5 providers, Planner→Executor→Renderer pipeline, AgentOrchestrator, tier caps (completed 2026-07-12)
 - [ ] **Phase 4: Context-Adaptive Execution** — Tier classification, token budgets, degradation pipeline, minimal mode
 - [ ] **Phase 5: Persistent Memory Architecture** — System-owned memory engine, conversation/user/preference stores, retrieval scoring
 - [ ] **Phase 6: Transaction Logging and Diagnostics** — AITransactionLog, TraceRedactor, DiagnosticsPanel in Full App
@@ -138,7 +138,7 @@ Plans:
   5. StructuredOutput one-shot JSON repair correctly handles truncated/malformed planner output
   6. ChunkBuffer delivers rAF-batched streaming text; AbortSignal propagates through the full Planner→Executor→Renderer chain
 
-**Plans:** 8/9 plans executed
+**Plans:** 9/9 plans complete
 
 **Wave 0** — Setup
 
@@ -165,7 +165,7 @@ Plans:
 
 **Wave 5** — Integration
 
-- [ ] 03-09-PLAN.md — Store integration (providerStore extension) + background SW verification
+- [x] 03-09-PLAN.md — Store integration (providerStore extension) + background SW verification
 
 ### Phase 4: Context-Adaptive Execution
 
@@ -281,7 +281,7 @@ Phase 7 depends on both Phase 5 and Phase 6 being complete, acting as the conver
 |-------|----------------|--------|-----------|
 | 1. MV3/WXT Runtime + AntD Shells + Workspace | 7/7 | ✓ Complete | 2026-07-10 |
 | 2. Storage, Security, WriteJournal, Workspace Persistence | 8/8 | Complete    | 2026-07-12 |
-| 3. Cost-Effective AI Runtime | 8/9 | In Progress|  |
+| 3. Cost-Effective AI Runtime | 9/9 | Complete   | 2026-07-12 |
 | 4. Context-Adaptive Execution | 0/TBD | Not started | - |
 | 5. Persistent Memory Architecture | 0/TBD | Not started | - |
 | 6. Transaction Logging and Diagnostics | 0/TBD | Not started | - |
