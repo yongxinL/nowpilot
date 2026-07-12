@@ -138,27 +138,33 @@ Plans:
   5. StructuredOutput one-shot JSON repair correctly handles truncated/malformed planner output
   6. ChunkBuffer delivers rAF-batched streaming text; AbortSignal propagates through the full Planner→Executor→Renderer chain
 
-**Plans:** 9 plans
+**Plans:** 1/9 plans executed
 
 **Wave 0** — Setup
-- [ ] 03-01-PLAN.md — Package installation (AI SDK v4 + jsonrepair) + type definitions + config
+
+- [x] 03-01-PLAN.md — Package installation (AI SDK v4 + jsonrepair) + type definitions + config
 
 **Wave 1** — Foundation (parallel)
+
 - [ ] 03-02-PLAN.md — ProviderRegistry + modelDiscovery + 5 provider adapter factories
 - [ ] 03-03-PLAN.md — ToolRegistry + PermissionService + 3 fixture tools
 - [ ] 03-05-PLAN.md — ChunkBuffer + AbortManager streaming infrastructure
 - [ ] 03-08-PLAN.md — PromptCacheManager + PromptCacheAdapter
 
 **Wave 2** — Router
+
 - [ ] 03-04-PLAN.md — CircuitBreaker + TierResolver + ProviderRouter
 
 **Wave 3** — Pipeline Services
+
 - [ ] 03-06-PLAN.md — StructuredOutput + PlannerService + ExecutorService + RendererService
 
 **Wave 4** — Orchestrator
+
 - [ ] 03-07-PLAN.md — AgentOrchestrator with Planner→Executor→Renderer loop
 
 **Wave 5** — Integration
+
 - [ ] 03-09-PLAN.md — Store integration (providerStore extension) + background SW verification
 
 ### Phase 4: Context-Adaptive Execution
@@ -275,7 +281,7 @@ Phase 7 depends on both Phase 5 and Phase 6 being complete, acting as the conver
 |-------|----------------|--------|-----------|
 | 1. MV3/WXT Runtime + AntD Shells + Workspace | 7/7 | ✓ Complete | 2026-07-10 |
 | 2. Storage, Security, WriteJournal, Workspace Persistence | 8/8 | Complete    | 2026-07-12 |
-| 3. Cost-Effective AI Runtime | 0/TBD | Not started | - |
+| 3. Cost-Effective AI Runtime | 1/9 | In Progress|  |
 | 4. Context-Adaptive Execution | 0/TBD | Not started | - |
 | 5. Persistent Memory Architecture | 0/TBD | Not started | - |
 | 6. Transaction Logging and Diagnostics | 0/TBD | Not started | - |
