@@ -761,19 +761,19 @@ export const useMyStore = create<MyState>()(
 | A2 | chrome.storage.local 10MB quota is sufficient for Phase 2 (metadata + encrypted provider configs + workspace state). Future phases (conversation metadata, memory facts, templates) may need `unlimitedStorage`. | Common Pitfalls: Pitfall 3 | Low — quota exceeded would be a runtime error caught in testing. Adding `unlimitedStorage` permission is a minor manifest change. |
 | A3 | `idb` v8.0.3 is compatible with TypeScript 5.7+ and WXT v0.20 bundler. | Standard Stack | Low — `idb` is a pure JS library with TypeScript types included. No framework/bundler coupling. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **IndexedDB object store naming convention**
+1. (RESOLVED) **IndexedDB object store naming convention**
    - What we know: Product spec lists stores like `sessions`, `messages`, `notes` within named databases (ChatHistoryDB, NotesDB). Since D-07 specifies a single `nowpilot` database, these need unique store names.
    - What's unclear: Whether to use flat names (`chat_history_sessions`, `chat_history_messages`) or a namespace prefix convention.
    - Recommendation: Use flat, descriptive names (`chat_history_sessions`, `chat_history_messages`, `notes_notes`, `notes_concepts`, `memory_messages`, `memory_userFacts`, `memory_summaries`, `errors`, `transaction_log_transactions`, `transaction_log_promptTraces`, `transaction_log_toolTraces`, `transaction_log_providerTraces`, `write_journal_entries`). This is unambiguous and maps 1:1 to the DBSchema TypeScript interface keys.
 
-2. **RateLimiter refill granularity**
+2. (RESOLVED) **RateLimiter refill granularity**
    - What we know: D-20 specifies token bucket with configurable capacity and refill rate. D-23 states in-memory only.
    - What's unclear: Whether refill should be continuous (per-millisecond) or discrete (per-second ticks).
    - Recommendation: Implement continuous refill (token = min(capacity, tokens + elapsedMs / msPerToken)). This provides smoother rate limiting and avoids burst-at-second-boundary behavior. The token bucket formula is straightforward and well-documented.
 
-3. **EncryptedStorage initialization timing in tests**
+3. (RESOLVED) **EncryptedStorage initialization timing in tests**
    - What we know: `crypto.subtle` is available in jsdom with appropriate polyfills or native Node 19+ support. `chrome.storage.local` is mocked in tests/setup.ts.
    - What's unclear: Whether `crypto.subtle` works in the current vitest+jsdom setup without additional configuration.
    - Recommendation: Write a Wave 0 smoke test that exercises `EncryptedStorage.initialize()` and a round-trip `set→get`. If `crypto.subtle` is unavailable, consider `--experimental-global-webcrypto` Node flag or a `globalThis.crypto.subtle` mock.
