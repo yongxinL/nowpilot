@@ -9,7 +9,7 @@ NowPilot v0.1 is a privacy-first, extensible Chrome MV3 AI assistant. The 9-phas
 - [x] **Phase 1: MV3/WXT Runtime + AntD Shells + Workspace** — Extension scaffold, both UI surfaces, theme, workspace coordination, onboarding
 - [x] **Phase 2: Storage, Security, WriteJournal, Workspace Persistence** — Split-storage strategy, encrypted API keys, idempotent migrations (completed 2026-07-12)
 - [x] **Phase 3: Cost-Effective AI Runtime** — 5 providers, Planner→Executor→Renderer pipeline, AgentOrchestrator, tier caps (completed 2026-07-12)
-- [ ] **Phase 4: Context-Adaptive Execution** — Tier classification, token budgets, degradation pipeline, minimal mode
+- [x] **Phase 4: Context-Adaptive Execution** — Tier classification, token budgets, degradation pipeline, minimal mode (completed 2026-07-12)
 - [ ] **Phase 5: Persistent Memory Architecture** — System-owned memory engine, conversation/user/preference stores, retrieval scoring
 - [ ] **Phase 6: Transaction Logging and Diagnostics** — AITransactionLog, TraceRedactor, DiagnosticsPanel in Full App
 - [ ] **Phase 7: Full Chat, Agent, Notes, Options Pages** — Complete UI across both surfaces, all hooks, markdown streaming
@@ -180,25 +180,25 @@ Plans:
   4. Minimal mode blocks MCP chaining, caps memory injection at top-3, and restricts to one safe tool schema
   5. Every OptimizedContext carries a ContextProvenanceManifest recording section source, token count, and truncation decisions
 
-**Plans:** 5 plans
+**Plans:** 5/5 plans complete
 Plans:
 
 **Wave 1** — Foundation (parallel)
 
-- [ ] 04-01-PLAN.md — Foundation types (contextTypes, ModelContextTier, ContextProvenanceManifest) — CTXT-01
-- [ ] 04-02-PLAN.md — TokenEstimator (char-based + CJK detection + safety margin) — CTXT-02
+- [x] 04-01-PLAN.md — Foundation types (contextTypes, ModelContextTier, ContextProvenanceManifest) — CTXT-01
+- [x] 04-02-PLAN.md — TokenEstimator (char-based + CJK detection + safety margin) — CTXT-02
 
 **Wave 2** — Compressor
 
-- [ ] 04-03-PLAN.md — ContextCompressor (LLM summarization + heuristic compression) — CTXT-07
+- [x] 04-03-PLAN.md — ContextCompressor (LLM summarization + heuristic compression) — CTXT-07
 
 **Wave 3** — Core Optimizer
 
-- [ ] 04-04-PLAN.md — ContextOptimizer (budget, distribution, degradation pipeline, minimal mode) — CTXT-02/03/04/05/06
+- [x] 04-04-PLAN.md — ContextOptimizer (budget, distribution, degradation pipeline, minimal mode) — CTXT-02/03/04/05/06
 
 **Wave 4** — Integration
 
-- [ ] 04-05-PLAN.md — AgentOrchestrator.runWithContext() + OrchestratorEvent extension — CTXT-04
+- [x] 04-05-PLAN.md — AgentOrchestrator.runWithContext() + OrchestratorEvent extension — CTXT-04
 
 ### Phase 5: Persistent Memory Architecture
 
@@ -300,7 +300,7 @@ Phase 7 depends on both Phase 5 and Phase 6 being complete, acting as the conver
 | 1. MV3/WXT Runtime + AntD Shells + Workspace | 7/7 | ✓ Complete | 2026-07-10 |
 | 2. Storage, Security, WriteJournal, Workspace Persistence | 8/8 | Complete    | 2026-07-12 |
 | 3. Cost-Effective AI Runtime | 9/9 | Complete    | 2026-07-12 |
-| 4. Context-Adaptive Execution | 0/5 | Not started | - |
+| 4. Context-Adaptive Execution | 5/5 | Complete    | 2026-07-12 |
 | 5. Persistent Memory Architecture | 0/TBD | Not started | - |
 | 6. Transaction Logging and Diagnostics | 0/TBD | Not started | - |
 | 7. Full Chat, Agent, Notes, Options Pages | 0/TBD | Not started | - |

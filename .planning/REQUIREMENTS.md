@@ -77,13 +77,13 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Context-Adaptive Execution
 
-- [ ] **CTXT-01**: ModelContextTier classification — tiny/small/medium/large based on context window
-- [ ] **CTXT-02**: Token budget formula — inputBudget=70%, outputBudget=20%, safetyMargin=10%
-- [ ] **CTXT-03**: Dynamic distribution across system/tools/memory/context/history/user per tier
-- [ ] **CTXT-04**: ContextOptimizer assembles OptimizedContext with provenance manifest
-- [ ] **CTXT-05**: Degradation pipeline — 8-step overflow handling ending in CONTEXT_TOO_LARGE error
-- [ ] **CTXT-06**: Minimal mode for tiny models — compact prompts, no MCP, top-3 memory, 200 token summary
-- [ ] **CTXT-07**: ContextCompressor — structured text/page/case/history compression
+- [x] **CTXT-01**: ModelContextTier classification — tiny/small/medium/large based on context window
+- [x] **CTXT-02**: Token budget formula — inputBudget=70%, outputBudget=20%, safetyMargin=10%
+- [x] **CTXT-03**: Dynamic distribution across system/tools/memory/context/history/user per tier
+- [x] **CTXT-04**: ContextOptimizer assembles OptimizedContext with provenance manifest
+- [x] **CTXT-05**: Degradation pipeline — 8-step overflow handling ending in CONTEXT_TOO_LARGE error
+- [x] **CTXT-06**: Minimal mode for tiny models — compact prompts, no MCP, top-3 memory, 200 token summary
+- [x] **CTXT-07**: ContextCompressor — structured text/page/case/history compression
 
 ### Persistent Memory
 
@@ -271,13 +271,13 @@ Requirements for initial release. Each maps to roadmap phases.
 | AIRN-07 | Phase 3 | Complete |
 | AIRN-08 | Phase 3 | Complete |
 | AIRN-09 | Phase 3 | Complete |
-| CTXT-01 | Phase 4 | Pending |
-| CTXT-02 | Phase 4 | Pending |
-| CTXT-03 | Phase 4 | Pending |
-| CTXT-04 | Phase 4 | Pending |
-| CTXT-05 | Phase 4 | Pending |
-| CTXT-06 | Phase 4 | Pending |
-| CTXT-07 | Phase 4 | Pending |
+| CTXT-01 | Phase 4 | Complete |
+| CTXT-02 | Phase 4 | Complete |
+| CTXT-03 | Phase 4 | Complete |
+| CTXT-04 | Phase 4 | Complete |
+| CTXT-05 | Phase 4 | Complete |
+| CTXT-06 | Phase 4 | Complete |
+| CTXT-07 | Phase 4 | Complete |
 | MEM-01 | Phase 5 | Pending |
 | MEM-02 | Phase 5 | Pending |
 | MEM-03 | Phase 5 | Pending |
