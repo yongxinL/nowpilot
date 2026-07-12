@@ -101,7 +101,28 @@ Plans:
   5. Workspace state persists across page reload (Side Panel close/reopen) and cross-surface handoff (Side Panel → Full App)
   6. ChatHistoryDB, NotesDB, MemoryDB, ErrorStore, and AITransactionLogDB all open successfully with correct schema versions
 
-**Plans**: TBD
+**Plans:** 8 plans
+Plans:
+
+**Wave 0** — Setup
+
+- [ ] 02-01-PLAN.md — Install idb v8.0.3 dependency and update test infrastructure for storage/crypto mocking
+
+**Wave 1** — Core Infrastructure (parallel)
+
+- [ ] 02-02-PLAN.md — IndexedDBManager with DBSchema, DB_VERSION, and getDB() singleton (STOR-01, STOR-05)
+- [ ] 02-03-PLAN.md — EncryptedStorage AES-GCM wrapper with PBKDF2 key derivation (STOR-02)
+
+**Wave 2** — Builders (parallel)
+
+- [ ] 02-04-PLAN.md — IndexedDBMigrator with v1-initial-schema migration (STOR-04, STOR-05)
+- [ ] 02-05-PLAN.md — WriteJournalEntry types + WriteJournal coordinator (STOR-03, STOR-07)
+- [ ] 02-06-PLAN.md — RateLimiter token bucket utility (STOR-06)
+
+**Wave 3** — Consumers (parallel)
+
+- [ ] 02-07-PLAN.md — Domain stores: ChatHistoryDB, NotesDB, MemoryDB, ErrorStore, AITransactionLogDB (STOR-05, STOR-07)
+- [ ] 02-08-PLAN.md — Workspace persistence + provider encryption + broadcast bus sync (WRKSP-05, STOR-02)
 
 ### Phase 3: Cost-Effective AI Runtime
 
@@ -232,7 +253,7 @@ Phase 7 depends on both Phase 5 and Phase 6 being complete, acting as the conver
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. MV3/WXT Runtime + AntD Shells + Workspace | 7/7 | ✓ Complete | 2026-07-10 |
-| 2. Storage, Security, WriteJournal, Workspace Persistence | 0/TBD | Not started | - |
+| 2. Storage, Security, WriteJournal, Workspace Persistence | 0/8 | Not started | - |
 | 3. Cost-Effective AI Runtime | 0/TBD | Not started | - |
 | 4. Context-Adaptive Execution | 0/TBD | Not started | - |
 | 5. Persistent Memory Architecture | 0/TBD | Not started | - |
