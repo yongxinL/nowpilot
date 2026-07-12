@@ -2,43 +2,43 @@ import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render } from '@testing-library/react';
 import { ConfigProvider } from 'antd';
-import { SidepanelSwitchbar, type SidepanelSwitchbarDensity } from '../../src/components/sidepanel/SidepanelSwitchbar';
+import { SidepanelSider, type SidepanelSiderDensity } from '../../src/components/sidepanel/SidepanelSider';
 
 function setup(jsx: React.ReactElement) {
   return render(React.createElement(ConfigProvider, null, jsx));
 }
 
-describe('SidepanelSwitchbar density states', () => {
-  it('expanded density uses data-sidepanel-density=expanded', () => {
+describe('SidepanelSider density states', () => {
+  it('expanded density uses data-sidepanel-sider-density=expanded', () => {
     const { container } = setup(
-      React.createElement(SidepanelSwitchbar, {
-        density: 'expanded' as SidepanelSwitchbarDensity,
+      React.createElement(SidepanelSider, {
+        density: 'expanded' as SidepanelSiderDensity,
         activeId: 'chat',
         onSelect: () => {},
         onCollapse: () => {},
         onOpenStandalone: () => {},
       }),
     );
-    expect(container.querySelector('[data-sidepanel-density="expanded"]')).toBeTruthy();
+    expect(container.querySelector('[data-sidepanel-sider-density="expanded"]')).toBeTruthy();
   });
 
-  it('narrow density uses data-sidepanel-density=narrow', () => {
+  it('narrow density uses data-sidepanel-sider-density=narrow', () => {
     const { container } = setup(
-      React.createElement(SidepanelSwitchbar, {
-        density: 'narrow' as SidepanelSwitchbarDensity,
+      React.createElement(SidepanelSider, {
+        density: 'narrow' as SidepanelSiderDensity,
         activeId: 'chat',
         onSelect: () => {},
         onCollapse: () => {},
         onOpenStandalone: () => {},
       }),
     );
-    expect(container.querySelector('[data-sidepanel-density="narrow"]')).toBeTruthy();
+    expect(container.querySelector('[data-sidepanel-sider-density="narrow"]')).toBeTruthy();
   });
 
   it('expanded topbar contains Collapse navbar and Open Standalone', () => {
     const { container } = setup(
-      React.createElement(SidepanelSwitchbar, {
-        density: 'expanded' as SidepanelSwitchbarDensity,
+      React.createElement(SidepanelSider, {
+        density: 'expanded' as SidepanelSiderDensity,
         activeId: 'chat',
         onSelect: () => {},
         onCollapse: () => {},
@@ -52,8 +52,8 @@ describe('SidepanelSwitchbar density states', () => {
   it('clicking nav item button invokes onSelect with the item id', () => {
     const onSelect = vi.fn();
     const { container } = setup(
-      React.createElement(SidepanelSwitchbar, {
-        density: 'expanded' as SidepanelSwitchbarDensity,
+      React.createElement(SidepanelSider, {
+        density: 'expanded' as SidepanelSiderDensity,
         activeId: 'chat',
         onSelect,
         onCollapse: () => {},

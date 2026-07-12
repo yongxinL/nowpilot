@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 
 export type Surface = 'sidepanel' | 'standalone' | 'popup';
 
-export type NavGroup = 'A' | 'B' | 'footer' | 'utility';
+export type NavGroup = 'core' | 'addons' | 'footer' | 'utility';
 
 export interface NowPilotNavItem {
   id: string;

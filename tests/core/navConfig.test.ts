@@ -9,7 +9,7 @@ describe('Canonical nav model', () => {
     for (const item of items) {
       expect(item.id).toBeTruthy();
       expect(item.label).toBeTruthy();
-      expect(['A', 'B', 'footer', 'utility']).toContain(item.group);
+      expect(['core', 'addons', 'footer', 'utility']).toContain(item.group);
       expect(Array.isArray(item.surfaces)).toBe(true);
       expect(item.surfaces.length).toBeGreaterThan(0);
       expect(typeof item.order).toBe('number');
@@ -38,14 +38,14 @@ describe('Canonical nav model', () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it('selectNavItems for sidepanel group A returns expected primary items', () => {
-    const items = selectNavItems({ surface: 'sidepanel', group: 'A' });
+  it('selectNavItems for sidepanel group core returns expected primary items', () => {
+    const items = selectNavItems({ surface: 'sidepanel', group: 'core' });
     expect(items.length).toBeGreaterThan(0);
-    expect(items.map((i) => i.group)).toEqual(items.map(() => 'A'));
+    expect(items.map((i) => i.group)).toEqual(items.map(() => 'core'));
   });
 
-  it('selectNavItems for standalone group B excludes sidepanel-only items', () => {
-    const items = selectNavItems({ surface: 'standalone', group: 'B' });
+  it('selectNavItems for standalone group addons excludes sidepanel-only items', () => {
+    const items = selectNavItems({ surface: 'standalone', group: 'addons' });
     for (const item of items) {
       expect(item.surfaces).toContain('standalone');
       expect(item.surfaces).not.toContain('standalone-only');
@@ -69,19 +69,35 @@ describe('Canonical nav model', () => {
     expect(findNavItem('does-not-exist')).toBeUndefined();
   });
 
-  it('Group A primary workspace items include chat, agent, write', () => {
-    const ids = navConfig.filter((i) => i.group === 'A').map((i) => i.id);
+  it('Core primary workspace items include chat, agent, write, note, tools', () => {
+    const ids = navConfig.filter((i) => i.group === 'core').map((i) => i.id);
     expect(ids).toContain('chat');
     expect(ids).toContain('agent');
     expect(ids).toContain('write');
+    expect(ids).toContain('notes');
+    expect(ids).toContain('tools');
+    expect(ids).toHaveLength(5);
+    // Verify Note label
+    const note = navConfig.find((i) => i.id === 'notes');
+    expect(note?.label).toBe('Note');
+    // Verify Task label
+    const task = navConfig.find((i) => i.id === 'tasks');
+    expect(task?.label).toBe('Task');
   });
 
-  it('Group B secondary items include tasks/teamgqm/code/ask/search', () => {
-    const ids = navConfig.filter((i) => i.group === 'B').map((i) => i.id);
+  it('Addons secondary items include task', () => {
+    const ids = navConfig.filter((i) => i.group === 'addons').map((i) => i.id);
     expect(ids).toContain('tasks');
-    expect(ids).toContain('teamgqm');
-    expect(ids).toContain('code');
-    expect(ids).toContain('ask');
-    expect(ids).toContain('search');
+    expect(ids).toHaveLength(1);
+  });
+
+  it('Removed items no longer exist in nav config', () => {
+    const ids = navConfig.map((i) => i.id);
+    expect(ids).not.toContain('teamgqm');
+    expect(ids).not.toContain('code');
+    expect(ids).not.toContain('ask');
+    expect(ids).not.toContain('search');
+    expect(ids).not.toContain('chatpdf');
+    expect(ids).not.toContain('ocr');
   });
 });

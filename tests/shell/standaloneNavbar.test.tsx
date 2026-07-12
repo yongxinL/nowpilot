@@ -3,17 +3,17 @@ import { describe, it, expect, vi } from 'vitest';
 import { render } from '@testing-library/react';
 import { ConfigProvider } from 'antd';
 import {
-  StandaloneNavbar,
-} from '../../src/components/standalone/StandaloneNavbar';
+  StandaloneSider,
+} from '../../src/components/standalone/StandaloneSider';
 
 function setup(jsx: React.ReactElement) {
   return render(React.createElement(ConfigProvider, null, jsx));
 }
 
-describe('StandaloneNavbar render structure', () => {
+describe('StandaloneSider render structure', () => {
   it('expanded density renders Switch to Side Panel and project name', () => {
     const { container } = setup(
-      React.createElement(StandaloneNavbar, {
+      React.createElement(StandaloneSider, {
         density: 'expanded',
         activeId: 'chat',
         onSelect: () => {},
@@ -22,15 +22,15 @@ describe('StandaloneNavbar render structure', () => {
         onOpenOptions: () => {},
       }),
     );
-    expect(container.querySelector('[data-standalone-navbar-density="expanded"]')).toBeTruthy();
+    expect(container.querySelector('[data-standalone-sider-density="expanded"]')).toBeTruthy();
     expect(container.querySelector('[data-standalone-action="switch-to-sidepanel"]')).toBeTruthy();
     expect(container.querySelector('[data-standalone-action="collapse"]')).toBeTruthy();
     expect(document.body.textContent).toContain('NowPilot');
   });
 
-  it('collapsed density renders logo only and Expand navbar', () => {
+  it('collapsed density renders logo only and Expand sider', () => {
     const { container } = setup(
-      React.createElement(StandaloneNavbar, {
+      React.createElement(StandaloneSider, {
         density: 'collapsed',
         activeId: 'chat',
         onSelect: () => {},
@@ -39,13 +39,13 @@ describe('StandaloneNavbar render structure', () => {
         onOpenOptions: () => {},
       }),
     );
-    expect(container.querySelector('[data-standalone-navbar-density="collapsed"]')).toBeTruthy();
-    expect(container.querySelector('[data-standalone-action="expand"]')).toBeTruthy();
+    expect(container.querySelector('[data-standalone-sider-density="collapsed"]')).toBeTruthy();
+    expect(container.querySelector('[data-sider-action="expand"]')).toBeTruthy();
   });
 
   it('Options action is present in both densities', () => {
     const { container } = setup(
-      React.createElement(StandaloneNavbar, {
+      React.createElement(StandaloneSider, {
         density: 'expanded',
         activeId: 'chat',
         onSelect: () => {},
@@ -59,7 +59,7 @@ describe('StandaloneNavbar render structure', () => {
 
   it('User avatar menu is rendered in expanded standalone', () => {
     const { container } = setup(
-      React.createElement(StandaloneNavbar, {
+      React.createElement(StandaloneSider, {
         density: 'expanded',
         activeId: 'chat',
         onSelect: () => {},
@@ -76,7 +76,7 @@ describe('Surface toggle actions', () => {
   it('Switch to Side Panel action calls handler when invoked', () => {
     let called = 0;
     const { container } = setup(
-      React.createElement(StandaloneNavbar, {
+      React.createElement(StandaloneSider, {
         density: 'expanded',
         activeId: 'chat',
         onSelect: () => {},

@@ -6,8 +6,8 @@ import { useWorkspaceStore } from '../../core/stores/workspaceStore';
 import { ErrorBoundary } from '../../core/components/ErrorBoundary';
 import type { NowPilotNavItem } from '../../core/navigation/navigationTypes';
 import { WorkspaceStatusBar } from '../common/WorkspaceStatusBar';
-import { StandaloneNavbar } from './StandaloneNavbar';
-import { StandaloneMainArea } from './StandaloneMainArea';
+import { StandaloneSider } from './StandaloneSider';
+import { StandaloneContent } from './StandaloneContent';
 
 export interface StandaloneRootProps {
   initialActiveId?: string;
@@ -59,10 +59,12 @@ export function StandaloneRoot({
           display: 'flex',
           flexDirection: 'row',
           alignItems: 'stretch',
+          padding: '12px 12px 12px 0',
+          background: 'var(--ant-color-bg-layout, transparent)',
         }}
       >
         <ErrorBoundary>
-          <StandaloneNavbar
+          <StandaloneSider
             density={density}
             activeId={activeId}
             onSelect={handleSelect}
@@ -70,14 +72,26 @@ export function StandaloneRoot({
             onSwitchToSidePanel={handleSwitchToSidePanel}
             onOpenOptions={handleOpenOptions}
           />
-          <StandaloneMainArea
-            activeNavId={activeId}
-            footer={<WorkspaceStatusBar surface="standalone" {...(statusBar ?? {})} />}
+          <div
+            style={{
+              flex: 1,
+              minWidth: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              borderRadius: 12,
+              overflow: 'hidden',
+              background: 'var(--ant-color-bg-container, transparent)',
+            }}
           >
-            {renderActivePage
-              ? renderActivePage({ id: activeId, label: '', icon: null, group: 'A', order: 0, surfaces: ['standalone'] } as NowPilotNavItem)
-              : null}
-          </StandaloneMainArea>
+            <StandaloneContent
+              activeNavId={activeId}
+              footer={<WorkspaceStatusBar surface="standalone" {...(statusBar ?? {})} />}
+            >
+              {renderActivePage
+                ? renderActivePage({ id: activeId, label: '', icon: null, group: 'core', order: 0, surfaces: ['standalone'] } as NowPilotNavItem)
+                : null}
+            </StandaloneContent>
+          </div>
         </ErrorBoundary>
       </div>
     </ConfigProvider>

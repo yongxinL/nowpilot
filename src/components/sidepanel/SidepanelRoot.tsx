@@ -6,10 +6,10 @@ import { useWorkspaceStore } from '../../core/stores/workspaceStore';
 import { openStandalone } from '../../core/routing/workspaceRouter';
 import type { NowPilotNavItem } from '../../core/navigation/navigationTypes';
 import { ErrorBoundary } from '../../core/components/ErrorBoundary';
-import { SidepanelInteractionArea } from './SidepanelInteractionArea';
-import { SidepanelSwitchbar } from './SidepanelSwitchbar';
-import { SidepanelCollapsedTrigger } from './SidepanelCollapsedTrigger';
-import { SidepanelCollapsedPopup } from './SidepanelCollapsedPopup';
+import { SidepanelContent } from './SidepanelContent';
+import { SidepanelSider } from './SidepanelSider';
+import { SiderTrigger } from '../sider/SiderTrigger';
+import { SiderPopup } from '../sider/SiderPopup';
 
 export interface SidepanelRootProps {
   initialActiveId?: string;
@@ -92,11 +92,11 @@ export function SidepanelRoot({ initialActiveId, initialCollapsed, renderActiveP
         }}
       >
         <ErrorBoundary>
-          <SidepanelInteractionArea activeNavId={activeId}>
-            {renderActivePage ? renderActivePage({ id: activeId, label: '', icon: null, group: 'A', order: 0, surfaces: ['sidepanel'] } as NowPilotNavItem) : null}
-          </SidepanelInteractionArea>
+          <SidepanelContent activeNavId={activeId}>
+            {renderActivePage ? renderActivePage({ id: activeId, label: '', icon: null, group: 'core', order: 0, surfaces: ['sidepanel'] } as NowPilotNavItem) : null}
+          </SidepanelContent>
           {density !== 'collapsed' ? (
-            <SidepanelSwitchbar
+            <SidepanelSider
               density={density === 'narrow' ? 'narrow' : 'expanded'}
               activeId={activeId}
               onSelect={handleSelect}
@@ -107,8 +107,8 @@ export function SidepanelRoot({ initialActiveId, initialCollapsed, renderActiveP
           ) : null}
           {density === 'collapsed' ? (
             <>
-              <SidepanelCollapsedTrigger onActivate={() => setPopupOpen((v) => !v)} />
-              <SidepanelCollapsedPopup
+              <SiderTrigger mode="collapsed-float" onActivate={() => setPopupOpen((v) => !v)} />
+              <SiderPopup
                 open={popupOpen}
                 onOpenChange={setPopupOpen}
                 activeId={activeId}

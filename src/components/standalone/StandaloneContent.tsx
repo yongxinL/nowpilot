@@ -1,13 +1,13 @@
 import type { ReactNode } from 'react';
 import { findNavItem } from '../../core/navigation/navigationSelectors';
 
-export interface StandaloneMainAreaProps {
+export interface StandaloneContentProps {
   activeNavId: string;
   footer?: ReactNode;
   children?: ReactNode;
 }
 
-export function StandaloneMainArea({ activeNavId, footer, children }: StandaloneMainAreaProps) {
+export function StandaloneContent({ activeNavId, footer, children }: StandaloneContentProps) {
   const item = findNavItem(activeNavId);
   const fallback = children ?? (
     <div style={{ padding: 24 }} aria-label={item?.label ?? 'Page'}>

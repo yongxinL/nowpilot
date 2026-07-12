@@ -1,12 +1,41 @@
 import { Tooltip, theme } from 'antd';
 import { ArrowRightOutlined } from '@ant-design/icons';
 
-export interface SidepanelCollapsedTriggerProps {
+export interface SiderTriggerProps {
+  mode: 'expand-button' | 'collapsed-float';
   onActivate: () => void;
 }
 
-export function SidepanelCollapsedTrigger({ onActivate }: SidepanelCollapsedTriggerProps) {
+export function SiderTrigger({ mode, onActivate }: SiderTriggerProps) {
   const { token } = theme.useToken();
+
+  if (mode === 'expand-button') {
+    return (
+      <Tooltip title="Expand sider" placement="right">
+        <button
+          type="button"
+          aria-label="Expand sider"
+          onClick={onActivate}
+          style={{
+            width: 26,
+            height: 26,
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: '50%',
+            backgroundColor: token.colorFillTertiary,
+            color: token.colorTextSecondary,
+            cursor: 'pointer',
+            border: 'none',
+          }}
+          data-sider-action="expand"
+        >
+          <ArrowRightOutlined style={{ fontSize: 12 }} />
+        </button>
+      </Tooltip>
+    );
+  }
+
   return (
     <Tooltip title="Open navigation" placement="left">
       <button
@@ -30,7 +59,7 @@ export function SidepanelCollapsedTrigger({ onActivate }: SidepanelCollapsedTrig
           zIndex: 10,
           boxShadow: token.boxShadowSecondary,
         }}
-        data-sidepanel-action="expand"
+        data-sider-action="expand"
       >
         <ArrowRightOutlined />
       </button>

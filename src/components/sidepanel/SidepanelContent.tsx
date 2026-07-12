@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react';
 import { findNavItem } from '../../core/navigation/navigationSelectors';
 
-export interface SidepanelInteractionAreaProps {
+export interface SidepanelContentProps {
   activeNavId: string;
   children?: ReactNode;
 }
 
-export function SidepanelInteractionArea({ activeNavId, children }: SidepanelInteractionAreaProps) {
+export function SidepanelContent({ activeNavId, children }: SidepanelContentProps) {
   const item = findNavItem(activeNavId);
   const fallback = children ?? (
     <div style={{ padding: 16 }} aria-label={item?.label ?? 'Page'}>
@@ -22,12 +22,24 @@ export function SidepanelInteractionArea({ activeNavId, children }: SidepanelInt
       style={{
         flex: 1,
         minWidth: 0,
-        overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
+        padding: 4,
+        paddingRight: 0,
       }}
     >
-      {fallback}
+      <div
+        style={{
+          flex: 1,
+          overflow: 'hidden',
+          borderRadius: 12,
+          background: 'var(--ant-color-bg-container, transparent)',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        {fallback}
+      </div>
     </main>
   );
 }

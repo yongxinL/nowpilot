@@ -2,48 +2,47 @@ import { Tooltip, theme } from 'antd';
 import { ArrowLeftOutlined, ArrowRightOutlined, ExpandOutlined } from '@ant-design/icons';
 import type { CSSProperties } from 'react';
 
-export interface SidepanelSwitchbarTopbarProps {
+export interface SidepanelSiderHeaderProps {
   density: 'expanded' | 'narrow';
   onCollapse: () => void;
   onOpenStandalone: () => void;
 }
 
-export function SidepanelSwitchbarTopbar({
+const btnBase: CSSProperties = {
+  width: 14,
+  height: 14,
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  borderRadius: 2,
+  color: 'var(--ant-color-text-secondary, #666)',
+  cursor: 'pointer',
+  background: 'var(--ant-color-fill-tertiary, rgba(0,0,0,0.04))',
+  border: 'none',
+  fontSize: 10,
+};
+
+export function SidepanelSiderHeader({
   density,
   onCollapse,
   onOpenStandalone,
-}: SidepanelSwitchbarTopbarProps) {
-  const { token } = theme.useToken();
-  const buttonStyle: CSSProperties = {
-    width: 28,
-    height: 28,
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: token.borderRadius,
-    backgroundColor: token.colorFillTertiary,
-    color: token.colorTextSecondary,
-    cursor: 'pointer',
-    border: 'none',
-    transition: `background-color ${token.motionDurationMid} ${token.motionEaseOut}`,
-  };
-
+}: SidepanelSiderHeaderProps) {
   if (density === 'expanded') {
     return (
       <div
         role="toolbar"
-        aria-label="Switchbar topbar"
-        style={{ display: 'flex', gap: 6, padding: '4px 6px' }}
+        aria-label="Sidepanel sider header"
+        style={{ display: 'flex', gap: 6 }}
       >
-        <Tooltip title="Collapse navbar">
+        <Tooltip title="Collapse panel">
           <button
             type="button"
-            aria-label="Collapse navbar"
+            aria-label="Collapse panel"
             onClick={onCollapse}
-            style={buttonStyle}
+            style={btnBase}
             data-sidepanel-action="collapse"
           >
-            <ArrowLeftOutlined />
+            <ArrowLeftOutlined style={{ fontSize: 10 }} />
           </button>
         </Tooltip>
         <Tooltip title="Open Standalone">
@@ -51,10 +50,10 @@ export function SidepanelSwitchbarTopbar({
             type="button"
             aria-label="Open Standalone"
             onClick={onOpenStandalone}
-            style={buttonStyle}
+            style={btnBase}
             data-sidepanel-action="open-standalone"
           >
-            <ExpandOutlined />
+            <ExpandOutlined style={{ fontSize: 10 }} />
           </button>
         </Tooltip>
       </div>
@@ -64,18 +63,18 @@ export function SidepanelSwitchbarTopbar({
   return (
     <div
       role="toolbar"
-      aria-label="Switchbar topbar"
-      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '4px 0' }}
+      aria-label="Sidepanel sider header"
+      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}
     >
-      <Tooltip title="Collapse navbar" placement="left">
+      <Tooltip title="Collapse panel" placement="left">
         <button
           type="button"
-          aria-label="Collapse navbar"
+          aria-label="Collapse panel"
           onClick={onCollapse}
-          style={buttonStyle}
+          style={btnBase}
           data-sidepanel-action="collapse"
         >
-          <ArrowLeftOutlined />
+          <ArrowLeftOutlined style={{ fontSize: 10 }} />
         </button>
       </Tooltip>
       <Tooltip title="Open Standalone" placement="left">
@@ -83,16 +82,12 @@ export function SidepanelSwitchbarTopbar({
           type="button"
           aria-label="Open Standalone"
           onClick={onOpenStandalone}
-          style={buttonStyle}
+          style={btnBase}
           data-sidepanel-action="open-standalone"
         >
-          <ExpandOutlined />
+          <ExpandOutlined style={{ fontSize: 10 }} />
         </button>
       </Tooltip>
     </div>
   );
-}
-
-export function SidepanelSwitchbarExpandIcon() {
-  return <ArrowRightOutlined />;
 }
