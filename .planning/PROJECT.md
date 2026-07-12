@@ -15,16 +15,16 @@ Everything runs locally against user-configured providers. No data leaves the us
 - [x] **WriteJournal + IndexedDBMigrator** — multi-store consistency, versioned migrations *(Phase 2)*
 - [x] **Split storage strategy** — message bodies in IndexedDB, metadata in chrome.storage.local *(Phase 2)*
 - [x] **Encrypted API keys** — AES-GCM-256 via EncryptedStorage with PBKDF2 derivation *(Phase 2)*
+- [x] **5 AI provider adapters** — OpenAI, Anthropic, Gemini, Ollama, OpenAI-compatible via `@ai-sdk/*` *(Phase 3)*
+- [x] **Planner → Executor → Renderer pipeline** — PlannerService, ExecutorService, RendererService, AgentOrchestrator with tier caps *(Phase 3)*
+- [x] **ProviderRouter** — provider selection, retry, fallback, circuit breaker *(Phase 3)*
+- [x] **PromptCacheManager + PromptCacheAdapter** — cached sections, provider-specific hints *(Phase 3)*
 
 ### Active
 
 - [ ] **WXT MV3 project scaffold** with background SW, side panel, full app tab, content scripts, popup
 - [ ] **Ant Design v6 + Ant Design X 2.x setup** — ConfigProvider, XProvider, compact Side Panel, default Full App, theme switching
-- [ ] **5 AI provider adapters** — OpenAI, Anthropic, Gemini, Ollama, OpenAI-compatible via `@ai-sdk/*`
-- [ ] **Planner → Executor → Renderer pipeline** — PlannerService, ExecutorService, RendererService, AgentOrchestrator with tier caps
 - [ ] **ContextOptimizer** — dynamic token budget, context tiers (tiny/small/medium/large), degradation pipeline, minimal mode
-- [ ] **ProviderRouter** — provider selection, retry, fallback, circuit breaker
-- [ ] **PromptCacheManager + PromptCacheAdapter** — cached sections, provider-specific hints
 - [ ] **Persistent memory** — ConversationMemoryStore, UserMemoryStore, PreferenceMemoryStore, MemoryEngine
 - [ ] **12 built-in MCP tools + external MCP client** — StreamableHTTP transport
 - [ ] **AITransactionLog** — telemetry, prompt traces, tool traces, provider traces, TraceRedactor
@@ -104,4 +104,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-12*
+*Last updated: 2026-07-12 (Phase 3 complete)**
