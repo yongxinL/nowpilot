@@ -6,7 +6,11 @@
     "target": "ESNext",
     "module": "ESNext",
     "skipLibCheck": true,
-    "types": ["chrome", "wxt"]
+    "types": ["chrome", "wxt"],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
   "include": ["src", "*.config.ts", "tests"]
 }
