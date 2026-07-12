@@ -138,7 +138,7 @@ Plans:
   5. StructuredOutput one-shot JSON repair correctly handles truncated/malformed planner output
   6. ChunkBuffer delivers rAF-batched streaming text; AbortSignal propagates through the full Planner→Executor→Renderer chain
 
-**Plans:** 5/9 plans executed
+**Plans:** 6/9 plans executed
 
 **Wave 0** — Setup
 
@@ -157,7 +157,7 @@ Plans:
 
 **Wave 3** — Pipeline Services
 
-- [ ] 03-06-PLAN.md — StructuredOutput + PlannerService + ExecutorService + RendererService
+- [x] 03-06-PLAN.md — StructuredOutput + PlannerService + ExecutorService + RendererService
 
 **Wave 4** — Orchestrator
 

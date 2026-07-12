@@ -65,11 +65,11 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### AI Runtime
 
-- [ ] **AIRN-01**: PlannerService — JSON-only action planner (3s timeout, one-shot repair retry)
+- [x] **AIRN-01**: PlannerService — JSON-only action planner (3s timeout, one-shot repair retry)
 - [x] **AIRN-02**: ExecutorService — deterministic tool executor (validate, permission, timeout, schema check)
-- [ ] **AIRN-03**: RendererService — concise response renderer (flash tier, 512 token cap, 5s timeout)
+- [x] **AIRN-03**: RendererService — concise response renderer (flash tier, 512 token cap, 5s timeout)
 - [ ] **AIRN-04**: AgentOrchestrator — Planner→Executor loop with tier caps (1-5 planner calls)
-- [ ] **AIRN-05**: StructuredOutput — JSON mode + schema validation + one-shot repair (Appendix L)
+- [x] **AIRN-05**: StructuredOutput — JSON mode + schema validation + one-shot repair (Appendix L)
 - [x] **AIRN-06**: ChunkBuffer — rAF-batched streaming UI buffer (Appendix J)
 - [ ] **AIRN-07**: PromptCacheManager — cache segmentation and provider hints
 - [ ] **AIRN-08**: PromptCacheAdapter — per-provider cache-hint transformation (Appendix K)
@@ -262,11 +262,11 @@ Requirements for initial release. Each maps to roadmap phases.
 | PROV-05 | Phase 3 | Complete |
 | PROV-06 | Phase 3 | Complete |
 | PROV-07 | Phase 3 | Complete |
-| AIRN-01 | Phase 3 | Pending |
+| AIRN-01 | Phase 3 | Complete |
 | AIRN-02 | Phase 3 | Complete |
-| AIRN-03 | Phase 3 | Pending |
+| AIRN-03 | Phase 3 | Complete |
 | AIRN-04 | Phase 3 | Pending |
-| AIRN-05 | Phase 3 | Pending |
+| AIRN-05 | Phase 3 | Complete |
 | AIRN-06 | Phase 3 | Complete |
 | AIRN-07 | Phase 3 | Pending |
 | AIRN-08 | Phase 3 | Pending |
