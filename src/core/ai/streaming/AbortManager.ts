@@ -5,23 +5,47 @@
  * signal via createStageTimeout. AI SDK v4 natively accepts abortSignal in
  * generateText/streamText — child signals are passed directly.
  *
+ * Per D-18 staged recovery: Planner timeout → one-shot repair (by PlannerService).
+ * Executor timeout → structured error result (by ExecutorService).
+ * Renderer timeout → partial text or error (by RendererService).
+ * AbortManager provides the signal infrastructure — each service handles its own recovery.
+ *
  * No singleton — one instance per AgentOrchestrator operation.
  */
-
-// Stub: will be implemented in GREEN phase
 export class AbortManager {
   readonly rootController = new AbortController();
 
-  createStageTimeout(_ms: number): AbortSignal {
-    // Stub — returns root signal (no proper child management)
-    return this.rootController.signal;
+  /**
+   * Creates a child AbortSignal that aborts when either:
+   * 1. Root controller aborts (user cancellation) — clears timeout, propagates root reason.
+   * 2. Timeout fires after `ms` milliseconds — aborts with TimeoutError.
+   */
+  createStageTimeout(ms: number): AbortSignal {
+    const stageController = new AbortController();
+    const timeoutId = setTimeout(
+      () => stageController.abort(new DOMException('Stage timeout', 'TimeoutError')),
+      ms,
+    );
+
+    this.rootController.signal.addEventListener(
+      'abort',
+      () => {
+        clearTimeout(timeoutId);
+        stageController.abort(this.rootController.signal.reason);
+      },
+      { once: true },
+    );
+
+    return stageController.signal;
   }
 
-  cancel(_reason?: string): void {
-    // Stub — no-op
+  /** Abort the root controller with the given reason (user cancellation). */
+  cancel(reason?: string): void {
+    this.rootController.abort(new DOMException(reason ?? 'User cancelled', 'AbortError'));
   }
 
+  /** True if the root controller has been aborted. */
   get isAborted(): boolean {
-    return false;
+    return this.rootController.signal.aborted;
   }
 }
