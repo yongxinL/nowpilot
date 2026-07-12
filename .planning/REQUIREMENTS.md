@@ -55,18 +55,18 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### AI Providers
 
-- [ ] **PROV-01**: OpenAI provider adapter via @ai-sdk/openai
-- [ ] **PROV-02**: Anthropic provider adapter via @ai-sdk/anthropic
-- [ ] **PROV-03**: Gemini provider adapter via @ai-sdk/google
-- [ ] **PROV-04**: Ollama provider adapter via @ai-sdk/openai (OpenAI-compatible endpoint)
-- [ ] **PROV-05**: OpenAI-compatible provider adapter (user-supplied baseURL)
-- [ ] **PROV-06**: ProviderRouter with cost/latency/reliability selection, retry, circuit breaker
-- [ ] **PROV-07**: TierResolver maps haiku/flash tier to concrete (providerId, model)
+- [x] **PROV-01**: OpenAI provider adapter via @ai-sdk/openai
+- [x] **PROV-02**: Anthropic provider adapter via @ai-sdk/anthropic
+- [x] **PROV-03**: Gemini provider adapter via @ai-sdk/google
+- [x] **PROV-04**: Ollama provider adapter via @ai-sdk/openai (OpenAI-compatible endpoint)
+- [x] **PROV-05**: OpenAI-compatible provider adapter (user-supplied baseURL)
+- [x] **PROV-06**: ProviderRouter with cost/latency/reliability selection, retry, circuit breaker
+- [x] **PROV-07**: TierResolver maps haiku/flash tier to concrete (providerId, model)
 
 ### AI Runtime
 
 - [ ] **AIRN-01**: PlannerService — JSON-only action planner (3s timeout, one-shot repair retry)
-- [ ] **AIRN-02**: ExecutorService — deterministic tool executor (validate, permission, timeout, schema check)
+- [x] **AIRN-02**: ExecutorService — deterministic tool executor (validate, permission, timeout, schema check)
 - [ ] **AIRN-03**: RendererService — concise response renderer (flash tier, 512 token cap, 5s timeout)
 - [ ] **AIRN-04**: AgentOrchestrator — Planner→Executor loop with tier caps (1-5 planner calls)
 - [ ] **AIRN-05**: StructuredOutput — JSON mode + schema validation + one-shot repair (Appendix L)
@@ -255,15 +255,15 @@ Requirements for initial release. Each maps to roadmap phases.
 | STOR-05 | Phase 2 | Complete |
 | STOR-06 | Phase 2 | Complete |
 | STOR-07 | Phase 2 | Complete |
-| PROV-01 | Phase 3 | Pending |
-| PROV-02 | Phase 3 | Pending |
-| PROV-03 | Phase 3 | Pending |
-| PROV-04 | Phase 3 | Pending |
-| PROV-05 | Phase 3 | Pending |
-| PROV-06 | Phase 3 | Pending |
-| PROV-07 | Phase 3 | Pending |
+| PROV-01 | Phase 3 | Complete |
+| PROV-02 | Phase 3 | Complete |
+| PROV-03 | Phase 3 | Complete |
+| PROV-04 | Phase 3 | Complete |
+| PROV-05 | Phase 3 | Complete |
+| PROV-06 | Phase 3 | Complete |
+| PROV-07 | Phase 3 | Complete |
 | AIRN-01 | Phase 3 | Pending |
-| AIRN-02 | Phase 3 | Pending |
+| AIRN-02 | Phase 3 | Complete |
 | AIRN-03 | Phase 3 | Pending |
 | AIRN-04 | Phase 3 | Pending |
 | AIRN-05 | Phase 3 | Pending |
