@@ -14,51 +14,42 @@ The ContextOptimizer sits between context assembly (from stores, workspace, and 
 <decisions>
 ## Implementation Decisions
 
-### D-01: Orchestrator Integration
-- Add `AgentOrchestrator.runWithContext(optimizedContext: OptimizedContext)` as the canonical execution path. Internally extracts tier from context tier, distributes sections to Planner and Renderer.
+- **D-01 — Orchestrator Integration:** Add `AgentOrchestrator.runWithContext(optimizedContext: OptimizedContext)` as the canonical execution path. Internally extracts tier from context tier, distributes sections to Planner and Renderer.
 - Keep existing `run()` temporarily for migration. All new call sites use `runWithContext()`.
 - Sections are distributed to pipeline stages, never merged into a single systemPrompt string — that loses provenance and weakens the ContextOptimizer contract.
 
-### D-02: Stage-Level Section Distribution
-- Planner receives: instructions, tool schemas, workspace/page context, history, and user input.
+- **D-02 — Stage-Level Section Distribution:** Planner receives: instructions, tool schemas, workspace/page context, history, and user input.
 - Renderer receives: instructions, user input, history, tool results, memory, and relevant context.
 - Executor remains deterministic — receives only validated tool execution inputs. No context sections.
 
-### D-03: ContextCompressor Strategy — Tier-Dependent Hybrid
-- **Conversation history:** LLM-based summarization (Haiku/Flash call) for medium/large tiers where the token budget justifies the cost. Heuristic compression (character-based truncation) for tiny/small tiers.
+- **D-03 — ContextCompressor Strategy — Tier-Dependent Hybrid:** **Conversation history:** LLM-based summarization (Haiku/Flash call) for medium/large tiers where the token budget justifies the cost. Heuristic compression (character-based truncation) for tiny/small tiers.
 - **Page/case context:** Heuristic and structural extraction across ALL tiers. This data is already structured — gains little from LLM summarization and avoids introducing latency on the critical path.
 
-### D-04: ContextCompressor as Injectable Dependency
-- ContextCompressor is a standalone module injected into ContextOptimizer's constructor. Exposes `compressHistory()` and `compressContext()` methods.
+- **D-04 — ContextCompressor as Injectable Dependency:** ContextCompressor is a standalone module injected into ContextOptimizer's constructor. Exposes `compressHistory()` and `compressContext()` methods.
 - LLM-based compression uses a separate cheap AI call — cost is accounted for in the degradation decision (only invoked when budget allows).
 
-### D-05: Token Counting — Provider-Native with Lightweight Fallback
-- Prefer provider-native token counts when available from the AI SDK.
+- **D-05 — Token Counting — Provider-Native with Lightweight Fallback:** Prefer provider-native token counts when available from the AI SDK.
 - Fallback: `Math.ceil(text.length / 4)` for Latin/ASCII text, `Math.ceil(text.length / 3)` for CJK text.
 - Apply a 10% safety margin before budget enforcement to absorb estimation error.
 - No tiktoken or heavy tokenizer dependency.
 
-### D-06: TokenEstimator as Standalone Module
-- `src/core/context/TokenEstimator.ts` — injected into ContextOptimizer. Exposes `estimateTokens(text: string): number`.
+- **D-06 — TokenEstimator as Standalone Module:** `src/core/context/TokenEstimator.ts` — injected into ContextOptimizer. Exposes `estimateTokens(text: string): number`.
 - Hosts the provider-native detection and char-based fallback logic. Separable for independent testing.
 
-### D-07: ContextOptimizer Lifecycle — Class + Singleton
-- Follows the existing class+singleton pattern (KeymapRegistry, ToolRegistry, ProviderRegistry).
+- **D-07 — ContextOptimizer Lifecycle — Class + Singleton:** Follows the existing class+singleton pattern (KeymapRegistry, ToolRegistry, ProviderRegistry).
 - Constructor accepts: `TokenEstimator`, `ContextCompressor`, and a provider/model metadata lookup (reads `ModelEntry.contextWindow` from ProviderRegistry or providerStore).
 - Exposes single method: `.optimize(input: ContextOptimizerInput): Promise<OptimizedContext>`.
 - Exported as `contextOptimizer` singleton.
 - Mostly stateless in Phase 4 — class structure leaves room for future in-memory caching.
 
-### D-08: ModelContextTier Classification
-- `classifyModelContext(contextWindow: number): ModelContextTier` per PRODUCT_SPEC §2.1:
+- **D-08 — ModelContextTier Classification:** `classifyModelContext(contextWindow: number): ModelContextTier` per PRODUCT_SPEC §2.1:
   - ≤4,096 → `tiny`
   - ≤16,384 → `small`
   - ≤131,072 → `medium`
   - >131,072 → `large`
 - ContextOptimizer reads `ModelEntry.contextWindow` from the active provider/model at optimization time. Not cached per Phase 4 (D-12).
 
-### D-09: Context Source Priority
-When token budgets constrain assembly, sections are retained in this priority order:
+- **D-09 — Context Source Priority:** When token budgets constrain assembly, sections are retained in this priority order:
 1. System Prompt
 2. User Message
 3. Active Tool Results
@@ -71,13 +62,11 @@ When token budgets constrain assembly, sections are retained in this priority or
 
 The degradation pipeline still controls which categories are reduced at each step. This priority determines retention *within* constrained categories.
 
-### D-10: ContextProvenanceManifest Granularity
-- Record both **retained and dropped** sections in the manifest. Dropped sections are included with `outcome: 'dropped'`.
+- **D-10 — ContextProvenanceManifest Granularity:** Record both **retained and dropped** sections in the manifest. Dropped sections are included with `outcome: 'dropped'`.
 - Each section entry: `kind`, `sourceId`, `originalTokens`, `finalTokens` (0 if dropped), `outcome` (kept | truncated | compressed | dropped), `compressionMethod` (summarise | structural | topk | null), `reason` (budget | minimal_mode | degradation_step_N).
 - No full transformation history trail — just the final outcome. Sufficient for PromptInspector and diagnostics.
 
-### D-11: Degradation Notification Contract
-- ContextOptimizer is output-only — records all degradation decisions in the provenance manifest.
+- **D-11 — Degradation Notification Contract:** ContextOptimizer is output-only — records all degradation decisions in the provenance manifest.
 - AgentOrchestrator inspects `optimizedContext.provenance` after `.optimize()` and emits degradation events:
   - Minor degradation (debug removal, note trimming) → **silent** (no event).
   - Significant degradation (history/page/memory compression) → **info-level** degradation event in orchestrator stream.
@@ -85,17 +74,14 @@ The degradation pipeline still controls which categories are reduced at each ste
   - Step 8 (CONTEXT_TOO_LARGE) → **typed error**, no degraded context returned.
 - Keeps responsibilities clean — ContextOptimizer optimizes, orchestrator decides what to surface.
 
-### D-12: No Caching in Phase 4
-- Regenerate OptimizedContext fresh for every AI call. Optimization is lightweight (classification + arithmetic + degradation decisions). Caching invalidation complexity exceeds benefit.
+- **D-12 — No Caching in Phase 4:** Regenerate OptimizedContext fresh for every AI call. Optimization is lightweight (classification + arithmetic + degradation decisions). Caching invalidation complexity exceeds benefit.
 - If performance profiling later shows hot spots, cache expensive intermediate artifacts (conversation summaries, compressed history) — not the full OptimizedContext.
 
-### D-13: Tool Schema Selection in Minimal Mode
-- Caller-supplied via `ContextOptimizerInput.selectedToolSchemas` — the caller (orchestrator/planner) provides an already-prioritized list before calling `.optimize()`.
+- **D-13 — Tool Schema Selection in Minimal Mode:** Caller-supplied via `ContextOptimizerInput.selectedToolSchemas` — the caller (orchestrator/planner) provides an already-prioritized list before calling `.optimize()`.
 - In minimal mode, ContextOptimizer keeps only the first tool schema and drops the rest.
 - No ToolRegistry dependency in ContextOptimizer — keeps it focused on budgeting and degradation.
 
-### D-14: Fixed Canonical Section Ordering
-Prompt sections are assembled in fixed order for all providers and tiers:
+- **D-14 — Fixed Canonical Section Ordering:** Prompt sections are assembled in fixed order for all providers and tiers:
 1. System Prompt
 2. Task Instructions
 3. Workspace Context
@@ -107,8 +93,7 @@ Prompt sections are assembled in fixed order for all providers and tiers:
 
 ContextOptimizer produces sections; prompt assembly (converting sections to provider-specific message format) is a separate concern handled by adapters or the orchestrator.
 
-### D-15: Single OptimizedContext Per Operation
-- ContextOptimizer produces one `OptimizedContext` with a single `ContextProvenanceManifest` per operation.
+- **D-15 — Single OptimizedContext Per Operation:** ContextOptimizer produces one `OptimizedContext` with a single `ContextProvenanceManifest` per operation.
 - AgentOrchestrator filters sections per stage (D-02). No separate optimization passes for Planner vs Renderer.
 - Avoids duplicate work and ensures provenance consistency across the full pipeline.
 
