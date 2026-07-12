@@ -11,11 +11,16 @@
     "format": "prettier --write ."
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "4.0.12",
+    "@ai-sdk/google": "4.0.12",
+    "@ai-sdk/openai": "4.0.11",
     "@ant-design/icons": "^6.0.0",
     "@ant-design/x": "^2.8.0",
     "@ant-design/x-markdown": "^2.8.0",
+    "ai": "4.3.19",
     "antd": "^6.5.0",
     "idb": "^8.0.3",
+    "jsonrepair": "3.15.0",
     "motion": "^12.0.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
