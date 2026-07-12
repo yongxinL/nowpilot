@@ -101,12 +101,12 @@ Plans:
   5. Workspace state persists across page reload (Side Panel close/reopen) and cross-surface handoff (Side Panel → Full App)
   6. ChatHistoryDB, NotesDB, MemoryDB, ErrorStore, and AITransactionLogDB all open successfully with correct schema versions
 
-**Plans:** 8 plans
+**Plans:** 1/8 plans executed
 Plans:
 
 **Wave 0** — Setup
 
-- [ ] 02-01-PLAN.md — Install idb v8.0.3 dependency and update test infrastructure for storage/crypto mocking
+- [x] 02-01-PLAN.md — Install idb v8.0.3 dependency and update test infrastructure for storage/crypto mocking
 
 **Wave 1** — Core Infrastructure + Utilities (parallel)
 
@@ -253,7 +253,7 @@ Phase 7 depends on both Phase 5 and Phase 6 being complete, acting as the conver
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. MV3/WXT Runtime + AntD Shells + Workspace | 7/7 | ✓ Complete | 2026-07-10 |
-| 2. Storage, Security, WriteJournal, Workspace Persistence | 0/8 | Not started | - |
+| 2. Storage, Security, WriteJournal, Workspace Persistence | 1/8 | In Progress|  |
 | 3. Cost-Effective AI Runtime | 0/TBD | Not started | - |
 | 4. Context-Adaptive Execution | 0/TBD | Not started | - |
 | 5. Persistent Memory Architecture | 0/TBD | Not started | - |

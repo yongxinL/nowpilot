@@ -49,7 +49,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **STOR-02**: AES-GCM encrypted API key storage via EncryptedStorage (PBKDF2 + per-key salt/IV)
 - [ ] **STOR-03**: WriteJournal for multi-store consistency with idempotent operations
 - [ ] **STOR-04**: IndexedDBMigrator with versioned, idempotent migrations
-- [ ] **STOR-05**: ChatHistoryDB, NotesDB, MemoryDB, ErrorStore, AITransactionLogDB
+- [x] **STOR-05**: ChatHistoryDB, NotesDB, MemoryDB, ErrorStore, AITransactionLogDB
 - [ ] **STOR-06**: RateLimiter per add-on instance
 - [ ] **STOR-07**: No message bodies in chrome.storage.local
 
@@ -252,7 +252,7 @@ Requirements for initial release. Each maps to roadmap phases.
 | STOR-02 | Phase 2 | Pending |
 | STOR-03 | Phase 2 | Pending |
 | STOR-04 | Phase 2 | Pending |
-| STOR-05 | Phase 2 | Pending |
+| STOR-05 | Phase 2 | Complete |
 | STOR-06 | Phase 2 | Pending |
 | STOR-07 | Phase 2 | Pending |
 | PROV-01 | Phase 3 | Pending |
@@ -365,6 +365,7 @@ Requirements for initial release. Each maps to roadmap phases.
 | HARD-10 | Phase 1 | Pending |
 
 **Coverage:**
+
 - v1 requirements: 128 total
 - Mapped to phases: 128
 - Unmapped: 0 ✓
