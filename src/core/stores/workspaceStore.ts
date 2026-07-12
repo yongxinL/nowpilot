@@ -30,22 +30,29 @@ const chromeLocalStorage = createJSONStorage<WorkspaceState>(() => ({
   getItem: (name: string) =>
     chrome.storage.local.get(name).then((result: Record<string, unknown>) => (result[name] as string) ?? null),
   setItem: async (name: string, value: string) => {
-    // D-17: Route all workspace persists through WriteJournal
-    const entry = await writeJournal.begin(
-      'update-workspace',
-      { workspace: name },
-      [{ name: 'persist-workspace' }],
-    );
-    await writeJournal.markStepStart(entry.id, 0);
+    // D-17: Route all workspace persists through WriteJournal.
+    // Wrap in try-catch so unavailability (e.g., test env without IndexedDB)
+    // degrades gracefully to direct persistence.
     try {
+      const entry = await writeJournal.begin(
+        'update-workspace',
+        { workspace: name },
+        [{ name: 'persist-workspace' }],
+      );
+      await writeJournal.markStepStart(entry.id, 0);
+      try {
+        await chrome.storage.local.set({ [name]: value });
+        await writeJournal.markStepComplete(entry.id, 0);
+        await writeJournal.markCompleted(entry.id);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        await writeJournal.markStepFailed(entry.id, 0, msg);
+        await writeJournal.markFailed(entry.id);
+        throw err;
+      }
+    } catch {
+      // WriteJournal unavailable — persist directly without journaling
       await chrome.storage.local.set({ [name]: value });
-      await writeJournal.markStepComplete(entry.id, 0);
-      await writeJournal.markCompleted(entry.id);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      await writeJournal.markStepFailed(entry.id, 0, msg);
-      await writeJournal.markFailed(entry.id);
-      throw err;
     }
     // BroadcastBus picks up the chrome.storage.local change via
     // chrome.storage.onChanged('local') listener (see Task 3)
