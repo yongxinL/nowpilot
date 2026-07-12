@@ -6,14 +6,14 @@ current_phase: 03
 current_phase_name: cost-effective-ai-runtime
 status: All gates PASS
 stopped_at: Completed 03-06-PLAN.md
-last_updated: "2026-07-12T12:11:45.000Z"
+last_updated: "2026-07-12T12:21:40.345Z"
 last_activity: 2026-07-12
-last_activity_desc: Phase 03 execution started
+last_activity_desc: Pipeline stage services (Planner, Executor, Renderer) built
 progress:
   total_phases: 9
   completed_phases: 2
   total_plans: 24
-  completed_plans: 21
+  completed_plans: 22
   percent: 22
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-10)
 ## Current Position
 
 Phase: 03 (cost-effective-ai-runtime) — EXECUTING
-Plan: 6 of 9
+Plan: 7 of 9
 Status: Ready to execute
 Last activity: 2026-07-12 — Pipeline stage services (Planner, Executor, Renderer) built
 
@@ -68,6 +68,7 @@ Progress: [████░░░░░░] 11% (1/9 phases)
 | Phase 03-cost-effective-ai-runtime P03 | 3 min | 6 tasks | 8 files |
 | Phase 03-cost-effective-ai-runtime P05 | 2 min | 2 tasks | 4 files |
 | Phase 03-cost-effective-ai-runtime P06 | 3 min | 3 tasks | 8 files |
+| Phase 03-cost-effective-ai-runtime P07 | 5 min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -361,6 +362,8 @@ status: complete
 
 **ToolRegistry with closed-enum validation, PermissionService interface with DefaultPermissionService default-deny, and 3 fixture tools (echo, counter, getTime) for pipeline testing — all built TDD-style with 26 passing tests**
 
+- [Phase 03-cost-effective-ai-runtime]: Tier cap mapping uses CostTierType (haiku/flash/sonnet/opus to 1/2/3/5), not AI_CONFIG.tierCap key names
+
 ## Performance
 
 - **Duration:** ~3 min
@@ -541,6 +544,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-12T12:04:54.675Z
+Last session: 2026-07-12T12:20:51.342Z
 Stopped at: Completed 03-05-PLAN.md
 Resume file: None
