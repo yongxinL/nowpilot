@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { ToolRegistry } from '../../../src/core/ai/tools/ToolRegistry';
-import type { ToolDefinition } from '../../../src/core/ai/tools/ToolDefinition';
+import { ToolRegistry } from '../../../../src/core/ai/tools/ToolRegistry';
+import type { ToolDefinition } from '../../../../src/core/ai/tools/ToolDefinition';
 
 function createMockTool(name: string): ToolDefinition {
   return {
