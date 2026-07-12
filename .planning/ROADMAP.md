@@ -117,7 +117,7 @@ Plans:
 **Wave 2** — Builders (parallel)
 
 - [x] 02-04-PLAN.md — IndexedDBMigrator with v1-initial-schema migration (STOR-04, STOR-05)
-- [ ] 02-05-PLAN.md — WriteJournalEntry types + WriteJournal coordinator (STOR-03, STOR-07)
+- [x] 02-05-PLAN.md — WriteJournalEntry types + WriteJournal coordinator (STOR-03, STOR-07)
 
 **Wave 3** — Consumers (parallel)
 
