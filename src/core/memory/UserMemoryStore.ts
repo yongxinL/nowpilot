@@ -3,7 +3,8 @@ import { debugLog } from '../utils/debugLog';
 import { miniSearchIndex } from '../search/MiniSearchIndex';
 import { memoryScorer } from './MemoryScorer';
 import { resolve } from './conflictResolver';
-import type { UserMemoryFact, MemoryScore, ModelContextTier } from './memoryTypes';
+import type { UserMemoryFact, MemoryScore } from './memoryTypes';
+import type { ModelContextTier } from '../context/contextTypes';
 import { userMemoryFactSchema } from './memoryTypes';
 
 const DEFAULT_SEARCH_LIMIT = 20;
@@ -13,6 +14,23 @@ const TOP_N_TIER: Record<ModelContextTier, number> = {
   medium: 5,
   large: 5,
 };
+
+/** Normalize a MemoryDB fact (with optional v2 fields) to a full UserMemoryFact. */
+function normalizeFact(f: Record<string, unknown>): UserMemoryFact {
+  return {
+    id: f.id as string,
+    fact: f.fact as string,
+    category: f.category as string,
+    confidence: (f.confidence as number) ?? 0,
+    created: (f.created as number) ?? 0,
+    updated: (f.updated as number) ?? 0,
+    source: f.source as string,
+    status: (f.status as 'active' | 'superseded') ?? 'active',
+    tags: (f.tags as string[]) ?? [],
+    useCount: (f.useCount as number) ?? 0,
+    lastUsedAt: (f.lastUsedAt as number) ?? 0,
+  };
+}
 
 export class UserMemoryStore {
   constructor() {
@@ -49,7 +67,7 @@ export class UserMemoryStore {
           factTags?.filter((tag) => queryWords.some((w) => tag.toLowerCase().includes(w))) ?? [];
 
         const keywordScore = candidate.score;
-        const fact = candidate as unknown as UserMemoryFact;
+        const fact = normalizeFact(candidate as Record<string, unknown>);
 
         const finalScore = memoryScorer.score({ fact, keywordScore }, query, matchedTags);
         scored.push({ fact, finalScore });
@@ -82,8 +100,8 @@ export class UserMemoryStore {
       const validated = userMemoryFactSchema.parse(fact);
 
       // Fetch existing active facts
-      const allFacts = await memoryDB.getAllUserFacts();
-      const existingFacts = allFacts.filter((f) => f.status === 'active');
+      const rawFacts = await memoryDB.getAllUserFacts();
+      const existingFacts = rawFacts.filter((f) => f.status === 'active').map(normalizeFact);
 
       // Resolve conflicts
       const resolved = resolve(validated, existingFacts, 1);
@@ -106,8 +124,9 @@ export class UserMemoryStore {
    */
   async getFact(id: string): Promise<UserMemoryFact | undefined> {
     try {
-      const allFacts = await memoryDB.getAllUserFacts();
-      return allFacts.find((f) => f.id === id);
+      const rawFacts = await memoryDB.getAllUserFacts();
+      const found = rawFacts.find((f) => f.id === id);
+      return found ? normalizeFact(found) : undefined;
     } catch (err) {
       debugLog('error', '[UserMemoryStore] getFact failed', { error: err });
       return undefined;
@@ -120,8 +139,8 @@ export class UserMemoryStore {
    */
   async rebuildIndex(): Promise<void> {
     try {
-      const allFacts = await memoryDB.getAllUserFacts();
-      const activeFacts = allFacts.filter((f) => f.status === 'active');
+      const rawFacts = await memoryDB.getAllUserFacts();
+      const activeFacts = rawFacts.filter((f) => f.status === 'active').map(normalizeFact);
       miniSearchIndex.rebuild(activeFacts);
       debugLog('info', '[UserMemoryStore] rebuildIndex complete', { factCount: activeFacts.length });
     } catch (err) {
@@ -135,9 +154,10 @@ export class UserMemoryStore {
    */
   async evictFact(id: string): Promise<void> {
     try {
-      const allFacts = await memoryDB.getAllUserFacts();
-      const fact = allFacts.find((f) => f.id === id);
-      if (!fact) return;
+      const rawFacts = await memoryDB.getAllUserFacts();
+      const raw = rawFacts.find((f) => f.id === id);
+      if (!raw) return;
+      const fact = normalizeFact(raw);
 
       miniSearchIndex.removeFact(id);
       await memoryDB.putUserFact({ ...fact, status: 'superseded' });
