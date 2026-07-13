@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 5
 current_phase_name: persistent-memory-architecture
 status: executing
-stopped_at: Completed 05-01-PLAN.md
-last_updated: "2026-07-13T01:16:37.208Z"
+stopped_at: Completed 05-02-PLAN.md
+last_updated: "2026-07-13T01:20:11.749Z"
 last_activity: 2026-07-13
 last_activity_desc: Phase 5 execution started
 progress:
   total_phases: 9
   completed_phases: 4
   total_plans: 36
-  completed_plans: 30
+  completed_plans: 31
   percent: 44
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-10)
 ## Current Position
 
 Phase: 5 (persistent-memory-architecture) — EXECUTING
-Plan: 2 of 7
+Plan: 3 of 7
 Status: Ready to execute
 Last activity: 2026-07-13 — Phase 5 execution started
 
@@ -74,6 +74,7 @@ Progress: [████░░░░░░] 11% (1/9 phases)
 | Phase 03-cost-effective-ai-runtime P08 | 2 min | 2 tasks | 4 files |
 | Phase 03-cost-effective-ai-runtime P09 | 2 min | 3 tasks | 1 files |
 | Phase 05-persistent-memory-architecture P01 | 4 min | 2 tasks | 8 files |
+| Phase 05-persistent-memory-architecture P02 | 2 min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -505,6 +506,8 @@ status: complete
 
 - [Phase 03-cost-effective-ai-runtime]: Type-only import of ModelEntry in providerStore avoids AI SDK dependency in the store layer — stores remain framework-agnostic — New fields share the existing np_providers persistence key and EncryptedStorage adapter — no separate storage key needed
 - [Phase 05-persistent-memory-architecture]: Used pnpm instead of npm for minisearch install (project uses pnpm for dependency management) — Plan specified npm install but project uses pnpm — fixed to maintain lockfile consistency
+- [Phase 05-persistent-memory-architecture]: v2 upgrade branch is intentionally a no-op — IndexedDB object stores are schemaless at the value level; new optional fields are added via put() at runtime with defaults — Planner decision: schemaless stores means upgrade callback can be no-op per RESEARCH.md Pattern 3
+- [Phase 05-persistent-memory-architecture]: All 6 new fields are optional (? marking) — existing v1 records survive migration with undefined defaults — Backward compatibility: existing records must work unchanged after migration
 
 ## Performance
 
@@ -774,6 +777,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-13T01:16:21.182Z
-Stopped at: Completed 05-01-PLAN.md
+Last session: 2026-07-13T01:20:01.782Z
+Stopped at: Completed 05-02-PLAN.md
 Resume file: None
