@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 5
 current_phase_name: persistent-memory-architecture
 status: executing
-stopped_at: Completed 05-04-PLAN.md
-last_updated: "2026-07-13T01:45:06.079Z"
+stopped_at: Completed 05-06-PLAN.md
+last_updated: "2026-07-13T01:53:38.699Z"
 last_activity: 2026-07-13
 last_activity_desc: Phase 5 execution started
 progress:
   total_phases: 9
   completed_phases: 4
   total_plans: 36
-  completed_plans: 34
+  completed_plans: 35
   percent: 44
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-10)
 ## Current Position
 
 Phase: 5 (persistent-memory-architecture) — EXECUTING
-Plan: 6 of 7
+Plan: 7 of 7
 Status: Ready to execute
 Last activity: 2026-07-13 — Phase 5 execution started
 
@@ -77,6 +77,7 @@ Progress: [████░░░░░░] 11% (1/9 phases)
 | Phase 05-persistent-memory-architecture P02 | 2 min | 2 tasks | 2 files |
 | Phase 05 P03 | 7 min | 3 tasks | 6 files |
 | Phase 05-persistent-memory-architecture P05 | 3 min | 4 tasks | 5 files |
+| Phase 05-persistent-memory-architecture P06 | 5 min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -512,6 +513,7 @@ status: complete
 - [Phase 05-persistent-memory-architecture]: All 6 new fields are optional (? marking) — existing v1 records survive migration with undefined defaults — Backward compatibility: existing records must work unchanged after migration
 - [Phase 05]: MiniSearchIndex uses storeFields including id/content/category/confidence/source/useCount/updatedAt for two-pass retrieval compatibility — Enables UserMemoryStore to access stored fact properties without separate DB lookup
 - [Phase 05]: conflictResolver resolve() accepts optional observationConfidences array for cumulative confidence computation — Plan specified observationCount only but D-17 cumulative confidence formula needs individual values
+- [Phase 05-persistent-memory-architecture]: MemoryEngine uses local BroadcastBusLike interface to avoid circular dep with broadcastBus.ts — MemoryEngine uses local BroadcastBusLike interface to avoid circular dep with broadcastBus.ts
 
 ## Performance
 
@@ -781,6 +783,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-13T01:44:57.350Z
-Stopped at: Completed 05-04-PLAN.md
+Last session: 2026-07-13T01:53:29.112Z
+Stopped at: Completed 05-06-PLAN.md
 Resume file: None
