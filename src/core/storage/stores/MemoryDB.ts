@@ -45,6 +45,10 @@ export class MemoryDB {
     created: number;
     updated: number;
     source: string;
+    status?: 'active' | 'superseded';
+    tags?: string[];
+    useCount?: number;
+    lastUsedAt?: number;
   }): Promise<void> {
     try {
       const db = await getDB();
@@ -63,6 +67,10 @@ export class MemoryDB {
       created: number;
       updated: number;
       source: string;
+      status?: 'active' | 'superseded';
+      tags?: string[];
+      useCount?: number;
+      lastUsedAt?: number;
     }>
   > {
     try {
@@ -80,6 +88,8 @@ export class MemoryDB {
     messageCount: number;
     created: number;
     updated: number;
+    state?: 'active' | 'archived';
+    archivedAt?: number;
   }): Promise<void> {
     try {
       const db = await getDB();
@@ -96,6 +106,8 @@ export class MemoryDB {
         messageCount: number;
         created: number;
         updated: number;
+        state?: 'active' | 'archived';
+        archivedAt?: number;
       }
     | undefined
   > {
