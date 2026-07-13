@@ -1,5 +1,6 @@
 import React from 'react';
 import { Card, Typography } from 'antd';
+import { DiagnosticsSection } from '../../components/options/DiagnosticsSection';
 
 const { Title, Text } = Typography;
 
@@ -8,6 +9,10 @@ export interface OptionsPageProps {
 }
 
 export function OptionsPage({ sectionId = 'providers' }: OptionsPageProps) {
+  if (sectionId === 'diagnostics') {
+    return <DiagnosticsSection />;
+  }
+
   return (
     <Card>
       <Title level={3}>Options</Title>

@@ -27,6 +27,9 @@ export interface DiagnosticsState {
   setPrivacyMode: (enabled: boolean) => void;
   refreshTransactions: () => Promise<void>;
   clearFilters: () => void;
+  // Deep-link support — set from URL param, consumed on mount
+  pendingOperationId: string | undefined;
+  setPendingOperationId: (id: string | undefined) => void;
 }
 
 const chromeLocalStorage = createJSONStorage<DiagnosticsState>(() => ({
@@ -95,6 +98,10 @@ export const useDiagnosticsStore = create<DiagnosticsState>()(
         }
       },
 
+      // Deep-link operationId (set from URL param before component mounts)
+      pendingOperationId: undefined,
+      setPendingOperationId: (id: string | undefined) => set({ pendingOperationId: id }),
+
       // Reset all filter and selection state
       clearFilters: () => set({
         filterType: undefined,
@@ -109,7 +116,7 @@ export const useDiagnosticsStore = create<DiagnosticsState>()(
     }),
     {
       name: 'np_diagnostics',
-      storage: chromeLocalStorage,
+      storage: chromeLocalStorage as any,
       // Only persist mode toggles, not filter/search/selection state (UI-ephemeral)
       partialize: (state) => ({
         diagnosticMode: state.diagnosticMode,

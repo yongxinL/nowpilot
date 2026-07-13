@@ -6,6 +6,7 @@ import { CommandPalette } from '../../core/commands/commandPalette';
 import { standalonePageRegistry } from '../../core/registries/StandalonePageRegistry';
 import { StandaloneRoot } from '../../components/standalone/StandaloneRoot';
 import { findNavItem } from '../../core/navigation/navigationSelectors';
+import { useDiagnosticsStore } from '../../core/stores/diagnosticsStore';
 import '../../core/registries/registerNowPilotCorePages';
 
 const modeCycle: Record<ThemeMode, ThemeMode> = {
@@ -45,6 +46,7 @@ const commands = [
 
 export function StandaloneApp() {
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [initialPage, setInitialPage] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -55,6 +57,27 @@ export function StandaloneApp() {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  // Deep-link support: parse query params for page/section/operationId
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const page = params.get('page');
+    const operationId = params.get('operationId');
+
+    if (page) {
+      setInitialPage(page);
+    }
+
+    if (operationId) {
+      useDiagnosticsStore.getState().setPendingOperationId(operationId);
+    }
+
+    // Clean query params from URL after consuming
+    if (page || operationId) {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
   }, []);
 
   const pages = useMemo(() => standalonePageRegistry.getAll(), []);
@@ -75,7 +98,7 @@ export function StandaloneApp() {
 
   return (
     <ErrorBoundary>
-      <StandaloneRoot renderActivePage={renderActivePage} />
+      <StandaloneRoot initialActiveId={initialPage} renderActivePage={renderActivePage} />
       <CommandPalette
         open={paletteOpen}
         onClose={() => setPaletteOpen(false)}
