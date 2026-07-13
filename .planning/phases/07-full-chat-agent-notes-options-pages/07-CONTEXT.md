@@ -55,13 +55,13 @@ This phase delivers complete, functional page sets across both UI surfaces (Side
 ### Search Architecture
 - **D-29 — Entity-specific search:** Notes: MiniSearch full-text. Conversations: metadata filter (title/preview). Options: section-level search (already built). Cmd+K: commands and navigation. No cross-entity unified search in v0.1.
 - **D-30 — Persistent search bar above note list:** Debounced ~150ms MiniSearch queries against titles and content. Results update in real-time with highlighted snippets. Matches the notes flat-list model.
-- **D-31 — Conversation search: title/metadata only:** The conversation sidebar filters against title and optional preview. No full-text message search in v0.1 — avoids IndexedDB query complexity and aligns with the metadata-list architecture.
+
 - **D-32 — MiniSearch index lifecycle:** Full build on Notes page load, incremental updates on note create/edit/delete. Keeps search immediately consistent with NotesDB.
 
 ### Draft Persistence
 - **D-33 — Per-conversation draft persistence:** Each conversation maintains its own unsent composer text. Debounced writes. Automatically restored when conversation is reopened. Survives navigation, conversation switching, page refresh, extension restart, and Side Panel ↔ Full App transitions. Cleared on successful send.
 - **D-34 — Drafts in WorkspaceState:** Stored as `WorkspaceState.drafts[conversationId]` via existing chrome.storage.local mechanism. Treated as workspace/UI state, not chat history.
-- **D-35 — Chat/Agent drafts only:** Notes already have auto-save and internal versioning with Undo — no separate draft system needed.
+
 - **D-36 — Clear on send or explicit discard:** Draft persists until successfully sent or user explicitly clears it via a dedicated "Clear Draft" action with confirmation prompt. No auto-expiry.
 
 ### Cross-Surface Deep Linking
