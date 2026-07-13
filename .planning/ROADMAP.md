@@ -227,7 +227,7 @@ Plans:
 
 **Wave 2** — Stores (parallel)
 
-- [ ] 05-04-PLAN.md — ConversationMemoryStore (tier-based turns, rolling summaries, archiving) + UserMemoryStore (two-pass retrieval, versioned facts)
+- [x] 05-04-PLAN.md — ConversationMemoryStore (tier-based turns, rolling summaries, archiving) + UserMemoryStore (two-pass retrieval, versioned facts)
 - [ ] 05-05-PLAN.md — PreferenceMemoryStore (Zustand persist, cross-store reads, D-08/D-09) + MemoryExtractor (Haiku-tier extraction, D-05)
 
 **Wave 3** — Orchestration
