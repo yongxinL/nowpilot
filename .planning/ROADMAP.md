@@ -293,7 +293,20 @@ Plans:
   7. Options page shows all 11 sub-sections with functional forms — Providers (with test connection), Models, MCP Servers, Prompt Templates, Slash Commands, Memory, Diagnostics, Import/Export, Feature Flags, Add-on Settings, About
   8. Options accessible only from Full App (not Side Panel), enforcing the surface separation rule
 
-**Plans**: TBD
+**Plans**: 6 plans
+
+**Wave 0** — Foundation
+- [ ] 07-01-PLAN.md — Install d3-force, extend core types (WorkspaceState.drafts, OrchestratorEvent.waiting-permission, ChatHistoryDB.updateSession), create PermissionStore, SlashCommandRegistry, PromptManager with TemplateEngine
+
+**Wave 1** — Hooks + Independent Features (parallel)
+- [ ] 07-02-PLAN.md — Create useStreamingLLM hook (AsyncGenerator iteration, ChunkBuffer, AbortController), useWorkspace, useTheme helper hooks
+- [ ] 07-05-PLAN.md — Create LinkParser (wikilink parsing + MiniSearch resolution + backlinks), NoteGraph (d3-force data model), NotesPage with all note components (NoteList, NoteEditor, NotePreview, BacklinksPanel, WikilinkAutocomplete, NoteGraphView, SaveToNoteDialog) + SkillMessageRenderer + SourceCard
+- [ ] 07-06-PLAN.md — Create all 11 Options sections (ProvidersSection through AboutSection), OptionsPage routing, workspaceRouter deep linking extension
+
+**Wave 2** — Chat & Agent (parallel)
+- [ ] 07-03-PLAN.md — Create useChat hook (messages, conversations, title generation, drafts, context assembly), ChatPage with chat components (ChatMessage, ConversationSidebar, ProviderSelector, HistoryListItem)
+- [ ] 07-04-PLAN.md — Extend AgentOrchestrator with PermissionResolver callback, create useAgent hook (thoughtChain steps, permission handling), AgentPage with agent components (ThoughtChainView, ToolCard, PermissionDialog)
+
 **UI hint**: yes
 
 ### Phase 8: Add-ons and Content Script Runtime (Extraction-Only)
@@ -348,6 +361,6 @@ Phase 7 depends on both Phase 5 and Phase 6 being complete, acting as the conver
 | 4. Context-Adaptive Execution | 5/5 | Complete    | 2026-07-12 |
 | 5. Persistent Memory Architecture | 7/7 | Complete   | 2026-07-13 |
 | 6. Transaction Logging and Diagnostics | 8/8 | Complete   | 2026-07-13 |
-| 7. Full Chat, Agent, Notes, Options Pages | 0/TBD | Not started | - |
+| 7. Full Chat, Agent, Notes, Options Pages | 0/6 | Planned | 2026-07-13 |
 | 8. Add-ons and Content Script Runtime (Extraction-Only) | 0/TBD | Not started | - |
 | 9. Hardening and Release | 0/TBD | Not started | - |
