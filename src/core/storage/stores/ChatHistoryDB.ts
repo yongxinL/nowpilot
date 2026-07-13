@@ -107,6 +107,29 @@ export class ChatHistoryDB {
       return [];
     }
   }
+
+  async deleteSession(id: string): Promise<void> {
+    try {
+      const db = await getDB();
+      await db.delete('chat_history_sessions', id);
+    } catch (err) {
+      debugLog('error', 'ChatHistoryDB.deleteSession failed', { error: err });
+    }
+  }
+
+  async deleteMessagesBySession(sessionId: string): Promise<void> {
+    try {
+      const db = await getDB();
+      const messages = await this.getMessagesBySession(sessionId);
+      const tx = db.transaction('chat_history_messages', 'readwrite');
+      for (const msg of messages) {
+        await tx.store.delete(msg.id);
+      }
+      await tx.done;
+    } catch (err) {
+      debugLog('error', 'ChatHistoryDB.deleteMessagesBySession failed', { error: err });
+    }
+  }
 }
 
 export const chatHistoryDB = new ChatHistoryDB();
