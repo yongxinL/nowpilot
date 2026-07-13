@@ -98,46 +98,130 @@ export interface NowPilotDB extends DBSchema {
     key: string;
     value: {
       id: string;
+      sessionId: string;
+      conversationId: string;
+      workspaceId: string;
+      activeSurface: string;
+      userTurnId: string;
       type: string;
-      provider: string;
-      model: string;
-      startTime: number;
-      endTime?: number;
       status: string;
-      metadata?: unknown;
+      providerId: string;
+      model: string;
+      startedAt: number;
+      endedAt?: number;
+      durationMs?: number;
+      errorCode?: string;
+      severity?: string;
+      parentOperationId?: string;
+      verbosity: string;
+      privacyMode: boolean;
+    };
+    indexes: {
+      'by-operationId': string;
+      'by-status': string;
+      'by-severity': string;
+      'by-timestamp': number;
     };
   };
   transaction_log_promptTraces: {
     key: string;
     value: {
       id: string;
-      transactionId: string;
-      tokens: number;
-      cached: boolean;
+      operationId: string;
+      promptTemplateId?: string;
+      promptHash: string;
+      tokenBreakdown: {
+        system: number; memory: number; tools: number; context: number;
+        history: number; user: number; output: number; total: number;
+      };
+      contextTier: string;
       truncated: boolean;
+      minimalMode: boolean;
+      cacheStats: {
+        sectionsMarked: number;
+        estimatedSavings: number;
+        hitRate?: number;
+      };
+      source: string;
+      timestamp: number;
     };
+    indexes: { 'by-operationId': string };
   };
   transaction_log_toolTraces: {
     key: string;
     value: {
       id: string;
-      transactionId: string;
+      operationId: string;
+      parentOperationId?: string;
       toolName: string;
-      allowed: boolean;
-      outcome: string;
+      source: string;
+      dangerous: boolean;
+      permissionDecision: string;
+      inputSchema?: string;
+      outputSchema?: string;
+      status: string;
+      errorMessage?: string;
+      durationMs: number;
       timestamp: number;
     };
+    indexes: { 'by-operationId': string };
   };
   transaction_log_providerTraces: {
     key: string;
     value: {
       id: string;
-      transactionId: string;
-      provider: string;
-      attempts: number;
-      circuitBreakerOpen: boolean;
+      operationId: string;
+      attempts: unknown[];
+      resolvedProviderId: string;
+      resolvedModel: string;
+      totalDurationMs: number;
       timestamp: number;
     };
+    indexes: { 'by-operationId': string };
+  };
+  transaction_log_cacheTraces: {
+    key: string;
+    value: {
+      id: string;
+      operationId: string;
+      event: string;
+      section?: string;
+      providerId?: string;
+      cacheKey?: string;
+      estimatedTokenSavings?: number;
+      timestamp: number;
+    };
+    indexes: { 'by-operationId': string };
+  };
+  transaction_log_memoryTraces: {
+    key: string;
+    value: {
+      id: string;
+      operationId: string;
+      phase: string;
+      conversationId: string;
+      factsRetrieved?: number;
+      factsExtracted?: number;
+      extractionAttempt?: number;
+      summarized: boolean;
+      timestamp: number;
+    };
+    indexes: { 'by-operationId': string };
+  };
+  transaction_log_writeJournalTraces: {
+    key: string;
+    value: {
+      id: string;
+      operationId: string;
+      journalId: string;
+      operation: string;
+      status: string;
+      stepsCount: number;
+      failedSteps?: number[];
+      recovered: boolean;
+      timestamp: number;
+    };
+    indexes: { 'by-operationId': string };
   };
   write_journal_entries: {
     key: string;
@@ -159,7 +243,7 @@ export interface NowPilotDB extends DBSchema {
   };
 }
 
-export const DB_VERSION = 2;
+export const DB_VERSION = 3;
 
 let dbInstance: IDBPDatabase<NowPilotDB> | null = null;
 
@@ -193,6 +277,27 @@ export async function getDB(): Promise<IDBPDatabase<NowPilotDB>> {
       }
       if (oldVersion < 2) {
         /* v2: schemaless stores — new fields (status, tags, useCount, lastUsedAt, state, archivedAt) are added via put() at runtime with defaults. No schema alteration needed. */
+      }
+      if (oldVersion < 3) {
+        /* v3: Add 3 new trace stores (cache, memory, writeJournal) and indexes on all 7 stores */
+        const cacheStore = db.createObjectStore('transaction_log_cacheTraces', { keyPath: 'id' });
+        cacheStore.createIndex('by-operationId', 'operationId');
+
+        const memoryStore = db.createObjectStore('transaction_log_memoryTraces', { keyPath: 'id' });
+        memoryStore.createIndex('by-operationId', 'operationId');
+
+        const journalStore = db.createObjectStore('transaction_log_writeJournalTraces', { keyPath: 'id' });
+        journalStore.createIndex('by-operationId', 'operationId');
+
+        // Add indexes to existing stores using the upgrade transaction
+        _transaction.objectStore('transaction_log_transactions').createIndex('by-operationId', 'operationId');
+        _transaction.objectStore('transaction_log_transactions').createIndex('by-status', 'status');
+        _transaction.objectStore('transaction_log_transactions').createIndex('by-severity', 'severity');
+        _transaction.objectStore('transaction_log_transactions').createIndex('by-timestamp', 'startedAt');
+
+        _transaction.objectStore('transaction_log_promptTraces').createIndex('by-operationId', 'operationId');
+        _transaction.objectStore('transaction_log_toolTraces').createIndex('by-operationId', 'operationId');
+        _transaction.objectStore('transaction_log_providerTraces').createIndex('by-operationId', 'operationId');
       }
     },
     blocked() {
