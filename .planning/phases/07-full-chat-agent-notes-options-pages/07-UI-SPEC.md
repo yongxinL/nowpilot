@@ -55,8 +55,10 @@ Ant Design v6 defaults to an 8px base unit. All values are multiples of 4.
 - Conversation sidebar width: `260px` (Full App only)
 - Note editor split-pane gap: `16px` (md)
 - Options form max-width: `720px` (D-09)
-- Status bar height: `38px` (existing WORKSPACE_STATUS_BAR_HEIGHT)
 - Nav sider width: variable (`STANDALONE_NAVBAR_WIDTH` = 240 expanded / 56 collapsed; `SIDEPANEL_NARROW_MAX_WIDTH`)
+
+**Inherited constraints (outside this phase's spacing system):**
+- Status bar height: `38px` — inherited from existing `WORKSPACE_STATUS_BAR_HEIGHT` constant in `WorkspaceStatusBar.tsx`. This value predates Phase 07 and is outside the 8-point spacing scale. Do not change; the status bar component is shared across phases and modifying its height would require cross-phase coordination. New Phase 07 components must honor this as a fixed boundary.
 
 **Source:** Existing codebase `WorkspaceStatusBar.tsx` (38px bar), `StandaloneRoot.tsx` (border-radius 16px, margin 12px), RESEARCH.md §Architecture Patterns (D-09, D-13, D-22)
 
@@ -123,6 +125,21 @@ Colors are driven by Ant Design's algorithm-generated semantic tokens. No custom
 
 ---
 
+## Visual Hierarchy
+
+Each primary screen declares a single focal point — the element that draws the user's eye first. All other elements in the viewport are subordinate and must not compete visually with the focal point.
+
+| Screen | Focal Point | Rationale |
+|--------|-------------|-----------|
+| Chat | `Bubble.List` | The conversation is the primary content. Sender, sidebar, and status bar are supporting elements. |
+| Agent | `ThoughtChain` | The agent's execution pipeline is the primary experience. Bubble content and Sender are secondary. |
+| Notes | `NoteEditor` (textarea) | The editing surface is the primary interaction zone. Note list, backlinks panel, and toolbar are supporting. |
+| Options | Section content (Form/Card body) | The active section's form fields are the primary content. Section nav and header are navigation/shell. |
+
+**Enforcement:** The focal point must maintain the highest visual weight at all times. Supporting elements (nav, toolbar, status bar, sidebars) must use reduced visual weight — smaller text, muted colors (`colorTextSecondary`), or reduced opacity — never competing with the focal point for attention.
+
+---
+
 ## Copywriting Contract
 
 This phase covers 4 pages across 2 surfaces. Copy is defined per functional area. All destructive actions use Ant Design Popconfirm (D-11).
@@ -132,17 +149,17 @@ This phase covers 4 pages across 2 surfaces. Copy is defined per functional area
 | Element | Copy |
 |---------|------|
 | Primary CTA | Sender placeholder: `"Ask anything... (type / for commands)"` |
-| Sender submit | Send button (icon only — SendOutlined @ant-design/icons) |
-| Sender cancel | Stop button (abort stream; icon only — PauseCircleOutlined) |
+| Sender submit | Send button (icon only — SendOutlined @ant-design/icons; **aria-label:** `"Send message"`) |
+| Sender cancel | Stop button (abort stream; icon only — PauseCircleOutlined; **aria-label:** `"Stop generating"`) |
 | Empty conversation list | **Heading:** `"No conversations yet"` **Body:** `"Send a message to start your first conversation."` |
 | Empty messages (active conversation, no messages) | **Heading:** `"Start a conversation"` **Body:** `"Type a message below or use / for slash commands."` |
 | First message title generation fallback | Truncated first user message (max 50 chars); shown as `"New Conversation"` if no message exists |
 | New Chat button | `"+ New Chat"` (label in Conversations component `creation` prop) |
 | Delete conversation | Popconfirm title: `"Delete this conversation?"` Popconfirm description: `"This cannot be undone."` Ok button: `"Delete"` (danger) |
 | Conversation context menu | Menu items: `"Delete"` (danger) |
-| "Save to Note" action (D-26) | Button: `"Save to Note"` Dialog title: `"Save to Note"` Dialog: dropdown to select existing note or create new, pre-filled content, primary CTA: `"Save"` |
-| Error — provider error | **Heading:** `"Failed to get response"` **Body:** `"{provider name} returned an error. You can retry or switch to a different provider."` Actions: `"Retry"` (primary), `"Switch Provider"`, `"Open Settings"` |
-| Error — network/timeout | **Heading:** `"Request timed out"` **Body:** `"The request took too long. Check your connection and try again."` Action: `"Retry"` (primary) |
+| "Save to Note" action (D-26) | Button: `"Save to Note"` Dialog title: `"Save to Note"` Dialog: dropdown to select existing note or create new, pre-filled content, primary CTA: `"Save to Note"` |
+| Error — provider error | **Heading:** `"Failed to get response"` **Body:** `"{provider name} returned an error. You can retry or switch to a different provider."` Actions: `"Retry Request"` (primary), `"Switch Provider"`, `"Open Settings"` |
+| Error — network/timeout | **Heading:** `"Request timed out"` **Body:** `"The request took too long. Check your connection and try again."` Action: `"Retry Request"` (primary) |
 | Error — no provider configured | **Heading:** `"No provider configured"` **Body:** `"Add a provider in Options to start chatting."` Action: `"Open Settings"` (primary) |
 | Error — context too large (CONTEXT_TOO_LARGE) | **Heading:** `"Context limit exceeded"` **Body:** `"The conversation and context are too large for this model. Try a model with a larger context window or start a new conversation."` Action: `"New Conversation"` (primary) |
 | Draft persistence (D-33) | `"Clear Draft"` action with Popconfirm: `"Discard unsent text?"` |
@@ -166,7 +183,7 @@ This phase covers 4 pages across 2 surfaces. Copy is defined per functional area
 | Dangerous tool permission — body | `"This tool can {description of risk}. Always review before allowing."` |
 | ThoughtChain — permission wait | Title: `"Waiting for permission"` (loading, blinking), description shows tool name |
 | ThoughtChain — permission denied | Title: `"Permission denied — {toolName}"` (error status) |
-| ThoughtChain — retry | Tool error nodes with recoverable errors show: `"Retry"` link/button |
+| ThoughtChain — retry | Tool error nodes with recoverable errors show: `"Retry Tool"` link/button |
 | ThoughtChain — fatal error | `"Workflow failed"` with description: `"The agent encountered an unrecoverable error. Start a new workflow."` |
 | Error — same as Chat errors | See Chat error copy above; same patterns apply |
 
@@ -182,17 +199,17 @@ This phase covers 4 pages across 2 surfaces. Copy is defined per functional area
 | Wikilink autocomplete — no results | Dropdown item: `"Create \"{title}\""` (shows when no match found) |
 | Wikilink autocomplete — ambiguous | Dropdown shows multiple candidate notes with titles; user selects one |
 | Delete note | Popconfirm title: `"Delete \"{note title}\"?"` Popconfirm description: `"This cannot be undone. Backlinks to this note will break."` Ok button: `"Delete"` (danger) |
-| Undo last change (D-27) | Button: `"Undo"` Tooltip: `"Revert to previous version"` |
+| Undo last change (D-27) | Button: `"Undo Changes"` Tooltip: `"Revert to previous version"` |
 | Backlinks panel | Panel heading: `"Backlinks"` Empty: `"No notes link to this one."` |
-| Graph view | Button: `"Graph"` (opens d3-force view) Empty (fewer than 3 notes): `"Create at least 3 notes with wikilinks to see the graph."` |
+| Graph view | Button: `"View Graph"` (opens d3-force view) Empty (fewer than 3 notes): `"Create at least 3 notes with wikilinks to see the graph."` |
 | Save to Note dialog (D-26) | See Chat section — shared with Chat context menu |
-| Error — save failed | **Heading:** `"Could not save note"` **Body:** `"Check that storage is available and try again."` Action: `"Retry"` |
+| Error — save failed | **Heading:** `"Could not save note"` **Body:** `"Check that storage is available and try again."` Action: `"Retry Save"` |
 
 ### Options Page (Full App only)
 
 | Element | Copy |
 |---------|------|
-| Primary CTA | Per-section `"Save"` button (primary, type="submit") |
+| Primary CTA | Per-section `"Save Changes"` button (primary, type="submit") |
 | Global CTA | `"Test Connection"` (per provider, Provider section only — D-10) |
 | Test Connection — success | Inline success message: `"Connection successful — {model name} ({latency}ms)"` |
 | Test Connection — failure | Inline error: `"Connection failed: {error message}"` with expandable diagnostics showing error code, endpoint, and response summary |
@@ -201,7 +218,7 @@ This phase covers 4 pages across 2 surfaces. Copy is defined per functional area
 | Import — success | `"Import complete — {N} items imported."` |
 | Import — conflict | `"Import complete — {N} items imported, {M} conflicts skipped."` |
 | Import — error | `"Import failed: {error message}. Make sure the file is a valid export."` |
-| Export CTA | Button: `"Export"` |
+| Export CTA | Button: `"Export Settings"` |
 | Diagnostics section | Already built in Phase 6 — no new copy needed |
 | About section | Static: version number, build date, links to project |
 
