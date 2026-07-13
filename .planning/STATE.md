@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 07
 current_phase_name: Full Chat, Agent, Notes, Options Pages
 status: All gates PASS
-stopped_at: Completed 07-06-PLAN.md (Options sections + deep linking)
-last_updated: "2026-07-13T11:56:27.091Z"
+stopped_at: Completed 07-03-PLAN.md (Chat experience)
+last_updated: "2026-07-13T12:14:48.197Z"
 last_activity: 2026-07-13
 last_activity_desc: Completed 07-05 (Notes feature — Wave 1)
 progress:
   total_phases: 9
   completed_phases: 6
   total_plans: 50
-  completed_plans: 48
+  completed_plans: 49
   percent: 67
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-10)
 ## Current Position
 
 Phase: 07 (Full Chat, Agent, Notes, Options Pages) — EXECUTING
-Plan: 5 of 6
+Plan: 6 of 6
 Status: Ready to execute
 Last activity: 2026-07-13 — Completed 07-05 (Notes feature — Wave 1)
 
@@ -83,6 +83,7 @@ Progress: [████░░░░░░] 11% (1/9 phases)
 | Phase 07-full-chat-agent-notes-options-pages P02 | 3 min | 2 tasks | 5 files |
 | Phase 07-full-chat-agent-notes-options-pages P05 | 5 min | 4 tasks | 16 files |
 | Phase 07-full-chat-agent-notes-options-pages P06 | 5 min | 4 tasks | 14 files |
+| Phase 07-full-chat-agent-notes-options-pages P03 | 16min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -703,6 +704,9 @@ status: complete
 **d3-force dependency, WorkspaceState drafts, OrchestratorEvent permission event, ChatHistoryDB.updateSession, PermissionStore, SlashCommandRegistry, PromptManager, TemplateEngine, and builtinTemplates — Wave 0 prerequisites for all downstream hooks and pages**
 
 - [Phase 07-full-chat-agent-notes-options-pages]: useStreamingLLM uses useRef for callbacks (onDeltaRef, onCompleteRef, etc.) to prevent stale closure issues in the for-await loop — The startStream function is async and spans multiple React renders. Capturing latest callback values via refs instead of closures ensures correct behavior across the entire stream lifecycle.
+- [Phase ?]: Ref-based streamingLLM access: use streamingLLMRef.current in send() for stable useCallback deps — Mock streamingLLM returns new object each render; ref pattern avoids stale closure issues
+- [Phase ?]: Module-level pipeline singletons created in useChat.ts for zero-argument hook interface — AgentOrchestrator requires PlannerService, ExecutorService, RendererService as constructor deps
+- [Phase ?]: Surface-adaptive ChatPage: inline sidebar for Full App, Drawer for Side Panel — Conserves space in Side Panel while providing full inline sidebar in Full App
 
 ## Performance
 
@@ -1074,6 +1078,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-13T11:56:27.082Z
-Stopped at: Completed 07-06-PLAN.md (Options sections + deep linking)
+Last session: 2026-07-13T12:14:48.187Z
+Stopped at: Completed 07-03-PLAN.md (Chat experience)
 Resume file: None

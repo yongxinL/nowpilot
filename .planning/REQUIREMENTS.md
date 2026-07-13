@@ -98,14 +98,14 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Chat
 
 - [x] **CHAT-01**: Streaming AI chat with abort on both Side Panel and Full App
-- [ ] **CHAT-02**: Chat history persistence in ChatHistoryDB with conversation list
-- [ ] **CHAT-03**: First-message title generation (temperature 0, 16 tokens, non-blocking)
+- [x] **CHAT-02**: Chat history persistence in ChatHistoryDB with conversation list
+- [x] **CHAT-03**: First-message title generation (temperature 0, 16 tokens, non-blocking)
 - [x] **CHAT-04**: Slash command parsing (`/write`, `/ask`, `/research`, etc.)
-- [ ] **CHAT-05**: Provider/model selector (read-only in Side Panel, editable in Full App Options)
-- [ ] **CHAT-06**: Chat UI built on @ant-design/x (Bubble, Sender, Conversations)
-- [ ] **CHAT-07**: Markdown rendering via @ant-design/x-markdown with streaming support
+- [x] **CHAT-05**: Provider/model selector (read-only in Side Panel, editable in Full App Options)
+- [x] **CHAT-06**: Chat UI built on @ant-design/x (Bubble, Sender, Conversations)
+- [x] **CHAT-07**: Markdown rendering via @ant-design/x-markdown with streaming support
 - [x] **CHAT-08**: One stream per session — abort active before starting new
-- [ ] **CHAT-09**: Error states — Provider error, Retry, Switch Provider, Open Settings
+- [x] **CHAT-09**: Error states — Provider error, Retry, Switch Provider, Open Settings
 
 ### Agent
 
@@ -286,14 +286,14 @@ Requirements for initial release. Each maps to roadmap phases.
 | MEM-06 | Phase 5 | Complete |
 | MEM-07 | Phase 5 | Complete |
 | CHAT-01 | Phase 7 | Complete |
-| CHAT-02 | Phase 7 | Pending |
-| CHAT-03 | Phase 7 | Pending |
+| CHAT-02 | Phase 7 | Complete |
+| CHAT-03 | Phase 7 | Complete |
 | CHAT-04 | Phase 7 | Complete |
-| CHAT-05 | Phase 7 | Pending |
-| CHAT-06 | Phase 7 | Pending |
-| CHAT-07 | Phase 7 | Pending |
+| CHAT-05 | Phase 7 | Complete |
+| CHAT-06 | Phase 7 | Complete |
+| CHAT-07 | Phase 7 | Complete |
 | CHAT-08 | Phase 7 | Complete |
-| CHAT-09 | Phase 7 | Pending |
+| CHAT-09 | Phase 7 | Complete |
 | AGNT-01 | Phase 7 | Pending |
 | AGNT-02 | Phase 7 | Pending |
 | AGNT-03 | Phase 7 | Pending |
