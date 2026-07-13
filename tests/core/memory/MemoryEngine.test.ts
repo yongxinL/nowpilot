@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { MemoryAssembleResult, MemoryWriteRequest, UserMemoryFact } from '../../../src/core/memory/memoryTypes';
 import type { ModelContextTier } from '../../../src/core/context/contextTypes';
+import type { MemoryExtractor } from '../../../src/core/memory/MemoryExtractor';
 
 // ---------------------------------------------------------------------------
 // Mock memoryDB for extract tests (dynamic import inside MemoryEngine)
@@ -50,6 +51,7 @@ function createMockUserMemoryStore() {
     upsert: vi.fn().mockResolvedValue(undefined),
     evictFact: vi.fn().mockResolvedValue(undefined),
     getFact: vi.fn().mockResolvedValue(undefined),
+    rebuildIndex: vi.fn().mockResolvedValue(undefined),
   };
 }
 
@@ -117,12 +119,12 @@ describe('MemoryEngine — assemble()', () => {
     mockBroadcastBus = createMockBroadcastBus();
 
     engine = new MemoryEngine(
-      mockConversationStore,
-      mockUserMemoryStore,
-      mockPreferenceStore,
-      mockScorer,
-      mockExtractor,
-      mockBroadcastBus,
+      mockConversationStore as any,
+      mockUserMemoryStore as any,
+      mockPreferenceStore as any,
+      mockScorer as any,
+      mockExtractor as any,
+      mockBroadcastBus as any,
     );
   });
 
@@ -242,12 +244,12 @@ describe('MemoryEngine — extract()', () => {
     mockBroadcastBus = createMockBroadcastBus();
 
     engine = new MemoryEngine(
-      mockConversationStore,
-      mockUserMemoryStore,
-      mockPreferenceStore,
-      mockScorer,
-      mockExtractor,
-      mockBroadcastBus,
+      mockConversationStore as any,
+      mockUserMemoryStore as any,
+      mockPreferenceStore as any,
+      mockScorer as any,
+      mockExtractor as any,
+      mockBroadcastBus as any,
     );
 
     // Set as primary surface for direct-write tests
@@ -401,12 +403,12 @@ describe('MemoryEngine — write routing', () => {
     mockBroadcastBus = createMockBroadcastBus();
 
     engine = new MemoryEngine(
-      mockConversationStore,
-      mockUserMemoryStore,
-      mockPreferenceStore,
-      mockScorer,
-      mockExtractor,
-      mockBroadcastBus,
+      mockConversationStore as any,
+      mockUserMemoryStore as any,
+      mockPreferenceStore as any,
+      mockScorer as any,
+      mockExtractor as any,
+      mockBroadcastBus as any,
     );
   });
 

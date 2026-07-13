@@ -489,7 +489,21 @@ import { userMemoryStore } from './UserMemoryStore';
 import { preferenceMemoryStore } from './PreferenceMemoryStore';
 import { memoryScorer } from './MemoryScorer';
 import { memoryExtractor } from './MemoryExtractor';
-import { broadcastBus } from '../messaging/broadcastBus';
+
+/**
+ * Placeholder BroadcastBus adapter — P07 will replace with real wiring.
+ * The full BroadcastBus (with onMemoryWrite handler registration) is wired
+ * in AgentOrchestrator integration (P07 plan 05-07).
+ */
+const broadcastBus: BroadcastBusLike = {
+  async emitMemoryWrite(_request: MemoryWriteRequest): Promise<void> {
+    debugLog('debug', '[MemoryEngine] placeholder emitMemoryWrite (P07 will wire real BroadcastBus)');
+  },
+  onMemoryWrite(_handler: (req: MemoryWriteRequest) => Promise<void>): () => void {
+    debugLog('debug', '[MemoryEngine] placeholder onMemoryWrite (P07 will wire real BroadcastBus)');
+    return () => {};
+  },
+};
 
 export const memoryEngine = new MemoryEngine(
   conversationMemoryStore,
