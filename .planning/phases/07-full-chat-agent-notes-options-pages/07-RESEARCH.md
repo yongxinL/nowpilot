@@ -1262,16 +1262,18 @@ The existing pipeline (`AgentOrchestrator.runWithContext()` → `executePlannerL
 | A5 | Title generation using Haiku-tier provider is fast enough (< 3s) to not block the chat UI | Chat Architecture | LOW — fallback to truncated user message already designed. If consistently slow, increase timeout or skip. |
 | A6 | `OperatorPackageLegitimacyTool` and other MCP-related tool registrations exist and are accessible via `ToolRegistry.list()` | Agent Integration | MEDIUM — if tool registry is empty, Agent page has nothing to display. Check tool registration status early. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **AgentOrchestrator permission extension mechanism**
    - What we know: The current pipeline calls `PermissionService.canExecute()` which returns `false` (default-deny). There is no mechanism to pause and resume.
    - What's unclear: The exact architecture for adding a `PermissionResolver` callback pattern without breaking the existing Planner→Executor loop.
    - Recommendation: Planner should add a Wave 0 spike task: "Pipeline Permission Extension Spike" to design and prototype. Two viable approaches: (A) `setPermissionResolver()` callback injected into AgentOrchestrator, (B) yield permission-needed-orchestrator-event from ExecutorService.
+   - **RESOLVED:** AgentOrchestrator.setPermissionResolver() per Plan 07-04 Task 1 — `PermissionResolver` interface: `(toolName: string, toolInput: unknown) => Promise<'allow-once' | 'allow-always' | 'deny'>`. The orchestrator yields a `waiting-permission` event, then awaits the resolver callback. The hook's `PermissionStore` implements the resolver with `Modal.confirm` integration.
 2. **d3-force vs react-force-graph-2d selection**
    - What we know: Both are viable. react-force-graph-2d provides React-idiomatic integration. Raw d3-force gives more control but requires Canvas ref management.
    - What's unclear: Whether the project prefers minimal dependencies (raw d3-force) or React-idiomatic integration (wrapper).
    - Recommendation: Planner to evaluate. If react-force-graph-2d is chosen, it's a single additional dependency that wraps d3-force. If raw d3-force is chosen, the Canvas rendering code must be written.
+   - **RESOLVED:** raw d3-force + canvas ref per Plan 07-05 Task 2 — use `forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide` from 'd3-force' with custom canvas rendering via `useRef<HTMLCanvasElement>`. react-force-graph-2d not needed; keeps dependencies minimal.
 
 ## Metadata
 
