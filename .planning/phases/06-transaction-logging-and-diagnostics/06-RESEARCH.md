@@ -1424,22 +1424,16 @@ const mockJournal = vi.hoisted(() => ({
 | A4 | `modelContextTier` is accessible from `OptimizedContext.tier` without additional imports | TypeScript Types | LOW — confirmed in contextTypes.ts:3, already imported in AgentOrchestrator |
 | A5 | WriteJournalOperation type extension (adding 'transaction-log-batch') does not break existing WriteJournal consumers | Integration Touchpoints | LOW — TypeScript union type extension is non-breaking |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **How should diagnostics mode state (Diagnostic/Privacy) be persisted — Zustand persist or chrome.storage.local?**
-   - What we know: Both patterns exist. `np_workspace` uses chrome.storage.local with Zustand persist middleware. Theme uses chrome.storage.sync.
-   - What's unclear: Whether diagnostics mode needs cross-surface sync (Side Panel toast needs to know Privacy Mode is enabled)
-   - Recommendation: Use chrome.storage.local with Zustand `persist` middleware (pattern: workspaceStore). This provides cross-surface sync if needed. Fallback: Zustand persist with `localStorage` if chrome.storage is unavailable in test environments.
+   - (RESOLVED) Use chrome.storage.local with Zustand `persist` middleware (pattern: workspaceStore). This provides cross-surface sync if Side Panel toast needs to know Privacy Mode. Fallback: Zustand persist with `localStorage` if chrome.storage is unavailable in test environments. Implemented in 06-06 Task 3 (diagnosticsStore).
 
 2. **Should TraceCollector events be batched per pipeline stage or per-event?**
-   - What we know: D-35 mandates synchronous, cheap struct pushes. Services emit individual events per operation.
-   - What's unclear: Whether to batch multiple tool calls from a planner loop as a single emit or individual events
-   - Recommendation: Individual events better match the granularity needed for DiagnosticsPanel (one ToolTrace row per tool call). The "batch" is at persistence time (AITransactionLog.close()), not at collection time.
+   - (RESOLVED) Individual events per operation. One ToolTrace row per tool call, one ProviderAttempt per retry. The "batch" is at persistence time (AITransactionLog.close()), not at collection time. Implemented in 06-06 Task 2.
 
 3. **What happens to trace events from fire-and-forget MemoryEngine.extract() if the transaction closes first?**
-   - What we know: D-04 makes extraction fire-and-forget. D-24 supports late-arriving traces (stores indexed by operationId).
-   - What's unclear: Whether to buffer extraction traces separately and attach on next prune, or write them immediately
-   - Recommendation: MemoryEngine.extract() should call `aiTransactionLog.appendTrace(operationId, trace)` which writes individual traces bypassing the batch-write path. These late traces use the same operationId for TraceTree assembly.
+   - (RESOLVED) Late-arriving memory extraction traces are acceptable to lose. MemoryEngine.extract() runs after the renderer completes; if AITransactionLog.close() has already persisted, the TraceCollector is cleared and no further writes occur. The extraction trace is fire-and-forget diagnostic metadata — the transaction record and other trace types (planner, provider, tool) are already persisted. This is documented in the implementation as a known acceptable loss, not a bug.
 
 ## Sources
 
