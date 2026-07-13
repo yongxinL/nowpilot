@@ -1,45 +1,67 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// PreferenceMemoryStore source module will be created in wave 2 (plan 05-05).
-// Import and mock setup added when source exists.
+// Mock external stores for controlled test values
+const mockThemeState = { mode: 'dark' as const };
+const mockWorkspaceState = { activeSurface: 'fullapp' as const };
 
-const { mockGetDB, mockDb } = vi.hoisted(() => {
-  const mockIndex = vi.fn(() => ({
-    getAll: vi.fn().mockResolvedValue([]),
-  }));
-
-  const mockStore = {
-    index: mockIndex,
-  };
-
-  const mockTransaction = vi.fn(() => ({
-    store: mockStore,
-    done: Promise.resolve(undefined),
-  }));
-
-  const mockDbInstance = {
-    put: vi.fn().mockResolvedValue(undefined),
-    get: vi.fn().mockResolvedValue(undefined),
-    getAll: vi.fn().mockResolvedValue([]),
-    delete: vi.fn().mockResolvedValue(undefined),
-    count: vi.fn().mockResolvedValue(0),
-    clear: vi.fn().mockResolvedValue(undefined),
-    transaction: mockTransaction,
-  };
-
-  const mockGetDB = vi.fn().mockResolvedValue(mockDbInstance);
-
-  return { mockGetDB, mockDb: mockDbInstance };
-});
-
-vi.mock('../../../src/core/storage/IndexedDBManager', () => ({
-  getDB: mockGetDB,
+vi.mock('../../../src/core/stores/themeStore', () => ({
+  useThemeStore: {
+    getState: vi.fn(() => mockThemeState),
+  },
 }));
+
+vi.mock('../../../src/core/stores/workspaceStore', () => ({
+  useWorkspaceStore: {
+    getState: vi.fn(() => mockWorkspaceState),
+  },
+}));
+
+import { preferenceMemoryStore, usePreferenceStore } from '../../../src/core/memory/PreferenceMemoryStore';
+import { preferenceSchema } from '../../../src/core/memory/memoryTypes';
 
 describe('PreferenceMemoryStore', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it.todo('placeholder — tests added in wave 2-4');
+  it('initializes with defaults for all 6 AI-preference fields', () => {
+    const state = usePreferenceStore.getState();
+    expect(state.responseStyle).toBe('concise');
+    expect(state.preferredLanguage).toBe('auto');
+    expect(state.preferStructuredOutput).toBe(false);
+    expect(state.allowCloudFallbackFromLocal).toBe(false);
+    expect(state.defaultProviderId).toBe('');
+    expect(state.toolAutonomy).toBe('manual');
+  });
+
+  it('setPreferences updates a value and persists via chrome.storage.local', () => {
+    usePreferenceStore.getState().setPreferences({ responseStyle: 'verbose' });
+    const state = usePreferenceStore.getState();
+    expect(state.responseStyle).toBe('verbose');
+    // Other fields should remain at defaults
+    expect(state.preferredLanguage).toBe('auto');
+    expect(chrome.storage.local.set).toHaveBeenCalled();
+  });
+
+  it('get() returns PreferencePayload with themeMode read from ThemeStore.getState().mode', () => {
+    const result = preferenceMemoryStore.get();
+    expect(result.themeMode).toBe('dark');
+  });
+
+  it('get() returns PreferencePayload with defaultSurface read from WorkspaceStore.getState().activeSurface', () => {
+    const result = preferenceMemoryStore.get();
+    expect(result.defaultSurface).toBe('fullapp');
+  });
+
+  it('get() output matches preferenceSchema Zod validation', () => {
+    const result = preferenceMemoryStore.get();
+    const parsed = preferenceSchema.safeParse(result);
+    expect(parsed.success).toBe(true);
+  });
+
+  it('get() output is a plain JSON object (compact JSON, not verbose prose per D-10)', () => {
+    const result = preferenceMemoryStore.get();
+    expect(result.constructor).toBe(Object);
+    expect(Object.prototype.toString.call(result)).toBe('[object Object]');
+  });
 });
