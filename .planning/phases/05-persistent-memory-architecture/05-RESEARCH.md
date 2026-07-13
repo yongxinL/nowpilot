@@ -543,27 +543,23 @@ export class MemoryScorer {
 | A4 | `AgentOrchestrator.runWithContext()` caller is responsible for calling `MemoryEngine.assemble()` and populating `ContextOptimizerInput` before passing the `OptimizedContext` | Code Examples | If the caller is in the UI layer and doesn't have access to MemoryEngine, an alternative integration point (inside runWithContext) is needed. This is the planner's decision. |
 | A5 | MiniSearch index can be held in memory in the background SW context without performance issues | Standard Stack | For up to 500 facts (D-23 cap), MiniSearch is very lightweight. Performance concern is minimal. Verified: MiniSearch handles thousands of documents efficiently. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **AgentOrchestrator.runWithContext() signature change**
+1. **AgentOrchestrator.runWithContext() signature change** (RESOLVED — Pattern A chosen: caller-assembles)
    - What we know: `runWithContext(optimizedContext, preferredProviders)` currently takes 2 params. MemoryEngine needs `conversationId`, `userMessage`, and `tier` for `assemble()`, plus the full message list for `extract()`.
-   - What's unclear: Should the caller populate `ContextOptimizerInput.memory` BEFORE calling `runWithContext()`, or should `runWithContext()` call `MemoryEngine.assemble()` internally? The ContextOptimizer currently runs inside runWithContext.
-   - Recommendation: The planner should decide between two patterns: (A) Caller calls `memoryEngine.assemble()` before creating `ContextOptimizerInput`, passes enriched OptimizedContext to `runWithContext()` — simpler, no signature change; (B) Add `memoryEngine` to AgentOrchestrator constructor, call `assemble()` inside `runWithContext()` — encapsulates memory in the pipeline. Pattern A is simpler and matches current architecture.
+   - Resolved: Pattern A (caller-assembles) selected. The caller calls `memoryEngine.assemble()` before creating `ContextOptimizerInput`, then passes enriched OptimizedContext to `runWithContext()`. This requires no signature change to `runWithContext()` and matches the current architecture. See 05-07-PLAN.md Task 2 for implementation details.
 
-2. **MiniSearch Index Persistence Across SW Restarts**
+2. **MiniSearch Index Persistence Across SW Restarts** (RESOLVED — rebuild on startup)
    - What we know: Service workers can be terminated at any time. MiniSearch index is in-memory.
-   - What's unclear: Should we serialize/deserialize the MiniSearch index via `JSON.stringify(index)` to IndexedDB, or rebuild from MemoryDB on every SW start?
-   - Recommendation: Rebuild from MemoryDB on startup (simpler, always consistent, fast with ≤500 facts). Serialization adds complexity and risk of stale index after crash. Use `MiniSearchIndex.rebuild()` at SW startup.
+   - Resolved: Rebuild from MemoryDB on startup (simpler, always consistent, fast with ≤500 facts). `MiniSearchIndex.rebuild()` is called at SW startup via `userMemoryStore.initialize()`. See 05-04-PLAN.md Task 2 for implementation details.
 
-3. **Haiku-Tier Extraction Model Selection**
+3. **Haiku-Tier Extraction Model Selection** (RESOLVED — lowest-cost tier via TierResolver)
    - What we know: MemoryExtractor uses Haiku-tier models via existing ProviderRouter + TierResolver.
-   - What's unclear: Which provider/model to use if the user only has a single large-tier provider configured?
-   - Recommendation: Use the lowest-cost tier available. If only one provider, use its cheapest model. TierResolver already handles this mapping. The extractor prompt should be compact (<200 tokens output) to minimize cost.
+   - Resolved: Use the lowest-cost tier available. If only one provider, use its cheapest model. TierResolver already handles this mapping. The extractor prompt is compact (<200 tokens output) to minimize cost. See 05-05-PLAN.md Task 1 for implementation details.
 
-4. **BroadcastBus Write Request Deduplication**
+4. **BroadcastBus Write Request Deduplication** (RESOLVED — idempotency key in MemoryWriteRequest)
    - What we know: Non-primary surfaces emit write requests via `chrome.storage.session`. The primary surface processes them.
-   - What's unclear: What happens if the primary surface changes mid-write (election timeout, surface closed)?
-   - Recommendation: Write requests should carry an idempotency key (operation UUID). If a new primary picks up a stalled request, it checks if the write was already completed before re-executing. This matches WriteJournal's existing idempotency pattern.
+   - Resolved: Write requests carry an idempotency key (UUIDv4 in `MemoryWriteRequest.idempotencyKey`). MemoryEngine maintains a `#processedKeys` Set (capped at 1000 entries) that the primary surface checks before executing. If a new primary picks up a stalled request, the idempotency check prevents double-processing. This matches WriteJournal's existing idempotency pattern. See 05-06-PLAN.md Task 3 for implementation details.
 
 ## Environment Availability
 
