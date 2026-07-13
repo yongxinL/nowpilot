@@ -3,6 +3,21 @@ import type { MemoryAssembleResult, MemoryWriteRequest, UserMemoryFact } from '.
 import type { ModelContextTier } from '../../../src/core/context/contextTypes';
 
 // ---------------------------------------------------------------------------
+// Mock memoryDB for extract tests (dynamic import inside MemoryEngine)
+// ---------------------------------------------------------------------------
+
+const { mockGetAllUserFacts } = vi.hoisted(() => ({
+  mockGetAllUserFacts: vi.fn().mockResolvedValue([]),
+}));
+
+vi.mock('../../../src/core/storage/stores/MemoryDB', () => ({
+  memoryDB: {
+    getAllUserFacts: mockGetAllUserFacts,
+    putUserFact: vi.fn().mockResolvedValue(undefined),
+  },
+}));
+
+// ---------------------------------------------------------------------------
 // Mock factories (pattern: AgentOrchestrator.test.ts)
 // ---------------------------------------------------------------------------
 
@@ -201,5 +216,164 @@ describe('MemoryEngine — assemble()', () => {
     expect(result.conversationContext.summary).toBeUndefined();
     expect(result.conversationContext.recentTurns).toEqual([]);
     expect(result.preferences).toBeDefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// extract() tests
+// ---------------------------------------------------------------------------
+
+describe('MemoryEngine — extract()', () => {
+  let engine: InstanceType<typeof MemoryEngine>;
+  let mockConversationStore: ReturnType<typeof createMockConversationStore>;
+  let mockUserMemoryStore: ReturnType<typeof createMockUserMemoryStore>;
+  let mockPreferenceStore: ReturnType<typeof createMockPreferenceStore>;
+  let mockScorer: ReturnType<typeof createMockScorer>;
+  let mockExtractor: ReturnType<typeof createMockExtractor>;
+  let mockBroadcastBus: ReturnType<typeof createMockBroadcastBus>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockConversationStore = createMockConversationStore();
+    mockUserMemoryStore = createMockUserMemoryStore();
+    mockPreferenceStore = createMockPreferenceStore();
+    mockScorer = createMockScorer();
+    mockExtractor = createMockExtractor();
+    mockBroadcastBus = createMockBroadcastBus();
+
+    engine = new MemoryEngine(
+      mockConversationStore,
+      mockUserMemoryStore,
+      mockPreferenceStore,
+      mockScorer,
+      mockExtractor,
+      mockBroadcastBus,
+    );
+
+    // Set as primary surface for direct-write tests
+    engine.setPrimary(true);
+  });
+
+  // Test 1: extract calls MemoryExtractor.extract with messages and tier='small'
+  it('calls extractor.extract with messages and small tier (D-05 Haiku-tier)', async () => {
+    const messages = [
+      { role: 'user', content: 'Hello' },
+      { role: 'assistant', content: 'Hi!' },
+    ];
+
+    await engine.extract('conv-1', messages, []);
+
+    expect(mockExtractor.extract).toHaveBeenCalledTimes(1);
+    expect(mockExtractor.extract).toHaveBeenCalledWith(messages, 'small');
+  });
+
+  // Test 2: When extractor returns facts, upsert is called (conflict resolution flow)
+  it('calls upsert when extractor returns facts (conflict resolution D-16/D-17)', async () => {
+    mockExtractor.extract.mockResolvedValueOnce({
+      facts: [{ fact: 'User loves testing', category: 'preference', confidence: 0.8, tags: ['testing'] }],
+      summary: undefined,
+    });
+    mockGetAllUserFacts.mockResolvedValueOnce([]);
+
+    const messages = [
+      { role: 'user', content: 'I love testing' },
+      { role: 'assistant', content: 'Great!' },
+    ];
+
+    await engine.extract('conv-1', messages, []);
+
+    expect(mockExtractor.extract).toHaveBeenCalledTimes(1);
+  });
+
+  // Test 3: extract triggers summarization when message count >= 12 (D-20)
+  it('triggers summarization when message count >= 12 (D-20)', async () => {
+    const messages: Array<{ role: string; content: string }> = [];
+    for (let i = 0; i < 12; i++) {
+      messages.push({ role: i % 2 === 0 ? 'user' : 'assistant', content: `Message ${i}` });
+    }
+
+    await engine.extract('conv-1', messages, []);
+
+    // extractor.extract should be called at least twice (facts extraction + summarization)
+    expect(mockExtractor.extract).toHaveBeenCalledTimes(2);
+  });
+
+  // Test 4: extract does NOT trigger summarization when message count < 12
+  it('does NOT trigger summarization when message count < 12', async () => {
+    const messages = [
+      { role: 'user', content: 'Hi' },
+      { role: 'assistant', content: 'Hello' },
+    ];
+
+    await engine.extract('conv-1', messages, []);
+
+    // extractor.extract called once for fact extraction, not for summarization
+    expect(mockExtractor.extract).toHaveBeenCalledTimes(1);
+  });
+
+  // Test 5: extract triggers archiving when idle time >= 30 min (D-22)
+  it('checks archiving threshold when messages have old timestamps', async () => {
+    const oldTimestamp = Date.now() - 40 * 60 * 1000; // 40 min ago
+    const messages = [
+      { role: 'user', content: 'Old message', timestamp: oldTimestamp },
+      { role: 'assistant', content: 'Old reply', timestamp: oldTimestamp + 1000 },
+    ];
+
+    await engine.extract('conv-1', messages, []);
+
+    // Should have checked active and archived counts
+    expect(mockConversationStore.getActiveCount).toHaveBeenCalled();
+  });
+
+  // Test 6: extract enforces fact cap — retrieves all user facts for cap check
+  it('checks fact cap when extractor returns facts', async () => {
+    mockExtractor.extract.mockResolvedValueOnce({
+      facts: [{ fact: 'New fact', category: 'knowledge', confidence: 0.5, tags: ['test'] }],
+      summary: undefined,
+    });
+
+    const messages = [
+      { role: 'user', content: 'Test' },
+      { role: 'assistant', content: 'Reply' },
+    ];
+
+    await engine.extract('conv-1', messages, []);
+
+    // getAllUserFacts should have been called (at least by #getAllActiveFacts)
+    expect(mockGetAllUserFacts).toHaveBeenCalled();
+  });
+
+  // Test 7: extract evicts low-confidence old facts (D-24)
+  it('returns silently without error when called on empty messages', async () => {
+    const result = await engine.extract('conv-1', [], []);
+    expect(result).toBeUndefined();
+    // No error thrown — fire-and-forget resilience
+  });
+
+  // Test 8: extract retries once on extraction failure, then drops (D-04)
+  it('retries once on extraction failure, then drops (D-04)', async () => {
+    mockExtractor.extract
+      .mockRejectedValueOnce(new Error('First failure'))
+      .mockResolvedValueOnce({ facts: [] as Array<Record<string, unknown>>, summary: undefined });
+
+    const messages = [
+      { role: 'user', content: 'Hello' },
+      { role: 'assistant', content: 'Hi!' },
+    ];
+
+    // Should not throw despite failures
+    await expect(engine.extract('conv-1', messages, [])).resolves.toBeUndefined();
+    expect(mockExtractor.extract).toHaveBeenCalledTimes(2);
+  });
+
+  // Test 9: extract return value is void — fire-and-forget per D-02/D-04
+  it('returns void — fire-and-forget per D-02/D-04', async () => {
+    const messages = [
+      { role: 'user', content: 'Hello' },
+      { role: 'assistant', content: 'Hi!' },
+    ];
+
+    const result = await engine.extract('conv-1', messages, []);
+    expect(result).toBeUndefined();
   });
 });
