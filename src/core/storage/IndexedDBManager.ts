@@ -65,6 +65,10 @@ export interface NowPilotDB extends DBSchema {
       created: number;
       updated: number;
       source: string;
+      status?: 'active' | 'superseded';
+      tags?: string[];
+      useCount?: number;
+      lastUsedAt?: number;
     };
   };
   memory_summaries: {
@@ -75,6 +79,8 @@ export interface NowPilotDB extends DBSchema {
       messageCount: number;
       created: number;
       updated: number;
+      state?: 'active' | 'archived';
+      archivedAt?: number;
     };
   };
   errors: {
@@ -153,7 +159,7 @@ export interface NowPilotDB extends DBSchema {
   };
 }
 
-export const DB_VERSION = 1;
+export const DB_VERSION = 2;
 
 let dbInstance: IDBPDatabase<NowPilotDB> | null = null;
 
@@ -184,6 +190,9 @@ export async function getDB(): Promise<IDBPDatabase<NowPilotDB>> {
 
         const journalStore = db.createObjectStore('write_journal_entries', { keyPath: 'id' });
         journalStore.createIndex('by-status', 'status');
+      }
+      if (oldVersion < 2) {
+        /* v2: schemaless stores — new fields (status, tags, useCount, lastUsedAt, state, archivedAt) are added via put() at runtime with defaults. No schema alteration needed. */
       }
     },
     blocked() {
