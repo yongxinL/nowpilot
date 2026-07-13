@@ -38,6 +38,8 @@ import { notesDB } from '../../../src/core/storage/stores/NotesDB';
 import { memoryDB } from '../../../src/core/storage/stores/MemoryDB';
 import { errorStore } from '../../../src/core/storage/stores/ErrorStore';
 import { aiTransactionLogDB } from '../../../src/core/storage/stores/AITransactionLogDB';
+import { TraceVerbosity } from '../../../src/core/telemetry/types';
+import type { AITransaction } from '../../../src/core/telemetry/types';
 
 describe('Domain Stores', () => {
   beforeEach(() => {
@@ -123,13 +125,20 @@ describe('Domain Stores', () => {
   });
 
   it('AITransactionLogDB.logTransaction calls db.put with correct store', async () => {
-    const mockTx = {
+    const mockTx: AITransaction = {
       id: 'tx-1',
+      sessionId: 'session-1',
+      conversationId: 'conv-1',
+      workspaceId: 'ws-1',
+      activeSurface: 'sidepanel',
+      userTurnId: 'turn-1',
       type: 'chat',
-      provider: 'openai',
-      model: 'gpt-4',
-      startTime: 1000,
       status: 'completed',
+      providerId: 'openai',
+      model: 'gpt-4',
+      startedAt: 1000,
+      verbosity: TraceVerbosity.NORMAL,
+      privacyMode: false,
     };
 
     await aiTransactionLogDB.logTransaction(mockTx);

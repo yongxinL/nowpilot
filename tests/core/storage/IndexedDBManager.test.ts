@@ -32,15 +32,15 @@ describe('IndexedDBManager', () => {
     idbMock.captured.config = null;
   });
 
-  it('DB_VERSION is 1', () => {
-    expect(DB_VERSION).toBe(1);
+  it('DB_VERSION is 3', () => {
+    expect(DB_VERSION).toBe(3);
   });
 
   it('getDB() calls openDB with correct params', async () => {
     await getDB();
     expect(idbMock.mockOpenDB).toHaveBeenCalledWith(
       'nowpilot',
-      1,
+      3,
       expect.objectContaining({
         upgrade: expect.any(Function),
         blocked: expect.any(Function),
@@ -86,11 +86,15 @@ describe('IndexedDBManager', () => {
       const localCreateObjectStore = vi.fn().mockReturnValue(localStore);
       const localDb = { createObjectStore: localCreateObjectStore };
 
-      // Invoke the upgrade callback as if oldVersion < 1
-      upgrade(localDb, 0, 1, {});
+      // Mock transaction with objectStore for oldVersion < 3 index creation
+      const mockObjectStore = vi.fn().mockReturnValue(localStore);
+      const mockTransaction = { objectStore: mockObjectStore };
 
-      // Verify 13 object stores were created
-      expect(localCreateObjectStore).toHaveBeenCalledTimes(13);
+      // Invoke the upgrade callback as if oldVersion < 1 (triggers v1, v2, and v3 blocks)
+      upgrade(localDb, 0, 1, mockTransaction);
+
+      // Verify 16 object stores were created (13 original + 3 new trace stores)
+      expect(localCreateObjectStore).toHaveBeenCalledTimes(16);
 
       // Verify each store name and keyPath
       expect(localCreateObjectStore).toHaveBeenCalledWith('chat_history_sessions', { keyPath: 'id' });
@@ -108,8 +112,23 @@ describe('IndexedDBManager', () => {
       expect(localCreateObjectStore).toHaveBeenCalledWith('transaction_log_toolTraces', { keyPath: 'id' });
       expect(localCreateObjectStore).toHaveBeenCalledWith('transaction_log_providerTraces', { keyPath: 'id' });
       expect(localCreateObjectStore).toHaveBeenCalledWith('write_journal_entries', { keyPath: 'id' });
+      expect(localCreateObjectStore).toHaveBeenCalledWith('transaction_log_cacheTraces', { keyPath: 'id' });
+      expect(localCreateObjectStore).toHaveBeenCalledWith('transaction_log_memoryTraces', { keyPath: 'id' });
+      expect(localCreateObjectStore).toHaveBeenCalledWith('transaction_log_writeJournalTraces', { keyPath: 'id' });
 
-      // Verify createIndex was called for by-session and by-status
+      // Verify createIndex calls via transaction.objectStore for v3 indexes
+      expect(mockObjectStore).toHaveBeenCalledWith('transaction_log_transactions');
+      expect(mockObjectStore).toHaveBeenCalledWith('transaction_log_promptTraces');
+      expect(mockObjectStore).toHaveBeenCalledWith('transaction_log_toolTraces');
+      expect(mockObjectStore).toHaveBeenCalledWith('transaction_log_providerTraces');
+
+      // Verify createIndex on the transaction store object for by-operationId and others
+      expect(localCreateIndex).toHaveBeenCalledWith('by-operationId', 'operationId');
+      expect(localCreateIndex).toHaveBeenCalledWith('by-status', 'status');
+      expect(localCreateIndex).toHaveBeenCalledWith('by-severity', 'severity');
+      expect(localCreateIndex).toHaveBeenCalledWith('by-timestamp', 'startedAt');
+
+      // Verify createIndex was called for by-session and by-status (original)
       const bySessionCalls = localCreateIndex.mock.calls.filter(
         (call: unknown[]) => call[0] === 'by-session' && call[1] === 'sessionId',
       );

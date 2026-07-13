@@ -9,7 +9,8 @@ export type WriteJournalOperation =
   | 'compact-conversation'
   | 'save-note-with-links'
   | 'update-user-memory'
-  | 'export-data';
+  | 'export-data'
+  | 'transaction-log-batch';
 
 export interface WriteJournalSteps {
   name: string;
@@ -39,6 +40,7 @@ export const writeJournalEntrySchema = z.object({
     'save-note-with-links',
     'update-user-memory',
     'export-data',
+    'transaction-log-batch',
   ]),
   status: z.enum(['pending', 'applying', 'completed', 'failed', 'rolled-back']),
   createdAt: z.number(),
