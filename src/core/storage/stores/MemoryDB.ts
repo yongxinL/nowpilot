@@ -99,6 +99,26 @@ export class MemoryDB {
     }
   }
 
+  async getAllSummaries(): Promise<
+    Array<{
+      conversationId: string;
+      summary: string;
+      messageCount: number;
+      created: number;
+      updated: number;
+      state?: 'active' | 'archived';
+      archivedAt?: number;
+    }>
+  > {
+    try {
+      const db = await getDB();
+      return db.getAll('memory_summaries');
+    } catch (err) {
+      debugLog('error', 'MemoryDB.getAllSummaries failed', { error: err });
+      return [];
+    }
+  }
+
   async getSummary(conversationId: string): Promise<
     | {
         conversationId: string;
