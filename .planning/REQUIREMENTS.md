@@ -100,7 +100,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **CHAT-01**: Streaming AI chat with abort on both Side Panel and Full App
 - [ ] **CHAT-02**: Chat history persistence in ChatHistoryDB with conversation list
 - [ ] **CHAT-03**: First-message title generation (temperature 0, 16 tokens, non-blocking)
-- [ ] **CHAT-04**: Slash command parsing (`/write`, `/ask`, `/research`, etc.)
+- [x] **CHAT-04**: Slash command parsing (`/write`, `/ask`, `/research`, etc.)
 - [ ] **CHAT-05**: Provider/model selector (read-only in Side Panel, editable in Full App Options)
 - [ ] **CHAT-06**: Chat UI built on @ant-design/x (Bubble, Sender, Conversations)
 - [ ] **CHAT-07**: Markdown rendering via @ant-design/x-markdown with streaming support
@@ -112,8 +112,8 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **AGNT-01**: Agent workflows with AgentOrchestrator and tier caps
 - [ ] **AGNT-02**: 12 built-in MCP tools via NowPilotMainServer
 - [ ] **AGNT-03**: External MCP client via @modelcontextprotocol/sdk (StreamableHTTP transport)
-- [ ] **AGNT-04**: Tool call permission dialog — Allow once / Allow always / Deny
-- [ ] **AGNT-05**: Dangerous tools always prompt regardless of allow list
+- [x] **AGNT-04**: Tool call permission dialog — Allow once / Allow always / Deny
+- [x] **AGNT-05**: Dangerous tools always prompt regardless of allow list
 - [ ] **AGNT-06**: Agent UI built on @ant-design/x (ThoughtChain, Think)
 - [ ] **AGNT-07**: Tool results rendered as data strings through React JSX
 - [ ] **AGNT-08**: Macros execution — sequential skill/MCP/note steps, no eval
@@ -133,8 +133,8 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **OPT-01**: Providers section — add/edit/delete provider configs, test connections
 - [ ] **OPT-02**: Models section — per-provider model list + context window override
 - [ ] **OPT-03**: MCP Servers section — add/enable/disable external MCP servers
-- [ ] **OPT-04**: Prompt Templates section — CRUD with variable editor
-- [ ] **OPT-05**: Slash Commands section — manage slash command to template mapping
+- [x] **OPT-04**: Prompt Templates section — CRUD with variable editor
+- [x] **OPT-05**: Slash Commands section — manage slash command to template mapping
 - [ ] **OPT-06**: Memory section — view/edit user memory facts, enable/disable
 - [ ] **OPT-07**: Diagnostics section — transaction traces, export debug bundle (Full App only)
 - [ ] **OPT-08**: Import/Export section — sanitized JSON/ZIP export, import merge
@@ -288,7 +288,7 @@ Requirements for initial release. Each maps to roadmap phases.
 | CHAT-01 | Phase 7 | Pending |
 | CHAT-02 | Phase 7 | Pending |
 | CHAT-03 | Phase 7 | Pending |
-| CHAT-04 | Phase 7 | Pending |
+| CHAT-04 | Phase 7 | Complete |
 | CHAT-05 | Phase 7 | Pending |
 | CHAT-06 | Phase 7 | Pending |
 | CHAT-07 | Phase 7 | Pending |
@@ -297,8 +297,8 @@ Requirements for initial release. Each maps to roadmap phases.
 | AGNT-01 | Phase 7 | Pending |
 | AGNT-02 | Phase 7 | Pending |
 | AGNT-03 | Phase 7 | Pending |
-| AGNT-04 | Phase 7 | Pending |
-| AGNT-05 | Phase 7 | Pending |
+| AGNT-04 | Phase 7 | Complete |
+| AGNT-05 | Phase 7 | Complete |
 | AGNT-06 | Phase 7 | Pending |
 | AGNT-07 | Phase 7 | Pending |
 | AGNT-08 | Phase 7 | Pending |
@@ -312,8 +312,8 @@ Requirements for initial release. Each maps to roadmap phases.
 | OPT-01 | Phase 7 | Pending |
 | OPT-02 | Phase 7 | Pending |
 | OPT-03 | Phase 7 | Pending |
-| OPT-04 | Phase 7 | Pending |
-| OPT-05 | Phase 7 | Pending |
+| OPT-04 | Phase 7 | Complete |
+| OPT-05 | Phase 7 | Complete |
 | OPT-06 | Phase 7 | Pending |
 | OPT-07 | Phase 7 | Pending |
 | OPT-08 | Phase 7 | Pending |

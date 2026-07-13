@@ -296,14 +296,17 @@ Plans:
 **Plans**: 6 plans
 
 **Wave 0** — Foundation
-- [ ] 07-01-PLAN.md — Install d3-force, extend core types (WorkspaceState.drafts, OrchestratorEvent.waiting-permission, ChatHistoryDB.updateSession), create PermissionStore, SlashCommandRegistry, PromptManager with TemplateEngine
+
+- [x] 07-01-PLAN.md — Install d3-force, extend core types (WorkspaceState.drafts, OrchestratorEvent.waiting-permission, ChatHistoryDB.updateSession), create PermissionStore, SlashCommandRegistry, PromptManager with TemplateEngine
 
 **Wave 1** — Hooks + Independent Features (parallel)
+
 - [ ] 07-02-PLAN.md — Create useStreamingLLM hook (AsyncGenerator iteration, ChunkBuffer, AbortController), useWorkspace, useTheme helper hooks
 - [ ] 07-05-PLAN.md — Create LinkParser (wikilink parsing + MiniSearch resolution + backlinks), NoteGraph (d3-force data model), NotesPage with all note components (NoteList, NoteEditor, NotePreview, BacklinksPanel, WikilinkAutocomplete, NoteGraphView, SaveToNoteDialog) + SkillMessageRenderer + SourceCard
 - [ ] 07-06-PLAN.md — Create all 11 Options sections (ProvidersSection through AboutSection), OptionsPage routing, workspaceRouter deep linking extension
 
 **Wave 2** — Chat & Agent (parallel)
+
 - [ ] 07-03-PLAN.md — Create useChat hook (messages, conversations, title generation, drafts, context assembly), ChatPage with chat components (ChatMessage, ConversationSidebar, ProviderSelector, HistoryListItem)
 - [ ] 07-04-PLAN.md — Extend AgentOrchestrator with PermissionResolver callback, create useAgent hook (thoughtChain steps, permission handling), AgentPage with agent components (ThoughtChainView, ToolCard, PermissionDialog)
 
