@@ -163,6 +163,19 @@ None - no external service configuration required.
 - `schedulePrune` hook connected — `AITransactionLog.close()` will trigger debounced pruning via `schedulePrune?.()`
 - Next plan: 06-06 (AITransactionLog integration with AgentOrchestrator)
 
+## Self-Check: PASSED
+
+- [x] `src/core/utils/debugLog.ts` exists (29 lines, imports traceRedactor + redactValue wrapping)
+- [x] `tests/core/utils/debugLog.test.ts` exists (43 lines, 4 passing tests)
+- [x] `src/core/telemetry/pruning.ts` exists (197 lines, exports pruneNow/scheduleDebouncedPrune/startPruning/stopPruning)
+- [x] `tests/core/telemetry/pruning.test.ts` exists (290 lines, 5 passing tests)
+- [x] All 9 new tests pass (4 debugLog + 5 pruning)
+- [x] All 572 total tests pass across 73 test files (0 regressions)
+- [x] All 5 commits verified in git log
+- [x] Exports match must_haves: debugLog (modified), pruneNow, scheduleDebouncedPrune, startPruning, RETENTION constants
+- [x] AITransactionLog.schedulePrune hook wired to scheduleDebouncedPrune
+- [x] Threat mitigations verified: T-06-05 (information disclosure via debugLog), T-06-04 (DoS via pruning)
+
 ---
 
 *Phase: 06-transaction-logging-and-diagnostics*
