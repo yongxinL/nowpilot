@@ -107,7 +107,7 @@ function createMockToolRegistry() {
     list: vi.fn().mockReturnValue([]),
     register: vi.fn(),
     unregister: vi.fn(),
-  };
+  } as any;
 }
 
 // ---------------------------------------------------------------------------

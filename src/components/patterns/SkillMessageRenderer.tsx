@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tag, Typography } from 'antd';
-import { ThunderboltOutlined, MacroOutlined } from '@ant-design/icons';
+import { ThunderboltOutlined, CodeOutlined } from '@ant-design/icons';
 
 const { Text } = Typography;
 
@@ -45,7 +45,7 @@ export function SkillMessageRenderer({ content, type }: SkillMessageRendererProp
         {isSkill ? (
           <ThunderboltOutlined style={{ color: 'var(--ant-color-warning)' }} />
         ) : (
-          <MacroOutlined style={{ color: 'var(--ant-color-info)' }} />
+          <CodeOutlined style={{ color: 'var(--ant-color-info)' }} />
         )}
         <Tag color={isSkill ? 'warning' : 'blue'} style={{ margin: 0 }}>
           {isSkill ? 'Skill' : 'Macro'}

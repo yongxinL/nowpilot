@@ -22,7 +22,7 @@ export function ThoughtChainView({ steps, onRetry }: ThoughtChainViewProps) {
 
     // For tool steps, render ToolCard as content
     if (step.type === 'tool-call' && step.content) {
-      content = step.content;
+      content = step.content as React.ReactNode;
     }
 
     // For error steps with retry

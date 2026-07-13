@@ -21,7 +21,7 @@ class NoteVersioner {
   async saveVersion(noteId: string, content: string): Promise<void> {
     try {
       const data = await chrome.storage.local.get(VERSIONS_KEY);
-      const versions: Record<string, VersionEntry[]> = data[VERSIONS_KEY] || {};
+      const versions: Record<string, VersionEntry[]> = (data[VERSIONS_KEY] as Record<string, VersionEntry[]> | undefined) || {};
       if (!versions[noteId]) {
         versions[noteId] = [];
       }
@@ -38,7 +38,7 @@ class NoteVersioner {
   async getLastVersion(noteId: string): Promise<VersionEntry | null> {
     try {
       const data = await chrome.storage.local.get(VERSIONS_KEY);
-      const versions: Record<string, VersionEntry[]> = data[VERSIONS_KEY] || {};
+      const versions: Record<string, VersionEntry[]> = (data[VERSIONS_KEY] as Record<string, VersionEntry[]> | undefined) || {};
       const entries = versions[noteId];
       if (!entries || entries.length === 0) return null;
       return entries[entries.length - 1];

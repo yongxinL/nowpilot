@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Typography } from 'antd';
-import { useToken } from 'antd/es/theme/useToken';
+import { theme } from 'antd';
+const { useToken } = theme;
 import {
   forceSimulation,
   forceLink,
@@ -47,7 +48,7 @@ export function NoteGraphView({ notes, links, onNavigateNote }: NoteGraphViewPro
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [dimensions, setDimensions] = useState({ width: 600, height: 400 });
-  const token = useToken();
+  const { token } = useToken();
 
   // Track dimensions
   useEffect(() => {
@@ -111,7 +112,7 @@ export function NoteGraphView({ notes, links, onNavigateNote }: NoteGraphViewPro
         for (const link of simLinks) {
           const s = link.source as NoteGraphNodeDatum;
           const t = link.target as NoteGraphNodeDatum;
-          if (s && t && s.x !== undefined && t.x !== undefined) {
+          if (s && t && s.x !== undefined && s.y !== undefined && t.x !== undefined && t.y !== undefined) {
             ctx.beginPath();
             ctx.moveTo(s.x, s.y);
             ctx.lineTo(t.x, t.y);
