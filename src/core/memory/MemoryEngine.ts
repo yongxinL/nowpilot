@@ -12,6 +12,7 @@ import type { ModelContextTier } from '../context/contextTypes';
 import type { MemoryExtractor } from './MemoryExtractor';
 import type { MemoryScorer } from './MemoryScorer';
 import { resolve as conflictResolve } from './conflictResolver';
+import type { ExecutionContext } from '../telemetry/types';
 
 // ---------------------------------------------------------------------------
 // Local interface to avoid circular dependency with broadcastBus.ts (wired in P07)
@@ -79,6 +80,7 @@ export class MemoryEngine {
     conversationId: string,
     userMessage: string,
     tier: ModelContextTier,
+    execCtx?: ExecutionContext,
   ): Promise<MemoryAssembleResult> {
     try {
       const convContext = await this.conversationStore.getContext(conversationId, tier);
@@ -99,6 +101,14 @@ export class MemoryEngine {
         conversationId,
         tier,
         factCount: memory.length,
+      });
+
+      execCtx?.traceCollector.onMemoryEvent({
+        phase: 'assemble',
+        conversationId,
+        factsRetrieved: factResults.length,
+        summarized: !!convContext.summary,
+        timestamp: Date.now(),
       });
 
       return {
@@ -134,6 +144,7 @@ export class MemoryEngine {
     conversationId: string,
     messages: Array<{ role: string; content: string }>,
     _toolResults: Array<unknown>,
+    execCtx?: ExecutionContext,
   ): Promise<void> {
     try {
       // ---------------------------------------------------------------
@@ -148,6 +159,15 @@ export class MemoryEngine {
         // ---------------------------------------------------------------
         await this.#resolveAndUpsert(result, conversationId);
       }
+
+      execCtx?.traceCollector.onMemoryEvent({
+        phase: 'extract',
+        conversationId,
+        factsExtracted: result.facts.length,
+        extractionAttempt: result.facts.length > 0 ? 1 : 2,
+        summarized: !!result.summary,
+        timestamp: Date.now(),
+      });
 
       // ---------------------------------------------------------------
       // Step 3: Check summarization threshold (D-20 — every 12 messages)

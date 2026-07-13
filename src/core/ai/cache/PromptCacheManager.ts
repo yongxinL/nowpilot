@@ -1,5 +1,6 @@
 import { debugLog } from '../../utils/debugLog';
 import type { CacheHint, CacheKey } from './cacheTypes';
+import type { ExecutionContext } from '../../telemetry/types';
 
 const VALID_SECTIONS = new Set(['system-prompt', 'tool-schemas', 'preferences', 'memory']);
 
@@ -15,6 +16,7 @@ export class PromptCacheManager {
    */
   identifyStableSections(
     promptParts: Array<{ role: string; content: string; section?: string }>,
+    execCtx?: ExecutionContext,
   ): Map<number, CacheHint> {
     const hints = new Map<number, CacheHint>();
 
@@ -30,6 +32,13 @@ export class PromptCacheManager {
       hints.set(i, hint);
     }
 
+    execCtx?.traceCollector.onCacheEvent({
+      event: 'key_generated',
+      section: hints.size > 0 ? Array.from(hints.values())[0].section : undefined,
+      estimatedTokenSavings: hints.size * 100, // rough estimate
+      timestamp: Date.now(),
+    });
+
     return hints;
   }
 
@@ -38,7 +47,7 @@ export class PromptCacheManager {
    * Returns the existing key if one exists and hasn't been invalidated.
    * Returns a new DJB2-hashed key otherwise.
    */
-  generateCacheKey(providerId: string): string {
+  generateCacheKey(providerId: string, execCtx?: ExecutionContext): string {
     const existing = this.#cacheKeys.get(providerId);
     if (existing) return existing.hash;
 
@@ -50,6 +59,12 @@ export class PromptCacheManager {
       createdAt: Date.now(),
     };
     this.#cacheKeys.set(providerId, cacheKey);
+    execCtx?.traceCollector.onCacheEvent({
+      event: 'key_generated',
+      providerId,
+      cacheKey: hash,
+      timestamp: Date.now(),
+    });
     return hash;
   }
 
@@ -57,18 +72,27 @@ export class PromptCacheManager {
    * Invalidates the cache key for a specific provider.
    * Logs the invalidation event with providerId and reason.
    */
-  invalidateCacheKey(providerId: string, reason: string): void {
+  invalidateCacheKey(providerId: string, reason: string, execCtx?: ExecutionContext): void {
     this.#cacheKeys.delete(providerId);
     debugLog('info', '[PromptCacheManager] Cache key invalidated', { providerId, reason });
+    execCtx?.traceCollector.onCacheEvent({
+      event: 'invalidation',
+      providerId,
+      timestamp: Date.now(),
+    });
   }
 
   /**
    * Invalidates all cache keys across all providers.
    * Logs the global invalidation event.
    */
-  invalidateAll(): void {
+  invalidateAll(execCtx?: ExecutionContext): void {
     this.#cacheKeys.clear();
     debugLog('info', '[PromptCacheManager] All cache keys invalidated');
+    execCtx?.traceCollector.onCacheEvent({
+      event: 'invalidation',
+      timestamp: Date.now(),
+    });
   }
 
   /**

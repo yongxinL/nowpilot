@@ -2,6 +2,7 @@ import { debugLog } from '../utils/debugLog';
 import { getDB } from './IndexedDBManager';
 import type { WriteJournalEntry, WriteJournalOperation, WriteJournalSteps } from './WriteJournalEntry';
 import { validateWriteJournalEntry } from './WriteJournalEntry';
+import type { ExecutionContext } from '../telemetry/types';
 
 export class WriteJournal {
   private readonly RETENTION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days per D-06
@@ -11,6 +12,7 @@ export class WriteJournal {
     operation: WriteJournalOperation,
     targetIds: Record<string, string>,
     steps: { name: string }[],
+    execCtx?: ExecutionContext,
   ): Promise<WriteJournalEntry> {
     const id = crypto.randomUUID();
     const entry: WriteJournalEntry = {
@@ -33,6 +35,14 @@ export class WriteJournal {
     await tx.done;
 
     debugLog('debug', 'WriteJournal: entry created', { id, operation });
+    execCtx?.traceCollector.onWriteJournalEvent({
+      journalId: id,
+      operation,
+      status: 'pending',
+      stepsCount: steps.length,
+      recovered: false,
+      timestamp: Date.now(),
+    });
     return entry;
   }
 
@@ -76,7 +86,7 @@ export class WriteJournal {
     await tx.done;
   }
 
-  async markCompleted(entryId: string): Promise<void> {
+  async markCompleted(entryId: string, execCtx?: ExecutionContext): Promise<void> {
     const db = await getDB();
     const tx = db.transaction('write_journal_entries', 'readwrite');
     const entry = await tx.store.get(entryId);
@@ -87,9 +97,17 @@ export class WriteJournal {
     }
     await tx.done;
     debugLog('debug', 'WriteJournal: entry completed', { id: entryId });
+    execCtx?.traceCollector.onWriteJournalEvent({
+      journalId: entryId,
+      operation: (entry?.operation ?? 'update-workspace') as any,
+      status: 'completed',
+      stepsCount: entry?.steps.length ?? 0,
+      recovered: false,
+      timestamp: Date.now(),
+    });
   }
 
-  async markFailed(entryId: string): Promise<void> {
+  async markFailed(entryId: string, execCtx?: ExecutionContext): Promise<void> {
     const db = await getDB();
     const tx = db.transaction('write_journal_entries', 'readwrite');
     const entry = await tx.store.get(entryId);
@@ -100,6 +118,14 @@ export class WriteJournal {
     }
     await tx.done;
     debugLog('error', 'WriteJournal: entry failed', { id: entryId });
+    execCtx?.traceCollector.onWriteJournalEvent({
+      journalId: entryId,
+      operation: (entry?.operation ?? 'update-workspace') as any,
+      status: 'failed',
+      stepsCount: entry?.steps.length ?? 0,
+      recovered: false,
+      timestamp: Date.now(),
+    });
   }
 
   async recover(): Promise<number> {
