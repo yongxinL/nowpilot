@@ -179,6 +179,9 @@ dist
 # Built Visual Studio Code Extensions
 *.vsix
 
+# npm — not used in pnpm project
+package-lock.json
+
 # WXT and references
 .wxt/
 references/
