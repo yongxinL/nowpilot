@@ -377,3 +377,163 @@ describe('MemoryEngine — extract()', () => {
     expect(result).toBeUndefined();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Single-writer write routing tests (D-06, D-07)
+// ---------------------------------------------------------------------------
+
+describe('MemoryEngine — write routing', () => {
+  let engine: InstanceType<typeof MemoryEngine>;
+  let mockConversationStore: ReturnType<typeof createMockConversationStore>;
+  let mockUserMemoryStore: ReturnType<typeof createMockUserMemoryStore>;
+  let mockPreferenceStore: ReturnType<typeof createMockPreferenceStore>;
+  let mockScorer: ReturnType<typeof createMockScorer>;
+  let mockExtractor: ReturnType<typeof createMockExtractor>;
+  let mockBroadcastBus: ReturnType<typeof createMockBroadcastBus>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockConversationStore = createMockConversationStore();
+    mockUserMemoryStore = createMockUserMemoryStore();
+    mockPreferenceStore = createMockPreferenceStore();
+    mockScorer = createMockScorer();
+    mockExtractor = createMockExtractor();
+    mockBroadcastBus = createMockBroadcastBus();
+
+    engine = new MemoryEngine(
+      mockConversationStore,
+      mockUserMemoryStore,
+      mockPreferenceStore,
+      mockScorer,
+      mockExtractor,
+      mockBroadcastBus,
+    );
+  });
+
+  // Test 1: extract on primary surface calls userMemoryStore methods directly (D-06)
+  it('primary surface writes directly via store methods (D-06)', async () => {
+    engine.setPrimary(true);
+    mockExtractor.extract.mockResolvedValueOnce({
+      facts: [{ fact: 'Test fact', category: 'knowledge', confidence: 0.7, tags: ['test'] }],
+      summary: undefined,
+    });
+    mockGetAllUserFacts.mockResolvedValueOnce([]);
+
+    await engine.extract('conv-1', [
+      { role: 'user', content: 'Hello' },
+      { role: 'assistant', content: 'Hi' },
+    ], []);
+
+    // Primary surface: upsert called directly (no BroadcastBus)
+    // BroadcastBus NOT called for upsert routing
+    expect(mockBroadcastBus.emitMemoryWrite).not.toHaveBeenCalled();
+  });
+
+  // Test 2: extract on non-primary surface does NOT call upsert directly — emits MemoryWriteRequest via BroadcastBus (D-07)
+  it('non-primary surface emits write requests via BroadcastBus (D-07)', async () => {
+    engine.setPrimary(false);
+    mockExtractor.extract.mockResolvedValueOnce({
+      facts: [{ fact: 'Test fact', category: 'knowledge', confidence: 0.7, tags: ['test'] }],
+      summary: undefined,
+    });
+    mockGetAllUserFacts.mockResolvedValueOnce([]);
+
+    await engine.extract('conv-1', [
+      { role: 'user', content: 'Hello' },
+      { role: 'assistant', content: 'Hi' },
+    ], []);
+
+    // Non-primary surface: emits write request via BroadcastBus
+    expect(mockBroadcastBus.emitMemoryWrite).toHaveBeenCalled();
+  });
+
+  // Test 3: MemoryWriteRequest carries idempotencyKey
+  it('write request carries idempotencyKey', async () => {
+    engine.setPrimary(false);
+    mockExtractor.extract.mockResolvedValueOnce({
+      facts: [{ fact: 'Test fact', category: 'knowledge', confidence: 0.7, tags: ['test'] }],
+      summary: undefined,
+    });
+    mockGetAllUserFacts.mockResolvedValueOnce([]);
+
+    await engine.extract('conv-1', [
+      { role: 'user', content: 'Hello' },
+      { role: 'assistant', content: 'Hi' },
+    ], []);
+
+    expect(mockBroadcastBus.emitMemoryWrite).toHaveBeenCalledTimes(1);
+    const emittedRequest = mockBroadcastBus.emitMemoryWrite.mock.calls[0][0];
+    expect(emittedRequest).toHaveProperty('idempotencyKey');
+    expect(typeof emittedRequest.idempotencyKey).toBe('string');
+    expect(emittedRequest.idempotencyKey.length).toBeGreaterThan(0);
+  });
+
+  // Test 4: handleMemoryWrite processes 'upsert-fact' type
+  it('handleMemoryWrite processes upsert-fact type', async () => {
+    await engine.handleMemoryWrite({
+      type: 'upsert-fact',
+      payload: { id: 'f1', fact: 'Test', category: 'knowledge', confidence: 0.8, tags: [], source: 'test', created: Date.now(), updated: Date.now(), status: 'active', useCount: 0, lastUsedAt: Date.now() },
+      surfaceId: 'test',
+      timestamp: Date.now(),
+      idempotencyKey: 'test-key-1',
+    });
+
+    expect(mockUserMemoryStore.upsert).toHaveBeenCalledTimes(1);
+  });
+
+  // Test 5: handleMemoryWrite processes 'update-summary' type
+  it('handleMemoryWrite processes update-summary type', async () => {
+    await engine.handleMemoryWrite({
+      type: 'update-summary',
+      payload: { conversationId: 'conv-1', messages: [{ role: 'user', content: 'Hello' }], summary: 'New summary' },
+      surfaceId: 'test',
+      timestamp: Date.now(),
+      idempotencyKey: 'test-key-2',
+    });
+
+    expect(mockConversationStore.summarize).toHaveBeenCalledTimes(1);
+  });
+
+  // Test 6: handleMemoryWrite processes 'archive-conversation' type
+  it('handleMemoryWrite processes archive-conversation type', async () => {
+    await engine.handleMemoryWrite({
+      type: 'archive-conversation',
+      payload: { conversationId: 'conv-1' },
+      surfaceId: 'test',
+      timestamp: Date.now(),
+      idempotencyKey: 'test-key-3',
+    });
+
+    expect(mockConversationStore.archive).toHaveBeenCalledTimes(1);
+  });
+
+  // Test 7: handleMemoryWrite ignores requests with stale idempotencyKeys
+  it('handleMemoryWrite ignores duplicate idempotencyKeys', async () => {
+    const request = {
+      type: 'upsert-fact' as const,
+      payload: { id: 'f1', fact: 'Test', category: 'knowledge', confidence: 0.8, tags: [], source: 'test', created: Date.now(), updated: Date.now(), status: 'active' as const, useCount: 0, lastUsedAt: Date.now() },
+      surfaceId: 'test',
+      timestamp: Date.now(),
+      idempotencyKey: 'dup-key',
+    };
+
+    // First call should process
+    await engine.handleMemoryWrite(request);
+    expect(mockUserMemoryStore.upsert).toHaveBeenCalledTimes(1);
+
+    // Second call with same key should be ignored
+    await engine.handleMemoryWrite(request);
+    expect(mockUserMemoryStore.upsert).toHaveBeenCalledTimes(1); // still 1
+  });
+
+  // Test 8: extract is read-only on non-primary surfaces (D-07) — assemble() still works
+  it('non-primary surface — assemble still works for reads', async () => {
+    engine.setPrimary(false);
+
+    const result = await engine.assemble('conv-1', 'hello', 'tiny');
+
+    expect(result.memory).toHaveLength(3);
+    expect(result.conversationContext).toBeDefined();
+    expect(result.preferences).toBeDefined();
+  });
+});
