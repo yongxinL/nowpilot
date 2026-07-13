@@ -1,20 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Mock generateText from the 'ai' SDK
-const mockGenerateText = vi.fn();
+// Mock generateText from the 'ai' SDK — use vi.hoisted() for hoist-safe mocking
+const { mockGenerateText, mockDebugLog } = vi.hoisted(() => ({
+  mockGenerateText: vi.fn(),
+  mockDebugLog: vi.fn(),
+}));
 
 vi.mock('ai', () => ({
   generateText: mockGenerateText,
 }));
 
 vi.mock('../../../src/core/utils/debugLog', () => ({
-  debugLog: vi.fn(),
+  debugLog: mockDebugLog,
 }));
 
 import { MemoryExtractor, EXTRACTION_PROMPT } from '../../../src/core/memory/MemoryExtractor';
 import { extractionResultSchema } from '../../../src/core/memory/memoryTypes';
 import { generateText } from 'ai';
-import { debugLog } from '../../../src/core/utils/debugLog';
 
 // ---------------------------------------------------------------------------
 // Test messages fixture
@@ -116,7 +118,7 @@ describe('MemoryExtractor', () => {
 
     await extractor.extract(TEST_MESSAGES, 'small');
 
-    expect(debugLog).toHaveBeenCalledWith('info', expect.stringContaining('[MemoryExtractor]'), expect.anything());
+    expect(mockDebugLog).toHaveBeenCalledWith('info', expect.stringContaining('[MemoryExtractor]'), expect.anything());
   });
 
   it('logs failure with debugLog("error", ...)', async () => {
@@ -126,7 +128,7 @@ describe('MemoryExtractor', () => {
 
     await extractor.extract(TEST_MESSAGES, 'small');
 
-    expect(debugLog).toHaveBeenCalledWith('error', expect.stringContaining('[MemoryExtractor]'), expect.anything());
+    expect(mockDebugLog).toHaveBeenCalledWith('error', expect.stringContaining('[MemoryExtractor]'), expect.anything());
   });
 
   it('EXTRACTION_PROMPT instructs the LLM to output JSON matching the extraction schema', () => {
