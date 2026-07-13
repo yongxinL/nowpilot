@@ -11,6 +11,9 @@ import type { CostTierType } from '../providers/providerTypes';
 import type { OptimizedContext, PromptSection, ModelContextTier } from '../../context/contextTypes';
 import { ContextTooLargeError } from '../../context/contextTypes';
 import type { MemoryEngine } from '../../memory/MemoryEngine';
+import type { ExecutionContext } from '../../telemetry/types';
+import { DefaultTraceCollector, TraceVerbosity } from '../../telemetry/types';
+import { aiTransactionLog } from '../../telemetry/AITransactionLog';
 
 const TIER_CAP: Record<CostTierType, number> = {
   haiku: 1,
@@ -37,6 +40,8 @@ export class AgentOrchestrator {
     private renderer: RendererService,
     private router: ProviderRouter,
     private memoryEngine: MemoryEngine,
+    private diagnosticsMode?: boolean,
+    private privacyMode?: boolean,
   ) {}
 
   async *run(
@@ -86,6 +91,26 @@ export class AgentOrchestrator {
     const tierCap = TIER_CAP[costTier] || 1;
     this.collectedToolResults = [];
 
+    // Resolve diagnostic and privacy modes at runtime (D-39)
+    const diagnosticsMode = await this.#resolveMode(
+      this.diagnosticsMode, 'np_diagnostics_mode',
+    );
+    const privacyMode = await this.#resolveMode(
+      this.privacyMode, 'np_privacy_mode',
+    );
+
+    const operationId = optimizedContext.provenance.operationId;
+    const traceCollector = new DefaultTraceCollector();
+    const execCtx: ExecutionContext = {
+      traceCollector,
+      operationId,
+      abortSignal: abortManager.rootController.signal,
+      verbosity: diagnosticsMode ? TraceVerbosity.DIAGNOSTIC : TraceVerbosity.NORMAL,
+      privacyMode,
+    };
+
+    await aiTransactionLog.start(operationId, execCtx);
+
     try {
       yield* this.emitDegradationEvents(optimizedContext);
 
@@ -97,14 +122,18 @@ export class AgentOrchestrator {
       const toolResults: ToolExecutionResult[] = [];
       yield* this.executePlannerLoop(
         costTier, preferredProviders, plannerSystemPrompt,
-        plannerUserMessage, abortManager, tierCap, toolResults,
+        plannerUserMessage, abortManager, tierCap, toolResults, execCtx,
       );
 
       yield* this.executeRenderer(
         'flash', preferredProviders, plannerSystemPrompt,
-        rendererUserMessage, toolResults, abortManager,
+        rendererUserMessage, toolResults, abortManager, execCtx,
       );
+
+      await aiTransactionLog.complete(operationId, traceCollector);
     } catch (err) {
+      await aiTransactionLog.fail(operationId, err, traceCollector);
+
       if (err instanceof ContextTooLargeError) {
         debugLog('info', '[AgentOrchestrator] Context too large', {
           estimatedTokens: err.estimatedTokens,
@@ -139,6 +168,23 @@ export class AgentOrchestrator {
 
       this.currentAbortManager = null;
     }
+  }
+
+  /**
+   * Resolve a mode value: constructor param > chrome.storage.local > false (D-39).
+   */
+  async #resolveMode(
+    constructorValue: boolean | undefined,
+    storageKey: string,
+  ): Promise<boolean> {
+    if (constructorValue !== undefined) return constructorValue;
+    try {
+      const result = await chrome.storage.local.get(storageKey);
+      if (typeof result[storageKey] === 'boolean') return result[storageKey];
+    } catch {
+      // chrome.storage unavailable — fall through to default
+    }
+    return false;
   }
 
   private async *emitDegradationEvents(
@@ -178,6 +224,7 @@ export class AgentOrchestrator {
     abortManager: AbortManager,
     tierCap: number,
     toolResults: ToolExecutionResult[],
+    execCtx?: ExecutionContext,
   ): AsyncGenerator<OrchestratorEvent> {
     let plannerCalls = 0;
 
@@ -192,6 +239,7 @@ export class AgentOrchestrator {
         systemPrompt,
         this.buildPlannerPrompt(userMessage, toolResults),
         plannerSignal,
+        execCtx,
       );
 
       plannerCalls++;
@@ -216,6 +264,7 @@ export class AgentOrchestrator {
           decision.toolName,
           decision.toolInput ?? {},
           toolSignal,
+          execCtx,
         );
 
         yield {
@@ -237,6 +286,7 @@ export class AgentOrchestrator {
     userMessage: string,
     toolResults: ToolExecutionResult[],
     abortManager: AbortManager,
+    execCtx?: ExecutionContext,
   ): AsyncGenerator<OrchestratorEvent> {
     const rendererSignal = abortManager.createStageTimeout(
       DEFAULT_TIMEOUT_CONFIG.renderer,
@@ -258,6 +308,7 @@ export class AgentOrchestrator {
       systemPrompt,
       messages,
       rendererSignal,
+      execCtx,
     );
   }
 
