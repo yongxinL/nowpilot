@@ -214,7 +214,7 @@ Plans:
   5. Memory is shared across surfaces — Side Panel and Full App read the same stores through MemoryEngine
   6. Memory writes are single-writer — only the primary surface (via BroadcastBus election) writes; auto-summarise triggers after every 12 messages
 
-**Plans:** 2/7 plans executed
+**Plans:** 3/7 plans executed
 
 **Wave 0** — Setup
 
@@ -223,7 +223,7 @@ Plans:
 **Wave 1** — Foundation (parallel)
 
 - [x] 05-02-PLAN.md — Schema migration v2: IndexedDBManager (DB_VERSION=2, NowPilotDB extension) + MemoryDB extended signatures
-- [ ] 05-03-PLAN.md — MiniSearchIndex + MemoryScorer (5-factor scoring, D-12) + conflictResolver (versioned facts, D-16/D-17)
+- [x] 05-03-PLAN.md — MiniSearchIndex + MemoryScorer (5-factor scoring, D-12) + conflictResolver (versioned facts, D-16/D-17)
 
 **Wave 2** — Stores (parallel)
 
@@ -323,7 +323,7 @@ Phase 7 depends on both Phase 5 and Phase 6 being complete, acting as the conver
 | 2. Storage, Security, WriteJournal, Workspace Persistence | 8/8 | Complete    | 2026-07-12 |
 | 3. Cost-Effective AI Runtime | 9/9 | Complete    | 2026-07-12 |
 | 4. Context-Adaptive Execution | 5/5 | Complete    | 2026-07-12 |
-| 5. Persistent Memory Architecture | 2/7 | In Progress|  |
+| 5. Persistent Memory Architecture | 3/7 | In Progress|  |
 | 6. Transaction Logging and Diagnostics | 0/TBD | Not started | - |
 | 7. Full Chat, Agent, Notes, Options Pages | 0/TBD | Not started | - |
 | 8. Add-ons and Content Script Runtime (Extraction-Only) | 0/TBD | Not started | - |
