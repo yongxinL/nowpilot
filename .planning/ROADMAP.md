@@ -12,7 +12,7 @@ NowPilot v0.1 is a privacy-first, extensible Chrome MV3 AI assistant. The 9-phas
 - [x] **Phase 4: Context-Adaptive Execution** — Tier classification, token budgets, degradation pipeline, minimal mode (completed 2026-07-12)
 - [x] **Phase 5: Persistent Memory Architecture** — System-owned memory engine, conversation/user/preference stores, retrieval scoring (completed 2026-07-13)
 - [x] **Phase 6: Transaction Logging and Diagnostics** — AITransactionLog, TraceRedactor, DiagnosticsPanel in Full App (completed 2026-07-13)
-- [ ] **Phase 7: Full Chat, Agent, Notes, Options Pages** — Complete UI across both surfaces, all hooks, markdown streaming
+- [x] **Phase 7: Full Chat, Agent, Notes, Options Pages** — Complete UI across both surfaces, all hooks, markdown streaming (completed 2026-07-13)
 - [ ] **Phase 8: Add-ons and Content Script Runtime (Extraction-Only)** — Write/TeamGQM/ServiceNow add-ons, content scripts, data portability
 - [ ] **Phase 9: Hardening and Release** — Performance tests, isolation verification, bundle checks, production release
 
@@ -293,7 +293,7 @@ Plans:
   7. Options page shows all 11 sub-sections with functional forms — Providers (with test connection), Models, MCP Servers, Prompt Templates, Slash Commands, Memory, Diagnostics, Import/Export, Feature Flags, Add-on Settings, About
   8. Options accessible only from Full App (not Side Panel), enforcing the surface separation rule
 
-**Plans**: 5/6 plans executed
+**Plans**: 6/6 plans complete
 
 **Wave 0** — Foundation
 
@@ -308,7 +308,7 @@ Plans:
 **Wave 2** — Chat & Agent (parallel)
 
 - [x] 07-03-PLAN.md — Create useChat hook (messages, conversations, title generation, drafts, context assembly), ChatPage with chat components (ChatMessage, ConversationSidebar, ProviderSelector, HistoryListItem)
-- [ ] 07-04-PLAN.md — Extend AgentOrchestrator with PermissionResolver callback, create useAgent hook (thoughtChain steps, permission handling), AgentPage with agent components (ThoughtChainView, ToolCard, PermissionDialog)
+- [x] 07-04-PLAN.md — Extend AgentOrchestrator with PermissionResolver callback, create useAgent hook (thoughtChain steps, permission handling), AgentPage with agent components (ThoughtChainView, ToolCard, PermissionDialog)
 
 **UI hint**: yes
 
@@ -364,6 +364,6 @@ Phase 7 depends on both Phase 5 and Phase 6 being complete, acting as the conver
 | 4. Context-Adaptive Execution | 5/5 | Complete    | 2026-07-12 |
 | 5. Persistent Memory Architecture | 7/7 | Complete   | 2026-07-13 |
 | 6. Transaction Logging and Diagnostics | 8/8 | Complete   | 2026-07-13 |
-| 7. Full Chat, Agent, Notes, Options Pages | 5/6 | In Progress|  |
+| 7. Full Chat, Agent, Notes, Options Pages | 6/6 | Complete   | 2026-07-13 |
 | 8. Add-ons and Content Script Runtime (Extraction-Only) | 0/TBD | Not started | - |
 | 9. Hardening and Release | 0/TBD | Not started | - |
