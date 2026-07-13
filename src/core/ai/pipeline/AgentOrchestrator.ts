@@ -14,6 +14,17 @@ import type { MemoryEngine } from '../../memory/MemoryEngine';
 import type { ExecutionContext } from '../../telemetry/types';
 import { DefaultTraceCollector, TraceVerbosity } from '../../telemetry/types';
 import { aiTransactionLog } from '../../telemetry/AITransactionLog';
+import type { ToolRegistry } from '../tools/ToolRegistry';
+
+// ---------------------------------------------------------------------------
+// PermissionResolver type — callback used before tool execution to determine
+// user permission. Returns 'allow-once' | 'allow-always' | 'deny'.
+// ---------------------------------------------------------------------------
+export type PermissionResolver = (
+  toolName: string,
+  toolInput: unknown,
+  isDangerous: boolean,
+) => Promise<'allow-once' | 'allow-always' | 'deny'>;
 
 const TIER_CAP: Record<CostTierType, number> = {
   haiku: 1,
@@ -34,6 +45,8 @@ export class AgentOrchestrator {
 
   private collectedToolResults: Array<unknown> = [];
 
+  private permissionResolver: PermissionResolver | null = null;
+
   constructor(
     private planner: PlannerService,
     private executor: ExecutorService,
@@ -42,7 +55,18 @@ export class AgentOrchestrator {
     private memoryEngine: MemoryEngine,
     private diagnosticsMode?: boolean,
     private privacyMode?: boolean,
+    private toolRegistry?: ToolRegistry,
   ) {}
+
+  /**
+   * Set a permission resolver callback that is called before each tool
+   * execution. The resolver receives the tool name, input, and whether
+   * the tool is classified as dangerous. Returns the permission decision.
+   * When not set, tools execute without permission gating (backward compatible).
+   */
+  setPermissionResolver(resolver: PermissionResolver): void {
+    this.permissionResolver = resolver;
+  }
 
   async *run(
     userMessage: string,
@@ -259,6 +283,41 @@ export class AgentOrchestrator {
           toolName: decision.toolName,
           input: decision.toolInput,
         };
+
+        // --- Permission check (D-05, D-07) ---
+        if (this.permissionResolver) {
+          // Determine if tool is dangerous via ToolRegistry
+          const toolDef = this.toolRegistry?.get(decision.toolName);
+          const isDangerous = toolDef?.category === 'dangerous';
+
+          yield {
+            type: 'waiting-permission',
+            toolName: decision.toolName,
+            toolInput: decision.toolInput,
+          };
+
+          const decision_ = await this.permissionResolver(
+            decision.toolName,
+            decision.toolInput,
+            isDangerous,
+          );
+
+          if (decision_ === 'deny') {
+            const deniedResult: ToolExecutionResult = {
+              success: false,
+              error: 'Permission denied by user',
+            };
+            yield {
+              type: 'tool-result',
+              toolName: decision.toolName,
+              result: deniedResult,
+            };
+            toolResults.push(deniedResult);
+            this.collectedToolResults.push(deniedResult);
+            continue; // Skip execution, proceed to next planner iteration
+          }
+          // 'allow-once' or 'allow-always' → fall through to execute
+        }
 
         const result = await this.executor.execute(
           decision.toolName,
