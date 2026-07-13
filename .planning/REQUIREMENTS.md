@@ -87,10 +87,10 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Persistent Memory
 
-- [ ] **MEM-01**: ConversationMemoryStore — per-conversation summary + recent turns (2-6 based on tier)
-- [ ] **MEM-02**: UserMemoryStore — cross-session fact/preference/pattern memory with scoring
-- [ ] **MEM-03**: PreferenceMemoryStore — behavioural settings (response style, tool autonomy, theme)
-- [ ] **MEM-04**: MemoryEngine — orchestration, scoring, summarisation, injection (top-5, ≤1000 tokens)
+- [x] **MEM-01**: ConversationMemoryStore — per-conversation summary + recent turns (2-6 based on tier)
+- [x] **MEM-02**: UserMemoryStore — cross-session fact/preference/pattern memory with scoring
+- [x] **MEM-03**: PreferenceMemoryStore — behavioural settings (response style, tool autonomy, theme)
+- [x] **MEM-04**: MemoryEngine — orchestration, scoring, summarisation, injection (top-5, ≤1000 tokens)
 - [ ] **MEM-05**: Memory shared across surfaces via MemoryEngine
 - [ ] **MEM-06**: Auto-summarise older messages after every 12 messages
 - [ ] **MEM-07**: Memory writes single-writer — only primary surface via BroadcastBus election
@@ -278,10 +278,10 @@ Requirements for initial release. Each maps to roadmap phases.
 | CTXT-05 | Phase 4 | Complete |
 | CTXT-06 | Phase 4 | Complete |
 | CTXT-07 | Phase 4 | Complete |
-| MEM-01 | Phase 5 | Pending |
-| MEM-02 | Phase 5 | Pending |
-| MEM-03 | Phase 5 | Pending |
-| MEM-04 | Phase 5 | Pending |
+| MEM-01 | Phase 5 | Complete |
+| MEM-02 | Phase 5 | Complete |
+| MEM-03 | Phase 5 | Complete |
+| MEM-04 | Phase 5 | Complete |
 | MEM-05 | Phase 5 | Pending |
 | MEM-06 | Phase 5 | Pending |
 | MEM-07 | Phase 5 | Pending |
