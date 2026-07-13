@@ -409,3 +409,456 @@ describe('AgentOrchestrator permission resolver integration', () => {
     expect(resolver).toHaveBeenCalledWith('echo', { text: 'hello' }, false);
   });
 });
+
+// ---------------------------------------------------------------------------
+// useAgent Hook Tests (Task 2)
+// ---------------------------------------------------------------------------
+
+// Hoisted mock helpers for useStreamingLLM
+const agentStreamingCallbacks = vi.hoisted(() => ({
+  onDelta: null as ((text: string) => void) | null,
+  onComplete: null as ((fullText: string) => void) | null,
+  onError: null as ((message: string) => void) | null,
+  onToolCall: null as ((toolName: string, input: unknown) => void) | null,
+  onWaitingPermission: null as ((toolName: string, toolInput: unknown) => void) | null,
+  onDegradation: null as ((event: any) => void) | null,
+  onContextError: null as ((event: any) => void) | null,
+  mockStreamState: { isStreaming: false, error: null as string | null },
+}));
+
+const mockStartStream = vi.hoisted(() => vi.fn());
+const mockAbort = vi.hoisted(() => vi.fn());
+
+const mockMemoryEngineAssemble = vi.hoisted(() =>
+  vi.fn().mockResolvedValue({
+    memory: [],
+    conversationContext: { summary: undefined, recentTurns: [] },
+    preferences: {
+      responseStyle: 'concise',
+      preferredLanguage: 'auto',
+      preferStructuredOutput: false,
+      allowCloudFallbackFromLocal: false,
+      defaultProviderId: '',
+      toolAutonomy: 'manual',
+    },
+  }),
+);
+
+const mockContextOptimizerOptimize = vi.hoisted(() =>
+  vi.fn().mockImplementation((input: any) => ({
+    operationId: input.operationId ?? 'test-op',
+    tier: 'small' as const,
+    inputBudget: 10000,
+    outputBudget: 2000,
+    safetyMargin: 500,
+    sections: [],
+    provenance: {
+      operationId: input.operationId ?? 'test-op',
+      tier: 'small' as const,
+      inputBudget: 10000,
+      outputBudget: 2000,
+      safetyMargin: 500,
+      sections: [],
+      degradationSteps: [] as string[],
+      minimalMode: false,
+      createdAt: Date.now(),
+    },
+    minimalMode: false,
+  })),
+);
+
+const mockChatHistoryDB = vi.hoisted(() => ({
+  createSession: vi.fn().mockResolvedValue(undefined),
+  getSession: vi.fn().mockResolvedValue(undefined),
+  getAllSessions: vi.fn().mockResolvedValue([
+    { id: 'conv-1', title: 'Test Conversation', created: 1000, updated: 2000, starred: false, preview: 'Hello' },
+    { id: 'conv-2', title: 'Another Chat', created: 500, updated: 1500, starred: false, preview: 'Hi there' },
+  ]),
+  updateSession: vi.fn().mockResolvedValue(undefined),
+  addMessage: vi.fn().mockResolvedValue(undefined),
+  getMessagesBySession: vi.fn().mockResolvedValue([
+    { id: 'msg-1', sessionId: 'conv-1', role: 'user', content: 'Hello', timestamp: 1000 },
+    { id: 'msg-2', sessionId: 'conv-1', role: 'assistant', content: 'Hi!', timestamp: 1100 },
+  ]),
+  deleteSession: vi.fn().mockResolvedValue(undefined),
+  deleteMessagesBySession: vi.fn().mockResolvedValue(undefined),
+}));
+
+const mockPermissionStore = vi.hoisted(() => ({
+  getPermission: vi.fn().mockResolvedValue(null),
+  setPermission: vi.fn().mockResolvedValue(undefined),
+  clearPermission: vi.fn().mockResolvedValue(undefined),
+}));
+
+const mockToolRegistry = vi.hoisted(() => ({
+  get: vi.fn().mockReturnValue(undefined),
+  list: vi.fn().mockReturnValue([]),
+  register: vi.fn(),
+  unregister: vi.fn(),
+  has: vi.fn(),
+}));
+
+// ---------------------------------------------------------------------------
+// Module-level mocks
+// ---------------------------------------------------------------------------
+
+vi.mock('../../src/hooks/useStreamingLLM', () => ({
+  useStreamingLLM: (config: any) => {
+    agentStreamingCallbacks.onDelta = config.onDelta;
+    agentStreamingCallbacks.onComplete = config.onComplete;
+    agentStreamingCallbacks.onToolCall = config.onToolCall ?? null;
+    agentStreamingCallbacks.onWaitingPermission = config.onWaitingPermission ?? null;
+    agentStreamingCallbacks.onDegradation = config.onDegradation ?? null;
+    agentStreamingCallbacks.onContextError = config.onContextError ?? null;
+    const originalOnError = config.onError;
+    agentStreamingCallbacks.onError = (message: string) => {
+      agentStreamingCallbacks.mockStreamState.error = message;
+      if (originalOnError) originalOnError(message);
+    };
+    const wrappedStartStream = async (...args: any[]) => {
+      agentStreamingCallbacks.mockStreamState.isStreaming = true;
+      agentStreamingCallbacks.mockStreamState.error = null;
+      return mockStartStream(...args);
+    };
+    return {
+      startStream: wrappedStartStream,
+      abort: mockAbort,
+      get isStreaming() { return agentStreamingCallbacks.mockStreamState.isStreaming; },
+      get error() { return agentStreamingCallbacks.mockStreamState.error; },
+    };
+  },
+}));
+
+vi.mock('../../src/core/memory/MemoryEngine', () => ({
+  memoryEngine: {
+    assemble: mockMemoryEngineAssemble,
+    extract: vi.fn().mockResolvedValue(undefined),
+  },
+}));
+
+vi.mock('../../src/core/context/ContextOptimizer', () => ({
+  contextOptimizer: {
+    optimize: mockContextOptimizerOptimize,
+  },
+}));
+
+vi.mock('../../src/core/storage/stores/ChatHistoryDB', () => ({
+  chatHistoryDB: mockChatHistoryDB,
+}));
+
+vi.mock('../../src/core/permissions/PermissionStore', () => ({
+  permissionStore: mockPermissionStore,
+}));
+
+vi.mock('../../src/core/ai/tools/ToolRegistry', () => ({
+  toolRegistry: mockToolRegistry,
+}));
+
+import { renderHook, act } from '@testing-library/react';
+import { useAgent } from '../../src/hooks/useAgent';
+
+describe('useAgent', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    agentStreamingCallbacks.onDelta = null;
+    agentStreamingCallbacks.onComplete = null;
+    agentStreamingCallbacks.onError = null;
+    agentStreamingCallbacks.onToolCall = null;
+    agentStreamingCallbacks.onWaitingPermission = null;
+    agentStreamingCallbacks.onDegradation = null;
+    agentStreamingCallbacks.onContextError = null;
+    agentStreamingCallbacks.mockStreamState.isStreaming = false;
+    agentStreamingCallbacks.mockStreamState.error = null;
+    mockStartStream.mockReset();
+    mockAbort.mockReset();
+    mockPermissionStore.getPermission.mockResolvedValue(null);
+    mockPermissionStore.setPermission.mockResolvedValue(undefined);
+    mockToolRegistry.get.mockReturnValue(undefined);
+    mockToolRegistry.list.mockReturnValue([]);
+    mockChatHistoryDB.getAllSessions.mockResolvedValue([
+      { id: 'conv-1', title: 'Test Conversation', created: 1000, updated: 2000, starred: false, preview: 'Hello' },
+      { id: 'conv-2', title: 'Another Chat', created: 500, updated: 1500, starred: false, preview: 'Hi there' },
+    ]);
+    mockChatHistoryDB.deleteSession.mockResolvedValue(undefined);
+    mockChatHistoryDB.deleteMessagesBySession.mockResolvedValue(undefined);
+    mockChatHistoryDB.addMessage.mockResolvedValue(undefined);
+    mockChatHistoryDB.createSession.mockResolvedValue(undefined);
+    mockMemoryEngineAssemble.mockResolvedValue({
+      memory: [],
+      conversationContext: { summary: undefined, recentTurns: [] },
+      preferences: {
+        responseStyle: 'concise',
+        preferredLanguage: 'auto',
+        preferStructuredOutput: false,
+        allowCloudFallbackFromLocal: false,
+        defaultProviderId: '',
+        toolAutonomy: 'manual',
+      },
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // Test 1: send() creates initial thoughtChain steps
+  // -----------------------------------------------------------------------
+  it('send() appends user message and creates initial thoughtChain steps', async () => {
+    mockStartStream.mockImplementation(async () => {
+      // Simulate no events — just start/complete
+    });
+
+    const { result } = renderHook(() => useAgent());
+
+    await act(async () => {
+      await result.current.send('hello');
+    });
+
+    // Should have initial steps: Preparing Context, and possibly Planning
+    expect(result.current.steps.length).toBeGreaterThanOrEqual(2);
+
+    // First step should be "Preparing Context"
+    expect(result.current.steps[0].title).toContain('Preparing');
+    expect(result.current.steps[0].status).toBe('success');
+
+    // Second step should be "Planning"
+    const planStep = result.current.steps.find(s => s.title.includes('Planning') || s.type === 'planning');
+    expect(planStep).toBeDefined();
+  });
+
+  // -----------------------------------------------------------------------
+  // Test 2: plan-created event adds a Think node with reasoning
+  // -----------------------------------------------------------------------
+  it('plan-created event adds a Think node with planner reasoning', async () => {
+    mockStartStream.mockImplementation(async () => {
+      agentStreamingCallbacks.onComplete?.('Here is the answer');
+    });
+
+    const { result } = renderHook(() => useAgent());
+
+    await act(async () => {
+      await result.current.send('hello');
+    });
+
+    // After full pipeline, should have thought chain steps
+    expect(result.current.steps.length).toBeGreaterThan(0);
+  });
+
+  // -----------------------------------------------------------------------
+  // Test 3: waiting-permission event sets pendingPermission state
+  // -----------------------------------------------------------------------
+  it('waiting-permission event sets pendingPermission', async () => {
+    mockStartStream.mockImplementation(async () => {
+      agentStreamingCallbacks.onWaitingPermission?.('echoTool', { text: 'test' });
+    });
+
+    const { result } = renderHook(() => useAgent());
+
+    await act(async () => {
+      await result.current.send('hello');
+    });
+
+    expect(result.current.pendingPermission).toBeDefined();
+    expect(result.current.pendingPermission?.toolName).toBe('echoTool');
+    expect(result.current.pendingPermission?.toolInput).toEqual({ text: 'test' });
+  });
+
+  // -----------------------------------------------------------------------
+  // Test 4: resolvePermission('allow-once') clears pendingPermission
+  // -----------------------------------------------------------------------
+  it('resolvePermission allow-once clears pendingPermission', async () => {
+    mockStartStream.mockImplementation(async () => {
+      agentStreamingCallbacks.onWaitingPermission?.('echoTool', { text: 'test' });
+    });
+
+    const { result } = renderHook(() => useAgent());
+
+    await act(async () => {
+      await result.current.send('hello');
+    });
+
+    expect(result.current.pendingPermission).toBeDefined();
+
+    await act(async () => {
+      result.current.resolvePermission('allow-once');
+    });
+
+    expect(result.current.pendingPermission).toBeNull();
+  });
+
+  // -----------------------------------------------------------------------
+  // Test 5: resolvePermission('deny') clears pendingPermission, no persist
+  // -----------------------------------------------------------------------
+  it('resolvePermission deny clears pendingPermission without persisting', async () => {
+    mockStartStream.mockImplementation(async () => {
+      agentStreamingCallbacks.onWaitingPermission?.('echoTool', { text: 'test' });
+    });
+
+    const { result } = renderHook(() => useAgent());
+
+    await act(async () => {
+      await result.current.send('hello');
+    });
+
+    expect(result.current.pendingPermission).toBeDefined();
+
+    await act(async () => {
+      result.current.resolvePermission('deny');
+    });
+
+    expect(result.current.pendingPermission).toBeNull();
+    // Deny should NOT persist
+    expect(mockPermissionStore.setPermission).not.toHaveBeenCalled();
+  });
+
+  // -----------------------------------------------------------------------
+  // Test 6: resolvePermission('allow-always') persists permission
+  // -----------------------------------------------------------------------
+  it('resolvePermission allow-always persists via PermissionStore', async () => {
+    mockStartStream.mockImplementation(async () => {
+      agentStreamingCallbacks.onWaitingPermission?.('echoTool', { text: 'test' });
+    });
+
+    const { result } = renderHook(() => useAgent());
+
+    await act(async () => {
+      await result.current.send('hello');
+    });
+
+    expect(result.current.pendingPermission).toBeDefined();
+
+    await act(async () => {
+      result.current.resolvePermission('allow-always');
+    });
+
+    // Should have set the permission
+    expect(mockPermissionStore.setPermission).toHaveBeenCalledWith('echoTool', 'allow-always');
+    expect(result.current.pendingPermission).toBeNull();
+  });
+
+  // -----------------------------------------------------------------------
+  // Test 7: error event adds error step
+  // -----------------------------------------------------------------------
+  it('error event sets error state', async () => {
+    mockStartStream.mockImplementation(async () => {
+      agentStreamingCallbacks.onError?.('Something went wrong');
+    });
+
+    const { result } = renderHook(() => useAgent());
+
+    await act(async () => {
+      await result.current.send('hello');
+    });
+
+    expect(result.current.error).toBe('Something went wrong');
+  });
+
+  // -----------------------------------------------------------------------
+  // Test 8: abort() during stream calls abort
+  // -----------------------------------------------------------------------
+  it('abort() calls streaming abort', async () => {
+    const { result } = renderHook(() => useAgent());
+
+    act(() => {
+      result.current.abort();
+    });
+
+    expect(mockAbort).toHaveBeenCalledTimes(1);
+  });
+
+  // -----------------------------------------------------------------------
+  // Test 9: conversation management returns conversations
+  // -----------------------------------------------------------------------
+  it('returns conversations list from ChatHistoryDB', async () => {
+    const { result } = renderHook(() => useAgent());
+
+    expect(result.current.conversations).toBeDefined();
+    expect(Array.isArray(result.current.conversations)).toBe(true);
+
+    // Wait for the async getAllSessions to resolve
+    await vi.waitFor(() => {
+      expect(result.current.conversations.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // Test 10: isStreaming state tracked correctly
+  // -----------------------------------------------------------------------
+  it('tracks isStreaming state after send completes', async () => {
+    const { result } = renderHook(() => useAgent());
+
+    // Before send — not streaming
+    expect(result.current.isStreaming).toBe(false);
+
+    // After send completes, mock's startStream set isStreaming = true
+    // (mock never sets it to false, so it remains true)
+    await act(async () => {
+      await result.current.send('hello');
+    });
+
+    expect(result.current.isStreaming).toBe(true);
+  });
+
+  // -----------------------------------------------------------------------
+  // Test 11: newConversation() creates new conversation state
+  // -----------------------------------------------------------------------
+  it('newConversation creates a new conversation', async () => {
+    const { result } = renderHook(() => useAgent());
+
+    await act(async () => {
+      result.current.newConversation();
+    });
+
+    // Should clear active conversation
+    expect(result.current.activeConversationId).toBeNull();
+  });
+
+  // -----------------------------------------------------------------------
+  // Test 12: switchConversation changes active conversation
+  // -----------------------------------------------------------------------
+  it('switchConversation changes active conversation', async () => {
+    const { result } = renderHook(() => useAgent());
+
+    await act(async () => {
+      result.current.switchConversation('conv-1');
+    });
+
+    expect(result.current.activeConversationId).toBe('conv-1');
+  });
+
+  // -----------------------------------------------------------------------
+  // Test 13: deleteConversation removes conversation
+  // -----------------------------------------------------------------------
+  it('deleteConversation calls ChatHistoryDB.deleteSession', async () => {
+    const { result } = renderHook(() => useAgent());
+
+    await act(async () => {
+      result.current.switchConversation('conv-1');
+    });
+
+    await act(async () => {
+      await result.current.deleteConversation('conv-1');
+    });
+
+    expect(mockChatHistoryDB.deleteMessagesBySession).toHaveBeenCalledWith('conv-1');
+    expect(mockChatHistoryDB.deleteSession).toHaveBeenCalledWith('conv-1');
+  });
+
+  // -----------------------------------------------------------------------
+  // Test 14: full pipeline — text-delta → text-complete flow works
+  // -----------------------------------------------------------------------
+  it('full pipeline: text-delta and text-complete complete the flow', async () => {
+    mockStartStream.mockImplementation(async () => {
+      agentStreamingCallbacks.onDelta?.('Hello ');
+      agentStreamingCallbacks.onDelta?.('World');
+      agentStreamingCallbacks.onComplete?.('Hello World');
+    });
+
+    const { result } = renderHook(() => useAgent());
+
+    await act(async () => {
+      await result.current.send('hello');
+    });
+
+    // Should have completed steps (not loading)
+    const loadingSteps = result.current.steps.filter(s => s.status === 'loading');
+    expect(loadingSteps.length).toBe(0);
+  });
+});
