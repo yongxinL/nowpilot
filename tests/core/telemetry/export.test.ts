@@ -30,19 +30,23 @@ vi.mock('../../../src/core/telemetry/TraceRedactor', () => ({
 
 // =========================================================================
 // Mock JSZip — capture zip.file() calls for assertion
+// Use a proper constructor function so `new JSZip()` works.
 // =========================================================================
 const mockZipFile = vi.hoisted(() => vi.fn().mockReturnThis());
 const mockGenerateAsync = vi.hoisted(() =>
   vi.fn().mockResolvedValue(new Blob(['zip-binary'], { type: 'application/zip' }))
 );
-const mockJSZipConstructor = vi.hoisted(() => vi.fn(() => ({
-  file: mockZipFile,
-  generateAsync: mockGenerateAsync,
-})));
 
-vi.mock('jszip', () => ({
-  default: mockJSZipConstructor,
-}));
+vi.mock('jszip', () => {
+  // Return a callable constructor that creates a mock instance
+  function MockJSZip() {
+    return {
+      file: mockZipFile,
+      generateAsync: mockGenerateAsync,
+    };
+  }
+  return { default: MockJSZip };
+});
 
 // =========================================================================
 // Import the module under test (will fail in RED — export.ts doesn't exist)
@@ -55,6 +59,7 @@ import {
   buildManifest,
   downloadBlob,
 } from '../../../src/core/telemetry/export';
+import { TraceVerbosity } from '../../../src/core/telemetry/types';
 import type { TraceTree, ExportOptions, ExportManifest } from '../../../src/core/telemetry/types';
 
 // =========================================================================
@@ -75,7 +80,7 @@ const mockTraceTree: TraceTree = {
     startedAt: Date.now() - 5000,
     endedAt: Date.now(),
     durationMs: 5000,
-    verbosity: 'NORMAL',
+    verbosity: TraceVerbosity.NORMAL,
     privacyMode: false,
   },
   promptTraces: [
@@ -174,7 +179,7 @@ describe('exportSingleTrace', () => {
   });
 
   it('returns a JSON Blob with complete TraceTree', async () => {
-    const blob = await exportSingleTrace('op-single-1');
+    const blob = (await exportSingleTrace('op-single-1'))!;
 
     expect(blob).toBeInstanceOf(Blob);
     expect(blob.type).toBe('application/json');
@@ -228,7 +233,6 @@ describe('exportTraces', () => {
     const blob = await exportTraces(mockOptions);
 
     expect(blob).toBeInstanceOf(Blob);
-    expect(mockJSZipConstructor).toHaveBeenCalled();
     expect(mockGenerateAsync).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'blob', compression: 'DEFLATE' })
     );
@@ -283,18 +287,38 @@ describe('Privacy Mode', () => {
   });
 
   it('exportSingleTrace strips content fields when privacyMode is true', async () => {
-    const blob = await exportSingleTrace('op-single-1', true);
+    // Use a trace tree with tool I/O content
+    const traceWithIO: TraceTree = {
+      ...mockTraceTree,
+      transaction: {
+        ...mockTraceTree.transaction,
+        id: 'op-privacy-1',
+      },
+      toolTraces: [
+        {
+          ...mockTraceTree.toolTraces[0],
+          id: 'tt-privacy-1',
+          operationId: 'op-privacy-1',
+          inputSchema: '{"prompt":"tell me a story about sk-abc123"}',
+          outputSchema: '{"result":"Once upon a time..."}',
+        },
+      ],
+    };
+    mockGetTraceTree.mockResolvedValue(traceWithIO);
 
-    expect(blob).toBeInstanceOf(Blob);
+    // Without privacy mode — content kept (then redacted)
+    const blobNormal = await exportSingleTrace('op-privacy-1', false);
+    const textNormal = await blobNormal!.text();
+    const parsedNormal = JSON.parse(textNormal);
+    expect(parsedNormal.toolTraces[0].inputSchema).toBeDefined();
 
-    const text = await blob.text();
-    const parsed = JSON.parse(text);
+    // With privacy mode — content stripped
+    const blobPrivacy = await exportSingleTrace('op-privacy-1', true);
+    const textPrivacy = await blobPrivacy!.text();
+    const parsedPrivacy = JSON.parse(textPrivacy);
 
-    // Transaction still has privacyMode flag
-    expect(parsed.transaction.privacyMode).toBe(true);
-
-    // Content fields (prompt content, tool I/O) should be removed or empty
-    // This test passes when privacy mode strips content
+    expect(parsedPrivacy.toolTraces[0].inputSchema).toBeUndefined();
+    expect(parsedPrivacy.toolTraces[0].outputSchema).toBeUndefined();
   });
 
   it('exportTraces forces metadata-only when privacyMode is true', async () => {
@@ -304,7 +328,6 @@ describe('Privacy Mode', () => {
     const blob = await exportTraces(mockOptions, true);
 
     expect(blob).toBeInstanceOf(Blob);
-    expect(mockJSZipConstructor).toHaveBeenCalled();
   });
 });
 
@@ -346,17 +369,17 @@ describe('Redaction', () => {
     mockGetTraceTree.mockResolvedValue(rawKeyTree);
 
     // Mock redaction to actually redact keys
-    mockRedactObject.mockImplementation((obj: Record<string, unknown>) => {
-      const redacted = { ...obj };
-      for (const [key, value] of Object.entries(redacted)) {
+    mockRedactObject.mockImplementation((obj: unknown) => {
+      const r = { ...(obj as Record<string, unknown>) };
+      for (const [key, value] of Object.entries(r)) {
         if (typeof value === 'string') {
-          redacted[key] = value.replace(/sk-[A-Za-z0-9_-]+/g, '[REDACTED:API_KEY]');
+          r[key] = value.replace(/sk-[A-Za-z0-9_-]+/g, '[REDACTED:API_KEY]');
         }
       }
-      return redacted;
+      return r;
     });
 
-    const blob = await exportSingleTrace('op-raw-1');
+    const blob = (await exportSingleTrace('op-raw-1'))!;
 
     const text = await blob.text();
     expect(text).not.toContain('sk-test-key-value-12345');
