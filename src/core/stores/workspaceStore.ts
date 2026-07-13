@@ -15,6 +15,7 @@ export interface WorkspaceState {
   selectedNotes: string[];
   activeAddonContext: string | null;
   activeSkillRun: string | null;
+  drafts: Record<string, string>;
   setWorkspaceId: (id: string) => void;
   setConversationId: (id: string) => void;
   setActiveProvider: (provider: string) => void;
@@ -24,6 +25,8 @@ export interface WorkspaceState {
   setSelectedNotes: (selectedNotes: string[]) => void;
   setActiveAddonContext: (activeAddonContext: string | null) => void;
   setActiveSkillRun: (activeSkillRun: string | null) => void;
+  setDraft: (conversationId: string, text: string) => void;
+  clearDraft: (conversationId: string) => void;
 }
 
 const chromeLocalStorage = createJSONStorage<WorkspaceState>(() => ({
@@ -73,6 +76,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       selectedNotes: [],
       activeAddonContext: null,
       activeSkillRun: null,
+      drafts: {},
       setWorkspaceId: (workspaceId: string) => set({ workspaceId }),
       setConversationId: (conversationId: string) => set({ conversationId }),
       setActiveProvider: (activeProvider: string) => set({ activeProvider }),
@@ -82,6 +86,13 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       setSelectedNotes: (selectedNotes: string[]) => set({ selectedNotes }),
       setActiveAddonContext: (activeAddonContext: string | null) => set({ activeAddonContext }),
       setActiveSkillRun: (activeSkillRun: string | null) => set({ activeSkillRun }),
+      setDraft: (conversationId: string, text: string) =>
+        set((state) => ({ drafts: { ...state.drafts, [conversationId]: text } })),
+      clearDraft: (conversationId: string) =>
+        set((state) => {
+          const { [conversationId]: _, ...rest } = state.drafts;
+          return { drafts: rest };
+        }),
     }),
     {
       name: 'np_workspace',

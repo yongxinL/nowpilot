@@ -57,6 +57,21 @@ export class ChatHistoryDB {
     }
   }
 
+  async updateSession(
+    id: string,
+    updates: Partial<{ title: string; preview: string; updated: number; starred: boolean }>,
+  ): Promise<void> {
+    try {
+      const db = await getDB();
+      const existing = await db.get('chat_history_sessions', id);
+      if (!existing) return;
+      const merged = { ...existing, ...updates };
+      await db.put('chat_history_sessions', merged);
+    } catch (err) {
+      debugLog('error', 'ChatHistoryDB.updateSession failed', { error: err });
+    }
+  }
+
   async addMessage(message: {
     id: string;
     sessionId: string;

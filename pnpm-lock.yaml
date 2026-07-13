@@ -35,6 +35,9 @@ importers:
       antd:
         specifier: ^6.5.0
         version: 6.5.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      d3-force:
+        specifier: 3.0.0
+        version: 3.0.0
       idb:
         specifier: ^8.0.3
         version: 8.0.3

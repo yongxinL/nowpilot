@@ -66,12 +66,13 @@ describe('WorkspaceStore', () => {
     const state = useWorkspaceStore.getState() as unknown as Record<string, unknown>;
     const keys = Object.keys(state).filter(
       (k) => k !== 'setWorkspaceId' && k !== 'setConversationId' && k !== 'setActiveProvider' && k !== 'setActiveSurface'
-        && k !== 'setPinnedTabs' && k !== 'setCurrentPageContext' && k !== 'setSelectedNotes' && k !== 'setActiveAddonContext' && k !== 'setActiveSkillRun',
+        && k !== 'setPinnedTabs' && k !== 'setCurrentPageContext' && k !== 'setSelectedNotes' && k !== 'setActiveAddonContext' && k !== 'setActiveSkillRun'
+        && k !== 'setDraft' && k !== 'clearDraft',
     );
-    // Should have 4 metadata fields + 5 future-facing fields
+    // Should have 4 metadata fields + 5 future-facing fields + 1 drafts field
     expect(keys).toEqual([
       'workspaceId', 'conversationId', 'activeProvider', 'activeSurface',
-      'pinnedTabs', 'currentPageContext', 'selectedNotes', 'activeAddonContext', 'activeSkillRun',
+      'pinnedTabs', 'currentPageContext', 'selectedNotes', 'activeAddonContext', 'activeSkillRun', 'drafts',
     ]);
   });
 

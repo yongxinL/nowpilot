@@ -26,4 +26,5 @@ export type OrchestratorEvent =
   | { type: 'text-complete'; fullText: string }
   | { type: 'error'; message: string }
   | { type: 'context-degraded'; level: 'info' | 'warning'; message: string; step?: number; tier?: ModelContextTier }
-  | { type: 'context-error'; code: 'CONTEXT_TOO_LARGE'; estimatedTokens: number; budget: number; message: string };
+  | { type: 'context-error'; code: 'CONTEXT_TOO_LARGE'; estimatedTokens: number; budget: number; message: string }
+  | { type: 'waiting-permission'; toolName: string; toolInput: unknown };
