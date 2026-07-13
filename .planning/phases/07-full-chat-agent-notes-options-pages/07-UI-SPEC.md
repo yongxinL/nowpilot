@@ -1,7 +1,8 @@
 ---
 phase: 07
 slug: full-chat-agent-notes-options-pages
-status: draft
+status: approved
+reviewed_at: 2026-07-13
 shadcn_initialized: false
 preset: none
 created: 2026-07-13
