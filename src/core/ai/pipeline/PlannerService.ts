@@ -5,6 +5,7 @@ import type { CostTierType } from '../providers/providerTypes';
 import type { PlannerDecisionType } from './pipelineTypes';
 import { PlannerDecision } from './pipelineTypes';
 import { repairAndValidate } from './StructuredOutput';
+import type { ExecutionContext } from '../../telemetry/types';
 
 const PLANNER_FALLBACK: PlannerDecisionType = {
   action: 'answer',
@@ -23,9 +24,10 @@ export class PlannerService {
     systemPrompt: string,
     userMessage: string,
     abortSignal: AbortSignal,
+    execCtx?: ExecutionContext,
   ): Promise<PlannerDecisionType> {
     try {
-      const model = await this.router.selectModel(tier, preferredProviders);
+      const model = await this.router.selectModel(tier, preferredProviders, execCtx);
       if (!model) {
         debugLog('warn', '[PlannerService] No model available — returning fallback');
         return { action: 'answer', reasoning: 'No model available for planning' };
@@ -39,6 +41,27 @@ export class PlannerService {
         prompt: userMessage,
         abortSignal,
         temperature: 0.1,
+      });
+
+      // Emit planner call trace event (D-05)
+      execCtx?.traceCollector.onPlannerCall({
+        promptHash: simpleHash(systemPrompt + userMessage),
+        tokenBreakdown: {
+          system: Math.ceil(fullSystemPrompt.length / 4),
+          memory: 0,
+          tools: 0,
+          context: 0,
+          history: 0,
+          user: Math.ceil(userMessage.length / 4),
+          output: result.usage ? Math.ceil(result.usage.completionTokens ?? 0) : 0,
+          total: result.usage ? Math.ceil(result.usage.totalTokens ?? 0) : Math.ceil((fullSystemPrompt.length + userMessage.length) / 4),
+        },
+        contextTier: tier as any,
+        truncated: false,
+        minimalMode: false,
+        cacheStats: { sectionsMarked: 0, estimatedSavings: 0 },
+        timestamp: Date.now(),
+        source: 'planner' as const,
       });
 
       const validated = repairAndValidate(result.text, PlannerDecision, PLANNER_FALLBACK);
@@ -57,4 +80,16 @@ export class PlannerService {
       return { action: 'answer', reasoning: 'Planner output was unparseable' };
     }
   }
+
+/**
+ * Simple hash function for prompt hashing (DJB2-like).
+ * Non-cryptographic — used only for trace correlation.
+ */
+function simpleHash(input: string): string {
+  let hash = 5381;
+  for (let i = 0; i < input.length; i++) {
+    hash = ((hash << 5) + hash) + input.charCodeAt(i);
+  }
+  return (hash >>> 0).toString(36);
+}
 }
