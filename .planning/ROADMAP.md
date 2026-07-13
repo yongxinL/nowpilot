@@ -10,7 +10,7 @@ NowPilot v0.1 is a privacy-first, extensible Chrome MV3 AI assistant. The 9-phas
 - [x] **Phase 2: Storage, Security, WriteJournal, Workspace Persistence** — Split-storage strategy, encrypted API keys, idempotent migrations (completed 2026-07-12)
 - [x] **Phase 3: Cost-Effective AI Runtime** — 5 providers, Planner→Executor→Renderer pipeline, AgentOrchestrator, tier caps (completed 2026-07-12)
 - [x] **Phase 4: Context-Adaptive Execution** — Tier classification, token budgets, degradation pipeline, minimal mode (completed 2026-07-12)
-- [ ] **Phase 5: Persistent Memory Architecture** — System-owned memory engine, conversation/user/preference stores, retrieval scoring
+- [x] **Phase 5: Persistent Memory Architecture** — System-owned memory engine, conversation/user/preference stores, retrieval scoring (completed 2026-07-13)
 - [ ] **Phase 6: Transaction Logging and Diagnostics** — AITransactionLog, TraceRedactor, DiagnosticsPanel in Full App
 - [ ] **Phase 7: Full Chat, Agent, Notes, Options Pages** — Complete UI across both surfaces, all hooks, markdown streaming
 - [ ] **Phase 8: Add-ons and Content Script Runtime (Extraction-Only)** — Write/TeamGQM/ServiceNow add-ons, content scripts, data portability
@@ -214,7 +214,7 @@ Plans:
   5. Memory is shared across surfaces — Side Panel and Full App read the same stores through MemoryEngine
   6. Memory writes are single-writer — only the primary surface (via BroadcastBus election) writes; auto-summarise triggers after every 12 messages
 
-**Plans:** 6/7 plans executed
+**Plans:** 7/7 plans complete
 
 **Wave 0** — Setup
 
@@ -236,7 +236,7 @@ Plans:
 
 **Wave 4** — Integration
 
-- [ ] 05-07-PLAN.md — AgentOrchestrator injection + BroadcastBus memory write routing (D-02/D-06/D-07)
+- [x] 05-07-PLAN.md — AgentOrchestrator injection + BroadcastBus memory write routing (D-02/D-06/D-07)
 
 ### Phase 6: Transaction Logging and Diagnostics
 
@@ -323,7 +323,7 @@ Phase 7 depends on both Phase 5 and Phase 6 being complete, acting as the conver
 | 2. Storage, Security, WriteJournal, Workspace Persistence | 8/8 | Complete    | 2026-07-12 |
 | 3. Cost-Effective AI Runtime | 9/9 | Complete    | 2026-07-12 |
 | 4. Context-Adaptive Execution | 5/5 | Complete    | 2026-07-12 |
-| 5. Persistent Memory Architecture | 6/7 | In Progress|  |
+| 5. Persistent Memory Architecture | 7/7 | Complete   | 2026-07-13 |
 | 6. Transaction Logging and Diagnostics | 0/TBD | Not started | - |
 | 7. Full Chat, Agent, Notes, Options Pages | 0/TBD | Not started | - |
 | 8. Add-ons and Content Script Runtime (Extraction-Only) | 0/TBD | Not started | - |
