@@ -1427,7 +1427,7 @@ const mockJournal = vi.hoisted(() => ({
 ## Open Questions (RESOLVED)
 
 1. **How should diagnostics mode state (Diagnostic/Privacy) be persisted — Zustand persist or chrome.storage.local?**
-   - (RESOLVED) Use chrome.storage.local with Zustand `persist` middleware (pattern: workspaceStore). This provides cross-surface sync if Side Panel toast needs to know Privacy Mode. Fallback: Zustand persist with `localStorage` if chrome.storage is unavailable in test environments. Implemented in 06-06 Task 3 (diagnosticsStore).
+   - (RESOLVED) Use chrome.storage.local with Zustand `persist` middleware (pattern: workspaceStore). This provides cross-surface sync if Side Panel toast needs to know Privacy Mode. Fallback: Zustand persist with `localStorage` if chrome.storage is unavailable in test environments. Implemented in 06-06 Task 4 (diagnosticsStore).
 
 2. **Should TraceCollector events be batched per pipeline stage or per-event?**
    - (RESOLVED) Individual events per operation. One ToolTrace row per tool call, one ProviderAttempt per retry. The "batch" is at persistence time (AITransactionLog.close()), not at collection time. Implemented in 06-06 Task 2.
