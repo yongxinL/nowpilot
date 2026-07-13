@@ -41,6 +41,9 @@ importers:
       jsonrepair:
         specifier: 3.15.0
         version: 3.15.0
+      jszip:
+        specifier: 3.10.1
+        version: 3.10.1
       minisearch:
         specifier: ^7.2.0
         version: 7.2.0
