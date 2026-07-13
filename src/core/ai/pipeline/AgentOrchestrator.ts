@@ -10,6 +10,7 @@ import type { PlannerDecisionType } from './pipelineTypes';
 import type { CostTierType } from '../providers/providerTypes';
 import type { OptimizedContext, PromptSection, ModelContextTier } from '../../context/contextTypes';
 import { ContextTooLargeError } from '../../context/contextTypes';
+import type { MemoryEngine } from '../../memory/MemoryEngine';
 
 const TIER_CAP: Record<CostTierType, number> = {
   haiku: 1,
@@ -28,11 +29,14 @@ const MODEL_TIER_TO_COST_TIER: Record<ModelContextTier, CostTierType> = {
 export class AgentOrchestrator {
   private currentAbortManager: AbortManager | null = null;
 
+  private collectedToolResults: Array<unknown> = [];
+
   constructor(
     private planner: PlannerService,
     private executor: ExecutorService,
     private renderer: RendererService,
     private router: ProviderRouter,
+    private memoryEngine: MemoryEngine,
   ) {}
 
   async *run(
@@ -80,6 +84,7 @@ export class AgentOrchestrator {
     this.currentAbortManager = abortManager;
     const costTier = MODEL_TIER_TO_COST_TIER[optimizedContext.tier];
     const tierCap = TIER_CAP[costTier] || 1;
+    this.collectedToolResults = [];
 
     try {
       yield* this.emitDegradationEvents(optimizedContext);
@@ -122,6 +127,16 @@ export class AgentOrchestrator {
         yield { type: 'error', message };
       }
     } finally {
+      // D-02: Memory extraction triggered after renderer completes (post-execution)
+      // D-03: Round-trip extraction — one extraction per user→assistant cycle
+      // D-04: Fire-and-forget — NOT awaited, extraction failures don't block the user
+      const conversationId = optimizedContext.provenance.operationId;
+      const messages = this.collectRoundTripMessages(optimizedContext);
+      const toolResults = this.collectedToolResults;
+
+      this.memoryEngine.extract(conversationId, messages, toolResults)
+        .catch(err => debugLog('error', '[AgentOrchestrator] Memory extraction failed', { error: err }));
+
       this.currentAbortManager = null;
     }
   }
@@ -210,6 +225,7 @@ export class AgentOrchestrator {
         };
 
         toolResults.push(result);
+        this.collectedToolResults.push(result);
       }
     }
   }
@@ -271,5 +287,31 @@ export class AgentOrchestrator {
 
   cancel(): void {
     this.currentAbortManager?.cancel('User cancelled');
+  }
+
+  private collectRoundTripMessages(optimizedContext: OptimizedContext): Array<{ role: string; content: string }> {
+    const messages: Array<{ role: string; content: string }> = [];
+    // Collect user message from sections
+    const userInput = optimizedContext.sections.find(s => s.kind === 'user_input');
+    if (userInput) {
+      messages.push({ role: 'user', content: userInput.content });
+    }
+    // Collect conversation history from sections
+    const history = optimizedContext.sections.find(s => s.kind === 'conversation_history');
+    if (history) {
+      // Parse history content (assumes newline-separated role:content format from ContextOptimizer)
+      const lines = history.content.split('\n');
+      for (const line of lines) {
+        const match = line.match(/^(user|assistant):\s?(.*)/);
+        if (match) {
+          messages.push({ role: match[1], content: match[2] });
+        }
+      }
+    }
+    // Add tool results as assistant context
+    if (this.collectedToolResults.length > 0) {
+      messages.push({ role: 'assistant', content: `Tool results: ${JSON.stringify(this.collectedToolResults)}` });
+    }
+    return messages;
   }
 }

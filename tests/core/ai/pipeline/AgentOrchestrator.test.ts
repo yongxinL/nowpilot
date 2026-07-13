@@ -7,6 +7,7 @@ import type { RendererService } from '../../../../src/core/ai/pipeline/RendererS
 import type { ProviderRouter } from '../../../../src/core/ai/router/ProviderRouter';
 import type { OptimizedContext } from '../../../../src/core/context/contextTypes';
 import { createManifest } from '../../../../src/core/context/ContextProvenanceManifest';
+import type { MemoryEngine } from '../../../../src/core/memory/MemoryEngine';
 
 import { AgentOrchestrator } from '../../../../src/core/ai/pipeline/AgentOrchestrator';
 
@@ -63,6 +64,15 @@ function createMockRouter() {
   } as unknown as ProviderRouter;
 }
 
+function createMockMemoryEngine(): MemoryEngine {
+  return {
+    assemble: vi.fn().mockResolvedValue({ memory: [], conversationContext: { recentTurns: [] }, preferences: {} }),
+    extract: vi.fn().mockResolvedValue(undefined),
+    handleMemoryWrite: vi.fn().mockResolvedValue(undefined),
+    setPrimary: vi.fn(),
+  } as unknown as MemoryEngine;
+}
+
 // ---------------------------------------------------------------------------
 // Shared fixtures
 // ---------------------------------------------------------------------------
@@ -110,7 +120,7 @@ describe('AgentOrchestrator', () => {
       ]),
     );
 
-    orchestrator = new AgentOrchestrator(planner, executor, renderer, router);
+    orchestrator = new AgentOrchestrator(planner, executor, renderer, router, createMockMemoryEngine());
   });
 
   afterEach(() => {
@@ -439,7 +449,7 @@ describe('AgentOrchestrator', () => {
         eventGen([{ type: 'text-delta', text: 'Hello' }, { type: 'text-complete', fullText: 'Hello' }]),
       );
       const rt = createMockRouter();
-      return { orchestrator: new AgentOrchestrator(p, e, r, rt), planner: p, executor: e, renderer: r, router: rt };
+      return { orchestrator: new AgentOrchestrator(p, e, r, rt, createMockMemoryEngine()), planner: p, executor: e, renderer: r, router: rt };
     }
 
     it('happy path — returns answer', async () => {
@@ -532,6 +542,30 @@ describe('AgentOrchestrator', () => {
       expect(systemPrompt).toContain('Do the thing.');
       expect(userMessage).toContain('Hello world');
       expect(userMessage).toContain('Project context');
+    });
+
+    it('calls memoryEngine.extract in finally block with conversationId from provenance', async () => {
+      // Use a factory that exposes the memoryEngine mock
+      const p = createMockPlanner();
+      (p.plan as ReturnType<typeof vi.fn>).mockResolvedValue(MOCK_ANSWER);
+      const e = createMockExecutor();
+      const r = createMockRenderer();
+      (r.render as ReturnType<typeof vi.fn>).mockReturnValue(
+        eventGen([{ type: 'text-delta', text: 'Hi' }, { type: 'text-complete', fullText: 'Hi' }]),
+      );
+      const rt = createMockRouter();
+      const me = createMockMemoryEngine();
+      const ao = new AgentOrchestrator(p, e, r, rt, me);
+      const ctx = createOptimizedContext();
+
+      await collectEvents(ao.runWithContext(ctx, ['test-provider']));
+
+      // Verify extract was called with the operationId as conversationId
+      expect(me.extract).toHaveBeenCalledWith(
+        'test-op-1',
+        expect.any(Array),
+        expect.any(Array),
+      );
     });
 
     it('AbortManager created per runWithContext operation', async () => {
