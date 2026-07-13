@@ -214,7 +214,29 @@ Plans:
   5. Memory is shared across surfaces — Side Panel and Full App read the same stores through MemoryEngine
   6. Memory writes are single-writer — only the primary surface (via BroadcastBus election) writes; auto-summarise triggers after every 12 messages
 
-**Plans**: TBD
+**Plans:** 7 plans
+
+**Wave 0** — Setup
+
+- [ ] 05-01-PLAN.md — Package install (minisearch@7.2.0) + memory types + test scaffolding
+
+**Wave 1** — Foundation (parallel)
+
+- [ ] 05-02-PLAN.md — Schema migration v2: IndexedDBManager (DB_VERSION=2, NowPilotDB extension) + MemoryDB extended signatures
+- [ ] 05-03-PLAN.md — MiniSearchIndex + MemoryScorer (5-factor scoring, D-12) + conflictResolver (versioned facts, D-16/D-17)
+
+**Wave 2** — Stores (parallel)
+
+- [ ] 05-04-PLAN.md — ConversationMemoryStore (tier-based turns, rolling summaries, archiving) + UserMemoryStore (two-pass retrieval, versioned facts)
+- [ ] 05-05-PLAN.md — PreferenceMemoryStore (Zustand persist, cross-store reads, D-08/D-09) + MemoryExtractor (Haiku-tier extraction, D-05)
+
+**Wave 3** — Orchestration
+
+- [ ] 05-06-PLAN.md — MemoryEngine (assemble + extract + single-writer routing + cap enforcement, D-01/D-04/D-14/D-20/D-22/D-23/D-24)
+
+**Wave 4** — Integration
+
+- [ ] 05-07-PLAN.md — AgentOrchestrator injection + BroadcastBus memory write routing (D-02/D-06/D-07)
 
 ### Phase 6: Transaction Logging and Diagnostics
 
@@ -301,7 +323,7 @@ Phase 7 depends on both Phase 5 and Phase 6 being complete, acting as the conver
 | 2. Storage, Security, WriteJournal, Workspace Persistence | 8/8 | Complete    | 2026-07-12 |
 | 3. Cost-Effective AI Runtime | 9/9 | Complete    | 2026-07-12 |
 | 4. Context-Adaptive Execution | 5/5 | Complete    | 2026-07-12 |
-| 5. Persistent Memory Architecture | 0/TBD | Not started | - |
+| 5. Persistent Memory Architecture | 0/7 | Planned | 2026-07-13 |
 | 6. Transaction Logging and Diagnostics | 0/TBD | Not started | - |
 | 7. Full Chat, Agent, Notes, Options Pages | 0/TBD | Not started | - |
 | 8. Add-ons and Content Script Runtime (Extraction-Only) | 0/TBD | Not started | - |
