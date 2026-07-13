@@ -270,17 +270,18 @@ describe('AITransactionLog', () => {
     // Only started/streaming should be updated (2 of 3)
     expect(mockPut).toHaveBeenCalledTimes(2);
 
-    const updatedTx1 = mockPut.mock.calls[0][0];
+    // put(storeName, value) — value is at index 1
+    const updatedTx1 = mockPut.mock.calls[0][1];
     expect(updatedTx1.status).toBe('aborted');
     expect(updatedTx1.severity).toBe(Severity.WARNING);
     expect(typeof updatedTx1.endedAt).toBe('number');
 
-    const updatedTx2 = mockPut.mock.calls[1][0];
+    const updatedTx2 = mockPut.mock.calls[1][1];
     expect(updatedTx2.status).toBe('aborted');
     expect(updatedTx2.severity).toBe(Severity.WARNING);
 
     // completed transaction was skipped
-    expect(mockPut.mock.calls.map((c: any[]) => c[0].id)).not.toContain('tx-3');
+    expect(mockPut.mock.calls.map((c: any[]) => c[1].id)).not.toContain('tx-3');
   });
 
   // =========================================================================
