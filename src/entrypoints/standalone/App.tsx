@@ -7,6 +7,7 @@ import { standalonePageRegistry } from '../../core/registries/StandalonePageRegi
 import { StandaloneRoot } from '../../components/standalone/StandaloneRoot';
 import { findNavItem } from '../../core/navigation/navigationSelectors';
 import { useDiagnosticsStore } from '../../core/stores/diagnosticsStore';
+import { useWorkspaceStore } from '../../core/stores/workspaceStore';
 import '../../core/registries/registerNowPilotCorePages';
 
 const modeCycle: Record<ThemeMode, ThemeMode> = {
@@ -65,6 +66,8 @@ export function StandaloneApp() {
     const params = new URLSearchParams(window.location.search);
     const page = params.get('page');
     const operationId = params.get('operationId');
+    const conversationId = params.get('conversationId');
+    const noteId = params.get('noteId');
 
     if (page) {
       setInitialPage(page);
@@ -74,8 +77,17 @@ export function StandaloneApp() {
       useDiagnosticsStore.getState().setPendingOperationId(operationId);
     }
 
+    // Set conversation context for deep links (D-38)
+    if (conversationId) {
+      useWorkspaceStore.getState().setConversationId(conversationId);
+    }
+
+    if (noteId) {
+      useWorkspaceStore.getState().setSelectedNotes([noteId]);
+    }
+
     // Clean query params from URL after consuming
-    if (page || operationId) {
+    if (page || operationId || conversationId || noteId) {
       window.history.replaceState(null, '', window.location.pathname);
     }
   }, []);
