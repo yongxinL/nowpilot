@@ -3,10 +3,30 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { useThemeStore } from '../stores/themeStore';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import type { PreferencePayload } from './memoryTypes';
+import { preferenceSchema } from './memoryTypes';
+import type { ThemeMode } from '../stores/themeStore';
+import type { Surface } from '../stores/workspaceStore';
+
+// ---------------------------------------------------------------------------
+// State type: own preference fields + Zustand setter
+// ---------------------------------------------------------------------------
 
 export interface PreferenceState extends PreferencePayload {
   setPreferences: (partial: Partial<PreferencePayload>) => void;
 }
+
+// ---------------------------------------------------------------------------
+// Return type for preferenceMemoryStore.get()
+// ---------------------------------------------------------------------------
+
+export interface PreferenceMemoryStoreResult extends PreferencePayload {
+  themeMode: ThemeMode;
+  defaultSurface: Surface;
+}
+
+// ---------------------------------------------------------------------------
+// chrome.storage.local adapter (matching workspaceStore.ts pattern)
+// ---------------------------------------------------------------------------
 
 const chromeLocalStorage = createJSONStorage<PreferenceState>(() => ({
   getItem: (name: string) =>
@@ -15,16 +35,21 @@ const chromeLocalStorage = createJSONStorage<PreferenceState>(() => ({
   removeItem: (name: string) => chrome.storage.local.remove(name),
 }));
 
+// ---------------------------------------------------------------------------
+// Zustand store with persist — chrome.storage.local, key: np_preferences
+// Default values per D-08
+// ---------------------------------------------------------------------------
+
 export const usePreferenceStore = create<PreferenceState>()(
   persist(
     (set) => ({
-      // Stub defaults — will cause assertion failures in RED phase
-      responseStyle: '',
-      preferredLanguage: '',
+      // D-08: Default values for all 6 AI-behavioural preference fields
+      responseStyle: 'concise',
+      preferredLanguage: 'auto',
       preferStructuredOutput: false,
       allowCloudFallbackFromLocal: false,
       defaultProviderId: '',
-      toolAutonomy: 'manual' as const,
+      toolAutonomy: 'manual',
       setPreferences: (partial: Partial<PreferencePayload>) => set(partial),
     }),
     {
@@ -34,18 +59,42 @@ export const usePreferenceStore = create<PreferenceState>()(
   ),
 );
 
+// ---------------------------------------------------------------------------
+// Non-React consumer API (used by MemoryEngine.assemble)
+// preferenceMemoryStore.get() reads own state + ThemeStore + WorkspaceStore
+// and returns compact JSON per D-09 and D-10
+// ---------------------------------------------------------------------------
+
 export const preferenceMemoryStore = {
-  get: () => {
-    const state = usePreferenceStore.getState();
+  get(): PreferenceMemoryStoreResult {
+    const own = usePreferenceStore.getState();
+
+    // D-09: Read themeMode from ThemeStore, defaultSurface from WorkspaceStore
+    // using vanilla Zustand getState() to avoid circular deps (Research pitfall #4)
+    const themeMode = useThemeStore.getState().mode;
+    const defaultSurface = useWorkspaceStore.getState().activeSurface;
+
+    // Validate own fields against preferenceSchema
+    preferenceSchema.parse({
+      responseStyle: own.responseStyle,
+      preferredLanguage: own.preferredLanguage,
+      preferStructuredOutput: own.preferStructuredOutput,
+      allowCloudFallbackFromLocal: own.allowCloudFallbackFromLocal,
+      defaultProviderId: own.defaultProviderId,
+      toolAutonomy: own.toolAutonomy,
+    });
+
     return {
-      responseStyle: state.responseStyle,
-      preferredLanguage: state.preferredLanguage,
-      preferStructuredOutput: state.preferStructuredOutput,
-      allowCloudFallbackFromLocal: state.allowCloudFallbackFromLocal,
-      defaultProviderId: state.defaultProviderId,
-      toolAutonomy: state.toolAutonomy,
-      themeMode: useThemeStore.getState().mode,
-      defaultSurface: useWorkspaceStore.getState().activeSurface,
+      // 6 AI-preference fields (D-08)
+      responseStyle: own.responseStyle,
+      preferredLanguage: own.preferredLanguage,
+      preferStructuredOutput: own.preferStructuredOutput,
+      allowCloudFallbackFromLocal: own.allowCloudFallbackFromLocal,
+      defaultProviderId: own.defaultProviderId,
+      toolAutonomy: own.toolAutonomy,
+      // External store reads (D-09)
+      themeMode,
+      defaultSurface,
     };
   },
 };
