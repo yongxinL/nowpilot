@@ -130,17 +130,17 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Options
 
-- [ ] **OPT-01**: Providers section — add/edit/delete provider configs, test connections
-- [ ] **OPT-02**: Models section — per-provider model list + context window override
-- [ ] **OPT-03**: MCP Servers section — add/enable/disable external MCP servers
+- [x] **OPT-01**: Providers section — add/edit/delete provider configs, test connections
+- [x] **OPT-02**: Models section — per-provider model list + context window override
+- [x] **OPT-03**: MCP Servers section — add/enable/disable external MCP servers
 - [x] **OPT-04**: Prompt Templates section — CRUD with variable editor
 - [x] **OPT-05**: Slash Commands section — manage slash command to template mapping
-- [ ] **OPT-06**: Memory section — view/edit user memory facts, enable/disable
-- [ ] **OPT-07**: Diagnostics section — transaction traces, export debug bundle (Full App only)
-- [ ] **OPT-08**: Import/Export section — sanitized JSON/ZIP export, import merge
-- [ ] **OPT-09**: Feature Flags section — toggle P2 features
-- [ ] **OPT-10**: Add-on Settings section — namespaced settings per registered add-on
-- [ ] **OPT-11**: Options accessible only from Full App (not Side Panel)
+- [x] **OPT-06**: Memory section — view/edit user memory facts, enable/disable
+- [x] **OPT-07**: Diagnostics section — transaction traces, export debug bundle (Full App only)
+- [x] **OPT-08**: Import/Export section — sanitized JSON/ZIP export, import merge
+- [x] **OPT-09**: Feature Flags section — toggle P2 features
+- [x] **OPT-10**: Add-on Settings section — namespaced settings per registered add-on
+- [x] **OPT-11**: Options accessible only from Full App (not Side Panel)
 
 ### Telemetry & Diagnostics
 
@@ -309,17 +309,17 @@ Requirements for initial release. Each maps to roadmap phases.
 | NOTE-05 | Phase 7 | Pending |
 | NOTE-06 | Phase 7 | Pending |
 | NOTE-07 | Phase 7 | Pending |
-| OPT-01 | Phase 7 | Pending |
-| OPT-02 | Phase 7 | Pending |
-| OPT-03 | Phase 7 | Pending |
+| OPT-01 | Phase 7 | Complete |
+| OPT-02 | Phase 7 | Complete |
+| OPT-03 | Phase 7 | Complete |
 | OPT-04 | Phase 7 | Complete |
 | OPT-05 | Phase 7 | Complete |
-| OPT-06 | Phase 7 | Pending |
-| OPT-07 | Phase 7 | Pending |
-| OPT-08 | Phase 7 | Pending |
-| OPT-09 | Phase 7 | Pending |
-| OPT-10 | Phase 7 | Pending |
-| OPT-11 | Phase 7 | Pending |
+| OPT-06 | Phase 7 | Complete |
+| OPT-07 | Phase 7 | Complete |
+| OPT-08 | Phase 7 | Complete |
+| OPT-09 | Phase 7 | Complete |
+| OPT-10 | Phase 7 | Complete |
+| OPT-11 | Phase 7 | Complete |
 | TELE-01 | Phase 6 | Pending |
 | TELE-02 | Phase 6 | Pending |
 | TELE-03 | Phase 6 | Pending |
