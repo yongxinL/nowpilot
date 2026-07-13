@@ -15,6 +15,7 @@ export class MiniSearchIndex {
         'source',
         'useCount',
         'updatedAt',
+        'status',
       ],
       searchOptions: {
         boost: { content: 2, tags: 1.5 },
@@ -34,7 +35,7 @@ export class MiniSearchIndex {
         prefix: true,
         fuzzy: 0.2,
       })
-      .slice(0, limit) as Array<{
+      .slice(0, limit) as unknown as Array<{
       id: string;
       content: string;
       score: number;
