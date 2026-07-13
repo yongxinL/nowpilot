@@ -9,7 +9,8 @@
 // D-36: Never blocks pipeline — runs asynchronously, debounced on transaction close
 // =========================================================================
 
-import { getDB } from '../storage/IndexedDBManager';
+import { type NowPilotDB, getDB } from '../storage/IndexedDBManager';
+import type { StoreNames } from 'idb';
 import { debugLog } from '../utils/debugLog';
 
 // =========================================================================
@@ -97,9 +98,10 @@ export async function pruneNow(): Promise<void> {
     for (const config of STORE_CONFIGS) {
       try {
         // --- Step 1: Count-based pruning (failure-prioritized per D-27) ---
-        const count = await db.count(config.name);
+        const storeName = config.name as StoreNames<NowPilotDB>;
+        const count = await db.count(storeName);
         if (count > config.maxCount) {
-          const allRecords = await db.getAll(config.name);
+          const allRecords = await db.getAll(storeName);
           const records = allRecords as Array<Record<string, unknown>>;
 
           // Sort: failures first (preserved), then by timestamp ASC for failures (oldest first),
@@ -118,7 +120,7 @@ export async function pruneNow(): Promise<void> {
           const toDelete = records.slice(config.maxCount);
           if (toDelete.length > 0) {
             const idsToDelete = toDelete.map((r) => r.id as string);
-            const tx = db.transaction(config.name, 'readwrite');
+            const tx = db.transaction(storeName, 'readwrite');
             for (const id of idsToDelete) {
               await tx.store.delete(id);
             }
@@ -129,14 +131,14 @@ export async function pruneNow(): Promise<void> {
         }
 
         // --- Step 2: Time-based pruning ---
-        const allRecords = await db.getAll(config.name);
+        const allRecords = await db.getAll(storeName);
         const records = allRecords as Array<Record<string, unknown>>;
         const cutoff = now - config.retentionMs;
         const expired = records.filter((r) => recordTime(r) < cutoff);
 
         if (expired.length > 0) {
           const idsToDelete = expired.map((r) => r.id as string);
-          const tx = db.transaction(config.name, 'readwrite');
+          const tx = db.transaction(storeName, 'readwrite');
           for (const id of idsToDelete) {
             await tx.store.delete(id);
           }

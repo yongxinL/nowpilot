@@ -9,6 +9,39 @@ import type { OptimizedContext } from '../../../../src/core/context/contextTypes
 import { createManifest } from '../../../../src/core/context/ContextProvenanceManifest';
 import type { MemoryEngine } from '../../../../src/core/memory/MemoryEngine';
 
+// Mock AITransactionLogDB so AITransactionLog works without IndexedDB
+vi.mock('../../../../src/core/storage/stores/AITransactionLogDB', () => ({
+  AITransactionLogDB: vi.fn(),
+  aiTransactionLogDB: {
+    logTransaction: vi.fn().mockResolvedValue(undefined),
+    getTransaction: vi.fn().mockResolvedValue(undefined),
+    logPromptTrace: vi.fn().mockResolvedValue(undefined),
+    logToolTrace: vi.fn().mockResolvedValue(undefined),
+    logProviderTrace: vi.fn().mockResolvedValue(undefined),
+    logCacheTrace: vi.fn().mockResolvedValue(undefined),
+    logMemoryTrace: vi.fn().mockResolvedValue(undefined),
+    logWriteJournalTrace: vi.fn().mockResolvedValue(undefined),
+    getTraceTree: vi.fn().mockResolvedValue(undefined),
+    queryTransactions: vi.fn().mockResolvedValue([]),
+    deleteTraces: vi.fn().mockResolvedValue(undefined),
+    getTotalCount: vi.fn().mockResolvedValue(0),
+  },
+}));
+
+// Mock WriteJournal so AITransactionLog.close() works without IndexedDB
+vi.mock('../../../../src/core/storage/WriteJournal', () => ({
+  WriteJournal: vi.fn(),
+  writeJournal: {
+    begin: vi.fn().mockResolvedValue({ id: 'test-journal', status: 'pending', steps: [] }),
+    markStepStart: vi.fn().mockResolvedValue(undefined),
+    markStepComplete: vi.fn().mockResolvedValue(undefined),
+    markCompleted: vi.fn().mockResolvedValue(undefined),
+    markFailed: vi.fn().mockResolvedValue(undefined),
+    recover: vi.fn().mockResolvedValue(0),
+    prune: vi.fn().mockResolvedValue(0),
+  },
+}));
+
 import { AgentOrchestrator } from '../../../../src/core/ai/pipeline/AgentOrchestrator';
 
 // ---------------------------------------------------------------------------
@@ -107,6 +140,10 @@ describe('AgentOrchestrator', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Restore chrome.storage.local mock after clearAllMocks
+    (chrome.storage.local.get as ReturnType<typeof vi.fn>).mockResolvedValue({});
+    (chrome.storage.local.set as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+
     planner = createMockPlanner();
     executor = createMockExecutor();
     renderer = createMockRenderer();
@@ -158,6 +195,7 @@ describe('AgentOrchestrator', () => {
       'system prompt',
       expect.any(Array),
       expect.any(AbortSignal),
+      undefined,
     );
   });
 
@@ -185,7 +223,7 @@ describe('AgentOrchestrator', () => {
     // Planner called twice, executor once
     expect(planner.plan).toHaveBeenCalledTimes(2);
     expect(executor.execute).toHaveBeenCalledTimes(1);
-    expect(executor.execute).toHaveBeenCalledWith('echo', { text: 'hello' }, expect.any(AbortSignal));
+    expect(executor.execute).toHaveBeenCalledWith('echo', { text: 'hello' }, expect.any(AbortSignal), undefined);
 
     // Renderer called after planner loop
     expect(renderer.render).toHaveBeenCalledTimes(1);
@@ -401,6 +439,7 @@ describe('AgentOrchestrator', () => {
       expect.any(String),
       expect.any(String),
       expect.any(AbortSignal),
+      undefined,
     );
 
     expect(renderer.render).toHaveBeenCalledWith(
@@ -409,6 +448,7 @@ describe('AgentOrchestrator', () => {
       expect.any(String),
       expect.any(Array),
       expect.any(AbortSignal),
+      undefined,
     );
   });
 

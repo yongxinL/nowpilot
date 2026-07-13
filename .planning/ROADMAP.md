@@ -11,7 +11,7 @@ NowPilot v0.1 is a privacy-first, extensible Chrome MV3 AI assistant. The 9-phas
 - [x] **Phase 3: Cost-Effective AI Runtime** — 5 providers, Planner→Executor→Renderer pipeline, AgentOrchestrator, tier caps (completed 2026-07-12)
 - [x] **Phase 4: Context-Adaptive Execution** — Tier classification, token budgets, degradation pipeline, minimal mode (completed 2026-07-12)
 - [x] **Phase 5: Persistent Memory Architecture** — System-owned memory engine, conversation/user/preference stores, retrieval scoring (completed 2026-07-13)
-- [ ] **Phase 6: Transaction Logging and Diagnostics** — AITransactionLog, TraceRedactor, DiagnosticsPanel in Full App
+- [x] **Phase 6: Transaction Logging and Diagnostics** — AITransactionLog, TraceRedactor, DiagnosticsPanel in Full App (completed 2026-07-13)
 - [ ] **Phase 7: Full Chat, Agent, Notes, Options Pages** — Complete UI across both surfaces, all hooks, markdown streaming
 - [ ] **Phase 8: Add-ons and Content Script Runtime (Extraction-Only)** — Write/TeamGQM/ServiceNow add-ons, content scripts, data portability
 - [ ] **Phase 9: Hardening and Release** — Performance tests, isolation verification, bundle checks, production release
@@ -252,30 +252,30 @@ Plans:
   5. Error toasts in Side Panel include "Open Diagnostics" link that opens Full App to the relevant trace
   6. Debug bundle can be exported as sanitized JSON/ZIP from Diagnostics
 
-**Plans:** 8 plans
+**Plans:** 8/8 plans complete
 
 **Wave 0** — Setup
 
-- [ ] 06-01-PLAN.md — JSZip install, telemetry/types.ts (all core types), test scaffolding (TELE-01/02/03/04)
+- [x] 06-01-PLAN.md — JSZip install, telemetry/types.ts (all core types), test scaffolding (TELE-01/02/03/04)
 
 **Wave 1** — Foundation (parallel)
 
-- [ ] 06-02-PLAN.md — TraceRedactor class+singleton with 7 mandatory redaction patterns (TELE-05)
-- [ ] 06-03-PLAN.md — IndexedDB DB_VERSION 3 schema migration, WriteJournalEntry extension, AITransactionLogDB replacement with getTraceTree() (TELE-01/02/03/04)
+- [x] 06-02-PLAN.md — TraceRedactor class+singleton with 7 mandatory redaction patterns (TELE-05)
+- [x] 06-03-PLAN.md — IndexedDB DB_VERSION 3 schema migration, WriteJournalEntry extension, AITransactionLogDB replacement with getTraceTree() (TELE-01/02/03/04)
 
 **Wave 2** — Core Services (parallel)
 
-- [ ] 06-04-PLAN.md — AITransactionLog orchestration (start/complete/fail/batch-write/crash recovery) (TELE-01/05)
-- [ ] 06-05-PLAN.md — debugLog auto-redaction safety net + pruning.ts (tiered retention, debounced scheduling) (TELE-05)
+- [x] 06-04-PLAN.md — AITransactionLog orchestration (start/complete/fail/batch-write/crash recovery) (TELE-01/05)
+- [x] 06-05-PLAN.md — debugLog auto-redaction safety net + pruning.ts (tiered retention, debounced scheduling) (TELE-05)
 
 **Wave 3** — Integration (parallel)
 
-- [ ] 06-06-PLAN.md — Pipeline integration (AgentOrchestrator lifecycle + 7 service trace emissions) + diagnosticsStore (TELE-01/02/03/04/07)
-- [ ] 06-07-PLAN.md — Export (single-operation JSON + multi-operation ZIP with manifest) (DATA-03)
+- [x] 06-06-PLAN.md — Pipeline integration (AgentOrchestrator lifecycle + 7 service trace emissions) + diagnosticsStore (TELE-01/02/03/04/07)
+- [x] 06-07-PLAN.md — Export (single-operation JSON + multi-operation ZIP with manifest) (DATA-03)
 
 **Wave 4** — UI
 
-- [ ] 06-08-PLAN.md — DiagnosticsPanel UI (master-detail, filter bar, 7 sub-components) + Error Toast deep-linking (TELE-06/07)
+- [x] 06-08-PLAN.md — DiagnosticsPanel UI (master-detail, filter bar, 7 sub-components) + Error Toast deep-linking (TELE-06/07)
 
 ### Phase 7: Full Chat, Agent, Notes, Options Pages
 
@@ -347,7 +347,7 @@ Phase 7 depends on both Phase 5 and Phase 6 being complete, acting as the conver
 | 3. Cost-Effective AI Runtime | 9/9 | Complete    | 2026-07-12 |
 | 4. Context-Adaptive Execution | 5/5 | Complete    | 2026-07-12 |
 | 5. Persistent Memory Architecture | 7/7 | Complete   | 2026-07-13 |
-| 6. Transaction Logging and Diagnostics | 0/8 | Planned | - |
+| 6. Transaction Logging and Diagnostics | 8/8 | Complete   | 2026-07-13 |
 | 7. Full Chat, Agent, Notes, Options Pages | 0/TBD | Not started | - |
 | 8. Add-ons and Content Script Runtime (Extraction-Only) | 0/TBD | Not started | - |
 | 9. Hardening and Release | 0/TBD | Not started | - |

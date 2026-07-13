@@ -80,6 +80,7 @@ export class PlannerService {
       return { action: 'answer', reasoning: 'Planner output was unparseable' };
     }
   }
+}
 
 /**
  * Simple hash function for prompt hashing (DJB2-like).
@@ -91,5 +92,4 @@ function simpleHash(input: string): string {
     hash = ((hash << 5) + hash) + input.charCodeAt(i);
   }
   return (hash >>> 0).toString(36);
-}
 }

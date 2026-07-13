@@ -154,7 +154,7 @@ describe('RendererService', () => {
       abortController.signal,
     );
 
-    expect(router.selectModel).toHaveBeenCalledWith('flash', ['provider-b']);
+    expect(router.selectModel).toHaveBeenCalledWith('flash', ['provider-b'], undefined);
   });
 
   it('yields error when no flash-tier model is available', async () => {
