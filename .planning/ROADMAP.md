@@ -293,7 +293,7 @@ Plans:
   7. Options page shows all 11 sub-sections with functional forms — Providers (with test connection), Models, MCP Servers, Prompt Templates, Slash Commands, Memory, Diagnostics, Import/Export, Feature Flags, Add-on Settings, About
   8. Options accessible only from Full App (not Side Panel), enforcing the surface separation rule
 
-**Plans**: 6 plans
+**Plans**: 2/6 plans executed
 
 **Wave 0** — Foundation
 
@@ -301,7 +301,7 @@ Plans:
 
 **Wave 1** — Hooks + Independent Features (parallel)
 
-- [ ] 07-02-PLAN.md — Create useStreamingLLM hook (AsyncGenerator iteration, ChunkBuffer, AbortController), useWorkspace, useTheme helper hooks
+- [x] 07-02-PLAN.md — Create useStreamingLLM hook (AsyncGenerator iteration, ChunkBuffer, AbortController), useWorkspace, useTheme helper hooks
 - [ ] 07-05-PLAN.md — Create LinkParser (wikilink parsing + MiniSearch resolution + backlinks), NoteGraph (d3-force data model), NotesPage with all note components (NoteList, NoteEditor, NotePreview, BacklinksPanel, WikilinkAutocomplete, NoteGraphView, SaveToNoteDialog) + SkillMessageRenderer + SourceCard
 - [ ] 07-06-PLAN.md — Create all 11 Options sections (ProvidersSection through AboutSection), OptionsPage routing, workspaceRouter deep linking extension
 
@@ -364,6 +364,6 @@ Phase 7 depends on both Phase 5 and Phase 6 being complete, acting as the conver
 | 4. Context-Adaptive Execution | 5/5 | Complete    | 2026-07-12 |
 | 5. Persistent Memory Architecture | 7/7 | Complete   | 2026-07-13 |
 | 6. Transaction Logging and Diagnostics | 8/8 | Complete   | 2026-07-13 |
-| 7. Full Chat, Agent, Notes, Options Pages | 0/6 | Planned | 2026-07-13 |
+| 7. Full Chat, Agent, Notes, Options Pages | 2/6 | In Progress|  |
 | 8. Add-ons and Content Script Runtime (Extraction-Only) | 0/TBD | Not started | - |
 | 9. Hardening and Release | 0/TBD | Not started | - |
