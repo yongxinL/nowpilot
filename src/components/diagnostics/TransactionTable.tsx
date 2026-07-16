@@ -10,6 +10,7 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import { useDiagnosticsStore } from '../../core/stores/diagnosticsStore';
 import { exportSingleTrace, downloadBlob } from '../../core/telemetry/export';
+import { TraceDetailPanel } from './TraceDetailPanel';
 import type { AITransaction } from '../../core/telemetry/types';
 
 const statusIconMap: Record<string, React.ReactNode> = {
@@ -155,13 +156,15 @@ export function TransactionTable() {
       pagination={{ pageSize: 20, showSizeChanger: false }}
       size="small"
       scroll={{ x: 900 }}
-      onRow={(record) => ({
-        onClick: () => selectTransaction(record.id),
-        style: {
-          cursor: 'pointer',
-          background: record.id === selectedOperationId ? 'var(--ant-color-primary-bg, #e6f4ff)' : undefined,
+      expandable={{
+        expandedRowRender: () => <TraceDetailPanel />,
+        onExpand: (expanded, record) => {
+          if (expanded) {
+            selectTransaction(record.id);
+          }
         },
-      })}
+        expandRowByClick: true,
+      }}
     />
   );
 }
