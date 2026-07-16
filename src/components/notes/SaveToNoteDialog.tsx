@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Input, Select, Button, Typography, Space, App } from 'antd';
+import { Modal, Input, Select, Button, Typography, App } from 'antd';
 import { notesDB } from '../../core/storage/stores/NotesDB';
 import type { Note } from '../../core/notes/LinkParser';
 import { linkParser } from '../../core/notes/LinkParser';
@@ -79,7 +79,7 @@ export function SaveToNoteDialog({ content, onSave, onClose }: SaveToNoteDialogP
       width={480}
       destroyOnClose
     >
-      <Space direction="vertical" style={{ width: '100%' }} size="middle">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
         {/* Mode toggle */}
         <div>
           <Text strong>Mode: </Text>
@@ -172,7 +172,7 @@ export function SaveToNoteDialog({ content, onSave, onClose }: SaveToNoteDialogP
             Save
           </Button>
         </div>
-      </Space>
+      </div>
     </Modal>
   );
 }

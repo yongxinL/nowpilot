@@ -1,4 +1,7 @@
 import type { CSSProperties } from 'react';
+import { useWorkspaceStore } from '../../core/stores/workspaceStore';
+import { useChat } from '../../hooks/useChat';
+import { useProviderStore } from '../../core/stores/providerStore';
 
 export function formatTokenCount(n: number): string {
   if (n < 1000) return String(n);
@@ -112,11 +115,38 @@ export function WorkspaceStatusBarLeft({
   sessionTokens,
   compact: _compact,
 }: WorkspaceStatusBarLeftProps) {
-  const resolvedProvider = providerName ?? 'NowPilot';
-  const hasTokens = inputTokens != null || sessionTokens != null;
-  const inText = inputTokens != null ? formatTokenCount(inputTokens) : null;
-  const totalSource = sessionTokens ?? inputTokens ?? 0;
-  const totalText = hasTokens ? formatTokenCount(totalSource) : null;
+  const activeModel = useWorkspaceStore((s) => s.activeModel);
+  const storeInputTokens = useWorkspaceStore((s) => s.inputTokens);
+  const storeSessionTokens = useWorkspaceStore((s) => s.sessionTokens);
+
+  let resolvedProvider = providerName || 'NowPilot';
+  if (activeModel) {
+    const m = activeModel.toLowerCase();
+    if (m.startsWith('gemma') || m.startsWith('gemini')) {
+      resolvedProvider = 'Google';
+    } else if (m.startsWith('gpt-') || m.startsWith('o1-') || m.startsWith('o3-')) {
+      resolvedProvider = 'OpenAI';
+    } else if (m.startsWith('claude')) {
+      resolvedProvider = 'Anthropic';
+    } else {
+      const modelEntries = useProviderStore.getState().modelEntries || [];
+      const matched = modelEntries.find((entry) => entry.modelId === activeModel);
+      if (matched) {
+        const pId = matched.providerId;
+        resolvedProvider = pId.charAt(0).toUpperCase() + pId.slice(1);
+      } else {
+        resolvedProvider = activeModel;
+      }
+    }
+  }
+
+  const finalInputTokens = inputTokens ?? storeInputTokens;
+  const finalSessionTokens = sessionTokens ?? storeSessionTokens;
+
+  const hasTokens = finalInputTokens != null || finalSessionTokens != null;
+  const inText = finalInputTokens != null ? formatTokenCount(finalInputTokens) : '0';
+  const totalSource = finalSessionTokens ?? finalInputTokens ?? 0;
+  const totalText = formatTokenCount(totalSource);
 
   return (
     <div data-workspace-status-bar-left="true" style={wrapperStyle} aria-label="workspace status left">
@@ -129,14 +159,14 @@ export function WorkspaceStatusBarLeft({
       <div style={itemStyle} data-status-item="server" aria-hidden="true">
         <ServerIcon />
       </div>
-      {hasTokens ? (
+      {hasTokens && (
         <div style={itemStyle} data-status-item="tokens">
           <CoinsIcon />
-          <span style={tokenLabelStyle}>
-            {inText != null ? `In: ${inText} | Total: ${totalText}` : `Total: ${totalText}`}
+          <span style={{ fontSize: '11px', fontWeight: 500, marginLeft: 4, color: 'inherit' }}>
+            In: {inText} | Total: {totalText}
           </span>
         </div>
-      ) : null}
+      )}
     </div>
   );
 }

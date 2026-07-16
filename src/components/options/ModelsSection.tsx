@@ -106,15 +106,7 @@ export function ModelsSection() {
           <Select
             style={{ width: 200 }}
             placeholder="Select or type model..."
-            options={[
-              { value: 'gpt-4o', label: 'gpt-4o' },
-              { value: 'gpt-4o-mini', label: 'gpt-4o-mini' },
-              { value: 'claude-sonnet-4-20250514', label: 'claude-sonnet-4-20250514' },
-              { value: 'claude-haiku-3-5-20241022', label: 'claude-haiku-3-5-20241022' },
-              { value: 'gemini-2.5-pro-exp-03-25', label: 'gemini-2.5-pro-exp-03-25' },
-              { value: 'gemini-2.0-flash', label: 'gemini-2.0-flash' },
-              { value: 'ollama/llama3', label: 'ollama/llama3' },
-            ]}
+            options={[]}
             onSelect={(val) => {
               setRows((prev) =>
                 prev.map((r) => (r.key === record.key ? { ...r, modelId: val } : r)),

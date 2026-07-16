@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { List, Typography } from 'antd';
+import { Typography } from 'antd';
 import { PlusOutlined, FileTextOutlined } from '@ant-design/icons';
 import type { LinkParser, SearchResult } from '../../core/notes/LinkParser';
 
@@ -162,25 +162,25 @@ export function WikilinkAutocomplete({
               Notes
             </Text>
           </div>
-          <List
-            dataSource={results.slice(0, 10)}
-            size="small"
-            renderItem={(item, index) => (
-              <List.Item
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {results.slice(0, 10).map((item, index) => (
+              <div
                 key={item.id}
                 onClick={() => handleSelect(item.title)}
                 style={{
                   cursor: 'pointer',
                   padding: '4px 8px',
                   background: index === selectedIndex ? 'var(--ant-color-primary-1, #e6f4ff)' : undefined,
+                  display: 'flex',
+                  alignItems: 'center',
                 }}
                 onMouseDown={(e) => e.preventDefault()}
               >
                 <FileTextOutlined style={{ marginRight: 6, fontSize: 12 }} />
                 <Text style={{ fontSize: 13 }}>{item.title}</Text>
-              </List.Item>
-            )}
-          />
+              </div>
+            ))}
+          </div>
         </>
       )}
       <div

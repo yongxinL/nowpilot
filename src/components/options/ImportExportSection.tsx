@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { Typography, Button, Card, Checkbox, Upload, Alert, Progress, Space, App } from 'antd';
+import { Typography, Button, Card, Checkbox, Upload, Alert, Progress, App } from 'antd';
 import { UploadOutlined, DownloadOutlined } from '@ant-design/icons';
 import JSZip from 'jszip';
 
@@ -243,13 +243,13 @@ export function ImportExportSection() {
                 }
               }}
             >
-              <Space direction="vertical">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {SCOPE_OPTIONS.map((opt) => (
                   <Checkbox key={opt.key} value={opt.key}>
                     {opt.label}
                   </Checkbox>
                 ))}
-              </Space>
+              </div>
             </Checkbox.Group>
           </div>
 
@@ -294,7 +294,7 @@ export function ImportExportSection() {
           {importMessage ? (
             <Alert
               type={importValid ? 'success' : 'error'}
-              message={importMessage}
+              title={importMessage}
               showIcon
               style={{ marginBottom: 12 }}
             />

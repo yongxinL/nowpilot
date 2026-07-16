@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, List, Typography, Empty } from 'antd';
+import { Card, Typography, Empty } from 'antd';
 import type { BacklinkEntry } from '../../core/notes/LinkParser';
 
 const { Text } = Typography;
@@ -30,17 +30,16 @@ export function BacklinksPanel({ backlinks, onNavigateNote }: BacklinksPanelProp
       <Text type="secondary" strong style={{ fontSize: 12, display: 'block', marginBottom: 8, paddingLeft: 4 }}>
         Backlinks ({backlinks.length})
       </Text>
-      <List
-        dataSource={backlinks}
-        size="small"
-        renderItem={(entry) => (
-          <List.Item
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {backlinks.map((entry) => (
+          <div
             key={entry.noteId}
             onClick={() => onNavigateNote(entry.noteId)}
             style={{
               cursor: 'pointer',
               padding: '6px 8px',
               borderRadius: 4,
+              borderBottom: '1px solid #f0f0f0',
             }}
           >
             <div>
@@ -53,9 +52,9 @@ export function BacklinksPanel({ backlinks, onNavigateNote }: BacklinksPanelProp
                 </Text>
               </div>
             </div>
-          </List.Item>
-        )}
-      />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

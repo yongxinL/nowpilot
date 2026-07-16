@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ConfigProvider } from 'antd';
+import { App, ConfigProvider } from 'antd';
 import { getAntdConfig } from '../../core/theme/antdConfig';
-import { useThemeStore } from '../../core/stores/themeStore';
+import { useTheme } from '../../hooks/useTheme';
 import { useWorkspaceStore } from '../../core/stores/workspaceStore';
 import { openStandalone } from '../../core/routing/workspaceRouter';
 import type { NowPilotNavItem } from '../../core/navigation/navigationTypes';
@@ -21,7 +21,7 @@ export interface SidepanelRootProps {
 const NARROW_MAX = SIDEPANEL_NARROW_MAX_WIDTH;
 
 export function SidepanelRoot({ initialActiveId, initialCollapsed, renderActivePage }: SidepanelRootProps) {
-  const mode = useThemeStore((s) => s.mode);
+  const { isDark } = useTheme();
   const setActiveSurface = useWorkspaceStore((s) => s.setActiveSurface);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [measuredWidth, setMeasuredWidth] = useState<number>(800);
@@ -53,7 +53,7 @@ export function SidepanelRoot({ initialActiveId, initialCollapsed, renderActiveP
     return 'narrow';
   }, [userCollapsed, measuredWidth]);
 
-  const antdConfig = useMemo(() => getAntdConfig({ mode, compact: true }), [mode]);
+  const antdConfig = useMemo(() => getAntdConfig({ mode: isDark ? 'dark' : 'light', compact: true }), [isDark]);
 
   const handleSelect = (item: NowPilotNavItem) => {
     setActiveId(item.id);
@@ -66,8 +66,12 @@ export function SidepanelRoot({ initialActiveId, initialCollapsed, renderActiveP
     setPopupOpen(false);
   };
 
-  const handleOpenStandalone = () => {
-    openStandalone();
+  const handleOpenStandalone = async () => {
+    await openStandalone();
+    try {
+      const win = await chrome.windows.getCurrent();
+      if (win.id != null) await chrome.sidePanel.close({ windowId: win.id });
+    } catch {}
   };
 
   const handleOpenOptions = () => {
@@ -75,49 +79,51 @@ export function SidepanelRoot({ initialActiveId, initialCollapsed, renderActiveP
   };
 
   return (
-    <ConfigProvider {...antdConfig}>
-      <div ref={containerRef} style={{ width: '100%', height: '100%' }}>
-        <ApplicationFrame surface="sidepanel">
-          <ErrorBoundary>
-            <SidepanelContent activeNavId={activeId}>
-              {renderActivePage
-                ? renderActivePage({
-                    id: activeId,
-                    label: '',
-                    icon: null,
-                    group: 'core',
-                    order: 0,
-                    surfaces: ['sidepanel'],
-                  } as NowPilotNavItem)
-                : null}
-            </SidepanelContent>
-            {density !== 'collapsed' ? (
-              <SidepanelSider
-                density={density === 'narrow' ? 'narrow' : 'expanded'}
-                activeId={activeId}
-                onSelect={handleSelect}
-                onCollapse={handleCollapse}
-                onOpenStandalone={handleOpenStandalone}
-                onOpenOptions={handleOpenOptions}
-              />
-            ) : null}
-            {density === 'collapsed' ? (
-              <>
-                <SiderTrigger mode="collapsed-float" onActivate={() => setPopupOpen((v) => !v)} />
-                <SiderPopup
-                  open={popupOpen}
-                  onOpenChange={setPopupOpen}
+    <ConfigProvider theme={antdConfig}>
+      <App style={{ width: '100%', height: '100%' }}>
+        <div ref={containerRef} style={{ width: '100%', height: '100%' }}>
+          <ApplicationFrame surface="sidepanel">
+            <ErrorBoundary>
+              <SidepanelContent activeNavId={activeId}>
+                {renderActivePage
+                  ? renderActivePage({
+                      id: activeId,
+                      label: '',
+                      icon: null,
+                      group: 'core',
+                      order: 0,
+                      surfaces: ['sidepanel'],
+                    } as NowPilotNavItem)
+                  : null}
+              </SidepanelContent>
+              {density !== 'collapsed' ? (
+                <SidepanelSider
+                  density={density === 'narrow' ? 'narrow' : 'expanded'}
                   activeId={activeId}
                   onSelect={handleSelect}
-                  onExpand={handleExpand}
+                  onCollapse={handleCollapse}
                   onOpenStandalone={handleOpenStandalone}
                   onOpenOptions={handleOpenOptions}
                 />
-              </>
-            ) : null}
-          </ErrorBoundary>
-        </ApplicationFrame>
-      </div>
+              ) : null}
+              {density === 'collapsed' ? (
+                <>
+                  <SiderTrigger mode="collapsed-float" onActivate={() => setPopupOpen((v) => !v)} />
+                  <SiderPopup
+                    open={popupOpen}
+                    onOpenChange={setPopupOpen}
+                    activeId={activeId}
+                    onSelect={handleSelect}
+                    onExpand={handleExpand}
+                    onOpenStandalone={handleOpenStandalone}
+                    onOpenOptions={handleOpenOptions}
+                  />
+                </>
+              ) : null}
+            </ErrorBoundary>
+          </ApplicationFrame>
+        </div>
+      </App>
     </ConfigProvider>
   );
 }

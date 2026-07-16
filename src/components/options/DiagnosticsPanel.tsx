@@ -1,8 +1,7 @@
 import { useEffect, useCallback } from 'react';
-import { Row, Col, Select, DatePicker, Input, Switch, Button, Space, Alert, Typography } from 'antd';
+import { Select, DatePicker, Input, Switch, Button, Space, Alert, Typography } from 'antd';
 import { useDiagnosticsStore } from '../../core/stores/diagnosticsStore';
 import { TransactionTable } from '../diagnostics/TransactionTable';
-import { TraceDetailPanel } from '../diagnostics/TraceDetailPanel';
 import type { TransactionType, TransactionStatus, Severity } from '../../core/telemetry/types';
 
 const { RangePicker } = DatePicker;
@@ -105,7 +104,7 @@ export function DiagnosticsPanel() {
       {/* Privacy Mode Banner */}
       {privacyMode ? (
         <Alert
-          message="Privacy Mode active — content fields hidden."
+          title="Privacy Mode active — content fields hidden."
           type="info"
           showIcon
           style={{ marginBottom: 12 }}
@@ -184,15 +183,8 @@ export function DiagnosticsPanel() {
         </Space>
       </div>
 
-      {/* Master-Detail Layout */}
-      <Row gutter={12} style={{ height: 'calc(100vh - 200px)' }}>
-        <Col span={10} style={{ minWidth: 0 }}>
-          <TransactionTable />
-        </Col>
-        <Col span={14} style={{ minWidth: 0, overflowY: 'auto' }}>
-          <TraceDetailPanel />
-        </Col>
-      </Row>
+      {/* Single full-width log table with expandable detail rows */}
+      <TransactionTable />
     </div>
   );
 }

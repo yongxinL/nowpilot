@@ -76,6 +76,7 @@ export function SiderPopup({
         </Button>
         <UserAvatarMenu
           size="small"
+          mode="sidepanel"
           onSelect={(key) => {
             if (key === 'appearance') onOpenOptions?.();
           }}
@@ -91,7 +92,7 @@ export function SiderPopup({
       trigger="click"
       placement="bottomRight"
       content={content}
-      overlayInnerStyle={{ borderRadius: token.borderRadius * 2 }}
+      styles={{ container: { borderRadius: token.borderRadius * 2 } }}
     >
       <span />
     </Popover>

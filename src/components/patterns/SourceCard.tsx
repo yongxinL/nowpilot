@@ -26,7 +26,7 @@ export function SourceCard({ title, url, snippet }: SourceCardProps) {
         margin: '4px 0',
         background: 'var(--ant-color-bg-layout)',
       }}
-      bodyStyle={{ padding: '8px 12px' }}
+      styles={{ body: { padding: '8px 12px' } }}
     >
       {/* Title with optional link */}
       {url ? (

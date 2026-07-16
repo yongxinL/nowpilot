@@ -124,6 +124,7 @@ export function SidepanelSider({
         </button>
         <UserAvatarMenu
           size="small"
+          mode="sidepanel"
           onSelect={(key) => {
             if (key === 'appearance') onOpenOptions?.();
           }}

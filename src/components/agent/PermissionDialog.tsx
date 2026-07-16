@@ -58,7 +58,7 @@ export function PermissionDialog({ pendingPermission, onResolve }: PermissionDia
         icon: null,
         footer: null,
         closable: false,
-        maskClosable: false,
+        mask: { closable: false },
         okText: null,
         cancelText: null,
       });

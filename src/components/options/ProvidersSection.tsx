@@ -288,7 +288,7 @@ export function ProvidersSection() {
                   <div style={{ flex: 1 }}>
                     <Alert
                       type={result.status === 'success' ? 'success' : 'error'}
-                      message={result.message}
+                      title={result.message}
                       showIcon
                       style={{ marginBottom: 4 }}
                     />

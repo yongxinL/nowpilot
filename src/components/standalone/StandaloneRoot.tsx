@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { ConfigProvider, theme } from 'antd';
+import { App, ConfigProvider, theme } from 'antd';
 import { getAntdConfig } from '../../core/theme/antdConfig';
-import { useThemeStore } from '../../core/stores/themeStore';
+import { useTheme } from '../../hooks/useTheme';
 import { useWorkspaceStore } from '../../core/stores/workspaceStore';
 import { ErrorBoundary } from '../../core/components/ErrorBoundary';
 import type { NowPilotNavItem } from '../../core/navigation/navigationTypes';
@@ -23,7 +23,7 @@ export function StandaloneRoot({
   renderActivePage,
   statusBar,
 }: StandaloneRootProps) {
-  const mode = useThemeStore((s) => s.mode);
+  const { isDark } = useTheme();
   const setActiveSurface = useWorkspaceStore((s) => s.setActiveSurface);
   const activeProvider = useWorkspaceStore((s) => s.activeProvider);
   const [collapsed, setCollapsed] = useState<boolean>(initialCollapsed);
@@ -33,15 +33,19 @@ export function StandaloneRoot({
     setActiveSurface('standalone');
   }, [setActiveSurface]);
 
-  const antdConfig = getAntdConfig({ mode, compact: false });
+  const antdConfig = getAntdConfig({ mode: isDark ? 'dark' : 'light', compact: false });
   const density: 'expanded' | 'collapsed' = collapsed ? 'collapsed' : 'expanded';
 
   const handleSelect = (item: NowPilotNavItem) => {
     setActiveId(item.id);
   };
 
-  const handleSwitchToSidePanel = () => {
-    chrome.sidePanel.open({} as never).catch(() => {});
+  const handleSwitchToSidePanel = async () => {
+    try {
+      await chrome.sidePanel.open({} as never);
+      const tab = await chrome.tabs.getCurrent();
+      if (tab?.id) await chrome.tabs.remove(tab.id);
+    } catch {}
   };
 
   const handleOpenOptions = () => {
@@ -49,28 +53,30 @@ export function StandaloneRoot({
   };
 
   return (
-    <ConfigProvider {...antdConfig}>
-      <ApplicationFrame surface="standalone">
-        <ErrorBoundary>
-          <StandaloneSider
-            density={density}
-            activeId={activeId}
-            onSelect={handleSelect}
-            onCollapseToggle={() => setCollapsed((v) => !v)}
-            onSwitchToSidePanel={handleSwitchToSidePanel}
-            onOpenOptions={handleOpenOptions}
-          />
-          <StandaloneContentWrapper
-            activeId={activeId}
-            renderActivePage={renderActivePage}
-            statusBar={{
-              ...(statusBar ?? {}),
-              providerName: statusBar?.providerName ?? activeProvider ?? undefined,
-            }}
-            navbarWidth={collapsed ? 56 : STANDALONE_NAVBAR_WIDTH}
-          />
-        </ErrorBoundary>
-      </ApplicationFrame>
+    <ConfigProvider theme={antdConfig}>
+      <App style={{ width: '100%', height: '100%' }}>
+        <ApplicationFrame surface="standalone">
+          <ErrorBoundary>
+            <StandaloneSider
+              density={density}
+              activeId={activeId}
+              onSelect={handleSelect}
+              onCollapseToggle={() => setCollapsed((v) => !v)}
+              onSwitchToSidePanel={handleSwitchToSidePanel}
+              onOpenOptions={handleOpenOptions}
+            />
+            <StandaloneContentWrapper
+              activeId={activeId}
+              renderActivePage={renderActivePage}
+              statusBar={{
+                ...(statusBar ?? {}),
+                providerName: statusBar?.providerName ?? activeProvider ?? undefined,
+              }}
+              navbarWidth={collapsed ? 56 : STANDALONE_NAVBAR_WIDTH}
+            />
+          </ErrorBoundary>
+        </ApplicationFrame>
+      </App>
     </ConfigProvider>
   );
 }

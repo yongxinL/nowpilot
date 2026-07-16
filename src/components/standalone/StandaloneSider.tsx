@@ -128,6 +128,7 @@ export function StandaloneSider({
           >
             <UserAvatarMenu
               size="default"
+              mode="standalone"
               onSelect={(key) => {
                 if (key === 'appearance') onOpenOptions();
               }}
@@ -197,6 +198,7 @@ export function StandaloneSider({
           >
             <UserAvatarMenu
               size="small"
+              mode="standalone"
               onSelect={(key) => {
                 if (key === 'appearance') onOpenOptions();
               }}

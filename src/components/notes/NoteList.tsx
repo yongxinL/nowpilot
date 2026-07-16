@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { Input, Button, Select, List, Popconfirm, Typography, Space, Empty } from 'antd';
+import { Input, Button, Select, Popconfirm, Typography, Empty } from 'antd';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import type { LinkParser, Note } from '../../core/notes/LinkParser';
 
@@ -60,7 +60,7 @@ export function NoteList({ notes, selectedNoteId, onSelect, onNew, onDelete, lin
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <Space direction="vertical" size="small" style={{ padding: '8px', width: '100%' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '8px', width: '100%' }}>
         <Button
           type="primary"
           icon={<PlusOutlined />}
@@ -87,7 +87,7 @@ export function NoteList({ notes, selectedNoteId, onSelect, onNew, onDelete, lin
             { value: 'title', label: 'Title' },
           ]}
         />
-      </Space>
+      </div>
 
       <div style={{ flex: 1, overflowY: 'auto' }}>
         {displayNotes.length === 0 ? (
@@ -97,21 +97,35 @@ export function NoteList({ notes, selectedNoteId, onSelect, onNew, onDelete, lin
             style={{ padding: 24 }}
           />
         ) : (
-          <List
-            dataSource={displayNotes}
-            size="small"
-            renderItem={(note) => (
-              <List.Item
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {displayNotes.map((note) => (
+              <div
                 key={note.id}
                 onClick={() => onSelect(note.id)}
                 style={{
                   cursor: 'pointer',
                   padding: '8px 12px',
                   background: selectedNoteId === note.id ? 'var(--ant-color-primary-1, #e6f4ff)' : undefined,
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  borderBottom: '1px solid #f0f0f0',
                 }}
-                actions={[
+              >
+                <div style={{ flex: 1, minWidth: 0, paddingRight: 8 }}>
+                  <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 160 }}>
+                    <Text strong style={{ fontSize: 13 }}>
+                      {note.title}
+                    </Text>
+                  </div>
+                  <div style={{ marginTop: 2 }}>
+                    <Text type="secondary" style={{ fontSize: 11 }}>
+                      {new Date(note.updated).toLocaleDateString()}
+                    </Text>
+                  </div>
+                </div>
+                <div onClick={(e) => e.stopPropagation()}>
                   <Popconfirm
-                    key="delete"
                     title="Delete this note?"
                     description="This action cannot be undone."
                     onConfirm={(e) => {
@@ -120,7 +134,8 @@ export function NoteList({ notes, selectedNoteId, onSelect, onNew, onDelete, lin
                     }}
                     onCancel={(e) => e?.stopPropagation()}
                     okText="Delete"
-                    okButtonProps={{ danger: true }}
+                    cancelText="Cancel"
+                    okButtonProps={{ danger: true, style: { background: '#EF4444', borderColor: '#EF4444' } }}
                   >
                     <Button
                       type="text"
@@ -129,24 +144,11 @@ export function NoteList({ notes, selectedNoteId, onSelect, onNew, onDelete, lin
                       icon={<DeleteOutlined />}
                       onClick={(e) => e.stopPropagation()}
                     />
-                  </Popconfirm>,
-                ]}
-              >
-                <List.Item.Meta
-                  title={
-                    <Text ellipsis style={{ maxWidth: 160 }}>
-                      {note.title}
-                    </Text>
-                  }
-                  description={
-                    <Text type="secondary" style={{ fontSize: 11 }}>
-                      {new Date(note.updated).toLocaleDateString()}
-                    </Text>
-                  }
-                />
-              </List.Item>
-            )}
-          />
+                  </Popconfirm>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>
