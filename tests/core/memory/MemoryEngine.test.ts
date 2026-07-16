@@ -266,7 +266,7 @@ describe('MemoryEngine — extract()', () => {
     await engine.extract('conv-1', messages, []);
 
     expect(mockExtractor.extract).toHaveBeenCalledTimes(1);
-    expect(mockExtractor.extract).toHaveBeenCalledWith(messages, 'small');
+    expect(mockExtractor.extract).toHaveBeenCalledWith(messages, 'small', undefined);
   });
 
   // Test 2: When extractor returns facts, upsert is called (conflict resolution flow)

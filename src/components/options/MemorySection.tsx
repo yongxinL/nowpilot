@@ -1,6 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { Form, Table, Typography, Button, Switch, App } from 'antd';
+import React, { useEffect, useState, useCallback } from 'react';
+import { Table, Typography, Button, Switch, App, Modal, Space } from 'antd';
+import { DeleteOutlined } from '@ant-design/icons';
 import { memoryDB } from '../../core/storage/stores/MemoryDB';
+import { userMemoryStore } from '../../core/memory/UserMemoryStore';
 
 const { Title } = Typography;
 
@@ -19,12 +21,15 @@ interface UserFact {
 }
 
 export function MemorySection() {
-  const { message } = App.useApp();
+  const { message, modal } = App.useApp();
   const [facts, setFacts] = useState<UserFact[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const [memoryEnabled, setMemoryEnabled] = useState(true);
 
   useEffect(() => {
+    chrome.storage.local.get('np_memory_enabled').then((result) => {
+      setMemoryEnabled(result.np_memory_enabled !== false);
+    });
     loadFacts();
   }, []);
 
@@ -37,6 +42,8 @@ export function MemorySection() {
     }
   };
 
+  const activeFacts = facts.filter((f) => f.status !== 'superseded');
+
   const handleToggleMemory = async (enabled: boolean) => {
     setMemoryEnabled(enabled);
     try {
@@ -47,17 +54,27 @@ export function MemorySection() {
     }
   };
 
-  const handleSave = async () => {
-    setLoading(true);
-    try {
-      await chrome.storage.local.set({ np_memory_enabled: memoryEnabled });
-      message.success('Memory settings saved');
-    } catch {
-      message.error('Failed to save');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const handleDeleteFact = useCallback(async (id: string) => {
+    modal.confirm({
+      title: 'Delete memory fact?',
+      content: 'This fact will be permanently removed from memory.',
+      okText: 'Delete',
+      okType: 'danger',
+      cancelText: 'Cancel',
+      onOk: async () => {
+        setDeleting(id);
+        try {
+          await userMemoryStore.evictFact(id);
+          await loadFacts();
+          message.success('Fact deleted');
+        } catch {
+          message.error('Failed to delete fact');
+        } finally {
+          setDeleting(null);
+        }
+      },
+    });
+  }, [modal, message]);
 
   const formatDate = (ts: number) => new Date(ts).toLocaleDateString(undefined, {
     month: 'short',
@@ -99,50 +116,60 @@ export function MemorySection() {
       width: 140,
       render: (value: number) => formatDate(value),
     },
+    {
+      title: '',
+      key: 'action',
+      width: 60,
+      render: (_: unknown, record: UserFact) => (
+        <Button
+          type="text"
+          danger
+          size="small"
+          loading={deleting === record.id}
+          icon={<DeleteOutlined />}
+          onClick={() => handleDeleteFact(record.id)}
+        />
+      ),
+    },
   ];
 
   return (
     <div data-options-section="memory" style={{ maxWidth: 720 }}>
       <Title level={4}>Memory</Title>
       <p style={{ marginBottom: 16 }}>
-        View stored user memory facts. Memory editing will be available in a future update.
+        View and manage your stored memory facts. Memory facts are automatically collected during conversations.
       </p>
 
-      <Form layout="horizontal" labelAlign="left" onFinish={handleSave}>
-        <Form.Item label="Memory System">
+      <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <Space align="center">
           <Switch
             checked={memoryEnabled}
             onChange={handleToggleMemory}
           />
-          <span style={{ marginLeft: 8, fontSize: 12, color: '#888' }}>
-            {memoryEnabled ? 'Enabled' : 'Disabled'}
+          <span style={{ fontSize: 12, color: '#888' }}>
+            Memory system {memoryEnabled ? 'enabled' : 'disabled'}
           </span>
-        </Form.Item>
+        </Space>
 
-        <div style={{ marginBottom: 16 }}>
+        <div>
           <div style={{ fontSize: 12, color: '#888', marginBottom: 8 }}>
-            {facts.length} fact{facts.length !== 1 ? 's' : ''} stored
+            {activeFacts.length} fact{activeFacts.length !== 1 ? 's' : ''} stored
           </div>
-          <Table
-            dataSource={facts.filter((f) => f.status !== 'superseded')}
-            columns={columns}
-            rowKey="id"
-            pagination={false}
-            size="small"
-          />
-          {facts.length === 0 ? (
+          {activeFacts.length > 0 ? (
+            <Table
+              dataSource={activeFacts}
+              columns={columns}
+              rowKey="id"
+              pagination={false}
+              size="small"
+            />
+          ) : (
             <div style={{ padding: 24, textAlign: 'center', color: '#999' }}>
               No memory facts stored yet. Memory facts are automatically collected during conversations.
             </div>
-          ) : null}
+          )}
         </div>
-
-        <Form.Item>
-          <Button type="primary" htmlType="submit" loading={loading}>
-            Save
-          </Button>
-        </Form.Item>
-      </Form>
+      </Space>
     </div>
   );
 }

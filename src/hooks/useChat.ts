@@ -3,7 +3,7 @@ import { AgentOrchestrator } from '../core/ai/pipeline/AgentOrchestrator';
 import { PlannerService } from '../core/ai/pipeline/PlannerService';
 import { ExecutorService } from '../core/ai/pipeline/ExecutorService';
 import { RendererService } from '../core/ai/pipeline/RendererService';
-import { useStreamingLLM } from './useStreamingLLM';
+import { useStreamingLLM, type OrchestrationStage } from './useStreamingLLM';
 import { memoryEngine } from '../core/memory/MemoryEngine';
 import { contextOptimizer } from '../core/context/ContextOptimizer';
 import { chatHistoryDB } from '../core/storage/stores/ChatHistoryDB';
@@ -12,6 +12,7 @@ import { toolRegistry } from '../core/ai/tools/ToolRegistry';
 import { permissionService } from '../core/ai/tools/PermissionService';
 import { slashCommandRegistry } from '../core/slash/SlashCommandRegistry';
 import { useWorkspaceStore } from '../core/stores/workspaceStore';
+import { debugLog } from '../core/utils/debugLog';
 import type { OptimizedContext } from '../core/context/contextTypes';
 
 // ---------------------------------------------------------------------------
@@ -37,6 +38,7 @@ export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  reasoning?: string;
   streaming: boolean;
   timestamp: number;
 }
@@ -54,6 +56,9 @@ export interface BubbleListItem {
   key: string;
   role: 'user' | 'assistant';
   content: string;
+  reasoning?: string;
+  stage?: OrchestrationStage;
+  currentTool?: string;
   loading: boolean;
   streaming: boolean;
 }
@@ -75,6 +80,8 @@ export interface UseChatReturn {
   clearDraft: () => void;
   activeProvider: string | null;
   setActiveProvider: (id: string) => void;
+  editMessage: (id: string, newContent: string) => Promise<void>;
+  regenerateResponse: (assistantMessageId: string) => Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -129,6 +136,9 @@ export function useChat(): UseChatReturn {
   // useStreamingLLM — receives callbacks that update messages
   // ---------------------------------------------------------------
 
+  const [stage, setStage] = useState<OrchestrationStage>('idle');
+  const [currentTool, setCurrentTool] = useState<string | undefined>();
+
   const streamingLLM = useStreamingLLM({
     orchestrator: agentOrchestrator,
     onDelta: (text: string) => {
@@ -144,8 +154,30 @@ export function useChat(): UseChatReturn {
         return updated;
       });
     },
-    onComplete: (fullText: string) => {
-      // Mark last message as complete
+    onReasoning: (text: string) => {
+      setMessages((prev) => {
+        const updated = [...prev];
+        const last = updated[updated.length - 1];
+        if (last && last.role === 'assistant') {
+          updated[updated.length - 1] = {
+            ...last,
+            reasoning: (last.reasoning || '') + text,
+          };
+        }
+        return updated;
+      });
+    },
+    onStageChange: (newStage: OrchestrationStage) => {
+      setStage(newStage);
+      if (newStage !== 'tool') setCurrentTool(undefined);
+    },
+    onToolCall: (toolName: string) => {
+      setStage('tool');
+      setCurrentTool(toolName);
+    },
+    onComplete: (fullText: string, reasoning?: string) => {
+      setStage('idle');
+      // Mark last message as complete with final content and reasoning
       setMessages((prev) => {
         const updated = [...prev];
         const last = updated[updated.length - 1];
@@ -154,6 +186,7 @@ export function useChat(): UseChatReturn {
             ...last,
             content: fullText,
             streaming: false,
+            reasoning: reasoning || last.reasoning,
           };
         }
         return updated;
@@ -194,6 +227,18 @@ export function useChat(): UseChatReturn {
             }
           });
         }
+
+        // D-02: Memory extraction triggered after stream completes (post-execution)
+        // D-04: Fire-and-forget — NOT awaited, extraction failures don't block the user
+        const userMsg = lastUserMessageRef.current;
+        if (userMsg) {
+          const messages = [
+            { role: 'user' as const, content: userMsg },
+            { role: 'assistant' as const, content: fullText },
+          ];
+          memoryEngine.extract(convId, messages, [])
+            .catch(err => debugLog('error', '[useChat] Memory extraction failed', { error: err }));
+        }
       }
     },
     onError: (_message: string) => {
@@ -203,6 +248,7 @@ export function useChat(): UseChatReturn {
 
   // Workspace store selectors (individual to prevent unnecessary re-renders)
   const workspaceActiveProvider = useWorkspaceStore((s) => s.activeProvider);
+  const workspaceActiveModel = useWorkspaceStore((s) => s.activeModel);
   const workspaceSetActiveProvider = useWorkspaceStore((s) => s.setActiveProvider);
   const workspaceSetConversationId = useWorkspaceStore((s) => s.setConversationId);
 
@@ -232,6 +278,7 @@ export function useChat(): UseChatReturn {
   streamingLLMRef.current = streamingLLM;
   const isStreamingRef = useRef(false);
   isStreamingRef.current = streamingLLM.isStreaming;
+  const sendingRef = useRef(false);
 
   // ---------------------------------------------------------------
   // send()
@@ -252,6 +299,9 @@ export function useChat(): UseChatReturn {
       if (streamingLLMRef.current.isStreaming) {
         streamingLLMRef.current.abort();
       }
+      // Prevent double-submit: if still streaming after abort, another send is in flight
+      if (sendingRef.current) return;
+      sendingRef.current = true;
 
       // 3. Get or create conversationId (D-14)
       let convId = conversationIdRef.current;
@@ -320,10 +370,11 @@ export function useChat(): UseChatReturn {
       clearDraft();
 
       // 8. Assemble context (D-04)
+      setStage('retrieving');
       // Get conversation history
       const historyMessages = await chatHistoryDB.getMessagesBySession(convId);
 
-      // Get memory context
+      // Get memory context (triggers MiniSearch retrieval of user facts)
       const memoryResult = await memoryEngine.assemble(convId, message, 'small');
 
       // Build conversation history for ContextOptimizerInput
@@ -344,6 +395,7 @@ export function useChat(): UseChatReturn {
         memory: memoryResult.memory,
         preferences: memoryResult.preferences as Record<string, unknown>,
         conversationHistory,
+        conversationSummary: memoryResult.conversationContext.summary,
       };
 
       const optimizedContext: OptimizedContext =
@@ -354,9 +406,15 @@ export function useChat(): UseChatReturn {
         ? [workspaceActiveProvider]
         : [];
 
-      await streamingLLMRef.current.startStream(optimizedContext, preferredProviders);
+      const activeModelId = workspaceActiveModel ?? undefined;
+
+      try {
+        await streamingLLMRef.current.startStream(optimizedContext, preferredProviders, activeModelId);
+      } finally {
+        sendingRef.current = false;
+      }
     },
-    [workspaceActiveProvider, workspaceSetConversationId],
+    [workspaceActiveProvider, workspaceActiveModel, workspaceSetConversationId],
   );
 
   // ---------------------------------------------------------------
@@ -461,11 +519,137 @@ export function useChat(): UseChatReturn {
         key: msg.id,
         role: msg.role,
         content: msg.content,
+        reasoning: msg.reasoning,
+        stage: msg.streaming ? stage : undefined,
+        currentTool: msg.streaming && stage === 'tool' ? currentTool : undefined,
         loading: msg.streaming && !msg.content,
         streaming: msg.streaming,
       })),
-    [messages],
+    [messages, stage, currentTool],
   );
+
+  // ---------------------------------------------------------------
+  // Additional Conversation management helpers
+  // ---------------------------------------------------------------
+
+  const toggleStarConversation = useCallback(
+    async (id: string) => {
+      const conv = conversations.find((c) => c.id === id);
+      if (!conv) return;
+      const nextStarred = !conv.starred;
+      await chatHistoryDB.updateSession(id, { starred: nextStarred });
+      setConversations((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, starred: nextStarred } : c)),
+      );
+    },
+    [conversations],
+  );
+
+  const updateConversationTitle = useCallback(async (id: string, title: string) => {
+    await chatHistoryDB.updateSession(id, { title });
+    setConversations((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, title } : c)),
+    );
+  }, []);
+
+  const deleteAllConversations = useCallback(
+    async (includeStarred: boolean) => {
+      const toDelete = conversations.filter((c) => includeStarred || !c.starred);
+      for (const c of toDelete) {
+        await chatHistoryDB.deleteMessagesBySession(c.id);
+        await chatHistoryDB.deleteSession(c.id);
+      }
+      setConversations((prev) => prev.filter((c) => !includeStarred && c.starred));
+      if (toDelete.some((c) => c.id === conversationIdRef.current)) {
+        conversationIdRef.current = null;
+        setActiveConversationId(null);
+        setMessages([]);
+      }
+    },
+    [conversations],
+  );
+
+  const editMessage = useCallback(async (id: string, newContent: string) => {
+    setMessages((prev) =>
+      prev.map((m) => (m.id === id ? { ...m, content: newContent } : m))
+    );
+    const activeId = conversationIdRef.current;
+    if (activeId) {
+      const dbMessages = await chatHistoryDB.getMessagesBySession(activeId);
+      const found = dbMessages.find((m) => m.id === id);
+      if (found) {
+        await chatHistoryDB.addMessage({
+          id,
+          sessionId: activeId,
+          role: found.role,
+          content: newContent,
+          timestamp: found.timestamp,
+        });
+      }
+    }
+  }, []);
+
+  const regenerateResponse = useCallback(async (assistantMessageId: string) => {
+    const activeId = conversationIdRef.current;
+    if (!activeId) return;
+
+    const index = messages.findIndex((m) => m.id === assistantMessageId);
+    if (index === -1) return;
+
+    const userMessage = messages.slice(0, index).reverse().find((m) => m.role === 'user');
+    if (!userMessage) return;
+
+    const userMessageIndex = messages.findIndex((m) => m.id === userMessage.id);
+    const slicedMessages = messages.slice(0, userMessageIndex + 1);
+
+    await chatHistoryDB.deleteMessagesBySession(activeId);
+    for (const msg of slicedMessages) {
+      await chatHistoryDB.addMessage({
+        id: msg.id,
+        sessionId: activeId,
+        role: msg.role,
+        content: msg.content,
+        timestamp: msg.timestamp,
+      });
+    }
+
+    setMessages(slicedMessages);
+
+    const newAssistantMsg: ChatMessage = {
+      id: crypto.randomUUID(),
+      role: 'assistant',
+      content: '',
+      streaming: true,
+      timestamp: Date.now(),
+    };
+    setMessages([...slicedMessages, newAssistantMsg]);
+
+    const historyMessages = await chatHistoryDB.getMessagesBySession(activeId);
+    const memoryResult = await memoryEngine.assemble(activeId, userMessage.content, 'small');
+    const conversationHistory = historyMessages.map((m) => ({
+      role: m.role,
+      content: m.content,
+    }));
+
+    const contextInput = {
+      operationId: activeId,
+      providerId: workspaceActiveProvider ?? 'default',
+      modelId: 'default',
+      modelContextWindow: 128000,
+      userInput: userMessage.content,
+      systemPrompt: 'You are a helpful AI assistant.',
+      taskInstructions: 'Respond to the user message concisely and accurately.',
+      memory: memoryResult.memory,
+      preferences: memoryResult.preferences as Record<string, unknown>,
+      conversationHistory,
+    };
+
+    const optimizedContext = await contextOptimizer.optimize(contextInput);
+    const preferredProviders = workspaceActiveProvider ? [workspaceActiveProvider] : [];
+    const activeModelId = workspaceActiveModel ?? undefined;
+
+    await streamingLLMRef.current.startStream(optimizedContext, preferredProviders, activeModelId);
+  }, [messages, workspaceActiveProvider, workspaceActiveModel]);
 
   // ---------------------------------------------------------------
   // Return
@@ -479,14 +663,20 @@ export function useChat(): UseChatReturn {
     get isStreaming() { return streamingLLM.isStreaming; },
     get error() { return streamingLLM.error; },
     conversations,
+    setConversations,
     activeConversationId,
     switchConversation,
     deleteConversation,
+    toggleStarConversation,
+    updateConversationTitle,
+    deleteAllConversations,
     newConversation,
     draft,
     setDraft,
     clearDraft,
     activeProvider: workspaceActiveProvider,
     setActiveProvider: workspaceSetActiveProvider,
+    editMessage,
+    regenerateResponse,
   };
 }

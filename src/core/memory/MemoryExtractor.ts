@@ -3,6 +3,7 @@ import { debugLog } from '../utils/debugLog';
 import type { ModelContextTier } from '../context/contextTypes';
 import type { MemoryExtractionResult } from './memoryTypes';
 import { extractionResultSchema } from './memoryTypes';
+import { providerRegistry } from '../ai/providers/ProviderRegistry';
 
 // ---------------------------------------------------------------------------
 // Extraction prompt template
@@ -32,7 +33,7 @@ Rules:
 - Max 5 facts per extraction`;
 
 // ---------------------------------------------------------------------------
-// Model accessor type (resolves a Haiku-tier model provider + model instance)
+// Model accessor type (resolves a model provider + model instance)
 // ---------------------------------------------------------------------------
 
 type ModelAccessorResult = { provider: string; model: unknown };
@@ -45,6 +46,29 @@ export class MemoryExtractor {
   constructor(
     private modelAccessor: (tier: ModelContextTier) => ModelAccessorResult,
   ) {}
+
+  /**
+   * Resolve a model provider+instance by modelId from the registry.
+   * Returns undefined if the model is not found or the provider is unavailable.
+   */
+  private resolveModelById(modelId: string): ModelAccessorResult | undefined {
+    const allModels = providerRegistry.listModels();
+    const entry = allModels.find(m => m.modelId === modelId);
+    if (!entry) {
+      debugLog('warn', '[MemoryExtractor] preferred model not found in registry — falling back to tier model', { modelId, availableModels: allModels.map(m => m.modelId) });
+      return undefined;
+    }
+    const provider = providerRegistry.getProvider(entry.providerId);
+    if (!provider) {
+      debugLog('warn', '[MemoryExtractor] provider not available for preferred model — falling back to tier model', { modelId, providerId: entry.providerId });
+      return undefined;
+    }
+    debugLog('info', '[MemoryExtractor] using preferred model for extraction', { modelId, providerId: entry.providerId });
+    return {
+      provider: entry.providerId,
+      model: (provider.instance as any)(entry.modelId),
+    };
+  }
 
   /**
    * Extract facts and optional summary from a conversation.
@@ -60,8 +84,15 @@ export class MemoryExtractor {
   async extract(
     messages: Array<{ role: string; content: string }>,
     tier: ModelContextTier = 'small',
+    preferredModelId?: string,
   ): Promise<MemoryExtractionResult> {
-    const resolved = this.modelAccessor(tier);
+    await providerRegistry.initialize();
+
+    // If a specific modelId is provided, try to use it (avoids loading a
+    // different model on the backend for post-conversation extraction).
+    const resolved = preferredModelId
+      ? this.resolveModelById(preferredModelId) ?? this.modelAccessor(tier)
+      : this.modelAccessor(tier);
     const conversationText = messages
       .map((m) => `${m.role}: ${m.content}`)
       .join('\n');
@@ -74,10 +105,11 @@ export class MemoryExtractor {
           system: EXTRACTION_PROMPT,
           prompt: conversationText,
           maxTokens: 300,
-          temperature: 0,
         });
 
-        const parsed = JSON.parse(text);
+        // Strip markdown code fences if present (reasoning models often wrap JSON)
+        const cleaned = text.replace(/^```(?:json)?\s*|\s*```$/gi, '').trim();
+        const parsed = JSON.parse(cleaned);
         const validated = extractionResultSchema.safeParse(parsed);
 
         if (validated.success) {
@@ -116,8 +148,28 @@ export class MemoryExtractor {
 // Actual wiring happens in P06 (MemoryEngine integration)
 // ---------------------------------------------------------------------------
 
-const modelAccessor = (_tier: ModelContextTier): ModelAccessorResult => {
-  throw new Error('MemoryExtractor singleton not wired — inject via constructor');
+const modelAccessor = (tier: ModelContextTier): ModelAccessorResult => {
+  const costTierMap: Record<ModelContextTier, 'haiku' | 'flash' | 'sonnet' | 'opus'> = {
+    tiny: 'haiku',
+    small: 'flash',
+    medium: 'sonnet',
+    large: 'opus',
+  };
+  const costTier = costTierMap[tier] || 'flash';
+  
+  const models = providerRegistry.getModelsForTier(costTier);
+  if (models.length > 0) {
+    const modelEntry = models[0];
+    const provider = providerRegistry.getProvider(modelEntry.providerId);
+    if (provider) {
+      return {
+        provider: modelEntry.providerId,
+        model: (provider.instance as any)(modelEntry.modelId),
+      };
+    }
+  }
+
+  throw new Error(`No model available in ProviderRegistry for tier ${tier} (${costTier})`);
 };
 
 export const memoryExtractor = new MemoryExtractor(modelAccessor);

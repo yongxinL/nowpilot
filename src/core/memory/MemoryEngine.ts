@@ -145,12 +145,18 @@ export class MemoryEngine {
     messages: Array<{ role: string; content: string }>,
     _toolResults: Array<unknown>,
     execCtx?: ExecutionContext,
+    modelId?: string,
   ): Promise<void> {
     try {
+      const enabled = await getMemoryEnabled();
+      if (!enabled) {
+        debugLog('info', '[MemoryEngine] memory disabled via toggle — skipping extraction');
+        return;
+      }
       // ---------------------------------------------------------------
       // Step 1: Extract facts (D-05, Haiku-tier via 'small' mapping)
       // ---------------------------------------------------------------
-      const result = await this.#extractWithRetry(messages);
+      const result = await this.#extractWithRetry(messages, modelId);
       if (result.facts.length === 0) {
         debugLog('info', '[MemoryEngine] no facts extracted, skipping to summarization');
       } else {
@@ -172,7 +178,7 @@ export class MemoryEngine {
       // ---------------------------------------------------------------
       // Step 3: Check summarization threshold (D-20 — every 12 messages)
       // ---------------------------------------------------------------
-      await this.#checkSummarization(conversationId, messages);
+      await this.#checkSummarization(conversationId, messages, modelId);
 
       // ---------------------------------------------------------------
       // Step 4: Check archiving threshold (D-22 — 30 min idle)
@@ -261,10 +267,11 @@ export class MemoryEngine {
    */
   async #extractWithRetry(
     messages: Array<{ role: string; content: string }>,
+    modelId?: string,
   ): Promise<MemoryExtractionResult> {
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
-        return await this.extractor.extract(messages, 'small');
+        return await this.extractor.extract(messages, 'small', modelId);
       } catch (err) {
         if (attempt === 1) {
           debugLog('warn', '[MemoryEngine] extractor failed, retrying once', { error: err });
@@ -337,6 +344,7 @@ export class MemoryEngine {
   async #checkSummarization(
     conversationId: string,
     messages: Array<{ role: string; content: string }>,
+    modelId?: string,
   ): Promise<void> {
     const msgCount = messages.length;
     if (msgCount >= 12) {
@@ -346,7 +354,7 @@ export class MemoryEngine {
       const middleMessages = messages.slice(middleStart, middleEnd);
 
       // Call extractor for summarization
-      const { summary } = await this.extractor.extract(middleMessages, 'small');
+      const { summary } = await this.extractor.extract(middleMessages, 'small', modelId);
 
       if (summary) {
         if (this.isPrimarySurface) {
@@ -497,6 +505,19 @@ export class MemoryEngine {
       }
     }
     return activeFacts;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+async function getMemoryEnabled(): Promise<boolean> {
+  try {
+    const result = await chrome.storage.local.get('np_memory_enabled');
+    return result.np_memory_enabled !== false;
+  } catch {
+    return true;
   }
 }
 
