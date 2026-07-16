@@ -1,6 +1,5 @@
-import { CommentOutlined, FileTextOutlined, HighlightOutlined, RobotOutlined } from '@ant-design/icons';
+import { CommentOutlined, FileTextOutlined } from '@ant-design/icons';
 import { ChatPage } from '../pages/ChatPage';
-import { AgentPage } from '../pages/AgentPage';
 import { NotesPage } from '../pages/NotesPage';
 import { registerCorePages } from './registerCorePages';
 
@@ -13,23 +12,23 @@ registerCorePages({
   registerOn: ['sidepanel', 'standalone'],
 });
 
-registerCorePages({
-  id: 'agent',
-  label: 'Agent',
-  icon: RobotOutlined,
-  component: AgentPage,
-  order: 2,
-  registerOn: ['sidepanel', 'standalone'],
-});
-
-registerCorePages({
-  id: 'write',
-  label: 'Write',
-  icon: HighlightOutlined,
-  component: AgentPage,
-  order: 3,
-  registerOn: ['sidepanel', 'standalone'],
-});
+// registerCorePages({
+//   id: 'agent',
+//   label: 'Agent',
+//   icon: RobotOutlined,
+//   component: AgentPage,
+//   order: 2,
+//   registerOn: ['sidepanel', 'standalone'],
+// });
+//
+// registerCorePages({
+//   id: 'write',
+//   label: 'Write',
+//   icon: HighlightOutlined,
+//   component: AgentPage,
+//   order: 3,
+//   registerOn: ['sidepanel', 'standalone'],
+// });
 
 registerCorePages({
   id: 'notes',
