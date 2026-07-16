@@ -4,12 +4,14 @@ import type { ProviderRegistry } from '../../../../src/core/ai/providers/Provide
 import type { CircuitBreaker } from '../../../../src/core/ai/router/CircuitBreaker';
 import type { TierResolver } from '../../../../src/core/ai/router/TierResolver';
 
-function createMockRegistry(providerMap: Record<string, { instance: unknown }>): Pick<ProviderRegistry, 'getProvider'> {
+function createMockRegistry(providerMap: Record<string, { instance: unknown }>): Pick<ProviderRegistry, 'getProvider' | 'initialize'> {
   return {
+    initialize: vi.fn().mockResolvedValue(undefined),
     getProvider(providerId: string) {
       const entry = providerMap[providerId];
       if (!entry) return undefined;
-      return { instance: entry.instance, config: { id: providerId, name: providerId, type: 'openai', models: [], priority: 0, enabled: true } };
+      const instanceFn = (modelId: string) => entry.instance;
+      return { instance: instanceFn, config: { id: providerId, name: providerId, type: 'openai', models: [], priority: 0, enabled: true } };
     },
   };
 }
@@ -165,10 +167,12 @@ describe('ProviderRouter', () => {
   it('records failure on error and continues to next provider', async () => {
     let callCount = 0;
     registry = {
+      initialize: vi.fn().mockResolvedValue(undefined),
       getProvider(id: string) {
         callCount++;
-        if (id === 'openai') return undefined; // not available
-        return { instance: { name: id }, config: { id, name: id, type: 'openai' as const, models: [], priority: 0, enabled: true } };
+        if (id === 'openai') return undefined;
+        const instanceFn = () => ({ name: id });
+        return { instance: instanceFn, config: { id, name: id, type: 'openai' as const, models: [], priority: 0, enabled: true } };
       },
     } as unknown as Pick<ProviderRegistry, 'getProvider'>;
     breaker = createMockBreaker();
@@ -191,9 +195,11 @@ describe('ProviderRouter', () => {
 
   it('records failure for providers that throw', async () => {
     registry = {
+      initialize: vi.fn().mockResolvedValue(undefined),
       getProvider(id: string) {
         if (id === 'openai') throw new Error('AI SDK init failed');
-        return { instance: { name: id }, config: { id, name: id, type: 'openai' as const, models: [], priority: 0, enabled: true } };
+        const instanceFn = () => ({ name: id });
+        return { instance: instanceFn, config: { id, name: id, type: 'openai' as const, models: [], priority: 0, enabled: true } };
       },
     } as unknown as Pick<ProviderRegistry, 'getProvider'>;
     breaker = createMockBreaker();
@@ -217,6 +223,7 @@ describe('ProviderRouter', () => {
 
   it('returns null when all providers in chain throw or are unavailable', async () => {
     registry = {
+      initialize: vi.fn().mockResolvedValue(undefined),
       getProvider() { throw new Error('All providers failed'); },
     } as unknown as Pick<ProviderRegistry, 'getProvider'>;
     breaker = createMockBreaker();

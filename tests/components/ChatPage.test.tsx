@@ -3,35 +3,47 @@ import { render } from '@testing-library/react';
 import { ConfigProvider } from 'antd';
 import React from 'react';
 
+const mockChatState = {
+  messages: [],
+  bubbleItems: [],
+  send: vi.fn(),
+  abort: vi.fn(),
+  isStreaming: false,
+  error: null,
+  conversations: [
+    { id: 'conv-1', title: 'Test', updated: 1000, created: 1000, starred: false, preview: 'Hello' },
+  ],
+  activeConversationId: null,
+  switchConversation: vi.fn(),
+  deleteConversation: vi.fn(),
+  newConversation: vi.fn(),
+  draft: '',
+  setDraft: vi.fn(),
+  clearDraft: vi.fn(),
+  activeProvider: null,
+  setActiveProvider: vi.fn(),
+};
+
 // Mock useChat hook
 vi.mock('../../src/hooks/useChat', () => ({
-  useChat: () => ({
-    messages: [],
-    bubbleItems: [],
-    send: vi.fn(),
-    abort: vi.fn(),
-    isStreaming: false,
-    error: null,
-    conversations: [
-      { id: 'conv-1', title: 'Test', updated: Date.now(), created: 1000, starred: false, preview: 'Hello' },
-    ],
-    activeConversationId: null,
-    switchConversation: vi.fn(),
-    deleteConversation: vi.fn(),
-    newConversation: vi.fn(),
-    draft: '',
-    setDraft: vi.fn(),
-    clearDraft: vi.fn(),
-    activeProvider: null,
-    setActiveProvider: vi.fn(),
-  }),
+  useChat: () => mockChatState,
 }));
+
+const mockWorkspaceState = {
+  activeSurface: 'standalone',
+  activeModel: 'gemma-4-e2b-it-4bit',
+  inputTokens: 0,
+  sessionTokens: 14000,
+  setActiveModel: vi.fn(),
+  setActiveProvider: vi.fn(),
+  setInputTokens: vi.fn(),
+  setSessionTokens: vi.fn(),
+};
 
 // Mock workspace store
 vi.mock('../../src/core/stores/workspaceStore', () => ({
   useWorkspaceStore: (selector: any) => {
-    const state = { activeSurface: 'standalone' };
-    return selector ? selector(state) : state;
+    return selector ? selector(mockWorkspaceState) : mockWorkspaceState;
   },
 }));
 

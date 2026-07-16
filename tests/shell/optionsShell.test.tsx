@@ -9,10 +9,10 @@ function setup(jsx: React.ReactElement) {
 }
 
 describe('Options page UI shell', () => {
-  it('renders sidebar with all 12 core sections', () => {
+  it('renders sidebar with all 8 core sections', () => {
     const { container } = setup(React.createElement(OptionsRoot, {}));
     const items = container.querySelectorAll('[data-options-nav-item]');
-    expect(items.length).toBe(12);
+    expect(items.length).toBe(8);
   });
 
   it('renders options search input with accessible label', () => {
@@ -23,23 +23,21 @@ describe('Options page UI shell', () => {
 
   it('exposes the canonical sections list', () => {
     const ids = optionsSections.map((s) => s.id);
-    expect(ids).toContain('providers');
-    expect(ids).toContain('models');
-    expect(ids).toContain('mcp');
+    expect(ids).not.toContain('providers');
+    expect(ids).not.toContain('models');
+    expect(ids).toContain('general');
+    expect(ids).toContain('sidebar');
+    expect(ids).toContain('translate');
     expect(ids).toContain('prompts');
     expect(ids).toContain('slash');
-    expect(ids).toContain('memory');
-    expect(ids).toContain('appearance');
-    expect(ids).toContain('diagnostics');
-    expect(ids).toContain('import-export');
-    expect(ids).toContain('feature-flags');
+    expect(ids).toContain('mcp');
     expect(ids).toContain('addons');
-    expect(ids).toContain('about');
+    expect(ids).toContain('advanced');
   });
 
   it('marks the active section via aria-current', () => {
-    const { container } = setup(React.createElement(OptionsRoot, { initialSection: 'appearance' }));
-    const active = container.querySelector('[data-options-nav-item="appearance"]');
+    const { container } = setup(React.createElement(OptionsRoot, { initialSection: 'general' }));
+    const active = container.querySelector('[data-options-nav-item="general"]');
     expect(active?.getAttribute('aria-current')).toBe('page');
   });
 });

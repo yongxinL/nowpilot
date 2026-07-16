@@ -1,9 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ProviderRegistry } from '../../../../src/core/ai/providers/ProviderRegistry';
 import type { ProviderConfig } from '../../../../src/core/ai/providers/providerTypes';
-import type { ModelEntry } from '../../../../src/core/ai/providers/providerTypes';
 
-// Sample provider configs for testing
 const openAIConfig: ProviderConfig = {
   id: 'openai',
   name: 'OpenAI',
@@ -55,11 +53,9 @@ describe('ProviderRegistry', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Capture chrome.storage.local mock refs
     localGetMock = vi.mocked(chrome.storage.local.get) as unknown as ReturnType<typeof vi.fn>;
     localSetMock = vi.mocked(chrome.storage.local.set) as unknown as ReturnType<typeof vi.fn>;
 
-    // Default mock: no stored data
     localGetMock.mockResolvedValue({});
 
     registry = new ProviderRegistry();
@@ -98,12 +94,10 @@ describe('ProviderRegistry', () => {
   });
 
   it('getModelsForTier returns models sorted by provider priority', async () => {
-    // Register anthropic (priority 2) first, then openai (priority 1)
     await registry.registerProvider(anthropicConfig);
     await registry.registerProvider(openAIConfig);
 
     const haikuModels = registry.getModelsForTier('haiku');
-    // OpenAI has priority 1, Anthropic has priority 2 — OpenAI models should come first
     expect(haikuModels[0].providerId).toBe('openai');
     expect(haikuModels[1].providerId).toBe('anthropic');
   });
@@ -114,7 +108,6 @@ describe('ProviderRegistry', () => {
     const result = registry.getProvider('openai');
     expect(result).toBeDefined();
     expect(result!.config.id).toBe('openai');
-    // Instance should exist (lazy-created on first getProvider call)
     expect(result!.instance).toBeDefined();
   });
 
@@ -124,23 +117,19 @@ describe('ProviderRegistry', () => {
   });
 
   it('listModels returns all ModelEntry across all providers sorted by priority', async () => {
-    await registry.registerProvider(anthropicConfig); // priority 2
-    await registry.registerProvider(openAIConfig); // priority 1
+    await registry.registerProvider(anthropicConfig);
+    await registry.registerProvider(openAIConfig);
 
     const allModels = registry.listModels();
-    // 2 openai models + 1 anthropic model = 3
     expect(allModels).toHaveLength(3);
-    // OpenAI (priority 1) models come before Anthropic (priority 2)
     expect(allModels[0].providerId).toBe('openai');
     expect(allModels[1].providerId).toBe('openai');
     expect(allModels[2].providerId).toBe('anthropic');
   });
 
   it('initialize loads persisted data from chrome.storage.local', async () => {
-    // First, register and persist
     await registry.registerProvider(openAIConfig);
 
-    // Capture what was persisted
     const setCall = localSetMock.mock.calls.find(
       (call: unknown[]) =>
         call[0] && typeof call[0] === 'object' && 'np_provider_registry' in (call[0] as Record<string, unknown>),
@@ -148,7 +137,6 @@ describe('ProviderRegistry', () => {
     expect(setCall).toBeDefined();
     const persistedData = (setCall![0] as Record<string, unknown>).np_provider_registry;
 
-    // Create a new registry instance and mock get to return persisted data
     const freshRegistry = new ProviderRegistry();
     localGetMock.mockResolvedValue({ np_provider_registry: persistedData });
 
@@ -169,7 +157,6 @@ describe('ProviderRegistry', () => {
     expect(updated).toBeDefined();
     expect(updated!.contextWindow).toBe(64000);
 
-    // Verify persist was called
     expect(localSetMock).toHaveBeenCalledWith(
       expect.objectContaining({
         np_provider_registry: expect.anything(),
@@ -186,7 +173,6 @@ describe('ProviderRegistry', () => {
     expect(registry.listProviders()).toHaveLength(1);
     expect(registry.getProvider('openai')).toBeUndefined();
 
-    // Verify persist was called
     expect(localSetMock).toHaveBeenCalledWith(
       expect.objectContaining({
         np_provider_registry: expect.anything(),
@@ -213,17 +199,21 @@ describe('ProviderRegistry', () => {
     expect(all.map((p) => p.id)).toEqual(['openai', 'anthropic']);
   });
 
-  it('initialize with no persisted data results in empty registry', async () => {
+  it('initialize seeds defaults when no persisted data found', async () => {
     localGetMock.mockResolvedValue({});
     await registry.initialize();
-    expect(registry.listProviders()).toHaveLength(0);
+
+    const providers = registry.listProviders();
+    expect(providers.length).toBeGreaterThanOrEqual(4);
+    expect(providers[0].id).toBe('openai');
+    // Default providers have no hardcoded models — models are populated via discovery
+    expect(providers[0].models).toEqual([]);
   });
 
   it('persist serializes providers without API keys', async () => {
     await registry.registerProvider(openAIConfig);
     await registry.registerProvider(anthropicConfig);
 
-    // Get the last persist call
     const setCalls = localSetMock.mock.calls.filter(
       (call: unknown[]) =>
         call[0] && typeof call[0] === 'object' && 'np_provider_registry' in (call[0] as Record<string, unknown>),
@@ -232,7 +222,6 @@ describe('ProviderRegistry', () => {
     const persisted = (lastCall![0] as Record<string, unknown>).np_provider_registry as string;
     const parsed = JSON.parse(persisted);
 
-    // API keys should NOT be in persisted data
     for (const provider of parsed) {
       expect(provider).not.toHaveProperty('apiKey');
     }

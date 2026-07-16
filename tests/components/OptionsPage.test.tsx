@@ -18,6 +18,24 @@ function setup(jsx: React.ReactElement) {
 }
 
 describe('OptionsPage section routing', () => {
+  it('renders GeneralSection for sectionId general', () => {
+    const { container } = setup(<OptionsPage sectionId="general" />);
+    const el = container.querySelector('[data-options-section="general"]');
+    expect(el).toBeTruthy();
+  });
+
+  it('renders SidebarSection for sectionId sidebar', () => {
+    const { container } = setup(<OptionsPage sectionId="sidebar" />);
+    const el = container.querySelector('[data-options-section="sidebar"]');
+    expect(el).toBeTruthy();
+  });
+
+  it('renders TranslateSection for sectionId translate', () => {
+    const { container } = setup(<OptionsPage sectionId="translate" />);
+    const el = container.querySelector('[data-options-section="translate"]');
+    expect(el).toBeTruthy();
+  });
+
   it('renders ProvidersSection for sectionId providers', () => {
     const { container } = setup(<OptionsPage sectionId="providers" />);
     const el = container.querySelector('[data-options-section="providers"]');
@@ -90,16 +108,21 @@ describe('OptionsPage section routing', () => {
     expect(el).toBeTruthy();
   });
 
+  it('renders AdvancedSection for sectionId advanced', () => {
+    const { container } = setup(<OptionsPage sectionId="advanced" />);
+    const el = container.querySelector('[data-options-section="advanced"]');
+    expect(el).toBeTruthy();
+  });
+
   it('renders default placeholder for unknown sectionId', () => {
     const { container } = setup(<OptionsPage sectionId="unknown-section" />);
-    // Should render a Card with the section name
     expect(container.querySelector('.ant-card')).toBeTruthy();
     expect(container.textContent).toContain('unknown-section');
   });
 
-  it('defaults to providers section when no sectionId provided', () => {
+  it('defaults to general section when no sectionId provided', () => {
     const { container } = setup(<OptionsPage />);
-    const el = container.querySelector('[data-options-section="providers"]');
+    const el = container.querySelector('[data-options-section="general"]');
     expect(el).toBeTruthy();
   });
 });

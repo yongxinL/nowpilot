@@ -196,6 +196,7 @@ describe('AgentOrchestrator', () => {
       expect.any(Array),
       expect.any(AbortSignal),
       undefined,
+      undefined,
     );
   });
 
@@ -440,6 +441,7 @@ describe('AgentOrchestrator', () => {
       expect.any(String),
       expect.any(AbortSignal),
       undefined,
+      undefined,
     );
 
     expect(renderer.render).toHaveBeenCalledWith(
@@ -448,6 +450,7 @@ describe('AgentOrchestrator', () => {
       expect.any(String),
       expect.any(Array),
       expect.any(AbortSignal),
+      undefined,
       undefined,
     );
   });

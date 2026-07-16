@@ -30,7 +30,7 @@ describe('WorkspaceRouter', () => {
     ]);
     await openStandalone();
     expect(chrome.tabs.create).not.toHaveBeenCalled();
-    expect(chrome.tabs.update).toHaveBeenCalledWith(42, { active: true });
+    expect(chrome.tabs.update).toHaveBeenCalledWith(42, { active: true, url: '/standalone.html' });
     expect(chrome.windows.update).toHaveBeenCalledWith(7, { focused: true });
   });
 
@@ -41,7 +41,7 @@ describe('WorkspaceRouter', () => {
     ]);
     await openStandalone();
     expect(chrome.tabs.create).not.toHaveBeenCalled();
-    expect(chrome.tabs.update).toHaveBeenCalledWith(1, { active: true });
+    expect(chrome.tabs.update).toHaveBeenCalledWith(1, { active: true, url: '/standalone.html' });
   });
 
   it('handles tab without id gracefully', async () => {

@@ -134,7 +134,7 @@ describe('PlannerService', () => {
       abortController.signal,
     );
 
-    expect(router.selectModel).toHaveBeenCalledWith('haiku', ['provider-a', 'provider-b'], undefined);
+    expect(router.selectModel).toHaveBeenCalledWith('haiku', ['provider-a', 'provider-b'], undefined, undefined);
   });
 
   it('passes abortSignal to generateText', async () => {

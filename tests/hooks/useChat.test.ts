@@ -225,10 +225,9 @@ describe('useChat', () => {
     const { result } = renderHook(() => useChat());
 
     await waitFor(() => {
-      expect(mockChatHistoryDB.getAllSessions).toHaveBeenCalled();
+      expect(result.current.conversations.length).toBe(2);
     });
 
-    expect(result.current.conversations.length).toBe(2);
     expect(result.current.conversations[0].id).toBe('conv-1');
     expect(result.current.conversations[1].id).toBe('conv-2');
   });
