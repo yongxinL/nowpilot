@@ -52,7 +52,7 @@ export interface ThoughtChainStep {
   duration?: number;
 }
 
-export interface ConversationMeta {
+export interface AgentConversationMeta {
   id: string;
   title: string;
   updatedAt: number;
@@ -67,7 +67,7 @@ export interface UseAgentReturn {
   error: string | null;
   pendingPermission: { toolName: string; toolInput: unknown } | null;
   resolvePermission: (decision: PermissionDecision) => void;
-  conversations: ConversationMeta[];
+  conversations: AgentConversationMeta[];
   activeConversationId: string | null;
   switchConversation: (id: string) => void;
   deleteConversation: (id: string) => void;
@@ -125,7 +125,7 @@ export function useAgent(): UseAgentReturn {
     toolName: string;
     toolInput: unknown;
   } | null>(null);
-  const [conversations, setConversations] = useState<ConversationMeta[]>([]);
+  const [conversations, setConversations] = useState<AgentConversationMeta[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
 
   // Refs for permission resolution (Pitfall 3 mitigation)
@@ -143,6 +143,7 @@ export function useAgent(): UseAgentReturn {
 
   // Get workspace state
   const activeProvider = useWorkspaceStore((s) => s.activeProvider);
+  const activeModel = useWorkspaceStore((s) => s.activeModel);
 
   // -----------------------------------------------------------------------
   // Permission Resolver — bridges Pipeline → useAgent state
@@ -326,7 +327,7 @@ export function useAgent(): UseAgentReturn {
     chatHistoryDB
       .getAllSessions()
       .then((sessions) => {
-        const metas: ConversationMeta[] = sessions.map((s) => ({
+        const metas: AgentConversationMeta[] = sessions.map((s) => ({
           id: s.id,
           title: s.title,
           updatedAt: s.updated,
@@ -344,7 +345,7 @@ export function useAgent(): UseAgentReturn {
   const refreshConversations = useCallback(async () => {
     try {
       const sessions = await chatHistoryDB.getAllSessions();
-      const metas: ConversationMeta[] = sessions.map((s) => ({
+      const metas: AgentConversationMeta[] = sessions.map((s) => ({
         id: s.id,
         title: s.title,
         updatedAt: s.updated,
@@ -441,7 +442,7 @@ export function useAgent(): UseAgentReturn {
           timestamp: Date.now(),
         });
 
-        await startStream(optimizedContext, [activeProvider ?? 'default']);
+        await startStream(optimizedContext, [activeProvider ?? 'default'], activeModel ?? undefined);
 
         // Stream completed — persist assistant message
         await chatHistoryDB.addMessage({
@@ -464,6 +465,7 @@ export function useAgent(): UseAgentReturn {
     [
       activeConversationId,
       activeProvider,
+      activeModel,
       startStream,
       refreshConversations,
     ],

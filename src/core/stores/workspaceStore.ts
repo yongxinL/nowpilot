@@ -9,6 +9,9 @@ export interface WorkspaceState {
   workspaceId: string | null;
   conversationId: string | null;
   activeProvider: string | null;
+  activeModel: string | null;
+  inputTokens: number | null;
+  sessionTokens: number | null;
   activeSurface: Surface;
   pinnedTabs: string[];
   currentPageContext: string | null;
@@ -19,7 +22,10 @@ export interface WorkspaceState {
   setWorkspaceId: (id: string) => void;
   setConversationId: (id: string) => void;
   setActiveProvider: (provider: string) => void;
+  setActiveModel: (model: string | null) => void;
   setActiveSurface: (surface: Surface) => void;
+  setInputTokens: (inputTokens: number | null) => void;
+  setSessionTokens: (sessionTokens: number | null) => void;
   setPinnedTabs: (pinnedTabs: string[]) => void;
   setCurrentPageContext: (currentPageContext: string | null) => void;
   setSelectedNotes: (selectedNotes: string[]) => void;
@@ -70,6 +76,9 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       workspaceId: null,
       conversationId: null,
       activeProvider: null,
+      activeModel: null,
+      inputTokens: null,
+      sessionTokens: null,
       activeSurface: 'sidepanel',
       pinnedTabs: [],
       currentPageContext: null,
@@ -80,7 +89,10 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       setWorkspaceId: (workspaceId: string) => set({ workspaceId }),
       setConversationId: (conversationId: string) => set({ conversationId }),
       setActiveProvider: (activeProvider: string) => set({ activeProvider }),
+      setActiveModel: (activeModel: string | null) => set({ activeModel }),
       setActiveSurface: (activeSurface: Surface) => set({ activeSurface }),
+      setInputTokens: (inputTokens: number | null) => set({ inputTokens }),
+      setSessionTokens: (sessionTokens: number | null) => set({ sessionTokens }),
       setPinnedTabs: (pinnedTabs: string[]) => set({ pinnedTabs }),
       setCurrentPageContext: (currentPageContext: string | null) => set({ currentPageContext }),
       setSelectedNotes: (selectedNotes: string[]) => set({ selectedNotes }),

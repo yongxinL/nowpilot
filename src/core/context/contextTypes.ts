@@ -81,6 +81,7 @@ export interface ContextOptimizerInput {
   memory?: Array<{ id: string; content: string; score: number }>;
   preferences?: Record<string, unknown>;
   conversationHistory?: Array<{ role: string; content: string }>;
+  conversationSummary?: string;
   notes?: Array<{ id: string; content: string }>;
   debugData?: Record<string, unknown>;
 }

@@ -165,6 +165,31 @@ export class ContextOptimizer {
   ): PromptSection[] {
     const sections: PromptSection[] = [];
 
+    // Sliding window: keep last N raw messages to fit small local LLM contexts.
+    // The summary (if available) provides the bulk of earlier context.
+    const MAX_RECENT_MESSAGES: Record<ModelContextTier, number> = {
+      tiny: 5,
+      small: 10,
+      medium: 20,
+      large: 30,
+    };
+    const maxRecent = MAX_RECENT_MESSAGES[tier];
+
+    // Build condensed conversation history: summary prefix + last N messages
+    let conversationContent = '';
+    if (input.conversationSummary) {
+      conversationContent += `[Previous conversation summary]\n${input.conversationSummary}\n\n`;
+    }
+    if (input.conversationHistory && input.conversationHistory.length > 0) {
+      const recent = input.conversationHistory.slice(-maxRecent);
+      conversationContent += '[Recent messages]\n';
+      conversationContent += recent.map((m) => `${m.role}: ${m.content}`).join('\n');
+      if (input.conversationHistory.length > maxRecent) {
+        const dropped = input.conversationHistory.length - maxRecent;
+        conversationContent += `\n[${dropped} earlier messages omitted — see summary above]`;
+      }
+    }
+
     const contentMap: Record<string, string | undefined> = {
       system_prompt: input.systemPrompt,
       task_instructions: input.taskInstructions,
@@ -172,7 +197,7 @@ export class ContextOptimizer {
       memory: input.memory?.map((m) => `${m.id}: ${m.content}`).join('\n'),
       tool_schemas: input.toolSchemas?.map((t) => `${t.name}: ${JSON.stringify(t.schema)}`).join('\n'),
       page_context: input.pageContext,
-      conversation_history: input.conversationHistory?.map((m) => `${m.role}: ${m.content}`).join('\n'),
+      conversation_history: conversationContent || undefined,
       user_input: input.userInput,
     };
 

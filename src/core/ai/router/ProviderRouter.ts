@@ -23,7 +23,67 @@ export class ProviderRouter {
     tier: CostTierType,
     preferredProviders: string[],
     execCtx?: ExecutionContext,
+    specificModelId?: string,
   ): Promise<{ instance: unknown; modelId: string; providerId: string } | null> {
+    // Ensure the registry is initialized (uses cached init if already done
+    // — avoids re-discovering all models on every selectModel call)
+    await this.registry.initialize();
+
+    // If a specific model ID is requested, try it first
+    if (specificModelId) {
+      let foundAnyProvider = false;
+      for (const providerId of preferredProviders) {
+        const provider = this.registry.getProvider(providerId);
+        if (!provider) continue;
+        foundAnyProvider = true;
+        const hasModel = provider.config.models.some(m => m.modelId === specificModelId);
+        if (!hasModel) {
+          debugLog('warn', '[ProviderRouter] model not found in preferred provider', { providerId, modelId: specificModelId, availableModels: provider.config.models.map(m => m.modelId) });
+          continue;
+        }
+
+        const circuitOpen = this.breaker.isOpen(providerId);
+        if (circuitOpen) continue;
+
+        try {
+          this.breaker.recordSuccess(providerId);
+          debugLog('info', '[ProviderRouter] selected specific model', { providerId, modelId: specificModelId });
+          return { instance: (provider.instance as any)(specificModelId), modelId: specificModelId, providerId };
+        } catch (err) {
+          debugLog('warn', '[ProviderRouter] specific model selection failed', { providerId, modelId: specificModelId, error: err });
+          this.breaker.recordFailure(providerId);
+          // Fall through to tier-based fallback
+        }
+      }
+      if (!foundAnyProvider && preferredProviders.length > 0) {
+        debugLog('warn', '[ProviderRouter] preferred providers not available for specific model lookup', { preferredProviders, modelId: specificModelId });
+      }
+
+      // Fallback: search across ALL enabled providers.
+      // This handles the case where modelEntries.providerId doesn't match the registry's
+      // provider ID (e.g., "custom-1" vs "custom") due to stale persisted modelEntries,
+      // or when the preferred provider failed to discover models but the model is
+      // still available via loadManualModels fallback.
+      const allModels = this.registry.listModels();
+      const fallbackModel = allModels.find(m => m.modelId === specificModelId);
+      if (fallbackModel) {
+        const provider = this.registry.getProvider(fallbackModel.providerId);
+        if (provider) {
+          const circuitOpen = this.breaker.isOpen(fallbackModel.providerId);
+          if (!circuitOpen) {
+            try {
+              this.breaker.recordSuccess(fallbackModel.providerId);
+              debugLog('info', '[ProviderRouter] selected specific model via all-providers fallback', { providerId: fallbackModel.providerId, modelId: specificModelId });
+              return { instance: (provider.instance as any)(specificModelId), modelId: specificModelId, providerId: fallbackModel.providerId };
+            } catch (err) {
+              debugLog('warn', '[ProviderRouter] fallback model selection failed', { providerId: fallbackModel.providerId, modelId: specificModelId, error: err });
+              this.breaker.recordFailure(fallbackModel.providerId);
+            }
+          }
+        }
+      }
+    }
+
     // Get fallback chain from tier resolver, capped at 3
     const chain = this.tierResolver.resolve(tier, preferredProviders);
 
@@ -69,12 +129,12 @@ export class ProviderRouter {
           outcome: 'success',
           circuitBreakerTriggered: false,
         });
-        return { instance: provider.instance, modelId, providerId };
+        return { instance: (provider.instance as any)(modelId), modelId, providerId };
       } catch (err) {
         debugLog('warn', '[ProviderRouter] provider selection failed', {
           providerId,
           modelId,
-          error: err,
+          error: err instanceof Error ? err.message : JSON.stringify(err),
         });
         this.breaker.recordFailure(providerId);
         execCtx?.traceCollector.onProviderAttempt({
@@ -85,14 +145,14 @@ export class ProviderRouter {
           endedAt: Date.now(),
           durationMs: Date.now() - startedAt,
           outcome: 'error',
-          errorCode: err instanceof Error ? err.message : String(err),
+          errorCode: err instanceof Error ? err.message : JSON.stringify(err),
           circuitBreakerTriggered: false,
         });
         // Continue to next in fallback chain
       }
     }
 
-    debugLog('warn', '[ProviderRouter] fallback chain exhausted', { tier });
+    debugLog('warn', `[ProviderRouter] fallback chain exhausted for tier ${tier}`);
     return null;
   }
 

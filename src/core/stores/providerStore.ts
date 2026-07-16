@@ -31,8 +31,8 @@ export interface ProviderState {
 
 const encryptedJSONStorage = createJSONStorage<ProviderState>(() => ({
   getItem: async (name: string) => {
-    const value = await encryptedStorage.get<string>(name);
-    return value ?? null;
+    const value = await encryptedStorage.get<any>(name);
+    return value ? JSON.stringify(value) : null;
   },
   setItem: async (name: string, value: string) => {
     await encryptedStorage.set(name, JSON.parse(value));
@@ -65,3 +65,18 @@ export const useProviderStore = create<ProviderState>()(
     },
   ),
 );
+
+/**
+ * Promise that resolves when Zustand persist finishes hydrating from encrypted storage.
+ * Components that need API keys before accessing providers should await this.
+ */
+export const storeHydration: Promise<void> = new Promise((resolve) => {
+  if (useProviderStore.persist.hasHydrated()) {
+    resolve();
+  } else {
+    const unsub = useProviderStore.persist.onFinishHydration(() => {
+      unsub();
+      resolve();
+    });
+  }
+});

@@ -66,8 +66,15 @@ export class ContextCompressor {
   private heuristicCompressHistory(
     messages: Array<{ role: string; content: string }>,
   ): string {
-    const text = messages.map((m) => `${m.role}: ${m.content}`).join('\n');
-    return this.heuristicTruncate(text, 500);
+    // Sliding window: keep last 5 messages, drop the rest
+    const MAX_HEURISTIC = 5;
+    if (messages.length <= MAX_HEURISTIC) {
+      return messages.map((m) => `${m.role}: ${m.content}`).join('\n');
+    }
+    const recent = messages.slice(-MAX_HEURISTIC);
+    const dropped = messages.length - MAX_HEURISTIC;
+    const text = recent.map((m) => `${m.role}: ${m.content}`).join('\n');
+    return `[${dropped} earlier messages omitted]\n${text}`;
   }
 
   private structuralExtract(context: Record<string, unknown>): string {

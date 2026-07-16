@@ -25,9 +25,10 @@ export class PlannerService {
     userMessage: string,
     abortSignal: AbortSignal,
     execCtx?: ExecutionContext,
+    modelId?: string,
   ): Promise<PlannerDecisionType> {
     try {
-      const model = await this.router.selectModel(tier, preferredProviders, execCtx);
+      const model = await this.router.selectModel(tier, preferredProviders, execCtx, modelId);
       if (!model) {
         debugLog('warn', '[PlannerService] No model available — returning fallback');
         return { action: 'answer', reasoning: 'No model available for planning' };
@@ -40,7 +41,6 @@ export class PlannerService {
         system: fullSystemPrompt,
         prompt: userMessage,
         abortSignal,
-        temperature: 0.1,
       });
 
       // Emit planner call trace event (D-05)
@@ -73,10 +73,13 @@ export class PlannerService {
       debugLog('warn', '[PlannerService] Using fallback decision');
       return validated.fallback;
     } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') {
-        throw err;
+      const isTimeout = err instanceof DOMException && (err.name === 'AbortError' || err.name === 'TimeoutError');
+      if (isTimeout) {
+        debugLog('warn', '[PlannerService] plan timed out — returning fallback');
+        return { action: 'answer', reasoning: 'Planning timed out, answering directly' };
       }
-      debugLog('error', '[PlannerService] plan failed', { error: err });
+      const errorMsg = err instanceof Error ? err.message : JSON.stringify(err);
+      debugLog('error', '[PlannerService] plan failed', { error: errorMsg });
       return { action: 'answer', reasoning: 'Planner output was unparseable' };
     }
   }

@@ -15,6 +15,8 @@ import type { ExecutionContext } from '../../telemetry/types';
 import { DefaultTraceCollector, TraceVerbosity } from '../../telemetry/types';
 import { aiTransactionLog } from '../../telemetry/AITransactionLog';
 import type { ToolRegistry } from '../tools/ToolRegistry';
+import { getRoleModelConfig } from '../../storage/roleModelConfig';
+import { providerRegistry } from '../providers/ProviderRegistry';
 
 // ---------------------------------------------------------------------------
 // PermissionResolver type — callback used before tool execution to determine
@@ -108,12 +110,29 @@ export class AgentOrchestrator {
   async *runWithContext(
     optimizedContext: OptimizedContext,
     preferredProviders: string[],
+    modelId?: string,
   ): AsyncGenerator<OrchestratorEvent> {
     const abortManager = new AbortManager();
     this.currentAbortManager = abortManager;
     const costTier = MODEL_TIER_TO_COST_TIER[optimizedContext.tier];
     const tierCap = TIER_CAP[costTier] || 1;
     this.collectedToolResults = [];
+
+    // Load role-specific model assignments. If configured and available, override
+    // the generic modelId with a role-specific model for each phase.
+    const roleConfig = await getRoleModelConfig();
+    const plannerModelId = this.resolveRoleModel(roleConfig.planner, modelId);
+    const rendererModelId = this.resolveRoleModel(roleConfig.renderer, modelId);
+    const memoryModelId = this.resolveRoleModel(roleConfig.memory, modelId);
+    if (roleConfig.planner && plannerModelId === modelId) {
+      debugLog('warn', '[AgentOrchestrator] configured planner model not found, falling back to active model', { configured: roleConfig.planner });
+    }
+    if (roleConfig.renderer && rendererModelId === modelId) {
+      debugLog('warn', '[AgentOrchestrator] configured renderer model not found, falling back to active model', { configured: roleConfig.renderer });
+    }
+    if (roleConfig.memory && memoryModelId === modelId) {
+      debugLog('warn', '[AgentOrchestrator] configured memory model not found, falling back to active model', { configured: roleConfig.memory });
+    }
 
     // Resolve diagnostic and privacy modes at runtime (D-39)
     const diagnosticsMode = await this.#resolveMode(
@@ -141,17 +160,17 @@ export class AgentOrchestrator {
       const sections = optimizedContext.sections;
       const plannerSystemPrompt = this.joinSections(sections, ['system_prompt', 'task_instructions']);
       const plannerUserMessage = this.joinSections(sections, ['user_input', 'workspace_context', 'page_context', 'conversation_history']);
-      const rendererUserMessage = this.joinSections(sections, ['user_input']);
+      const rendererUserMessage = this.joinSections(sections, ['user_input', 'conversation_history']);
 
       const toolResults: ToolExecutionResult[] = [];
       yield* this.executePlannerLoop(
         costTier, preferredProviders, plannerSystemPrompt,
-        plannerUserMessage, abortManager, tierCap, toolResults, execCtx,
+        plannerUserMessage, abortManager, tierCap, toolResults, execCtx, plannerModelId,
       );
 
       yield* this.executeRenderer(
         'flash', preferredProviders, plannerSystemPrompt,
-        rendererUserMessage, toolResults, abortManager, execCtx,
+        rendererUserMessage, toolResults, abortManager, execCtx, rendererModelId,
       );
 
       await aiTransactionLog.complete(operationId, traceCollector);
@@ -187,11 +206,22 @@ export class AgentOrchestrator {
       const messages = this.collectRoundTripMessages(optimizedContext);
       const toolResults = this.collectedToolResults;
 
-      this.memoryEngine.extract(conversationId, messages, toolResults)
+      this.memoryEngine.extract(conversationId, messages, toolResults, undefined, memoryModelId)
         .catch(err => debugLog('error', '[AgentOrchestrator] Memory extraction failed', { error: err }));
 
       this.currentAbortManager = null;
     }
+  }
+
+  /**
+   * Check if a configured role model is available in the registry.
+   * Returns the role model if found, otherwise falls back to the default.
+   */
+  private resolveRoleModel(roleModel: string | null, fallback: string | undefined): string | undefined {
+    if (!roleModel) return fallback;
+    const allModels = providerRegistry.listModels();
+    const found = allModels.some(m => m.modelId === roleModel);
+    return found ? roleModel : fallback;
   }
 
   /**
@@ -249,6 +279,7 @@ export class AgentOrchestrator {
     tierCap: number,
     toolResults: ToolExecutionResult[],
     execCtx?: ExecutionContext,
+    modelId?: string,
   ): AsyncGenerator<OrchestratorEvent> {
     let plannerCalls = 0;
 
@@ -264,6 +295,7 @@ export class AgentOrchestrator {
         this.buildPlannerPrompt(userMessage, toolResults),
         plannerSignal,
         execCtx,
+        modelId,
       );
 
       plannerCalls++;
@@ -346,6 +378,7 @@ export class AgentOrchestrator {
     toolResults: ToolExecutionResult[],
     abortManager: AbortManager,
     execCtx?: ExecutionContext,
+    modelId?: string,
   ): AsyncGenerator<OrchestratorEvent> {
     const rendererSignal = abortManager.createStageTimeout(
       DEFAULT_TIMEOUT_CONFIG.renderer,
@@ -368,6 +401,7 @@ export class AgentOrchestrator {
       messages,
       rendererSignal,
       execCtx,
+      modelId,
     );
   }
 
@@ -396,7 +430,9 @@ export class AgentOrchestrator {
   }
 
   cancel(): void {
-    this.currentAbortManager?.cancel('User cancelled');
+    if (!this.currentAbortManager || this.currentAbortManager.isAborted) return;
+    debugLog('info', '[AgentOrchestrator] cancel called');
+    this.currentAbortManager.cancel('User cancelled');
   }
 
   private collectRoundTripMessages(optimizedContext: OptimizedContext): Array<{ role: string; content: string }> {

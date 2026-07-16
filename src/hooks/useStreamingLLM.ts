@@ -8,10 +8,14 @@ import type { OptimizedContext } from '../core/context/contextTypes';
 // Types
 // ---------------------------------------------------------------------------
 
+export type OrchestrationStage = 'idle' | 'retrieving' | 'planning' | 'thinking' | 'tool' | 'generating' | 'extracting';
+
 export interface StreamingLLMConfig {
   orchestrator: AgentOrchestrator;
   onDelta: (text: string) => void;
-  onComplete: (fullText: string) => void;
+  onReasoning?: (text: string) => void;
+  onStageChange?: (stage: OrchestrationStage) => void;
+  onComplete: (fullText: string, reasoning?: string) => void;
   onError: (message: string) => void;
   onToolCall?: (toolName: string, input: unknown) => void;
   onWaitingPermission?: (toolName: string, toolInput: unknown) => void;
@@ -27,6 +31,7 @@ export interface StreamingLLMReturn {
   startStream: (
     optimizedContext: OptimizedContext,
     preferredProviders: string[],
+    modelId?: string,
   ) => Promise<void>;
   abort: () => void;
   isStreaming: boolean;
@@ -41,6 +46,8 @@ export function useStreamingLLM(config: StreamingLLMConfig): StreamingLLMReturn 
   const {
     orchestrator,
     onDelta,
+    onReasoning,
+    onStageChange,
     onComplete,
     onError,
     onToolCall,
@@ -56,6 +63,8 @@ export function useStreamingLLM(config: StreamingLLMConfig): StreamingLLMReturn 
   const chunkBufferRef = useRef<ChunkBuffer | null>(null);
   const isMountedRef = useRef(true);
   const onDeltaRef = useRef(onDelta);
+  const onReasoningRef = useRef(onReasoning);
+  const onStageChangeRef = useRef(onStageChange);
   const onCompleteRef = useRef(onComplete);
   const onErrorRef = useRef(onError);
   const onToolCallRef = useRef(onToolCall);
@@ -65,6 +74,8 @@ export function useStreamingLLM(config: StreamingLLMConfig): StreamingLLMReturn 
 
   // Keep callback refs in sync with latest values
   onDeltaRef.current = onDelta;
+  onReasoningRef.current = onReasoning;
+  onStageChangeRef.current = onStageChange;
   onCompleteRef.current = onComplete;
   onErrorRef.current = onError;
   onToolCallRef.current = onToolCall;
@@ -106,6 +117,7 @@ export function useStreamingLLM(config: StreamingLLMConfig): StreamingLLMReturn 
     async (
       optimizedContext: OptimizedContext,
       preferredProviders: string[],
+      modelId?: string,
     ): Promise<void> => {
       // Abort existing stream if active (CHAT-08 / one-stream-per-session)
       if (isStreaming) {
@@ -130,22 +142,37 @@ export function useStreamingLLM(config: StreamingLLMConfig): StreamingLLMReturn 
       });
       chunkBufferRef.current = chunkBuffer;
 
+      let hasReasoning = false;
+      let hasText = false;
       try {
         for await (const event of orchestrator.runWithContext(
           optimizedContext,
           preferredProviders,
+          modelId,
         )) {
           if (signal.aborted || !isMountedRef.current) break;
 
           switch (event.type) {
             case 'text-delta':
+              if (!hasText) {
+                hasText = true;
+                onStageChangeRef.current?.(hasReasoning ? 'thinking' : 'generating');
+              }
               chunkBuffer.push(event.text);
+              break;
+
+            case 'reasoning-delta':
+              if (!hasReasoning) {
+                hasReasoning = true;
+                onStageChangeRef.current?.('thinking');
+              }
+              onReasoningRef.current?.(event.text);
               break;
 
             case 'text-complete':
               chunkBuffer.flush();
               if (isMountedRef.current) {
-                onCompleteRef.current(event.fullText);
+                onCompleteRef.current(event.fullText, event.reasoning);
               }
               break;
 
@@ -169,7 +196,7 @@ export function useStreamingLLM(config: StreamingLLMConfig): StreamingLLMReturn 
               break;
 
             case 'plan-created':
-              // Ignored — consumer hooks (useChat/useAgent) handle this
+              onStageChangeRef.current?.('planning');
               break;
 
             case 'tool-result':

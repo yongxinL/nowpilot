@@ -5,7 +5,7 @@ export interface TimeoutConfig {
 }
 
 export const DEFAULT_TIMEOUT_CONFIG: TimeoutConfig = {
-  planner: 3000,
-  executorTool: 10000,
-  renderer: 5000,
+  planner: 15000,
+  executorTool: 30000,
+  renderer: 30000,
 };

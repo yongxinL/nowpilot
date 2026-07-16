@@ -1,5 +1,6 @@
 import React from 'react';
 import { Card, Typography } from 'antd';
+import { GeneralSection } from '../../components/options/GeneralSection';
 import { DiagnosticsSection } from '../../components/options/DiagnosticsSection';
 import { ProvidersSection } from '../../components/options/ProvidersSection';
 import { ModelsSection } from '../../components/options/ModelsSection';
@@ -12,6 +13,9 @@ import { ImportExportSection } from '../../components/options/ImportExportSectio
 import { FeatureFlagsSection } from '../../components/options/FeatureFlagsSection';
 import { AddonSettingsSection } from '../../components/options/AddonSettingsSection';
 import { AboutSection } from '../../components/options/AboutSection';
+import { SidebarSection } from '../../components/options/SidebarSection';
+import { TranslateSection } from '../../components/options/TranslateSection';
+import { AdvancedSection } from '../../components/options/AdvancedSection';
 
 const { Title, Text } = Typography;
 
@@ -29,8 +33,14 @@ function DefaultSectionPlaceholder({ id }: { id: string }) {
   );
 }
 
-export function OptionsPage({ sectionId = 'providers' }: OptionsPageProps) {
+export function OptionsPage({ sectionId = 'general' }: OptionsPageProps) {
   switch (sectionId) {
+    case 'general':
+      return <GeneralSection />;
+    case 'sidebar':
+      return <SidebarSection />;
+    case 'translate':
+      return <TranslateSection />;
     case 'providers':
       return <ProvidersSection />;
     case 'models':
@@ -55,6 +65,8 @@ export function OptionsPage({ sectionId = 'providers' }: OptionsPageProps) {
       return <AddonSettingsSection />;
     case 'about':
       return <AboutSection />;
+    case 'advanced':
+      return <AdvancedSection />;
     default:
       return <DefaultSectionPlaceholder id={sectionId} />;
   }

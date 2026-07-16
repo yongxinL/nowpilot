@@ -15,17 +15,18 @@ export class RendererService {
     messages: Array<{ role: string; content: string }>,
     abortSignal: AbortSignal,
     execCtx?: ExecutionContext,
+    modelId?: string,
   ): AsyncGenerator<OrchestratorEvent> {
-    // 1. Get flash-tier model per AIRN-03
-    const model = await this.router.selectModel('flash', preferredProviders, execCtx);
+    const renderTier = modelId ? tier : 'flash';
+    const model = await this.router.selectModel(renderTier, preferredProviders, execCtx, modelId);
     if (!model) {
       debugLog('error', '[RendererService] No flash-tier model available');
       yield { type: 'error', message: 'No flash-tier model available for rendering' };
       return;
     }
 
-    // 2. Call streamText
     let fullText = '';
+    let reasoningText = '';
     try {
       const result = streamText({
         model: model.instance as Parameters<typeof streamText>[0]['model'],
@@ -35,10 +36,21 @@ export class RendererService {
         abortSignal,
       });
 
-      // 3. Iterate textStream
-      for await (const chunk of result.textStream) {
-        fullText += chunk;
-        yield { type: 'text-delta', text: chunk };
+      // Iterate fullStream to capture both text and reasoning deltas.
+      // reasoning-delta events are emitted by the AI SDK when the provider
+      // returns structured reasoning content (e.g. OpenAI o1/o3 reasoning_content,
+      // Anthropic thinking blocks). For models that don't emit this, all content
+      // arrives as text-delta and appears directly in the message.
+      for await (const part of result.fullStream) {
+        if (part.type === 'text-delta') {
+          const delta = (part as any).text ?? (part as any).delta ?? '';
+          fullText += delta;
+          yield { type: 'text-delta', text: delta };
+        } else if (part.type === 'reasoning-delta') {
+          const delta = (part as any).text ?? (part as any).delta ?? '';
+          reasoningText += delta;
+          yield { type: 'reasoning-delta', text: delta };
+        }
       }
 
       // 4. Stream completed — emit renderer call trace
@@ -62,13 +74,12 @@ export class RendererService {
         source: 'renderer' as const,
       });
 
-      yield { type: 'text-complete', fullText };
+      yield { type: 'text-complete', fullText, reasoning: reasoningText || undefined };
     } catch (err) {
       if (err instanceof DOMException && (err.name === 'AbortError' || err.name === 'TimeoutError')) {
-        // D-18 recovery: return partial text if any tokens were received
         if (fullText.length > 0) {
           debugLog('warn', '[RendererService] Stream interrupted — returning partial text', { received: fullText.length });
-          yield { type: 'text-complete', fullText };
+          yield { type: 'text-complete', fullText, reasoning: reasoningText || undefined };
         }
       }
       const message = err instanceof Error ? err.message : 'Renderer stream failed';
@@ -78,10 +89,6 @@ export class RendererService {
   }
 }
 
-/**
- * Simple hash function for prompt hashing (DJB2-like).
- * Non-cryptographic — used only for trace correlation.
- */
 function simpleHash(input: string): string {
   let hash = 5381;
   for (let i = 0; i < input.length; i++) {

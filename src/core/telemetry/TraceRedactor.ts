@@ -37,7 +37,15 @@ export class TraceRedactor {
    * via redact(); nested objects and arrays are traversed recursively.
    */
   redactObject<T extends Record<string, unknown>>(obj: T): T {
-    const redacted: Record<string, unknown> = { ...obj };
+    const redacted: Record<string, unknown> = {};
+    if (obj instanceof Error) {
+      redacted.name = obj.name;
+      redacted.message = obj.message;
+      redacted.stack = obj.stack;
+      redacted.cause = obj.cause;
+    } else {
+      Object.assign(redacted, obj);
+    }
     for (const [key, value] of Object.entries(redacted)) {
       redacted[key] = this.redactValue(value);
     }

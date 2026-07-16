@@ -67,7 +67,7 @@ export function AgentPage() {
       {error && !isStreaming && (
         <div style={{ padding: '8px 16px 0' }}>
           <Alert
-            message="Error"
+            title="Error"
             description={error}
             type="error"
             showIcon

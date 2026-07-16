@@ -23,7 +23,8 @@ export type OrchestratorEvent =
   | { type: 'tool-called'; toolName: string; input: unknown }
   | { type: 'tool-result'; toolName: string; result: ToolExecutionResult }
   | { type: 'text-delta'; text: string }
-  | { type: 'text-complete'; fullText: string }
+  | { type: 'reasoning-delta'; text: string }
+  | { type: 'text-complete'; fullText: string; reasoning?: string }
   | { type: 'error'; message: string }
   | { type: 'context-degraded'; level: 'info' | 'warning'; message: string; step?: number; tier?: ModelContextTier }
   | { type: 'context-error'; code: 'CONTEXT_TOO_LARGE'; estimatedTokens: number; budget: number; message: string }
