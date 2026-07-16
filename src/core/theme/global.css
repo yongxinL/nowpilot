@@ -23,3 +23,21 @@ body {
 *::after {
   box-sizing: border-box;
 }
+
+/* Remove the active/focused orange border and box shadow for the Sender (textarea) component */
+.ant-sender:focus,
+.ant-sender-focused,
+.ant-sender:focus-within,
+.ant-sender-focused:hover {
+  border-color: var(--ant-color-border-secondary) !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.ant-sender textarea,
+.ant-sender textarea:focus,
+.ant-sender textarea:active {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}

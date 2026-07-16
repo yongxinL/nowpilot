@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { ConfigProvider, App } from 'antd';
 import { ErrorBoundary } from '../../core/components/ErrorBoundary';
-import { ThemeMode, useThemeStore } from '../../core/stores/themeStore';
+import { useTheme } from '../../hooks/useTheme';
 import { getAntdConfig } from '../../core/theme/antdConfig';
 import { CommandPalette } from '../../core/commands/commandPalette';
 import { standalonePageRegistry } from '../../core/registries/StandalonePageRegistry';
@@ -8,6 +9,7 @@ import { StandaloneRoot } from '../../components/standalone/StandaloneRoot';
 import { findNavItem } from '../../core/navigation/navigationSelectors';
 import { useDiagnosticsStore } from '../../core/stores/diagnosticsStore';
 import { useWorkspaceStore } from '../../core/stores/workspaceStore';
+import { OnboardingGate } from '../../core/onboarding/OnboardingGate';
 import '../../core/registries/registerNowPilotCorePages';
 
 const modeCycle: Record<ThemeMode, ThemeMode> = {
@@ -48,6 +50,8 @@ const commands = [
 export function StandaloneApp() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [initialPage, setInitialPage] = useState<string | undefined>(undefined);
+  const { isDark } = useTheme();
+  const antdConfig = useMemo(() => getAntdConfig({ mode: isDark ? 'dark' : 'light', compact: false }), [isDark]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -109,13 +113,17 @@ export function StandaloneApp() {
   };
 
   return (
-    <ErrorBoundary>
-      <StandaloneRoot initialActiveId={initialPage} renderActivePage={renderActivePage} />
-      <CommandPalette
-        open={paletteOpen}
-        onClose={() => setPaletteOpen(false)}
-        commands={commands}
-      />
-    </ErrorBoundary>
+    <ConfigProvider theme={antdConfig}>
+      <App style={{ width: '100%', height: '100%' }}>
+        <ErrorBoundary>
+            <StandaloneRoot initialActiveId={initialPage} renderActivePage={renderActivePage} />
+            <CommandPalette
+              open={paletteOpen}
+              onClose={() => setPaletteOpen(false)}
+              commands={commands}
+            />
+        </ErrorBoundary>
+      </App>
+    </ConfigProvider>
   );
 }

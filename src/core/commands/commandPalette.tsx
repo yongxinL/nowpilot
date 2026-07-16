@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Modal, Input, List } from 'antd';
+import { Modal, Input } from 'antd';
 
 export interface Command {
   id: string;
@@ -77,15 +77,17 @@ export function CommandPalette({ open, onClose, commands }: CommandPaletteProps)
         variant="borderless"
         style={{ padding: '12px 16px' }}
       />
-      <List
-        dataSource={filtered}
-        renderItem={(item, index) => (
-          <List.Item
+      <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 300, overflowY: 'auto' }}>
+        {filtered.map((item, index) => (
+          <div
+            key={item.id}
             onClick={() => handleSelect(item)}
             style={{
               cursor: 'pointer',
               padding: '8px 16px',
               background: index === selectedIndex ? 'var(--ant-color-bg-text-hover)' : undefined,
+              display: 'flex',
+              alignItems: 'center',
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
@@ -94,9 +96,9 @@ export function CommandPalette({ open, onClose, commands }: CommandPaletteProps)
                 <span style={{ color: 'var(--ant-color-text-secondary)', fontSize: 12 }}>{item.shortcut}</span>
               )}
             </div>
-          </List.Item>
-        )}
-      />
+          </div>
+        ))}
+      </div>
     </Modal>
   );
 }

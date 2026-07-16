@@ -22,7 +22,7 @@ export function PopupApp() {
   const antdConfig = getAntdConfig({ mode: 'auto', compact: true });
 
   return (
-    <ConfigProvider {...antdConfig}>
+    <ConfigProvider theme={antdConfig}>
       <AntApp>
         <div style={{ width: 280, padding: 16 }} data-surface="popup">
           <h2 style={{ marginTop: 0, marginBottom: 8 }}>NowPilot</h2>

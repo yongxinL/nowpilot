@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NowPilot Launcher</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    code {
+      font-family: 'JetBrains Mono', monospace;
+    }
+  </style>
+  <script>
+    // Perform instant redirection to the primary standalone app workspace for a seamless preview experience.
+    // In development WXT serves entrypoints under '/src/entrypoints/', whereas in production they are compiled to root.
+    (async () => {
+      try {
+        const prodCheck = await fetch('/standalone.html', { method: 'HEAD' });
+        if (prodCheck.ok) {
+          window.location.replace('/standalone.html');
+          return;
+        }
+      } catch (e) {}
+
+      // Fallback/Dev Mode
+      window.location.replace('/src/entrypoints/standalone.html');
+    })();
+  </script>
+</head>
+<body class="bg-[#0b0c10] text-[#f4f4f7] min-h-screen flex flex-col justify-between selection:bg-[#4f46e5]/30">
+  <header class="p-6 border-b border-white/5 bg-black/20 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto flex justify-between items-center">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-500/20">
+          N
+        </div>
+        <span class="text-lg font-bold tracking-tight">NowPilot</span>
+      </div>
+      <div class="flex items-center gap-2 text-xs text-zinc-400">
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 font-medium">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          Development Server Live
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-4xl mx-auto px-6 py-16 flex-1 flex flex-col justify-center items-center text-center">
+    <!-- Icon/Badge -->
+    <div class="mb-8 relative">
+      <div class="absolute inset-0 bg-indigo-500/20 blur-3xl rounded-full"></div>
+      <div class="relative w-20 h-20 mx-auto rounded-2xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center shadow-2xl shadow-indigo-500/30">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10 text-white animate-spin [animation-duration:8s]">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.59 14.37a6 6 0 0 1-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 0 0 6.16-12.12A14.98 14.98 0 0 0 9.631 8.41m5.96 5.96a14.926 14.926 0 0 1-5.841 2.58m-.119-8.54a6 6 0 0 0-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 0 0-2.58 5.84m2.6-3.08a14.99 14.99 0 0 1 2.581-5.84M2.06 13.5a14.98 14.98 0 0 1 12.12-6.16M2.06 13.5a14.98 14.98 0 0 0 12.12 6.16" />
+        </svg>
+      </div>
+    </div>
+
+    <!-- Heading -->
+    <h1 class="text-4xl sm:text-5xl font-extrabold tracking-tight mb-4 bg-clip-text text-transparent bg-gradient-to-b from-white to-zinc-400">
+      Launching NowPilot Workspace
+    </h1>
+    <p class="text-zinc-400 text-lg max-w-lg mb-12">
+      Redirecting you to the standalone web interface. If you are not redirected automatically, select one of the views below.
+    </p>
+
+    <!-- Navigation Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-2xl text-left">
+      <!-- Standalone View -->
+      <a href="/standalone.html" class="group relative p-6 rounded-2xl bg-zinc-900/50 border border-white/5 hover:border-indigo-500/30 hover:bg-zinc-900/80 transition-all duration-300 flex flex-col justify-between gap-4">
+        <div class="absolute inset-0 bg-gradient-to-b from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl"></div>
+        <div class="relative">
+          <div class="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 0 1-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0 1 15 18.257V17.25m6-12V15a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 15V5.25m18 0A2.25 2.25 0 0 0 18.75 3H5.25A2.25 2.25 0 0 0 3 5.25m18 0V12a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 12V5.25" />
+            </svg>
+          </div>
+          <h3 class="text-lg font-semibold text-white mb-1 group-hover:text-indigo-300 transition-colors">Standalone Workspace</h3>
+          <p class="text-sm text-zinc-400 leading-relaxed">Full-screen immersive AI chat, memory logs, workspace customizers, and visualization suite.</p>
+        </div>
+        <div class="text-xs font-medium text-indigo-400 flex items-center gap-1.5 mt-2">
+          Open Standalone
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5 transform group-hover:translate-x-1 transition-transform">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+          </svg>
+        </div>
+      </a>
+
+      <!-- Sidepanel View -->
+      <a href="/sidepanel.html" class="group relative p-6 rounded-2xl bg-zinc-900/50 border border-white/5 hover:border-purple-500/30 hover:bg-zinc-900/80 transition-all duration-300 flex flex-col justify-between gap-4">
+        <div class="absolute inset-0 bg-gradient-to-b from-purple-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl"></div>
+        <div class="relative">
+          <div class="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0 1 12 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 0 1 3 12c0-.778.099-1.533.284-2.253" />
+            </svg>
+          </div>
+          <h3 class="text-lg font-semibold text-white mb-1 group-hover:text-purple-300 transition-colors">Sidepanel Companion</h3>
+          <p class="text-sm text-zinc-400 leading-relaxed">Compact companion tailormade for persistent browser-sidebar workflows and quick interactions.</p>
+        </div>
+        <div class="text-xs font-medium text-purple-400 flex items-center gap-1.5 mt-2">
+          Open Sidepanel
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5 transform group-hover:translate-x-1 transition-transform">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+          </svg>
+        </div>
+      </a>
+    </div>
+  </main>
+
+  <footer class="p-6 border-t border-white/5 text-center text-xs text-zinc-500">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+      <div>© 2026 NowPilot. AI Coding Companion suite.</div>
+      <div class="flex items-center gap-4">
+        <a href="/options.html" class="hover:text-zinc-300 transition-colors">Options UI</a>
+        <span class="text-zinc-800">•</span>
+        <a href="/popup.html" class="hover:text-zinc-300 transition-colors">Popup panel</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

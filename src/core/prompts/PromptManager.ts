@@ -11,13 +11,21 @@ export interface PromptTemplate {
   category: string;
   variables: string[];
   isBuiltin: boolean;
+  scopes?: ('chat' | 'reading' | 'writing' | 'reply')[];
+  hidden?: boolean;
+  icon?: string;
+  order?: number;
 }
 
 export class PromptManager {
   #templates = new Map<string, PromptTemplate>();
 
   constructor() {
-    this.#loadPersisted().catch(() => {});
+    this.init().catch(() => {});
+  }
+
+  async init(): Promise<void> {
+    await this.#loadPersisted();
     this.#registerBuiltins();
   }
 
@@ -69,14 +77,42 @@ export class PromptManager {
   }
 
   #registerBuiltins(): void {
+    let changed = false;
     for (const tpl of builtinTemplates) {
       const id = tpl.id;
-      if (!this.#templates.has(id)) {
+      const existing = this.#templates.get(id);
+      if (!existing) {
         this.#templates.set(id, {
           ...tpl,
           isBuiltin: true,
+          scopes: tpl.scopes ?? ['chat', 'reading', 'writing', 'reply'],
+          hidden: tpl.hidden ?? false,
+          icon: tpl.icon ?? 'fileText',
+          order: tpl.order ?? 99,
         });
+        changed = true;
+      } else {
+        const merged = {
+          ...existing,
+          isBuiltin: true,
+          scopes: existing.scopes ?? tpl.scopes ?? ['chat', 'reading', 'writing', 'reply'],
+          hidden: existing.hidden !== undefined ? existing.hidden : (tpl.hidden ?? false),
+          icon: existing.icon ?? tpl.icon ?? 'fileText',
+          order: existing.order ?? tpl.order ?? 99,
+        };
+        if (
+          JSON.stringify(existing.scopes) !== JSON.stringify(merged.scopes) ||
+          existing.hidden !== merged.hidden ||
+          existing.icon !== merged.icon ||
+          existing.order !== merged.order
+        ) {
+          this.#templates.set(id, merged);
+          changed = true;
+        }
       }
+    }
+    if (changed) {
+      this.#persist().catch(() => {});
     }
   }
 }

@@ -9,7 +9,12 @@ export default defineConfig({
     manifest_version: 3,
     description: 'Privacy-first AI assistant',
     permissions: ['sidePanel', 'storage', 'tabs', 'commands'],
-    host_permissions: [],
+    host_permissions: [
+      'https://api.openai.com/*',
+      'https://api.anthropic.com/*',
+      'https://generativelanguage.googleapis.com/*',
+      'http://localhost:*/*',
+    ],
     side_panel: {
       default_path: 'sidepanel.html',
     },

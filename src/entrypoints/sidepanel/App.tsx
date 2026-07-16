@@ -1,12 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { ConfigProvider, App } from 'antd';
 import { ErrorBoundary } from '../../core/components/ErrorBoundary';
-import { ThemeMode, useThemeStore } from '../../core/stores/themeStore';
+import { useTheme } from '../../hooks/useTheme';
 import { getAntdConfig } from '../../core/theme/antdConfig';
 import { CommandPalette } from '../../core/commands/commandPalette';
 import { sidepanelPageRegistry } from '../../core/registries/SidepanelPageRegistry';
 import { openStandalone } from '../../core/routing/workspaceRouter';
 import { SidepanelRoot } from '../../components/sidepanel/SidepanelRoot';
 import { findNavItem } from '../../core/navigation/navigationSelectors';
+import { OnboardingGate } from '../../core/onboarding/OnboardingGate';
 import '../../core/registries/registerNowPilotCorePages';
 
 const modeCycle: Record<ThemeMode, ThemeMode> = {
@@ -46,6 +48,8 @@ const commands = [
 
 export function SidePanelApp() {
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const { isDark } = useTheme();
+  const antdConfig = useMemo(() => getAntdConfig({ mode: isDark ? 'dark' : 'light', compact: true }), [isDark]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -75,13 +79,19 @@ export function SidePanelApp() {
   };
 
   return (
-    <ErrorBoundary>
-      <SidepanelRoot renderActivePage={renderActivePage} />
-      <CommandPalette
-        open={paletteOpen}
-        onClose={() => setPaletteOpen(false)}
-        commands={commands}
-      />
-    </ErrorBoundary>
+    <ConfigProvider theme={antdConfig}>
+      <App style={{ width: '100%', height: '100%' }}>
+        <ErrorBoundary>
+          <OnboardingGate>
+            <SidepanelRoot renderActivePage={renderActivePage} />
+            <CommandPalette
+              open={paletteOpen}
+              onClose={() => setPaletteOpen(false)}
+              commands={commands}
+            />
+          </OnboardingGate>
+        </ErrorBoundary>
+      </App>
+    </ConfigProvider>
   );
 }

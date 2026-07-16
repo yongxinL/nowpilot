@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ConfigProvider, App as AntApp } from 'antd';
 import { getAntdConfig } from '../../core/theme/antdConfig';
-import { useThemeStore } from '../../core/stores/themeStore';
+import { useTheme } from '../../hooks/useTheme';
 import { ErrorBoundary } from '../../core/components/ErrorBoundary';
 import { OptionsRoot, OptionsShellFooter, optionsSections } from '../../components/options/OptionsRoot';
 import { standalonePageRegistry } from '../../core/registries/StandalonePageRegistry';
@@ -24,13 +24,13 @@ const HASH_TO_SECTION: Record<string, string> = Object.fromEntries(
 );
 
 function resolveHashSection(): string {
-  if (typeof window === 'undefined') return 'providers';
+  if (typeof window === 'undefined') return 'general';
   const id = window.location.hash.replace('#', '');
-  return HASH_TO_SECTION[id] ?? 'providers';
+  return HASH_TO_SECTION[id] ?? 'general';
 }
 
 export function OptionsApp() {
-  const mode = useThemeStore((s) => s.mode);
+  const { isDark } = useTheme();
   const [section, setSection] = useState<string>(resolveHashSection());
 
   useEffect(() => {
@@ -39,7 +39,7 @@ export function OptionsApp() {
     return () => window.removeEventListener('hashchange', onHashChange);
   }, []);
 
-  const antdConfig = getAntdConfig({ mode, compact: false });
+  const antdConfig = getAntdConfig({ mode: isDark ? 'dark' : 'light', compact: false });
 
   const renderSectionContent = (sectionId: string) => (
     <div data-options-rendered-section={sectionId} style={{ padding: '8px 0' }}>
@@ -48,7 +48,7 @@ export function OptionsApp() {
   );
 
   return (
-    <ConfigProvider {...antdConfig}>
+    <ConfigProvider theme={antdConfig}>
       <AntApp>
         <ErrorBoundary>
           <OptionsRoot
