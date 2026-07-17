@@ -374,19 +374,18 @@ Plans:
 **Plans**: TBD
 **UI hint**: yes
 
-### Phase 8: Add-ons, Context Menu & Data Portability
+### Phase 8: Add-ons & Data Portability
 
-**Goal**: The add-on system is fully operational — Write, TeamGQM, and ServiceNow add-ons register their pages and skills through typed registries. Right-click selection → "Ask AI". Data export/import works.
+**Goal**: The add-on system is fully operational — Write, TeamGQM, and ServiceNow add-ons register their pages and skills through typed registries. Data export/import works.
 **Depends on**: Phase 7, Phase 7.1, Phase 7.2
-**Requirements**: ADDON-01, ADDON-02, ADDON-03, ADDON-04, ADDON-05, ADDON-06, ADDON-07, ADDON-08, ADDON-09, CONT-06, CMD-04, DATA-01, DATA-02
+**Requirements**: ADDON-01, ADDON-02, ADDON-03, ADDON-04, ADDON-05, ADDON-06, ADDON-07, ADDON-08, ADDON-09, DATA-01, DATA-02
 **Success Criteria** (what must be TRUE):
 
   1. ServiceNow add-on extracts JSESSIONID via CookieSessionStore + ServiceNowSessionAdapter and sysparmCK from MAIN world; all API calls go through PROXY_FETCH
   2. Write add-on renders in Side Panel with all quick actions (Rewrite, Summarize, Draft customer update, Draft internal note, Explain, Action plan)
   3. TeamGQM add-on renders in both Side Panel (compact digest) and Full App (full workspace)
-  4. Right-click selection → "Ask AI" opens Side Panel with selection text prefilled
-  5. `/research` command runs via ResearchSkill (MCP web-search or built-in tool; graceful failure if no search tool connected)
-  6. Data export produces sanitized JSON/ZIP (no API keys); import merges with conflict resolution
+  4. `/research` command runs via ResearchSkill (MCP web-search or built-in tool; graceful failure if no search tool connected)
+  5. Data export produces sanitized JSON/ZIP (no API keys); import merges with conflict resolution
 
 **Plans**: TBD
 **UI hint**: yes

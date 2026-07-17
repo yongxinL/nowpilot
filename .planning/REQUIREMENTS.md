@@ -172,14 +172,12 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **CONT-03**: PageContextBridge — extracted context to Side Panel and Full App
 - [ ] **CONT-04**: Content script bundle contains no React, no AntD, no UI code
 - [ ] **CONT-05**: ISOLATED world by default; MAIN world only for domain globals (e.g. window.g_ck)
-- [ ] **CONT-06**: Right-click selection → "Ask AI" opens Side Panel with selection prefilled
 
 ### Commands & Shortcuts
 
 - [ ] **CMD-01**: Cmd+K command palette on both surfaces with full command set
 - [ ] **CMD-02**: Palette includes Open Full App, Focus Side Panel, Open Options
 - [ ] **CMD-03**: Keyboard shortcuts via KeymapRegistry
-- [ ] **CMD-04**: Selection context menu integration
 
 ### Data Portability
 
@@ -342,11 +340,9 @@ Requirements for initial release. Each maps to roadmap phases.
 | CONT-03 | Phase 7.2 | Pending |
 | CONT-04 | Phase 7.2 | Pending |
 | CONT-05 | Phase 7.2 | Pending |
-| CONT-06 | Phase 8 | Pending |
 | CMD-01 | Phase 1 | Pending |
 | CMD-02 | Phase 1 | Pending |
 | CMD-03 | Phase 1 | Pending |
-| CMD-04 | Phase 8 | Pending |
 | DATA-01 | Phase 8 | Pending |
 | DATA-02 | Phase 8 | Pending |
 | DATA-03 | Phase 6 | Pending |
@@ -366,8 +362,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 **Coverage:**
 
-- v1 requirements: 128 total
-- Mapped to phases: 128
+- v1 requirements: 126 total
+- Mapped to phases: 126
 - Unmapped: 0 ✓
 
 ---
