@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v0.1
 milestone_name: milestone
-current_phase: 07
-status: verifying
+current_phase: 8
+current_phase_name: extraction only
+status: planning
 stopped_at: Completed 07.1-03-PLAN.md
-last_updated: "2026-07-17T09:42:29.865Z"
-last_activity: 2026-07-13
-last_activity_desc: Phase 07 marked complete
+last_updated: "2026-07-17T09:53:55.035Z"
+last_activity: 2026-07-17
+last_activity_desc: Phase 07.1 complete, transitioned to Phase 8
 progress:
   total_phases: 9
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 57
-  completed_plans: 54
-  percent: 78
-current_phase_name: Full Chat, Agent, Notes, Options Pages
+  completed_plans: 57
+  percent: 89
 ---
 
 # Project State
@@ -28,10 +28,10 @@ See: .planning/PROJECT.md (updated 2026-07-10)
 
 ## Current Position
 
-Phase: 07 — COMPLETE
-Plan: 6 of 6
+Phase: 8 — add ons and content script runtime (extraction only)
+Plan: Not started
 Status: Phase complete — ready for verification
-Last activity: 2026-07-13 — Phase 07 marked complete
+Last activity: 2026-07-17 — Phase 07.1 complete, transitioned to Phase 8
 
 Progress: [████░░░░░░] 11% (1/9 phases)
 
@@ -39,7 +39,7 @@ Progress: [████░░░░░░] 11% (1/9 phases)
 
 **Velocity:**
 
-- Total plans completed: 22
+- Total plans completed: 29
 - Average duration: ~5 min (inline execution mode)
 - Total execution time: ~35 min
 
@@ -51,6 +51,7 @@ Progress: [████░░░░░░] 11% (1/9 phases)
 | 02 | 8 | - | - |
 | 03 | 9 | - | - |
 | 04 | 5 | - | - |
+| 07.1 | 7 | - | - |
 
 **Recent Trend:**
 
@@ -780,7 +781,7 @@ None - plan executed exactly as written.
 
 - **Task 2 (PermissionStore):** 6 tests passing; both test and implementation committed together (inline TDD)
 - **Task 3 (SlashCommandRegistry + TemplateEngine):** 13 tests passing across 2 test files; test files created before implementation
-- **Status:** Phase complete — ready for verification
+- **Status:** Ready to plan
 
 ## Issues Encountered
 

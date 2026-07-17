@@ -13,7 +13,7 @@ NowPilot v0.1 is a privacy-first, extensible Chrome MV3 AI assistant. The 10-pha
 - [x] **Phase 5: Persistent Memory Architecture** — System-owned memory engine, conversation/user/preference stores, retrieval scoring (completed 2026-07-13)
 - [x] **Phase 6: Transaction Logging and Diagnostics** — AITransactionLog, TraceRedactor, DiagnosticsPanel in Full App (completed 2026-07-13)
 - [x] **Phase 7: Full Chat, Agent, Notes, Options Pages** — Complete UI across both surfaces, all hooks, markdown streaming (completed 2026-07-13)
-- [ ] **Phase 7.1: LLM-Wiki & Filesystem Sync** — Auto-tagging, RAG Q&A, category system, one-way filesystem backup, notes maintenance
+- [x] **Phase 7.1: LLM-Wiki & Filesystem Sync** — Auto-tagging, RAG Q&A, category system, one-way filesystem backup, notes maintenance (completed 2026-07-17)
 - [ ] **Phase 8: Add-ons and Content Script Runtime (Extraction-Only)** — Write/TeamGQM/ServiceNow add-ons, content scripts, data portability
 - [ ] **Phase 9: Hardening and Release** — Performance tests, isolation verification, bundle checks, production release
 
@@ -346,13 +346,13 @@ Plans:
 
 **Wave 3** — UI Components (parallel)
 
-- [ ] 07.1-04-PLAN.md — New UI Components (CategoryTree, TagSuggestions, AskNotesInput, NotesSection)
-- [ ] 07.1-05-PLAN.md — NoteEditor & NoteList Modifications (category input, tag suggestions, summary, staleness, orphan badge, AI search toggle, category tree)
+- [x] 07.1-04-PLAN.md — New UI Components (CategoryTree, TagSuggestions, AskNotesInput, NotesSection)
+- [x] 07.1-05-PLAN.md — NoteEditor & NoteList Modifications (category input, tag suggestions, summary, staleness, orphan badge, AI search toggle, category tree)
 
 **Wave 4** — Integration (parallel)
 
-- [ ] 07.1-06-PLAN.md — NotesPage, SaveToNoteDialog, & ChatMessage Integration (AskNotes, sync pipeline, save-to-note from chat)
-- [ ] 07.1-07-PLAN.md — Options Integration (NotesSection routing, Restore from folder)
+- [x] 07.1-06-PLAN.md — NotesPage, SaveToNoteDialog, & ChatMessage Integration (AskNotes, sync pipeline, save-to-note from chat)
+- [x] 07.1-07-PLAN.md — Options Integration (NotesSection routing, Restore from folder)
 
 **UI hint**: yes: Add-ons and Content Script Runtime (Extraction-Only)
 
@@ -407,6 +407,6 @@ Phase 7 depends on both Phase 5 and Phase 6 being complete, acting as the conver
 | 5. Persistent Memory Architecture | 7/7 | Complete   | 2026-07-13 |
 | 6. Transaction Logging and Diagnostics | 8/8 | Complete   | 2026-07-13 |
 | 7. Full Chat, Agent, Notes, Options Pages | 6/6 | Complete   | 2026-07-13 |
-| 7.1. LLM-Wiki & Filesystem Sync | 0/TBD | Not started | - |
+| 7.1. LLM-Wiki & Filesystem Sync | 7/7 | Complete    | 2026-07-17 |
 | 8. Add-ons and Content Script Runtime (Extraction-Only) | 0/TBD | Not started | - |
 | 9. Hardening and Release | 0/TBD | Not started | - |
