@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useWorkspaceStore } from '../../src/core/stores/workspaceStore';
+import type { TabContext, PageContext } from '../../src/core/content/PageContext';
 
 // Mock WriteJournal to avoid IndexedDB dependency in tests
 vi.mock('../../src/core/storage/WriteJournal', () => ({
@@ -12,6 +13,35 @@ vi.mock('../../src/core/storage/WriteJournal', () => ({
     markFailed: vi.fn().mockResolvedValue(undefined),
   },
 }));
+
+// Helper: creates a minimal PageContext fixture for tests
+function makePageContext(overrides: Partial<PageContext> = {}): PageContext {
+  return {
+    url: 'https://example.com',
+    origin: 'https://example.com',
+    hostname: 'example.com',
+    title: 'Example Page',
+    meta: {},
+    extractedAt: Date.now(),
+    extractionType: 'readability',
+    extractionQuality: 'article',
+    ...overrides,
+  };
+}
+
+// Helper: creates a minimal TabContext fixture for tests
+function makeTabContext(tabId: number, overrides: Partial<TabContext> = {}): TabContext {
+  return {
+    tabId,
+    windowId: 1,
+    page: makePageContext({ url: `https://example.com/tab/${tabId}`, title: `Tab ${tabId}` }),
+    pinnedAt: Date.now(),
+    active: true,
+    url: `https://example.com/tab/${tabId}`,
+    title: `Tab ${tabId}`,
+    ...overrides,
+  };
+}
 
 describe('WorkspaceStore', () => {
   beforeEach(() => {
@@ -68,7 +98,8 @@ describe('WorkspaceStore', () => {
       (k) => k !== 'setWorkspaceId' && k !== 'setConversationId' && k !== 'setActiveProvider' && k !== 'setActiveSurface'
         && k !== 'setPinnedTabs' && k !== 'setCurrentPageContext' && k !== 'setSelectedNotes' && k !== 'setActiveAddonContext' && k !== 'setActiveSkillRun'
         && k !== 'setDraft' && k !== 'clearDraft'
-        && k !== 'setActiveModel' && k !== 'setInputTokens' && k !== 'setSessionTokens',
+        && k !== 'setActiveModel' && k !== 'setInputTokens' && k !== 'setSessionTokens'
+        && k !== 'addPinnedTab' && k !== 'removePinnedTab',
     );
     // Should have 4 metadata fields + 5 future-facing fields + 1 drafts field + 3 model/token fields
     expect(keys).toEqual([
@@ -77,14 +108,77 @@ describe('WorkspaceStore', () => {
     ]);
   });
 
-  it('setPinnedTabs updates pinnedTabs', () => {
-    useWorkspaceStore.getState().setPinnedTabs(['tab1', 'tab2']);
-    expect(useWorkspaceStore.getState().pinnedTabs).toEqual(['tab1', 'tab2']);
+  it('setPinnedTabs updates pinnedTabs with TabContext[] array', () => {
+    const tab1 = makeTabContext(1);
+    const tab2 = makeTabContext(2);
+    useWorkspaceStore.getState().setPinnedTabs([tab1, tab2]);
+    expect(useWorkspaceStore.getState().pinnedTabs).toEqual([tab1, tab2]);
   });
 
-  it('setCurrentPageContext updates currentPageContext', () => {
-    useWorkspaceStore.getState().setCurrentPageContext('https://example.com');
-    expect(useWorkspaceStore.getState().currentPageContext).toBe('https://example.com');
+  it('setCurrentPageContext accepts a full PageContext object', () => {
+    const ctx = makePageContext({ url: 'https://example.com/page', title: 'Test Page' });
+    useWorkspaceStore.getState().setCurrentPageContext(ctx);
+    expect(useWorkspaceStore.getState().currentPageContext).toEqual(ctx);
+    expect(useWorkspaceStore.getState().currentPageContext?.url).toBe('https://example.com/page');
+    expect(useWorkspaceStore.getState().currentPageContext?.title).toBe('Test Page');
+  });
+
+  it('setCurrentPageContext accepts null to clear context', () => {
+    useWorkspaceStore.getState().setCurrentPageContext(makePageContext());
+    useWorkspaceStore.getState().setCurrentPageContext(null);
+    expect(useWorkspaceStore.getState().currentPageContext).toBeNull();
+  });
+
+  // ---- addPinnedTab / removePinnedTab ----
+
+  it('addPinnedTab appends a TabContext to pinnedTabs array', () => {
+    const tab = makeTabContext(1);
+    useWorkspaceStore.getState().addPinnedTab(tab);
+    expect(useWorkspaceStore.getState().pinnedTabs).toEqual([tab]);
+  });
+
+  it('addPinnedTab rejects at 10 (no-op, returns unchanged state)', () => {
+    // Fill to 10
+    for (let i = 1; i <= 10; i++) {
+      useWorkspaceStore.getState().addPinnedTab(makeTabContext(i));
+    }
+    const stateBefore = useWorkspaceStore.getState().pinnedTabs;
+    expect(stateBefore).toHaveLength(10);
+
+    // 11th should be rejected
+    useWorkspaceStore.getState().addPinnedTab(makeTabContext(11));
+    expect(useWorkspaceStore.getState().pinnedTabs).toHaveLength(10);
+    expect(useWorkspaceStore.getState().pinnedTabs).toEqual(stateBefore);
+  });
+
+  it('addPinnedTab deduplicates by tabId', () => {
+    const tab = makeTabContext(1);
+    useWorkspaceStore.getState().addPinnedTab(tab);
+    // Same tabId, different page content
+    const updatedTab = makeTabContext(1, { title: 'Updated Tab 1' });
+    useWorkspaceStore.getState().addPinnedTab(updatedTab);
+
+    // Should still be the original, not updated
+    expect(useWorkspaceStore.getState().pinnedTabs).toHaveLength(1);
+    expect(useWorkspaceStore.getState().pinnedTabs[0]).toEqual(tab);
+  });
+
+  it('removePinnedTab removes the matching tabId', () => {
+    useWorkspaceStore.getState().addPinnedTab(makeTabContext(1));
+    useWorkspaceStore.getState().addPinnedTab(makeTabContext(2));
+    useWorkspaceStore.getState().addPinnedTab(makeTabContext(3));
+    expect(useWorkspaceStore.getState().pinnedTabs).toHaveLength(3);
+
+    useWorkspaceStore.getState().removePinnedTab(2);
+    expect(useWorkspaceStore.getState().pinnedTabs).toHaveLength(2);
+    expect(useWorkspaceStore.getState().pinnedTabs.map((t) => t.tabId)).toEqual([1, 3]);
+  });
+
+  it('removePinnedTab does nothing for unknown tabId', () => {
+    useWorkspaceStore.getState().addPinnedTab(makeTabContext(1));
+    const stateBefore = useWorkspaceStore.getState().pinnedTabs;
+    useWorkspaceStore.getState().removePinnedTab(999);
+    expect(useWorkspaceStore.getState().pinnedTabs).toEqual(stateBefore);
   });
 
   it('setSelectedNotes updates selectedNotes', () => {

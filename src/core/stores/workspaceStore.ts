@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { Surface } from '../navigation/navigationTypes';
+import type { PageContext, TabContext } from '../content/PageContext';
 import { writeJournal } from '../storage/WriteJournal';
 
 export type { Surface } from '../navigation/navigationTypes';
@@ -13,8 +14,8 @@ export interface WorkspaceState {
   inputTokens: number | null;
   sessionTokens: number | null;
   activeSurface: Surface;
-  pinnedTabs: string[];
-  currentPageContext: string | null;
+  pinnedTabs: TabContext[];
+  currentPageContext: PageContext | null;
   selectedNotes: string[];
   activeAddonContext: string | null;
   activeSkillRun: string | null;
@@ -26,8 +27,10 @@ export interface WorkspaceState {
   setActiveSurface: (surface: Surface) => void;
   setInputTokens: (inputTokens: number | null) => void;
   setSessionTokens: (sessionTokens: number | null) => void;
-  setPinnedTabs: (pinnedTabs: string[]) => void;
-  setCurrentPageContext: (currentPageContext: string | null) => void;
+  setPinnedTabs: (pinnedTabs: TabContext[]) => void;
+  setCurrentPageContext: (currentPageContext: PageContext | null) => void;
+  addPinnedTab: (tab: TabContext) => void;
+  removePinnedTab: (tabId: number) => void;
   setSelectedNotes: (selectedNotes: string[]) => void;
   setActiveAddonContext: (activeAddonContext: string | null) => void;
   setActiveSkillRun: (activeSkillRun: string | null) => void;
@@ -80,8 +83,8 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       inputTokens: null,
       sessionTokens: null,
       activeSurface: 'sidepanel',
-      pinnedTabs: [],
-      currentPageContext: null,
+      pinnedTabs: [] as TabContext[],
+      currentPageContext: null as PageContext | null,
       selectedNotes: [],
       activeAddonContext: null,
       activeSkillRun: null,
@@ -93,11 +96,21 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       setActiveSurface: (activeSurface: Surface) => set({ activeSurface }),
       setInputTokens: (inputTokens: number | null) => set({ inputTokens }),
       setSessionTokens: (sessionTokens: number | null) => set({ sessionTokens }),
-      setPinnedTabs: (pinnedTabs: string[]) => set({ pinnedTabs }),
-      setCurrentPageContext: (currentPageContext: string | null) => set({ currentPageContext }),
+      setPinnedTabs: (pinnedTabs: TabContext[]) => set({ pinnedTabs }),
+      setCurrentPageContext: (currentPageContext: PageContext | null) => set({ currentPageContext }),
       setSelectedNotes: (selectedNotes: string[]) => set({ selectedNotes }),
       setActiveAddonContext: (activeAddonContext: string | null) => set({ activeAddonContext }),
       setActiveSkillRun: (activeSkillRun: string | null) => set({ activeSkillRun }),
+      addPinnedTab: (tab: TabContext) =>
+        set((state) => {
+          if (state.pinnedTabs.length >= 10) return state; // D-30: reject at limit
+          if (state.pinnedTabs.some((t) => t.tabId === tab.tabId)) return state; // deduplicate
+          return { pinnedTabs: [...state.pinnedTabs, tab] };
+        }),
+      removePinnedTab: (tabId: number) =>
+        set((state) => ({
+          pinnedTabs: state.pinnedTabs.filter((t) => t.tabId !== tabId),
+        })),
       setDraft: (conversationId: string, text: string) =>
         set((state) => ({ drafts: { ...state.drafts, [conversationId]: text } })),
       clearDraft: (conversationId: string) =>
