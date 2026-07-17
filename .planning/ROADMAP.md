@@ -337,12 +337,12 @@ Plans:
 
 **Wave 1** — Foundation
 
-- [ ] 07.1-01-PLAN.md — Types, Storage Migration & Dependencies (noteTypes, Note interface extension, v4 IndexedDB migration, NotesDB.getNoteByTitle(), npm packages)
+- [x] 07.1-01-PLAN.md — Types, Storage Migration & Dependencies (noteTypes, Note interface extension, v4 IndexedDB migration, NotesDB.getNoteByTitle(), npm packages)
 
 **Wave 2** — Core Services (parallel)
 
-- [ ] 07.1-02-PLAN.md — LLM Core Services (NoteTagger Haiku-tier, NoteQA Flash-tier RAG, NoteChatConverter chat-to-note)
-- [ ] 07.1-03-PLAN.md — Sync & Maintenance Services (NoteFileSync File System Access API, NoteMaintenance orphan/staleness/bulk)
+- [x] 07.1-02-PLAN.md — LLM Core Services (NoteTagger Haiku-tier, NoteQA Flash-tier RAG, NoteChatConverter chat-to-note)
+- [x] 07.1-03-PLAN.md — Sync & Maintenance Services (NoteFileSync File System Access API, NoteMaintenance orphan/staleness/bulk)
 
 **Wave 3** — UI Components (parallel)
 
@@ -353,6 +353,7 @@ Plans:
 
 - [ ] 07.1-06-PLAN.md — NotesPage, SaveToNoteDialog, & ChatMessage Integration (AskNotes, sync pipeline, save-to-note from chat)
 - [ ] 07.1-07-PLAN.md — Options Integration (NotesSection routing, Restore from folder)
+
 **UI hint**: yes: Add-ons and Content Script Runtime (Extraction-Only)
 
 **Goal**: The add-on system is fully operational — Write, TeamGQM, and ServiceNow add-ons register their pages and skills through typed registries. Content scripts extract page context without rendering any UI. Data export/import works.
