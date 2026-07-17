@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { Input, Button, Select, Popconfirm, Typography, Empty } from 'antd';
-import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
-import type { LinkParser, Note } from '../../core/notes/LinkParser';
+import { Input, Button, Select, Popconfirm, Typography, Empty, Tag, Switch } from 'antd';
+import { PlusOutlined, DeleteOutlined, ApartmentOutlined, UnorderedListOutlined } from '@ant-design/icons';
+import type { LinkParser, Note, BacklinkEntry } from '../../core/notes/LinkParser';
+import { CategoryTree } from './CategoryTree';
 
 const { Text } = Typography;
 
@@ -12,9 +13,16 @@ export interface NoteListProps {
   onNew: () => void;
   onDelete: (id: string) => void;
   linkParser: LinkParser;
+  backlinks?: Map<string, BacklinkEntry[]>;
+  viewMode?: 'flat' | 'tree';
+  onToggleViewMode?: () => void;
+  aiSearchEnabled?: boolean;
+  onToggleAiSearch?: () => void;
+  allNotes?: Note[];
+  onFindContext?: (noteId: string) => void;
 }
 
-export function NoteList({ notes, selectedNoteId, onSelect, onNew, onDelete, linkParser }: NoteListProps) {
+export function NoteList({ notes, selectedNoteId, onSelect, onNew, onDelete, linkParser, backlinks, viewMode = 'flat', onToggleViewMode, aiSearchEnabled = false, onToggleAiSearch, allNotes, onFindContext }: NoteListProps) {
   const [query, setQuery] = useState('');
   const [sortBy, setSortBy] = useState<'updated' | 'created' | 'title'>('updated');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -58,6 +66,19 @@ export function NoteList({ notes, selectedNoteId, onSelect, onNew, onDelete, lin
     return sorted;
   }, [notes, searchResults, sortBy]);
 
+  // Compute orphan status
+  const orphanNotes = useMemo(() => {
+    const orphanIds = new Set<string>();
+    for (const note of notes) {
+      const hasOutgoing = /\[\[([^\]]+?)(?:\|([^\]]+?))?\]\]/.test(note.content);
+      const hasBacklinks = (backlinks?.get(note.id)?.length ?? 0) > 0;
+      if (!hasOutgoing && !hasBacklinks) {
+        orphanIds.add(note.id);
+      }
+    }
+    return orphanIds;
+  }, [notes, backlinks]);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '8px', width: '100%' }}>
@@ -69,28 +90,51 @@ export function NoteList({ notes, selectedNoteId, onSelect, onNew, onDelete, lin
         >
           New Note
         </Button>
-        <Input.Search
-          placeholder="Search notes..."
-          allowClear
-          value={query}
-          onChange={(e) => handleSearch(e.target.value)}
-          onSearch={handleSearch}
-        />
-        <Select
-          value={sortBy}
-          onChange={setSortBy}
-          style={{ width: '100%' }}
-          size="small"
-          options={[
-            { value: 'updated', label: 'Updated' },
-            { value: 'created', label: 'Created' },
-            { value: 'title', label: 'Title' },
-          ]}
-        />
+
+        {/* View mode toggle + AI search */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Button
+            size="small"
+            icon={viewMode === 'tree' ? <UnorderedListOutlined /> : <ApartmentOutlined />}
+            onClick={onToggleViewMode}
+            style={{ flexShrink: 0 }}
+          >
+            {viewMode === 'tree' ? 'List' : 'Tree'}
+          </Button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+            <Switch size="small" checked={aiSearchEnabled} onChange={onToggleAiSearch} />
+            <Text type="secondary" style={{ fontSize: 11 }}>AI</Text>
+          </div>
+        </div>
+
+        {viewMode === 'flat' && (
+          <>
+            <Input.Search
+              placeholder="Search notes..."
+              allowClear
+              value={query}
+              onChange={(e) => handleSearch(e.target.value)}
+              onSearch={handleSearch}
+            />
+            <Select
+              value={sortBy}
+              onChange={setSortBy}
+              style={{ width: '100%' }}
+              size="small"
+              options={[
+                { value: 'updated', label: 'Updated' },
+                { value: 'created', label: 'Created' },
+                { value: 'title', label: 'Title' },
+              ]}
+            />
+          </>
+        )}
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto' }}>
-        {displayNotes.length === 0 ? (
+        {viewMode === 'tree' ? (
+          <CategoryTree notes={allNotes || notes} selectedNoteId={selectedNoteId} onSelect={onSelect} />
+        ) : displayNotes.length === 0 ? (
           <Empty
             description={query ? 'No matching notes' : 'No notes yet'}
             image={Empty.PRESENTED_IMAGE_SIMPLE}
@@ -117,7 +161,17 @@ export function NoteList({ notes, selectedNoteId, onSelect, onNew, onDelete, lin
                     <Text strong style={{ fontSize: 13 }}>
                       {note.title}
                     </Text>
+                    {orphanNotes.has(note.id) && (
+                      <Tag color="default" style={{ marginLeft: 4, fontSize: 10, cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); onFindContext?.(note.id); }}>
+                        Orphan
+                      </Tag>
+                    )}
                   </div>
+                  {note.summary && (
+                    <Text type="secondary" ellipsis style={{ fontSize: 12, display: 'block', marginTop: 2 }}>
+                      {note.summary}
+                    </Text>
+                  )}
                   <div style={{ marginTop: 2 }}>
                     <Text type="secondary" style={{ fontSize: 11 }}>
                       {new Date(note.updated).toLocaleDateString()}
