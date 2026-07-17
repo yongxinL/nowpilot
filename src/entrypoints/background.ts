@@ -1,6 +1,10 @@
 import '../core/utils/chromePolyfill';
 import { defineBackground } from 'wxt/utils/define-background';
 import { debugLog } from '../core/utils/debugLog';
+import { validateEnvelope } from '../core/messaging/runtimeEnvelope';
+import { PAGE_CONTEXT_UPDATED, GET_PAGE_CONTEXT_REQUEST } from '../core/messaging/pageMessages';
+import { useWorkspaceStore } from '../core/stores/workspaceStore';
+import type { PageContext } from '../core/content/PageContext';
 
 export default defineBackground(() => {
   chrome.runtime.onInstalled.addListener((details) => {
@@ -13,7 +17,50 @@ export default defineBackground(() => {
     debugLog('info', 'command received', { command });
   });
 
-  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    // --- Page extraction message routing (D-04) ---
+    // Validate as typed envelope first; non-envelope messages
+    // (e.g., FETCH_PROXY raw objects) fall through to existing handlers.
+    if (message && typeof message === 'object') {
+      try {
+        const env = validateEnvelope(message);
+
+        // D-15: Content script publishes PAGE_CONTEXT_UPDATED
+        // → SW updates workspaceStore (single source of truth)
+        if (env.type === PAGE_CONTEXT_UPDATED) {
+          const ctx = env.payload as PageContext;
+          useWorkspaceStore.getState().setCurrentPageContext(ctx);
+          sendResponse({ success: true });
+          return true;
+        }
+
+        // D-03/D-04: Panel/Agent requests fresh extraction
+        // → SW relays to active tab's content script
+        if (env.type === GET_PAGE_CONTEXT_REQUEST) {
+          chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
+            if (tab?.id) {
+              chrome.tabs.sendMessage(tab.id, message, (response) => {
+                if (chrome.runtime.lastError) {
+                  sendResponse({
+                    success: false,
+                    error: chrome.runtime.lastError.message,
+                  });
+                } else {
+                  sendResponse(response);
+                }
+              });
+            } else {
+              sendResponse({ success: false, error: 'No active tab' });
+            }
+          });
+          return true; // async — keep message channel open (Pitfall 3)
+        }
+      } catch {
+        // Invalid envelope — not a page extraction message,
+        // fall through to existing handlers below.
+      }
+    }
+
     if (message && typeof message === 'object' && message.type === 'FETCH_PROXY') {
       const { url, options } = message as { type: string; url: string; options?: RequestInit };
 
