@@ -11,6 +11,7 @@ import { MemorySection } from '../../components/options/MemorySection';
 import { AppearanceSection } from '../../components/options/AppearanceSection';
 import { ImportExportSection } from '../../components/options/ImportExportSection';
 import { FeatureFlagsSection } from '../../components/options/FeatureFlagsSection';
+import { NotesSection } from '../../components/options/NotesSection';
 import { AddonSettingsSection } from '../../components/options/AddonSettingsSection';
 import { AboutSection } from '../../components/options/AboutSection';
 import { SidebarSection } from '../../components/options/SidebarSection';
@@ -61,6 +62,8 @@ export function OptionsPage({ sectionId = 'general' }: OptionsPageProps) {
       return <ImportExportSection />;
     case 'feature-flags':
       return <FeatureFlagsSection />;
+    case 'notes':
+      return <NotesSection />;
     case 'addons':
       return <AddonSettingsSection />;
     case 'about':

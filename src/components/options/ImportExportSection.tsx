@@ -1,7 +1,10 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { Typography, Button, Card, Checkbox, Upload, Alert, Progress, App } from 'antd';
-import { UploadOutlined, DownloadOutlined } from '@ant-design/icons';
+import { Typography, Button, Card, Checkbox, Upload, Alert, Progress, Modal, App } from 'antd';
+import { UploadOutlined, DownloadOutlined, FolderOpenOutlined } from '@ant-design/icons';
 import JSZip from 'jszip';
+import { noteFileSync } from '../../core/notes/NoteFileSync';
+import { linkParser } from '../../core/notes/LinkParser';
+import { notesDB } from '../../core/storage/stores/NotesDB';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -210,6 +213,44 @@ export function ImportExportSection() {
     }
   }, [importData, importValid, message]);
 
+  const [restoreLoading, setRestoreLoading] = useState(false);
+
+  const handleRestoreFromFolder = async () => {
+    setRestoreLoading(true);
+    try {
+      const result = await noteFileSync.importFromFolder();
+      if (!result) { setRestoreLoading(false); return; }
+
+      const { preview, notes } = result;
+
+      Modal.confirm({
+        title: 'Import Preview',
+        content: (
+          <div>
+            <p>Found <strong>{preview.total}</strong> notes:</p>
+            <ul>
+              <li>{preview.new} new</li>
+              <li>{preview.updated} updated</li>
+              <li>{preview.unchanged} unchanged</li>
+            </ul>
+            <p>Existing notes not in backup will be preserved.</p>
+          </div>
+        ),
+        okText: 'Import',
+        cancelText: 'Cancel',
+        onOk: async () => {
+          const { count, allNotes } = await noteFileSync.executeImport(notes);
+          linkParser.rebuildIndex(allNotes);
+          message.success(`Imported ${count} notes`);
+        },
+      });
+    } catch (err) {
+      message.error('Failed to read backup folder');
+    } finally {
+      setRestoreLoading(false);
+    }
+  };
+
   const handleDrop = useCallback((e: React.DragEvent) => {
     // Handled by Upload's drag-and-drop
   }, []);
@@ -324,6 +365,19 @@ export function ImportExportSection() {
           </Button>
         </Card>
       </div>
+
+      <Card title="Restore from Backup" size="small" style={{ marginTop: 16 }}>
+        <Typography.Paragraph type="secondary">
+          Restore notes from a previous filesystem backup. Notes will be merged with your existing notes.
+        </Typography.Paragraph>
+        <Button
+          icon={<FolderOpenOutlined />}
+          onClick={handleRestoreFromFolder}
+          loading={restoreLoading}
+        >
+          Restore from folder
+        </Button>
+      </Card>
     </div>
   );
 }
