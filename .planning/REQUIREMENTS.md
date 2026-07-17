@@ -337,11 +337,11 @@ Requirements for initial release. Each maps to roadmap phases.
 | ADDON-08 | Phase 8 | Pending |
 | ADDON-09 | Phase 8 | Pending |
 | ADDON-10 | Phase 1 | Pending |
-| CONT-01 | Phase 8 | Pending |
-| CONT-02 | Phase 8 | Pending |
-| CONT-03 | Phase 8 | Pending |
-| CONT-04 | Phase 8 | Pending |
-| CONT-05 | Phase 8 | Pending |
+| CONT-01 | Phase 7.2 | Pending |
+| CONT-02 | Phase 7.2 | Pending |
+| CONT-03 | Phase 7.2 | Pending |
+| CONT-04 | Phase 7.2 | Pending |
+| CONT-05 | Phase 7.2 | Pending |
 | CONT-06 | Phase 8 | Pending |
 | CMD-01 | Phase 1 | Pending |
 | CMD-02 | Phase 1 | Pending |

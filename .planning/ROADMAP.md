@@ -354,20 +354,39 @@ Plans:
 - [x] 07.1-06-PLAN.md — NotesPage, SaveToNoteDialog, & ChatMessage Integration (AskNotes, sync pipeline, save-to-note from chat)
 - [x] 07.1-07-PLAN.md — Options Integration (NotesSection routing, Restore from folder)
 
-**UI hint**: yes: Add-ons and Content Script Runtime (Extraction-Only)
+### Phase 7.2: Page Extraction & Pin Tab
 
-**Goal**: The add-on system is fully operational — Write, TeamGQM, and ServiceNow add-ons register their pages and skills through typed registries. Content scripts extract page context without rendering any UI. Data export/import works.
+**Goal**: Content scripts extract page context (url, title, meta, markdown) and send it to the Side Panel and Full App via PageContextBridge. The `get-page-content` MCP tool exposes page data to the AI. The `pin-tab` MCP tool with a pin UI lets users pin/unpin tabs as context (max 10). Workspace store and ContextOptimizer are wired to include page context in every AI call.
 **Depends on**: Phase 7, Phase 7.1
-**Requirements**: ADDON-01, ADDON-02, ADDON-03, ADDON-04, ADDON-05, ADDON-06, ADDON-07, ADDON-08, ADDON-09, CONT-01, CONT-02, CONT-03, CONT-04, CONT-05, CONT-06, CMD-04, DATA-01, DATA-02
+**Requirements**: CONT-01, CONT-02, CONT-03, CONT-04, CONT-05, MCP tools #1 (`get-page-content`) and #5 (`pin-tab`)
 **Success Criteria** (what must be TRUE):
 
-  1. Content-script bundle contains zero React, zero AntD, zero UI code — verified by `tests/isolation/no-content-script-ui.test.ts` grepping the build output
-  2. ServiceNow add-on extracts JSESSIONID via CookieSessionStore + ServiceNowSessionAdapter and sysparmCK from MAIN world; all API calls go through PROXY_FETCH
-  3. Write add-on renders in Side Panel with all quick actions (Rewrite, Summarize, Draft customer update, Draft internal note, Explain, Action plan)
-  4. TeamGQM add-on renders in both Side Panel (compact digest) and Full App (full workspace)
-  5. Right-click selection → "Ask AI" opens Side Panel with selection text prefilled
-  6. `/research` command runs via ResearchSkill (MCP web-search or built-in tool; graceful failure if no search tool connected)
-  7. Data export produces sanitized JSON/ZIP (no API keys); import merges with conflict resolution
+  1. Content scripts registered in `wxt.config.ts` — ISOLATED world, extraction-only, no React/AntD/UI code
+  2. `ContentScriptHost` provides extraction-only message bridge (no UI mount)
+  3. `SPANavigationWatcher` detects SPA navigation via MutationObserver (no polling)
+  4. `PageContextBridge` extracts url, title, meta, markdown (via `@mozilla/readability`) and sends to Side Panel/Full App via `RuntimeEnvelope`
+  5. Content-script bundle < 50 KB and contains zero React/AntD/UI code — verified by `tests/isolation/no-content-script-ui.test.ts`
+  6. `get-page-content` MCP tool returns active/pinned tab context to the AI
+  7. `pin-tab` MCP tool pins/unpins tabs; pin UI in Side Panel shows current page + managed pinned tabs (max 10)
+  8. `workspaceStore.setCurrentPageContext()` is called when page context changes
+  9. `ContextOptimizerInput.pageContext` is passed from `useChat.ts` so the LLM sees page content in every AI call
+
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 8: Add-ons, Context Menu & Data Portability
+
+**Goal**: The add-on system is fully operational — Write, TeamGQM, and ServiceNow add-ons register their pages and skills through typed registries. Right-click selection → "Ask AI". Data export/import works.
+**Depends on**: Phase 7, Phase 7.1, Phase 7.2
+**Requirements**: ADDON-01, ADDON-02, ADDON-03, ADDON-04, ADDON-05, ADDON-06, ADDON-07, ADDON-08, ADDON-09, CONT-06, CMD-04, DATA-01, DATA-02
+**Success Criteria** (what must be TRUE):
+
+  1. ServiceNow add-on extracts JSESSIONID via CookieSessionStore + ServiceNowSessionAdapter and sysparmCK from MAIN world; all API calls go through PROXY_FETCH
+  2. Write add-on renders in Side Panel with all quick actions (Rewrite, Summarize, Draft customer update, Draft internal note, Explain, Action plan)
+  3. TeamGQM add-on renders in both Side Panel (compact digest) and Full App (full workspace)
+  4. Right-click selection → "Ask AI" opens Side Panel with selection text prefilled
+  5. `/research` command runs via ResearchSkill (MCP web-search or built-in tool; graceful failure if no search tool connected)
+  6. Data export produces sanitized JSON/ZIP (no API keys); import merges with conflict resolution
 
 **Plans**: TBD
 **UI hint**: yes
@@ -375,7 +394,7 @@ Plans:
 ### Phase 9: Hardening and Release
 
 **Goal**: All performance targets met, isolation invariants verified, bundle sizes within budget, and the "Looks Done But Isn't" checklist cleared for production release.
-**Depends on**: Phase 7.1, Phase 8
+**Depends on**: Phase 7.1, Phase 7.2, Phase 8
 **Requirements**: HARD-01, HARD-02, HARD-03, HARD-04, HARD-07
 **Success Criteria** (what must be TRUE):
 
