@@ -170,7 +170,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **CONT-01**: ContentScriptHost — extraction-only message bridge, no UI mount
 - [x] **CONT-02**: SPANavigationWatcher — MutationObserver-based SPA navigation detection
 - [x] **CONT-03**: PageContextBridge — extracted context to Side Panel and Full App
-- [ ] **CONT-04**: Content script bundle contains no React, no AntD, no UI code
+- [x] **CONT-04**: Content script bundle contains no React, no AntD, no UI code
 - [x] **CONT-05**: ISOLATED world by default; MAIN world only for domain globals (e.g. window.g_ck)
 
 ### Commands & Shortcuts
@@ -338,7 +338,7 @@ Requirements for initial release. Each maps to roadmap phases.
 | CONT-01 | Phase 7.2 | Complete |
 | CONT-02 | Phase 7.2 | Complete |
 | CONT-03 | Phase 7.2 | Complete |
-| CONT-04 | Phase 7.2 | Pending |
+| CONT-04 | Phase 7.2 | Complete |
 | CONT-05 | Phase 7.2 | Complete |
 | CMD-01 | Phase 1 | Pending |
 | CMD-02 | Phase 1 | Pending |

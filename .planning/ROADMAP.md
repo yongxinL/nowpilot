@@ -384,7 +384,7 @@ Plans:
 
 **Wave 2** — Integration
 
-- [ ] 07.2-03-PLAN.md — Content script entrypoint (content.ts), wxt.config.ts changes, Background SW message handlers, MCP tools (get-page-content, pin-tab), ToolRegistry registration, bundle size verification
+- [x] 07.2-03-PLAN.md — Content script entrypoint (content.ts), wxt.config.ts changes, Background SW message handlers, MCP tools (get-page-content, pin-tab), ToolRegistry registration, bundle size verification
 
 **UI hint**: yes
 
