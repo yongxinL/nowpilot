@@ -371,7 +371,21 @@ Plans:
   8. `workspaceStore.setCurrentPageContext()` is called when page context changes
   9. `ContextOptimizerInput.pageContext` is passed from `useChat.ts` so the LLM sees page content in every AI call
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+**Wave 0** — Foundation
+
+- [ ] 07.2-01-PLAN.md — Type migration (PageContext, TabContext, workspaceStore) + package installation (@mozilla/readability, turndown) + message schemas
+
+**Wave 1** — Modules + Context Wiring (parallel)
+
+- [ ] 07.2-02-PLAN.md — Content script modules: PageExtractor (Readability + turndown + DOM fallback), PageContextBridge, SPANavigationWatcher, ContentChangeWatcher, runtimeEnvelope source type
+- [ ] 07.2-04-PLAN.md — Context wiring (contextTypes schema change, ContextCompressor enhancement, useChat/useAgent hook wiring) + PinTabBar Side Panel UI component
+
+**Wave 2** — Integration
+
+- [ ] 07.2-03-PLAN.md — Content script entrypoint (content.ts), wxt.config.ts changes, Background SW message handlers, MCP tools (get-page-content, pin-tab), ToolRegistry registration, bundle size verification
+
 **UI hint**: yes
 
 ### Phase 8: Add-ons & Data Portability
@@ -426,5 +440,6 @@ Phase 7 depends on both Phase 5 and Phase 6 being complete, acting as the conver
 | 6. Transaction Logging and Diagnostics | 8/8 | Complete   | 2026-07-13 |
 | 7. Full Chat, Agent, Notes, Options Pages | 6/6 | Complete   | 2026-07-13 |
 | 7.1. LLM-Wiki & Filesystem Sync | 7/7 | Complete    | 2026-07-17 |
+| 7.2. Page Extraction & Pin Tab | 0/4 | Planned | - |
 | 8. Add-ons and Content Script Runtime (Extraction-Only) | 0/TBD | Not started | - |
 | 9. Hardening and Release | 0/TBD | Not started | - |
