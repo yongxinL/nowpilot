@@ -1,4 +1,6 @@
 import type { ToolDefinition } from './ToolDefinition';
+import { getPageContentTool } from './builtin/getPageContentTool';
+import { pinTabTool } from './builtin/pinTabTool';
 
 export class ToolRegistry {
   #tools = new Map<string, ToolDefinition>();
@@ -28,3 +30,9 @@ export class ToolRegistry {
 }
 
 export const toolRegistry = new ToolRegistry();
+
+// Register built-in tools at import time (PATTERNS.md §14)
+// Per RESEARCH.md anti-pattern: tools must be registered at import time,
+// not lazily. ToolRegistry initialization happens in module scope.
+toolRegistry.register(getPageContentTool);
+toolRegistry.register(pinTabTool);
