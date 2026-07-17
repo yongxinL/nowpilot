@@ -8,7 +8,7 @@ export default defineConfig({
     version: '0.1.0',
     manifest_version: 3,
     description: 'Privacy-first AI assistant',
-    permissions: ['sidePanel', 'storage', 'tabs', 'commands'],
+    permissions: ['sidePanel', 'storage', 'tabs', 'commands', 'activeTab'],
     host_permissions: [
       'https://api.openai.com/*',
       'https://api.anthropic.com/*',
