@@ -75,7 +75,7 @@ export interface ContextOptimizerInput {
   systemPrompt: string;
   taskInstructions?: string;
   workspaceContext?: string;
-  pageContext?: string | Record<string, unknown>;
+  pageContext?: string | Record<string, unknown> | null;
   toolSchemas?: Array<{ name: string; schema: unknown }>;
   selectedToolSchemas?: Array<{ name: string; schema: unknown }>;
   memory?: Array<{ id: string; content: string; score: number }>;
@@ -121,7 +121,7 @@ export const contextOptimizerInputSchema = z.object({
   systemPrompt: z.string(),
   taskInstructions: z.string().optional(),
   workspaceContext: z.string().optional(),
-  pageContext: z.union([z.string(), z.record(z.unknown())]).optional(),
+  pageContext: z.union([z.string(), z.record(z.unknown())]).nullish(),
   toolSchemas: z
     .array(z.object({ name: z.string(), schema: z.unknown() }))
     .optional(),

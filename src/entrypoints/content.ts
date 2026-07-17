@@ -15,7 +15,7 @@
  *
  * Pattern: WXT defineContentScript entrypoint (PATTERNS.md §6)
  */
-import { defineContentScript } from 'wxt/utils/define-background';
+import { defineContentScript } from 'wxt/utils/define-content-script';
 import { PageExtractor } from '../core/content/PageExtractor';
 import { PageContextBridge } from '../core/content/PageContextBridge';
 import { SPANavigationWatcher } from '../core/content/SPANavigationWatcher';
