@@ -1,37 +1,59 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Input, Select, Button, Typography, App } from 'antd';
+import { Modal, Input, Select, Button, Typography, Spin, Tag, App } from 'antd';
 import { notesDB } from '../../core/storage/stores/NotesDB';
 import type { Note } from '../../core/notes/LinkParser';
 import { linkParser } from '../../core/notes/LinkParser';
+import { noteChatConverter } from '../../core/notes/NoteChatConverter';
+import type { MemoryAssembleResult } from '../../core/memory/memoryTypes';
+import { NotePreview } from './NotePreview';
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
 
 export interface SaveToNoteDialogProps {
-  /** Content to save (pre-filled) */
   content: string;
-  /** Called after save with optional noteId */
   onSave: (noteId?: string) => void;
-  /** Called to close dialog without saving */
   onClose: () => void;
+  conversationMessages?: Array<{ role: string; content: string }>;
+  memoryContext?: MemoryAssembleResult;
+  existingNoteTitles?: string[];
 }
 
-/**
- * "Save to Note" dialog for saving chat assistant content to notes.
- * Opens from assistant message context menu.
- * Supports: create new note (title input, content pre-filled) or append to existing note.
- */
-export function SaveToNoteDialog({ content, onSave, onClose }: SaveToNoteDialogProps) {
+export function SaveToNoteDialog({
+  content,
+  onSave,
+  onClose,
+  conversationMessages,
+  memoryContext,
+  existingNoteTitles,
+}: SaveToNoteDialogProps) {
   const [mode, setMode] = useState<'create' | 'append'>('create');
   const [title, setTitle] = useState('');
   const [existingNoteId, setExistingNoteId] = useState<string | null>(null);
   const [notes, setNotes] = useState<Note[]>([]);
   const [saving, setSaving] = useState(false);
+  const [llmDrafting, setLlmDrafting] = useState(false);
+  const [suggestedTagsFromLLM, setSuggestedTagsFromLLM] = useState<string[]>([]);
   const { message } = App.useApp();
 
-  // Load existing notes for append mode
   useEffect(() => {
     notesDB.getAllNotes().then((all) => setNotes(all)).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (conversationMessages && conversationMessages.length > 0) {
+      setLlmDrafting(true);
+      noteChatConverter
+        .convert(conversationMessages, memoryContext, existingNoteTitles)
+        .then((draft) => {
+          if (mode === 'create') {
+            setTitle(draft.title || '');
+          }
+          setSuggestedTagsFromLLM(draft.tags || []);
+        })
+        .catch(() => {})
+        .finally(() => setLlmDrafting(false));
+    }
+  }, [conversationMessages]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -76,103 +98,110 @@ export function SaveToNoteDialog({ content, onSave, onClose }: SaveToNoteDialogP
       title="Save to Note"
       onCancel={onClose}
       footer={null}
-      width={480}
+      width={580}
       destroyOnClose
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
-        {/* Mode toggle */}
-        <div>
-          <Text strong>Mode: </Text>
-          <Button
-            type={mode === 'create' ? 'primary' : 'default'}
-            size="small"
-            onClick={() => setMode('create')}
-            style={{ marginRight: 8 }}
-          >
-            Create New
-          </Button>
-          <Button
-            type={mode === 'append' ? 'primary' : 'default'}
-            size="small"
-            onClick={() => setMode('append')}
-          >
-            Append to Existing
-          </Button>
-        </div>
+      <Spin spinning={llmDrafting} tip="Drafting from conversation...">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
+          <div>
+            <Text strong>Mode: </Text>
+            <Button
+              type={mode === 'create' ? 'primary' : 'default'}
+              size="small"
+              onClick={() => setMode('create')}
+              style={{ marginRight: 8 }}
+            >
+              Create New
+            </Button>
+            <Button
+              type={mode === 'append' ? 'primary' : 'default'}
+              size="small"
+              onClick={() => setMode('append')}
+            >
+              Append to Existing
+            </Button>
+          </div>
 
-        {/* Create mode */}
-        {mode === 'create' && (
+          {mode === 'create' && (
+            <div>
+              <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>
+                Title
+              </Text>
+              <Input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Note title"
+              />
+            </div>
+          )}
+
+          {mode === 'append' && (
+            <div>
+              <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>
+                Select note to append to
+              </Text>
+              <Select
+                style={{ width: '100%' }}
+                placeholder="Select a note..."
+                value={existingNoteId}
+                onChange={setExistingNoteId}
+                options={notes.map((n) => ({
+                  value: n.id,
+                  label: n.title,
+                }))}
+                showSearch
+                filterOption={(input, option) =>
+                  (option?.label as string)?.toLowerCase().includes(input.toLowerCase())
+                }
+              />
+            </div>
+          )}
+
+          {suggestedTagsFromLLM.length > 0 && (
+            <div>
+              <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>
+                Suggested tags
+              </Text>
+              <div>
+                {suggestedTagsFromLLM.map((tag) => (
+                  <Tag key={tag} style={{ marginBottom: 4 }}>
+                    {tag}
+                  </Tag>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div>
             <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>
-              Title
+              Content to save
             </Text>
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Note title"
-            />
+            <div
+              style={{
+                maxHeight: 200,
+                overflowY: 'auto',
+                padding: 8,
+                background: 'var(--ant-color-bg-layout)',
+                borderRadius: 4,
+              }}
+            >
+              <NotePreview content={content} notes={[]} linkParser={linkParser} />
+            </div>
           </div>
-        )}
 
-        {/* Append mode */}
-        {mode === 'append' && (
-          <div>
-            <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>
-              Select note to append to
-            </Text>
-            <Select
-              style={{ width: '100%' }}
-              placeholder="Select a note..."
-              value={existingNoteId}
-              onChange={setExistingNoteId}
-              options={notes.map((n) => ({
-                value: n.id,
-                label: n.title,
-              }))}
-              showSearch
-              filterOption={(input, option) =>
-                (option?.label as string)?.toLowerCase().includes(input.toLowerCase())
-              }
-            />
-          </div>
-        )}
-
-        {/* Preview */}
-        <div>
-          <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>
-            Content to save
-          </Text>
-          <div
-            style={{
-              maxHeight: 150,
-              overflowY: 'auto',
-              padding: 8,
-              background: 'var(--ant-color-bg-layout)',
-              borderRadius: 4,
-              fontSize: 13,
-              whiteSpace: 'pre-wrap',
-              lineHeight: 1.5,
-            }}
-          >
-            {content}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+            <Button onClick={onClose}>Cancel</Button>
+            <Button
+              type="primary"
+              onClick={handleSave}
+              loading={saving}
+              disabled={mode === 'create' ? false : mode === 'append' && !existingNoteId}
+            >
+              Save
+            </Button>
           </div>
         </div>
-
-        {/* Actions */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <Button onClick={onClose}>Cancel</Button>
-          <Button
-            type="primary"
-            onClick={handleSave}
-            loading={saving}
-            disabled={
-              mode === 'create' ? false : mode === 'append' && !existingNoteId
-            }
-          >
-            Save
-          </Button>
-        </div>
-      </div>
+      </Spin>
     </Modal>
   );
 }
