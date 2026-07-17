@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { debugLog } from '../utils/debugLog';
 
-export type MessageSource = 'background' | 'sidepanel' | 'standalone' | 'popup';
+export type MessageSource = 'background' | 'sidepanel' | 'standalone' | 'popup' | 'content-script';
 
 export interface Envelope<T = unknown> {
   type: string;
@@ -12,7 +12,7 @@ export interface Envelope<T = unknown> {
 
 const envelopeSchema = z.object({
   type: z.string(),
-  source: z.enum(['background', 'sidepanel', 'standalone', 'popup']),
+  source: z.enum(['background', 'sidepanel', 'standalone', 'popup', 'content-script']),
   payload: z.unknown(),
   timestamp: z.number().optional(),
 });

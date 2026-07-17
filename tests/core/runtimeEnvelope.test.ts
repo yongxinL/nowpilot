@@ -37,8 +37,13 @@ describe('RuntimeEnvelope', () => {
 
   it('rejects a message with invalid source (spoofed sender)', () => {
     expect(() =>
-      validateEnvelope({ type: 'test', source: 'content-script', payload: null }),
+      validateEnvelope({ type: 'test', source: 'malicious-spoof', payload: null }),
     ).toThrow('Invalid message envelope');
+  });
+
+  it('accepts content-script as a valid MessageSource', () => {
+    const result = validateEnvelope({ type: 'test', source: 'content-script', payload: null });
+    expect(result.source).toBe('content-script');
   });
 
   it('accepts optional timestamp field', () => {
