@@ -144,6 +144,7 @@ export function useAgent(): UseAgentReturn {
   // Get workspace state
   const activeProvider = useWorkspaceStore((s) => s.activeProvider);
   const activeModel = useWorkspaceStore((s) => s.activeModel);
+  const currentPageContext = useWorkspaceStore((s) => s.currentPageContext);
 
   // -----------------------------------------------------------------------
   // Permission Resolver — bridges Pipeline → useAgent state
@@ -406,6 +407,7 @@ export function useAgent(): UseAgentReturn {
           toolSchemas,
           memory: memoryResult.memory,
           preferences: memoryResult.preferences as Record<string, unknown>,
+          pageContext: currentPageContext,
         };
 
         const optimizedContext: OptimizedContext =
@@ -466,6 +468,7 @@ export function useAgent(): UseAgentReturn {
       activeConversationId,
       activeProvider,
       activeModel,
+      currentPageContext,
       startStream,
       refreshConversations,
     ],

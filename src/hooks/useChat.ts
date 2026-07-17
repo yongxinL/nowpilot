@@ -251,6 +251,7 @@ export function useChat(): UseChatReturn {
   const workspaceActiveModel = useWorkspaceStore((s) => s.activeModel);
   const workspaceSetActiveProvider = useWorkspaceStore((s) => s.setActiveProvider);
   const workspaceSetConversationId = useWorkspaceStore((s) => s.setConversationId);
+  const workspaceCurrentPageContext = useWorkspaceStore((s) => s.currentPageContext);
 
   // ---------------------------------------------------------------
   // Load conversations on mount
@@ -396,6 +397,7 @@ export function useChat(): UseChatReturn {
         preferences: memoryResult.preferences as Record<string, unknown>,
         conversationHistory,
         conversationSummary: memoryResult.conversationContext.summary,
+        pageContext: workspaceCurrentPageContext, // PageContext | null (D-19)
       };
 
       const optimizedContext: OptimizedContext =
@@ -414,7 +416,7 @@ export function useChat(): UseChatReturn {
         sendingRef.current = false;
       }
     },
-    [workspaceActiveProvider, workspaceActiveModel, workspaceSetConversationId],
+    [workspaceActiveProvider, workspaceActiveModel, workspaceSetConversationId, workspaceCurrentPageContext],
   );
 
   // ---------------------------------------------------------------
@@ -642,6 +644,7 @@ export function useChat(): UseChatReturn {
       memory: memoryResult.memory,
       preferences: memoryResult.preferences as Record<string, unknown>,
       conversationHistory,
+      pageContext: workspaceCurrentPageContext, // PageContext | null (D-19)
     };
 
     const optimizedContext = await contextOptimizer.optimize(contextInput);
@@ -649,7 +652,7 @@ export function useChat(): UseChatReturn {
     const activeModelId = workspaceActiveModel ?? undefined;
 
     await streamingLLMRef.current.startStream(optimizedContext, preferredProviders, activeModelId);
-  }, [messages, workspaceActiveProvider, workspaceActiveModel]);
+  }, [messages, workspaceActiveProvider, workspaceActiveModel, workspaceCurrentPageContext]);
 
   // ---------------------------------------------------------------
   // Return
