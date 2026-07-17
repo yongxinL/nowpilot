@@ -81,6 +81,11 @@ export class ContextCompressor {
     const fields: string[] = [];
     if (context.title) fields.push(`Title: ${context.title}`);
     if (context.url) fields.push(`URL: ${context.url}`);
+    // D-31: extract first ~200 chars of markdown for pinned tab summaries
+    if (context.markdown) {
+      const prefix = String(context.markdown).slice(0, 200).trim();
+      fields.push(`Content: ${prefix}${String(context.markdown).length > 200 ? '...' : ''}`);
+    }
     if (context.summary) fields.push(`Summary: ${context.summary}`);
     if (fields.length === 0) {
       const str = JSON.stringify(context);
