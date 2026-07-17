@@ -10,6 +10,10 @@ export interface Note {
   created: number;
   updated: number;
   tags: string[];
+  summary?: string;
+  categoryPath?: string;
+  summaryGeneratedAt?: number;
+  tagsGeneratedAt?: number;
 }
 
 export interface ParsedLink {
@@ -38,6 +42,23 @@ export interface SearchResult {
   snippet?: string;
 }
 
+export function normalizeCategoryPath(raw: string): string | { error: string } {
+  const trimmed = raw.trim();
+  if (!trimmed) return { error: 'empty path' };
+
+  let normalized = trimmed.replace(/^\/+|\/+$/g, '');
+  normalized = normalized.replace(/\/+/g, '/');
+
+  const segments = normalized.split('/');
+  for (const seg of segments) {
+    if (seg === '.' || seg === '..' || seg === '') {
+      return { error: `invalid segment: "${seg}"` };
+    }
+  }
+
+  return normalized;
+}
+
 // ── Constants ──
 
 const WIKILINK_REGEX = /\[\[([^\]]+?)(?:\|([^\]]+?))?\]\]/g;
@@ -49,8 +70,8 @@ export class LinkParser {
 
   constructor() {
     this.index = new MiniSearch({
-      fields: ['title', 'content'],
-      storeFields: ['id', 'title', 'updatedAt'],
+      fields: ['title', 'content', 'tags', 'summary'],
+      storeFields: ['id', 'title', 'updatedAt', 'tags', 'summary'],
       searchOptions: {
         boost: { title: 3 },
         prefix: true,
@@ -177,6 +198,8 @@ export class LinkParser {
           title: n.title,
           content: n.content,
           updatedAt: n.updated,
+          tags: n.tags,
+          summary: n.summary,
         })),
       );
     } catch (err) {
@@ -216,6 +239,8 @@ export class LinkParser {
         title: note.title,
         content: note.content,
         updatedAt: note.updated,
+        tags: note.tags,
+        summary: note.summary,
       });
     } catch (err) {
       debugLog('error', '[LinkParser] addToIndex failed', { error: err });

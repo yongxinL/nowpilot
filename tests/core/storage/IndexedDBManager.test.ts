@@ -32,15 +32,15 @@ describe('IndexedDBManager', () => {
     idbMock.captured.config = null;
   });
 
-  it('DB_VERSION is 3', () => {
-    expect(DB_VERSION).toBe(3);
+  it('DB_VERSION is 4', () => {
+    expect(DB_VERSION).toBe(4);
   });
 
   it('getDB() calls openDB with correct params', async () => {
     await getDB();
     expect(idbMock.mockOpenDB).toHaveBeenCalledWith(
       'nowpilot',
-      3,
+      4,
       expect.objectContaining({
         upgrade: expect.any(Function),
         blocked: expect.any(Function),
@@ -90,11 +90,11 @@ describe('IndexedDBManager', () => {
       const mockObjectStore = vi.fn().mockReturnValue(localStore);
       const mockTransaction = { objectStore: mockObjectStore };
 
-      // Invoke the upgrade callback as if oldVersion < 1 (triggers v1, v2, and v3 blocks)
+      // Invoke the upgrade callback as if oldVersion < 1 (triggers v1, v2, v3, and v4 blocks)
       upgrade(localDb, 0, 1, mockTransaction);
 
-      // Verify 16 object stores were created (13 original + 3 new trace stores)
-      expect(localCreateObjectStore).toHaveBeenCalledTimes(16);
+      // Verify 17 object stores were created (13 original + 3 new trace stores + notes_backup_config)
+      expect(localCreateObjectStore).toHaveBeenCalledTimes(17);
 
       // Verify each store name and keyPath
       expect(localCreateObjectStore).toHaveBeenCalledWith('chat_history_sessions', { keyPath: 'id' });
@@ -115,6 +115,7 @@ describe('IndexedDBManager', () => {
       expect(localCreateObjectStore).toHaveBeenCalledWith('transaction_log_cacheTraces', { keyPath: 'id' });
       expect(localCreateObjectStore).toHaveBeenCalledWith('transaction_log_memoryTraces', { keyPath: 'id' });
       expect(localCreateObjectStore).toHaveBeenCalledWith('transaction_log_writeJournalTraces', { keyPath: 'id' });
+      expect(localCreateObjectStore).toHaveBeenCalledWith('notes_backup_config', { keyPath: 'id' });
 
       // Verify createIndex calls via transaction.objectStore for v3 indexes
       expect(mockObjectStore).toHaveBeenCalledWith('transaction_log_transactions');

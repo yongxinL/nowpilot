@@ -1,15 +1,9 @@
 import { getDB } from '../IndexedDBManager';
 import { debugLog } from '../../utils/debugLog';
+import type { Note } from '../../notes/LinkParser';
 
 export class NotesDB {
-  async createNote(note: {
-    id: string;
-    title: string;
-    content: string;
-    created: number;
-    updated: number;
-    tags: string[];
-  }): Promise<void> {
+  async createNote(note: Note): Promise<void> {
     try {
       const db = await getDB();
       await db.put('notes_notes', note);
@@ -18,17 +12,7 @@ export class NotesDB {
     }
   }
 
-  async getNote(id: string): Promise<
-    | {
-        id: string;
-        title: string;
-        content: string;
-        created: number;
-        updated: number;
-        tags: string[];
-      }
-    | undefined
-  > {
+  async getNote(id: string): Promise<Note | undefined> {
     try {
       const db = await getDB();
       return db.get('notes_notes', id);
@@ -38,16 +22,20 @@ export class NotesDB {
     }
   }
 
-  async getAllNotes(): Promise<
-    Array<{
-      id: string;
-      title: string;
-      content: string;
-      created: number;
-      updated: number;
-      tags: string[];
-    }>
-  > {
+  async getNoteByTitle(title: string, categoryPath?: string): Promise<Note | undefined> {
+    try {
+      const db = await getDB();
+      const all = await db.getAll('notes_notes');
+      return all.find(
+        (n) => n.title === title && (!categoryPath || n.categoryPath === categoryPath),
+      );
+    } catch (err) {
+      debugLog('error', 'NotesDB.getNoteByTitle failed', { error: err });
+      return undefined;
+    }
+  }
+
+  async getAllNotes(): Promise<Note[]> {
     try {
       const db = await getDB();
       return db.getAll('notes_notes');
@@ -57,14 +45,7 @@ export class NotesDB {
     }
   }
 
-  async updateNote(note: {
-    id: string;
-    title: string;
-    content: string;
-    created: number;
-    updated: number;
-    tags: string[];
-  }): Promise<void> {
+  async updateNote(note: Note): Promise<void> {
     try {
       const db = await getDB();
       await db.put('notes_notes', note);

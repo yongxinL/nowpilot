@@ -34,6 +34,10 @@ export interface NowPilotDB extends DBSchema {
       created: number;
       updated: number;
       tags: string[];
+      summary?: string;
+      categoryPath?: string;
+      summaryGeneratedAt?: number;
+      tagsGeneratedAt?: number;
     };
   };
   notes_concepts: {
@@ -43,6 +47,16 @@ export interface NowPilotDB extends DBSchema {
       label: string;
       description: string;
       linkedNoteIds: string[];
+    };
+  };
+  notes_backup_config: {
+    key: string;
+    value: {
+      id: string;
+      folderHandle: FileSystemDirectoryHandle;
+      folderName: string;
+      lastSyncTimestamp?: number;
+      totalNotesBackedUp?: number;
     };
   };
   memory_messages: {
@@ -243,7 +257,7 @@ export interface NowPilotDB extends DBSchema {
   };
 }
 
-export const DB_VERSION = 3;
+export const DB_VERSION = 4;
 
 let dbInstance: IDBPDatabase<NowPilotDB> | null = null;
 
@@ -298,6 +312,9 @@ export async function getDB(): Promise<IDBPDatabase<NowPilotDB>> {
         _transaction.objectStore('transaction_log_promptTraces').createIndex('by-operationId', 'operationId');
         _transaction.objectStore('transaction_log_toolTraces').createIndex('by-operationId', 'operationId');
         _transaction.objectStore('transaction_log_providerTraces').createIndex('by-operationId', 'operationId');
+      }
+      if (oldVersion < 4) {
+        db.createObjectStore('notes_backup_config', { keyPath: 'id' });
       }
     },
     blocked() {
