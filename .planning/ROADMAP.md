@@ -2,7 +2,7 @@
 
 ## Overview
 
-NowPilot v0.1 is a privacy-first, extensible Chrome MV3 AI assistant. The 9-phase linear build starts from a greenfield WXT scaffold and progresses through the full runtime stack — storage, AI runtime (the linchpin), context-adaptive execution, persistent memory, telemetry, UI, add-ons, and hardening. Dependencies are strict: the AI runtime blocks everything downstream; shell and storage must be established first. Phases 4 and 6 can run in parallel after the AI runtime (Phase 3) lands.
+NowPilot v0.1 is a privacy-first, extensible Chrome MV3 AI assistant. The 10-phase linear build starts from a greenfield WXT scaffold and progresses through the full runtime stack — storage, AI runtime (the linchpin), context-adaptive execution, persistent memory, telemetry, UI, LLM-wiki features, add-ons, and hardening. Dependencies are strict: the AI runtime blocks everything downstream; shell and storage must be established first. Phases 4 and 6 can run in parallel after the AI runtime (Phase 3) lands.
 
 ## Phases
 
@@ -13,6 +13,7 @@ NowPilot v0.1 is a privacy-first, extensible Chrome MV3 AI assistant. The 9-phas
 - [x] **Phase 5: Persistent Memory Architecture** — System-owned memory engine, conversation/user/preference stores, retrieval scoring (completed 2026-07-13)
 - [x] **Phase 6: Transaction Logging and Diagnostics** — AITransactionLog, TraceRedactor, DiagnosticsPanel in Full App (completed 2026-07-13)
 - [x] **Phase 7: Full Chat, Agent, Notes, Options Pages** — Complete UI across both surfaces, all hooks, markdown streaming (completed 2026-07-13)
+- [ ] **Phase 7.1: LLM-Wiki & Filesystem Sync** — Auto-tagging, RAG Q&A, category system, one-way filesystem backup, notes maintenance
 - [ ] **Phase 8: Add-ons and Content Script Runtime (Extraction-Only)** — Write/TeamGQM/ServiceNow add-ons, content scripts, data portability
 - [ ] **Phase 9: Hardening and Release** — Performance tests, isolation verification, bundle checks, production release
 
@@ -37,6 +38,9 @@ Phase 5 (Memory)
   │
   ▼
 Phase 7 (Full UI)
+  │
+  ▼
+Phase 7.1 (LLM-Wiki + Filesystem Sync)
   │
   ▼
 Phase 8 (Add-ons + Content Scripts)
@@ -312,10 +316,47 @@ Plans:
 
 **UI hint**: yes
 
-### Phase 8: Add-ons and Content Script Runtime (Extraction-Only)
+### Phase 7.1: LLM-Wiki & Filesystem Sync
+
+**Goal**: Extend the Notes system with LLM-powered features (auto-tagging, auto-categorization, auto-summarization, semantic search, RAG Q&A, chat-to-note conversion), a hierarchical category system mapping to filesystem folders, one-way app-to-filesystem backup, and import-for-restore. Memory-aware RAG bridges notes with MemoryEngine for richer context.
+**Depends on**: Phase 7, Phase 5, Phase 3
+**Requirements**: See `.planning/LLM-WIKI-SPEC.md` Sections 2–5 (CAT-01..05, LLM-WIKI-01..10, SYNC-01..11, MEM-01..03)
+**Success Criteria** (what must be TRUE):
+
+  1. Auto-tag and auto-categorize on save — a Haiku-tier LLM call returns up to 5 tags + 1 categoryPath + 1-2 sentence summary; suggestions displayed in NoteEditor with accept/reject per tag
+  2. "Ask notes" RAG Q&A — MiniSearch retrieves top-5 snippets, Flash-tier LLM synthesizes answer with per-statement citations (note title + wikilink); answer rendered as Bubble inline, ephemeral
+  3. Category path maps 1:1 to filesystem folders during backup; nested folders created automatically via File System Access API
+  4. Per-save sync writes `.md` with YAML frontmatter (id, created, updated, tags, categoryPath, summary) to user-selected backup folder
+  5. Title collision resolution — numerical suffixes on same-title notes in same category path
+  6. "Save to note" from chat — LLM drafts a note from conversation context + memory facts, opens NoteEditor pre-filled for user review
+  7. Orphan detection — algorithmic (no LLM): notes with 0 wikilinks + 0 backlinks show "Orphan" badge
+  8. Memory-aware RAG — "Ask notes" also queries MemoryEngine for relevant user facts/preferences
+  9. Note → Memory extraction — LLM call extracts memory-worthy facts from note content, routed through MemoryEngine
+
+**Plans**: 7 plans
+
+**Wave 1** — Foundation
+
+- [ ] 07.1-01-PLAN.md — Types, Storage Migration & Dependencies (noteTypes, Note interface extension, v4 IndexedDB migration, NotesDB.getNoteByTitle(), npm packages)
+
+**Wave 2** — Core Services (parallel)
+
+- [ ] 07.1-02-PLAN.md — LLM Core Services (NoteTagger Haiku-tier, NoteQA Flash-tier RAG, NoteChatConverter chat-to-note)
+- [ ] 07.1-03-PLAN.md — Sync & Maintenance Services (NoteFileSync File System Access API, NoteMaintenance orphan/staleness/bulk)
+
+**Wave 3** — UI Components (parallel)
+
+- [ ] 07.1-04-PLAN.md — New UI Components (CategoryTree, TagSuggestions, AskNotesInput, NotesSection)
+- [ ] 07.1-05-PLAN.md — NoteEditor & NoteList Modifications (category input, tag suggestions, summary, staleness, orphan badge, AI search toggle, category tree)
+
+**Wave 4** — Integration (parallel)
+
+- [ ] 07.1-06-PLAN.md — NotesPage, SaveToNoteDialog, & ChatMessage Integration (AskNotes, sync pipeline, save-to-note from chat)
+- [ ] 07.1-07-PLAN.md — Options Integration (NotesSection routing, Restore from folder)
+**UI hint**: yes: Add-ons and Content Script Runtime (Extraction-Only)
 
 **Goal**: The add-on system is fully operational — Write, TeamGQM, and ServiceNow add-ons register their pages and skills through typed registries. Content scripts extract page context without rendering any UI. Data export/import works.
-**Depends on**: Phase 7
+**Depends on**: Phase 7, Phase 7.1
 **Requirements**: ADDON-01, ADDON-02, ADDON-03, ADDON-04, ADDON-05, ADDON-06, ADDON-07, ADDON-08, ADDON-09, CONT-01, CONT-02, CONT-03, CONT-04, CONT-05, CONT-06, CMD-04, DATA-01, DATA-02
 **Success Criteria** (what must be TRUE):
 
@@ -333,7 +374,7 @@ Plans:
 ### Phase 9: Hardening and Release
 
 **Goal**: All performance targets met, isolation invariants verified, bundle sizes within budget, and the "Looks Done But Isn't" checklist cleared for production release.
-**Depends on**: Phase 8
+**Depends on**: Phase 7.1, Phase 8
 **Requirements**: HARD-01, HARD-02, HARD-03, HARD-04, HARD-07
 **Success Criteria** (what must be TRUE):
 
@@ -365,5 +406,6 @@ Phase 7 depends on both Phase 5 and Phase 6 being complete, acting as the conver
 | 5. Persistent Memory Architecture | 7/7 | Complete   | 2026-07-13 |
 | 6. Transaction Logging and Diagnostics | 8/8 | Complete   | 2026-07-13 |
 | 7. Full Chat, Agent, Notes, Options Pages | 6/6 | Complete   | 2026-07-13 |
+| 7.1. LLM-Wiki & Filesystem Sync | 0/TBD | Not started | - |
 | 8. Add-ons and Content Script Runtime (Extraction-Only) | 0/TBD | Not started | - |
 | 9. Hardening and Release | 0/TBD | Not started | - |
