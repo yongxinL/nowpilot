@@ -44,7 +44,8 @@ describe('FollowUpAction', () => {
     const { container } = render(withApp(
       <FollowUpAction suggestions={[]} onSelect={mockOnSelect} />,
     ));
-    expect(container.innerHTML).toBe('');
+    // Component returns null; only antd App wrapper divs remain
+    expect(screen.queryByText('Follow up')).toBeNull();
   });
 
   // Test 3: Single suggestion still renders correctly
