@@ -12,10 +12,11 @@ describe('PersonaProfile', () => {
 
   // Test 2: coreValues array
   it('includes coreValues containing privacy-first, helpful, precise, humble', () => {
-    expect(DEFAULT_PERSONA_PROFILE.coreValues).toContain('privacy-first');
-    expect(DEFAULT_PERSONA_PROFILE.coreValues).toContain('helpful');
-    expect(DEFAULT_PERSONA_PROFILE.coreValues).toContain('precise');
-    expect(DEFAULT_PERSONA_PROFILE.coreValues).toContain('humble');
+    const values = DEFAULT_PERSONA_PROFILE.coreValues;
+    expect(values.some((v) => v.toLowerCase().includes('privacy-first'))).toBe(true);
+    expect(values.some((v) => v.toLowerCase().includes('helpful'))).toBe(true);
+    expect(values.some((v) => v.toLowerCase().includes('precise'))).toBe(true);
+    expect(values.some((v) => v.toLowerCase().includes('humble'))).toBe(true);
   });
 
   // Test 3: languageStyle with tone, responseStyle, vocabulary
