@@ -54,6 +54,11 @@ export interface ConversationMeta {
   preview: string;
 }
 
+export interface ClarificationPayload {
+  question: string;
+  options: Array<{ label: string; value: string }>;
+}
+
 export interface BubbleListItem {
   key: string;
   role: 'user' | 'assistant';
@@ -64,6 +69,7 @@ export interface BubbleListItem {
   loading: boolean;
   streaming: boolean;
   metadata?: any;
+  clarification?: ClarificationPayload;
 }
 
 export interface UseChatReturn {
@@ -168,6 +174,7 @@ export function useChat(): UseChatReturn {
   const conversationIdRef = useRef<string | null>(null);
   const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastUserMessageRef = useRef<string>('');
+  const clarificationRoundsRef = useRef<Map<string, number>>(new Map());
 
   // ---------------------------------------------------------------
   // useStreamingLLM — receives callbacks that update messages
@@ -432,7 +439,14 @@ export function useChat(): UseChatReturn {
         modelContextWindow: 128000,
         userInput: message,
         systemPrompt: personaInjector.inject('You are a helpful AI assistant.'),
-        taskInstructions: 'Respond to the user message concisely and accurately.',
+        taskInstructions: (() => {
+          const rounds = clarificationRoundsRef.current.get(convId ?? '') ?? 0;
+          let instructions = 'Respond to the user message concisely and accurately.';
+          if (rounds >= 2) {
+            instructions += ' You have already asked 2 clarifying questions. Proceed with your best judgment and state your assumptions clearly.';
+          }
+          return instructions;
+        })(),
         memory: memoryResult.memory,
         preferences: memoryResult.preferences as Record<string, unknown>,
         conversationHistory,
@@ -683,7 +697,14 @@ export function useChat(): UseChatReturn {
       modelContextWindow: 128000,
       userInput: userMessage.content,
       systemPrompt: personaInjector.inject('You are a helpful AI assistant.'),
-      taskInstructions: 'Respond to the user message concisely and accurately.',
+      taskInstructions: (() => {
+        const rounds = clarificationRoundsRef.current.get(activeId) ?? 0;
+        let instructions = 'Respond to the user message concisely and accurately.';
+        if (rounds >= 2) {
+          instructions += ' You have already asked 2 clarifying questions. Proceed with your best judgment and state your assumptions clearly.';
+        }
+        return instructions;
+      })(),
       memory: memoryResult.memory,
       preferences: memoryResult.preferences as Record<string, unknown>,
       conversationHistory,

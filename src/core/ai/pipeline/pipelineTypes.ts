@@ -8,6 +8,14 @@ export const PlannerDecision = z.object({
   toolName: z.string().optional(),
   toolInput: z.record(z.string(), z.unknown()).optional(),
   reasoning: z.string(),
+  clarificationOptions: z
+    .array(
+      z.object({
+        label: z.string(),
+        value: z.string(),
+      }),
+    )
+    .optional(),
 });
 
 export type PlannerDecisionType = z.infer<typeof PlannerDecision>;
