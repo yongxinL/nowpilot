@@ -1,16 +1,10 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { theme } from 'antd';
 import { findNavItem } from '../../core/navigation/navigationSelectors';
-import {
-  WorkspaceStatusBar,
-  type WorkspaceStatusBarProps,
-} from '../common/WorkspaceStatusBar';
 
 export interface SidepanelContentProps {
   activeNavId: string;
   children?: ReactNode;
-  showStatusBar?: boolean;
-  statusBarProps?: Omit<WorkspaceStatusBarProps, 'surface'>;
 }
 
 const MAIN_PADDING = 4;
@@ -19,8 +13,6 @@ const SHELL_RADIUS = 12;
 export function SidepanelContent({
   activeNavId,
   children,
-  showStatusBar = true,
-  statusBarProps,
 }: SidepanelContentProps) {
   const { token } = theme.useToken();
   const item = findNavItem(activeNavId);
@@ -72,9 +64,6 @@ export function SidepanelContent({
     >
       <div data-sidepanel-content-shell="true" style={shellStyle}>
         <div style={scrollableStyle}>{fallback}</div>
-        {showStatusBar ? (
-          <WorkspaceStatusBar surface="sidepanel" flush {...(statusBarProps ?? {})} />
-        ) : null}
       </div>
     </main>
   );

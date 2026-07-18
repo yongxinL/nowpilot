@@ -139,8 +139,12 @@ export class ModelDiscovery {
       // Fallback to OpenAI-compatible discovery for custom endpoints
       // that don't support Anthropic's /models route
       const fallback = await this.tryOpenAIDiscovery(base, apiKey);
-      if (fallback !== null) return fallback;
-      return models;
+      if (fallback !== null && fallback.length > 0) return fallback;
+      // Some proxies (e.g. LiteLLM) serve OpenAI-compatible API at /v1/models
+      // rather than /models. Try this path before giving up.
+      const v1Fallback = await this.tryOpenAIDiscovery(`${base}/v1`, apiKey);
+      if (v1Fallback !== null && v1Fallback.length > 0) return v1Fallback;
+      return fallback ?? models;
     }
 
     if (providerType === 'openai' || providerType === 'openai-compatible' || providerType === 'ollama') {

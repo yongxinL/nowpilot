@@ -4,9 +4,11 @@ import { debugLog } from '../core/utils/debugLog';
 import { validateEnvelope } from '../core/messaging/runtimeEnvelope';
 import { PAGE_CONTEXT_UPDATED, GET_PAGE_CONTEXT_REQUEST } from '../core/messaging/pageMessages';
 import { useWorkspaceStore } from '../core/stores/workspaceStore';
+import { initProviderSync } from '../core/stores/providerStore';
 import type { PageContext } from '../core/content/PageContext';
 
 export default defineBackground(() => {
+  initProviderSync();
   chrome.runtime.onInstalled.addListener((details) => {
     if (details.reason === 'install') {
       chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(console.error);

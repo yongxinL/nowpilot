@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { encryptedStorage } from '../storage/EncryptedStorage';
+import { debugLog } from '../utils/debugLog';
 import type { ModelEntry } from '../ai/providers/providerTypes';
 
 /**
@@ -80,3 +81,17 @@ export const storeHydration: Promise<void> = new Promise((resolve) => {
     });
   }
 });
+
+/**
+ * Listen for np_providers changes in chrome.storage.local and re-hydrate the store.
+ * This ensures all extension contexts (sidepanel, popup, background) stay in sync
+ * when provider config or models change in another context (e.g. options page).
+ */
+export function initProviderSync(): void {
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === 'local' && changes.np_providers) {
+      debugLog('info', '[ProviderStore] np_providers changed, rehydrating');
+      useProviderStore.persist.rehydrate();
+    }
+  });
+}

@@ -32,7 +32,7 @@ describe('SidepanelContent shell layout', () => {
     expect(shellStyle).toContain('border-radius: 12px');
   });
 
-  it('does not apply top padding to the scrollable area so it extends to the status bar', () => {
+  it('does not apply top padding to the scrollable area', () => {
     const { container } = setup(
       React.createElement(SidepanelContent, {
         activeNavId: 'chat',
@@ -47,7 +47,7 @@ describe('SidepanelContent shell layout', () => {
     expect(style).not.toContain('padding: 12px');
   });
 
-  it('renders WorkspaceStatusBar inside the shell at the bottom', () => {
+  it('does not render WorkspaceStatusBar inside the shell (page handles its own)', () => {
     const { container } = setup(
       React.createElement(SidepanelContent, {
         activeNavId: 'chat',
@@ -56,6 +56,6 @@ describe('SidepanelContent shell layout', () => {
     );
     const shell = container.querySelector('[data-sidepanel-content-shell="true"]');
     const statusBar = shell?.querySelector('[data-workspace-status-bar="true"]');
-    expect(statusBar).toBeTruthy();
+    expect(statusBar).toBeNull();
   });
 });

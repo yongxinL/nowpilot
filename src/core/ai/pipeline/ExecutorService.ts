@@ -18,29 +18,39 @@ export class ExecutorService {
   ): Promise<ToolExecutionResult> {
     const startTime = Date.now();
 
-    // 1. Closed-enum validation
-    const tool = this.toolRegistry.get(toolName);
+    // 1. Closed-enum validation (with alias normalization for hyphens vs underscores)
+    const normalized = toolName.replace(/_/g, '-');
+    let tool = this.toolRegistry.get(toolName);
+    if (!tool) {
+      tool = this.toolRegistry.get(normalized);
+      if (tool) {
+        debugLog('info', '[ExecutorService] Resolved tool via alias', { original: toolName, resolved: normalized });
+      }
+    }
     if (!tool) {
       debugLog('error', '[ExecutorService] Unknown tool', { toolName });
       return { success: false, error: `Unknown tool: ${toolName}` };
     }
 
-    // 2. Permission check (default-deny)
-    const canExecute = await this.permissionService.canExecute(toolName, toolInput);
-    const permissionDecision = canExecute ? 'allowed' : 'denied';
+    // 2. Permission check (default-deny, but skip for tools that opt out)
+    let permissionDecision = 'allowed';
+    if (tool.requiresPermission !== false) {
+      const canExecute = await this.permissionService.canExecute(toolName, toolInput);
+      permissionDecision = canExecute ? 'allowed' : 'denied';
 
-    if (!canExecute) {
-      debugLog('error', '[ExecutorService] Permission denied', { toolName });
-      execCtx?.traceCollector.onToolExecution({
-        toolName,
-        source: 'built-in',
-        dangerous: false,
-        permissionDecision,
-        status: 'denied',
-        durationMs: Date.now() - startTime,
-        timestamp: Date.now(),
-      });
-      return { success: false, error: `Permission denied for tool: ${toolName}` };
+      if (!canExecute) {
+        debugLog('error', '[ExecutorService] Permission denied', { toolName });
+        execCtx?.traceCollector.onToolExecution({
+          toolName,
+          source: 'built-in',
+          dangerous: false,
+          permissionDecision,
+          status: 'denied',
+          durationMs: Date.now() - startTime,
+          timestamp: Date.now(),
+        });
+        return { success: false, error: `Permission denied for tool: ${toolName}` };
+      }
     }
 
     // 3. Input schema validation (Zod v4)

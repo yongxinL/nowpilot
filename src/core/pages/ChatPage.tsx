@@ -136,7 +136,7 @@ const SaveNoteIcon = (props?: React.SVGProps<SVGSVGElement>) => (
 
 const RegenerateIcon = (props?: React.SVGProps<SVGSVGElement>) => (
   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 16 16" style={{ display: 'inline-block', verticalAlign: 'middle', ...props?.style }} {...props}>
-    <path fill="currentColor" d="M8.433.88a.6.6 0 0 1 .846.058L11.2 3.145a.598.598 0 0 1-.102.892L8.86 5.67a.6.6 0 1 1-.707-.969l1.17-.854A6 6 0 0 0 8 3.7a5.18 5.18 0 0 0-5.18 5.18 5.18 5.18 5.18 5.18 10.36.007.6.6 0 1 1 1.2 0A6.38 6.38 0 1 1 1.62 8.88 6.38 6.38 0 0 1 8 2.5q.59.002 1.124.089l-.75-.862A.6.6 0 0 1 8.433.88" />
+    <path fill="currentColor" d="M8.433.88a.6.6 0 0 1 .846.058L11.2 3.145a.598.598 0 0 1-.102.892L8.86 5.67a.6.6 0 1 1-.707-.969l1.17-.854A6 6 0 0 0 8 3.7a5.18 5.18 0 0 0-5.18 5.18 5.18 5.18 0 0 1 10.36.007.6.6 0 1 1 1.2 0A6.38 6.38 0 1 1 1.62 8.88 6.38 6.38 0 0 1 8 2.5q.59.002 1.124.089l-.75-.862A.6.6 0 0 1 8.433.88" />
   </svg>
 );
 

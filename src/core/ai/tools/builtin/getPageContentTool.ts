@@ -27,6 +27,10 @@ export const getPageContentTool: ToolDefinition = {
       .number()
       .optional()
       .describe('Tab ID for pinned tab context. Omit for active page.'),
+    url: z
+      .string()
+      .optional()
+      .describe('URL to look up in pinned tabs. Ignored if tabId is provided.'),
   }),
   outputSchema: z.object({
     success: z.boolean(),
@@ -51,7 +55,7 @@ export const getPageContentTool: ToolDefinition = {
       throw new DOMException('Aborted', 'AbortError');
     }
 
-    const { tabId } = input as { tabId?: number };
+    const { tabId, url } = input as { tabId?: number; url?: string };
 
     // D-20: Pinned tab → cached PageContext from workspaceStore
     if (tabId !== undefined) {
@@ -62,6 +66,16 @@ export const getPageContentTool: ToolDefinition = {
         return { success: false, error: `Pinned tab ${tabId} not found` };
       }
       return { success: true, page: pinned.page };
+    }
+
+    // URL lookup → check pinned tabs by URL match
+    if (url) {
+      const pinned = useWorkspaceStore
+        .getState()
+        .pinnedTabs.find((t) => (t.url || t.page?.url) === url);
+      if (pinned) {
+        return { success: true, page: pinned.page };
+      }
     }
 
     // Active page → fresh extraction via content script relay

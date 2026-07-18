@@ -966,8 +966,10 @@ export function GeneralSection() {
                       value={baseUrlInput}
                       onChange={(e) => setBaseUrlInput(e.target.value)}
                       placeholder={
-                        providerId === 'ollama' ? 'http://localhost:11434/v1' 
-                        : providerId === 'openai' ? 'http://localhost:12380/v1' 
+                        providerId === 'ollama' ? 'http://localhost:11434/v1'
+                        : providerId === 'openai' ? 'https://api.openai.com/v1'
+                        : providerId === 'anthropic' ? 'https://api.anthropic.com/v1'
+                        : providerId === 'google' ? 'https://generativelanguage.googleapis.com/v1'
                         : 'https://api.openai.com/v1'
                       }
                       style={{ height: 40, borderRadius: 8 }}

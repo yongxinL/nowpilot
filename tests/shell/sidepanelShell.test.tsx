@@ -25,24 +25,7 @@ describe('Unified sidepanel shell + status bar frame', () => {
     expect(style).toContain('border-radius: 12px');
   });
 
-  it('status bar rendered inside the sidepanel shell is flush (no own rounded corners)', () => {
-    const { container } = setup(
-      React.createElement(SidepanelContent, {
-        activeNavId: 'chat',
-        children: React.createElement('div', null, 'content'),
-      }),
-    );
-    const statusBar = container.querySelector('[data-workspace-status-bar="true"]') as HTMLElement | null;
-    expect(statusBar).toBeTruthy();
-    expect(statusBar?.getAttribute('data-status-bar-flush')).toBe('true');
-    const style = statusBar?.getAttribute('style') ?? '';
-    expect(style).toContain('border-radius: 0');
-    expect(style).not.toContain('border-bottom-left-radius');
-    expect(style).not.toContain('border-bottom-right-radius');
-    expect(style).toContain('background: transparent');
-  });
-
-  it('shell overflow:hidden so flush status bar corners follow the shell radius', () => {
+  it('shell overflow:hidden so content corners follow the shell radius', () => {
     const { container } = setup(
       React.createElement(SidepanelContent, {
         activeNavId: 'chat',

@@ -3,13 +3,18 @@ import { defineConfig } from 'wxt';
 export default defineConfig({
   srcDir: 'src',
   outDir: 'dist',
+  manifestVersion: 3,
   webExt: {
     disabled: true,
   },
+  vite: () => ({
+    build: {
+      chunkSizeWarningLimit: 2000,
+    },
+  }),
   manifest: {
     name: 'NowPilot',
     version: '0.1.0',
-    manifest_version: 3,
     description: 'Privacy-first AI assistant',
     permissions: ['sidePanel', 'storage', 'tabs', 'commands', 'activeTab'],
     host_permissions: [

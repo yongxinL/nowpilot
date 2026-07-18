@@ -154,6 +154,7 @@ function formatPageContext(
       contextString += `### Pinned Page #${index + 1}\n`;
       contextString += `Title: ${tab.title || tab.page?.title || 'Untitled Page'}\n`;
       contextString += `URL: ${tab.url || tab.page?.url || ''}\n`;
+      contextString += `Tab ID: ${tab.tabId}\n`;
       if (tab.page?.markdown) {
         contextString += `Content:\n${tab.page.markdown}\n`;
       }
@@ -470,6 +471,8 @@ export function useChat(): UseChatReturn {
         taskInstructions: (() => {
           const rounds = clarificationRoundsRef.current.get(convId ?? '') ?? 0;
           let instructions = 'Respond to the user message concisely and accurately.';
+          instructions += ' The current page context and any pinned tabs are included in this message under "Active Page Context" and "Pinned Pages Context". If the page content (markdown) is missing or incomplete, you should call the get-page-content tool via JSON output (not native function calling). Pass the Tab ID shown in the pinned context, or pass the url parameter with the page URL. For the active page, omit both parameters.';
+          instructions += ` Available tools (use exact name): get-page-content, pin-tab. Do NOT use <|tool_call|> or any native function call syntax. Output plain JSON only.`;
           if (rounds >= 2) {
             instructions += ' You have already asked 2 clarifying questions. Proceed with your best judgment and state your assumptions clearly.';
           }
@@ -480,6 +483,10 @@ export function useChat(): UseChatReturn {
         conversationHistory,
         conversationSummary: memoryResult.conversationContext.summary,
         pageContext: formatPageContext(workspaceCurrentPageContext, workspacePinnedTabs), // PageContext | null (D-19)
+        toolSchemas: toolRegistry.list().map((t) => ({
+          name: t.name,
+          schema: t.inputSchema,
+        })),
       };
 
       const optimizedContext: OptimizedContext =
@@ -732,6 +739,8 @@ export function useChat(): UseChatReturn {
       taskInstructions: (() => {
         const rounds = clarificationRoundsRef.current.get(activeId) ?? 0;
         let instructions = 'Respond to the user message concisely and accurately.';
+        instructions += ' The current page context and any pinned tabs are included in this message under "Active Page Context" and "Pinned Pages Context". If the page content (markdown) is missing or incomplete, you should call the get-page-content tool via JSON output (not native function calling). Pass the Tab ID shown in the pinned context, or pass the url parameter with the page URL. For the active page, omit both parameters.';
+        instructions += ' Available tools (use exact name): get-page-content, pin-tab. Do NOT use <|tool_call|> or any native function call syntax. Output plain JSON only.';
         if (rounds >= 2) {
           instructions += ' You have already asked 2 clarifying questions. Proceed with your best judgment and state your assumptions clearly.';
         }
