@@ -72,6 +72,8 @@ import { PinTabBar } from '../../components/sidepanel/PinTabBar';
 import { WorkspaceStatusBar } from '../../components/common/WorkspaceStatusBar';
 import { WelcomeCards } from '../../components/chat/WelcomeCards';
 import { BrandedHeader } from '../../components/chat/BrandedHeader';
+import { QuickActionChips } from '../../components/chat/QuickActionChips';
+import { ClarificationAction } from '../../components/chat/ClarificationAction';
 
 const ICON_MAP: Record<string, React.ComponentType<any>> = {
   message: MessageOutlined,
@@ -1503,6 +1505,12 @@ export function ChatPage() {
                                     ? 'Writing the final response ...'
                                     : null}
                                 </Think>
+                              ) : item.clarification ? (
+                                <ClarificationAction
+                                  question={item.clarification.question}
+                                  options={item.clarification.options}
+                                  onSelect={(value) => setDraft(value)}
+                                />
                               ) : item.content ? (
                                 <>
                                   {item.reasoning ? (
@@ -1801,6 +1809,9 @@ export function ChatPage() {
             </div>
           </div>
         )}
+
+        {/* Quick action chips — context-aware action strip above Sender (D-34) */}
+        {!isExportMode && <QuickActionChips onSelectAction={(promptText) => { setDraft(promptText); }} />}
 
         {/* PinTabBar — always visible above composer (D-11) */}
         {!isExportMode && <PinTabBar />}

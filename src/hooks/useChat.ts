@@ -43,6 +43,7 @@ export interface ChatMessage {
   streaming: boolean;
   timestamp: number;
   metadata?: any;
+  clarification?: ClarificationPayload;
 }
 
 export interface ConversationMeta {
@@ -582,6 +583,7 @@ export function useChat(): UseChatReturn {
         loading: msg.streaming && !msg.content,
         streaming: msg.streaming,
         metadata: msg.metadata,
+        clarification: msg.clarification,
       })),
     [messages, stage, currentTool],
   );
