@@ -12,6 +12,7 @@ import { toolRegistry } from '../core/ai/tools/ToolRegistry';
 import { permissionService } from '../core/ai/tools/PermissionService';
 import { slashCommandRegistry } from '../core/slash/SlashCommandRegistry';
 import { useWorkspaceStore } from '../core/stores/workspaceStore';
+import { personaInjector } from '../core/ai/persona/PersonaInjector';
 import { debugLog } from '../core/utils/debugLog';
 import type { OptimizedContext } from '../core/context/contextTypes';
 
@@ -41,6 +42,7 @@ export interface ChatMessage {
   reasoning?: string;
   streaming: boolean;
   timestamp: number;
+  metadata?: any;
 }
 
 export interface ConversationMeta {
@@ -61,12 +63,13 @@ export interface BubbleListItem {
   currentTool?: string;
   loading: boolean;
   streaming: boolean;
+  metadata?: any;
 }
 
 export interface UseChatReturn {
   messages: ChatMessage[];
   bubbleItems: BubbleListItem[];
-  send: (message: string) => Promise<void>;
+  send: (message: string, metadata?: any) => Promise<void>;
   abort: () => void;
   isStreaming: boolean;
   error: string | null;
@@ -114,6 +117,40 @@ async function generateTitle(userMessage: string): Promise<string | null> {
   } catch {
     return null; // Silently fall back
   }
+}
+
+function formatPageContext(
+  currentPageContext: any | null,
+  pinnedTabs: any[]
+): string | null {
+  let contextString = '';
+
+  if (currentPageContext) {
+    contextString += `## Active Page Context\n`;
+    contextString += `Title: ${currentPageContext.title || 'Untitled Page'}\n`;
+    contextString += `URL: ${currentPageContext.url || 'No URL'}\n`;
+    if (currentPageContext.markdown) {
+      contextString += `Content:\n${currentPageContext.markdown}\n`;
+    }
+    contextString += `\n---\n\n`;
+  }
+
+  // Active pins
+  const activePins = pinnedTabs.filter((t) => t.active !== false);
+  if (activePins.length > 0) {
+    contextString += `## Pinned Pages Context\n`;
+    activePins.forEach((tab, index) => {
+      contextString += `### Pinned Page #${index + 1}\n`;
+      contextString += `Title: ${tab.title || tab.page?.title || 'Untitled Page'}\n`;
+      contextString += `URL: ${tab.url || tab.page?.url || ''}\n`;
+      if (tab.page?.markdown) {
+        contextString += `Content:\n${tab.page.markdown}\n`;
+      }
+      contextString += `\n`;
+    });
+  }
+
+  return contextString.trim() || null;
 }
 
 // ---------------------------------------------------------------------------
@@ -252,6 +289,7 @@ export function useChat(): UseChatReturn {
   const workspaceSetActiveProvider = useWorkspaceStore((s) => s.setActiveProvider);
   const workspaceSetConversationId = useWorkspaceStore((s) => s.setConversationId);
   const workspaceCurrentPageContext = useWorkspaceStore((s) => s.currentPageContext);
+  const workspacePinnedTabs = useWorkspaceStore((s) => s.pinnedTabs);
 
   // ---------------------------------------------------------------
   // Load conversations on mount
@@ -286,7 +324,7 @@ export function useChat(): UseChatReturn {
   // ---------------------------------------------------------------
 
   const send = useCallback(
-    async (message: string): Promise<void> => {
+    async (message: string, metadata?: any): Promise<void> => {
       if (!message.trim()) return;
 
       // 1. Parse slash commands via SlashCommandRegistry (D-04)
@@ -345,6 +383,7 @@ export function useChat(): UseChatReturn {
         content: message,
         streaming: false,
         timestamp: Date.now(),
+        metadata,
       };
 
       // 5. Append placeholder assistant message (D-03)
@@ -365,6 +404,7 @@ export function useChat(): UseChatReturn {
         role: 'user',
         content: message,
         timestamp: userMsg.timestamp,
+        metadata,
       });
 
       // 7. Clear draft (D-36)
@@ -391,13 +431,13 @@ export function useChat(): UseChatReturn {
         modelId: 'default',
         modelContextWindow: 128000,
         userInput: message,
-        systemPrompt: 'You are a helpful AI assistant.',
+        systemPrompt: personaInjector.inject('You are a helpful AI assistant.'),
         taskInstructions: 'Respond to the user message concisely and accurately.',
         memory: memoryResult.memory,
         preferences: memoryResult.preferences as Record<string, unknown>,
         conversationHistory,
         conversationSummary: memoryResult.conversationContext.summary,
-        pageContext: workspaceCurrentPageContext, // PageContext | null (D-19)
+        pageContext: formatPageContext(workspaceCurrentPageContext, workspacePinnedTabs), // PageContext | null (D-19)
       };
 
       const optimizedContext: OptimizedContext =
@@ -416,7 +456,7 @@ export function useChat(): UseChatReturn {
         sendingRef.current = false;
       }
     },
-    [workspaceActiveProvider, workspaceActiveModel, workspaceSetConversationId, workspaceCurrentPageContext],
+    [workspaceActiveProvider, workspaceActiveModel, workspaceSetConversationId, workspaceCurrentPageContext, workspacePinnedTabs],
   );
 
   // ---------------------------------------------------------------
@@ -445,6 +485,7 @@ export function useChat(): UseChatReturn {
         content: m.content,
         streaming: false,
         timestamp: m.timestamp,
+        metadata: m.metadata as any,
       }));
       setMessages(loadedMessages);
     },
@@ -526,6 +567,7 @@ export function useChat(): UseChatReturn {
         currentTool: msg.streaming && stage === 'tool' ? currentTool : undefined,
         loading: msg.streaming && !msg.content,
         streaming: msg.streaming,
+        metadata: msg.metadata,
       })),
     [messages, stage, currentTool],
   );
@@ -612,6 +654,7 @@ export function useChat(): UseChatReturn {
         role: msg.role,
         content: msg.content,
         timestamp: msg.timestamp,
+        metadata: msg.metadata,
       });
     }
 
@@ -639,12 +682,12 @@ export function useChat(): UseChatReturn {
       modelId: 'default',
       modelContextWindow: 128000,
       userInput: userMessage.content,
-      systemPrompt: 'You are a helpful AI assistant.',
+      systemPrompt: personaInjector.inject('You are a helpful AI assistant.'),
       taskInstructions: 'Respond to the user message concisely and accurately.',
       memory: memoryResult.memory,
       preferences: memoryResult.preferences as Record<string, unknown>,
       conversationHistory,
-      pageContext: workspaceCurrentPageContext, // PageContext | null (D-19)
+      pageContext: formatPageContext(workspaceCurrentPageContext, workspacePinnedTabs), // PageContext | null (D-19)
     };
 
     const optimizedContext = await contextOptimizer.optimize(contextInput);
@@ -652,7 +695,7 @@ export function useChat(): UseChatReturn {
     const activeModelId = workspaceActiveModel ?? undefined;
 
     await streamingLLMRef.current.startStream(optimizedContext, preferredProviders, activeModelId);
-  }, [messages, workspaceActiveProvider, workspaceActiveModel, workspaceCurrentPageContext]);
+  }, [messages, workspaceActiveProvider, workspaceActiveModel, workspaceCurrentPageContext, workspacePinnedTabs]);
 
   // ---------------------------------------------------------------
   // Return

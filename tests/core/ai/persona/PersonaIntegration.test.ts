@@ -1,7 +1,9 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock useChat's module-level imports to verify persona injector is called
-const mockInject = vi.fn((prompt: string) => `## PERSONA\n\n${prompt}`);
+const { mockInject } = vi.hoisted(() => ({
+  mockInject: vi.fn((prompt: string) => `## PERSONA\n\n${prompt}`),
+}));
 
 vi.mock('../../../../src/core/ai/persona/PersonaInjector', () => ({
   personaInjector: {

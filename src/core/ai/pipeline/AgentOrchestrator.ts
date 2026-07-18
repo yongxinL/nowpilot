@@ -1,4 +1,5 @@
 import { debugLog } from '../../utils/debugLog';
+import { personaInjector } from '../persona/PersonaInjector';
 import { AbortManager } from '../streaming/AbortManager';
 import { DEFAULT_TIMEOUT_CONFIG } from '../streaming/TimeoutConfig';
 import type { PlannerService } from './PlannerService';
@@ -158,7 +159,8 @@ export class AgentOrchestrator {
       yield* this.emitDegradationEvents(optimizedContext);
 
       const sections = optimizedContext.sections;
-      const plannerSystemPrompt = this.joinSections(sections, ['system_prompt', 'task_instructions']);
+      const rawPlannerPrompt = this.joinSections(sections, ['system_prompt', 'task_instructions']);
+      const plannerSystemPrompt = personaInjector.inject(rawPlannerPrompt);
       const plannerUserMessage = this.joinSections(sections, ['user_input', 'workspace_context', 'page_context', 'conversation_history']);
       const rendererUserMessage = this.joinSections(sections, ['user_input', 'conversation_history']);
 
