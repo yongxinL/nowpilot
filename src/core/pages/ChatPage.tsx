@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Bubble, Sender, Think } from '@ant-design/x';
 import { XMarkdown } from '@ant-design/x-markdown';
 import {
@@ -12,6 +12,9 @@ import {
   Checkbox,
   Dropdown,
   App,
+  Tooltip,
+  Spin,
+  theme,
 } from 'antd';
 import {
   MenuOutlined,
@@ -51,9 +54,12 @@ import {
   HighlightOutlined,
   CommentOutlined,
   ThunderboltOutlined,
+  PushpinOutlined,
+  QuestionCircleOutlined,
 } from '@ant-design/icons';
 import { useChat } from '../../hooks/useChat';
 import { useWorkspaceStore } from '../../core/stores/workspaceStore';
+import type { PageContext, TabContext } from '../../core/content/PageContext';
 import { useProviderStore } from '../../core/stores/providerStore';
 import { providerRegistry } from '../../core/ai/providers/ProviderRegistry';
 import { slashCommandRegistry } from '../../core/slash/SlashCommandRegistry';
@@ -62,6 +68,10 @@ import { templateEngine } from '../../core/prompts/TemplateEngine';
 import type { PromptTemplate } from '../../core/prompts/PromptManager';
 // Unused ConversationSidebar removed for standalone drawer integration
 import { SaveToNoteDialog } from '../../components/notes/SaveToNoteDialog';
+import { PinTabBar } from '../../components/sidepanel/PinTabBar';
+import { WorkspaceStatusBar } from '../../components/common/WorkspaceStatusBar';
+import { WelcomeCards } from '../../components/chat/WelcomeCards';
+import { BrandedHeader } from '../../components/chat/BrandedHeader';
 
 const ICON_MAP: Record<string, React.ComponentType<any>> = {
   message: MessageOutlined,
@@ -100,9 +110,50 @@ const getPromptSelectionText = (template: string) => {
 
 const { Text } = Typography;
 
-const QuoteIcon = () => (
-  <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" style={{ display: 'inline-block', verticalAlign: 'middle' }}>
-    <path d="M6 17h3l2-4V7H5v6h3zm8 0h3l2-4V7h-6v6h3z"/>
+const QuoteIcon = (props?: React.SVGProps<SVGSVGElement>) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 60 60" style={{ display: 'inline-block', verticalAlign: 'middle', ...props?.style }} {...props}>
+    <path fill="currentColor" d="M46.967 32.397c-.926-.076-2.054-.076-3.378-.076h-.178c-1.324 0-2.452 0-3.378.076-.777.063-1.536.187-2.272.469.098-6.499.82-10.02 2.175-12.433 1.437-2.555 3.746-4.177 8.038-6.727a2.25 2.25 0 0 0-2.298-3.869c-4.208 2.5-7.561 4.654-9.662 8.392-2.076 3.692-2.764 8.614-2.764 16.218v8.213c0 1.324 0 2.452.076 3.378.08.973.253 1.92.714 2.825a7.25 7.25 0 0 0 3.169 3.168c.904.461 1.85.635 2.824.715.926.075 2.054.075 3.378.075h.178c1.324 0 2.452 0 3.378-.075.973-.08 1.92-.254 2.824-.715a7.25 7.25 0 0 0 3.169-3.168c.46-.905.635-1.852.714-2.825.076-.926.076-2.054.076-3.378v-.177c0-1.325 0-2.453-.076-3.38-.08-.972-.253-1.919-.714-2.823a7.25 7.25 0 0 0-3.169-3.169c-.904-.46-1.85-.635-2.824-.714m-25.999 0c-.926-.076-2.054-.076-3.378-.076h-.177c-1.325 0-2.453 0-3.38.076-.776.063-1.535.187-2.27.469.097-6.499.818-10.02 2.174-12.433 1.437-2.555 3.746-4.177 8.038-6.727a2.25 2.25 0 0 0-2.298-3.869c-4.208 2.5-7.561 4.654-9.662 8.392C7.939 21.92 7.25 26.843 7.25 34.447v8.213c0 1.324 0 2.452.076 3.378.08.973.253 1.92.714 2.825a7.25 7.25 0 0 0 3.168 3.168c.905.461 1.852.635 2.825.715.926.075 2.054.075 3.378.075h.178c1.324 0 2.452 0 3.378-.075.973-.08 1.92-.254 2.824-.715a7.25 7.25 0 0 0 3.169-3.168c.46-.905.635-1.852.714-2.825.076-.926.076-2.054.076-3.378v-.177c0-1.325 0-2.453-.076-3.38-.08-.972-.253-1.919-.714-2.823a7.25 7.25 0 0 0-3.169-3.169c-.904-.46-1.85-.635-2.824-.714z" />
+  </svg>
+);
+
+const CopyIcon = (props?: React.SVGProps<SVGSVGElement>) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 16 16" style={{ display: 'inline-block', verticalAlign: 'middle', ...props?.style }} {...props}>
+    <path fill="currentColor" fillRule="evenodd" d="M7.386 1H5.414c-.65 0-1.174 0-1.6.035-.436.035-.82.11-1.176.292a3 3 0 0 0-1.311 1.311c-.181.355-.257.74-.292 1.177C1 4.24 1 4.764 1 5.415v1.97c0 .65 0 1.175.035 1.6.035.437.11.822.292 1.177a3 3 0 0 0 1.311 1.311c.355.181.74.257 1.177.292q.18.015.385.022V12a3 3 0 0 0 3 3h3.386c.65 0 1.175 0 1.6-.035.437-.035.82-.11 1.176-.292a3 3 0 0 0 1.311-1.311c.181-.355.257-.74.292-1.177.035-.425.035-.949.035-1.6V7.2a3 3 0 0 0-3-3h-.213a9 9 0 0 0-.022-.385c-.035-.437-.11-.822-.292-1.177a3 3 0 0 0-1.311-1.311c-.355-.181-.74-.257-1.177-.292C8.56 1 8.036 1 7.385 1zM11.8 5.4v1.986c0 .65 0 1.174-.035 1.6-.035.436-.11.82-.292 1.176a3 3 0 0 1-1.311 1.311c-.355.181-.74.257-1.177.292-.425.035-.949.035-1.6.035H5.4v.2a1.8 1.8 0 0 0 1.8 1.8h3.36c.682 0 1.157 0 1.527-.03.364-.03.572-.086.73-.166a1.8 1.8 0 0 0 .787-.787c.08-.158.136-.366.165-.73.03-.37.031-.845.031-1.527V7.2A1.8 1.8 0 0 0 12 5.4zM3.183 2.396c.158-.08.366-.136.73-.165.37-.03.845-.031 1.527-.031h1.92c.682 0 1.157 0 1.527.03.364.03.572.086.73.166a1.8 1.8 0 0 1 .787.787c.08.158.136.366.165.73.03.37.031.845.031 1.527v1.92c0 .682 0 1.157-.03 1.527-.03.364-.086.572-.166.73a1.8 1.8 0 0 1-.787.787c-.158.08-.366.136-.73.165-.37.03-.845.031-1.527.031H5.44c-.682 0-1.157 0-1.527-.03-.364-.03-.572-.086-.73-.166a1.8 1.8 0 0 1-.787-.787c-.08-.158-.136-.366-.165-.73-.03-.37-.031-.845-.031-1.527V5.44c0-.682 0-1.157.03-1.527.03-.364.086-.572.166-.73a1.8 1.8 0 0 1 .787-.787" clip-rule="evenodd" />
+  </svg>
+);
+
+const SaveNoteIcon = (props?: React.SVGProps<SVGSVGElement>) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 14 14" style={{ display: 'inline-block', verticalAlign: 'middle', ...props?.style }} {...props}>
+    <path fill="currentColor" fillRule="evenodd" d="M10.675 4.2a.525.525 0 0 0 1.05 0V3.092h1.108a.525.525 0 1 0 0-1.05h-1.108V.933a.525.525 0 1 0-1.05 0v1.109H9.567a.525.525 0 1 0 0 1.05h1.108zM4.783 1.108H4.74c-.283 0-.482 0-.658.026A2.39 2.39 0 0 0 2.068 3.15c-.026.175-.026.374-.026.657v.044a.525.525 0 1 0 1.05 0c0-.344.001-.459.014-.547a1.34 1.34 0 0 1 1.13-1.13c.089-.013.203-.015.547-.015h2.573a.525.525 0 1 0 0-1.05H4.783Zm7.409 5.425a.525.525 0 0 0-1.05 0v3.314c0 .53 0 .898-.024 1.183-.023.279-.065.432-.123.546a1.34 1.34 0 0 1-.586.586c-.113.058-.267.1-.546.122-.285.024-.652.024-1.183.024H4.783c-.344 0-.458-.001-.547-.014a1.34 1.34 0 0 1-1.13-1.13c-.013-.089-.014-.204-.014-.547a.525.525 0 0 0-1.05 0v.043c0 .283 0 .482.026.658a2.39 2.39 0 0 0 2.014 2.014c.176.026.375.026.658.026h3.962c.504 0 .914 0 1.247-.027.344-.028.65-.088.937-.233.45-.23.816-.596 1.045-1.046.146-.286.205-.593.234-.937.027-.332.027-.742.027-1.246zM1.108 6.067c0-.29.235-.525.525-.525H3.5a.525.525 0 1 1 0 1.05H1.633a.525.525 0 0 1-.525-.525m.525 1.808a.525.525 0 1 0 0 1.05H3.5a.525.525 0 1 0 0-1.05z" clip-rule="evenodd" />
+  </svg>
+);
+
+const RegenerateIcon = (props?: React.SVGProps<SVGSVGElement>) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 16 16" style={{ display: 'inline-block', verticalAlign: 'middle', ...props?.style }} {...props}>
+    <path fill="currentColor" d="M8.433.88a.6.6 0 0 1 .846.058L11.2 3.145a.598.598 0 0 1-.102.892L8.86 5.67a.6.6 0 1 1-.707-.969l1.17-.854A6 6 0 0 0 8 3.7a5.18 5.18 0 0 0-5.18 5.18 5.18 5.18 5.18 5.18 10.36.007.6.6 0 1 1 1.2 0A6.38 6.38 0 1 1 1.62 8.88 6.38 6.38 0 0 1 8 2.5q.59.002 1.124.089l-.75-.862A.6.6 0 0 1 8.433.88" />
+  </svg>
+);
+
+const ShareIcon = (props?: React.SVGProps<SVGSVGElement>) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 14 14" style={{ display: 'inline-block', verticalAlign: 'middle', ...props?.style }} {...props}>
+    <path fill="currentColor" fillRule="evenodd" d="M7.642 3.033a2.392 2.392 0 1 1 .443 1.387l-2.85 1.645a2.38 2.38 0 0 1 0 1.87l2.85 1.645a2.392 2.392 0 1 1-.408.977L4.619 8.79a2.392 2.392 0 1 1 0-3.582l3.058-1.766a2.4 2.4 0 0 1-.035-.41zm2.391-1.341a1.342 1.342 0 1 0 0 2.683 1.342 1.342 0 0 0 0-2.683M1.692 7a1.342 1.342 0 1 1 2.683 0 1.342 1.342 0 0 1-2.683 0m7 3.967a1.342 1.342 0 1 1 2.683 0 1.342 1.342 0 0 1-2.683 0" clip-rule="evenodd" />
+  </svg>
+);
+
+const ReadAloudIcon = (props?: React.SVGProps<SVGSVGElement>) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 14 14" className="speaker-icon shrink-0" style={{ display: 'inline-block', verticalAlign: 'middle', ...props?.style }} {...props}>
+    <path fill="currentColor" fillRule="evenodd" d="M8.484 1.672a1.93 1.93 0 0 0-1.56-.698c-.421.017-.805.242-1.177.519-.378.28-.836.69-1.41 1.205l-.508.454-.049.043-.014.013h-.381c-.373 0-.686 0-.94.021a2 2 0 0 0-.752.19 1.93 1.93 0 0 0-.841.84c-.12.236-.168.486-.19.752-.02.255-.02.567-.02.941v2.096c0 .374 0 .686.02.941.022.266.07.516.19.752.184.362.479.656.84.84.237.121.487.168.752.19.255.02.568.02.941.02h.296l.085.001.014.013.05.043.507.454c.574.514 1.032.924 1.41 1.206.372.276.756.5 1.177.518.6.024 1.178-.235 1.56-.698.269-.325.357-.761.399-1.223.042-.469.042-1.083.042-1.854V4.749c0-.77 0-1.385-.042-1.854-.042-.462-.13-.898-.399-1.223m-1.519.352a.88.88 0 0 1 .71.317c.052.063.123.218.162.648.038.416.038.983.038 1.788v4.446c0 .805 0 1.372-.038 1.788-.038.43-.11.585-.162.648a.88.88 0 0 1-.71.317c-.082-.003-.245-.053-.59-.31-.336-.25-.759-.628-1.359-1.165l-.487-.435-.016-.015a1.4 1.4 0 0 0-.24-.183 1 1 0 0 0-.27-.103 1.4 1.4 0 0 0-.3-.023h-.295c-.401 0-.67 0-.877-.018-.201-.016-.297-.045-.36-.078a.9.9 0 0 1-.383-.382c-.032-.063-.062-.16-.078-.36a12 12 0 0 1-.017-.877V5.973c0-.4 0-.67.017-.876.016-.201.046-.298.078-.36a.9.9 0 0 1 .382-.383c.064-.033.16-.062.361-.078.207-.017.476-.018.877-.018h.296c.08 0 .19.001.3-.023a1 1 0 0 0 .27-.103 1.3 1.3 0 0 0 .239-.183l.016-.015.487-.435c.6-.537 1.023-.915 1.358-1.164.346-.258.51-.308.591-.311" clip-rule="evenodd" />
+    <path fill="currentColor" d="M9.759 3.986a.525.525 0 0 1 .722.173c1.036 1.689 1.036 3.993 0 5.682a.525.525 0 0 1-.895-.549c.83-1.352.83-3.232 0-4.584a.525.525 0 0 1 .173-.722" className="wave1" />
+    <path fill="currentColor" d="M11.388 2.355a.525.525 0 0 1 .724.167c1.662 2.658 1.662 6.298 0 8.956a.525.525 0 1 1-.89-.556c1.449-2.318 1.449-5.526 0-7.844a.525.525 0 0 1 .166-.723" className="wave2" />
+  </svg>
+);
+
+const ThinkingIcon = (props?: React.SVGProps<SVGSVGElement>) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 12 12" style={{ display: 'inline-block', verticalAlign: 'middle', ...props?.style }} {...props}>
+    <g fill="currentColor" fillRule="evenodd" clipRule="evenodd">
+      <path d="M6 1.45a4.15 4.15 0 0 0-2.832 7.185c.209.2.357.343.436.448.084.111.12.17.179.297.056.12.097.263.15.45l.01.035.04.141a.75.75 0 0 0 .721.544h2.59a.75.75 0 0 0 .721-.544l.04-.141.01-.036c.054-.186.095-.33.15-.449.06-.126.095-.186.18-.297a5 5 0 0 1 .48-.491A4.15 4.15 0 0 0 6 1.45M.95 5.6A5.05 5.05 0 1 1 9.5 9.24a7 7 0 0 0-.388.385l-.045.065-.036.07a3 3 0 0 0-.11.352l-.04.141a1.65 1.65 0 0 1-1.587 1.197h-2.59a1.65 1.65 0 0 1-1.586-1.197l-.04-.141a3 3 0 0 0-.11-.352l-.036-.07-.046-.065a6 6 0 0 0-.387-.385A5.04 5.04 0 0 1 .95 5.6" />
+      <path d="M5.9 3.45A2.05 2.05 0 0 0 3.85 5.5a.45.45 0 1 1-.9 0A2.95 2.95 0 0 1 5.9 2.55a.45.45 0 1 1 0 .9" />
+    </g>
   </svg>
 );
 
@@ -138,6 +189,7 @@ const getGroupLabel = (timestamp: number): string => {
 };
 
 export function ChatPage() {
+  const { token } = theme.useToken();
   const { message } = App.useApp();
   const {
     messages,
@@ -165,6 +217,8 @@ export function ChatPage() {
   const [quotedMessage, setQuotedMessage] = useState<any | null>(null);
   const [savingNoteContent, setSavingNoteContent] = useState<string | null>(null);
   const [activeReadAloudId, setActiveReadAloudId] = useState<string | null>(null);
+  const [welcomeCardsDismissed, setWelcomeCardsDismissed] = useState(false);
+  const [conversationLoading, setConversationLoading] = useState(false);
 
   const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
   const [slashSelectedIndex, setSlashSelectedIndex] = useState(0);
@@ -189,6 +243,23 @@ export function ChatPage() {
       chrome.storage.onChanged.removeListener(handleStorageChange);
     };
   }, []);
+
+  // Read WelcomeCards dismissal state on mount
+  useEffect(() => {
+    chrome.storage.local.get('np_welcome_cards_dismissed').then((result) => {
+      if (result.np_welcome_cards_dismissed) setWelcomeCardsDismissed(true);
+    }).catch(() => {});
+  }, []);
+
+  // Wrap switchConversation with conversationLoading guard (Pitfall 3 prevention)
+  const switchConvWithLoading = useCallback(async (convId: string) => {
+    setConversationLoading(true);
+    try {
+      await switchConversation(convId);
+    } finally {
+      setConversationLoading(false);
+    }
+  }, [switchConversation]);
 
   // Parse draft to detect slash command state
   const slashState = useMemo(() => {
@@ -267,6 +338,7 @@ export function ChatPage() {
   };
 
   const surface = useWorkspaceStore((s) => s.activeSurface);
+  const pinnedTabs = useWorkspaceStore((s) => s.pinnedTabs);
   const activeModel = useWorkspaceStore((s) => s.activeModel);
   const setActiveModel = useWorkspaceStore((s) => s.setActiveModel);
   const setActiveProvider = useWorkspaceStore((s) => s.setActiveProvider);
@@ -299,6 +371,141 @@ export function ChatPage() {
 
   // File attach ref
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // File attachments state (multi-file support)
+  const [attachedFiles, setAttachedFiles] = useState<{ id: string; name: string; url: string; type: string; file: File }[]>([]);
+
+  // Helper to safely set attachments and manage Object URLs (prevent memory leak)
+  const clearAttachedFiles = () => {
+    attachedFiles.forEach((f) => {
+      if (f.url) URL.revokeObjectURL(f.url);
+    });
+    setAttachedFiles([]);
+  };
+
+  const removeAttachedFile = (id: string) => {
+    setAttachedFiles((prev) => {
+      const target = prev.find((f) => f.id === id);
+      if (target?.url) {
+        URL.revokeObjectURL(target.url);
+      }
+      return prev.filter((f) => f.id !== id);
+    });
+  };
+
+  // State for Pinned Context Drawer
+  const [pinnedContextOpen, setPinnedContextOpen] = useState(false);
+  const [availableTabs, setAvailableTabs] = useState<any[]>([]);
+  const [tabSearchQuery, setTabSearchQuery] = useState('');
+
+  const loadAvailableTabs = () => {
+    if (typeof chrome !== 'undefined' && chrome.tabs) {
+      chrome.tabs.query({ currentWindow: true }, (tabs) => {
+        const filtered = (tabs || []).filter(
+          (t) => t.url && !t.url.startsWith('chrome-extension://') && !t.url.startsWith('chrome://')
+        );
+        setAvailableTabs(filtered);
+      });
+    }
+  };
+
+  const handlePinTab = (tab: any) => {
+    if (!tab.id) return;
+    const store = useWorkspaceStore.getState();
+    const isAlreadyPinned = store.pinnedTabs.some((t) => t.tabId === tab.id);
+    if (isAlreadyPinned) {
+      message.warning('Tab is already pinned.');
+      return;
+    }
+    if (store.pinnedTabs.length >= 10) {
+      message.error('Maximum 10 pinned tabs reached. Unpin a tab before pinning a new one.');
+      return;
+    }
+
+    chrome.tabs.sendMessage(tab.id, { type: 'GET_PAGE_CONTEXT_REQUEST' }, (response) => {
+      let extractedPage = null;
+      if (response && response.success && response.page) {
+        extractedPage = response.page;
+      }
+      
+      const pageContext: PageContext = extractedPage || {
+        url: tab.url || '',
+        origin: '',
+        hostname: '',
+        title: tab.title || '',
+        meta: {},
+        extractedAt: Date.now(),
+        extractionType: 'metadata-only' as const,
+        extractionQuality: 'minimal' as const,
+      };
+
+      const tabContext: TabContext = {
+        tabId: tab.id!,
+        windowId: tab.windowId,
+        page: pageContext,
+        pinnedAt: Date.now(),
+        active: true,
+        url: tab.url,
+        title: tab.title,
+      };
+
+      store.addPinnedTab(tabContext);
+      message.success(`Pinned tab: ${tab.title || 'Tab'}`);
+      // Refresh available tabs list
+      loadAvailableTabs();
+    });
+  };
+
+  const handleUnpinTab = (tabId: number) => {
+    const store = useWorkspaceStore.getState();
+    store.removePinnedTab(tabId);
+    message.success('Unpinned tab.');
+    loadAvailableTabs();
+  };
+
+  // Automatically pin the current active tab where side panel is opened
+  useEffect(() => {
+    if (isStandalone) return;
+    if (typeof chrome !== 'undefined' && chrome.tabs) {
+      chrome.tabs.query({ active: true, currentWindow: true }, async ([tab]) => {
+        if (tab?.id) {
+          const store = useWorkspaceStore.getState();
+          const isAlreadyPinned = store.pinnedTabs.some((t) => t.tabId === tab.id);
+          if (!isAlreadyPinned) {
+            chrome.tabs.sendMessage(tab.id, { type: 'GET_PAGE_CONTEXT_REQUEST' }, (response) => {
+              let extractedPage = null;
+              if (response && response.success && response.page) {
+                extractedPage = response.page;
+              }
+              
+              const currentPage: PageContext = extractedPage || store.currentPageContext || {
+                url: tab.url || '',
+                origin: '',
+                hostname: '',
+                title: tab.title || '',
+                meta: {},
+                extractedAt: Date.now(),
+                extractionType: 'metadata-only' as const,
+                extractionQuality: 'minimal' as const,
+              };
+
+              const tabContext: TabContext = {
+                tabId: tab.id!,
+                windowId: tab.windowId,
+                page: currentPage,
+                pinnedAt: Date.now(),
+                active: true,
+                url: tab.url,
+                title: tab.title,
+              };
+
+              store.addPinnedTab(tabContext);
+            });
+          }
+        }
+      });
+    }
+  }, [isStandalone]);
 
   // Eagerly populate model entries from provider configs if empty (bypasses encrypted store)
   useEffect(() => {
@@ -392,6 +599,61 @@ export function ChatPage() {
     message.success('Screen cut captured successfully!');
   };
 
+  const handleAttachFiles = (filesList: File[]) => {
+    filesList.forEach((file) => {
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const img = new Image();
+          img.onload = () => {
+            const maxDim = 800;
+            let width = img.width;
+            let height = img.height;
+            if (width > maxDim || height > maxDim) {
+              if (width > height) {
+                height = Math.round((height * maxDim) / width);
+                width = maxDim;
+              } else {
+                width = Math.round((width * maxDim) / height);
+                height = maxDim;
+              }
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx?.drawImage(img, 0, 0, width, height);
+            const resizedBase64 = canvas.toDataURL('image/jpeg', 0.85);
+
+            const newAttachment = {
+              id: Math.random().toString(36).substring(7),
+              name: file.name,
+              url: URL.createObjectURL(file),
+              base64: resizedBase64,
+              type: 'image/jpeg',
+            };
+            setAttachedFiles((prev) => [...prev, newAttachment]);
+          };
+          img.src = reader.result as string;
+        };
+        reader.readAsDataURL(file);
+      } else {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const newAttachment = {
+            id: Math.random().toString(36).substring(7),
+            name: file.name,
+            url: '',
+            base64: reader.result as string,
+            type: file.type,
+          };
+          setAttachedFiles((prev) => [...prev, newAttachment]);
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+  };
+
   const handleNewChat = () => {
     newConversation();
     message.info('Started a new conversation.');
@@ -446,6 +708,17 @@ export function ChatPage() {
     message.success('Message updated.');
   };
 
+  // WelcomeCards dismiss handler — persists to chrome.storage.local
+  const handleDismissWelcomeCards = useCallback(() => {
+    setWelcomeCardsDismissed(true);
+    chrome.storage.local.set({ np_welcome_cards_dismissed: true }).catch(() => {});
+  }, []);
+
+  // WelcomeCards card select — populates Sender with prompt text
+  const handleWelcomeCardSelect = useCallback((_templateId: string, promptText: string) => {
+    setDraft(promptText);
+  }, [setDraft]);
+
   const handleConfirmDelete = () => {
     if (deletingConv) {
       deleteConversation(deletingConv.id);
@@ -472,7 +745,7 @@ export function ChatPage() {
 
   // Export Actions
   const handleExportConversation = (conv: any) => {
-    switchConversation(conv.id);
+    switchConvWithLoading(conv.id);
     setChatHistoryOpen(false);
     setIsExportMode(true);
   };
@@ -694,6 +967,173 @@ export function ChatPage() {
     ],
   });
 
+  const attachmentHeader = (attachedFiles.length > 0 || quotedMessage) ? (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '8px',
+        padding: '12px 16px 8px',
+        background: 'transparent',
+        borderTopLeftRadius: '12px',
+        borderTopRightRadius: '12px',
+      }}
+    >
+      {/* 1. Attached Files Thumbnails */}
+      {attachedFiles.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '4px' }}>
+          {attachedFiles.map((file) => (
+            <div
+              key={file.id}
+              style={{
+                position: 'relative',
+                width: '60px',
+                height: '60px',
+                borderRadius: '8px',
+                border: '1px solid var(--ant-color-border)',
+                overflow: 'hidden',
+                background: 'var(--ant-color-bg-container)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              {file.url || file.base64 ? (
+                <img
+                  src={file.url || file.base64}
+                  alt={file.name}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', padding: '4px' }}>
+                  <FileTextOutlined style={{ fontSize: '20px', color: 'var(--ant-color-text-secondary)' }} />
+                  <span style={{ fontSize: '9px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '50px', textAlign: 'center' }}>
+                    {file.name.split('.').pop()?.toUpperCase()}
+                  </span>
+                </div>
+              )}
+              {/* Delete button */}
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                  removeAttachedFile(file.id);
+                }}
+                style={{
+                  position: 'absolute',
+                  top: '2px',
+                  right: '2px',
+                  width: '16px',
+                  height: '16px',
+                  borderRadius: '50%',
+                  backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                  color: '#ffffff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  fontSize: '10px',
+                  zIndex: 10,
+                }}
+              >
+                <CloseOutlined style={{ fontSize: '8px' }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 2. Quoted Text Block */}
+      {quotedMessage && (
+        <div
+          style={{
+            padding: '12px',
+            background: 'var(--ant-color-bg-container)',
+            borderLeft: '4px solid #e0582e',
+            borderRadius: '8px',
+            position: 'relative',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            border: '1px solid var(--ant-color-border-secondary)',
+          }}
+        >
+          {/* Header with Close icon */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--ant-color-text-description)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Quote text
+            </span>
+            <Tooltip title="Remove quote">
+              <Button
+                type="text"
+                size="small"
+                icon={<CloseOutlined style={{ fontSize: '10px' }} />}
+                onClick={() => setQuotedMessage(null)}
+                style={{ height: '20px', width: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              />
+            </Tooltip>
+          </div>
+
+          {/* Quoted Content Preview */}
+          <div
+            style={{
+              fontSize: '13px',
+              color: 'var(--ant-color-text)',
+              maxHeight: '60px',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              paddingLeft: '4px',
+              fontStyle: 'italic',
+            }}
+          >
+            "{quotedMessage.content}"
+          </div>
+        </div>
+      )}
+
+      {/* 3. Prompt List shown between quoted text and input box */}
+      {quotedMessage && (
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '6px',
+            padding: '4px 0 0',
+          }}
+        >
+          {prompts.slice(0, 5).map((p) => (
+            <Button
+              key={p.id}
+              size="small"
+              icon={renderPromptIcon(p.icon, { fontSize: 11 })}
+              style={{
+                fontSize: '11px',
+                borderRadius: '12px',
+                borderColor: 'var(--ant-color-border-secondary)',
+                color: 'var(--ant-color-text-secondary)',
+                background: 'var(--ant-color-bg-container)',
+                display: 'inline-flex',
+                alignItems: 'center',
+              }}
+              onClick={() => {
+                let textToSend = p.template;
+                if (p.variables.includes('userInput')) {
+                  textToSend = templateEngine.render(p.template, { userInput: quotedMessage.content });
+                } else {
+                  textToSend = `${p.template}\n\nQuote:\n> ${quotedMessage.content}`;
+                }
+                send(textToSend);
+                setQuotedMessage(null);
+              }}
+            >
+              {p.name}
+            </Button>
+          ))}
+        </div>
+      )}
+    </div>
+  ) : null;
+
   return (
     <div
       style={{
@@ -709,9 +1149,10 @@ export function ChatPage() {
         type="file"
         ref={fileInputRef}
         style={{ display: 'none' }}
+        multiple
         onChange={(e) => {
-          if (e.target.files && e.target.files[0]) {
-            message.success(`Attached file: ${e.target.files[0].name}`);
+          if (e.target.files && e.target.files.length > 0) {
+            handleAttachFiles(Array.from(e.target.files));
           }
         }}
       />
@@ -727,6 +1168,12 @@ export function ChatPage() {
           minWidth: 0,
           position: 'relative',
           paddingBottom: isExportMode ? 60 : 0, // Make space for export sticky footer
+          background: '#ffffff', // White background for the contents page
+          border: '1px solid var(--ant-color-border-secondary)', // Elegant frame border
+          borderRadius: '12px', // Rounded frame corners
+          margin: isStandalone ? '6px' : '8px', // Outer offset spacing
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.02)', // Soft ambient shadow
+          overflow: 'hidden',
         }}
       >
         {/* Error state */}
@@ -750,23 +1197,38 @@ export function ChatPage() {
 
         {/* Messages list */}
         <div style={{ flex: 1, overflow: 'auto', padding: '0 16px' }}>
-          {isEmpty ? (
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                height: '100%',
-                gap: 8,
-              }}
-            >
-              <Text type="secondary" style={{ fontSize: 16, fontWeight: 500 }}>
-                Hi, How can I assist you today?
-              </Text>
-              <Text type="secondary" style={{ fontSize: 12 }}>
-                Select a model and start a conversation.
-              </Text>
+          {isEmpty && !conversationLoading ? (
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+              {/* Branded header at top — shown until dismissed */}
+              {!welcomeCardsDismissed && <BrandedHeader onClose={handleDismissWelcomeCards} />}
+              <div
+                style={{
+                  flex: 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: token.marginLG,
+                  padding: token.paddingLG,
+                }}
+              >
+                {!welcomeCardsDismissed ? (
+                  <WelcomeCards onSelectCard={handleWelcomeCardSelect} onDismiss={handleDismissWelcomeCards} />
+                ) : (
+                  <>
+                    <Text style={{ fontSize: 20, fontWeight: 600, color: token.colorText }}>
+                      Hi, I&apos;m NowPilot
+                    </Text>
+                    <Text type="secondary" style={{ fontSize: 14 }}>
+                      Your AI work co-pilot. What can I help you with?
+                    </Text>
+                  </>
+                )}
+              </div>
+            </div>
+          ) : conversationLoading ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+              <Spin />
             </div>
           ) : (
             isExportMode ? (
@@ -802,7 +1264,48 @@ export function ChatPage() {
                           loading={item.loading}
                           content={
                             isUser ? (
-                              item.content
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                {item.metadata?.attachments && item.metadata.attachments.length > 0 && (
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '4px' }}>
+                                    {item.metadata.attachments.map((file: any) => (
+                                      <div
+                                        key={file.id}
+                                        style={{
+                                          width: '120px',
+                                          height: '120px',
+                                          borderRadius: '8px',
+                                          overflow: 'hidden',
+                                          border: '1px solid var(--ant-color-border-secondary)',
+                                          background: '#f9f9f9',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                        }}
+                                      >
+                                        {file.url || file.base64 ? (
+                                          <img
+                                            src={file.url || file.base64}
+                                            alt={file.name}
+                                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                          />
+                                        ) : (
+                                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                                            <FileTextOutlined style={{ fontSize: '24px', color: 'var(--ant-color-text-secondary)' }} />
+                                            <span style={{ fontSize: '10px', textAlign: 'center', padding: '0 4px', overflow: 'hidden', textOverflow: 'ellipsis', width: '110px', whiteSpace: 'nowrap' }}>
+                                              {file.name}
+                                            </span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                                <div style={{ whiteSpace: 'pre-wrap', color: 'inherit' }}>
+                                  {typeof item.content === 'string'
+                                    ? item.content.replace(/<attachment\s+name="([^"]+)"\s+type="[^"]+">[^<]+<\/attachment>/g, '')
+                                    : String(item.content)}
+                                </div>
+                              </div>
                             ) : (
                               <XMarkdown
                                 content={typeof item.content === 'string' ? item.content : String(item.content)}
@@ -929,9 +1432,51 @@ export function ChatPage() {
                             placement={isUser ? 'end' : 'start'}
                             content={
                               isUser ? (
-                                item.content
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                  {item.metadata?.attachments && item.metadata.attachments.length > 0 && (
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '4px' }}>
+                                      {item.metadata.attachments.map((file: any) => (
+                                        <div
+                                          key={file.id}
+                                          style={{
+                                            width: '120px',
+                                            height: '120px',
+                                            borderRadius: '8px',
+                                            overflow: 'hidden',
+                                            border: '1px solid var(--ant-color-border-secondary)',
+                                            background: '#f9f9f9',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                          }}
+                                        >
+                                          {file.url || file.base64 ? (
+                                            <img
+                                              src={file.url || file.base64}
+                                              alt={file.name}
+                                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                            />
+                                          ) : (
+                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                                              <FileTextOutlined style={{ fontSize: '24px', color: 'var(--ant-color-text-secondary)' }} />
+                                              <span style={{ fontSize: '10px', textAlign: 'center', padding: '0 4px', overflow: 'hidden', textOverflow: 'ellipsis', width: '110px', whiteSpace: 'nowrap' }}>
+                                                {file.name}
+                                              </span>
+                                            </div>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                  <div style={{ whiteSpace: 'pre-wrap', color: 'inherit' }}>
+                                    {typeof item.content === 'string'
+                                      ? item.content.replace(/<attachment\s+name="([^"]+)"\s+type="[^"]+">[^<]+<\/attachment>/g, '')
+                                      : String(item.content)}
+                                  </div>
+                                </div>
                               ) : item.stage && item.stage !== 'idle' && !item.content ? (
                                 <Think
+                                  icon={<ThinkingIcon />}
                                   title={(() => {
                                     switch (item.stage) {
                                       case 'retrieving': return 'Retrieving context ...';
@@ -962,6 +1507,7 @@ export function ChatPage() {
                                 <>
                                   {item.reasoning ? (
                                     <Think
+                                      icon={<ThinkingIcon />}
                                       title="Thinking ..."
                                       defaultExpanded
                                     >
@@ -987,7 +1533,7 @@ export function ChatPage() {
                           <div
                             style={{
                               marginTop: '6px',
-                              height: '28px',
+                              height: '32px',
                               visibility: hoveredMessageId === item.key && !isEditing && !item.loading ? 'visible' : 'hidden',
                               opacity: hoveredMessageId === item.key && !isEditing && !item.loading ? 1 : 0,
                               transition: 'opacity 0.15s ease, visibility 0.15s ease',
@@ -1001,107 +1547,130 @@ export function ChatPage() {
                                 border: '1px solid var(--ant-color-border-secondary)',
                                 borderRadius: '16px',
                                 boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-                                padding: '2px 8px',
+                                padding: '0px',
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '4px',
-                                height: '28px',
+                                gap: '2px',
+                                height: '32px',
+                                overflow: 'hidden',
                               }}
                             >
                               {isUser ? (
                                 // User Message Action Buttons: Edit, Copy, Quote, Share, Speak loud
                                 <>
-                                  <Button
-                                    type="text"
-                                    size="small"
-                                    icon={<EditOutlined style={{ fontSize: 12 }} />}
-                                    onClick={() => {
-                                      setEditingMessageId(item.key);
-                                      setEditContent(item.content);
-                                    }}
-                                    title="Edit"
-                                  />
-                                  <Button
-                                    type="text"
-                                    size="small"
-                                    icon={<CopyOutlined style={{ fontSize: 12 }} />}
-                                    onClick={() => handleCopy(item.content)}
-                                    title="Copy"
-                                  />
-                                  <Button
-                                    type="text"
-                                    size="small"
-                                    icon={<QuoteIcon />}
-                                    onClick={() => {
-                                      setQuotedMessage(item);
-                                      message.info('Message quoted.');
-                                    }}
-                                    title="Quote"
-                                  />
-                                  <Button
-                                    type="text"
-                                    size="small"
-                                    icon={<ShareAltOutlined style={{ fontSize: 12 }} />}
-                                    onClick={() => handleShare(item.content)}
-                                    title="Share"
-                                  />
-                                  <Button
-                                    type="text"
-                                    size="small"
-                                    icon={<SoundOutlined style={{ fontSize: 12, color: activeReadAloudId === item.key ? '#e0582e' : undefined }} />}
-                                    onClick={() => handleReadAloud(item.content, item.key)}
-                                    title="Speak loud"
-                                  />
+                                  <Tooltip title="Edit">
+                                    <Button
+                                      type="text"
+                                      icon={<EditOutlined style={{ fontSize: 18 }} />}
+                                      onClick={() => {
+                                        setEditingMessageId(item.key);
+                                        setEditContent(item.content);
+                                      }}
+                                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', padding: 0 }}
+                                      title="Edit"
+                                    />
+                                  </Tooltip>
+                                  <Tooltip title="Copy">
+                                    <Button
+                                      type="text"
+                                      icon={<CopyIcon />}
+                                      onClick={() => handleCopy(item.content)}
+                                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', padding: 0 }}
+                                      title="Copy"
+                                    />
+                                  </Tooltip>
+                                  <Tooltip title="Quote">
+                                    <Button
+                                      type="text"
+                                      icon={<QuoteIcon />}
+                                      onClick={() => {
+                                        setQuotedMessage(item);
+                                        message.info('Message quoted.');
+                                      }}
+                                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', padding: 0 }}
+                                      title="Quote"
+                                    />
+                                  </Tooltip>
+                                  <Tooltip title="Share">
+                                    <Button
+                                      type="text"
+                                      icon={<ShareIcon />}
+                                      onClick={() => handleShare(item.content)}
+                                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', padding: 0 }}
+                                      title="Share"
+                                    />
+                                  </Tooltip>
+                                  <Tooltip title={activeReadAloudId === item.key ? "Stop speaking" : "Speak loud"}>
+                                    <Button
+                                      type="text"
+                                      icon={<ReadAloudIcon style={{ color: activeReadAloudId === item.key ? '#e0582e' : undefined }} />}
+                                      onClick={() => handleReadAloud(item.content, item.key)}
+                                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', padding: 0 }}
+                                      title="Speak loud"
+                                    />
+                                  </Tooltip>
                                 </>
                               ) : (
                                 // Response Message Action Buttons: Copy, Save as a note, Regenerate, Quote, Share, Speak loud
                                 <>
-                                  <Button
-                                    type="text"
-                                    size="small"
-                                    icon={<CopyOutlined style={{ fontSize: 12 }} />}
-                                    onClick={() => handleCopy(item.content)}
-                                    title="Copy"
-                                  />
-                                  <Button
-                                    type="text"
-                                    size="small"
-                                    icon={<FileTextOutlined style={{ fontSize: 12 }} />}
-                                    onClick={() => setSavingNoteContent(item.content)}
-                                    title="Save as a note"
-                                  />
-                                  <Button
-                                    type="text"
-                                    size="small"
-                                    icon={<SyncOutlined style={{ fontSize: 12 }} />}
-                                    onClick={() => handleRegenerate(item.key)}
-                                    title="Regenerate response"
-                                    disabled={isStreaming}
-                                  />
-                                  <Button
-                                    type="text"
-                                    size="small"
-                                    icon={<QuoteIcon />}
-                                    onClick={() => {
-                                      setQuotedMessage(item);
-                                      message.info('Message quoted.');
-                                    }}
-                                    title="Quote"
-                                  />
-                                  <Button
-                                    type="text"
-                                    size="small"
-                                    icon={<ShareAltOutlined style={{ fontSize: 12 }} />}
-                                    onClick={() => handleShare(item.content)}
-                                    title="Share"
-                                  />
-                                  <Button
-                                    type="text"
-                                    size="small"
-                                    icon={<SoundOutlined style={{ fontSize: 12, color: activeReadAloudId === item.key ? '#e0582e' : undefined }} />}
-                                    onClick={() => handleReadAloud(item.content, item.key)}
-                                    title="Speak loud"
-                                  />
+                                  <Tooltip title="Copy">
+                                    <Button
+                                      type="text"
+                                      icon={<CopyIcon />}
+                                      onClick={() => handleCopy(item.content)}
+                                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', padding: 0 }}
+                                      title="Copy"
+                                    />
+                                  </Tooltip>
+                                  <Tooltip title="Save as a note">
+                                    <Button
+                                      type="text"
+                                      icon={<SaveNoteIcon />}
+                                      onClick={() => setSavingNoteContent(item.content)}
+                                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', padding: 0 }}
+                                      title="Save as a note"
+                                    />
+                                  </Tooltip>
+                                  <Tooltip title="Regenerate response">
+                                    <Button
+                                      type="text"
+                                      icon={<RegenerateIcon />}
+                                      onClick={() => handleRegenerate(item.key)}
+                                      disabled={isStreaming}
+                                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', padding: 0 }}
+                                      title="Regenerate response"
+                                    />
+                                  </Tooltip>
+                                  <Tooltip title="Quote">
+                                    <Button
+                                      type="text"
+                                      icon={<QuoteIcon />}
+                                      onClick={() => {
+                                        setQuotedMessage(item);
+                                        message.info('Message quoted.');
+                                      }}
+                                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', padding: 0 }}
+                                      title="Quote"
+                                    />
+                                  </Tooltip>
+                                  <Tooltip title="Share">
+                                    <Button
+                                      type="text"
+                                      icon={<ShareIcon />}
+                                      onClick={() => handleShare(item.content)}
+                                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', padding: 0 }}
+                                      title="Share"
+                                    />
+                                  </Tooltip>
+                                  <Tooltip title={activeReadAloudId === item.key ? "Stop speaking" : "Speak loud"}>
+                                    <Button
+                                      type="text"
+                                      icon={<ReadAloudIcon style={{ color: activeReadAloudId === item.key ? '#e0582e' : undefined }} />}
+                                      onClick={() => handleReadAloud(item.content, item.key)}
+                                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', padding: 0 }}
+                                      title="Speak loud"
+                                    />
+                                  </Tooltip>
                                 </>
                               )}
                             </div>
@@ -1124,8 +1693,7 @@ export function ChatPage() {
               alignItems: 'center',
               justifyContent: 'space-between',
               padding: '6px 16px',
-              borderTop: '1px solid var(--ant-color-border-secondary)',
-              background: 'var(--ant-color-bg-container)',
+              background: 'transparent',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1142,8 +1710,10 @@ export function ChatPage() {
                 style={{
                   minWidth: 190,
                   height: 32,
+                  background: '#f1f5f9',
                   borderRadius: '16px',
-                  background: 'var(--ant-color-bg-container)',
+                  paddingLeft: '4px',
+                  paddingRight: '4px',
                 }}
                 variant="borderless"
                 classNames={{ popup: { root: "model-select-dropdown" } }}
@@ -1179,136 +1749,92 @@ export function ChatPage() {
                 })}
               />
 
-              <Button
-                type="text"
-                icon={<ScissorOutlined style={{ fontSize: 16 }} />}
-                onClick={handleScreenCut}
-                title="Screen cut"
-              />
-              <Button
-                type="text"
-                icon={<FolderAddOutlined style={{ fontSize: 16 }} />}
-                onClick={() => fileInputRef.current?.click()}
-                title="Attach image/File"
-              />
+              <Tooltip title="Screen cut">
+                <Button
+                  type="text"
+                  icon={<ScissorOutlined style={{ fontSize: 16 }} />}
+                  onClick={handleScreenCut}
+                  title="Screen cut"
+                />
+              </Tooltip>
+              <Tooltip title="Attach file">
+                <Button
+                  type="text"
+                  icon={<FolderAddOutlined style={{ fontSize: 16 }} />}
+                  onClick={() => fileInputRef.current?.click()}
+                  title="Attach image/File"
+                />
+              </Tooltip>
+              {!isStandalone && (
+                <Tooltip title="Pinned context">
+                  <Button
+                    type="text"
+                    icon={<PushpinOutlined style={{ fontSize: 16 }} />}
+                    onClick={() => {
+                      loadAvailableTabs();
+                      setPinnedContextOpen(true);
+                    }}
+                    title="Pinned context"
+                  />
+                </Tooltip>
+              )}
             </div>
 
             {/* Icons Group */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <Button
-                type="text"
-                icon={<ClockCircleOutlined style={{ fontSize: 16 }} />}
-                onClick={() => setChatHistoryOpen(true)}
-                title="Chat history"
-              />
-              <Button
-                type="text"
-                icon={<PlusSquareFilled style={{ fontSize: 18, color: '#e0582e' }} />}
-                onClick={handleNewChat}
-                title="New chat"
-              />
+              <Tooltip title="Chat history">
+                <Button
+                  type="text"
+                  icon={<ClockCircleOutlined style={{ fontSize: 16 }} />}
+                  onClick={() => setChatHistoryOpen(true)}
+                  title="Chat history"
+                />
+              </Tooltip>
+              <Tooltip title="New chat">
+                <Button
+                  type="text"
+                  icon={<PlusSquareFilled style={{ fontSize: 18, color: '#e0582e' }} />}
+                  onClick={handleNewChat}
+                  title="New chat"
+                />
+              </Tooltip>
             </div>
           </div>
         )}
 
+        {/* PinTabBar — always visible above composer (D-11) */}
+        {!isExportMode && <PinTabBar />}
+
         {/* Sender Component */}
         {!isExportMode && (
           <div
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              e.preventDefault();
+              if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                const filesArray = Array.from(e.dataTransfer.files);
+                const newAttachments = filesArray.map((file) => {
+                  const url = file.type.startsWith('image/')
+                    ? URL.createObjectURL(file)
+                    : '';
+                  return {
+                    id: Math.random().toString(36).substring(7),
+                    name: file.name,
+                    url,
+                    type: file.type,
+                    file,
+                  };
+                });
+                setAttachedFiles((prev) => [...prev, ...newAttachments]);
+                message.success(`Attached ${filesArray.length} file(s) via drag and drop.`);
+              }
+            }}
             style={{
               padding: '8px 16px 16px',
-              borderTop: '1px solid var(--ant-color-border-secondary)',
               minHeight: '120px',
               position: 'relative',
             }}
           >
-            {quotedMessage && (
-              <div
-                style={{
-                  marginBottom: '12px',
-                  padding: '12px',
-                  background: 'var(--ant-color-bg-layout)',
-                  borderLeft: '4px solid #e0582e',
-                  borderRadius: '8px',
-                  position: 'relative',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '8px',
-                }}
-              >
-                {/* Header with Close icon */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--ant-color-text-description)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    Quoted {quotedMessage.role === 'user' ? 'User' : 'Assistant'} Message
-                  </span>
-                  <Button
-                    type="text"
-                    size="small"
-                    icon={<CloseOutlined style={{ fontSize: '10px' }} />}
-                    onClick={() => setQuotedMessage(null)}
-                    style={{ height: '20px', width: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                  />
-                </div>
-
-                {/* Quoted Content Preview */}
-                <div
-                  style={{
-                    fontSize: '13px',
-                    color: 'var(--ant-color-text)',
-                    maxHeight: '60px',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    paddingLeft: '4px',
-                    fontStyle: 'italic',
-                  }}
-                >
-                  "{quotedMessage.content}"
-                </div>
-              </div>
-            )}
-
-            {/* Prompt list shown between quoted text and input box */}
-            {quotedMessage && (
-              <div
-                style={{
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  gap: '6px',
-                  marginBottom: '12px',
-                  padding: '0 4px',
-                }}
-              >
-                {prompts.slice(0, 5).map((p) => (
-                  <Button
-                    key={p.id}
-                    size="small"
-                    icon={renderPromptIcon(p.icon, { fontSize: 11 })}
-                    style={{
-                      fontSize: '11px',
-                      borderRadius: '12px',
-                      borderColor: 'var(--ant-color-border-secondary)',
-                      color: 'var(--ant-color-text-secondary)',
-                      background: 'var(--ant-color-bg-container)',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                    }}
-                    onClick={() => {
-                      let textToSend = p.template;
-                      if (p.variables.includes('userInput')) {
-                        textToSend = templateEngine.render(p.template, { userInput: quotedMessage.content });
-                      } else {
-                        textToSend = `${p.template}\n\nQuote:\n> ${quotedMessage.content}`;
-                      }
-                      send(textToSend);
-                      setQuotedMessage(null);
-                    }}
-                  >
-                    {p.name}
-                  </Button>
-                ))}
-              </div>
-            )}
-
             {/* Floating Slash Command / Language Selection Popover */}
             {slashState.active && totalFilteredCount > 0 && (
               <div
@@ -1448,12 +1974,51 @@ export function ChatPage() {
                   }
                 }
               }}
-              onSubmit={(msg) => send(msg)}
+              onSubmit={(msg) => {
+                let finalMsg = msg;
+                const attachmentsData = attachedFiles.map((f) => ({
+                  id: f.id,
+                  name: f.name,
+                  url: f.url,
+                  base64: f.base64,
+                  type: f.type,
+                }));
+                if (attachmentsData.length > 0) {
+                  const attachmentsInfo = attachmentsData
+                    .map((f) => `<attachment name="${f.name}" type="${f.type}">${f.base64}</attachment>`)
+                    .join('\n');
+                  finalMsg = `${finalMsg}\n\n${attachmentsInfo}`;
+                }
+                send(finalMsg, { attachments: attachmentsData });
+                clearAttachedFiles();
+              }}
               onCancel={abort}
               placeholder="Ask anything, @ models, / prompts... (type / for commands)"
               autoSize={{ minRows: 4, maxRows: 8 }}
               style={{ minHeight: '120px' }}
+              header={attachmentHeader}
             />
+
+            {/* Bottom Brand & Action Footer */}
+            <div
+              style={{
+                borderTop: '1px solid var(--ant-color-border-secondary)',
+                marginTop: '12px',
+                paddingTop: '4px',
+              }}
+            >
+              <WorkspaceStatusBar
+                surface={isStandalone ? 'standalone' : 'sidepanel'}
+                flush
+                height={32}
+                onHelp={() => {
+                  message.info('Help Center opened.');
+                }}
+                onFeedback={() => {
+                  message.info('Feedback opened.');
+                }}
+              />
+            </div>
           </div>
         )}
 
@@ -1767,6 +2332,169 @@ export function ChatPage() {
           onClose={() => setSavingNoteContent(null)}
         />
       )}
+
+      {/* Bottom sliding Drawer for Pinned Context (Sidepanel-only) */}
+      <Drawer
+        placement="bottom"
+        closable={false}
+        open={pinnedContextOpen}
+        onClose={() => setPinnedContextOpen(false)}
+        styles={{
+          wrapper: {
+            height: '80%',
+            borderTopLeftRadius: '16px',
+            borderTopRightRadius: '16px',
+            overflow: 'hidden',
+          },
+          body: {
+            padding: '16px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 16,
+            overflow: 'hidden',
+          },
+        }}
+      >
+        {/* Pull bar capsule */}
+        <div style={{ width: 36, height: 4, backgroundColor: 'var(--ant-color-border-secondary)', borderRadius: 2, margin: '0 auto 8px', flexShrink: 0 }} />
+
+        {/* Header Row */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 8, flexShrink: 0 }}>
+          <span style={{ fontWeight: 600, fontSize: 16, color: 'var(--ant-color-text)' }}>
+            Pinned context
+          </span>
+          <Button
+            type="text"
+            icon={<CloseOutlined />}
+            onClick={() => setPinnedContextOpen(false)}
+          />
+        </div>
+
+        {/* Scrollable Content */}
+        <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* Section: Currently Pinned */}
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ant-color-text-description)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>
+              Currently pinned ({pinnedTabs.length})
+            </div>
+            {pinnedTabs.length === 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px 16px', border: '1px dashed var(--ant-color-border-secondary)', borderRadius: 12, backgroundColor: 'var(--ant-color-fill-alter)' }}>
+                <div style={{ width: 40, height: 40, borderRadius: '50%', backgroundColor: 'var(--ant-color-fill-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                  <PushpinOutlined style={{ fontSize: 20, color: 'var(--ant-color-text-description)' }} />
+                </div>
+                <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4, color: 'var(--ant-color-text)' }}>No pinned context yet</div>
+                <div style={{ fontSize: 12, color: 'var(--ant-color-text-description)', textAlign: 'center' }}>
+                  Pin browser tabs to inject their content into the next AI request.
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {pinnedTabs.map((tab) => (
+                  <div key={tab.tabId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', border: '1px solid var(--ant-color-border-secondary)', borderRadius: 12, backgroundColor: 'var(--ant-color-bg-container)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0, paddingRight: 8 }}>
+                      <div style={{ width: 32, height: 32, borderRadius: 6, backgroundColor: 'var(--ant-color-fill-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <GlobalOutlined style={{ fontSize: 16, color: 'var(--ant-color-text-secondary)' }} />
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: 13, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', color: 'var(--ant-color-text)' }}>{tab.title || tab.page?.title || 'Untitled Tab'}</div>
+                        <div style={{ fontSize: 11, color: 'var(--ant-color-text-description)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{tab.url || tab.page?.url}</div>
+                      </div>
+                    </div>
+                    <Button
+                      size="small"
+                      icon={<PushpinOutlined />}
+                      onClick={() => handleUnpinTab(tab.tabId)}
+                      style={{ borderRadius: 6 }}
+                    >
+                      Unpin
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Section: Available Tabs */}
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ant-color-text-description)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>
+              Available tabs ({availableTabs.length})
+            </div>
+            
+            <Input
+              placeholder="Search open tabs..."
+              prefix={<SearchOutlined style={{ color: 'var(--ant-color-text-quaternary)' }} />}
+              value={tabSearchQuery}
+              onChange={(e) => setTabSearchQuery(e.target.value)}
+              style={{ borderRadius: 8, marginBottom: 12 }}
+            />
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {availableTabs
+                .filter((tab) => {
+                  if (!tabSearchQuery) return true;
+                  const query = tabSearchQuery.toLowerCase();
+                  return (
+                    (tab.title && tab.title.toLowerCase().includes(query)) ||
+                    (tab.url && tab.url.toLowerCase().includes(query))
+                  );
+                })
+                .slice(0, 15) // Limit to top 15 results for clean performance
+                .map((tab) => {
+                  const isPinned = pinnedTabs.some((t) => t.tabId === tab.id);
+                  return (
+                    <div key={tab.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', border: '1px solid var(--ant-color-border-secondary)', borderRadius: 12, backgroundColor: 'var(--ant-color-bg-container)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0, paddingRight: 8 }}>
+                        <div style={{ width: 32, height: 32, borderRadius: 6, backgroundColor: 'var(--ant-color-fill-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <GlobalOutlined style={{ fontSize: 16, color: 'var(--ant-color-text-secondary)' }} />
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 500, fontSize: 13, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', color: 'var(--ant-color-text)' }}>{tab.title || 'Untitled Tab'}</div>
+                          <div style={{ fontSize: 11, color: 'var(--ant-color-text-description)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{tab.url}</div>
+                        </div>
+                      </div>
+                      {isPinned ? (
+                        <Button
+                          size="small"
+                          icon={<PushpinOutlined />}
+                          onClick={() => handleUnpinTab(tab.id)}
+                          style={{ borderRadius: 6 }}
+                        >
+                          Unpin
+                        </Button>
+                      ) : (
+                        <Button
+                          type="primary"
+                          size="small"
+                          icon={<PushpinOutlined />}
+                          onClick={() => handlePinTab(tab)}
+                          style={{ borderRadius: 6, backgroundColor: '#0066cc', borderColor: '#0066cc' }}
+                        >
+                          Pin
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })}
+              {availableTabs.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--ant-color-text-description)', fontSize: 12 }}>
+                  No open browser tabs found.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Footer done button */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--ant-color-border-secondary)', paddingTop: 12, marginTop: 'auto', flexShrink: 0 }}>
+          <Button
+            type="primary"
+            onClick={() => setPinnedContextOpen(false)}
+            style={{ minWidth: 80, borderRadius: 6, backgroundColor: '#0066cc', borderColor: '#0066cc' }}
+          >
+            Done
+          </Button>
+        </div>
+      </Drawer>
     </div>
   );
 }
