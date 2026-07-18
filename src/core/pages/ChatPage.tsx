@@ -75,6 +75,8 @@ import { BrandedHeader } from '../../components/chat/BrandedHeader';
 import { QuickActionChips } from '../../components/chat/QuickActionChips';
 import { ClarificationAction } from '../../components/chat/ClarificationAction';
 import { FollowUpAction } from '../../components/chat/FollowUpAction';
+import { StageIndicator } from '../../components/chat/StageIndicator';
+import { CodeBlockActions } from '../../components/chat/CodeBlockActions';
 import type { FollowUpSuggestion } from '../../core/ai/followUp/FollowUpService';
 
 const ICON_MAP: Record<string, React.ComponentType<any>> = {
@@ -343,6 +345,7 @@ export function ChatPage() {
   };
 
   const surface = useWorkspaceStore((s) => s.activeSurface);
+  const currentPageContext = useWorkspaceStore((s) => s.currentPageContext);
   const pinnedTabs = useWorkspaceStore((s) => s.pinnedTabs);
   const activeModel = useWorkspaceStore((s) => s.activeModel);
   const setActiveModel = useWorkspaceStore((s) => s.setActiveModel);
@@ -691,6 +694,16 @@ export function ChatPage() {
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
     message.success('Copied to clipboard!');
+  };
+
+  // CodeBlockActions integration — Insert code into page (stub, requires ServiceNow integration)
+  const handleInsert = (_code: string) => {
+    message.info('Insert into page requires ServiceNow active textarea (deferred to v0.2+)');
+  };
+
+  // CodeBlockActions integration — Save as macro (stub, requires ServiceNow macro system)
+  const handleSaveMacro = (_code: string) => {
+    message.info('Save as macro requires ServiceNow macro system (deferred to v0.2+)');
   };
 
   const handleRegenerate = async (msgId: string) => {
@@ -1480,34 +1493,13 @@ export function ChatPage() {
                                   </div>
                                 </div>
                               ) : item.stage && item.stage !== 'idle' && !item.content ? (
-                                <Think
-                                  icon={<ThinkingIcon />}
-                                  title={(() => {
-                                    switch (item.stage) {
-                                      case 'retrieving': return 'Retrieving context ...';
-                                      case 'planning':   return 'Planning ...';
-                                      case 'thinking':   return 'Thinking ...';
-                                      case 'tool':       return item.currentTool ? `Running tool: ${item.currentTool}` : 'Running tool ...';
-                                      case 'generating': return 'Generating ...';
-                                      default:           return '';
-                                    }
-                                  })()}
-                                  loading
-                                  blink
-                                  defaultExpanded={!!(item.stage === 'thinking' && item.reasoning)}
-                                >
-                                  {item.stage === 'thinking' && item.reasoning
-                                    ? item.reasoning
-                                    : item.stage === 'tool' && item.currentTool
-                                    ? `Executing ${item.currentTool} ...`
-                                    : item.stage === 'retrieving'
-                                    ? 'Searching memory and notes for relevant context ...'
-                                    : item.stage === 'planning'
-                                    ? 'Determining the best approach ...'
-                                    : item.stage === 'generating'
-                                    ? 'Writing the final response ...'
-                                    : null}
-                                </Think>
+                                <StageIndicator
+                                  stage={item.stage}
+                                  hasPinnedTabs={(pinnedTabs?.length ?? 0) > 0}
+                                  lastTokenTime={item.metadata?.lastTokenTime}
+                                  currentTool={item.currentTool}
+                                  reasoning={item.reasoning}
+                                />
                               ) : item.clarification ? (
                                 <ClarificationAction
                                   question={item.clarification.question}
@@ -1534,6 +1526,25 @@ export function ChatPage() {
                                       enableAnimation: true,
                                     }}
                                     openLinksInNewTab={true}
+                                    components={{
+                                      code: ({ children, className, ...props }: any) => {
+                                        const isFence = className?.startsWith('language-');
+                                        if (!isFence) {
+                                          return <code className={className} {...props}>{children}</code>;
+                                        }
+                                        const codeText = typeof children === 'string' ? children : String(children ?? '');
+                                        const lang = className?.replace('language-', '');
+                                        return (
+                                          <CodeBlockActions
+                                            code={codeText}
+                                            language={lang}
+                                            onInsert={handleInsert}
+                                            onSaveAsMacro={handleSaveMacro}
+                                            canInsert={!!currentPageContext?.hostname?.includes('servicenow')}
+                                          />
+                                        );
+                                      },
+                                    }}
                                   />
                                   {!isUser && !item.streaming && item.role === 'assistant' && item.followUpSuggestions && item.followUpSuggestions.length > 0 ? (
                                     <FollowUpAction
