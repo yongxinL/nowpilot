@@ -13,6 +13,8 @@ import { permissionService } from '../core/ai/tools/PermissionService';
 import { slashCommandRegistry } from '../core/slash/SlashCommandRegistry';
 import { useWorkspaceStore } from '../core/stores/workspaceStore';
 import { personaInjector } from '../core/ai/persona/PersonaInjector';
+import { followUpService } from '../core/ai/followUp/FollowUpService';
+import type { FollowUpSuggestion } from '../core/ai/followUp/FollowUpService';
 import { debugLog } from '../core/utils/debugLog';
 import type { OptimizedContext } from '../core/context/contextTypes';
 
@@ -71,6 +73,7 @@ export interface BubbleListItem {
   streaming: boolean;
   metadata?: any;
   clarification?: ClarificationPayload;
+  followUpSuggestions?: FollowUpSuggestion[];
 }
 
 export interface UseChatReturn {
@@ -92,6 +95,7 @@ export interface UseChatReturn {
   setActiveProvider: (id: string) => void;
   editMessage: (id: string, newContent: string) => Promise<void>;
   regenerateResponse: (assistantMessageId: string) => Promise<void>;
+  followUpSuggestions: Map<string, FollowUpSuggestion[]>;
 }
 
 // ---------------------------------------------------------------------------
@@ -172,6 +176,7 @@ export function useChat(): UseChatReturn {
   const [isFirstMessage, setIsFirstMessage] = useState(true);
   const [mounted, setMounted] = useState(false);
 
+  const [followUpSuggestions, setFollowUpSuggestions] = useState<Map<string, FollowUpSuggestion[]>>(new Map());
   const conversationIdRef = useRef<string | null>(null);
   const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastUserMessageRef = useRef<string>('');
@@ -284,6 +289,28 @@ export function useChat(): UseChatReturn {
           memoryEngine.extract(convId, messages, [])
             .catch(err => debugLog('error', '[useChat] Memory extraction failed', { error: err }));
         }
+
+        // D-30: Fire-and-forget follow-up suggestion generation after stream completion
+        const hostname = workspaceCurrentPageContext?.hostname ?? '';
+        followUpService.generateSuggestions(fullText, { hostname })
+          .then(suggestions => {
+            if (suggestions.length > 0) {
+              // Attach to the last assistant message by its ID
+              setMessages(prev => {
+                const lastIndex = prev.length - 1;
+                if (lastIndex >= 0 && prev[lastIndex].role === 'assistant') {
+                  const lastId = prev[lastIndex].id;
+                  setFollowUpSuggestions(fs => {
+                    const next = new Map(fs);
+                    next.set(lastId, suggestions);
+                    return next;
+                  });
+                }
+                return prev;
+              });
+            }
+          })
+          .catch(err => debugLog('warn', '[useChat] Follow-up suggestion generation failed', { error: err }));
       }
     },
     onError: (_message: string) => {
@@ -491,6 +518,7 @@ export function useChat(): UseChatReturn {
       conversationIdRef.current = id;
       setActiveConversationId(id);
       workspaceSetConversationId(id);
+      setFollowUpSuggestions(new Map());
 
       // Load messages for this conversation
       const historyMessages = await chatHistoryDB.getMessagesBySession(id);
@@ -532,6 +560,7 @@ export function useChat(): UseChatReturn {
     setMessages([]);
     setDraftState('');
     setIsFirstMessage(true);
+    setFollowUpSuggestions(new Map());
   }, []);
 
   // ---------------------------------------------------------------
@@ -584,8 +613,9 @@ export function useChat(): UseChatReturn {
         streaming: msg.streaming,
         metadata: msg.metadata,
         clarification: msg.clarification,
+        followUpSuggestions: followUpSuggestions.get(msg.id),
       })),
-    [messages, stage, currentTool],
+    [messages, stage, currentTool, followUpSuggestions],
   );
 
   // ---------------------------------------------------------------
@@ -727,6 +757,7 @@ export function useChat(): UseChatReturn {
   return {
     messages,
     bubbleItems,
+    followUpSuggestions,
     send,
     abort,
     get isStreaming() { return streamingLLM.isStreaming; },

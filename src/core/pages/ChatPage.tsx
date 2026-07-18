@@ -74,6 +74,8 @@ import { WelcomeCards } from '../../components/chat/WelcomeCards';
 import { BrandedHeader } from '../../components/chat/BrandedHeader';
 import { QuickActionChips } from '../../components/chat/QuickActionChips';
 import { ClarificationAction } from '../../components/chat/ClarificationAction';
+import { FollowUpAction } from '../../components/chat/FollowUpAction';
+import type { FollowUpSuggestion } from '../../core/ai/followUp/FollowUpService';
 
 const ICON_MAP: Record<string, React.ComponentType<any>> = {
   message: MessageOutlined,
@@ -212,6 +214,7 @@ export function ChatPage() {
     setDraft,
     editMessage,
     regenerateResponse,
+    followUpSuggestions,
   } = useChat();
 
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -1532,6 +1535,12 @@ export function ChatPage() {
                                     }}
                                     openLinksInNewTab={true}
                                   />
+                                  {!isUser && !item.streaming && item.role === 'assistant' && item.followUpSuggestions && item.followUpSuggestions.length > 0 ? (
+                                    <FollowUpAction
+                                      suggestions={item.followUpSuggestions}
+                                      onSelect={(text) => send(text)}
+                                    />
+                                  ) : null}
                                 </>
                               ) : null
                             }
