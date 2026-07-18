@@ -32,7 +32,7 @@ describe('FollowUpService', () => {
   // Test 1: Heuristic-based suggestions for substantive responses without LLM call
   it('generateSuggestions returns heuristic-based suggestions for substantive responses', async () => {
     const result = await service.generateSuggestions(
-      'Here is a summary of the incident. The key findings show three main issues that need attention.',
+      'Here is a detailed summary of the incident report. The key findings show three main issues that need immediate attention across all departments. We recommend escalating to the appropriate team for resolution.',
       { hostname: '' },
     );
     expect(result.length).toBeGreaterThanOrEqual(1);
@@ -50,8 +50,9 @@ describe('FollowUpService', () => {
 
   // Test 2b: Empty array for error messages
   it('generateSuggestions returns empty array for error-like responses', async () => {
+    // Error messages with "I don't know" skip pattern - must be >100 chars
     const result = await service.generateSuggestions(
-      "I don't know how to answer that question.",
+      "I don't know how to answer that question right now. This requires more information that I do not currently have access to in my training data for this specific query.",
       { hostname: '' },
     );
     expect(result).toEqual([]);
@@ -64,7 +65,7 @@ describe('FollowUpService', () => {
     });
 
     const result = await service.generateSuggestions(
-      'Based on the analysis, there are three key findings. First, the system shows degradation. Second, memory usage is high. Third, we recommend restarting the service. This is a comprehensive research report.',
+      'Based on the comprehensive research analysis, there are three key findings. First, the system shows significant degradation in performance metrics. Second, memory usage is consistently high across all nodes. Third, we recommend restarting the service during the next maintenance window. This is a thorough research report covering all aspects of the investigation.',
       { hostname: 'servicenow.com' },
     );
 
@@ -81,7 +82,7 @@ describe('FollowUpService', () => {
     mockGenerateText.mockRejectedValue(new DOMException('AbortError', 'AbortError'));
 
     const result = await service.generateSuggestions(
-      'This is a comprehensive research analysis covering multiple topics. There are several important findings to discuss in detail. The analysis shows significant patterns that need attention across all departments. Very long and substantive analysis text here.',
+      'This is a comprehensive research analysis covering multiple topics and areas of investigation. There are several important findings to discuss in detail across the organization. The analysis shows significant patterns that need immediate attention across all departments and teams. Very long and substantive analysis text with multiple findings to review.',
       { hostname: '' },
     );
 
@@ -94,7 +95,7 @@ describe('FollowUpService', () => {
     mockGenerateText.mockRejectedValue(new Error('API error'));
 
     const result = await service.generateSuggestions(
-      'This is a detailed plan for the project. We need to analyze the requirements thoroughly before proceeding with implementation. The research indicates several approaches that could work well.',
+      'This is a detailed plan for the project with thorough analysis of all requirements. We need to carefully analyze the requirements before proceeding with implementation. The research findings indicate several approaches that could work well for the team to consider.',
       { hostname: '' },
     );
 
@@ -126,7 +127,7 @@ describe('FollowUpService', () => {
     });
 
     const result = await service.generateSuggestions(
-      'This is a very long research and analysis document with step-by-step instructions. The report summarizes multiple key findings across several areas of investigation. We need to consider all aspects of this comprehensive analysis.',
+      'This is a very long research and analysis document with multiple step-by-step instructions and guidelines. The report summarizes several key findings across many areas of investigation and research. We need to carefully consider all aspects of this comprehensive analysis before making any decisions or recommendations.',
       { hostname: '' },
     );
 
@@ -141,7 +142,7 @@ describe('FollowUpService', () => {
     const serviceNoModel = new FollowUpService(emptyRouter);
 
     const result = await serviceNoModel.generateSuggestions(
-      'This is a researched analysis of the current situation. The findings are comprehensive and detailed across multiple dimensions.',
+      'This is a researched analysis of the current situation with comprehensive findings. The analysis covers multiple dimensions of the problem space in great detail. All findings are well-documented and supported by evidence from the investigation.',
       { hostname: '' },
     );
 
