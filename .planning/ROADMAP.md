@@ -420,7 +420,20 @@ Plans:
   7. Streaming stage indicators show richer context: "Reading page context…" → "Planning…" → "Generating…" with expand toggle for detail
   8. Branded AI header bar above chat shows NowPilot name, avatar, tagline — dismissible, reappears on new conversation
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+**Wave 1** — Persona Subsystem
+- [ ] 07.3-01-PLAN.md — PersonaProfile data model, PersonaService retrieval abstraction, PersonaInjector prompt injection, BunnyAvatar extraction, integration into useChat + AgentOrchestrator (RICH-R-01, RICH-R-02, RICH-R-11)
+
+**Wave 2** — Welcome Cards + Branded Header
+- [ ] 07.3-02-PLAN.md — WelcomeCardService with three-tier contextual ranking, WelcomeCards 6-card capability grid, BrandedHeader AI identity bar, ChatPage empty-state replacement (RICH-I-01, RICH-H-01)
+
+**Wave 3** — Clarification + Quick Actions
+- [ ] 07.3-03-PLAN.md — ActionChipGroup shared chip container, QuickActionService static hostname mapping, QuickActionChips above Sender, ClarificationAction in Bubble, PlannerDecision schema extension, clarification round tracking (RICH-C-01, RICH-C-02, RICH-C-03, RICH-C-04, RICH-I-05, RICH-I-06)
+
+**Wave 4** — Follow-up + Code Block Actions + Stage Indicators
+- [ ] 07.3-04-PLAN.md — FollowUpService heuristic + Haiku-tier suggestions, FollowUpAction divider + chips, StageIndicator pipeline-driven labels with slow-stream pulse, CodeBlockActions Copy/Insert/Save-as-macro, ChatPage Think replacement (RICH-C-05, RICH-C-06, RICH-C-07, RICH-C-08, RICH-H-04, RICH-H-08)
+
 **UI hint**: yes
 
 ### Phase 7.4: RICH Design Enhance
@@ -510,7 +523,7 @@ Phase 7 depends on both Phase 5 and Phase 6 being complete, acting as the conver
 | 7. Full Chat, Agent, Notes, Options Pages | 6/6 | Complete   | 2026-07-13 |
 | 7.1. LLM-Wiki & Filesystem Sync | 7/7 | Complete    | 2026-07-17 |
 | 7.2. Page Extraction & Pin Tab | 4/4 | Complete   | 2026-07-17 |
-| 7.3. RICH Design Core | 0/TBD | Not started | - |
+| 7.3. RICH Design Core | 0/4 | Not started | - |
 | 7.4. RICH Design Enhance | 0/TBD | Not started | - |
 | 7.5. RICH Design Polish | 0/TBD | Not started | - |
 | 8. Add-ons and Content Script Runtime (Extraction-Only) | 0/TBD | Not started | - |
