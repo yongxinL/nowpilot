@@ -14,6 +14,10 @@ NowPilot v0.1 is a privacy-first, extensible Chrome MV3 AI assistant. The 10-pha
 - [x] **Phase 6: Transaction Logging and Diagnostics** — AITransactionLog, TraceRedactor, DiagnosticsPanel in Full App (completed 2026-07-13)
 - [x] **Phase 7: Full Chat, Agent, Notes, Options Pages** — Complete UI across both surfaces, all hooks, markdown streaming (completed 2026-07-13)
 - [x] **Phase 7.1: LLM-Wiki & Filesystem Sync** — Auto-tagging, RAG Q&A, category system, one-way filesystem backup, notes maintenance (completed 2026-07-17)
+- [x] **Phase 7.2: Page Extraction & Pin Tab** — Content scripts extract page context, PageContextBridge, pin-tab MCP tool, workspace wiring (completed 2026-07-17)
+- [ ] **Phase 7.3: RICH Design Core** — 17 P0 must-haves: AI persona profile, welcome cards, context-aware quick actions, clarification chips, follow-up suggestions, code block actions, richer stage indicators, branded header
+- [ ] **Phase 7.4: RICH Design Enhance** — 22 P1 should-haves: persona onboarding, split-pane layout, template browser, inline confirmation, personalized greeting, image paste
+- [ ] **Phase 7.5: RICH Design Polish** — 21 P2 nice-to-haves: persona editor, @mention syntax, voice input, TL;DR toggle, step checklists, educational tips
 - [ ] **Phase 8: Add-ons and Content Script Runtime (Extraction-Only)** — Write/TeamGQM/ServiceNow add-ons, content scripts, data portability
 - [ ] **Phase 9: Hardening and Release** — Performance tests, isolation verification, bundle checks, production release
 
@@ -41,6 +45,18 @@ Phase 7 (Full UI)
   │
   ▼
 Phase 7.1 (LLM-Wiki + Filesystem Sync)
+  │
+  ▼
+Phase 7.2 (Page Extraction & Pin Tab)
+  │
+  ▼
+Phase 7.3 (RICH Core)
+  │
+  ▼
+Phase 7.4 (RICH Enhance)
+  │
+  ▼
+Phase 7.5 (RICH Polish)
   │
   ▼
 Phase 8 (Add-ons + Content Scripts)
@@ -371,7 +387,7 @@ Plans:
   8. `workspaceStore.setCurrentPageContext()` is called when page context changes
   9. `ContextOptimizerInput.pageContext` is passed from `useChat.ts` so the LLM sees page content in every AI call
 
-**Plans**: 3/4 plans executed
+**Plans**: 4/4 plans complete
 
 **Wave 0** — Foundation
 
@@ -386,6 +402,59 @@ Plans:
 
 - [x] 07.2-03-PLAN.md — Content script entrypoint (content.ts), wxt.config.ts changes, Background SW message handlers, MCP tools (get-page-content, pin-tab), ToolRegistry registration, bundle size verification
 
+**UI hint**: yes
+
+### Phase 7.3: RICH Design Core
+
+**Goal**: Establish the RICH design paradigm foundation — AI persona profile, welcome experience, context-aware intention suggestions, AI-initiated clarification, proactive follow-up suggestions, richer stage indicators, and AI branding. 17 P0 must-have requirements.
+**Depends on**: Phase 7.2, Phase 7, Phase 5
+**Requirements**: RICH-R-01, RICH-R-02, RICH-R-11, RICH-I-01, RICH-I-05, RICH-I-06, RICH-C-01, RICH-C-02, RICH-C-03, RICH-C-04, RICH-C-05, RICH-C-06, RICH-C-07, RICH-C-08, RICH-H-01, RICH-H-04, RICH-H-08 (see `.planning/REQUIREMENTS_RICH_DESIGN.md`)
+**Success Criteria** (what must be TRUE):
+
+  1. PersonaProfile defines AI identity (name, tagline, personality core, language style) and PersonaInjector weaves it into every system prompt across chat and agent modes
+  2. Empty chat state shows interactive Welcome Card grid (6 capability cards) that populate the Sender on click; cards dynamically sorted by usage and context
+  3. Context-aware quick action chips appear above the Sender when a page is pinned — page-type heuristics (ServiceNow incident → "Summarize this case", KB article → "Summarize this article")
+  4. When PlannerService returns `ask_clarification`, the UI renders clarification chips as interactive Button components in the Bubble — max 2 rounds before best-effort attempt with disclaimer
+  5. After stream completion, follow-up suggestion chips (1-3) appear below responses with visual divider; tapping a chip sends it as the next user message
+  6. Code blocks in AI responses render with inline action buttons: Copy code, Insert into page, Save as macro
+  7. Streaming stage indicators show richer context: "Reading page context…" → "Planning…" → "Generating…" with expand toggle for detail
+  8. Branded AI header bar above chat shows NowPilot name, avatar, tagline — dismissible, reappears on new conversation
+
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 7.4: RICH Design Enhance
+
+**Goal**: Extend RICH design with persona onboarding, split-pane layout, template browser, inline confirmation in chat mode, personalized greeting, and enhanced message actions. 22 P1 should-have requirements.
+**Depends on**: Phase 7.3
+**Requirements**: RICH-R-03, RICH-R-05, RICH-R-06, RICH-R-08, RICH-R-09, RICH-R-10, RICH-I-02, RICH-I-03, RICH-I-08, RICH-I-09, RICH-I-10, RICH-C-09, RICH-C-12, RICH-C-13, RICH-C-14, RICH-H-02, RICH-H-03, RICH-H-05, RICH-H-06, RICH-H-11, RICH-H-12, RICH-H-16 (see `.planning/REQUIREMENTS_RICH_DESIGN.md`)
+**Success Criteria** (what must be TRUE):
+
+  1. Persona profile surfaced in onboarding Step 1 as "Meet NowPilot" character introduction card
+  2. Standalone mode supports split-pane layout: chat left (60%), context panel right (40%) with tabs for pinned tabs, notes, and tools
+  3. Sender toolbar adds Templates icon button with categorized popover of prompt templates; recently-used shown first
+  4. Chat mode shows inline confirmation chips for side-effect actions ("I'll search the web for that. [Proceed] [Cancel]"), aligning with Agent PermissionDialog
+  5. Empty-state greeting uses user's name (from Google profile or UserMemoryStore) with time-of-day context
+  6. Image paste support — pasted clipboard images attach as files via Sender
+
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 7.5: RICH Design Polish
+
+**Goal**: Polish the RICH experience with persona editor, @mention syntax, voice input, TL;DR toggle, step checklists, educational tips, and enhanced markdown rendering. 21 P2 nice-to-have requirements.
+**Depends on**: Phase 7.4
+**Requirements**: RICH-R-04, RICH-R-07, RICH-I-04, RICH-I-07, RICH-I-11, RICH-I-12, RICH-I-13, RICH-I-14, RICH-C-10, RICH-C-11, RICH-C-15, RICH-H-07, RICH-H-09, RICH-H-10, RICH-H-13, RICH-H-14, RICH-H-15, RICH-H-17, RICH-H-18, RICH-H-19, RICH-H-20 (see `.planning/REQUIREMENTS_RICH_DESIGN.md`)
+**Success Criteria** (what must be TRUE):
+
+  1. Persona editor in Options → Persona allows customizing AI name, tone, and response brevity
+  2. Sender supports @mention syntax (@note:title, @tab:title, @prompt:name) with autocomplete popover
+  3. Voice input button in Sender toolbar using Web Speech API for dictation
+  4. Long AI responses (>500 chars) have TL;DR expand/collapse toggle; numbered steps render as checkable cards
+  5. Educational tips appear progressively: `/` command hint after 3 messages, Agent mode hint on 5th session — all tracked via UserMemoryStore
+  6. Markdown tables have sticky headers and horizontal scroll; stage indicators show "Still working…" with ETA on slow streams
+
+**Plans**: TBD
 **UI hint**: yes
 
 ### Phase 8: Add-ons & Data Portability
@@ -440,6 +509,9 @@ Phase 7 depends on both Phase 5 and Phase 6 being complete, acting as the conver
 | 6. Transaction Logging and Diagnostics | 8/8 | Complete   | 2026-07-13 |
 | 7. Full Chat, Agent, Notes, Options Pages | 6/6 | Complete   | 2026-07-13 |
 | 7.1. LLM-Wiki & Filesystem Sync | 7/7 | Complete    | 2026-07-17 |
-| 7.2. Page Extraction & Pin Tab | 3/4 | In Progress|  |
+| 7.2. Page Extraction & Pin Tab | 4/4 | Complete   | 2026-07-17 |
+| 7.3. RICH Design Core | 0/TBD | Not started | - |
+| 7.4. RICH Design Enhance | 0/TBD | Not started | - |
+| 7.5. RICH Design Polish | 0/TBD | Not started | - |
 | 8. Add-ons and Content Script Runtime (Extraction-Only) | 0/TBD | Not started | - |
 | 9. Hardening and Release | 0/TBD | Not started | - |
