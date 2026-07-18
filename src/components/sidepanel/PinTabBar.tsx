@@ -44,7 +44,7 @@ export function PinTabBar() {
       display: 'flex',
       gap: token.marginXS,
       padding: `${token.paddingXXS}px ${token.paddingSM}px`,
-      borderTop: `1px solid ${token.colorBorderSecondary}`,
+      borderTop: 'none',
       overflow: 'hidden',
       flexShrink: 0,
       alignItems: 'center',

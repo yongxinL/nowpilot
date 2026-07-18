@@ -41,3 +41,37 @@ body {
   outline: none !important;
   box-shadow: none !important;
 }
+
+/* Style user bubbles with a light gray background */
+.ant-bubble-end .ant-bubble-content {
+  background-color: #f2f2f2 !important; /* light gray background */
+  color: var(--ant-color-text) !important;
+  border-radius: 12px 12px 0 12px !important;
+}
+
+/* Style the sender input box itself with a white background */
+.ant-sender {
+  background-color: #ffffff !important;
+  border-radius: 12px !important;
+  border: 1px solid var(--ant-color-border-secondary) !important;
+}
+
+.ant-sender textarea {
+  background-color: transparent !important;
+}
+
+/* Custom scrollbar rules to reduce thick scrollbars to 3px */
+::-webkit-scrollbar {
+  width: 3px;
+  height: 3px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.24);
+}

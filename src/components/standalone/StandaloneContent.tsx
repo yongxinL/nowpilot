@@ -38,7 +38,7 @@ export function StandaloneContent({ activeNavId, footer, children }: StandaloneC
           flex: 1,
           minHeight: 0,
           overflow: 'auto',
-          padding: '12px 16px 0',
+          padding: activeNavId === 'chat' ? '0px' : '12px 16px 0',
         }}
       >
         {fallback}

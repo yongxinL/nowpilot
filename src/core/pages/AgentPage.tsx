@@ -3,6 +3,7 @@ import { Sender } from '@ant-design/x';
 import { Alert } from 'antd';
 import { useAgent } from '../../hooks/useAgent';
 import { useWorkspace } from '../../hooks/useWorkspace';
+import { PinTabBar } from '../../components/sidepanel/PinTabBar';
 import { ThoughtChainView } from '../../components/agent/ThoughtChainView';
 import { PermissionDialog } from '../../components/agent/PermissionDialog';
 
@@ -102,6 +103,9 @@ export function AgentPage() {
         pendingPermission={pendingPermission}
         onResolve={resolvePermission}
       />
+
+      {/* PinTabBar — always visible above composer (D-11) */}
+      <PinTabBar />
 
       {/* Sender */}
       <div style={senderStyle}>

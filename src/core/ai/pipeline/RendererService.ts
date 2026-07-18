@@ -28,10 +28,49 @@ export class RendererService {
     let fullText = '';
     let reasoningText = '';
     try {
+      // Map messages to Vercel AI SDK parts format if they contain attachments
+      const processedMessages = messages.map((msg) => {
+        const textContent = msg.content;
+        const attachmentRegex = /<attachment\s+name="([^"]+)"\s+type="image\/jpeg">([^<]+)<\/attachment>/g;
+        const matches: Array<{ name: string; base64: string }> = [];
+        let match;
+        
+        while ((match = attachmentRegex.exec(textContent)) !== null) {
+          matches.push({
+            name: match[1],
+            base64: match[2].trim(),
+          });
+        }
+        
+        if (matches.length > 0) {
+          const cleanText = textContent.replace(/<attachment\s+name="([^"]+)"\s+type="image\/jpeg">[^<]+<\/attachment>/g, (m, name) => `[Image: ${name}]`);
+          const parts: any[] = [{ type: 'text', text: cleanText }];
+          
+          matches.forEach((m) => {
+            let rawBase64 = m.base64;
+            if (rawBase64.includes(';base64,')) {
+              rawBase64 = rawBase64.split(';base64,')[1];
+            }
+            parts.push({
+              type: 'image',
+              image: rawBase64,
+              mimeType: 'image/jpeg',
+            });
+          });
+          
+          return {
+            role: msg.role,
+            content: parts,
+          };
+        }
+        
+        return msg;
+      });
+
       const result = streamText({
         model: model.instance as Parameters<typeof streamText>[0]['model'],
         system: systemPrompt,
-        messages: messages as any,
+        messages: processedMessages as any,
         maxTokens: 512,
         abortSignal,
       });

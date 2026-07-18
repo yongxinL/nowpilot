@@ -1,3 +1,5 @@
+/// <reference types="wicg-file-system-access" />
+
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Note } from '../../../src/core/notes/LinkParser';
 

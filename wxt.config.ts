@@ -3,6 +3,9 @@ import { defineConfig } from 'wxt';
 export default defineConfig({
   srcDir: 'src',
   outDir: 'dist',
+  webExt: {
+    disabled: true,
+  },
   manifest: {
     name: 'NowPilot',
     version: '0.1.0',

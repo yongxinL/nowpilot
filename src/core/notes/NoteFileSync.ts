@@ -1,3 +1,5 @@
+/// <reference types="wicg-file-system-access" />
+
 import { stringify, parse } from 'yaml';
 import { getDB } from '../storage/IndexedDBManager';
 import { debugLog } from '../utils/debugLog';

@@ -110,7 +110,7 @@ function StandaloneContentWrapper({
     >
       <StandaloneContent
         activeNavId={activeId}
-        footer={<WorkspaceStatusBar surface="standalone" flush {...(statusBar ?? {})} />}
+        footer={activeId === 'chat' ? null : <WorkspaceStatusBar surface="standalone" flush {...(statusBar ?? {})} />}
       >
         {renderActivePage
           ? renderActivePage({
