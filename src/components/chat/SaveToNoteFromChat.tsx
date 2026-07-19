@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Modal, Button, Typography, App } from 'antd';
-import { BookmarkOutlined } from '@ant-design/icons';
+import { BookOutlined } from '@ant-design/icons';
 
 const { Text } = Typography;
 
@@ -57,7 +57,7 @@ export function SaveToNoteFromChat({
       <Button
         type="default"
         size="small"
-        icon={<BookmarkOutlined />}
+        icon={<BookOutlined />}
         onClick={() => setOpen(true)}
       >
         Save as Note
