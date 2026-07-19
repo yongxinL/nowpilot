@@ -48,9 +48,9 @@ describe('ServiceNow skill templates', () => {
     }
   });
 
-  it('each template has scopes containing "servicenow"', () => {
+  it('each template has scopes containing "reading"', () => {
     for (const tpl of serviceNowSkillTemplates) {
-      expect(tpl.scopes).toContain('servicenow');
+      expect(tpl.scopes).toContain('reading');
     }
   });
 

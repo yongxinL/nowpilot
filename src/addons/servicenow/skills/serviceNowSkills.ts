@@ -11,7 +11,7 @@ export const serviceNowSkillTemplates: PromptTemplate[] = [
     category: 'ServiceNow',
     variables: ['caseNumber', 'caseData'],
     isBuiltin: false,
-    scopes: ['servicenow'],
+    scopes: ['reading'],
     hidden: false,
   },
   {
@@ -23,7 +23,7 @@ export const serviceNowSkillTemplates: PromptTemplate[] = [
     category: 'ServiceNow',
     variables: ['caseNumber', 'recentUpdates'],
     isBuiltin: false,
-    scopes: ['servicenow'],
+    scopes: ['reading'],
     hidden: false,
   },
   {
@@ -35,7 +35,7 @@ export const serviceNowSkillTemplates: PromptTemplate[] = [
     category: 'ServiceNow',
     variables: ['caseNumber', 'comments'],
     isBuiltin: false,
-    scopes: ['servicenow'],
+    scopes: ['reading'],
     hidden: false,
   },
 ];
