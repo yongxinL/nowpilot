@@ -11,6 +11,30 @@ import { ImportExportSection } from '../../../src/components/options/ImportExpor
 // ---------------------------------------------------------------------------
 const capturedZipContent = vi.hoisted(() => ({ jsonContent: null as string | null }));
 
+const mockWriteJournal = vi.hoisted(() => {
+  const mockEntryId = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+  return {
+    begin: vi.fn().mockResolvedValue({
+      id: mockEntryId,
+      operation: 'export-data',
+      status: 'pending',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      targetIds: { manifest: mockEntryId },
+      steps: [{ name: 'read-stores', status: 'pending' }, { name: 'redact-credentials', status: 'pending' }, { name: 'write-zip', status: 'pending' }],
+    }),
+    markStepStart: vi.fn().mockResolvedValue(undefined),
+    markStepComplete: vi.fn().mockResolvedValue(undefined),
+    markCompleted: vi.fn().mockResolvedValue(undefined),
+    markStepFailed: vi.fn().mockResolvedValue(undefined),
+    markFailed: vi.fn().mockResolvedValue(undefined),
+  };
+});
+
+vi.mock('../../../src/core/storage/WriteJournal', () => ({
+  writeJournal: mockWriteJournal,
+}));
+
 vi.mock('jszip', () => {
   function MockJSZip() {
     // noop — instance methods defined on prototype
@@ -223,8 +247,7 @@ describe('exportSanitization — credential exclusion from export output (D-18)'
     // Check that WriteJournal.begin was called with 'export-data'
     // NOTE: This assertion will fail in RED because handleExport doesn't use WriteJournal.
     // In GREEN, the integration is added and this test passes.
-    const writeJournalModule = await import('../../../src/core/storage/WriteJournal');
-    expect(writeJournalModule.writeJournal.begin).toHaveBeenCalledWith(
+    expect(mockWriteJournal.begin).toHaveBeenCalledWith(
       'export-data',
       expect.objectContaining({ manifest: expect.any(String) }),
       expect.arrayContaining([

@@ -5,6 +5,10 @@ import JSZip from 'jszip';
 import { noteFileSync } from '../../core/notes/NoteFileSync';
 import { linkParser } from '../../core/notes/LinkParser';
 import { notesDB } from '../../core/storage/stores/NotesDB';
+import { writeJournal } from '../../core/storage/WriteJournal';
+import { traceRedactor } from '../../core/telemetry/TraceRedactor';
+import { mergeRecords } from '../../core/data/mergeRecords';
+import type { MergeableRecord, MergeSummary } from '../../core/data/mergeRecords';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -28,6 +32,7 @@ interface ImportPreview {
 interface ExportData {
   version: string;
   exportedAt: string;
+  operationId?: string;
   data: Record<string, unknown>;
 }
 
@@ -61,9 +66,22 @@ export function ImportExportSection() {
     setExporting(true);
     setExportProgress(0);
 
+    // D-16: Atomic export via WriteJournal
+    const entry = await writeJournal.begin(
+      'export-data',
+      { manifest: crypto.randomUUID() },
+      [
+        { name: 'read-stores' },
+        { name: 'redact-credentials' },
+        { name: 'write-zip' },
+      ],
+    );
+
     try {
       const data: Record<string, unknown> = {};
 
+      // Step 0: Read all requested stores
+      await writeJournal.markStepStart(entry.id, 0);
       for (let i = 0; i < scopes.length; i++) {
         const scope = scopes[i];
         switch (scope) {
@@ -92,11 +110,20 @@ export function ImportExportSection() {
         }
         setExportProgress(Math.round(((i + 1) / scopes.length) * 100));
       }
+      await writeJournal.markStepComplete(entry.id, 0);
 
+      // Step 1: D-18 TraceRedactor safety net before ZIP write
+      await writeJournal.markStepStart(entry.id, 1);
+      const redacted = traceRedactor.redactValue(data) as Record<string, unknown>;
+      await writeJournal.markStepComplete(entry.id, 1);
+
+      // Step 2: Write ZIP with manifest including operationId per D-16
+      await writeJournal.markStepStart(entry.id, 2);
       const exportData: ExportData = {
         version: '0.1.0',
         exportedAt: new Date().toISOString(),
-        data,
+        operationId: entry.id,
+        data: redacted,
       };
 
       const zip = new JSZip();
@@ -108,8 +135,12 @@ export function ImportExportSection() {
       a.download = `nowpilot-export-${new Date().toISOString().split('T')[0]}.zip`;
       a.click();
       URL.revokeObjectURL(url);
+
+      await writeJournal.markStepComplete(entry.id, 2);
+      await writeJournal.markCompleted(entry.id);
       message.success('Export complete');
     } catch (err) {
+      await writeJournal.markFailed(entry.id).catch(() => {});
       message.error('Export failed');
     } finally {
       setExporting(false);
@@ -169,31 +200,60 @@ export function ImportExportSection() {
   const handleMerge = useCallback(async () => {
     if (!importData || !importValid) return;
 
+    // D-17: Wrap import in WriteJournal for atomicity
+    const entry = await writeJournal.begin(
+      'import-data',
+      { source: 'import-file' },
+      [{ name: 'merge-all' }],
+    );
+
     try {
       const data = importData.data as Record<string, unknown>;
-      const promises: Promise<void>[] = [];
+      let totalUpdated = 0;
+      let totalInserted = 0;
+      let totalUnchanged = 0;
+
+      await writeJournal.markStepStart(entry.id, 0);
 
       if (data.settings) {
         const settings = data.settings as Record<string, unknown>;
+
+        // D-17: Deterministic merge for settings — read existing, merge, write back
         if (settings.providerConfigs) {
-          promises.push(
-            chrome.storage.local.set(settings.providerConfigs as Record<string, unknown>),
-          );
+          const existingConfigs = await chrome.storage.local.get('np_provider_configs');
+          const existingProviders = (existingConfigs.np_provider_configs ?? {}) as Record<string, unknown>;
+          const incomingProviders = settings.providerConfigs as Record<string, unknown>;
+          const mergedProviders = { ...existingProviders, ...incomingProviders };
+          await chrome.storage.local.set({ np_provider_configs: mergedProviders });
+          totalUpdated += Object.keys(incomingProviders).length;
         }
         if (settings.featureFlags) {
-          promises.push(
-            chrome.storage.local.set(settings.featureFlags as Record<string, unknown>),
-          );
+          const existingFlags = await chrome.storage.local.get('np_feature_flags');
+          const existingFlagsObj = (existingFlags.np_feature_flags ?? {}) as Record<string, unknown>;
+          const incomingFlags = settings.featureFlags as Record<string, unknown>;
+          const mergedFlags = { ...existingFlagsObj, ...incomingFlags };
+          await chrome.storage.local.set({ np_feature_flags: mergedFlags });
+          totalUpdated += Object.keys(incomingFlags).length;
         }
         if (settings.mcpServers) {
-          promises.push(
-            chrome.storage.local.set(settings.mcpServers as Record<string, unknown>),
-          );
+          const existingServers = await chrome.storage.local.get('np_mcp_servers');
+          const existingMcp = (existingServers.np_mcp_servers ?? []) as MergeableRecord[];
+          const incomingMcp = settings.mcpServers as MergeableRecord[];
+          const { merged, summary } = mergeRecords(existingMcp, incomingMcp);
+          await chrome.storage.local.set({ np_mcp_servers: merged });
+          totalUpdated += summary.updated;
+          totalInserted += summary.inserted;
+          totalUnchanged += summary.unchanged;
         }
         if (settings.slashCommands) {
-          promises.push(
-            chrome.storage.local.set(settings.slashCommands as Record<string, unknown>),
-          );
+          const existingCommands = await chrome.storage.local.get('np_slash_commands');
+          const existingSlash = (existingCommands.np_slash_commands ?? []) as MergeableRecord[];
+          const incomingSlash = settings.slashCommands as MergeableRecord[];
+          const { merged, summary } = mergeRecords(existingSlash, incomingSlash);
+          await chrome.storage.local.set({ np_slash_commands: merged });
+          totalUpdated += summary.updated;
+          totalInserted += summary.inserted;
+          totalUnchanged += summary.unchanged;
         }
       }
 
@@ -202,13 +262,21 @@ export function ImportExportSection() {
         message.info('Chat, Notes, and Memory data import requires IndexedDB integration (future phase). Settings imported successfully.');
       }
 
-      await Promise.all(promises);
-      message.success('Import completed successfully');
+      await writeJournal.markStepComplete(entry.id, 0);
+      await writeJournal.markCompleted(entry.id);
+
+      if (totalUpdated > 0 || totalInserted > 0 || totalUnchanged > 0) {
+        message.success(`Import complete. ${totalUpdated} records updated, ${totalInserted} new, ${totalUnchanged} unchanged.`);
+      } else {
+        message.success('Import completed successfully');
+      }
+
       setImportData(null);
       setImportPreview(null);
       setImportValid(null);
       setImportMessage('');
     } catch {
+      await writeJournal.markFailed(entry.id).catch(() => {});
       message.error('Import failed');
     }
   }, [importData, importValid, message]);
