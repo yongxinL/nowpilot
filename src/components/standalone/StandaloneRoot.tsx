@@ -1,14 +1,17 @@
-import { useEffect, useState } from 'react';
-import { App, ConfigProvider, theme } from 'antd';
+import { useEffect, useRef, useState } from 'react';
+import { App, ConfigProvider, Drawer, theme } from 'antd';
 import { getAntdConfig } from '../../core/theme/antdConfig';
 import { useTheme } from '../../hooks/useTheme';
 import { useWorkspaceStore } from '../../core/stores/workspaceStore';
+import { useRightPaneStore } from '../../core/stores/RightPaneStore';
 import { ErrorBoundary } from '../../core/components/ErrorBoundary';
 import type { NowPilotNavItem } from '../../core/navigation/navigationTypes';
 import { WorkspaceStatusBar } from '../common/WorkspaceStatusBar';
 import { ApplicationFrame } from '../common/ApplicationFrame';
 import { StandaloneSider, STANDALONE_NAVBAR_WIDTH } from './StandaloneSider';
 import { StandaloneContent } from './StandaloneContent';
+import { RightPane } from './RightPane';
+import { PaneToggle } from './PaneToggle';
 
 export interface StandaloneRootProps {
   initialActiveId?: string;
@@ -93,36 +96,99 @@ function StandaloneContentWrapper({
   navbarWidth: number;
 }) {
   const { token } = theme.useToken();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
+
+  const { visible, width, setVisible } = useRightPaneStore();
+
+  // D-08: Page availability — right pane visible on Chat/Agent, hidden on Options/Diagnostics
+  const isPaneAvailable = ['chat', 'agent'].includes(activeId);
+
+  // RESARCH.md Pitfall 5: Track container width via ResizeObserver (not window.innerWidth)
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setContainerWidth(Math.floor(entry.contentRect.width));
+      }
+    });
+    observer.observe(el);
+
+    return () => observer.disconnect();
+  }, []);
+
+  // Sync visibility with page availability (D-08): hide pane on non-Chat/Agent pages
+  useEffect(() => {
+    if (!isPaneAvailable) {
+      setVisible(false);
+    }
+  }, [isPaneAvailable, setVisible]);
+
+  // Responsive breakpoint (Pitfall 5): containerWidth < 720px = Drawer overlay
+  // 720 = 320px (compact right pane) + 400px (minimum chat area)
+  const rightPaneWidth = width === 'compact' ? 320 : Math.floor(containerWidth * 0.45);
+  const isSmallScreen = containerWidth > 0 && containerWidth < 720;
+  const showRightPane = visible && isPaneAvailable && containerWidth > 0;
+
+  // Remove right margin from chat content column when pane is visible inline
+  const contentMargin =
+    showRightPane && !isSmallScreen ? '12px 0 12px 0' : '12px 12px 12px 0';
+
   return (
-    <div
-      data-standalone-content-shell="true"
-      style={{
-        flex: 1,
-        minWidth: 0,
-        display: 'flex',
-        flexDirection: 'column',
-        borderRadius: 16,
-        overflow: 'hidden',
-        background: token.colorBgContainer,
-        boxShadow: token.boxShadowSecondary,
-        margin: '12px 12px 12px 0',
-      }}
-    >
-      <StandaloneContent
-        activeNavId={activeId}
-        footer={activeId === 'chat' ? null : <WorkspaceStatusBar surface="standalone" flush {...(statusBar ?? {})} />}
+    <div ref={containerRef} style={{ flex: 1, minWidth: 0, display: 'flex' }}>
+      {/* Left column — Chat/Agent content */}
+      <div
+        data-standalone-content-shell="true"
+        style={{
+          flex: 1,
+          minWidth: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          borderRadius: 16,
+          overflow: 'hidden',
+          background: token.colorBgContainer,
+          boxShadow: token.boxShadowSecondary,
+          margin: contentMargin,
+        }}
       >
-        {renderActivePage
-          ? renderActivePage({
-              id: activeId,
-              label: '',
-              icon: null,
-              group: 'core',
-              order: 0,
-              surfaces: ['standalone'],
-            } as NowPilotNavItem)
-          : null}
-      </StandaloneContent>
+        <StandaloneContent
+          activeNavId={activeId}
+          footer={activeId === 'chat' ? null : <WorkspaceStatusBar surface="standalone" flush {...(statusBar ?? {})} />}
+        >
+          {renderActivePage
+            ? renderActivePage({
+                id: activeId,
+                label: '',
+                icon: null,
+                group: 'core',
+                order: 0,
+                surfaces: ['standalone'],
+              } as NowPilotNavItem)
+            : null}
+        </StandaloneContent>
+      </div>
+
+      {/* PaneToggle divider + RightPane — only when inline (>= 720px) */}
+      {showRightPane && !isSmallScreen && (
+        <>
+          <PaneToggle />
+          <RightPane width={rightPaneWidth} />
+        </>
+      )}
+
+      {/* Drawer overlay — for small containers (< 720px) */}
+      <Drawer
+        placement="right"
+        size={320}
+        open={showRightPane && isSmallScreen}
+        onClose={() => setVisible(false)}
+        destroyOnClose
+        styles={{ body: { padding: 0 } }}
+      >
+        <RightPane width={320} />
+      </Drawer>
     </div>
   );
 }
