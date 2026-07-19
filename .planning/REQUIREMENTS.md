@@ -161,7 +161,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **ADDON-05**: ServiceNow add-on — Full App page (case table, comments, work notes)
 - [x] **ADDON-06**: Write add-on — Rewrite, Summarize, Draft customer update, Draft internal note, Explain, Action plan
 - [x] **ADDON-07**: Write add-on — Side Panel page with quick actions
-- [ ] **ADDON-08**: TeamGQM add-on — Side Panel (compact digest) + Full App (full workspace)
+- [x] **ADDON-08**: TeamGQM add-on — Side Panel (compact digest) + Full App (full workspace)
 - [ ] **ADDON-09**: ResearchSkill global add-on — web search via MCP or built-in tool
 - [ ] **ADDON-10**: Core-addon boundary enforced — core never imports from addons
 
@@ -332,7 +332,7 @@ Requirements for initial release. Each maps to roadmap phases.
 | ADDON-05 | Phase 8 | Pending |
 | ADDON-06 | Phase 8 | Complete |
 | ADDON-07 | Phase 8 | Complete |
-| ADDON-08 | Phase 8 | Pending |
+| ADDON-08 | Phase 8 | Complete |
 | ADDON-09 | Phase 8 | Pending |
 | ADDON-10 | Phase 1 | Pending |
 | CONT-01 | Phase 7.2 | Complete |
