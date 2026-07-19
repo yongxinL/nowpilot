@@ -491,17 +491,17 @@ Plans:
 Plans:
 
 **Wave 1** — Foundation (data layer + core services)
-- [ ] 07.5-01-PLAN.md — Data Foundation: PreferenceMemoryStore migration, PersonaService, ContextOptimizerInput, AttachmentModel (RICH-R-04/data, RICH-H-07/type)
-- [ ] 07.5-02-PLAN.md — Reference System Core: ReferenceResolver registry + 3 resolvers (RICH-H-15/core)
-- [ ] 07.5-03-PLAN.md — Supporting Data Layer: VoiceInput hook, PromptStarter data, EduTips data, UserMemoryStore extension (RICH-H-17/hook, RICH-I-11/12/13/14/data)
+- [x] 07.5-01-PLAN.md — Data Foundation: PreferenceMemoryStore migration, PersonaService, ContextOptimizerInput, AttachmentModel (RICH-R-04/data, RICH-H-07/type)
+- [x] 07.5-02-PLAN.md — Reference System Core: ReferenceResolver registry + 3 resolvers (RICH-H-15/core)
+- [x] 07.5-03-PLAN.md — Supporting Data Layer: VoiceInput hook, PromptStarter data, EduTips data, UserMemoryStore extension (RICH-H-17/hook, RICH-I-11/12/13/14/data)
 
 **Wave 2** — UI Components (presentational)
-- [ ] 07.5-04-PLAN.md — Markdown Enhancement: TL;DR toggle, Step Checklists, Sticky Tables, StageIndicator (RICH-H-18, H-19, H-20, H-09, H-10)
-- [ ] 07.5-05-PLAN.md — Sender Enhancement UI: @mention chips, Voice button, EduTips banner, QuickAction "More" (RICH-H-15/UI, H-17/UI, I-07, I-12/13/14/UI)
-- [ ] 07.5-06-PLAN.md — Options UI: Persona editor, Memory browser, OptionsRoot nav (RICH-R-04/UI, RICH-I-11/UI)
+- [x] 07.5-04-PLAN.md — Markdown Enhancement: TL;DR toggle, Step Checklists, Sticky Tables, StageIndicator (RICH-H-18, H-19, H-20, H-09, H-10)
+- [x] 07.5-05-PLAN.md — Sender Enhancement UI: @mention chips, Voice button, EduTips banner, QuickAction "More" (RICH-H-15/UI, H-17/UI, I-07, I-12/13/14/UI)
+- [x] 07.5-06-PLAN.md — Options UI: Persona editor, Memory browser, OptionsRoot nav (RICH-R-04/UI, RICH-I-11/UI)
 
 **Wave 3** — Integration
-- [ ] 07.5-07-PLAN.md — Conversation Feedback/Save + Greeting + Notes Q&A + ChatPage Integration (RICH-C-10, C-11, C-15, H-14 + all cross-cutting)
+- [x] 07.5-07-PLAN.md — Conversation Feedback/Save + Greeting + Notes Q&A + ChatPage Integration (RICH-C-10, C-11, C-15, H-14 + all cross-cutting)
 
 **UI hint**: yes
 
@@ -560,6 +560,6 @@ Phase 7 depends on both Phase 5 and Phase 6 being complete, acting as the conver
 | 7.2. Page Extraction & Pin Tab | 4/4 | Complete   | 2026-07-17 |
 | 7.3. RICH Design Core | 4/4 | ✓ Complete | 2026-07-19 |
 | 7.4. RICH Design Enhance | 0/7 | Planned | 2026-07-19 |
-| 7.5. RICH Design Polish | 0/7 | Planned | - |
+| 7.5. RICH Design Polish | 7/7 | ✓ Complete | 2026-07-19 |
 | 8. Add-ons and Content Script Runtime (Extraction-Only) | 0/TBD | Not started | - |
 | 9. Hardening and Release | 0/TBD | Not started | - |
