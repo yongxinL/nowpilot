@@ -525,7 +525,7 @@ Plans:
   4. `/research` command runs via ResearchSkill (MCP web-search or built-in tool; graceful failure if no search tool connected)
   5. Data export produces sanitized JSON/ZIP (no API keys); import merges with conflict resolution
 
-**Plans**: 3/9 plans executed
+**Plans**: 4/9 plans executed
 Plans:
 
 **Wave 1** — Foundation (parallel)
@@ -533,7 +533,7 @@ Plans:
 - [x] 08-01-PLAN.md — AddonRegistry: typed skill/page/settings registrations, enable/disable gating (ADDON-01)
 - [x] 08-02-PLAN.md — Write Add-on: 6 prompt templates + Side Panel action page (ADDON-06, ADDON-07)
 - [x] 08-03-PLAN.md — Data Portability: atomic WriteJournal export, deterministic merge, credential exclusion (DATA-01, DATA-02)
-- [ ] 08-04-PLAN.md — ServiceNow Foundation: CookieSessionStore, ServiceNowSessionAdapter, ServiceNowTableClient (ADDON-02)
+- [x] 08-04-PLAN.md — ServiceNow Foundation: CookieSessionStore, ServiceNowSessionAdapter, ServiceNowTableClient (ADDON-02)
 - [ ] 08-05-PLAN.md — TeamGQM Foundation: gqmTypes, GQMDataService (WriteJournal-backed CRUD) (ADDON-08 data layer)
 
 **Wave 2** — Add-on Pages & Skills (parallel)
@@ -588,5 +588,5 @@ Phase 7 depends on both Phase 5 and Phase 6 being complete, acting as the conver
 | 7.3. RICH Design Core | 4/4 | ✓ Complete | 2026-07-19 |
 | 7.4. RICH Design Enhance | 0/7 | Planned | 2026-07-19 |
 | 7.5. RICH Design Polish | 7/7 | ✓ Complete | 2026-07-19 |
-| 8. Add-ons and Content Script Runtime (Extraction-Only) | 3/9 | In Progress|  |
+| 8. Add-ons and Content Script Runtime (Extraction-Only) | 4/9 | In Progress|  |
 | 9. Hardening and Release | 0/TBD | Not started | - |

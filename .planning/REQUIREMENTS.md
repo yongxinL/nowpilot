@@ -155,7 +155,7 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Add-ons
 
 - [x] **ADDON-01**: AddonRegistry with typed registration for skills, prompts, pages, settings
-- [ ] **ADDON-02**: ServiceNow add-on — JSESSIONID/sysparmCK extraction, case context, Table API client
+- [x] **ADDON-02**: ServiceNow add-on — JSESSIONID/sysparmCK extraction, case context, Table API client
 - [ ] **ADDON-03**: ServiceNow add-on — CaseAnalyzerSkill, CatchUpSkill, SentimentSkill
 - [ ] **ADDON-04**: ServiceNow add-on — Side Panel page (quick case-context view + skill launcher)
 - [ ] **ADDON-05**: ServiceNow add-on — Full App page (case table, comments, work notes)
@@ -326,7 +326,7 @@ Requirements for initial release. Each maps to roadmap phases.
 | TELE-06 | Phase 6 | Pending |
 | TELE-07 | Phase 6 | Pending |
 | ADDON-01 | Phase 8 | Complete |
-| ADDON-02 | Phase 8 | Pending |
+| ADDON-02 | Phase 8 | Complete |
 | ADDON-03 | Phase 8 | Pending |
 | ADDON-04 | Phase 8 | Pending |
 | ADDON-05 | Phase 8 | Pending |
