@@ -194,6 +194,14 @@ None - no external service configuration required.
 - Slash commands wired to add-on handlers
 - Ready for end-of-phase verification and testing
 
+## Self-Check: PASSED
+
+- [x] All 6 modified files exist on disk
+- [x] All 3 commits verified in git log (2 task commits + 1 metadata commit)
+- [x] Modified files compile without TypeScript errors
+- [x] Full build succeeds
+- [x] SlashCommandRegistry tests pass (6/6)
+
 ---
 
 *Phase: 08-add-ons-data-portability*
