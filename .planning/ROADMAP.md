@@ -423,15 +423,19 @@ Plans:
 **Plans**: 4 plans ✓
 
 **Wave 1** — Persona Subsystem
+
 - [x] 07.3-01-PLAN.md — PersonaProfile data model, PersonaService retrieval abstraction, PersonaInjector prompt injection, BunnyAvatar extraction, integration into useChat + AgentOrchestrator (RICH-R-01, RICH-R-02, RICH-R-11)
 
 **Wave 2** — Welcome Cards + Branded Header
+
 - [x] 07.3-02-PLAN.md — WelcomeCardService with three-tier contextual ranking, WelcomeCards 6-card capability grid, BrandedHeader AI identity bar, ChatPage empty-state replacement (RICH-I-01, RICH-H-01)
 
 **Wave 3** — Clarification + Quick Actions
+
 - [x] 07.3-03-PLAN.md — ActionChipGroup shared chip container, QuickActionService static hostname mapping, QuickActionChips above Sender, ClarificationAction in Bubble, PlannerDecision schema extension, clarification round tracking (RICH-C-01, RICH-C-02, RICH-C-03, RICH-C-04, RICH-I-05, RICH-I-06)
 
 **Wave 4** — Follow-up + Code Block Actions + Stage Indicators
+
 - [x] 07.3-04-PLAN.md — FollowUpService heuristic + Haiku-tier suggestions, FollowUpAction divider + chips, StageIndicator pipeline-driven labels with slow-stream pulse, CodeBlockActions Copy/Insert/Save-as-macro, ChatPage Think replacement (RICH-C-05, RICH-C-06, RICH-C-07, RICH-C-08, RICH-H-04, RICH-H-08)
 
 **UI hint**: yes
@@ -491,16 +495,19 @@ Plans:
 Plans:
 
 **Wave 1** — Foundation (data layer + core services)
+
 - [x] 07.5-01-PLAN.md — Data Foundation: PreferenceMemoryStore migration, PersonaService, ContextOptimizerInput, AttachmentModel (RICH-R-04/data, RICH-H-07/type)
 - [x] 07.5-02-PLAN.md — Reference System Core: ReferenceResolver registry + 3 resolvers (RICH-H-15/core)
 - [x] 07.5-03-PLAN.md — Supporting Data Layer: VoiceInput hook, PromptStarter data, EduTips data, UserMemoryStore extension (RICH-H-17/hook, RICH-I-11/12/13/14/data)
 
 **Wave 2** — UI Components (presentational)
+
 - [x] 07.5-04-PLAN.md — Markdown Enhancement: TL;DR toggle, Step Checklists, Sticky Tables, StageIndicator (RICH-H-18, H-19, H-20, H-09, H-10)
 - [x] 07.5-05-PLAN.md — Sender Enhancement UI: @mention chips, Voice button, EduTips banner, QuickAction "More" (RICH-H-15/UI, H-17/UI, I-07, I-12/13/14/UI)
 - [x] 07.5-06-PLAN.md — Options UI: Persona editor, Memory browser, OptionsRoot nav (RICH-R-04/UI, RICH-I-11/UI)
 
 **Wave 3** — Integration
+
 - [x] 07.5-07-PLAN.md — Conversation Feedback/Save + Greeting + Notes Q&A + ChatPage Integration (RICH-C-10, C-11, C-15, H-14 + all cross-cutting)
 
 **UI hint**: yes
@@ -518,12 +525,12 @@ Plans:
   4. `/research` command runs via ResearchSkill (MCP web-search or built-in tool; graceful failure if no search tool connected)
   5. Data export produces sanitized JSON/ZIP (no API keys); import merges with conflict resolution
 
-**Plans**: 9 plans
+**Plans**: 1/9 plans executed
 Plans:
 
 **Wave 1** — Foundation (parallel)
 
-- [ ] 08-01-PLAN.md — AddonRegistry: typed skill/page/settings registrations, enable/disable gating (ADDON-01)
+- [x] 08-01-PLAN.md — AddonRegistry: typed skill/page/settings registrations, enable/disable gating (ADDON-01)
 - [ ] 08-02-PLAN.md — Write Add-on: 6 prompt templates + Side Panel action page (ADDON-06, ADDON-07)
 - [ ] 08-03-PLAN.md — Data Portability: atomic WriteJournal export, deterministic merge, credential exclusion (DATA-01, DATA-02)
 - [ ] 08-04-PLAN.md — ServiceNow Foundation: CookieSessionStore, ServiceNowSessionAdapter, ServiceNowTableClient (ADDON-02)
@@ -581,5 +588,5 @@ Phase 7 depends on both Phase 5 and Phase 6 being complete, acting as the conver
 | 7.3. RICH Design Core | 4/4 | ✓ Complete | 2026-07-19 |
 | 7.4. RICH Design Enhance | 0/7 | Planned | 2026-07-19 |
 | 7.5. RICH Design Polish | 7/7 | ✓ Complete | 2026-07-19 |
-| 8. Add-ons and Content Script Runtime (Extraction-Only) | 0/9 | Planned | 2026-07-19 |
+| 8. Add-ons and Content Script Runtime (Extraction-Only) | 1/9 | In Progress|  |
 | 9. Hardening and Release | 0/TBD | Not started | - |
