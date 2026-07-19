@@ -181,8 +181,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Data Portability
 
-- [ ] **DATA-01**: Data export — sanitized JSON/ZIP with scope selection (no API keys)
-- [ ] **DATA-02**: Data import — merge with conflict resolution
+- [x] **DATA-01**: Data export — sanitized JSON/ZIP with scope selection (no API keys)
+- [x] **DATA-02**: Data import — merge with conflict resolution
 - [ ] **DATA-03**: Export debug bundle from Diagnostics
 
 ### Onboarding
@@ -343,8 +343,8 @@ Requirements for initial release. Each maps to roadmap phases.
 | CMD-01 | Phase 1 | Pending |
 | CMD-02 | Phase 1 | Pending |
 | CMD-03 | Phase 1 | Pending |
-| DATA-01 | Phase 8 | Pending |
-| DATA-02 | Phase 8 | Pending |
+| DATA-01 | Phase 8 | Complete |
+| DATA-02 | Phase 8 | Complete |
 | DATA-03 | Phase 6 | Pending |
 | ONBD-01 | Phase 1 | Pending |
 | ONBD-02 | Phase 1 | Pending |
