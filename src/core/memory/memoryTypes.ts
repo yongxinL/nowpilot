@@ -88,6 +88,11 @@ export const preferenceSchema = z.object({
   allowCloudFallbackFromLocal: z.boolean(),
   defaultProviderId: z.string(),
   toolAutonomy: z.enum(['manual', 'allow-safe', 'allow-all']),
+  // Phase 7.4: Persona identity overrides (D-11, D-21)
+  displayName: z.string().optional(),
+  aiName: z.string().optional(),
+  aiTone: z.string().optional(),
+  responseBrevity: z.enum(['concise', 'detailed']).optional(),
 });
 export type PreferencePayload = z.infer<typeof preferenceSchema>;
 

@@ -50,6 +50,11 @@ export const usePreferenceStore = create<PreferenceState>()(
       allowCloudFallbackFromLocal: false,
       defaultProviderId: '',
       toolAutonomy: 'manual',
+      // Phase 7.4: Persona identity overrides (D-11, D-21)
+      displayName: undefined,
+      aiName: undefined,
+      aiTone: undefined,
+      responseBrevity: undefined,
       setPreferences: (partial: Partial<PreferencePayload>) => set(partial),
     }),
     {
@@ -82,6 +87,11 @@ export const preferenceMemoryStore = {
       allowCloudFallbackFromLocal: own.allowCloudFallbackFromLocal,
       defaultProviderId: own.defaultProviderId,
       toolAutonomy: own.toolAutonomy,
+      // Phase 7.4: Pass persona fields through validation gate
+      displayName: own.displayName,
+      aiName: own.aiName,
+      aiTone: own.aiTone,
+      responseBrevity: own.responseBrevity,
     });
 
     return {
@@ -92,6 +102,11 @@ export const preferenceMemoryStore = {
       allowCloudFallbackFromLocal: own.allowCloudFallbackFromLocal,
       defaultProviderId: own.defaultProviderId,
       toolAutonomy: own.toolAutonomy,
+      // Phase 7.4: Persona identity overrides (D-11, D-21)
+      displayName: own.displayName,
+      aiName: own.aiName,
+      aiTone: own.aiTone,
+      responseBrevity: own.responseBrevity,
       // External store reads (D-09)
       themeMode,
       defaultSurface,
