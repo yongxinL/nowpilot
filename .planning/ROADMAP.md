@@ -588,5 +588,5 @@ Phase 7 depends on both Phase 5 and Phase 6 being complete, acting as the conver
 | 7.3. RICH Design Core | 4/4 | ✓ Complete | 2026-07-19 |
 | 7.4. RICH Design Enhance | 0/7 | Planned | 2026-07-19 |
 | 7.5. RICH Design Polish | 7/7 | ✓ Complete | 2026-07-19 |
-| 8. Add-ons and Content Script Runtime (Extraction-Only) | 9/9 | Complete   | 2026-07-19 |
+| 8. Add-ons and Content Script Runtime (Extraction-Only) | 9/9 | Complete    | 2026-07-19 |
 | 9. Hardening and Release | 0/TBD | Not started | - |

@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v0.1
 milestone_name: milestone
-current_phase: 8
-current_phase_name: add-ons-data-portability
-status: verifying
+current_phase: 9
+current_phase_name: Hardening and Release
+status: planning
 stopped_at: Completed 08-09-PLAN.md
-last_updated: "2026-07-19T12:49:11.423Z"
+last_updated: "2026-07-19T13:01:15.917Z"
 last_activity: 2026-07-19
-last_activity_desc: Phase 8 execution started
+last_activity_desc: Phase 8 complete, transitioned to Phase 9
 progress:
   total_phases: 14
   completed_phases: 12
@@ -28,10 +28,10 @@ See: .planning/PROJECT.md (updated 2026-07-10)
 
 ## Current Position
 
-Phase: 8 (add-ons-data-portability) — EXECUTING
-Plan: 9 of 9
+Phase: 9 — Hardening and Release
+Plan: Not started
 Status: Phase complete — ready for verification
-Last activity: 2026-07-19 — Phase 8 execution started
+Last activity: 2026-07-19 — Phase 8 complete, transitioned to Phase 9
 
 Progress: [███████░░░] 79% (11/14 phases)
 
@@ -39,7 +39,7 @@ Progress: [███████░░░] 79% (11/14 phases)
 
 **Velocity:**
 
-- Total plans completed: 29
+- Total plans completed: 38
 - Average duration: ~5 min (inline execution mode)
 - Total execution time: ~35 min
 
@@ -52,6 +52,7 @@ Progress: [███████░░░] 79% (11/14 phases)
 | 03 | 9 | - | - |
 | 04 | 5 | - | - |
 | 07.1 | 7 | - | - |
+| 8 | 9 | - | - |
 
 **Recent Trend:**
 
@@ -1022,7 +1023,7 @@ None - plan executed exactly as written.
 
 - **Task 2 (PermissionStore):** 6 tests passing; both test and implementation committed together (inline TDD)
 - **Task 3 (SlashCommandRegistry + TemplateEngine):** 13 tests passing across 2 test files; test files created before implementation
-- **Status:** Phase complete — ready for verification
+- **Status:** Ready to plan
 
 ## Issues Encountered
 
