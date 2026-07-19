@@ -72,12 +72,18 @@ import { PinTabBar } from '../../components/sidepanel/PinTabBar';
 import { WorkspaceStatusBar } from '../../components/common/WorkspaceStatusBar';
 import { WelcomeCards } from '../../components/chat/WelcomeCards';
 import { BrandedHeader } from '../../components/chat/BrandedHeader';
+import { TemplateBrowser } from '../../components/chat/TemplateBrowser';
+import { InlineConfirmationCard } from '../../components/chat/InlineConfirmationCard';
+import { ConversationClosure } from '../../components/chat/ConversationClosure';
 import { QuickActionChips } from '../../components/chat/QuickActionChips';
 import { ClarificationAction } from '../../components/chat/ClarificationAction';
 import { FollowUpAction } from '../../components/chat/FollowUpAction';
 import { StageIndicator } from '../../components/chat/StageIndicator';
 import { CodeBlockActions } from '../../components/chat/CodeBlockActions';
 import type { FollowUpSuggestion } from '../../core/ai/followUp/FollowUpService';
+import { useGreeting } from '../../hooks/useGreeting';
+import { useConversationClosure } from '../../hooks/useConversationClosure';
+import { BunnyAvatar } from '../../components/common/BunnyAvatar';
 
 const ICON_MAP: Record<string, React.ComponentType<any>> = {
   message: MessageOutlined,
@@ -218,6 +224,13 @@ export function ChatPage() {
     regenerateResponse,
     followUpSuggestions,
   } = useChat();
+
+  const greeting = useGreeting();
+  const closureState = useConversationClosure(
+    messages.length,
+    isStreaming,
+    false, // hasActiveClarifications — simplified for now
+  );
 
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState<string>('');
@@ -1217,8 +1230,12 @@ export function ChatPage() {
         <div style={{ flex: 1, overflow: 'auto', padding: '0 16px' }}>
           {isEmpty && !conversationLoading ? (
             <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-              {/* Branded header at top — shown until dismissed */}
-              {!welcomeCardsDismissed && <BrandedHeader onClose={handleDismissWelcomeCards} />}
+              {/* Branded header at top with personalized greeting (D-23) — always visible in empty state */}
+              <BrandedHeader
+                userGreeting={greeting.greeting}
+                contextualMessage={greeting.contextualLine}
+                onClose={handleDismissWelcomeCards}
+              />
               <div
                 style={{
                   flex: 1,
@@ -1232,16 +1249,7 @@ export function ChatPage() {
               >
                 {!welcomeCardsDismissed ? (
                   <WelcomeCards onSelectCard={handleWelcomeCardSelect} onDismiss={handleDismissWelcomeCards} />
-                ) : (
-                  <>
-                    <Text style={{ fontSize: 20, fontWeight: 600, color: token.colorText }}>
-                      Hi, I&apos;m NowPilot
-                    </Text>
-                    <Text type="secondary" style={{ fontSize: 14 }}>
-                      Your AI work co-pilot. What can I help you with?
-                    </Text>
-                  </>
-                )}
+                ) : null}
               </div>
             </div>
           ) : conversationLoading ? (
@@ -2028,6 +2036,31 @@ export function ChatPage() {
               autoSize={{ minRows: 4, maxRows: 8 }}
               style={{ minHeight: '120px' }}
               header={attachmentHeader}
+              // RICH-I-10: Template browser icon in Sender prefix area
+              prefix={
+                <TemplateBrowser
+                  onInsert={(tpl) => setDraft((prev) => prev + tpl)}
+                />
+              }
+              // RICH-H-16: Image paste handler — appends clipboard images to attachment strip
+              onPasteFile={(files: FileList) => {
+                const imageFiles = Array.from(files).filter((f) => f.type.startsWith('image/'));
+                if (imageFiles.length === 0) return;
+                // Enforce existing 5-file limit (D-31)
+                const remaining = 5 - attachedFiles.length;
+                const toAdd = imageFiles.slice(0, remaining);
+                if (toAdd.length < imageFiles.length) {
+                  console.log('[ChatPage] Image paste: some files dropped (max 5)');
+                }
+                const newAttachments = toAdd.map((file) => ({
+                  id: crypto.randomUUID(),
+                  name: file.name || `Pasted-${Date.now()}.png`,
+                  url: URL.createObjectURL(file),
+                  type: file.type,
+                  file,
+                }));
+                setAttachedFiles((prev) => [...prev, ...newAttachments]);
+              }}
             />
 
             {/* Bottom Brand & Action Footer */}
