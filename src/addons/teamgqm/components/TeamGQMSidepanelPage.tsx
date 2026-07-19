@@ -18,7 +18,7 @@ export function TeamGQMSidepanelPage() {
     setLoading(true);
     try {
       // Load all goals (root nodes)
-      const allNodes = await gqmDataService.getChildren(''); // root-level
+      const allNodes = await gqmDataService.getChildren(null); // root-level
       const goalNodes = allNodes.filter(n => n.type === 'goal') as Goal[];
       setGoals(goalNodes);
 

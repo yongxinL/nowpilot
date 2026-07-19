@@ -223,7 +223,11 @@ export function ImportExportSection() {
           const existingConfigs = await chrome.storage.local.get('np_provider_configs');
           const existingProviders = (existingConfigs.np_provider_configs ?? {}) as Record<string, unknown>;
           const incomingProviders = settings.providerConfigs as Record<string, unknown>;
-          const mergedProviders = { ...existingProviders, ...incomingProviders };
+          const mergedProviders = { ...existingProviders };
+          for (const [key, value] of Object.entries(incomingProviders)) {
+            if (typeof value === 'string' && /^\[REDACTED:/.test(value)) continue;
+            mergedProviders[key] = value;
+          }
           await chrome.storage.local.set({ np_provider_configs: mergedProviders });
           totalUpdated += Object.keys(incomingProviders).length;
         }

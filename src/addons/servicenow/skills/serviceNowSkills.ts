@@ -45,7 +45,7 @@ export async function registerServiceNowSkills(): Promise<void> {
     try {
       await promptManager.createTemplate(template);
     } catch {
-      // Template already exists — skip silently (idempotent registration)
+      continue;
     }
   }
 }

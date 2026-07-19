@@ -8,7 +8,7 @@ import { ToolsIcon } from '../../components/sider/icons';
 
 export function registerServiceNowAddon(): void {
   // Register prompt templates
-  registerServiceNowSkills();
+  registerServiceNowSkills().catch(() => {});
 
   // Register pages with existing registries (per D-01: pages go through page registries)
   sidepanelPageRegistry.register({

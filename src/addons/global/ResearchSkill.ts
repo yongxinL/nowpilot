@@ -66,20 +66,15 @@ export class ResearchSkill {
    * or an error result when the MCP call fails.
    */
   async execute(query: string): Promise<ResearchResult> {
-    const available = await this.isAvailable();
-
-    if (!available) {
-      // Per D-13: Graceful degradation
+    if (!this.#config.mcpClient) {
       return {
         type: 'unavailable',
-        message:
-          'Configure a web search tool in Options → MCP Servers to enable research.',
+        message: 'Configure a web search tool in Options → MCP Servers to enable research.',
       };
     }
 
     try {
-      // Find first matching search tool and execute
-      const { tools } = await this.#config.mcpClient!.listTools();
+      const { tools } = await this.#config.mcpClient.listTools();
       const searchTool = tools.find((t) =>
         SEARCH_TOOL_PATTERNS.some(
           (p) => p.test(t.name) || p.test(t.description ?? ''),
@@ -90,7 +85,7 @@ export class ResearchSkill {
         return { type: 'unavailable', message: 'No search tool found.' };
       }
 
-      const results = await this.#config.mcpClient!.callTool(searchTool.name, {
+      const results = await this.#config.mcpClient.callTool(searchTool.name, {
         query,
       });
       return { type: 'results', data: results };

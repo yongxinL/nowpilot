@@ -135,7 +135,7 @@ export class GQMDataService {
     return entity;
   }
 
-  async getChildren(parentId: string): Promise<GQMNode[]> {
+  async getChildren(parentId: string | null): Promise<GQMNode[]> {
     const db = await this.#getGqmDB();
     const tx = db.transaction(GQM_STORE, 'readonly');
     const all = (await tx.store.getAll()) as GQMNode[];

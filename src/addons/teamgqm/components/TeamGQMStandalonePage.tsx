@@ -22,7 +22,7 @@ export function TeamGQMStandalonePage() {
   async function loadGoals() {
     setLoading(true);
     try {
-      const allNodes = await gqmDataService.getChildren('');
+      const allNodes = await gqmDataService.getChildren(null);
       const goalNodes = allNodes.filter(n => n.type === 'goal') as Goal[];
       setGoals(goalNodes);
 

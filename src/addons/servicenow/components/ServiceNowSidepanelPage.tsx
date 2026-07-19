@@ -109,8 +109,8 @@ export function ServiceNowSidepanelPage() {
         />
       )}
 
-      {/* Session loading error */}
-      {error && loading === false && !session && (
+      {/* Error after session was established */}
+      {session && error && (
         <Alert
           type="error"
           message="Connection Error"
