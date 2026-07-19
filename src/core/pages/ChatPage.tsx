@@ -72,7 +72,6 @@ import { PinTabBar } from '../../components/sidepanel/PinTabBar';
 import { WorkspaceStatusBar } from '../../components/common/WorkspaceStatusBar';
 import { WelcomeCards } from '../../components/chat/WelcomeCards';
 import { BrandedHeader } from '../../components/chat/BrandedHeader';
-import { TemplateBrowser } from '../../components/chat/TemplateBrowser';
 import { InlineConfirmationCard } from '../../components/chat/InlineConfirmationCard';
 import { ConversationClosure } from '../../components/chat/ConversationClosure';
 import { QuickActionChips } from '../../components/chat/QuickActionChips';
@@ -2075,12 +2074,6 @@ export function ChatPage() {
               autoSize={{ minRows: 4, maxRows: 8 }}
               style={{ minHeight: '120px' }}
               header={attachmentHeader}
-              // RICH-I-10: Template browser icon in Sender prefix area
-              prefix={
-                <TemplateBrowser
-                  onInsert={(tpl) => setDraft((prev) => prev + tpl)}
-                />
-              }
               // RICH-H-16: Image paste handler — appends clipboard images to attachment strip
               onPasteFile={(files: FileList) => {
                 const imageFiles = Array.from(files).filter((f) => f.type.startsWith('image/'));
