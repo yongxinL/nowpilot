@@ -4,6 +4,7 @@ import { useProviderStore } from '../stores/providerStore';
 import { useTheme } from '../../hooks/useTheme';
 import { modelDiscovery, getDiscoveryEndpoint, discoveredToModelEntries } from '../ai/providers/modelDiscovery';
 import { providerRegistry } from '../ai/providers/ProviderRegistry';
+import { MeetNowPilotStep } from '../../components/onboarding/MeetNowPilotStep';
 
 interface OnboardingModalProps {
   open: boolean;
@@ -319,7 +320,7 @@ export function OnboardingModal({ open, onComplete }: OnboardingModalProps) {
       >
         {/* Header circles */}
         <div style={{ display: 'flex', justifyContent: 'center', gap: '4px', marginBottom: '16px' }}>
-          {[1, 2, 3, 4, 5, 6, 7, 8].map((num) => {
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => {
             const isChecked = num < step + 1;
             const isActive = num === step + 1;
             if (isChecked) {
@@ -393,138 +394,7 @@ export function OnboardingModal({ open, onComplete }: OnboardingModalProps) {
         {/* Content body */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
           {step === 0 && (
-            <div style={{ textAlign: 'center' }}>
-              {/* Logo icon */}
-              <div
-                style={{
-                  width: '64px',
-                  height: '64px',
-                  backgroundColor: '#e0582e',
-                  borderRadius: '16px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  margin: '0 auto 16px auto',
-                  boxShadow: '0 6px 15px -4px rgba(224, 88, 46, 0.25)'
-                }}
-              >
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 3C12 8.5 15.5 12 21 12C15.5 12 12 15.5 12 21C12 15.5 8.5 12 3 12C8.5 12 12 8.5 12 3Z" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </div>
-
-              {/* Title */}
-              <h1
-                style={{
-                  fontSize: '20px',
-                  fontWeight: 800,
-                  color: token.colorText,
-                  marginBottom: '6px',
-                  lineHeight: '1.25'
-                }}
-              >
-                Welcome to NowPilot
-              </h1>
-
-              {/* Subtitle */}
-              <p
-                style={{
-                  fontSize: '12px',
-                  color: token.colorTextSecondary,
-                  maxWidth: '320px',
-                  margin: '0 auto 16px auto',
-                  lineHeight: '1.5'
-                }}
-              >
-                Your unified ServiceNow sidekick. Stream AI replies, search the codebase, analyze cases — all from the side panel.
-              </p>
-
-              {/* Feature blocks */}
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '8px',
-                  maxWidth: '340px',
-                  margin: '0 auto 20px auto'
-                }}
-              >
-                {[
-                  { icon: <RobotIcon />, text: '5 AI providers' },
-                  { icon: <SparklesIcon />, text: 'MCP tools & skills' },
-                  { icon: <ArrowUpRightIcon />, text: 'In-page ServiceNow tools' }
-                ].map((item, idx) => (
-                  <div
-                    key={idx}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '10px',
-                      padding: '8px 12px',
-                      backgroundColor: token.colorBgLayout,
-                      color: token.colorText,
-                      fontWeight: 600,
-                      fontSize: '12px',
-                      borderRadius: '8px',
-                      border: '1px solid ' + token.colorBorderSecondary,
-                      boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-                      transition: 'transform 0.2s',
-                      transform: hoveredEl === `feat-${idx}` ? 'scale(1.01)' : 'scale(1)',
-                      cursor: 'pointer'
-                    }}
-                    onMouseEnter={() => setHoveredEl(`feat-${idx}`)}
-                    onMouseLeave={() => setHoveredEl(null)}
-                  >
-                    {item.icon}
-                    <span>{item.text}</span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Footer Button & Links */}
-              <button
-                onClick={handleNext}
-                style={{
-                  width: '100%',
-                  backgroundColor: hoveredEl === 'get-started' ? '#c6471e' : '#e0582e',
-                  color: '#ffffff',
-                  padding: '10px 16px',
-                  borderRadius: '10px',
-                  fontWeight: 'bold',
-                  fontSize: '14px',
-                  border: 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '4px',
-                  boxShadow: '0 6px 12px -3px rgba(224, 88, 46, 0.2)',
-                  transition: 'background-color 0.2s'
-                }}
-                onMouseEnter={() => setHoveredEl('get-started')}
-                onMouseLeave={() => setHoveredEl(null)}
-              >
-                Get started <span style={{ fontSize: '16px', fontWeight: 300 }}>&rarr;</span>
-              </button>
-              <button
-                onClick={handleComplete}
-                style={{
-                  display: 'block',
-                  margin: '12px auto 0 auto',
-                  color: hoveredEl === 'skip-0' ? '#475569' : '#94a3b8',
-                  backgroundColor: 'transparent',
-                  border: 'none',
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  transition: 'color 0.2s'
-                }}
-                onMouseEnter={() => setHoveredEl('skip-0')}
-                onMouseLeave={() => setHoveredEl(null)}
-              >
-                Skip for now
-              </button>
-            </div>
+            <MeetNowPilotStep onContinue={() => setStep(1)} onSkip={handleComplete} />
           )}
 
           {step === 1 && (
