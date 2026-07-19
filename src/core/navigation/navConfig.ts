@@ -7,6 +7,7 @@ import {
   ToolsIcon,
   TaskIcon,
 } from '../../components/sider/icons';
+import { sidepanelPageRegistry } from '../registries/SidepanelPageRegistry';
 
 export interface CorePageSpec {
   id: string;
@@ -33,8 +34,11 @@ const groupOverrides: Record<string, { group: 'core' | 'addons' | 'footer'; surf
   tasks: { group: 'addons', surfaces: ['sidepanel', 'standalone'] },
 };
 
+/** Core page IDs used to filter add-on pages from page registries. */
+const CORE_PAGE_IDS = new Set(['chat', 'notes', 'tools', 'tasks', 'options']);
+
 export function buildNavConfig(): NowPilotNavItem[] {
-  return corePages.map<NowPilotNavItem>((page) => {
+  const coreNavItems = corePages.map<NowPilotNavItem>((page) => {
     const override = groupOverrides[page.id] ?? { group: 'addons' as const, surfaces: ['sidepanel', 'standalone'] as ('sidepanel' | 'standalone')[] };
     return {
       id: page.id,
@@ -50,6 +54,22 @@ export function buildNavConfig(): NowPilotNavItem[] {
       showArrowInStandaloneExpanded: override.group === 'addons',
     };
   });
+
+  // Build nav items from registered add-on pages
+  const addonPages = sidepanelPageRegistry.getAll().filter((p) => !CORE_PAGE_IDS.has(p.id));
+  const addonNavItems: NowPilotNavItem[] = addonPages.map((page) => ({
+    id: page.id,
+    label: page.label,
+    icon: page.icon ? React.createElement(page.icon) : undefined,
+    group: 'addons' as const,
+    order: page.order ?? 99,
+    surfaces: ['sidepanel', 'standalone'],
+    routeId: page.id,
+    tooltip: page.label,
+    showArrowInStandaloneExpanded: true,
+  }));
+
+  return [...coreNavItems, ...addonNavItems];
 }
 
 export const navConfig: ReadonlyArray<NowPilotNavItem> = buildNavConfig();
