@@ -188,3 +188,4 @@ package-lock.json
 .output/
 .output/
 ruvector.db
+references/
