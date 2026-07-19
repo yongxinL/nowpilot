@@ -16,7 +16,7 @@ NowPilot v0.1 is a privacy-first, extensible Chrome MV3 AI assistant. The 10-pha
 - [x] **Phase 7.1: LLM-Wiki & Filesystem Sync** — Auto-tagging, RAG Q&A, category system, one-way filesystem backup, notes maintenance (completed 2026-07-17)
 - [x] **Phase 7.2: Page Extraction & Pin Tab** — Content scripts extract page context, PageContextBridge, pin-tab MCP tool, workspace wiring (completed 2026-07-17)
 - [x] **Phase 7.3: RICH Design Core** — 17 P0 must-haves: AI persona profile, welcome cards, context-aware quick actions, clarification chips, follow-up suggestions, code block actions, richer stage indicators, branded header
-- [ ] **Phase 7.4: RICH Design Enhance** — 22 P1 should-haves: persona onboarding, split-pane layout, template browser, inline confirmation, personalized greeting, image paste
+- [x] **Phase 7.4: RICH Design Enhance** — 22 P1 should-haves: persona onboarding, split-pane layout, template browser, inline confirmation, personalized greeting, image paste (completed 2026-07-19)
 - [ ] **Phase 7.5: RICH Design Polish** — 21 P2 nice-to-haves: persona editor, @mention syntax, voice input, TL;DR toggle, step checklists, educational tips
 - [ ] **Phase 8: Add-ons and Content Script Runtime (Extraction-Only)** — Write/TeamGQM/ServiceNow add-ons, content scripts, data portability
 - [ ] **Phase 9: Hardening and Release** — Performance tests, isolation verification, bundle checks, production release
@@ -455,21 +455,23 @@ Plans:
 
 **Wave 1** — Data Layer + Stateless Components (parallel)
 
-- [ ] 07.4-01-PLAN.md — Core Data Extensions: PreferenceMemoryStore persona fields, PersonaService.getActiveProfile(), PermissionService ConfirmationLevel + ConfirmationPolicy (RICH-R-05, RICH-C-13, RICH-R-06/08/09/10)
-- [ ] 07.4-02-PLAN.md — Right Pane System: RightPaneStore, RightPane container, PaneToggle, ContextTab, NotesTab, ToolsTab (RICH-H-11, RICH-H-12)
-- [ ] 07.4-03-PLAN.md — Template & Greeting Systems: builtinTemplates displayCategory, TemplateBrowserService, TemplateBrowser, GreetingService, useGreeting (RICH-I-09, RICH-I-10, RICH-C-14, RICH-I-03, RICH-I-02, RICH-I-08)
-- [ ] 07.4-04-PLAN.md — Chat Interaction Widgets: MeetNowPilotStep, InlineConfirmationCard, ConversationClosure, useConversationClosure, StructuredOutputActions (RICH-R-03, RICH-C-12, RICH-C-09, RICH-H-05)
+- [x] 07.4-01-PLAN.md — Core Data Extensions: PreferenceMemoryStore persona fields, PersonaService.getActiveProfile(), PermissionService ConfirmationLevel + ConfirmationPolicy (RICH-R-05, RICH-C-13, RICH-R-06/08/09/10)
+- [x] 07.4-02-PLAN.md — Right Pane System: RightPaneStore, RightPane container, PaneToggle, ContextTab, NotesTab, ToolsTab (RICH-H-11, RICH-H-12)
+- [x] 07.4-03-PLAN.md — Template & Greeting Systems: builtinTemplates displayCategory, TemplateBrowserService, TemplateBrowser, GreetingService, useGreeting (RICH-I-09, RICH-I-10, RICH-C-14, RICH-I-03, RICH-I-02, RICH-I-08)
+- [x] 07.4-04-PLAN.md — Chat Interaction Widgets: MeetNowPilotStep, InlineConfirmationCard, ConversationClosure, useConversationClosure, StructuredOutputActions (RICH-R-03, RICH-C-12, RICH-C-09, RICH-H-05)
 
 **Wave 2** — Integration (parallel)
 
-- [ ] 07.4-05-PLAN.md — Brand UI + Agent + Onboarding: OnboardingModal MeetNowPilotStep, AgentPage ThoughtChain text, BrandedHeader greeting props, ChatMessage first-message branding + Save-to-note promotion (RICH-R-03, RICH-H-03, RICH-H-02, RICH-H-06, RICH-I-03)
-- [ ] 07.4-06-PLAN.md — StandaloneRoot Integration: Right pane column + responsive Drawer degradation (RICH-H-11, RICH-H-12)
+- [x] 07.4-05-PLAN.md — Brand UI + Agent + Onboarding: OnboardingModal MeetNowPilotStep, AgentPage ThoughtChain text, BrandedHeader greeting props, ChatMessage first-message branding + Save-to-note promotion (RICH-R-03, RICH-H-03, RICH-H-02, RICH-H-06, RICH-I-03)
+- [x] 07.4-06-PLAN.md — StandaloneRoot Integration: Right pane column + responsive Drawer degradation (RICH-H-11, RICH-H-12)
 
 **Wave 3** — ChatPage Assembly
 
-- [ ] 07.4-07-PLAN.md — ChatPage Integration: personalized greeting, TemplateBrowser prefix, image paste, InlineConfirmationCard, ConversationClosure, first-message branding wiring (RICH-C-14, RICH-I-10, RICH-H-16, RICH-C-12, RICH-C-09, RICH-H-05, RICH-I-03)
+- [x] 07.4-07-PLAN.md — ChatPage Integration: personalized greeting, TemplateBrowser prefix, image paste, InlineConfirmationCard, ConversationClosure, first-message branding wiring (RICH-C-14, RICH-I-10, RICH-H-16, RICH-C-12, RICH-C-09, RICH-H-05, RICH-I-03)
 
 **UI hint**: yes
+
+**Verification:**
 
 ### Phase 7.5: RICH Design Polish
 
@@ -485,7 +487,22 @@ Plans:
   5. Educational tips appear progressively: `/` command hint after 3 messages, Agent mode hint on 5th session — all tracked via UserMemoryStore
   6. Markdown tables have sticky headers and horizontal scroll; stage indicators show "Still working…" with ETA on slow streams
 
-**Plans**: TBD
+**Plans**: 7 plans
+Plans:
+
+**Wave 1** — Foundation (data layer + core services)
+- [ ] 07.5-01-PLAN.md — Data Foundation: PreferenceMemoryStore migration, PersonaService, ContextOptimizerInput, AttachmentModel (RICH-R-04/data, RICH-H-07/type)
+- [ ] 07.5-02-PLAN.md — Reference System Core: ReferenceResolver registry + 3 resolvers (RICH-H-15/core)
+- [ ] 07.5-03-PLAN.md — Supporting Data Layer: VoiceInput hook, PromptStarter data, EduTips data, UserMemoryStore extension (RICH-H-17/hook, RICH-I-11/12/13/14/data)
+
+**Wave 2** — UI Components (presentational)
+- [ ] 07.5-04-PLAN.md — Markdown Enhancement: TL;DR toggle, Step Checklists, Sticky Tables, StageIndicator (RICH-H-18, H-19, H-20, H-09, H-10)
+- [ ] 07.5-05-PLAN.md — Sender Enhancement UI: @mention chips, Voice button, EduTips banner, QuickAction "More" (RICH-H-15/UI, H-17/UI, I-07, I-12/13/14/UI)
+- [ ] 07.5-06-PLAN.md — Options UI: Persona editor, Memory browser, OptionsRoot nav (RICH-R-04/UI, RICH-I-11/UI)
+
+**Wave 3** — Integration
+- [ ] 07.5-07-PLAN.md — Conversation Feedback/Save + Greeting + Notes Q&A + ChatPage Integration (RICH-C-10, C-11, C-15, H-14 + all cross-cutting)
+
 **UI hint**: yes
 
 ### Phase 8: Add-ons & Data Portability
@@ -543,6 +560,6 @@ Phase 7 depends on both Phase 5 and Phase 6 being complete, acting as the conver
 | 7.2. Page Extraction & Pin Tab | 4/4 | Complete   | 2026-07-17 |
 | 7.3. RICH Design Core | 4/4 | ✓ Complete | 2026-07-19 |
 | 7.4. RICH Design Enhance | 0/7 | Planned | 2026-07-19 |
-| 7.5. RICH Design Polish | 0/TBD | Not started | - |
+| 7.5. RICH Design Polish | 0/7 | Planned | - |
 | 8. Add-ons and Content Script Runtime (Extraction-Only) | 0/TBD | Not started | - |
 | 9. Hardening and Release | 0/TBD | Not started | - |
