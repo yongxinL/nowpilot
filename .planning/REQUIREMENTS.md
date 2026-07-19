@@ -159,8 +159,8 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **ADDON-03**: ServiceNow add-on — CaseAnalyzerSkill, CatchUpSkill, SentimentSkill
 - [ ] **ADDON-04**: ServiceNow add-on — Side Panel page (quick case-context view + skill launcher)
 - [ ] **ADDON-05**: ServiceNow add-on — Full App page (case table, comments, work notes)
-- [ ] **ADDON-06**: Write add-on — Rewrite, Summarize, Draft customer update, Draft internal note, Explain, Action plan
-- [ ] **ADDON-07**: Write add-on — Side Panel page with quick actions
+- [x] **ADDON-06**: Write add-on — Rewrite, Summarize, Draft customer update, Draft internal note, Explain, Action plan
+- [x] **ADDON-07**: Write add-on — Side Panel page with quick actions
 - [ ] **ADDON-08**: TeamGQM add-on — Side Panel (compact digest) + Full App (full workspace)
 - [ ] **ADDON-09**: ResearchSkill global add-on — web search via MCP or built-in tool
 - [ ] **ADDON-10**: Core-addon boundary enforced — core never imports from addons
@@ -330,8 +330,8 @@ Requirements for initial release. Each maps to roadmap phases.
 | ADDON-03 | Phase 8 | Pending |
 | ADDON-04 | Phase 8 | Pending |
 | ADDON-05 | Phase 8 | Pending |
-| ADDON-06 | Phase 8 | Pending |
-| ADDON-07 | Phase 8 | Pending |
+| ADDON-06 | Phase 8 | Complete |
+| ADDON-07 | Phase 8 | Complete |
 | ADDON-08 | Phase 8 | Pending |
 | ADDON-09 | Phase 8 | Pending |
 | ADDON-10 | Phase 1 | Pending |

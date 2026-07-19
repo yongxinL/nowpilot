@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 8
 current_phase_name: add-ons-data-portability
 status: executing
-stopped_at: Completed 08-01-PLAN.md
-last_updated: "2026-07-19T12:01:38.383Z"
+stopped_at: Completed 08-02-PLAN.md
+last_updated: "2026-07-19T12:05:25.034Z"
 last_activity: 2026-07-19
 last_activity_desc: Phase 8 execution started
 progress:
   total_phases: 14
   completed_phases: 11
   total_plans: 88
-  completed_plans: 77
+  completed_plans: 78
   percent: 79
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-10)
 ## Current Position
 
 Phase: 8 (add-ons-data-portability) — EXECUTING
-Plan: 2 of 9
+Plan: 3 of 9
 Status: Ready to execute
 Last activity: 2026-07-19 — Phase 8 execution started
 
@@ -93,6 +93,7 @@ Progress: [███████░░░] 79% (11/14 phases)
 | Phase 07.2-page-extraction-pin-tab P04 | 5min | 3 tasks | 6 files |
 | Phase 07.2-page-extraction-pin-tab P03 | 5min | 3 tasks | 9 files |
 | Phase 08 P01 | 2 min | 2 tasks | 3 files |
+| Phase 08 P02 | 1 min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -718,6 +719,10 @@ status: complete
 - [Phase ?]: Surface-adaptive ChatPage: inline sidebar for Full App, Drawer for Side Panel — Conserves space in Side Panel while providing full inline sidebar in Full App
 - [Phase 07.1-llm-wiki-filesystem-sync]: 50ms trailing-edge debounce for sync() prevents rapid-save burst issues (Pitfall 5) — 50ms trailing-edge debounce ensures last save wins during rapid note saves; Research Pitfall 5 mitigation
 - [Phase 07.2-page-extraction-pin-tab]: WXT content_scripts manifest auto-generation eliminates need for explicit block — WXT auto-generates content_scripts from defineContentScript() entrypoints
+- [Phase 08]: 6 Write skills registered as PromptManager templates with displayCategory: Writing, not as Agent tools (D-07)
+- [Phase 08]: WritePage uses vertical Card layout with block buttons for compact Side Panel per D-09
+- [Phase 08]: Clicking a skill populates Sender via workspaceStore.setDraft(write, template) — no Full App page per D-09
+- [Phase 08]: registerWriteTemplates wraps createTemplate in try/catch for idempotent re-registration
 
 ## Performance
 
@@ -1089,6 +1094,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-19T12:01:38.375Z
-Stopped at: Completed 08-01-PLAN.md
+Last session: 2026-07-19T12:05:25.024Z
+Stopped at: Completed 08-02-PLAN.md
 Resume file: None
