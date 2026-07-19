@@ -64,4 +64,60 @@ describe('PreferenceMemoryStore', () => {
     expect(result.constructor).toBe(Object);
     expect(Object.prototype.toString.call(result)).toBe('[object Object]');
   });
+
+  describe('PreferenceMemoryStore — persona/displayName fields (Phase 7.4)', () => {
+    it('preferenceSchema.parse() accepts object with only the 6 existing fields (backward compat)', () => {
+      const parsed = preferenceSchema.safeParse({
+        responseStyle: 'concise',
+        preferredLanguage: 'auto',
+        preferStructuredOutput: false,
+        allowCloudFallbackFromLocal: false,
+        defaultProviderId: '',
+        toolAutonomy: 'manual',
+      });
+      expect(parsed.success).toBe(true);
+    });
+
+    it('preferenceSchema.parse() accepts object with displayName, aiName, aiTone, responseBrevity as optional/undefined', () => {
+      const parsed = preferenceSchema.safeParse({
+        responseStyle: 'concise',
+        preferredLanguage: 'auto',
+        preferStructuredOutput: false,
+        allowCloudFallbackFromLocal: false,
+        defaultProviderId: '',
+        toolAutonomy: 'manual',
+        displayName: 'George',
+        aiName: 'TestBot',
+        aiTone: 'casual',
+        responseBrevity: 'detailed',
+      });
+      expect(parsed.success).toBe(true);
+    });
+
+    it('usePreferenceStore initial state includes displayName=undefined, aiName=undefined, aiTone=undefined, responseBrevity=undefined', () => {
+      const state = usePreferenceStore.getState();
+      expect((state as any).displayName).toBeUndefined();
+      expect((state as any).aiName).toBeUndefined();
+      expect((state as any).aiTone).toBeUndefined();
+      expect((state as any).responseBrevity).toBeUndefined();
+    });
+
+    it('preferenceMemoryStore.get() passes new fields through validation gate and returns them in result', () => {
+      // Set a displayName first
+      usePreferenceStore.getState().setPreferences({ displayName: 'George' } as any);
+      const result = preferenceMemoryStore.get();
+      expect((result as any).displayName).toBe('George');
+    });
+
+    it('setPreferences({ displayName: "George" }) updates only displayName; other fields unchanged', () => {
+      // Reset and set displayName
+      usePreferenceStore.getState().setPreferences({ displayName: 'George' } as any);
+      const state = usePreferenceStore.getState();
+      expect((state as any).displayName).toBe('George');
+      // Other fields remain at defaults
+      expect((state as any).aiName).toBeUndefined();
+      expect((state as any).aiTone).toBeUndefined();
+      expect((state as any).responseBrevity).toBeUndefined();
+    });
+  });
 });
