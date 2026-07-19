@@ -29,19 +29,19 @@ Everything runs locally against user-configured providers. No data leaves the us
 - [ ] **12 built-in MCP tools + external MCP client** — StreamableHTTP transport
 - [ ] **AITransactionLog** — telemetry, prompt traces, tool traces, provider traces, TraceRedactor
 
-- [ ] **Side Panel shell** — Chat, Agent, Write (add-on), TeamGQM (add-on), Open Full App
-- [ ] **Full App shell** — Chat, Agent, Notes, TeamGQM, Options (AntD Layout with Sider nav)
-- [ ] **Shared WorkspaceStore** — cross-surface Zustand store, BroadcastBus sync, WorkspaceRouter handoff
-- [ ] **Content scripts (extraction-only)** — PageContextBridge, SPANavigationWatcher, no UI rendering
-- [ ] **ServiceNow add-on** — data extraction, side-panel/full-app UI only, no page injection
-- [ ] **Write add-on** — side-panel primary, optional full-app page
-- [ ] **TeamGQM add-on** — both surfaces
 - [ ] **Notes** — list, editor, wikilinks, backlinks, graph (Full App only)
-- [ ] **Options** — Providers, Models, MCP, Prompts, Slash, Diagnostics, Memory, Import/Export, FeatureFlags, AddonSettings
 - [ ] **First-run onboarding**
 - [ ] **Cmd+K command palette** — both surfaces
-- [ ] **Data export/import**
-- [ ] **Add-on architecture** — SidePanelPageRegistry, FullAppPageRegistry, AddonRegistry
+
+### Validated in Phase 8
+
+- [x] **Add-on architecture** — AddonRegistry with typed skill/page/settings registrations, enable/disable gating to chrome.storage.local *(Phase 8)*
+- [x] **ServiceNow add-on** — CookieSessionStore, SessionAdapter, TableClient, 3 skills, Side Panel + Full App pages *(Phase 8)*
+- [x] **Write add-on** — 6 PromptTemplate skills, Side Panel page *(Phase 8)*
+- [x] **TeamGQM add-on** — Goal/Question/Metric data model, GQMDataService, read-only + editable tree pages *(Phase 8)*
+- [x] **ResearchSkill** — MCP-based web search with regex detection and graceful degradation *(Phase 8)*
+- [x] **Data export/import** — atomic WriteJournal export, TraceRedactor credential redaction, deterministic timestamp-based merge *(Phase 8)*
+- [x] **Add-on integration** — registration in both surfaces, nav items, enable/disable toggles, slash commands *(Phase 8)*
 
 ### Out of Scope
 
@@ -104,4 +104,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-12 (Phase 3 complete)**
+*Last updated: 2026-07-19 (Phase 8 complete)**
