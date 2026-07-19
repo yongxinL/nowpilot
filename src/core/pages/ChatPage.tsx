@@ -750,6 +750,11 @@ export function ChatPage() {
     setDraft(promptText);
   }, [setDraft]);
 
+  // First assistant message index for first-message branding (D-28)
+  const firstAssistantIndex = useMemo(() => {
+    return bubbleItems.findIndex((item) => item.role === 'assistant');
+  }, [bubbleItems]);
+
   const handleConfirmDelete = () => {
     if (deletingConv) {
       deleteConversation(deletingConv.id);
@@ -1351,9 +1356,10 @@ export function ChatPage() {
               </div>
             ) : (
               <div style={{ padding: '16px 0', display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {bubbleItems.map((item) => {
+                {bubbleItems.map((item, index) => {
                   const isUser = item.role === 'user';
                   const isEditing = editingMessageId === item.key;
+                  const isFirstAssistant = item.role === 'assistant' && index === firstAssistantIndex;
                   
                   return (
                     <div
@@ -1456,6 +1462,15 @@ export function ChatPage() {
                         >
                           <Bubble
                             placement={isUser ? 'end' : 'start'}
+                            // D-28: First-message branding — BunnyAvatar + branded header on first assistant message only
+                            avatar={isFirstAssistant ? (
+                              <div style={{ border: '2px solid var(--ant-color-primary)', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff' }}>
+                                <BunnyAvatar />
+                              </div>
+                            ) : undefined}
+                            header={isFirstAssistant ? (
+                              <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--ant-color-primary)' }}>NowPilot</div>
+                            ) : undefined}
                             content={
                               isUser ? (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -1558,6 +1573,21 @@ export function ChatPage() {
                                     <FollowUpAction
                                       suggestions={item.followUpSuggestions}
                                       onSelect={(text) => send(text)}
+                                    />
+                                  ) : null}
+                                  {/* D-17: InlineConfirmationCard renders in Bubble when tool confirmation is present */}
+                                  {!isUser && item.role === 'assistant' && item.metadata?.confirmation ? (
+                                    <InlineConfirmationCard
+                                      actionDescription={item.metadata.confirmation.description}
+                                      rationale={item.metadata.confirmation.rationale}
+                                      onProceed={() => {
+                                        console.log('[ChatPage] InlineConfirmation: Proceed', item.metadata.confirmation);
+                                      }}
+                                      onCancel={() => {
+                                        console.log('[ChatPage] InlineConfirmation: Cancelled', item.metadata.confirmation);
+                                      }}
+                                      state={item.metadata.confirmation.state || 'pending'}
+                                      actionSummary={item.metadata.confirmation.summary}
                                     />
                                   ) : null}
                                 </>
@@ -1718,6 +1748,15 @@ export function ChatPage() {
                 })}
               </div>
             )
+          )}
+          {/* D-25: ConversationClosure appears after idle */}
+          {closureState.showPrompt && (
+            <ConversationClosure
+              onFeedback={(helpful) => {
+                console.log('[ChatPage] Conversation feedback:', helpful ? 'helpful' : 'not helpful');
+                closureState.dismiss();
+              }}
+            />
           )}
         </div>
 
