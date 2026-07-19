@@ -56,13 +56,13 @@ created: 2026-07-19
 
 ## Wave 0 Requirements
 
-- [ ] `src/core/registries/__tests__/AddonRegistry.test.ts` — stubs for ADDON-01
-- [ ] `src/core/session/__tests__/CookieSessionStore.test.ts` — stubs for ADDON-02
-- [ ] `src/addons/servicenow/__tests__/ServiceNowSessionAdapter.test.ts` — stubs for ADDON-03
-- [ ] `src/addons/write/__tests__/writeSkills.test.ts` — stubs for ADDON-04
-- [ ] `src/features/data-portability/__tests__/exportSanitization.test.ts` — stubs for DATA-01
-- [ ] `src/features/data-portability/__tests__/importMerge.test.ts` — stubs for DATA-02
-- [ ] `src/addons/research/__tests__/ResearchSkill.test.ts` — stubs for ADDON-09
+- [ ] `tests/core/addons/AddonRegistry.test.ts` — stubs for ADDON-01
+- [ ] `tests/addons/servicenow/CookieSessionStore.test.ts` — stubs for ADDON-02
+- [ ] `tests/addons/servicenow/SessionAdapter.test.ts` — stubs for ADDON-02
+- [ ] `tests/addons/write/writeSkills.test.ts` — stubs for ADDON-06
+- [ ] `tests/core/data/exportSanitization.test.ts` — stubs for DATA-01
+- [ ] `tests/core/data/importMerge.test.ts` — stubs for DATA-02
+- [ ] `tests/addons/global/ResearchSkill.test.ts` — stubs for ADDON-09
 
 ---
 

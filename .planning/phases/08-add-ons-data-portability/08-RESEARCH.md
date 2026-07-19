@@ -581,7 +581,7 @@ async function isSearchAvailable(client: MCPClient): Promise<boolean> {
 | A3 | IndexedDB readonly transaction across multiple stores provides consistent snapshot | Data Export | May need explicit transaction coordination; sequential reads could produce inconsistent export |
 | A4 | Write add-on skills use PromptManager templates with `displayCategory: 'Writing'` and follow existing builtin template structure | Write Add-on | Would need different integration if PromptManager template format doesn't support addon-specific categories or variables |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **MCP SDK availability from Phase 7**
    - What we know: AGNT-03 requires `@modelcontextprotocol/sdk` for StreamableHTTP transport. Phase 8 depends on Phase 7.
