@@ -47,22 +47,25 @@ describe('ConversationClosure', () => {
   });
 
   // Test 2: Clicking thumbs up calls onFeedback with true
-  it('clicking thumbs up calls onFeedback(true)', () => {
+  it('clicking thumbs up calls onFeedback(true)', async () => {
     const onFeedback = vi.fn();
     render(<ConversationClosure onFeedback={onFeedback} />);
 
     const thumbsUp = screen.getByRole('button', { name: 'This was helpful' });
     fireEvent.click(thumbsUp);
+    // Wait for async handler to complete
+    await new Promise((r) => setTimeout(r, 50));
     expect(onFeedback).toHaveBeenCalledWith(true);
   });
 
   // Test 3: Clicking thumbs down calls onFeedback with false
-  it('clicking thumbs down calls onFeedback(false)', () => {
+  it('clicking thumbs down calls onFeedback(false)', async () => {
     const onFeedback = vi.fn();
     render(<ConversationClosure onFeedback={onFeedback} />);
 
     const thumbsDown = screen.getByRole('button', { name: 'This was not helpful' });
     fireEvent.click(thumbsDown);
+    await new Promise((r) => setTimeout(r, 50));
     expect(onFeedback).toHaveBeenCalledWith(false);
   });
 });
