@@ -20,29 +20,31 @@ vi.stubGlobal('chrome', {
 });
 
 // ---------------------------------------------------------------------------
-// Mock ResizeObserver
+// Mock ResizeObserver — configurable default width
 // ---------------------------------------------------------------------------
 
-const resizeObserverCallbacks = new Map<Element, (entry: ResizeObserverEntry) => void>();
+let mockContainerWidth = 1200;
+const resizeObserverInstances: { callback: ResizeObserverCallback }[] = [];
 
 vi.stubGlobal('ResizeObserver', class {
   constructor(callback: ResizeObserverCallback) {
     this.callback = callback;
+    resizeObserverInstances.push({ callback });
   }
   private callback: ResizeObserverCallback;
 
   observe(target: Element) {
-    // Default width: 1200px (above breakpoint)
-    const entry = { contentRect: { width: 1200 } } as ResizeObserverEntry;
-    resizeObserverCallbacks.set(target, () => {
-      this.callback([entry], this as unknown as ResizeObserver);
-    });
+    const entry = { contentRect: { width: mockContainerWidth } } as ResizeObserverEntry;
     this.callback([entry], this as unknown as ResizeObserver);
   }
 
   unobserve() {}
   disconnect() {}
 });
+
+function setMockContainerWidth(width: number) {
+  mockContainerWidth = width;
+}
 
 // ---------------------------------------------------------------------------
 // Mock stores
@@ -192,6 +194,7 @@ function renderStandalone(overrides: {
 }
 
 function resetMocks() {
+  mockContainerWidth = 1200;
   mockRightPaneState.visible = true;
   mockRightPaneState.width = 'compact';
   mockRightPaneState.activeTab = 'context';
@@ -250,5 +253,23 @@ describe('StandaloneRoot — Right Pane Integration', () => {
   it('renders right pane for "agent" page (D-08)', () => {
     renderStandalone({ initialActiveId: 'agent' });
     expect(screen.getByTestId('right-pane')).toBeTruthy();
+  });
+
+  it('renders antd Drawer when container width < 720px (Pitfall 5)', () => {
+    setMockContainerWidth(600);
+    renderStandalone();
+    // In Drawer mode, the inline right-pane should NOT be present
+    expect(screen.queryByTestId('pane-toggle')).toBeNull();
+    // The Drawer contains a RightPane — check it renders via the Drawer portal
+    const rightPanes = screen.getAllByTestId('right-pane');
+    expect(rightPanes.length).toBe(1);
+  });
+
+  it('hides right pane completely when options page on small screen', () => {
+    setMockContainerWidth(600);
+    renderStandalone({ initialActiveId: 'options' });
+    // Neither inline pane nor Drawer should be shown for options page
+    expect(screen.queryByTestId('pane-toggle')).toBeNull();
+    expect(screen.queryByTestId('right-pane')).toBeNull();
   });
 });
