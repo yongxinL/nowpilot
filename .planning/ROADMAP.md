@@ -518,7 +518,27 @@ Plans:
   4. `/research` command runs via ResearchSkill (MCP web-search or built-in tool; graceful failure if no search tool connected)
   5. Data export produces sanitized JSON/ZIP (no API keys); import merges with conflict resolution
 
-**Plans**: TBD
+**Plans**: 9 plans
+Plans:
+
+**Wave 1** — Foundation (parallel)
+
+- [ ] 08-01-PLAN.md — AddonRegistry: typed skill/page/settings registrations, enable/disable gating (ADDON-01)
+- [ ] 08-02-PLAN.md — Write Add-on: 6 prompt templates + Side Panel action page (ADDON-06, ADDON-07)
+- [ ] 08-03-PLAN.md — Data Portability: atomic WriteJournal export, deterministic merge, credential exclusion (DATA-01, DATA-02)
+- [ ] 08-04-PLAN.md — ServiceNow Foundation: CookieSessionStore, ServiceNowSessionAdapter, ServiceNowTableClient (ADDON-02)
+- [ ] 08-05-PLAN.md — TeamGQM Foundation: gqmTypes, GQMDataService (WriteJournal-backed CRUD) (ADDON-08 data layer)
+
+**Wave 2** — Add-on Pages & Skills (parallel)
+
+- [ ] 08-06-PLAN.md — ServiceNow Pages & Skills: 3 skills, Side Panel case-context, Full App case table (ADDON-03, ADDON-04, ADDON-05)
+- [ ] 08-07-PLAN.md — TeamGQM Pages: read-only Side Panel tree, editable Full App tree (ADDON-08 UI)
+- [ ] 08-08-PLAN.md — ResearchSkill: MCP search detection, graceful degradation, @modelcontextprotocol/sdk (ADDON-09)
+
+**Wave 3** — Integration
+
+- [ ] 08-09-PLAN.md — Integration: main.tsx registration, navConfig add-on items, AddonSettingsSection toggles, slash command wiring
+
 **UI hint**: yes
 
 ### Phase 9: Hardening and Release
@@ -561,5 +581,5 @@ Phase 7 depends on both Phase 5 and Phase 6 being complete, acting as the conver
 | 7.3. RICH Design Core | 4/4 | ✓ Complete | 2026-07-19 |
 | 7.4. RICH Design Enhance | 0/7 | Planned | 2026-07-19 |
 | 7.5. RICH Design Polish | 7/7 | ✓ Complete | 2026-07-19 |
-| 8. Add-ons and Content Script Runtime (Extraction-Only) | 0/TBD | Not started | - |
+| 8. Add-ons and Content Script Runtime (Extraction-Only) | 0/9 | Planned | 2026-07-19 |
 | 9. Hardening and Release | 0/TBD | Not started | - |
