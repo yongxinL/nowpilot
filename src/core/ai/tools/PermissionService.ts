@@ -1,7 +1,11 @@
 import { debugLog } from '../../utils/debugLog';
+import { getConfirmationLevel, ConfirmationLevel } from '../../confirmation/ConfirmationPolicy';
+
+export { ConfirmationLevel } from '../../confirmation/ConfirmationPolicy';
 
 export interface PermissionService {
   canExecute(toolName: string, toolInput: Record<string, unknown>): Promise<boolean>;
+  getConfirmationLevel(toolName: string): ConfirmationLevel;
 }
 
 export class DefaultPermissionService implements PermissionService {
@@ -10,6 +14,10 @@ export class DefaultPermissionService implements PermissionService {
     // Phase 3: always returns false. Phase 7: replaced by UI dialog implementation.
     debugLog('info', `[PermissionService] Permission denied for tool: ${toolName}`);
     return false;
+  }
+
+  getConfirmationLevel(toolName: string): ConfirmationLevel {
+    return getConfirmationLevel(toolName);
   }
 }
 
