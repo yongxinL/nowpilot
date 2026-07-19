@@ -525,7 +525,7 @@ Plans:
   4. `/research` command runs via ResearchSkill (MCP web-search or built-in tool; graceful failure if no search tool connected)
   5. Data export produces sanitized JSON/ZIP (no API keys); import merges with conflict resolution
 
-**Plans**: 6/9 plans executed
+**Plans**: 7/9 plans executed
 Plans:
 
 **Wave 1** — Foundation (parallel)
@@ -539,7 +539,7 @@ Plans:
 **Wave 2** — Add-on Pages & Skills (parallel)
 
 - [x] 08-06-PLAN.md — ServiceNow Pages & Skills: 3 skills, Side Panel case-context, Full App case table (ADDON-03, ADDON-04, ADDON-05)
-- [ ] 08-07-PLAN.md — TeamGQM Pages: read-only Side Panel tree, editable Full App tree (ADDON-08 UI)
+- [x] 08-07-PLAN.md — TeamGQM Pages: read-only Side Panel tree, editable Full App tree (ADDON-08 UI)
 - [ ] 08-08-PLAN.md — ResearchSkill: MCP search detection, graceful degradation, @modelcontextprotocol/sdk (ADDON-09)
 
 **Wave 3** — Integration
@@ -588,5 +588,5 @@ Phase 7 depends on both Phase 5 and Phase 6 being complete, acting as the conver
 | 7.3. RICH Design Core | 4/4 | ✓ Complete | 2026-07-19 |
 | 7.4. RICH Design Enhance | 0/7 | Planned | 2026-07-19 |
 | 7.5. RICH Design Polish | 7/7 | ✓ Complete | 2026-07-19 |
-| 8. Add-ons and Content Script Runtime (Extraction-Only) | 6/9 | In Progress|  |
+| 8. Add-ons and Content Script Runtime (Extraction-Only) | 7/9 | In Progress|  |
 | 9. Hardening and Release | 0/TBD | Not started | - |
