@@ -60,6 +60,27 @@ export const usePreferenceStore = create<PreferenceState>()(
     {
       name: 'np_preferences',
       storage: chromeLocalStorage,
+      version: 1,
+      migrate: (persisted: unknown) => {
+        const p = persisted as Record<string, unknown>;
+        // Guard: only transform when aiTone is a legacy free-text string
+        if (typeof p.aiTone === 'string' && p.aiTone !== 'professional' && p.aiTone !== 'professional_approachable') {
+          const v = p.aiTone as string;
+          if (v === 'Professional' || v === 'professional') {
+            p.aiTone = 'professional';
+          } else if (
+            v.includes('Professional + approachable') ||
+            v.includes('professional + approachable') ||
+            v.startsWith('Professional +')
+          ) {
+            p.aiTone = 'professional_approachable';
+          } else {
+            console.warn('[PreferenceMemoryStore] Unknown aiTone value during migration:', v);
+            p.aiTone = 'professional_approachable';
+          }
+        }
+        return p as PreferenceState;
+      },
     },
   ),
 );

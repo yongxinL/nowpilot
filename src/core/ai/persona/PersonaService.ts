@@ -28,10 +28,20 @@ export class PersonaService {
       profile.languageStyle = { ...profile.languageStyle, tone: prefs.aiTone };
     }
     if (prefs.responseBrevity) {
-      const style =
-        prefs.responseBrevity === 'concise'
-          ? 'Concise by default with task-aware expansion'
-          : 'Detailed with thorough explanations';
+      let style: string;
+      switch (prefs.responseBrevity) {
+        case 'concise':
+          style = 'Concise by default with task-aware expansion';
+          break;
+        case 'balanced':
+          style = 'Balanced — moderately detailed with context-appropriate expansion';
+          break;
+        case 'detailed':
+          style = 'Detailed with thorough explanations';
+          break;
+        default:
+          style = 'Balanced — moderately detailed with context-appropriate expansion';
+      }
       profile.languageStyle = { ...profile.languageStyle, responseStyle: style };
     }
 

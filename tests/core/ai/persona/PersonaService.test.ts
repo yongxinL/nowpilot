@@ -39,10 +39,10 @@ describe('PersonaService', () => {
       expect(profile.identity.domainExpertise).toBe(DEFAULT_PERSONA_PROFILE.identity.domainExpertise);
     });
 
-    it('with aiTone="casual" overrides languageStyle.tone ONLY — responseStyle and vocabulary unchanged', () => {
-      usePreferenceStore.getState().setPreferences({ aiTone: 'casual' } as any);
+    it('with aiTone="professional" overrides languageStyle.tone ONLY — responseStyle and vocabulary unchanged', () => {
+      usePreferenceStore.getState().setPreferences({ aiTone: 'professional' } as any);
       const profile = personaService.getActiveProfile();
-      expect(profile.languageStyle.tone).toBe('casual');
+      expect(profile.languageStyle.tone).toBe('professional');
       // Other language style fields should remain as defaults
       expect(profile.languageStyle.responseStyle).toBe(DEFAULT_PERSONA_PROFILE.languageStyle.responseStyle);
       expect(profile.languageStyle.vocabulary).toBe(DEFAULT_PERSONA_PROFILE.languageStyle.vocabulary);
@@ -52,6 +52,12 @@ describe('PersonaService', () => {
       usePreferenceStore.getState().setPreferences({ responseBrevity: 'detailed' } as any);
       const profile = personaService.getActiveProfile();
       expect(profile.languageStyle.responseStyle).toBe('Detailed with thorough explanations');
+    });
+
+    it('with responseBrevity="balanced" sets languageStyle.responseStyle to "Balanced — moderately detailed with context-appropriate expansion"', () => {
+      usePreferenceStore.getState().setPreferences({ responseBrevity: 'balanced' } as any);
+      const profile = personaService.getActiveProfile();
+      expect(profile.languageStyle.responseStyle).toBe('Balanced — moderately detailed with context-appropriate expansion');
     });
 
     it('with responseBrevity="concise" sets languageStyle.responseStyle to "Concise by default with task-aware expansion"', () => {

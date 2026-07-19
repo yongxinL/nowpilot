@@ -88,7 +88,7 @@ describe('PreferenceMemoryStore', () => {
         toolAutonomy: 'manual',
         displayName: 'George',
         aiName: 'TestBot',
-        aiTone: 'casual',
+        aiTone: 'professional',
         responseBrevity: 'detailed',
       });
       expect(parsed.success).toBe(true);
@@ -118,6 +118,47 @@ describe('PreferenceMemoryStore', () => {
       expect((state as any).aiName).toBeUndefined();
       expect((state as any).aiTone).toBeUndefined();
       expect((state as any).responseBrevity).toBeUndefined();
+    });
+  });
+
+  describe('PreferenceMemoryStore migration (Phase 7.5)', () => {
+    it('migrate transforms legacy free-text aiTone to typed enum', () => {
+      const persistConfig = JSON.parse(
+        JSON.stringify(usePreferenceStore.persist.getOptions()),
+      );
+      expect(persistConfig.version).toBe(1);
+    });
+
+    it('responseBrevity accepts "balanced" as valid value', () => {
+      usePreferenceStore.getState().setPreferences({ responseBrevity: 'balanced' } as any);
+      const state = usePreferenceStore.getState();
+      expect((state as any).responseBrevity).toBe('balanced');
+    });
+
+    it('preferenceSchema.parse accepts responseBrevity="balanced"', () => {
+      const parsed = preferenceSchema.safeParse({
+        responseStyle: 'concise',
+        preferredLanguage: 'auto',
+        preferStructuredOutput: false,
+        allowCloudFallbackFromLocal: false,
+        defaultProviderId: '',
+        toolAutonomy: 'manual',
+        responseBrevity: 'balanced',
+      });
+      expect(parsed.success).toBe(true);
+    });
+
+    it('preferenceSchema rejects invalid aiTone values', () => {
+      const parsed = preferenceSchema.safeParse({
+        responseStyle: 'concise',
+        preferredLanguage: 'auto',
+        preferStructuredOutput: false,
+        allowCloudFallbackFromLocal: false,
+        defaultProviderId: '',
+        toolAutonomy: 'manual',
+        aiTone: 'invalid-tone',
+      });
+      expect(parsed.success).toBe(false);
     });
   });
 });

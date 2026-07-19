@@ -67,4 +67,28 @@ describe('contextOptimizerInputSchema', () => {
     expect(result.conversationHistory).toHaveLength(1);
     expect(result.memory).toHaveLength(1);
   });
+
+  it('accepts input with optional referenceTokens', () => {
+    const input = {
+      ...validInput,
+      referenceTokens: [{ type: 'note', id: '123', title: 'My Note', displayLabel: '@note:My Note' }],
+    };
+    const result = contextOptimizerInputSchema.parse(input);
+    expect(result.referenceTokens).toHaveLength(1);
+    expect(result.referenceTokens![0].type).toBe('note');
+  });
+
+  it('accepts input with optional attachments', () => {
+    const input = {
+      ...validInput,
+      attachments: [
+        { kind: 'image', mimeType: 'image/png', dataUrl: 'data:image/png;base64,abc', fileName: 'test.png', sizeBytes: 1000 },
+        { kind: 'clipboard_text', text: 'pasted text' },
+      ],
+    };
+    const result = contextOptimizerInputSchema.parse(input);
+    expect(result.attachments).toHaveLength(2);
+    expect(result.attachments![0].kind).toBe('image');
+    expect(result.attachments![1].kind).toBe('clipboard_text');
+  });
 });

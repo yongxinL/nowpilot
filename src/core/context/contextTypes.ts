@@ -83,6 +83,8 @@ export interface ContextOptimizerInput {
   conversationHistory?: Array<{ role: string; content: string }>;
   conversationSummary?: string;
   notes?: Array<{ id: string; content: string }>;
+  referenceTokens?: Array<{ type: string; id: string; title: string; displayLabel: string }>;
+  attachments?: import('../attachments/AttachmentModel').Attachment[];
   debugData?: Record<string, unknown>;
 }
 
@@ -142,5 +144,43 @@ export const contextOptimizerInputSchema = z.object({
     .array(z.object({ role: z.string(), content: z.string() }))
     .optional(),
   notes: z.array(z.object({ id: z.string(), content: z.string() })).optional(),
+  referenceTokens: z
+    .array(z.object({ type: z.string(), id: z.string(), title: z.string(), displayLabel: z.string() }))
+    .optional(),
+  attachments: z
+    .array(
+      z.discriminatedUnion('kind', [
+        z.object({
+          kind: z.literal('image'),
+          mimeType: z.string(),
+          dataUrl: z.string(),
+          fileName: z.string(),
+          sizeBytes: z.number(),
+        }),
+        z.object({
+          kind: z.literal('file'),
+          mimeType: z.string(),
+          name: z.string(),
+          sizeBytes: z.number(),
+        }),
+        z.object({
+          kind: z.literal('voice_transcript'),
+          transcript: z.string(),
+          durationSeconds: z.number().optional(),
+        }),
+        z.object({
+          kind: z.literal('clipboard_text'),
+          text: z.string(),
+          sourceUrl: z.string().optional(),
+        }),
+        z.object({
+          kind: z.literal('suggested_field'),
+          selector: z.string(),
+          suggestedValue: z.string(),
+          label: z.string(),
+        }),
+      ]),
+    )
+    .optional(),
   debugData: z.record(z.string(), z.unknown()).optional(),
 });

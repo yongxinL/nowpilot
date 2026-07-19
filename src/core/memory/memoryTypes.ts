@@ -91,8 +91,8 @@ export const preferenceSchema = z.object({
   // Phase 7.4: Persona identity overrides (D-11, D-21)
   displayName: z.string().optional(),
   aiName: z.string().optional(),
-  aiTone: z.string().optional(),
-  responseBrevity: z.enum(['concise', 'detailed']).optional(),
+  aiTone: z.enum(['professional', 'professional_approachable']).optional(),
+  responseBrevity: z.enum(['concise', 'balanced', 'detailed']).optional(),
 });
 export type PreferencePayload = z.infer<typeof preferenceSchema>;
 
