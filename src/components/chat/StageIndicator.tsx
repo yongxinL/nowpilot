@@ -1,13 +1,9 @@
-import { useMemo, useEffect, useState, type CSSProperties } from 'react';
-import { Typography, theme } from 'antd';
+import { useMemo, useEffect, useState, useRef, type CSSProperties } from 'react';
+import { Typography, theme, Flex } from 'antd';
 import { Think } from '@ant-design/x';
 import type { OrchestrationStage } from '../../hooks/useStreamingLLM';
 
 const { Text } = Typography;
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
 
 export interface StageIndicatorProps {
   stage: OrchestrationStage;
@@ -16,10 +12,6 @@ export interface StageIndicatorProps {
   currentTool?: string;
   reasoning?: string;
 }
-
-// ---------------------------------------------------------------------------
-// ThinkingIcon — reused from ChatPage
-// ---------------------------------------------------------------------------
 
 const ThinkingIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 12 12" style={{ display: 'inline-block', verticalAlign: 'middle' }}>
@@ -30,12 +22,6 @@ const ThinkingIcon = () => (
   </svg>
 );
 
-/**
- * StageIndicator — enhanced pipeline-driven stage pills per D-35/D-36/D-37.
- *
- * Replaces the inline Think + switch statement in ChatPage.tsx with
- * context-aware pipeline-driven labels and slow-stream pulse animation.
- */
 export function StageIndicator({
   stage,
   hasPinnedTabs,
@@ -45,30 +31,39 @@ export function StageIndicator({
 }: StageIndicatorProps) {
   const { token } = theme.useToken();
   const [isSlow, setIsSlow] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const [eta, setEta] = useState<string | null>(null);
+  const lastTokenRef = useRef(lastTokenTime);
 
-  // Monitor slow-stream detection: >3s since last token
+  lastTokenRef.current = lastTokenTime;
+
   useEffect(() => {
     if (stage === 'generating' && lastTokenTime) {
       const check = () => {
         const elapsed = Date.now() - lastTokenTime;
         setIsSlow(elapsed > 3000);
+        if (elapsed > 3000) {
+          const etaSec = Math.max(1, Math.round((elapsed - 3000) / 1000));
+          setEta(`~${etaSec}s remaining`);
+        } else {
+          setEta(null);
+        }
       };
-
-      check(); // Immediate check
+      check();
       const interval = setInterval(check, 1000);
       return () => clearInterval(interval);
     } else {
       setIsSlow(false);
+      setEta(null);
     }
   }, [stage, lastTokenTime]);
 
-  // Context-aware stage labels per D-35/UI-SPEC
   const stageLabel = useMemo(() => {
     switch (stage) {
       case 'retrieving':
         return hasPinnedTabs ? 'Reading page context…' : 'Retrieving context…';
       case 'planning':
-        return 'Planning response…';
+        return 'Planning…';
       case 'thinking':
         return 'Thinking…';
       case 'tool':
@@ -83,7 +78,6 @@ export function StageIndicator({
     }
   }, [stage, hasPinnedTabs, currentTool]);
 
-  // Slow-stream subtitle
   const stageDetail = useMemo(() => {
     switch (stage) {
       case 'retrieving':
@@ -109,12 +103,40 @@ export function StageIndicator({
     <div>
       <Think
         icon={<ThinkingIcon />}
-        title={stageLabel}
+        title={
+          <Flex gap={4} align="center">
+            <span>{stageLabel}</span>
+            {(stage === 'generating' || stage === 'retrieving' || stage === 'planning' || stage === 'tool') && (
+              <Text
+                type="secondary"
+                style={{ fontSize: 11, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2 }}
+                onClick={() => setExpanded((v) => !v)}
+              >
+                {expanded ? 'less' : 'detail'}
+              </Text>
+            )}
+          </Flex>
+        }
         loading
         blink
-        defaultExpanded={!!(stage === 'thinking' && reasoning)}
+        defaultExpanded={expanded || !!(stage === 'thinking' && reasoning)}
       >
-        {stageDetail}
+        {expanded ? (
+          <Flex vertical gap={2}>
+            <Text type="secondary" style={{ fontSize: 12 }}>{stageDetail}</Text>
+            {currentTool && <Text type="secondary" style={{ fontSize: 12 }}>Tool: {currentTool}</Text>}
+            {lastTokenTime && (
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                Last token: {new Date(lastTokenTime).toLocaleTimeString()}
+              </Text>
+            )}
+            {stage === 'retrieving' && hasPinnedTabs && (
+              <Text type="secondary" style={{ fontSize: 12 }}>Page context active</Text>
+            )}
+          </Flex>
+        ) : (
+          stageDetail
+        )}
       </Think>
       {isSlow && stage === 'generating' && (
         <div style={{ marginTop: 4 }}>
@@ -122,7 +144,7 @@ export function StageIndicator({
             animation: 'pulse 1.5s ease-in-out infinite',
             fontSize: 12,
           }}>
-            Still working…
+            Still working…{eta ? ` ${eta}` : ''}
           </Text>
           <style>{`
             @keyframes pulse {
