@@ -11,7 +11,8 @@ export type WriteJournalOperation =
   | 'update-user-memory'
   | 'export-data'
   | 'import-data'
-  | 'transaction-log-batch';
+  | 'transaction-log-batch'
+  | 'save-gqm-data';
 
 export interface WriteJournalSteps {
   name: string;
@@ -43,6 +44,7 @@ export const writeJournalEntrySchema = z.object({
     'export-data',
     'import-data',
     'transaction-log-batch',
+    'save-gqm-data',
   ]),
   status: z.enum(['pending', 'applying', 'completed', 'failed', 'rolled-back']),
   createdAt: z.number(),
