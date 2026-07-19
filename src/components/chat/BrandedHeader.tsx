@@ -7,6 +7,8 @@ import { BunnyAvatar } from '../common/BunnyAvatar';
 // Types
 // ---------------------------------------------------------------------------
 export interface BrandedHeaderProps {
+  userGreeting?: string;       // D-23: e.g., "Good morning, George"
+  contextualMessage?: string;  // D-23: e.g., "You're working on: INC0012345"
   onClose?: () => void;
 }
 
@@ -14,8 +16,9 @@ const { Text } = Typography;
 
 // ---------------------------------------------------------------------------
 // BrandedHeader — AI identity bar above message list (D-05 / RICH-H-01)
+// Extended with dynamic greeting props (D-23)
 // ---------------------------------------------------------------------------
-export function BrandedHeader({ onClose }: BrandedHeaderProps) {
+export function BrandedHeader({ userGreeting, contextualMessage, onClose }: BrandedHeaderProps) {
   const { token } = theme.useToken();
 
   return (
@@ -38,13 +41,13 @@ export function BrandedHeader({ onClose }: BrandedHeaderProps) {
         }}
       />
 
-      {/* Name + tagline */}
+      {/* Name + tagline — now dynamic with greeting props (D-23) */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        <Text strong style={{ fontSize: 16, lineHeight: '22px' }}>
-          NowPilot
+        <Text strong style={{ fontSize: userGreeting ? 20 : 16, lineHeight: '22px' }}>
+          {userGreeting || 'NowPilot'}
         </Text>
         <Text type="secondary" style={{ fontSize: 12, lineHeight: '16px' }}>
-          Your AI work co-pilot
+          {contextualMessage || 'Your AI work co-pilot'}
         </Text>
       </div>
 

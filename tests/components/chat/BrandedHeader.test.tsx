@@ -55,4 +55,44 @@ describe('BrandedHeader', () => {
     expect(taglineEls.length).toBeGreaterThan(0);
     expect(taglineEls[0].style.fontSize).toBe('12px');
   });
+
+  // -----------------------------------------------------------------------
+  // New: Dynamic greeting props (D-23)
+  // -----------------------------------------------------------------------
+
+  // Test 8: Renders "NowPilot" when userGreeting not provided (backward compat)
+  it('renders default NowPilot when userGreeting not provided', () => {
+    renderWithAntd(<BrandedHeader onClose={onClose} />);
+
+    const nameEls = screen.getAllByText('NowPilot');
+    expect(nameEls.length).toBeGreaterThan(0);
+  });
+
+  // Test 9: Renders userGreeting text when provided
+  it('renders userGreeting text when provided', () => {
+    renderWithAntd(<BrandedHeader userGreeting="Good morning, George" onClose={onClose} />);
+
+    const greetingEls = screen.getAllByText('Good morning, George');
+    expect(greetingEls.length).toBeGreaterThan(0);
+  });
+
+  // Test 10: Renders contextualMessage as tagline when provided
+  it('renders contextualMessage as tagline when provided', () => {
+    renderWithAntd(<BrandedHeader contextualMessage="Working on: INC001" onClose={onClose} />);
+
+    const contextualEls = screen.getAllByText('Working on: INC001');
+    expect(contextualEls.length).toBeGreaterThan(0);
+  });
+
+  // Test 11: fontSize changes to 20px when userGreeting provided (Display role)
+  it('uses fontSize 20 when userGreeting is provided', () => {
+    renderWithAntd(<BrandedHeader userGreeting="Good morning, George" onClose={onClose} />);
+
+    const greetingEls = screen.getAllByText('Good morning, George');
+    expect(greetingEls.length).toBeGreaterThan(0);
+    // The parent span should have fontSize 20
+    const greetingSpan = greetingEls[0].parentElement;
+    expect(greetingSpan).toBeTruthy();
+    expect(greetingSpan!.style.fontSize).toBe('20px');
+  });
 });

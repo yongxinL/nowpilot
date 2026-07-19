@@ -65,7 +65,7 @@ export function ThoughtChainView({ steps, onRetry }: ThoughtChainViewProps) {
   if (items.length === 0) {
     return (
       <div style={{ padding: 24, textAlign: 'center', color: 'var(--ant-color-text-tertiary)' }}>
-        Send a message to start an agent workflow
+        NowPilot is working…
       </div>
     );
   }
