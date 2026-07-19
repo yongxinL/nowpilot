@@ -18,7 +18,7 @@ NowPilot v0.1 is a privacy-first, extensible Chrome MV3 AI assistant. The 10-pha
 - [x] **Phase 7.3: RICH Design Core** — 17 P0 must-haves: AI persona profile, welcome cards, context-aware quick actions, clarification chips, follow-up suggestions, code block actions, richer stage indicators, branded header
 - [x] **Phase 7.4: RICH Design Enhance** — 22 P1 should-haves: persona onboarding, split-pane layout, template browser, inline confirmation, personalized greeting, image paste (completed 2026-07-19)
 - [ ] **Phase 7.5: RICH Design Polish** — 21 P2 nice-to-haves: persona editor, @mention syntax, voice input, TL;DR toggle, step checklists, educational tips
-- [ ] **Phase 8: Add-ons and Content Script Runtime (Extraction-Only)** — Write/TeamGQM/ServiceNow add-ons, content scripts, data portability
+- [x] **Phase 8: Add-ons and Content Script Runtime (Extraction-Only)** — Write/TeamGQM/ServiceNow add-ons, content scripts, data portability (completed 2026-07-19)
 - [ ] **Phase 9: Hardening and Release** — Performance tests, isolation verification, bundle checks, production release
 
 ## Dependency Graph
@@ -525,7 +525,7 @@ Plans:
   4. `/research` command runs via ResearchSkill (MCP web-search or built-in tool; graceful failure if no search tool connected)
   5. Data export produces sanitized JSON/ZIP (no API keys); import merges with conflict resolution
 
-**Plans**: 8/9 plans executed
+**Plans**: 9/9 plans complete
 Plans:
 
 **Wave 1** — Foundation (parallel)
@@ -544,7 +544,7 @@ Plans:
 
 **Wave 3** — Integration
 
-- [ ] 08-09-PLAN.md — Integration: main.tsx registration, navConfig add-on items, AddonSettingsSection toggles, slash command wiring
+- [x] 08-09-PLAN.md — Integration: main.tsx registration, navConfig add-on items, AddonSettingsSection toggles, slash command wiring
 
 **UI hint**: yes
 
@@ -588,5 +588,5 @@ Phase 7 depends on both Phase 5 and Phase 6 being complete, acting as the conver
 | 7.3. RICH Design Core | 4/4 | ✓ Complete | 2026-07-19 |
 | 7.4. RICH Design Enhance | 0/7 | Planned | 2026-07-19 |
 | 7.5. RICH Design Polish | 7/7 | ✓ Complete | 2026-07-19 |
-| 8. Add-ons and Content Script Runtime (Extraction-Only) | 8/9 | In Progress|  |
+| 8. Add-ons and Content Script Runtime (Extraction-Only) | 9/9 | Complete   | 2026-07-19 |
 | 9. Hardening and Release | 0/TBD | Not started | - |
