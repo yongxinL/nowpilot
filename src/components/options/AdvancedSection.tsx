@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Tabs, Button, Typography, App, theme } from 'antd';
 import { OnboardingModal } from '../../core/onboarding/OnboardingModal';
 import { MemorySection } from './MemorySection';
+import { MemoryPage } from './MemoryPage';
 import { ImportExportSection } from './ImportExportSection';
 import { FeatureFlagsSection } from './FeatureFlagsSection';
 import { RoleModelConfig } from './RoleModelConfig';
@@ -110,6 +111,15 @@ export function AdvancedSection() {
       children: (
         <div style={{ marginTop: 24 }}>
           <MemorySection />
+        </div>
+      ),
+    },
+    {
+      key: 'memory-detail',
+      label: 'Memory Browser',
+      children: (
+        <div style={{ marginTop: 24 }}>
+          <MemoryPage />
         </div>
       ),
     },

@@ -12,7 +12,7 @@ describe('Options page UI shell', () => {
   it('renders sidebar with all 8 core sections', () => {
     const { container } = setup(React.createElement(OptionsRoot, {}));
     const items = container.querySelectorAll('[data-options-nav-item]');
-    expect(items.length).toBe(8);
+    expect(items.length).toBe(10);
   });
 
   it('renders options search input with accessible label', () => {

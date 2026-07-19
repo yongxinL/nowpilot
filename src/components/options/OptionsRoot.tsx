@@ -36,6 +36,7 @@ const OPTIONS_SECTIONS: OptionsSectionEntry[] = [
   { id: 'slash', title: 'Commands', description: 'Custom slash commands', icon: <CodeOutlined /> },
   { id: 'mcp', title: 'Skills & MCP', description: 'Smart skills and MCP servers', icon: <ApiOutlined /> },
   { id: 'notes', title: 'Notes', description: 'LLM features, backup, maintenance', icon: <FileTextOutlined /> },
+  { id: 'persona', title: 'Persona', description: 'AI identity, name, and communication style', icon: <RobotOutlined /> },
   { id: 'addons', title: 'Add-ons', description: 'Configure installed add-ons', icon: <ToolOutlined /> },
   { id: 'advanced', title: 'Advanced', description: 'Onboarding, memory, logs', icon: <DashboardOutlined /> },
 ];
