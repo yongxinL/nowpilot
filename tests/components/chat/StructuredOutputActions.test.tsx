@@ -76,7 +76,11 @@ describe('StructuredOutputActions', () => {
     fireEvent.click(screen.getByText('Copy as table'));
 
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(mockTableContent);
-    expect(message.success).toHaveBeenCalledWith('Table copied to clipboard');
+
+    // Wait for async .then() callback
+    await vi.waitFor(() => {
+      expect(message.success).toHaveBeenCalledWith('Table copied to clipboard');
+    });
   });
 
   // Test 4: Clicking "Export CSV" downloads CSV file
