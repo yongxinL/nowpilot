@@ -9,6 +9,7 @@ export interface AddonSkill {
 
 export interface AddonPage {
   id: string;
+  addonId: string;
   label: string;
   icon?: ComponentType;
   component: ComponentType;

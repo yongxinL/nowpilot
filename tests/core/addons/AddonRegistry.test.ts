@@ -14,6 +14,7 @@ const mockSkill = (overrides: Partial<AddonSkill> = {}): AddonSkill => ({
 
 const mockPage = (overrides: Partial<AddonPage> = {}): AddonPage => ({
   id: 'test-page',
+  addonId: 'test-addon',
   label: 'Test Page',
   component: vi.fn() as unknown as AddonPage['component'],
   surface: 'sidepanel',
