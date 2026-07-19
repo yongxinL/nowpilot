@@ -156,9 +156,9 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [x] **ADDON-01**: AddonRegistry with typed registration for skills, prompts, pages, settings
 - [x] **ADDON-02**: ServiceNow add-on — JSESSIONID/sysparmCK extraction, case context, Table API client
-- [ ] **ADDON-03**: ServiceNow add-on — CaseAnalyzerSkill, CatchUpSkill, SentimentSkill
-- [ ] **ADDON-04**: ServiceNow add-on — Side Panel page (quick case-context view + skill launcher)
-- [ ] **ADDON-05**: ServiceNow add-on — Full App page (case table, comments, work notes)
+- [x] **ADDON-03**: ServiceNow add-on — CaseAnalyzerSkill, CatchUpSkill, SentimentSkill
+- [x] **ADDON-04**: ServiceNow add-on — Side Panel page (quick case-context view + skill launcher)
+- [x] **ADDON-05**: ServiceNow add-on — Full App page (case table, comments, work notes)
 - [x] **ADDON-06**: Write add-on — Rewrite, Summarize, Draft customer update, Draft internal note, Explain, Action plan
 - [x] **ADDON-07**: Write add-on — Side Panel page with quick actions
 - [x] **ADDON-08**: TeamGQM add-on — Side Panel (compact digest) + Full App (full workspace)
@@ -327,9 +327,9 @@ Requirements for initial release. Each maps to roadmap phases.
 | TELE-07 | Phase 6 | Pending |
 | ADDON-01 | Phase 8 | Complete |
 | ADDON-02 | Phase 8 | Complete |
-| ADDON-03 | Phase 8 | Pending |
-| ADDON-04 | Phase 8 | Pending |
-| ADDON-05 | Phase 8 | Pending |
+| ADDON-03 | Phase 8 | Complete |
+| ADDON-04 | Phase 8 | Complete |
+| ADDON-05 | Phase 8 | Complete |
 | ADDON-06 | Phase 8 | Complete |
 | ADDON-07 | Phase 8 | Complete |
 | ADDON-08 | Phase 8 | Complete |
