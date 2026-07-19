@@ -184,6 +184,7 @@ package-lock.json
 
 # WXT and references
 .wxt/
-references/
+.wxt/references/
+.output/
 .output/
 ruvector.db

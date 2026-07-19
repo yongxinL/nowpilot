@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { ReferenceToken } from '../../../src/core/references/ReferenceToken';
 import type { AutocompleteResult, ReferenceResolver } from '../../../src/core/references/ReferenceResolver';
-import { ReferenceResolverRegistry } from '../../../src/core/references/referenceResolver';
+import { ReferenceResolverRegistry } from '../../../src/core/references/referenceResolverRegistry';
 
 function createMockResolver(type: string, results: AutocompleteResult[]): ReferenceResolver {
   return {

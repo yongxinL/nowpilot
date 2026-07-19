@@ -1,4 +1,4 @@
-import { referenceResolver } from './referenceResolver';
+import { referenceResolver } from './referenceResolverRegistry';
 import { noteResolver } from './resolvers/NoteResolver';
 import { tabResolver } from './resolvers/TabResolver';
 import { promptResolver } from './resolvers/PromptResolver';
