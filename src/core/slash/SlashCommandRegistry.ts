@@ -73,9 +73,34 @@ export class SlashCommandRegistry {
 
   #registerBuiltins(): void {
     const builtins: SlashCommand[] = [
-      { name: 'write', label: 'Write', description: 'Draft a response or document', templateId: 'write' },
-      { name: 'ask', label: 'Ask', description: 'Ask a general question', templateId: 'ask' },
-      { name: 'research', label: 'Research', description: 'Research a topic', templateId: 'research' },
+      {
+        name: 'write',
+        label: 'Write',
+        description: 'Draft a response or document',
+        templateId: 'write',
+        handler: async () => {
+          // Navigate to Write add-on Side Panel page
+          const { useWorkspaceStore } = await import('../../core/stores/workspaceStore');
+          useWorkspaceStore.getState().setActiveSurface('sidepanel');
+        },
+      },
+      {
+        name: 'ask',
+        label: 'Ask',
+        description: 'Ask a general question',
+        templateId: 'ask',
+      },
+      {
+        name: 'research',
+        label: 'Research',
+        description: 'Research a topic',
+        templateId: 'research',
+        handler: async (input: string) => {
+          // Defer to ResearchSkill — result handled by ChatPage command dispatch
+          const { researchSkill } = await import('../../addons/global/ResearchSkill');
+          await researchSkill.execute(input || '');
+        },
+      },
     ];
     for (const cmd of builtins) {
       if (!this.#commands.has(cmd.name)) {

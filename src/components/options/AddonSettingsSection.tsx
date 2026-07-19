@@ -1,49 +1,85 @@
-import React, { useEffect, useState } from 'react';
-import { Form, Typography, Button, Empty, App } from 'antd';
+import React, { useEffect, useCallback, useState } from 'react';
+import { Typography, Card, Switch, Empty, App } from 'antd';
+import { addonRegistry, type AddonSettingsSchema } from '../../core/registries/AddonRegistry';
 
-const { Title } = Typography;
-const STORAGE_KEY = 'np_addon_settings';
+const { Title, Paragraph } = Typography;
 
 export function AddonSettingsSection() {
   const { message } = App.useApp();
-  const [loading, setLoading] = useState(false);
+  const [enabled, setEnabled] = useState<Record<string, boolean>>({});
+  const [loadingAddon, setLoadingAddon] = useState<string | null>(null);
+  const [addons, setAddons] = useState<AddonSettingsSchema[]>([]);
 
   useEffect(() => {
-    // Future Phase 8: load add-on settings from registry
+    // Load registered addon settings schemas
+    const schemas = addonRegistry.listSettingsSchemas();
+    setAddons(schemas);
+
+    // Read current enabled state from registry
+    const enabledAddons = addonRegistry.listEnabled();
+    const enabledState: Record<string, boolean> = {};
+    for (const addonId of enabledAddons) {
+      enabledState[addonId] = true;
+    }
+    setEnabled(enabledState);
   }, []);
 
-  const handleSave = async () => {
-    setLoading(true);
+  const handleToggle = useCallback(async (addonId: string, checked: boolean) => {
+    setLoadingAddon(addonId);
     try {
-      await chrome.storage.local.set({ [STORAGE_KEY]: {} });
-      message.success('Add-on settings saved');
+      if (checked) {
+        await addonRegistry.enable(addonId);
+        message.success(`Enabled ${addonId}`);
+      } else {
+        await addonRegistry.disable(addonId);
+        message.info(`Disabled ${addonId}`);
+      }
+      setEnabled((prev) => ({ ...prev, [addonId]: checked }));
     } catch {
-      message.error('Failed to save');
+      message.error('Failed to update add-on settings');
     } finally {
-      setLoading(false);
+      setLoadingAddon(null);
     }
-  };
+  }, [message]);
 
   return (
     <div data-options-section="addons" style={{ maxWidth: 720 }}>
       <Title level={4}>Add-on Settings</Title>
-      <p style={{ marginBottom: 16 }}>
-        Configure settings for installed add-ons. Add-ons are registered by the Add-on Registry
-        and their namespaced settings appear here.
-      </p>
+      <Paragraph type="secondary" style={{ marginBottom: 16 }}>
+        Configure settings for installed add-ons. Enable or disable individual add-ons.
+      </Paragraph>
 
-      <Empty
-        description="No add-ons installed. Add-ons will appear here when registered."
-        style={{ padding: 48 }}
-      />
-
-      <Form layout="horizontal" labelAlign="left" onFinish={handleSave}>
-        <Form.Item>
-          <Button type="primary" htmlType="submit" loading={loading}>
-            Save
-          </Button>
-        </Form.Item>
-      </Form>
+      {addons.length === 0 ? (
+        <Empty
+          description="No add-ons installed. Add-ons will appear here when registered."
+          style={{ padding: 48 }}
+        />
+      ) : (
+        addons.map((addon) => (
+          <Card
+            key={addon.addonId}
+            title={addon.addonId}
+            style={{ marginBottom: 16 }}
+            extra={
+              <Switch
+                checked={enabled[addon.addonId] ?? false}
+                onChange={(c) => handleToggle(addon.addonId, c)}
+                loading={loadingAddon === addon.addonId}
+              />
+            }
+          >
+            {enabled[addon.addonId] ? (
+              <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                {Object.keys(addon.fields).length > 0
+                  ? 'Settings configured for this add-on.'
+                  : 'No additional settings required for this add-on.'}
+              </Paragraph>
+            ) : (
+              <span style={{ opacity: 0.5 }}>Disabled</span>
+            )}
+          </Card>
+        ))
+      )}
     </div>
   );
 }

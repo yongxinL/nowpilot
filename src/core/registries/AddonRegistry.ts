@@ -126,6 +126,10 @@ export class AddonRegistry {
     return this.#settingsSchemas.get(addonId);
   }
 
+  listSettingsSchemas(): AddonSettingsSchema[] {
+    return Array.from(this.#settingsSchemas.values());
+  }
+
   // --- Enable / disable -------------------------------------------------
 
   async enable(addonId: string): Promise<void> {
