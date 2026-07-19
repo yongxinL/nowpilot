@@ -450,7 +450,25 @@ Plans:
   5. Empty-state greeting uses user's name (from Google profile or UserMemoryStore) with time-of-day context
   6. Image paste support — pasted clipboard images attach as files via Sender
 
-**Plans**: TBD
+**Plans:** 7 plans
+Plans:
+
+**Wave 1** — Data Layer + Stateless Components (parallel)
+
+- [ ] 07.4-01-PLAN.md — Core Data Extensions: PreferenceMemoryStore persona fields, PersonaService.getActiveProfile(), PermissionService ConfirmationLevel + ConfirmationPolicy (RICH-R-05, RICH-C-13, RICH-R-06/08/09/10)
+- [ ] 07.4-02-PLAN.md — Right Pane System: RightPaneStore, RightPane container, PaneToggle, ContextTab, NotesTab, ToolsTab (RICH-H-11, RICH-H-12)
+- [ ] 07.4-03-PLAN.md — Template & Greeting Systems: builtinTemplates displayCategory, TemplateBrowserService, TemplateBrowser, GreetingService, useGreeting (RICH-I-09, RICH-I-10, RICH-C-14, RICH-I-03, RICH-I-02, RICH-I-08)
+- [ ] 07.4-04-PLAN.md — Chat Interaction Widgets: MeetNowPilotStep, InlineConfirmationCard, ConversationClosure, useConversationClosure, StructuredOutputActions (RICH-R-03, RICH-C-12, RICH-C-09, RICH-H-05)
+
+**Wave 2** — Integration (parallel)
+
+- [ ] 07.4-05-PLAN.md — Brand UI + Agent + Onboarding: OnboardingModal MeetNowPilotStep, AgentPage ThoughtChain text, BrandedHeader greeting props, ChatMessage first-message branding + Save-to-note promotion (RICH-R-03, RICH-H-03, RICH-H-02, RICH-H-06, RICH-I-03)
+- [ ] 07.4-06-PLAN.md — StandaloneRoot Integration: Right pane column + responsive Drawer degradation (RICH-H-11, RICH-H-12)
+
+**Wave 3** — ChatPage Assembly
+
+- [ ] 07.4-07-PLAN.md — ChatPage Integration: personalized greeting, TemplateBrowser prefix, image paste, InlineConfirmationCard, ConversationClosure, first-message branding wiring (RICH-C-14, RICH-I-10, RICH-H-16, RICH-C-12, RICH-C-09, RICH-H-05, RICH-I-03)
+
 **UI hint**: yes
 
 ### Phase 7.5: RICH Design Polish
@@ -524,7 +542,7 @@ Phase 7 depends on both Phase 5 and Phase 6 being complete, acting as the conver
 | 7.1. LLM-Wiki & Filesystem Sync | 7/7 | Complete    | 2026-07-17 |
 | 7.2. Page Extraction & Pin Tab | 4/4 | Complete   | 2026-07-17 |
 | 7.3. RICH Design Core | 4/4 | ✓ Complete | 2026-07-19 |
-| 7.4. RICH Design Enhance | 0/TBD | Not started | - |
+| 7.4. RICH Design Enhance | 0/7 | Planned | 2026-07-19 |
 | 7.5. RICH Design Polish | 0/TBD | Not started | - |
 | 8. Add-ons and Content Script Runtime (Extraction-Only) | 0/TBD | Not started | - |
 | 9. Hardening and Release | 0/TBD | Not started | - |
