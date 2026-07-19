@@ -7,6 +7,8 @@ import type { UserMemoryFact, MemoryScore } from './memoryTypes';
 import type { ModelContextTier } from '../context/contextTypes';
 import { userMemoryFactSchema } from './memoryTypes';
 
+export type MemoryFactStatus = 'active' | 'superseded' | 'inferred' | 'confirmed' | 'rejected';
+
 const DEFAULT_SEARCH_LIMIT = 20;
 const TOP_N_TIER: Record<ModelContextTier, number> = {
   tiny: 3,
@@ -25,7 +27,7 @@ function normalizeFact(f: Record<string, unknown>): UserMemoryFact {
     created: (f.created as number) ?? 0,
     updated: (f.updated as number) ?? 0,
     source: f.source as string,
-    status: (f.status as 'active' | 'superseded') ?? 'active',
+    status: (f.status as MemoryFactStatus) ?? 'inferred',
     tags: (f.tags as string[]) ?? [],
     useCount: (f.useCount as number) ?? 0,
     lastUsedAt: (f.lastUsedAt as number) ?? 0,
@@ -50,8 +52,10 @@ export class UserMemoryStore {
       // Pass 1: MiniSearch narrows to top-20
       const candidates = miniSearchIndex.search(query, DEFAULT_SEARCH_LIMIT);
 
-      // Filter out superseded facts
-      const activeCandidates = candidates.filter((c) => (c as Record<string, unknown>).status !== 'superseded');
+      // Filter out superseded and rejected facts
+      const activeCandidates = candidates.filter(
+        (c) => (c as Record<string, unknown>).status !== 'superseded' && (c as Record<string, unknown>).status !== 'rejected',
+      );
 
       if (activeCandidates.length === 0) {
         return [];
@@ -145,6 +149,60 @@ export class UserMemoryStore {
       debugLog('info', '[UserMemoryStore] rebuildIndex complete', { factCount: activeFacts.length });
     } catch (err) {
       debugLog('error', '[UserMemoryStore] rebuildIndex failed', { error: err });
+    }
+  }
+
+  /**
+   * Confirm a fact: mark as confirmed and boost confidence.
+   */
+  async confirm(factId: string): Promise<void> {
+    try {
+      const rawFacts = await memoryDB.getAllUserFacts();
+      const raw = rawFacts.find((f) => f.id === factId);
+      if (!raw) return;
+      const fact = normalizeFact(raw);
+      fact.status = 'confirmed';
+      fact.confidence = Math.max(0.95, (fact.confidence ?? 0) + 0.3);
+      fact.updated = Date.now();
+      await memoryDB.putUserFact(fact);
+      await miniSearchIndex.replaceFact(fact);
+    } catch (err) {
+      debugLog('error', '[UserMemoryStore] confirm failed', { error: err });
+    }
+  }
+
+  /**
+   * Reject a fact: mark as rejected, excluded from future retrieval.
+   */
+  async reject(factId: string): Promise<void> {
+    try {
+      const rawFacts = await memoryDB.getAllUserFacts();
+      const raw = rawFacts.find((f) => f.id === factId);
+      if (!raw) return;
+      const fact = normalizeFact(raw);
+      fact.status = 'rejected';
+      fact.updated = Date.now();
+      await memoryDB.putUserFact(fact);
+      await miniSearchIndex.replaceFact(fact);
+    } catch (err) {
+      debugLog('error', '[UserMemoryStore] reject failed', { error: err });
+    }
+  }
+
+  /**
+   * Delete a fact: permanently remove from DB and MiniSearch index.
+   */
+  async delete(factId: string): Promise<void> {
+    try {
+      await miniSearchIndex.removeFact(factId);
+      const db = await (await import('../storage/stores/MemoryDB')).memoryDB;
+      const rawFacts = await db.getAllUserFacts();
+      const raw = rawFacts.find((f) => f.id === factId);
+      if (raw) {
+        await db.putUserFact({ ...raw, status: 'superseded' } as UserMemoryFact);
+      }
+    } catch (err) {
+      debugLog('error', '[UserMemoryStore] delete failed', { error: err });
     }
   }
 

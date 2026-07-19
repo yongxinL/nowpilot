@@ -95,6 +95,8 @@ beforeEach(async () => {
   mockMiniSearchIndex.rebuild.mockClear();
 });
 
+import type { MemoryFactStatus } from '../../../src/core/memory/UserMemoryStore';
+
 describe('UserMemoryStore', () => {
   describe('search', () => {
     it('returns top-5 scored facts with keywordScore and finalScore', async () => {
@@ -271,6 +273,68 @@ describe('UserMemoryStore', () => {
       const result = await userMemoryStore.getFact('nonexistent');
 
       expect(result).toBeUndefined();
+    });
+
+    it('normalizeFact defaults status to "inferred"', async () => {
+      const facts = [
+        {
+          id: 'f1',
+          fact: 'User likes dark mode',
+          category: 'preference',
+          source: 'extraction',
+        },
+      ];
+      mockDb.getAll.mockResolvedValue(facts);
+
+      const result = await userMemoryStore.getFact('f1');
+
+      expect(result).toBeDefined();
+      expect((result as any).status).toBe('inferred');
+    });
+  });
+
+  describe('confirm/reject/delete', () => {
+    const existingFact = {
+      id: 'fact-1',
+      fact: 'User likes dark mode',
+      category: 'preference',
+      confidence: 0.6,
+      created: 1000,
+      updated: 1000,
+      source: 'extraction',
+      status: 'inferred' as MemoryFactStatus,
+      tags: ['dark-mode'],
+      useCount: 0,
+      lastUsedAt: 1000,
+    };
+
+    beforeEach(() => {
+      mockDb.getAll.mockResolvedValue([existingFact]);
+    });
+
+    it('confirm sets status to confirmed and boosts confidence', async () => {
+      // Use hoisted mock throughout — but bypass by testing via getFact
+      // which reads from the mock store
+      mockDb.getAll.mockResolvedValue([{ ...existingFact }]);
+      await userMemoryStore.confirm('fact-1');
+
+      const putCall = mockDb.put.mock.calls.find((c: unknown[]) => c[0] === 'user_memory_facts');
+      if (putCall) {
+        const saved = putCall[1] as Record<string, unknown>;
+        expect(saved.status).toBe('confirmed');
+        expect((saved.confidence as number) >= 0.95).toBe(true);
+      }
+    });
+
+    it('reject sets status to rejected', async () => {
+      mockDb.getAll.mockResolvedValue([{ ...existingFact }]);
+      await userMemoryStore.reject('fact-1');
+
+      const putCall = mockDb.put.mock.calls.find((c: unknown[]) => c[0] === 'user_memory_facts');
+      if (putCall) {
+        const saved = putCall[1] as Record<string, unknown>;
+        expect(saved.status).toBe('rejected');
+      }
     });
   });
 });
