@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildNavConfig, navConfig } from '../../src/core/navigation/navConfig';
+import { buildNavConfig, getNavConfig } from '../../src/core/navigation/navConfig';
 import { selectNavItems, findNavItem } from '../../src/core/navigation/navigationSelectors';
 
 describe('Canonical nav model', () => {
@@ -17,7 +17,7 @@ describe('Canonical nav model', () => {
   });
 
   it('surface strings are restricted to sidepanel/standalone/popup', () => {
-    for (const item of navConfig) {
+    for (const item of getNavConfig()) {
       for (const surface of item.surfaces) {
         expect(['sidepanel', 'standalone', 'popup']).toContain(surface);
       }
@@ -25,7 +25,7 @@ describe('Canonical nav model', () => {
   });
 
   it('no item uses legacy fullapp / sidePanel / sidepanel variants', () => {
-    const stringified = JSON.stringify(navConfig);
+    const stringified = JSON.stringify(getNavConfig());
     expect(stringified).not.toMatch(/"fullapp"/);
     expect(stringified).not.toMatch(/"full-app"/);
     expect(stringified).not.toMatch(/"sidePanel"/);
@@ -34,7 +34,7 @@ describe('Canonical nav model', () => {
   });
 
   it('IDs are unique across the canonical nav config', () => {
-    const ids = navConfig.map((item) => item.id);
+    const ids = getNavConfig().map((item) => item.id);
     expect(new Set(ids).size).toBe(ids.length);
   });
 
@@ -70,7 +70,7 @@ describe('Canonical nav model', () => {
   });
 
   it('Core primary workspace items include chat, agent, write, note, tools', () => {
-    const ids = navConfig.filter((i) => i.group === 'core').map((i) => i.id);
+    const ids = getNavConfig().filter((i) => i.group === 'core').map((i) => i.id);
     expect(ids).toContain('chat');
     expect(ids).toContain('agent');
     expect(ids).toContain('write');
@@ -78,21 +78,21 @@ describe('Canonical nav model', () => {
     expect(ids).toContain('tools');
     expect(ids).toHaveLength(5);
     // Verify Note label
-    const note = navConfig.find((i) => i.id === 'notes');
+    const note = getNavConfig().find((i) => i.id === 'notes');
     expect(note?.label).toBe('Note');
     // Verify Task label
-    const task = navConfig.find((i) => i.id === 'tasks');
+    const task = getNavConfig().find((i) => i.id === 'tasks');
     expect(task?.label).toBe('Task');
   });
 
   it('Addons secondary items include task', () => {
-    const ids = navConfig.filter((i) => i.group === 'addons').map((i) => i.id);
+    const ids = getNavConfig().filter((i) => i.group === 'addons').map((i) => i.id);
     expect(ids).toContain('tasks');
     expect(ids).toHaveLength(1);
   });
 
   it('Removed items no longer exist in nav config', () => {
-    const ids = navConfig.map((i) => i.id);
+    const ids = getNavConfig().map((i) => i.id);
     expect(ids).not.toContain('teamgqm');
     expect(ids).not.toContain('code');
     expect(ids).not.toContain('ask');

@@ -72,7 +72,9 @@ export function buildNavConfig(): NowPilotNavItem[] {
   return [...coreNavItems, ...addonNavItems];
 }
 
-export const navConfig: ReadonlyArray<NowPilotNavItem> = buildNavConfig();
+export function getNavConfig(): NowPilotNavItem[] {
+  return buildNavConfig();
+}
 
 export const pageComponentRegistry: Map<string, ComponentType> = new Map(
   corePages.map((page) => [page.id, page.component]),

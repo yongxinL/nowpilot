@@ -1,5 +1,5 @@
 import type { NavGroup, Surface } from './navigationTypes';
-import { navConfig } from './navConfig';
+import { getNavConfig } from './navConfig';
 import type { NowPilotNavItem } from './navigationTypes';
 
 export interface NavSelectionOptions {
@@ -10,7 +10,7 @@ export interface NavSelectionOptions {
 export function selectNavItems(options: NavSelectionOptions): NowPilotNavItem[] {
   const { surface, group } = options;
   if (surface === 'popup') return [];
-  return navConfig
+  return getNavConfig()
     .filter((item) => item.surfaces.includes(surface))
     .filter((item) => (group ? item.group === group : true))
     .slice()
@@ -18,5 +18,5 @@ export function selectNavItems(options: NavSelectionOptions): NowPilotNavItem[] 
 }
 
 export function findNavItem(id: string): NowPilotNavItem | undefined {
-  return navConfig.find((item) => item.id === id);
+  return getNavConfig().find((item) => item.id === id);
 }
