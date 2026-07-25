@@ -183,3 +183,4 @@ dist
 references/
 .output/
 dist/
+.wxt/

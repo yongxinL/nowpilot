@@ -913,7 +913,7 @@ The Full App contains:
 
 ## §6.3 Architecture Separation
 
-- **Core layer** — AI providers, storage, messaging, context pipeline, agent orchestration, MCP client, memory, transaction logging, workspace store.
+- **Core layer** — AI providers, storage, messaging, context pipeline, agent orchestration, MCP client, memory, transaction logging, workspace store, **and page-content extraction (`PageContentService`)**.
 - **Add-on layer** — site-specific context extraction, skills, side-panel pages, full-app pages. ServiceNow ships as first-party add-on. Write and TeamGQM are first-party add-ons.
 
 Core never knows about specific websites. Add-ons never bypass core APIs.
@@ -934,6 +934,7 @@ Core never knows about specific websites. Add-ons never bypass core APIs.
 - Full app shell (Chat, Agent, Notes, TeamGQM, Options)
 - Shared `WorkspaceStore` across both surfaces
 - 5 provider adapters
+- PageContentService (core) — layered page extraction (Defuddle → APC-lite DOM walk), feeding `ContextOptimizerInput.pageContext`, indexed by MiniSearch.
 - Persistent memory (conversation + user + preference)
 - 12 built-in MCP tools + external MCP client
 - ServiceNow add-on (data extraction + side-panel/full-app UI only)
@@ -948,7 +949,7 @@ Core never knows about specific websites. Add-ons never bypass core APIs.
 - Page injection (Shadow DOM UI, floating widgets, `CaseInsightBox`, injected page enhancements)
 - PDF chat
 - Global internet-search page (replaced by `ResearchSkill` global add-on)
-- Embedding-based search (bag-of-words + MiniSearch is sufficient)
+- Embedding-based search remains deferred — bag-of-words + MiniSearch is sufficient, **and now also powers page-content retrieval (§26.5)**.
 - Snippet/template productivity suite
 
 See §25 for the future page-injection reintroduction plan.
@@ -1008,9 +1009,12 @@ See §25 for the future page-injection reintroduction plan.
 
 | Package | Version | Purpose |
 |---|---|---|
-| `@mozilla/readability` | `^0.5` | Article extraction |
-| `turndown` | `^7` | HTML → Markdown |
-| `dompurify` | `^3` | XSS sanitisation for AI/tool output |
+| defuddle | ^0.6 | Primary main-content extraction → clean Markdown (Readability successor; preserves footnotes/math/code, richer metadata) |
+| @mozilla/readability | ^0.5 | Fallback article extraction when Defuddle yields low-confidence output |
+| turndown | ^7 | HTML → Markdown (used by APC-lite path / non-Defuddle output) |
+| dompurify | ^3 | XSS sanitisation for AI/tool output |
+
+**Rationale:** Defuddle is a drop-in Readability replacement built for exactly this job (see §23 ADR). MIT-licensed.
 
 ## §7.7 Search & Data
 
@@ -1093,6 +1097,8 @@ Core owns:
 - Registries (AddonRegistry, EndpointRegistry, KeymapRegistry, SidePanelPageRegistry, FullAppPageRegistry)
 - **WorkspaceStore** and cross-surface coordination
 - Content-script message bridge (extraction-only)
+- `PageContentService` + extraction strategies (`DefuddleStrategy`, `ApcLiteStrategy`) + `PageIndexBuilder` (MiniSearch over extracted content).
+- Content-script extraction bridge remains extraction-only (unchanged).
 
 Add-ons own:
 
@@ -1107,6 +1113,7 @@ Rules:
 - Core MUST NOT import from `src/addons/**`.
 - Add-ons MUST NOT bypass Core registries or WorkspaceStore.
 - Add-ons MUST NOT render UI into host pages in v0.1.
+- ServiceNow-specific selectors/token names live **only** in `src/addons/servicenow/**`.
 
 ## §8.3 Two UI Surfaces — Comparison
 
@@ -1199,7 +1206,20 @@ nowpilot/
 │   │   ├── config/{endpoints, EndpointRegistry, FeatureFlags, localModelCapabilities}.ts
 │   │   ├── log/debugLog.ts
 │   │   ├── i18n/strings.ts
-│   │   └── components/{ErrorBoundary.tsx, PortableMarkdown.tsx}
+│   │   ├── components/{ErrorBoundary.tsx, PortableMarkdown.tsx}
+│   │   ├── extraction/
+│   │   │   ├── PageContentService.ts        # orchestrator (core)
+│   │   │   ├── apcLite.types.ts             # RawNode / APCLiteNode / APCLiteDocument (+ Zod)  → Appendix C
+│   │   │   ├── strategies/
+│   │   │   │   ├── IExtractionStrategy.ts    # strategy contract
+│   │   │   │   ├── DefuddleStrategy.ts       # PRIMARY: main content → markdown (Defuddle)
+│   │   │   │   └── ApcLiteStrategy.ts        # structural/actionable DOM+ARIA walk
+│   │   │   ├── PageContentSerializer.ts      # tree → markdown / PageContext
+│   │   │   ├── PageIndexBuilder.ts           # ephemeral MiniSearch index over extracted content
+│   │   │   └── PageContentCache.ts           # per-tab cache + navigation invalidation
+│   │   └── content/
+│   │       ├── AxDomWalker.ts                # content-script safe DOM+ARIA walker (no React/AntD)
+│   │       └── PageContextBridge.ts          # RuntimeEnvelope bridge (EXTRACT_PAGE_CONTENT)
 │   │
 │   ├── addons/
 │   │   ├── global/{SelectionContextMenu, ResearchSkill}.ts
@@ -1475,7 +1495,7 @@ export const ProviderConfigSchema = z.object({
 
 | # | Tool name | Input | dangerous | Effect |
 |---|---|---|---|---|
-| 1 | `get-page-content` | `{ tabId?: number }` | no | Active/pinned tab context |
+| 1 | `get-page-content` | `{ tabId?: number }` | no | Active/pinned tab context via PageContentService (core, layered: Defuddle → APC-lite → ServiceNow API) |
 | 2 | `search-notes` | `{ query: string; limit?: number }` | no | MiniSearch over notes |
 | 3 | `create-note` | `{ title: string; content: string; tags?: string[] }` | yes | Writes to NotesDB |
 | 4 | `get-chat-history` | `{ sessionId?: string; limit?: number }` | no | Recent messages |
@@ -2810,45 +2830,50 @@ Runs nightly via `Scheduler`. v0.1 produces exactly three `Insight` values:
 
 | Decision | Choice | Rationale |
 |---|---|---|
-| Extension framework | WXT | Type-safe, HMR, cross-browser, no cloud dependency |
-| UI framework | React 19 | Streaming renders via concurrent mode |
-| **UI component library** | **Ant Design v6** | Enterprise-grade data components, mature forms/tables, accessibility, i18n; v6 is a compatible upgrade over v5 (React ≥18, CSS-variable theming by default, official `antd` CLI + machine-readable `DESIGN.md` reduce AI-coding-agent hallucination risk on the newer major) |
-| **AI chat components** | **Ant Design X 2.x** (`@ant-design/x`) — presentation components only | `Bubble`, `Sender`, `Conversations`, `ThoughtChain`, `Think`, `Attachments`, `Suggestion`, `Sources`, `FileCard` map directly onto Chat/Agent UI needs; requires antd v6 (x@1.x on antd v5 is maintenance-only, no new features) |
-| **Markdown/streaming rendering** | **`@ant-design/x-markdown`** | Purpose-built for incremental/streaming content (pairs naturally with `ChunkBuffer`); built-in LaTeX/mermaid/code-highlight plugins replace 5 separate packages |
+| Extension framework | WXT| Type-safe, HMR, cross-browser, no cloud dependency |
+| UI framework| React 19 | Streaming renders via concurrent mode|
+| **UI component library**| **Ant Design v6**| Enterprise-grade data components, mature forms/tables, accessibility, i18n; v6 is a compatible upgrade over v5 (React ≥18, CSS-variable theming by default, official `antd` CLI + machine-readable `DESIGN.md` reduce AI-coding-agent hallucination risk on the newer major) |
+|**AI chat components**|**Ant Design X 2.x** (`@ant-design/x`) — presentation components only|`Bubble`, `Sender`, `Conversations`, `ThoughtChain`, `Think`, `Attachments`, `Suggestion`, `Sources`, `FileCard` map directly onto Chat/Agent UI needs. **X 2.x targets antd v6** and is the actively developed line (new features such as the `x-card`/A2UI module ship here); the older X 1.x line pairs with antd v5, which Ant Group placed in a **1-year bugfix-only maintenance window** when v6 shipped (Nov 2025)|
+| **Markdown/streaming rendering**| **`@ant-design/x-markdown`** | Purpose-built for incremental/streaming content (pairs naturally with `ChunkBuffer`); built-in LaTeX/mermaid/code-highlight plugins replace 5 separate packages|
 | **AI chat data flow** | **NOT** `@ant-design/x-sdk` — kept `AgentOrchestrator`/`ProviderRouter`/`ContextOptimizer` | `x-sdk`'s `useXChat`/`ChatProvider` calls providers directly from the UI layer, duplicating and bypassing the Planner→Executor→Renderer pipeline, `ContextOptimizer`, `MemoryEngine`, and `AITransactionLog` |
 | **Dynamic agent-generated UI (A2UI)** | **Deferred to v0.2+** — not `@ant-design/x-card` in v0.1 | A2UI's `createSurface`/`updateComponents`/`updateDataModel` command stream is a materially harder JSON target than the 3-action `PlannerDecisionSchema`; unsafe for Haiku/Flash-class planners today (§25.6) |
 | **Theming** | AntD `ConfigProvider` + `XProvider` + Zustand `ThemeStore` | Centralized token system, dark mode via `theme.darkAlgorithm`, per-surface compact toggle; `XProvider` propagates the same tokens to Ant Design X components |
-| **Two UI surfaces** | Side Panel + Full App Tab | Side Panel = daily workflow, Full App = deep work / config / diagnostics |
-| **Shared workspace** | `WorkspaceStore` (Zustand) + `BroadcastBus` | Single source of truth across surfaces; cross-surface handoff |
-| **Content scripts** | Extraction-only in v0.1 | No UI in host pages; simpler bundle; page injection deferred to v0.2+ |
-| **Page injection** | **Deferred to v0.2+** | Reduces v0.1 complexity; add-on architecture preserved for future reintroduction |
-| State | Zustand | 1 KB, no boilerplate, works outside React |
-| AI SDK | Vercel AI SDK + custom orchestrator | Streaming/abort/tools; lighter than LangChain |
-| AI providers | `@ai-sdk/*` only | Single codepath for 5 providers |
-| Runtime orchestration | Planner → Executor → Renderer | Cheap models cannot drive `maxSteps=15` loops safely |
-| Tier resolution | `TierResolver` (Appendix D) | Prevents hallucinated model names |
+| **Two UI surfaces** | Side Panel + Full App Tab| Side Panel = daily workflow, Full App = deep work / config / diagnostics |
+| **Shared workspace**| `WorkspaceStore` (Zustand) + `BroadcastBus`| Single source of truth across surfaces; cross-surface handoff|
+| **Content scripts** | Extraction-only in v0.1| No UI in host pages; simpler bundle; page injection deferred to v0.2+|
+| **Page injection**| **Deferred to v0.2+**| Reduces v0.1 complexity; add-on architecture preserved for future reintroduction |
+| **Page-content extraction placement** | **Core `PageContentService`**, not a tool| Shared infra for Chat/Agent/Summarize/research/add-ons; central cache, concurrency, redaction, metrics (§8.2 boundary test, §26) |
+| **Main-content extraction** | **Defuddle** (`defuddle`)| Purpose-built Readability successor; preserves footnotes/math/code; clean Markdown for LLM context; richer metadata (schema.org); MIT. Runs in side panel/full app, not the content bundle (§26.4) |
+| **Extraction model**| **Layered strategy** (Defuddle → APC-lite → ServiceNow API)| One clean-prose path (Defuddle), one structural/actionable path (APC-lite DOM+ARIA), one API path (ServiceNow); right tool per page type (§26.2) |
+| **Page-content retrieval**| **MiniSearch over extracted content** (ephemeral, per-tab) | Keeps large pages within the 2,000-token webpage budget (§22.2); reuses core engine; never persisted (§26.5) |
+| **Browser automation**| **Deferred to v2** (`chrome.debugger` + CDP `Input`) | Trusted-event automation (`isTrusted`) needs the debugger; out of scope for read-only v0.1; `APCLiteNode` already carries geometry+interaction so no future schema rework (§26.7)|
+| State | Zustand| 1 KB, no boilerplate, works outside React|
+| AI SDK| Vercel AI SDK + custom orchestrator| Streaming/abort/tools; lighter than LangChain|
+| AI providers| `@ai-sdk/*` only | Single codepath for 5 providers|
+| Runtime orchestration | Planner → Executor → Renderer| Cheap models cannot drive `maxSteps=15` loops safely |
+| Tier resolution | `TierResolver` (Appendix D)| Prevents hallucinated model names|
 | Animation | `motion` | Do not install `framer-motion` — v12 is published under `motion` |
-| MCP transport | StreamableHTTP from side panel and Full App | EventSource unavailable in SW |
-| Built-in tools | `NowPilotMainServer` (12) in each surface | Available without external server |
-| AI calls location | Side panel or Full App only | SW ~30 s timeout kills streaming |
-| Chat storage | IndexedDB via `idb` | 10 MB `chrome.storage.local` insufficient |
-| Memory storage | Metadata in `chrome.storage.local`; bodies in `MemoryDB` | Split prevents 10 MB overflow |
-| API key storage | `chrome.storage.local` + AES-GCM | Encrypted at rest |
-| Session tokens | `chrome.storage.session` | Cleared on browser close |
-| Token estimation | Provider-native counters; fallback 4 chars ≈ 1 token | Accurate; zero dependency |
+| MCP transport | StreamableHTTP from side panel and Full App| EventSource unavailable in SW|
+| Built-in tools| `NowPilotMainServer` (12) in each surface| Available without external server|
+| AI calls location | Side panel or Full App only| SW ~30 s timeout kills streaming |
+| Chat storage| IndexedDB via `idb`| 10 MB `chrome.storage.local` insufficient|
+| Memory storage| Metadata in `chrome.storage.local`; bodies in `MemoryDB` | Split prevents 10 MB overflow|
+| API key storage | `chrome.storage.local` + AES-GCM | Encrypted at rest|
+| Session tokens| `chrome.storage.session` | Cleared on browser close |
+| Token estimation| Provider-native counters; fallback 4 chars ≈ 1 token | Accurate; zero dependency|
 | Note search | MiniSearch + bag-of-words cosine | No server, no model download |
-| Embedding search | Deferred | 40 MB model download not justified |
-| XSS protection | `PortableMarkdown` + DOMPurify | Eliminates `innerHTML` |
-| Generic proxy | `PROXY_FETCH` in SW | Reusable across add-ons |
-| Scheduler | `chrome.alarms` | Persists across SW restarts |
-| In-panel messaging | `EventBus` | Avoids `chrome.runtime` overhead |
-| Cross-context messaging | `MessageBus` + `BroadcastBus` + `RuntimeEnvelope` | Typed and sender-validated |
-| Add-on settings isolation | `AddonSettingsStore` namespaced | Prevents key collisions |
-| Keyboard shortcuts | `KeymapRegistry` | Conflict detection |
-| Icons | `@ant-design/icons` v6 + `motion` for animation | Consistent AntD ecosystem; v6 icon set includes built-in Anthropic/Claude/Gemini/DeepSeek/Ollama marks useful for the provider selector |
-| Options placement | Full App only | Side panel stays lightweight |
-| Diagnostics placement | Full App → Options | Deep work surface |
-| Notes placement | Full App only | Rich workspace needs full viewport |
+| Embedding search| Deferred | 40 MB model download not justified |
+| XSS protection| `PortableMarkdown` + DOMPurify | Eliminates `innerHTML` |
+| Generic proxy | `PROXY_FETCH` in SW| Reusable across add-ons|
+| Scheduler | `chrome.alarms`| Persists across SW restarts|
+| In-panel messaging| `EventBus` | Avoids `chrome.runtime` overhead |
+| Cross-context messaging | `MessageBus` + `BroadcastBus` + `RuntimeEnvelope`| Typed and sender-validated |
+| Add-on settings isolation | `AddonSettingsStore` namespaced| Prevents key collisions|
+| Keyboard shortcuts| `KeymapRegistry` | Conflict detection |
+| Icons | `@ant-design/icons` v6 + `motion` for animation| Consistent AntD ecosystem; v6 icon set includes built-in Anthropic/Claude/Gemini/DeepSeek/Ollama marks useful for the provider selector|
+| Options placement | Full App only| Side panel stays lightweight |
+| Diagnostics placement | Full App → Options | Deep work surface|
+| Notes placement | Full App only| Rich workspace needs full viewport |
 | Cross-surface consistency | Same `ThemeStore` and `WorkspaceStore` | Users experience one product across two surfaces |
 
 **Removed ADRs from v0.1c (obsolete):**
@@ -2986,6 +3011,74 @@ Revisit in v0.2+ once: (a) the v0.1 baseline is stable in production, and (b) a 
 
 ---
 
+## §26 — PageContentService (Layered Page Extraction)
+
+### §26.1 Principle
+Page-content extraction is **core infrastructure**, not a tool. A single `PageContentService` owns extraction for every surface (Chat, Agent, Summarize, `/research`, add-ons). It applies a **layered strategy**, caches per tab, redacts before use, and feeds `ContextOptimizerInput.pageContext` (§2.3).
+
+### §26.2 Layered strategy (ordered)
+
+```
+extract(tabId, mode)
+   │
+   ├─ 1. ServiceNow record?  ── yes ─▶ ServiceNow add-on: Table API → SNowCaseData   [API-FIRST, §9.7]
+   │
+   ├─ 2. mode = 'default' (read/summarize)
+   │        └─▶ DefuddleStrategy  → clean Markdown (main content)          [PRIMARY read path]
+   │             └─ low confidence? → Readability fallback
+   │
+   └─ 3. mode = 'actionable' (Agent needs structure/interaction)
+            └─▶ ApcLiteStrategy   → APCLiteNode tree (roles, geometry, interaction)
+```
+
+- **DefuddleStrategy** is the default for reading/summarizing — highest-quality prose with the least noise.
+- **ApcLiteStrategy** is used when the Agent needs *structure* (forms, tables, clickable/editable elements, node ids + geometry) — the substrate for future v2 automation (§26.7).
+- **ServiceNow** always tries the **Table API first** (§9.7); extraction is fallback only.
+
+### §26.3 Strategy contract
+```ts
+export interface IExtractionStrategy {
+  id: 'defuddle' | 'apc-lite' | 'servicenow-api';
+  canHandle(input: { url: string; mode: 'default' | 'actionable' }): boolean;
+  run(input: StrategyInput): Promise<StrategyResult>; // → markdown and/or APCLiteNode tree
+}
+```
+
+### §26.4 Content-bundle constraint (critical)
+Defuddle is **not** bundled into the content script (would break the < 50 KB extraction-only bundle, §22.1, §5.6). Instead:
+
+```
+Content script (tiny):  outerHTML (or targeted subtree)  ──RuntimeEnvelope──▶ Side Panel / Full App
+Side Panel / Full App:  DOMParser → new Defuddle(doc).parse()  → markdown → PageContext
+```
+
+The content script only reads/serializes HTML; **Defuddle parsing runs in the side panel / full app** where bundle size is unconstrained. This preserves the isolation rule (§5.6) and the 50 KB cap (§22.1).
+
+### §26.5 MiniSearch integration (retrieval-augmented context)
+- After extraction, `PageIndexBuilder` builds an **ephemeral** MiniSearch index (core engine, §3.2/§8.5) over the extracted content (Defuddle markdown chunked by heading, or APC-lite text nodes).
+- When extracted tokens exceed the **2 000-token webpage budget** (§22.2), inject only `selectRelevant(query)` results and mark `compressionApplied:'topk'` in the provenance manifest (§2.6).
+- Minimal mode (§2.5) always routes through `selectRelevant`.
+- Page indexes are ephemeral — **never persisted** to IndexedDB.
+
+### §26.6 Reliability & privacy
+- **Concurrency guard:** coalesce duplicate extractions per tab.
+- **Timeout:** 5 s hard cap (§13); on failure fall back (Defuddle→Readability, AX→DOM) and record `source`.
+- **Invalidation:** `SPANavigationWatcher` (`wxt:locationchange`) + `tabs.onUpdated`.
+- **Redaction:** run `TraceRedactor`-style redaction **before** indexing or logging (§4.4, §16).
+- **Passwords:** field values never captured (`isPassword ⇒ value omitted`).
+- **Metrics:** duration, node/char count, source, truncation → Diagnostics (§4.5).
+
+### §26.7 Browser automation — deferred to v2
+NowPilot v0.1 is **read-only**: content scripts are extraction-only (§5.6); the Agent acts through tools/APIs (§10.5), never by driving the host-page UI. Genuine automation (click/type/navigate) needs **trusted input events** (`event.isTrusted`), which only `chrome.debugger` + CDP `Input` domain can produce. Therefore:
+- v0.1/v0.2: no host-page automation; no `"debugger"` permission (§16.4 unchanged).
+- **v2:** introduce automation as a first-class feature; add `"debugger"`, a `DebuggerSession` manager, and automation tools (`clickElement`/`typeText`/`navigate`) that resolve a stable `APCLiteNode.id` → `geometry` → `Input.dispatchMouseEvent`. The `APCLiteNode` schema (Appendix C) is already automation-ready (carries `geometry` + `interaction`), so **no schema rework** is needed. A separate **v2 Automation addendum spec** must be ratified first (mirrors §25 page-injection plan).
+
+### §26.8 Reference projects (informative, non-normative)
+Two external projects inform this design but are **not dependencies of the architecture**:
+- **Defuddle** (kepano, MIT) — adopted as the `DefuddleStrategy` engine (§7.6, §23 ADR).
+- **google/llm-sidebar-with-context** (Apache-2.0) — **pattern reference only** (not forked). Borrow: tab-pinning UX (our cap 10 vs their 6) and **site-specific extraction strategies** (YouTube, Google Docs) as a model for our add-on `IContextExtractor` pattern. See `NowPilot-Reference-Projects.md`.
+
+---
 
 # Appendix A — Canonical Prompt Constants
 
@@ -3235,6 +3328,68 @@ export interface NoteContext {
 ```
 
 ```typescript
+// src/core/extraction/apcLite.types.ts
+import { z } from 'zod';
+
+// Raw content-script output BEFORE normalization (small, serializable over RuntimeEnvelope).
+export interface RawNode {
+  id: string; role: string; type?: string; text?: string;
+  geometry?: { x: number; y: number; width: number; height: number; inViewport: boolean };
+  interaction?: Record<string, boolean | undefined>;
+  link?: { href: string; rel?: string };
+  image?: { alt?: string; src?: string };
+  form?: { control?: { fieldName?: string; fieldType?: string; value?: string; isPassword?: boolean } };
+  iframe?: { origin: string; crossOrigin: boolean };
+  children?: RawNode[];
+}
+
+export const GeometrySchema = z.object({
+  x: z.number(), y: z.number(), width: z.number(), height: z.number(), inViewport: z.boolean(),
+});
+export const InteractionSchema = z.object({
+  clickable: z.boolean().optional(), editable: z.boolean().optional(), focusable: z.boolean().optional(),
+  disabled: z.boolean().optional(), expanded: z.boolean().optional(),
+});
+// INVARIANT: password value MUST be omitted (privacy, §16 / §0.2).
+export const FormControlSchema = z.object({
+  fieldName: z.string().optional(), fieldType: z.string().optional(),
+  value: z.string().optional(), isPassword: z.boolean().optional(),
+}).refine(c => !(c.isPassword && c.value !== undefined), 'password value must be omitted');
+
+export type APCLiteNode = {
+  id: string; domNodeId?: number; role: string; type?: string; text?: string;
+  textStyle?: { level?: number; emphasis?: boolean; size?: number };
+  geometry?: z.infer<typeof GeometrySchema>;
+  interaction?: z.infer<typeof InteractionSchema>;
+  link?: { href: string; rel?: string };
+  image?: { alt?: string; src?: string; origin?: string };
+  form?: { name?: string; control?: z.infer<typeof FormControlSchema> };
+  iframe?: { origin: string; crossOrigin: boolean };
+  children?: APCLiteNode[];
+};
+
+export const APCLiteNodeSchema: z.ZodType<APCLiteNode> = z.lazy(() => z.object({
+  id: z.string(), domNodeId: z.number().optional(), role: z.string(), type: z.string().optional(),
+  text: z.string().optional(),
+  textStyle: z.object({ level: z.number().optional(), emphasis: z.boolean().optional(), size: z.number().optional() }).optional(),
+  geometry: GeometrySchema.optional(), interaction: InteractionSchema.optional(),
+  link: z.object({ href: z.string(), rel: z.string().optional() }).optional(),
+  image: z.object({ alt: z.string().optional(), src: z.string().optional(), origin: z.string().optional() }).optional(),
+  form: z.object({ name: z.string().optional(), control: FormControlSchema.optional() }).optional(),
+  iframe: z.object({ origin: z.string(), crossOrigin: z.boolean() }).optional(),
+  children: z.array(APCLiteNodeSchema).optional(),
+}));
+
+export const APCLiteDocumentSchema = z.object({
+  url: z.string(), title: z.string(), extractedAt: z.number(),
+  source: z.enum(['dom', 'ax', 'hybrid', 'servicenow-api', 'defuddle', 'readability']),
+  root: APCLiteNodeSchema,
+  stats: z.object({ nodeCount: z.number(), approxTokens: z.number(), durationMs: z.number(), truncated: z.boolean() }),
+});
+export type APCLiteDocument = z.infer<typeof APCLiteDocumentSchema>;
+```
+
+```typescript
 // src/core/prompts/types.ts
 export interface PromptTemplate {
   id: string;
@@ -3434,6 +3589,30 @@ export interface IContextExtractor {
   id: string;
   supports(url: string): boolean;
   extract(document: Document): Promise<PageContext>;
+}
+```
+
+```typescript
+// src/core/extraction/IExtractionStrategy.ts
+import type { APCLiteNode } from './apcLite.types';
+
+export interface StrategyInput {
+  url: string; title: string; mode: 'default' | 'actionable';
+  html?: string;   // present for DefuddleStrategy (default/read mode)
+  raw?: RawNode;   // present for ApcLiteStrategy (actionable mode)
+}
+export interface StrategyResult {
+  source: 'defuddle' | 'readability' | 'apc-lite' | 'servicenow-api';
+  markdown?: string;      // prose path (Defuddle/Readability)
+  root?: APCLiteNode;     // structural path (APC-lite)
+  meta?: Record<string, string>;
+  approxTokens: number;
+  truncated: boolean;
+}
+export interface IExtractionStrategy {
+  id: StrategyResult['source'];
+  canHandle(i: { url: string; mode: 'default' | 'actionable' }): boolean;
+  run(i: StrategyInput): Promise<StrategyResult>;
 }
 ```
 
