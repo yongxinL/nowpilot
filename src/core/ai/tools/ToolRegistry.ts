@@ -1,6 +1,7 @@
 import type { ToolDefinition } from './ToolDefinition';
 import { getPageContentTool } from './builtin/getPageContentTool';
 import { pinTabTool } from './builtin/pinTabTool';
+import { searchTabsTool } from './builtin/searchTabsTool';
 
 export class ToolRegistry {
   #tools = new Map<string, ToolDefinition>();
@@ -36,3 +37,4 @@ export const toolRegistry = new ToolRegistry();
 // not lazily. ToolRegistry initialization happens in module scope.
 toolRegistry.register(getPageContentTool);
 toolRegistry.register(pinTabTool);
+toolRegistry.register(searchTabsTool);

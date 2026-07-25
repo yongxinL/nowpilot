@@ -16,6 +16,7 @@ import { personaInjector } from '../core/ai/persona/PersonaInjector';
 import { followUpService } from '../core/ai/followUp/FollowUpService';
 import type { FollowUpSuggestion } from '../core/ai/followUp/FollowUpService';
 import { debugLog } from '../core/utils/debugLog';
+import { pageContentService } from '../core/extraction/PageContentService';
 import type { OptimizedContext } from '../core/context/contextTypes';
 
 // ---------------------------------------------------------------------------
@@ -482,7 +483,27 @@ export function useChat(): UseChatReturn {
         preferences: memoryResult.preferences as Record<string, unknown>,
         conversationHistory,
         conversationSummary: memoryResult.conversationContext.summary,
-        pageContext: formatPageContext(workspaceCurrentPageContext, workspacePinnedTabs), // PageContext | null (D-19)
+        pageContext: await (async () => {
+          const cached = formatPageContext(workspaceCurrentPageContext, workspacePinnedTabs);
+          if (cached) {
+            debugLog('debug', '[useChat] Using cached page context', { url: workspaceCurrentPageContext?.url, length: cached.length });
+            return cached;
+          }
+          debugLog('debug', '[useChat] No cached page context, fetching on-demand', {});
+          try {
+            const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+            if (tabs[0]?.id) {
+              debugLog('debug', '[useChat] Fetching page context for tab', { tabId: tabs[0].id });
+              const ctx = await pageContentService.getForTabAsPageContext(tabs[0].id);
+              debugLog('info', '[useChat] On-demand page context fetched', { url: ctx.url, markdownLength: ctx.markdown?.length ?? 0 });
+              return formatPageContext(ctx, []);
+            }
+            debugLog('debug', '[useChat] No active tab found for on-demand fetch', {});
+          } catch (err) {
+            debugLog('error', '[useChat] On-demand page context fetch failed', { error: err instanceof Error ? err.message : String(err) });
+          }
+          return null;
+        })(),
         toolSchemas: toolRegistry.list().map((t) => ({
           name: t.name,
           schema: t.inputSchema,

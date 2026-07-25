@@ -1,22 +1,8 @@
-/**
- * getPageContentTool — MCP tool #1.
- *
- * Returns the page content of the active tab or a pinned tab.
- * Fresh extraction for the active tab (via content script relay),
- * cached PageContext for pinned tabs (D-20).
- *
- * ## Key invariants
- * - tabId provided → looks up workspaceStore.pinnedTabs for cached context
- * - No tabId → queries active tab and sends GET_PAGE_CONTEXT_REQUEST
- * - AbortSignal check before execution (ExecutorService pattern)
- * - chrome.runtime.lastError checked after sendMessage
- * - useWorkspaceStore.getState() for one-shot reads (no subscriptions)
- *
- * Pattern: fixture tool pattern (PATTERNS.md §7)
- */
 import { z } from 'zod';
 import type { ToolDefinition } from '../ToolDefinition';
 import { useWorkspaceStore } from '../../../stores/workspaceStore';
+import { onDemandExtractor } from '../../../content/OnDemandExtractor';
+import { pageContentService } from '../../../extraction/PageContentService';
 
 export const getPageContentTool: ToolDefinition = {
   name: 'get-page-content',
@@ -50,61 +36,59 @@ export const getPageContentTool: ToolDefinition = {
   requiresPermission: false,
 
   async execute(input, context) {
-    // Abort check (mandatory — all fixture tools pattern)
     if (context.abortSignal.aborted) {
       throw new DOMException('Aborted', 'AbortError');
     }
 
     const { tabId, url } = input as { tabId?: number; url?: string };
 
-    // D-20: Pinned tab → cached PageContext from workspaceStore
+    const store = useWorkspaceStore.getState();
+
     if (tabId !== undefined) {
-      const pinned = useWorkspaceStore
-        .getState()
-        .pinnedTabs.find((t) => t.tabId === tabId);
-      if (!pinned) {
-        return { success: false, error: `Pinned tab ${tabId} not found` };
+      const pinned = store.pinnedTabs.find((t) => t.tabId === tabId);
+      if (pinned) {
+        return { success: true, page: pinned.page };
       }
-      return { success: true, page: pinned.page };
+
+      const cached = store.pageContextByTab[tabId];
+      if (cached) {
+        return { success: true, page: cached.page };
+      }
+
+      try {
+        const pageCtx = await pageContentService.getForTabAsPageContext(tabId);
+        return { success: true, page: pageCtx };
+      } catch {
+      }
+
+      const extracted = await onDemandExtractor.extractFromTab(tabId);
+      if (extracted) {
+        return { success: true, page: extracted };
+      }
+
+      return { success: false, error: `Could not extract content for tab ${tabId}` };
     }
 
-    // URL lookup → check pinned tabs by URL match
     if (url) {
-      const pinned = useWorkspaceStore
-        .getState()
-        .pinnedTabs.find((t) => (t.url || t.page?.url) === url);
+      const pinned = store.pinnedTabs.find((t) => (t.url || t.page?.url) === url);
       if (pinned) {
         return { success: true, page: pinned.page };
       }
     }
 
-    // Active page → fresh extraction via content script relay
     return new Promise((resolve) => {
-      chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
+      chrome.tabs.query({ active: true, currentWindow: true }, async ([tab]) => {
         if (!tab?.id) {
           resolve({ success: false, error: 'No active tab' });
           return;
         }
 
-        chrome.tabs.sendMessage(
-          tab.id,
-          { type: 'GET_PAGE_CONTEXT_REQUEST' },
-          (response) => {
-            if (chrome.runtime.lastError) {
-              resolve({
-                success: false,
-                error: chrome.runtime.lastError.message,
-              });
-            } else if (response) {
-              resolve(response);
-            } else {
-              resolve({
-                success: false,
-                error: 'No response from content script',
-              });
-            }
-          },
-        );
+        try {
+          const pageCtx = await pageContentService.getForTabAsPageContext(tab.id);
+          resolve({ success: true, page: pageCtx });
+        } catch {
+          resolve({ success: false, error: 'Could not extract content for active tab' });
+        }
       });
     });
   },

@@ -1,7 +1,8 @@
-import { useEffect, useCallback } from 'react';
-import { Select, DatePicker, Input, Switch, Button, Space, Alert, Typography } from 'antd';
+import { useEffect, useCallback, useState } from 'react';
+import { Select, DatePicker, Input, Switch, Button, Space, Alert, Typography, Tabs } from 'antd';
 import { useDiagnosticsStore } from '../../core/stores/diagnosticsStore';
 import { TransactionTable } from '../diagnostics/TransactionTable';
+import { ExtractionLogList } from '../diagnostics/ExtractionLogList';
 import type { TransactionType, TransactionStatus, Severity } from '../../core/telemetry/types';
 
 const { RangePicker } = DatePicker;
@@ -32,6 +33,9 @@ const SEVERITY_OPTIONS: { value: Severity; label: string }[] = [
 ];
 
 export function DiagnosticsPanel() {
+  const [activeTab, setActiveTab] = useState<string>('transactions');
+  const [extractionRefreshTrigger, setExtractionRefreshTrigger] = useState(0);
+
   const filterType = useDiagnosticsStore((s) => s.filterType);
   const filterStatus = useDiagnosticsStore((s) => s.filterStatus);
   const filterProvider = useDiagnosticsStore((s) => s.filterProvider);
@@ -65,7 +69,6 @@ export function DiagnosticsPanel() {
   const handleFilterChange = useCallback(
     (key: string, value: unknown) => {
       setFilter(key, value);
-      // Refresh on next tick so store state is updated
       setTimeout(() => refreshTransactions(), 0);
     },
     [setFilter, refreshTransactions],
@@ -95,9 +98,15 @@ export function DiagnosticsPanel() {
   );
 
   const handleExport = useCallback(() => {
-    // For now: refresh and trigger export
     refreshTransactions();
   }, [refreshTransactions]);
+
+  const handleTabChange = useCallback((key: string) => {
+    setActiveTab(key);
+    if (key === 'extraction') {
+      setExtractionRefreshTrigger((n) => n + 1);
+    }
+  }, []);
 
   return (
     <div data-diagnostics-panel>
@@ -111,80 +120,98 @@ export function DiagnosticsPanel() {
         />
       ) : null}
 
-      {/* Filter Bar */}
-      <div style={{ marginBottom: 16 }}>
-        <Space wrap size={[8, 8]}>
-          <Select
-            aria-label="Filter by type"
-            placeholder="Type"
-            allowClear
-            style={{ width: 120 }}
-            value={filterType}
-            onChange={(val) => handleFilterChange('filterType', val)}
-            options={TRANSACTION_TYPE_OPTIONS}
-          />
-          <Select
-            aria-label="Filter by status"
-            placeholder="Status"
-            allowClear
-            style={{ width: 130 }}
-            value={filterStatus}
-            onChange={(val) => handleFilterChange('filterStatus', val)}
-            options={TRANSACTION_STATUS_OPTIONS}
-          />
-          <Select
-            aria-label="Filter by provider"
-            placeholder="Provider"
-            allowClear
-            style={{ width: 140 }}
-            value={filterProvider}
-            onChange={(val) => handleFilterChange('filterProvider', val)}
-          />
-          <Select
-            aria-label="Filter by severity"
-            placeholder="Severity"
-            allowClear
-            style={{ width: 120 }}
-            value={filterSeverity}
-            onChange={(val) => handleFilterChange('filterSeverity', val)}
-            options={SEVERITY_OPTIONS}
-          />
-          <RangePicker
-            aria-label="Filter by date range"
-            onChange={handleRangeChange as never}
-          />
-          <Input.Search
-            aria-label="Search transactions"
-            placeholder="Search (ID, model, provider, error)..."
-            allowClear
-            style={{ width: 240 }}
-            value={searchQuery}
-            onSearch={handleSearch}
-            onChange={(e) => setFilter('searchQuery', e.target.value)}
-          />
-          <Space>
-            <Typography.Text style={{ fontSize: 12 }}>Diagnostic</Typography.Text>
-            <Switch
-              aria-label="Toggle diagnostic mode"
-              checked={diagnosticMode}
-              onChange={setDiagnosticMode}
-            />
-          </Space>
-          <Space>
-            <Typography.Text style={{ fontSize: 12 }}>Privacy</Typography.Text>
-            <Switch
-              aria-label="Toggle privacy mode"
-              checked={privacyMode}
-              onChange={setPrivacyMode}
-            />
-          </Space>
-          <Button onClick={handleExport}>Export</Button>
-          <Button onClick={clearFilters}>Clear Filters</Button>
-        </Space>
-      </div>
-
-      {/* Single full-width log table with expandable detail rows */}
-      <TransactionTable />
+      <Tabs
+        activeKey={activeTab}
+        onChange={handleTabChange}
+        style={{ marginBottom: 8 }}
+        items={[
+          {
+            key: 'transactions',
+            label: 'AI Transactions',
+            children: (
+              <>
+                {/* Filter Bar */}
+                <div style={{ marginBottom: 16 }}>
+                  <Space wrap size={[8, 8]}>
+                    <Select
+                      aria-label="Filter by type"
+                      placeholder="Type"
+                      allowClear
+                      style={{ width: 120 }}
+                      value={filterType}
+                      onChange={(val) => handleFilterChange('filterType', val)}
+                      options={TRANSACTION_TYPE_OPTIONS}
+                    />
+                    <Select
+                      aria-label="Filter by status"
+                      placeholder="Status"
+                      allowClear
+                      style={{ width: 130 }}
+                      value={filterStatus}
+                      onChange={(val) => handleFilterChange('filterStatus', val)}
+                      options={TRANSACTION_STATUS_OPTIONS}
+                    />
+                    <Select
+                      aria-label="Filter by provider"
+                      placeholder="Provider"
+                      allowClear
+                      style={{ width: 140 }}
+                      value={filterProvider}
+                      onChange={(val) => handleFilterChange('filterProvider', val)}
+                    />
+                    <Select
+                      aria-label="Filter by severity"
+                      placeholder="Severity"
+                      allowClear
+                      style={{ width: 120 }}
+                      value={filterSeverity}
+                      onChange={(val) => handleFilterChange('filterSeverity', val)}
+                      options={SEVERITY_OPTIONS}
+                    />
+                    <RangePicker
+                      aria-label="Filter by date range"
+                      onChange={handleRangeChange as never}
+                    />
+                    <Input.Search
+                      aria-label="Search transactions"
+                      placeholder="Search (ID, model, provider, error)..."
+                      allowClear
+                      style={{ width: 240 }}
+                      value={searchQuery}
+                      onSearch={handleSearch}
+                      onChange={(e) => setFilter('searchQuery', e.target.value)}
+                    />
+                    <Space>
+                      <Typography.Text style={{ fontSize: 12 }}>Diagnostic</Typography.Text>
+                      <Switch
+                        aria-label="Toggle diagnostic mode"
+                        checked={diagnosticMode}
+                        onChange={setDiagnosticMode}
+                      />
+                    </Space>
+                    <Space>
+                      <Typography.Text style={{ fontSize: 12 }}>Privacy</Typography.Text>
+                      <Switch
+                        aria-label="Toggle privacy mode"
+                        checked={privacyMode}
+                        onChange={setPrivacyMode}
+                      />
+                    </Space>
+                    <Button onClick={handleExport}>Export</Button>
+                    <Button onClick={clearFilters}>Clear Filters</Button>
+                  </Space>
+                </div>
+                <TransactionTable />
+              </>
+            ),
+          },
+          {
+            key: 'extraction',
+            label: 'Page Extraction',
+            children: <ExtractionLogList refreshTrigger={extractionRefreshTrigger} />,
+          },
+        ]}
+      />
     </div>
   );
 }

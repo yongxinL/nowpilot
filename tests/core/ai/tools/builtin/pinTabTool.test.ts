@@ -16,12 +16,14 @@ import { useWorkspaceStore } from '../../../../../src/core/stores/workspaceStore
 const mockAddPinnedTab = vi.fn();
 const mockRemovePinnedTab = vi.fn();
 let mockPinnedTabs: Array<{ tabId: number }> = [];
+let mockPageContextByTab: Record<number, { page: unknown; updatedAt: number }> = {};
 
 vi.mock('../../../../../src/core/stores/workspaceStore', () => ({
   useWorkspaceStore: {
     getState: vi.fn(() => ({
       pinnedTabs: mockPinnedTabs,
       currentPageContext: null,
+      pageContextByTab: mockPageContextByTab,
       addPinnedTab: mockAddPinnedTab,
       removePinnedTab: mockRemovePinnedTab,
     })),
@@ -41,6 +43,7 @@ describe('pinTabTool', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockPinnedTabs = [];
+    mockPageContextByTab = {};
   });
 
   it('has correct metadata', () => {
@@ -123,6 +126,30 @@ describe('pinTabTool', () => {
     expect(mockTabsGet).not.toHaveBeenCalled(); // Should not call chrome.tabs.get
     expect(result.success).toBe(false);
     expect(result.error).toContain('Maximum 10 pinned tabs');
+  });
+
+  // Regression (D-31): pinning tab B must use tab B's cached page, not
+  // whichever tab most recently pushed a PAGE_CONTEXT_UPDATED.
+  it('uses this tab\'s cached page context, not another tab\'s', async () => {
+    mockTabsGet.mockResolvedValue({
+      id: 5,
+      windowId: 1,
+      url: 'https://example.com/b',
+      title: 'Tab B',
+    });
+    mockPageContextByTab = {
+      5: { page: { title: 'Tab B content', url: 'https://example.com/b' }, updatedAt: Date.now() },
+      99: { page: { title: 'Tab A content', url: 'https://example.com/a' }, updatedAt: Date.now() },
+    };
+
+    await pinTabTool.execute(
+      { tabId: 5, action: 'pin' },
+      { abortSignal: new AbortController().signal },
+    );
+
+    expect(mockAddPinnedTab).toHaveBeenCalledWith(
+      expect.objectContaining({ page: expect.objectContaining({ title: 'Tab B content' }) }),
+    );
   });
 
   // Behavior 5: chrome.tabs.get fails → returns error

@@ -1,38 +1,28 @@
-/**
- * Tests for getPageContentTool — MCP tool #1.
- *
- * Tests 6 behaviors per PLAN.md Task 3:
- * 1. No tabId → queries active tab, sends GET_PAGE_CONTEXT_REQUEST, returns fresh result
- * 2. tabId provided → looks up pinned tab in workspaceStore, returns cached PageContext
- * 3. tabId not found in pinned tabs → returns { success: false, error }
- * 4. abortSignal.aborted → throws AbortError
- * 5. No active tab → returns { success: false, error: 'No active tab' }
- * 6. chrome.runtime.lastError after sendMessage → returns error
- */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { getPageContentTool } from '../../../../../src/core/ai/tools/builtin/getPageContentTool';
 import { useWorkspaceStore } from '../../../../../src/core/stores/workspaceStore';
+import { onDemandExtractor } from '../../../../../src/core/content/OnDemandExtractor';
 import type { PageContext } from '../../../../../src/core/content/PageContext';
 
-// ---- Mock workspaceStore ----
 vi.mock('../../../../../src/core/stores/workspaceStore', () => ({
-  useWorkspaceStore: {
-    getState: vi.fn(),
-  },
+  useWorkspaceStore: { getState: vi.fn() },
 }));
 
-// ---- Mock chrome.tabs ----
-const mockTabsQuery = vi.fn();
-const mockTabsSendMessage = vi.fn();
+vi.mock('../../../../../src/core/content/OnDemandExtractor', () => ({
+  onDemandExtractor: { extractFromTab: vi.fn() },
+}));
 
+const { mockGetForTabAsPageContext } = vi.hoisted(() => ({
+  mockGetForTabAsPageContext: vi.fn(),
+}));
+
+vi.mock('../../../../../src/core/extraction/PageContentService', () => ({
+  pageContentService: { getForTabAsPageContext: mockGetForTabAsPageContext },
+}));
+
+const mockTabsQuery = vi.fn();
 vi.stubGlobal('chrome', {
-  tabs: {
-    query: mockTabsQuery,
-    sendMessage: mockTabsSendMessage,
-  },
-  runtime: {
-    lastError: undefined as chrome.runtime.LastError | undefined,
-  },
+  tabs: { query: mockTabsQuery, sendMessage: vi.fn() },
 });
 
 function makePageContext(overrides: Partial<PageContext> = {}): PageContext {
@@ -44,8 +34,8 @@ function makePageContext(overrides: Partial<PageContext> = {}): PageContext {
     markdown: '# Hello',
     meta: {},
     extractedAt: Date.now(),
-    extractionType: 'readability',
-    extractionQuality: 'article',
+    extractionType: 'axdom',
+    extractionQuality: 'tree',
     ...overrides,
   };
 }
@@ -53,11 +43,13 @@ function makePageContext(overrides: Partial<PageContext> = {}): PageContext {
 describe('getPageContentTool', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    chrome.runtime.lastError = undefined;
     (useWorkspaceStore.getState as ReturnType<typeof vi.fn>).mockReturnValue({
       pinnedTabs: [],
       currentPageContext: null,
+      pageContextByTab: {},
     });
+    (onDemandExtractor.extractFromTab as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    mockGetForTabAsPageContext.mockRejectedValue(new Error('no content script'));
   });
 
   it('has correct metadata', () => {
@@ -78,7 +70,6 @@ describe('getPageContentTool', () => {
     expect(r.success).toBe(false);
   });
 
-  // Behavior 4: abortSignal.aborted → throws AbortError
   it('throws AbortError when abortSignal is already aborted', async () => {
     const aborted = new AbortController();
     aborted.abort();
@@ -87,40 +78,14 @@ describe('getPageContentTool', () => {
     ).rejects.toThrow('Aborted');
   });
 
-  // Behavior 1: No tabId → queries active tab, sends GET_PAGE_CONTEXT_REQUEST
-  it('queries active tab and sends extraction request when no tabId provided', async () => {
-    const mockPageContext = makePageContext();
-    mockTabsQuery.mockImplementation((_query: unknown, cb: (tabs: Array<{ id: number }>) => void) => {
-      cb([{ id: 1 }]);
-    });
-    mockTabsSendMessage.mockImplementation(
-      (_tabId: number, _msg: unknown, cb: (response: unknown) => void) => {
-        cb({ success: true, pageContext: mockPageContext });
-      },
-    );
-
-    const result = await getPageContentTool.execute(
-      {},
-      { abortSignal: new AbortController().signal },
-    );
-
-    expect(mockTabsQuery).toHaveBeenCalled();
-    expect(mockTabsSendMessage).toHaveBeenCalledWith(
-      1,
-      { type: 'GET_PAGE_CONTEXT_REQUEST' },
-      expect.any(Function),
-    );
-    expect(result).toEqual({ success: true, pageContext: mockPageContext });
-  });
-
-  // Behavior 2: tabId provided → looks up pinned tab in workspaceStore
-  it('returns cached PageContext when tabId matches a pinned tab (D-20)', async () => {
+  it('returns cached PageContext when tabId matches a pinned tab', async () => {
     const cachedPage = makePageContext({ title: 'Cached Tab' });
     (useWorkspaceStore.getState as ReturnType<typeof vi.fn>).mockReturnValue({
       pinnedTabs: [
         { tabId: 42, windowId: 1, page: cachedPage, pinnedAt: Date.now(), active: true },
       ],
       currentPageContext: null,
+      pageContextByTab: {},
     });
 
     const result = await getPageContentTool.execute(
@@ -128,32 +93,86 @@ describe('getPageContentTool', () => {
       { abortSignal: new AbortController().signal },
     );
 
-    expect(mockTabsQuery).not.toHaveBeenCalled(); // Should NOT query tabs
     expect(result).toEqual({ success: true, page: cachedPage });
   });
 
-  // Behavior 3: tabId not found in pinned tabs
-  it('returns error when tabId is not found in pinned tabs', async () => {
+  it('returns per-tab cached PageContext when tabId is not pinned but cached', async () => {
+    const cachedPage = makePageContext({ title: 'Cached-by-tab' });
     (useWorkspaceStore.getState as ReturnType<typeof vi.fn>).mockReturnValue({
       pinnedTabs: [],
       currentPageContext: null,
+      pageContextByTab: { 7: { page: cachedPage, updatedAt: Date.now() } },
     });
 
+    const result = await getPageContentTool.execute(
+      { tabId: 7 },
+      { abortSignal: new AbortController().signal },
+    );
+
+    expect(mockGetForTabAsPageContext).not.toHaveBeenCalled();
+    expect(onDemandExtractor.extractFromTab).not.toHaveBeenCalled();
+    expect(result).toEqual({ success: true, page: cachedPage });
+  });
+
+  it('uses PageContentService for fresh extraction when tabId is not cached', async () => {
+    const freshPage = makePageContext({ title: 'Fresh Extraction' });
+    mockGetForTabAsPageContext.mockResolvedValue(freshPage);
+
+    const result = await getPageContentTool.execute(
+      { tabId: 42 },
+      { abortSignal: new AbortController().signal },
+    );
+
+    expect(mockGetForTabAsPageContext).toHaveBeenCalledWith(42);
+    expect(result).toEqual({ success: true, page: freshPage });
+  });
+
+  it('falls back to OnDemandExtractor when PageContentService fails', async () => {
+    const extractedPage = makePageContext({ title: 'On-demand Tab' });
+    (onDemandExtractor.extractFromTab as ReturnType<typeof vi.fn>).mockResolvedValue(extractedPage);
+
+    const result = await getPageContentTool.execute(
+      { tabId: 8 },
+      { abortSignal: new AbortController().signal },
+    );
+
+    expect(mockGetForTabAsPageContext).toHaveBeenCalledWith(8);
+    expect(onDemandExtractor.extractFromTab).toHaveBeenCalledWith(8);
+    expect(result).toEqual({ success: true, page: extractedPage });
+  });
+
+  it('returns error when all extraction paths fail for tabId', async () => {
     const result = await getPageContentTool.execute(
       { tabId: 999 },
       { abortSignal: new AbortController().signal },
     );
 
+    expect(onDemandExtractor.extractFromTab).toHaveBeenCalledWith(999);
     expect(result).toEqual({
       success: false,
-      error: 'Pinned tab 999 not found',
+      error: 'Could not extract content for tab 999',
     });
   });
 
-  // Behavior 5: No active tab
-  it('returns error when no active tab is available', async () => {
+  it('uses PageContentService for the active tab when no tabId provided', async () => {
+    const activePage = makePageContext({ title: 'Active Tab' });
+    mockGetForTabAsPageContext.mockResolvedValue(activePage);
     mockTabsQuery.mockImplementation((_query: unknown, cb: (tabs: Array<{ id: number }>) => void) => {
-      cb([]); // No tabs
+      cb([{ id: 1 }]);
+    });
+
+    const result = await getPageContentTool.execute(
+      {},
+      { abortSignal: new AbortController().signal },
+    );
+
+    expect(mockGetForTabAsPageContext).toHaveBeenCalledWith(1);
+    expect(result).toEqual({ success: true, page: activePage });
+  });
+
+  it('returns error when no active tab is available', async () => {
+    mockTabsQuery.mockImplementation((_query: unknown, cb: (tabs: Array<unknown>) => void) => {
+      cb([]);
     });
 
     const result = await getPageContentTool.execute(
@@ -164,49 +183,38 @@ describe('getPageContentTool', () => {
     expect(result).toEqual({ success: false, error: 'No active tab' });
   });
 
-  // Behavior 6: chrome.runtime.lastError after sendMessage
-  it('returns error when chrome.runtime.lastError is set after sendMessage', async () => {
+  it('returns error when PageContentService fails for active tab', async () => {
     mockTabsQuery.mockImplementation((_query: unknown, cb: (tabs: Array<{ id: number }>) => void) => {
       cb([{ id: 1 }]);
     });
-    mockTabsSendMessage.mockImplementation(
-      (_tabId: number, _msg: unknown, cb: (response: unknown) => void) => {
-        chrome.runtime.lastError = { message: 'Could not establish connection' } as chrome.runtime.LastError;
-        cb(undefined);
-      },
-    );
 
     const result = await getPageContentTool.execute(
       {},
       { abortSignal: new AbortController().signal },
     );
 
+    expect(mockGetForTabAsPageContext).toHaveBeenCalledWith(1);
     expect(result).toEqual({
       success: false,
-      error: 'Could not establish connection',
+      error: 'Could not extract content for active tab',
     });
-    chrome.runtime.lastError = undefined;
   });
 
-  // Edge: no response from content script
-  it('returns error when content script returns no response', async () => {
-    mockTabsQuery.mockImplementation((_query: unknown, cb: (tabs: Array<{ id: number }>) => void) => {
-      cb([{ id: 1 }]);
+  it('returns cached PageContext for url lookup when pinned', async () => {
+    const pinnedPage = makePageContext({ title: 'URL Match' });
+    (useWorkspaceStore.getState as ReturnType<typeof vi.fn>).mockReturnValue({
+      pinnedTabs: [
+        { tabId: 1, windowId: 1, page: pinnedPage, pinnedAt: Date.now(), active: true, url: 'https://example.com' },
+      ],
+      currentPageContext: null,
+      pageContextByTab: {},
     });
-    mockTabsSendMessage.mockImplementation(
-      (_tabId: number, _msg: unknown, cb: (response: unknown) => void) => {
-        cb(undefined); // No response
-      },
-    );
 
     const result = await getPageContentTool.execute(
-      {},
+      { url: 'https://example.com' },
       { abortSignal: new AbortController().signal },
     );
 
-    expect(result).toEqual({
-      success: false,
-      error: 'No response from content script',
-    });
+    expect(result).toEqual({ success: true, page: pinnedPage });
   });
 });

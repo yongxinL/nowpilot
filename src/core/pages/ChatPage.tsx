@@ -442,23 +442,12 @@ export function ChatPage() {
       return;
     }
 
-    chrome.tabs.sendMessage(tab.id, { type: 'GET_PAGE_CONTEXT_REQUEST' }, (response) => {
-      let extractedPage = null;
-      if (response && response.success && response.page) {
-        extractedPage = response.page;
-      }
-      
-      const pageContext: PageContext = extractedPage || {
-        url: tab.url || '',
-        origin: '',
-        hostname: '',
-        title: tab.title || '',
-        meta: {},
-        extractedAt: Date.now(),
-        extractionType: 'metadata-only' as const,
-        extractionQuality: 'minimal' as const,
-      };
+    // D-31: prefer this tab's own cached extraction over a live request —
+    // the per-tab cache is keyed by tabId, so it can't return another tab's
+    // content the way the single-slot currentPageContext global used to.
+    const cachedForTab = store.pageContextByTab[tab.id]?.page;
 
+    const finishPin = (pageContext: PageContext) => {
       const tabContext: TabContext = {
         tabId: tab.id!,
         windowId: tab.windowId,
@@ -473,6 +462,31 @@ export function ChatPage() {
       message.success(`Pinned tab: ${tab.title || 'Tab'}`);
       // Refresh available tabs list
       loadAvailableTabs();
+    };
+
+    if (cachedForTab) {
+      finishPin(cachedForTab);
+      return;
+    }
+
+    chrome.tabs.sendMessage(tab.id, { type: 'GET_PAGE_CONTEXT_REQUEST' }, (response) => {
+      let extractedPage = null;
+      if (response && response.success && response.page) {
+        extractedPage = response.page;
+      }
+
+      finishPin(
+        extractedPage || {
+          url: tab.url || '',
+          origin: '',
+          hostname: '',
+          title: tab.title || '',
+          meta: {},
+          extractedAt: Date.now(),
+          extractionType: 'metadata-only' as const,
+          extractionQuality: 'minimal' as const,
+        },
+      );
     });
   };
 
@@ -492,23 +506,7 @@ export function ChatPage() {
           const store = useWorkspaceStore.getState();
           const isAlreadyPinned = store.pinnedTabs.some((t) => t.tabId === tab.id);
           if (!isAlreadyPinned) {
-            chrome.tabs.sendMessage(tab.id, { type: 'GET_PAGE_CONTEXT_REQUEST' }, (response) => {
-              let extractedPage = null;
-              if (response && response.success && response.page) {
-                extractedPage = response.page;
-              }
-              
-              const currentPage: PageContext = extractedPage || store.currentPageContext || {
-                url: tab.url || '',
-                origin: '',
-                hostname: '',
-                title: tab.title || '',
-                meta: {},
-                extractedAt: Date.now(),
-                extractionType: 'metadata-only' as const,
-                extractionQuality: 'minimal' as const,
-              };
-
+            const finishAutoPin = (currentPage: PageContext) => {
               const tabContext: TabContext = {
                 tabId: tab.id!,
                 windowId: tab.windowId,
@@ -520,7 +518,35 @@ export function ChatPage() {
               };
 
               store.addPinnedTab(tabContext);
-            });
+            };
+
+            // D-31: this tab's own cached extraction, not the single-slot
+            // currentPageContext global (which reflects whichever tab last
+            // pushed an update, not necessarily this one).
+            const cachedForTab = store.pageContextByTab[tab.id]?.page;
+            if (cachedForTab) {
+              finishAutoPin(cachedForTab);
+            } else {
+              chrome.tabs.sendMessage(tab.id, { type: 'GET_PAGE_CONTEXT_REQUEST' }, (response) => {
+                let extractedPage = null;
+                if (response && response.success && response.page) {
+                  extractedPage = response.page;
+                }
+
+                finishAutoPin(
+                  extractedPage || {
+                    url: tab.url || '',
+                    origin: '',
+                    hostname: '',
+                    title: tab.title || '',
+                    meta: {},
+                    extractedAt: Date.now(),
+                    extractionType: 'metadata-only' as const,
+                    extractionQuality: 'minimal' as const,
+                  },
+                );
+              });
+            }
           }
         }
       });

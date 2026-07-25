@@ -99,12 +99,13 @@ describe('WorkspaceStore', () => {
         && k !== 'setPinnedTabs' && k !== 'setCurrentPageContext' && k !== 'setSelectedNotes' && k !== 'setActiveAddonContext' && k !== 'setActiveSkillRun'
         && k !== 'setDraft' && k !== 'clearDraft'
         && k !== 'setActiveModel' && k !== 'setInputTokens' && k !== 'setSessionTokens'
-        && k !== 'addPinnedTab' && k !== 'removePinnedTab',
+        && k !== 'addPinnedTab' && k !== 'removePinnedTab'
+        && k !== 'setPageContextForTab' && k !== 'clearPageContextForTab',
     );
-    // Should have 4 metadata fields + 5 future-facing fields + 1 drafts field + 3 model/token fields
+    // Should have 4 metadata fields + 5 future-facing fields + 1 drafts field + 3 model/token fields + 1 per-tab cache field
     expect(keys).toEqual([
       'workspaceId', 'conversationId', 'activeProvider', 'activeModel', 'inputTokens', 'sessionTokens', 'activeSurface',
-      'pinnedTabs', 'currentPageContext', 'selectedNotes', 'activeAddonContext', 'activeSkillRun', 'drafts',
+      'pinnedTabs', 'currentPageContext', 'pageContextByTab', 'selectedNotes', 'activeAddonContext', 'activeSkillRun', 'drafts',
     ]);
   });
 

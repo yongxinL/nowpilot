@@ -16,12 +16,17 @@ export default defineConfig({
     name: 'NowPilot',
     version: '0.1.0',
     description: 'Privacy-first AI assistant',
-    permissions: ['sidePanel', 'storage', 'tabs', 'commands', 'activeTab'],
+    permissions: ['sidePanel', 'storage', 'tabs', 'commands', 'activeTab', 'scripting'],
     host_permissions: [
       'https://api.openai.com/*',
       'https://api.anthropic.com/*',
       'https://generativelanguage.googleapis.com/*',
       'http://localhost:*/*',
+      // Needed for chrome.scripting.executeScript to read/search tabs the
+      // user hasn't focused (OnDemandExtractor) — activeTab only covers the
+      // tab active during a user gesture, not arbitrary background tabs.
+      'http://*/*',
+      'https://*/*',
     ],
     side_panel: {
       default_path: 'sidepanel.html',

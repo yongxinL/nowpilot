@@ -12,6 +12,16 @@ import { TierResolver as TierResolverClass } from './TierResolver';
 
 const RETRYABLE_ERROR_TYPES = ['TIMEOUT', 'NETWORK', 'PROVIDER_5XX', 'RATE_LIMITED'] as const;
 
+// ProviderRegistry.initialize() is a shared singleton promise, and model
+// discovery underneath it does uncancellable network calls per provider —
+// an unreachable endpoint (or a concurrent forceReload triggered elsewhere,
+// e.g. ChatPage) can otherwise block every selectModel() caller for as long
+// as that network call takes. Cap the wait so a slow/unreachable provider
+// degrades to "proceed with whatever's already known" instead of hanging
+// the whole planner turn; discovery keeps running in the background and
+// will be picked up by a future call once it completes.
+const REGISTRY_INIT_WAIT_MS = 8000;
+
 export class ProviderRouter {
   constructor(
     private registry: ProviderRegistry,
@@ -26,8 +36,12 @@ export class ProviderRouter {
     specificModelId?: string,
   ): Promise<{ instance: unknown; modelId: string; providerId: string } | null> {
     // Ensure the registry is initialized (uses cached init if already done
-    // — avoids re-discovering all models on every selectModel call)
-    await this.registry.initialize();
+    // — avoids re-discovering all models on every selectModel call), bounded
+    // per REGISTRY_INIT_WAIT_MS above.
+    await Promise.race([
+      this.registry.initialize(),
+      new Promise<void>((resolve) => setTimeout(resolve, REGISTRY_INIT_WAIT_MS)),
+    ]);
 
     // If a specific model ID is requested, try it first
     if (specificModelId) {

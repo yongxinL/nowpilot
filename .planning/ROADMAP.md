@@ -19,6 +19,7 @@ NowPilot v0.1 is a privacy-first, extensible Chrome MV3 AI assistant. The 10-pha
 - [x] **Phase 7.4: RICH Design Enhance** — 22 P1 should-haves: persona onboarding, split-pane layout, template browser, inline confirmation, personalized greeting, image paste (completed 2026-07-19)
 - [ ] **Phase 7.5: RICH Design Polish** — 21 P2 nice-to-haves: persona editor, @mention syntax, voice input, TL;DR toggle, step checklists, educational tips
 - [x] **Phase 8: Add-ons and Content Script Runtime (Extraction-Only)** — Write/TeamGQM/ServiceNow add-ons, content scripts, data portability (completed 2026-07-19)
+- [x] **Phase 8.1: PageContentService Migration (tool→core)** — Replace Readability extraction with AxDomWalker DOM+ARIA walk, APCLiteNode tree, MiniSearch index, core PageContentService, thin-wrapper tool (completed 2026-07-25)
 - [ ] **Phase 9: Hardening and Release** — Performance tests, isolation verification, bundle checks, production release
 
 ## Dependency Graph
@@ -60,6 +61,9 @@ Phase 7.5 (RICH Polish)
   │
   ▼
 Phase 8 (Add-ons + Content Scripts)
+  │
+  ▼
+Phase 8.1 (PageContentService Migration)
   │
   ▼
 Phase 9 (Hardening + Release)

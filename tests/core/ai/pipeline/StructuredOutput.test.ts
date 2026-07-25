@@ -57,4 +57,46 @@ describe('repairAndValidate', () => {
       expect(result.fallback.age).toBe(0);
     }
   });
+
+  it('parses a wrapped tool_call shape ({"tool_call": {"name", "args"}})', () => {
+    const result = repairAndValidate(
+      '{"tool_call":{"name":"get-page-content","args":{}}}',
+      PlannerDecision,
+      fallbackAnswer,
+    );
+    expect(result).toHaveProperty('result');
+    if ('result' in result) {
+      expect(result.result.action).toBe('run_tool');
+      expect(result.result.toolName).toBe('get-page-content');
+      expect(result.result.toolInput).toEqual({});
+    }
+  });
+
+  it('parses a wrapped function_call shape with "arguments" key', () => {
+    const result = repairAndValidate(
+      '{"function_call":{"name":"get_page_content","arguments":{"tabId":1}}}',
+      PlannerDecision,
+      fallbackAnswer,
+    );
+    expect(result).toHaveProperty('result');
+    if ('result' in result) {
+      expect(result.result.action).toBe('run_tool');
+      expect(result.result.toolName).toBe('get-page-content');
+      expect(result.result.toolInput).toEqual({ tabId: 1 });
+    }
+  });
+
+  it('parses an OpenAI-native tool_calls array with stringified arguments', () => {
+    const result = repairAndValidate(
+      '{"tool_calls":[{"id":"call_1","type":"function","function":{"name":"get_page_content","arguments":"{\\"tabId\\":1}"}}]}',
+      PlannerDecision,
+      fallbackAnswer,
+    );
+    expect(result).toHaveProperty('result');
+    if ('result' in result) {
+      expect(result.result.action).toBe('run_tool');
+      expect(result.result.toolName).toBe('get-page-content');
+      expect(result.result.toolInput).toEqual({ tabId: 1 });
+    }
+  });
 });

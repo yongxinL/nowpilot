@@ -48,15 +48,17 @@ export interface PageContext {
    * - `readability`: @mozilla/readability article extraction
    * - `visible-content`: DOM visible text fallback
    * - `metadata-only`: only URL/title/meta (e.g. blocked page)
+   * - `axdom`: AxDomWalker DOM+ARIA tree extraction (Phase 8.1)
    */
-  extractionType: 'readability' | 'visible-content' | 'metadata-only';
+  extractionType: 'readability' | 'visible-content' | 'metadata-only' | 'axdom';
   /**
    * Quality classification of the extraction.
    * - `article`: full article with structure
    * - `generic`: generic page content
    * - `minimal`: truncated/limited extraction (safety ceiling hit)
+   * - `tree`: indexed DOM+ARIA tree with interactive elements
    */
-  extractionQuality: 'article' | 'generic' | 'minimal';
+  extractionQuality: 'article' | 'generic' | 'minimal' | 'tree';
 }
 
 /**

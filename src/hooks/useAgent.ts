@@ -15,6 +15,7 @@ import { permissionService } from '../core/ai/tools/PermissionService';
 import type { OrchestratorEvent } from '../core/ai/pipeline/pipelineTypes';
 import type { OptimizedContext, ContextOptimizerInput } from '../core/context/contextTypes';
 import { debugLog } from '../core/utils/debugLog';
+import { pageContentService } from '../core/extraction/PageContentService';
 
 // ---------------------------------------------------------------------------
 // Singleton orchestrator instance (same pattern as useChat.ts)
@@ -407,7 +408,17 @@ export function useAgent(): UseAgentReturn {
           toolSchemas,
           memory: memoryResult.memory,
           preferences: memoryResult.preferences as Record<string, unknown>,
-          pageContext: currentPageContext,
+          pageContext: currentPageContext ?? await (async () => {
+            try {
+              const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+              if (tabs[0]?.id) {
+                return await pageContentService.getForTabAsPageContext(tabs[0].id);
+              }
+            } catch {
+              debugLog('debug', '[useAgent] On-demand page context fetch failed', {});
+            }
+            return null;
+          })(),
         };
 
         const optimizedContext: OptimizedContext =

@@ -6,6 +6,16 @@ import { writeJournal } from '../storage/WriteJournal';
 
 export type { Surface } from '../navigation/navigationTypes';
 
+export interface PageContextCacheEntry {
+  page: PageContext;
+  updatedAt: number;
+}
+
+// Safety ceiling on cached tab entries — bounds chrome.storage.local growth
+// across long sessions with many tabs visited. Mirrors the D-30 pinnedTabs
+// cap and D-07 per-entry size ceiling already applied to PageContext.
+const MAX_PAGE_CONTEXT_TAB_ENTRIES = 30;
+
 export interface WorkspaceState {
   workspaceId: string | null;
   conversationId: string | null;
@@ -16,6 +26,7 @@ export interface WorkspaceState {
   activeSurface: Surface;
   pinnedTabs: TabContext[];
   currentPageContext: PageContext | null;
+  pageContextByTab: Record<number, PageContextCacheEntry>;
   selectedNotes: string[];
   activeAddonContext: string | null;
   activeSkillRun: string | null;
@@ -29,6 +40,8 @@ export interface WorkspaceState {
   setSessionTokens: (sessionTokens: number | null) => void;
   setPinnedTabs: (pinnedTabs: TabContext[]) => void;
   setCurrentPageContext: (currentPageContext: PageContext | null) => void;
+  setPageContextForTab: (tabId: number, page: PageContext) => void;
+  clearPageContextForTab: (tabId: number) => void;
   addPinnedTab: (tab: TabContext) => void;
   removePinnedTab: (tabId: number) => void;
   setSelectedNotes: (selectedNotes: string[]) => void;
@@ -85,6 +98,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       activeSurface: 'sidepanel',
       pinnedTabs: [] as TabContext[],
       currentPageContext: null as PageContext | null,
+      pageContextByTab: {} as Record<number, PageContextCacheEntry>,
       selectedNotes: [],
       activeAddonContext: null,
       activeSkillRun: null,
@@ -98,6 +112,28 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       setSessionTokens: (sessionTokens: number | null) => set({ sessionTokens }),
       setPinnedTabs: (pinnedTabs: TabContext[]) => set({ pinnedTabs }),
       setCurrentPageContext: (currentPageContext: PageContext | null) => set({ currentPageContext }),
+      setPageContextForTab: (tabId: number, page: PageContext) =>
+        set((state) => {
+          const next: Record<number, PageContextCacheEntry> = {
+            ...state.pageContextByTab,
+            [tabId]: { page, updatedAt: Date.now() },
+          };
+          const ids = Object.keys(next);
+          if (ids.length > MAX_PAGE_CONTEXT_TAB_ENTRIES) {
+            const oldestFirst = ids
+              .map((id) => Number(id))
+              .sort((a, b) => next[a].updatedAt - next[b].updatedAt);
+            for (const id of oldestFirst.slice(0, ids.length - MAX_PAGE_CONTEXT_TAB_ENTRIES)) {
+              delete next[id];
+            }
+          }
+          return { pageContextByTab: next };
+        }),
+      clearPageContextForTab: (tabId: number) =>
+        set((state) => {
+          const { [tabId]: _removed, ...rest } = state.pageContextByTab;
+          return { pageContextByTab: rest };
+        }),
       setSelectedNotes: (selectedNotes: string[]) => set({ selectedNotes }),
       setActiveAddonContext: (activeAddonContext: string | null) => set({ activeAddonContext }),
       setActiveSkillRun: (activeSkillRun: string | null) => set({ activeSkillRun }),

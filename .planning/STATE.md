@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v0.1
 milestone_name: milestone
-current_phase: 9
-current_phase_name: Hardening and Release
-status: planning
-stopped_at: Completed 08-09-PLAN.md
-last_updated: "2026-07-19T13:01:15.917Z"
-last_activity: 2026-07-19
-last_activity_desc: Phase 8 complete, transitioned to Phase 9
+current_phase: 8.1
+current_phase_name: PageContentService Migration (tool→core)
+status: complete
+stopped_at: Phase 8.1 complete, ready for Phase 9
+last_updated: "2026-07-25T00:00:00.000Z"
+last_activity: 2026-07-25
+last_activity_desc: Phase 8.1 PageContentService migration completed — AxDomWalker replaces Readability primary, all add-ons compatible
 progress:
-  total_phases: 14
-  completed_phases: 12
+  total_phases: 15
+  completed_phases: 13
   total_plans: 88
-  completed_plans: 85
+  completed_plans: 86
   percent: 86
 ---
 
@@ -28,12 +28,11 @@ See: .planning/PROJECT.md (updated 2026-07-10)
 
 ## Current Position
 
-Phase: 9 — Hardening and Release
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-07-19 — Phase 8 complete, transitioned to Phase 9
+Phase: 8.1 — PageContentService Migration (tool→core)
+Status: in_progress
+Last activity: 2026-07-25 — Phase 8.1 PageContentService migration started
 
-Progress: [███████░░░] 79% (11/14 phases)
+Progress: [███████░░░] 80% (12/15 phases)
 
 ## Performance Metrics
 

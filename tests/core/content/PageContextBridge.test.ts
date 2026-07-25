@@ -106,9 +106,9 @@ describe('PageContextBridge', () => {
     // Should NOT throw
     await expect(bridge.sendPageContextUpdate(ctx)).resolves.toBeUndefined();
 
-    // Should log error
+    // Should log warning
     expect(mockDebugLog).toHaveBeenCalledWith(
-      'error',
+      'warn',
       expect.stringContaining('[PageContextBridge]'),
       expect.any(Object),
     );

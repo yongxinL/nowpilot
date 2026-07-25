@@ -18,6 +18,7 @@ const CONTENT_FILES = [
   'src/core/content/PageContextBridge.ts',
   'src/core/content/SPANavigationWatcher.ts',
   'src/core/content/ContentChangeWatcher.ts',
+  'src/core/content/AxDomWalker.ts',
 ];
 
 const ENTRYPOINT_FILE = 'src/entrypoints/content.ts';

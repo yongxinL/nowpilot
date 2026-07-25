@@ -65,6 +65,14 @@ vi.stubGlobal('chrome', {
     query: vi.fn().mockResolvedValue([]),
     create: vi.fn().mockResolvedValue({ id: 1 }),
     update: vi.fn().mockResolvedValue({}),
+    sendMessage: vi.fn(),
+    get: vi.fn(),
+    onRemoved: {
+      addListener: vi.fn(),
+    },
+  },
+  scripting: {
+    executeScript: vi.fn(),
   },
   windows: {
     update: vi.fn().mockResolvedValue({}),

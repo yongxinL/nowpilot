@@ -1,44 +1,58 @@
 /**
- * PageContextBridge — serialization + chrome.runtime.sendMessage bridge.
+ * PageContextBridge — dual-channel serialization bridge.
  *
- * Wraps an extracted PageContext in a typed RuntimeEnvelope and sends it
- * to the Background Service Worker via chrome.runtime.sendMessage.
+ * Primary channel: chrome.storage.session (always available in ISOLATED
+ * content scripts, survive SW restarts).
+ * Secondary channel: chrome.runtime.sendMessage (fast path, SW must be
+ * active — failures are silently swallowed).
  *
- * ## Key invariants
- * - Send failures are logged but NOT re-thrown (extraction succeeds regardless)
- * - Uses PAGE_CONTEXT_UPDATED message type from pageMessages.ts
- * - Source is 'content-script' (added to MessageSource union in runtimeEnvelope.ts)
- *
- * Pattern: stateless messaging bridge (runtimeEnvelope.ts analog, D-02)
+ * Background SW picks up page context updates from BOTH channels:
+ *   - chrome.storage.onChanged('session') primary watcher
+ *   - chrome.runtime.onMessage PAGE_CONTEXT_UPDATED handler (fast path)
  */
 import type { PageContext } from './PageContext';
 import { PAGE_CONTEXT_UPDATED } from '../messaging/pageMessages';
 import { debugLog } from '../utils/debugLog';
 
+/** chrome.storage.session key for active page context */
+const SESSION_KEY = 'np_pc_active';
+
 export class PageContextBridge {
-  /**
-   * Serialize PageContext and send to Background SW via chrome.runtime.sendMessage.
-   * Does NOT throw on send failure — extraction succeeds regardless of messaging (D-02).
-   */
   async sendPageContextUpdate(pageContext: PageContext): Promise<void> {
-    const envelope = {
-      type: PAGE_CONTEXT_UPDATED,
-      source: 'content-script' as const,
-      payload: pageContext,
+    const payload = {
+      pageContext,
       timestamp: Date.now(),
     };
 
+    // Primary: write to chrome.storage.session (reliable, cross-context)
     try {
-      await chrome.runtime.sendMessage(envelope);
-      debugLog('debug', '[PageContextBridge] Page context update sent', {
+      await chrome.storage.session.set({ [SESSION_KEY]: payload });
+      debugLog('debug', '[PageContextBridge] Page context written to session storage', {
         url: pageContext.url,
         extractionType: pageContext.extractionType,
       });
-    } catch (err) {
-      debugLog('error', '[PageContextBridge] Failed to send page context update', {
-        error: err instanceof Error ? err.message : String(err),
+    } catch (storageErr) {
+      debugLog('warn', '[PageContextBridge] Failed to write page context to session storage', {
+        url: pageContext.url,
+        markdownLength: pageContext.markdown?.length,
       });
-      // Do NOT throw — extraction succeeded, messaging is secondary
+    }
+
+    // Secondary (fast path): send via runtime message to wake SW immediately
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        await chrome.runtime.sendMessage({
+          type: PAGE_CONTEXT_UPDATED,
+          source: 'content-script' as const,
+          payload: pageContext,
+          timestamp: Date.now(),
+        });
+        return;
+      } catch {
+        if (attempt < 2) {
+          await new Promise((r) => setTimeout(r, 200));
+        }
+      }
     }
   }
 }

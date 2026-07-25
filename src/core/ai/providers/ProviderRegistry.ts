@@ -282,7 +282,7 @@ export class ProviderRegistry {
 
       return provider.models;
     } catch (err) {
-      debugLog('warn', '[ProviderRegistry] discoverModels: discovery failed for ${providerId}, preserving ${provider.models.length} existing models', { error: err });
+      debugLog('warn', `[ProviderRegistry] discoverModels: discovery failed for ${providerId}, preserving ${provider.models.length} existing models`, { error: err });
       return provider.models;
     }
   }

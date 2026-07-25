@@ -69,9 +69,12 @@ export const pinTabTool: ToolDefinition = {
     try {
       const tab = await chrome.tabs.get(tabId);
 
-      // Build TabContext with tab metadata + current page context (or minimal fallback)
-      const currentPage: PageContext = store.currentPageContext
-        ? store.currentPageContext
+      // Build TabContext with tab metadata + this tab's cached page context
+      // (D-31: per-tab cache, not the single-slot global — that reflects
+      // whichever tab last pushed an update, not necessarily this one).
+      const cachedForTab = store.pageContextByTab[tabId]?.page;
+      const currentPage: PageContext = cachedForTab
+        ? cachedForTab
         : {
             url: tab.url || '',
             origin: '',

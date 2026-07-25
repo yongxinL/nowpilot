@@ -162,7 +162,7 @@ export class AgentOrchestrator {
       const rawPlannerPrompt = this.joinSections(sections, ['system_prompt', 'task_instructions', 'tool_schemas']);
       const plannerSystemPrompt = personaInjector.inject(rawPlannerPrompt);
       const plannerUserMessage = this.joinSections(sections, ['user_input', 'workspace_context', 'page_context', 'conversation_history']);
-      const rendererUserMessage = this.joinSections(sections, ['user_input', 'conversation_history']);
+      const rendererUserMessage = this.joinSections(sections, ['user_input', 'page_context', 'conversation_history']);
 
       const toolResults: ToolExecutionResult[] = [];
       yield* this.executePlannerLoop(

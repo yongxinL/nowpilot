@@ -255,9 +255,28 @@ export interface NowPilotDB extends DBSchema {
     };
     indexes: { 'by-status': string };
   };
+  extraction_log: {
+    key: string;
+    value: {
+      id: string;
+      url: string;
+      trace: {
+        steps: Array<{
+          step: string;
+          status: string;
+          durationMs: number;
+          detail?: string;
+        }>;
+        totalDurationMs: number;
+        extractionType?: string;
+        extractionQuality?: string;
+      };
+      timestamp: number;
+    };
+  };
 }
 
-export const DB_VERSION = 4;
+export const DB_VERSION = 5;
 
 let dbInstance: IDBPDatabase<NowPilotDB> | null = null;
 
@@ -315,6 +334,9 @@ export async function getDB(): Promise<IDBPDatabase<NowPilotDB>> {
       }
       if (oldVersion < 4) {
         db.createObjectStore('notes_backup_config', { keyPath: 'id' });
+      }
+      if (oldVersion < 5) {
+        db.createObjectStore('extraction_log', { keyPath: 'id' });
       }
     },
     blocked() {
