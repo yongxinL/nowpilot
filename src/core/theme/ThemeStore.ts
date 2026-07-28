@@ -1,6 +1,7 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
+import { chromeStorageAdapter } from './chromeStorageAdapter';
 
 export type ThemeMode = 'light' | 'dark' | 'auto';
 
@@ -34,6 +35,7 @@ export const useThemeStore = create<ThemeState>()(
     })),
     {
       name: 'np_theme_store',
+      storage: createJSONStorage(() => chromeStorageAdapter),
       partialize: (state) => ({ mode: state.mode }),
     },
   ),

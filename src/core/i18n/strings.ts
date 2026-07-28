@@ -49,6 +49,16 @@ const strings: Record<string, string> = {
   'theme.light': 'Light',
   'theme.dark': 'Dark',
   'theme.auto': 'Auto',
+  'theme.toggle': 'Toggle theme',
+  'theme.switchToDark': 'Switch to dark mode',
+  'theme.switchToLight': 'Switch to light mode',
+
+  // Shell
+  'shell.loading': 'Loading workspace…',
+  'shell.error': 'Something went wrong. Please reload the extension.',
+
+  // Side Panel
+  'sidepanel.footer': 'Open in Full Tab',
 
   // Common
   'common.retry': 'Retry',
