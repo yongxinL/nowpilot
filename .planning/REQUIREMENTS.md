@@ -11,7 +11,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [ ] **SHELL-01**: User can open the Side Panel with onboarding, chat, agent, write, TeamGQM, and Open Full App surfaces
 - [ ] **SHELL-02**: User can open the Full App Tab with chat, agent, notes, TeamGQM, and options (all configuration/diagnostics)
-- [ ] **SHELL-03**: User has a shared workspace that persists across Side Panel and Full App Tab with handoff between surfaces
+- [x] **SHELL-03**: User has a shared workspace that persists across Side Panel and Full App Tab with handoff between surfaces
 - [x] **SHELL-04**: User can toggle theme (light/dark/auto) and it affects both surfaces immediately
 - [x] **SHELL-05**: User can invoke Cmd+K command palette on both surfaces
 
@@ -99,7 +99,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 |-------------|-------|--------|
 | SHELL-01 | Phase 7 | Pending |
 | SHELL-02 | Phase 7 | Pending |
-| SHELL-03 | Phase 1 | Pending |
+| SHELL-03 | Phase 1 | Complete |
 | SHELL-04 | Phase 1 | Complete |
 | SHELL-05 | Phase 1 | Complete |
 | AI-01 | Phase 3 | Pending |

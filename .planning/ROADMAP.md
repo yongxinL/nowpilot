@@ -38,14 +38,14 @@ NowPilot v0.1 is built in 11 phases following a knowledge-first data-flow: acqui
   4. User presses Cmd+K on either surface and the command palette opens with the full command set
   5. Both surfaces render independently with no cross-entrypoint import violations
 
-**Plans**: 3/5 plans executed
+**Plans**: 4/5 plans executed
 
 Plans:
 
 - [x] 01-01-PLAN.md — Theme persistence end-to-end: chrome.storage.local adapter → ThemeStore → ThemeToggle → SidePanelShell (tracer)
 - [x] 01-02-PLAN.md — Cross-surface theme sync via BroadcastChannel + AppShell integration + skeleton loading
 - [x] 01-03-PLAN.md — Command palette infrastructure: CommandRegistry + CommandPalette component (SHELL-05)
-- [ ] 01-04-PLAN.md — Onboarding wizard: 3-card welcome flow + background SW install detection (SHELL-03)
+- [x] 01-04-PLAN.md — Onboarding wizard: 3-card welcome flow + background SW install detection (SHELL-03)
 - [ ] 01-05-PLAN.md — Shell wiring: command palette + onboarding integration into both surfaces + isolation test
 
 **UI hint**: yes
@@ -213,7 +213,7 @@ Decimal phases execute after their parent integer phase: 4 → 4a → 5 → 5a �
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Project Scaffold & Runtime Foundation | 3/5 | In Progress|  |
+| 1. Project Scaffold & Runtime Foundation | 4/5 | In Progress|  |
 | 2. Storage & Security Foundation | TBD | Not started | - |
 | 3. AI Core Pipeline | TBD | Not started | - |
 | 4. Context Optimization Pipeline | TBD | Not started | - |
