@@ -883,7 +883,7 @@ Content scripts in v0.1:
 - MAY communicate with the Side Panel, Full App, or Background via RuntimeEnvelope<T>.
 - MUST NOT render React or any UI.
 - MUST NOT create Shadow DOM roots for UI.
-- MUST NOT inject CSS or <style> tags.
+- MUST NOT inject CSS or `<style>` tags.
 - MUST NOT modify host page DOM except non-visible read operations (e.g., cloning a node into memory for parsing).
 - MUST NOT write back into host-page fields/editors (reconciliation R1 — RICH-H-04/H-07 are clipboard-only/deferred).
 - MUST use MutationObserver for SPA navigation detection, never polling.

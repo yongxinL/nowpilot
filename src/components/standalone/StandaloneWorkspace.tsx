@@ -24,6 +24,7 @@ import {
 import { SidepanelChat } from '../chat/SidepanelChat';
 import { NotesWorkspace } from '../notes/NotesWorkspace';
 import { NowPilotAvatar } from '../common/NowPilotAvatar';
+import { ThemeToggle } from '../common/ThemeToggle';
 import { ToolItem } from '../../types';
 
 const { Title, Text } = Typography;
@@ -186,6 +187,8 @@ export const StandaloneWorkspace: React.FC<StandaloneWorkspaceProps> = ({
               </Tooltip>
             </div>
 
+            <ThemeToggle />
+
             {/* Collapse icon button |< */}
             <Tooltip title="Collapse">
               <button
@@ -201,6 +204,7 @@ export const StandaloneWorkspace: React.FC<StandaloneWorkspaceProps> = ({
           </div>
         ) : (
           <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800/80 flex flex-col items-center gap-3">
+            <ThemeToggle />
             {/* Settings button */}
             <Tooltip title="Options" placement="right">
               <button

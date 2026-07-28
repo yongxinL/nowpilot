@@ -14,6 +14,8 @@ import {
   PaperClipOutlined,
 } from '@ant-design/icons';
 
+import { ThemeToggle } from '../common/ThemeToggle';
+import { OnboardingWizard } from '../common/OnboardingWizard';
 import { ModelSelector } from '../common/ModelSelector';
 import { ThoughtProcessBlock } from './ThoughtProcessBlock';
 import { ActionPanel } from '../common/ActionPanel';
@@ -79,8 +81,20 @@ export const SidepanelChat: React.FC<SidepanelChatProps> = ({
   const [promptManagerOpen, setPromptManagerOpen] = useState(false);
   const [editingMsgId, setEditingMsgId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState<string>('');
+  const [onboardingComplete, setOnboardingComplete] = useState<boolean | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    chrome.storage.local.get('onboardingComplete').then((result) => {
+      setOnboardingComplete(result.onboardingComplete !== false);
+    });
+  }, []);
+
+  const handleOnboardingComplete = () => {
+    chrome.storage.local.set({ onboardingComplete: true });
+    setOnboardingComplete(true);
+  };
 
   useEffect(() => {
     if (!activeSession) {
@@ -217,6 +231,22 @@ export const SidepanelChat: React.FC<SidepanelChatProps> = ({
     setSlashOpen(false);
   };
 
+  if (onboardingComplete === null) {
+    return (
+      <div className="flex items-center justify-center h-full bg-white dark:bg-zinc-900">
+        <div className="text-zinc-400 text-sm">Loading workspace…</div>
+      </div>
+    );
+  }
+
+  if (onboardingComplete === false) {
+    return (
+      <div className="flex items-center justify-center h-full bg-white dark:bg-zinc-900">
+        <OnboardingWizard open={true} onComplete={handleOnboardingComplete} />
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-full bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 font-sans relative overflow-hidden select-none">
       {/* Header Toolbar */}
@@ -231,6 +261,7 @@ export const SidepanelChat: React.FC<SidepanelChatProps> = ({
           </div>
 
           <div className="flex items-center gap-1">
+            <ThemeToggle />
             {/* Open Options */}
             <Tooltip title="Options">
               <button
