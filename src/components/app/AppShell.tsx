@@ -15,9 +15,11 @@ import { NotesPage } from '../pages/NotesPage';
 import { OptionsPage } from '../pages/OptionsPage';
 import { ErrorBoundary } from '../../core/components/ErrorBoundary';
 import { useWorkspaceStore } from '../../core/workspace/WorkspaceStore';
-import { useThemeStore } from '../../core/theme/ThemeStore';
+import { useThemeStore, type ThemeMode } from '../../core/theme/ThemeStore';
 import { useThemeSync } from '../../core/theme/ThemeSync';
 import { ThemeToggle } from '../common/ThemeToggle';
+import { CommandPalette } from '../common/CommandPalette';
+import { CommandRegistry } from '../../core/commands/CommandRegistry';
 import { hydrateFromURL } from '../../core/workspace/WorkspaceRouter';
 import { t } from '../../core/i18n/strings';
 
@@ -47,6 +49,7 @@ export const AppShell: React.FC = () => {
 
   const [activePage, setActivePage] = useState<FullAppPage>('chat');
   const [collapsed, setCollapsed] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const hasHydrated = useThemeStore.persist.hasHydrated();
   const {
     token: { colorBgContainer },
@@ -61,6 +64,50 @@ export const AppShell: React.FC = () => {
       setActivePage(pageParam as FullAppPage);
     }
   }, []);
+
+  // Register Full App-specific commands (runs once)
+  useEffect(() => {
+    CommandRegistry.register({
+      id: 'toggle-theme',
+      name: 'Toggle Theme',
+      description: 'Cycle between light, dark, and auto theme modes',
+      category: t('commands.category.theme'),
+      action: () => {
+        const modes: ThemeMode[] = ['light', 'dark', 'auto'];
+        const cur = useThemeStore.getState().mode;
+        const next = modes[(modes.indexOf(cur) + 1) % 3];
+        useThemeStore.getState().setMode(next);
+        setPaletteOpen(false);
+      },
+    });
+    CommandRegistry.register({
+      id: 'reload-extension',
+      name: 'Reload Extension',
+      description: 'Reload the extension to apply changes',
+      category: t('commands.category.system'),
+      action: () => {
+        chrome.runtime.reload();
+      },
+    });
+
+    return () => {
+      CommandRegistry.unregister('toggle-theme');
+      CommandRegistry.unregister('reload-extension');
+    };
+  }, []);
+
+  // Cmd+K / Ctrl+K keydown listener (only when hydrated)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!hasHydrated) return;
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setPaletteOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [hasHydrated]);
 
   // Hydration guard: show skeleton while ThemeStore rehydrates from chrome.storage.local
   if (!hasHydrated) {
@@ -173,6 +220,13 @@ export const AppShell: React.FC = () => {
           </Content>
         </Layout>
       </Layout>
+
+      {/* Command palette overlay */}
+      <CommandPalette
+        commands={CommandRegistry.getAll()}
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+      />
     </ErrorBoundary>
   );
 };
