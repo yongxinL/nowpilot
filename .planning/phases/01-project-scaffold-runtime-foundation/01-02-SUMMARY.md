@@ -199,6 +199,16 @@ No new threat flags introduced. BroadcastChannel `np_theme` carries only `{ type
 - Both surfaces (SidePanelShell from Plan 01-01, AppShell from this plan) call `useThemeSync()` for full bidirectional sync
 - `publishThemeChange` is available for any future component that needs to programmatically broadcast a theme change (e.g., command palette "Toggle Theme" command)
 
+## Self-Check: PASSED
+
+- [x] All 4 created files exist
+- [x] All 4 commits present in git history (d6e64c6, c341de1, 24259cd, 24bdf68)
+- [x] All 28 tests pass (ThemeStore: 14, ThemeSync: 4, AppShell: 10)
+- [x] SUMMARY.md created with complete frontmatter (phase, plan, status: complete)
+- [x] STATE.md updated (plan advanced to 3, progress 40%)
+- [x] ROADMAP.md updated
+- [x] Final metadata commit made
+
 ---
 
 *Phase: 01-project-scaffold-runtime-foundation*
