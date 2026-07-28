@@ -36,7 +36,7 @@ const strings: Record<string, string> = {
   'sidepanel.openingFullApp': 'Opening full app...',
   'sidepanel.fullAppFailed': 'Failed to open Full App tab',
 
-  // Onboarding
+  // Onboarding — OLD keys (keep for old OnboardingModal until Plan 01-05)
   'onboarding.welcome': 'Welcome to NowPilot',
   'onboarding.step1': 'Meet NowPilot',
   'onboarding.step2': 'Choose a provider',
@@ -44,6 +44,19 @@ const strings: Record<string, string> = {
   'onboarding.step4': 'Start chatting',
   'onboarding.testing': 'Testing connection...',
   'onboarding.connected': 'Connected!',
+  // Onboarding — NEW keys for OnboardingWizard (UI-SPEC copy)
+  'onboarding.welcomeHeading': 'Welcome to NowPilot',
+  'onboarding.welcomeSubtext': 'Your personal AI assistant and knowledge workspace — right in your browser.',
+  'onboarding.step1Title': 'Chat with AI',
+  'onboarding.step1Body': 'Ask questions, brainstorm ideas, and get help with any task — powered by your own AI providers.',
+  'onboarding.step2Title': 'Capture Knowledge',
+  'onboarding.step2Body': 'Save important insights as atomic notes with automatic tagging and organization.',
+  'onboarding.step3Title': 'Your Workspace, Your Way',
+  'onboarding.step3Body': 'Toggle between light and dark themes. Open the full app for deep work and configuration.',
+  'onboarding.startExploring': 'Start Exploring',
+  'onboarding.previousStep': 'Previous Step',
+  'onboarding.nextStep': 'Next Step',
+  'onboarding.skip': 'Skip Onboarding',
 
   // Theme
   'theme.light': 'Light',
