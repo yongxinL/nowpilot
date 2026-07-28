@@ -74,7 +74,7 @@ These rules apply to every phase, every module, and every AI coding agent.
 - **DO NOT** invent file paths. Use only paths in §8 and §18.
 - **DO NOT** invent type names. Use Appendix C for every shape.
 - **DO NOT** invent tool names. Planner may only select tools from the enum passed by ExecutorService.
-- **DO NOT** invent provider IDs. The five valid IDs are `'openai' | 'anthropic' | 'gemini' | 'ollama' | 'openai-compatible'`.
+- **DO NOT** invent provider IDs. The four valid IDs are `'openai' | 'anthropic' | 'gemini' | 'ollama'` (use `openai` with a custom `baseURL` for OpenAI-compatible providers).
 - **DO NOT** invent runtime model names. Resolve tier: `'haiku' | 'flash'` through Appendix D.
 
 **MV3 / Chrome:**
@@ -1027,7 +1027,7 @@ See §25 for the future page-injection reintroduction plan.
 | Package | Version | Purpose |
 |---|---|---|
 | ai | ^4 | Vercel AI SDK: streamText, tool calling, abort |
-| @ai-sdk/openai | ^1 | OpenAI + Ollama + OpenAI-compatible endpoints |
+| @ai-sdk/openai | ^1 | OpenAI + Ollama (custom baseURL for OpenAI-compatible providers) |
 | @ai-sdk/anthropic | ^1 | Anthropic Claude |
 | @ai-sdk/google | ^1 | Google Gemini |
 | @modelcontextprotocol/sdk | ^1 | MCP client — StreamableHTTP transport |
@@ -1425,7 +1425,7 @@ Rules:
 ```ts
 // src/core/ai/ILLMProvider.ts
 import type { LanguageModel } from 'ai';
-export type ProviderId = 'openai' | 'anthropic' | 'gemini' | 'ollama' | 'openai-compatible';
+export type ProviderId = 'openai' | 'anthropic' | 'gemini' | 'ollama';
 export interface ILLMProvider {
   id: ProviderId;
   name: string;
@@ -1438,7 +1438,7 @@ export interface ILLMProvider {
 
 Types LLMMessage, LLMOptions, LLMStreamChunk, ModelInfo, ProviderConfig are defined in Appendix C.
 
-### §10.2 Five Provider Implementations
+### §10.2 Four Provider Implementations
 
 | Provider ID | Adapter | Default baseURL | Supports tools |
 |---|---|---|---|
@@ -1446,15 +1446,14 @@ Types LLMMessage, LLMOptions, LLMStreamChunk, ModelInfo, ProviderConfig are defi
 | anthropic | @ai-sdk/anthropic createAnthropic | https://api.anthropic.com | Yes |
 | gemini | @ai-sdk/google createGoogleGenerativeAI | Google Cloud | Yes |
 | ollama | @ai-sdk/openai createOpenAI | http://localhost:11434/v1 | Model-dependent |
-| openai-compatible | @ai-sdk/openai createOpenAI | user-supplied | Model-dependent |
 
-Ollama: pass apiKey: 'ollama'. Default context is 2048 tokens — warn the user (Flow 5). ProviderRegistry computes resolvedBaseURL = customBaseURL ?? baseURL once at construction.
+Ollama: pass apiKey: 'ollama'. Default context is 2048 tokens — warn the user (Flow 5). ProviderRegistry computes resolvedBaseURL = customBaseURL ?? baseURL once at construction. For OpenAI-compatible providers (e.g. DeepSeek, Together AI), use `openai` with a custom `baseURL`.
 
 ### §10.3 Provider Config Schema
 
 ```ts
 export const ProviderConfigSchema = z.object({
-  id: z.enum(['openai','anthropic','gemini','ollama','openai-compatible']),
+  id: z.enum(['openai','anthropic','gemini','ollama']),
   label: z.string().trim().min(1).max(50),
   apiKey: z.string().optional(),
   baseURL: z.string().url(),
@@ -3609,7 +3608,7 @@ export type ResponseEnvelope<T = unknown> =
 
 ```ts
 // src/core/ai/types.ts
-export type ProviderId = 'openai' | 'anthropic' | 'gemini' | 'ollama' | 'openai-compatible';
+export type ProviderId = 'openai' | 'anthropic' | 'gemini' | 'ollama';
 export interface ContentBlock {
   type: 'text' | 'image' | 'tool_use' | 'tool_result';
   text?: string;
@@ -4104,13 +4103,13 @@ export interface TierCandidate {
 export const TIER_TO_MODEL_CANDIDATES: Record<ModelTier, TierCandidate[]> = {
   haiku: [
     { providerId: 'anthropic',         model: 'claude-haiku-4-latest' },
-    { providerId: 'openai-compatible', model: 'deepseek-chat' },
+    { providerId: 'openai',            model: 'deepseek-chat' },
     { providerId: 'ollama',            model: 'llama3.2:3b' },
   ],
   flash: [
     { providerId: 'gemini',            model: 'gemini-2.5-flash' },
     { providerId: 'anthropic',         model: 'claude-haiku-4-latest' },
-    { providerId: 'openai-compatible', model: 'deepseek-chat' },
+    { providerId: 'openai',            model: 'deepseek-chat' },
     { providerId: 'ollama',            model: 'qwen2.5:7b' },
   ],
 } as const;
@@ -4126,7 +4125,7 @@ export interface TierResolveResult {
 }
 export function resolveTier(input: TierResolveInput): TierResolveResult | null {
   const candidates = TIER_TO_MODEL_CANDIDATES[input.tier].filter(c => {
-    if (input.privacyMode === 'local-only') return c.providerId === 'ollama' || c.providerId === 'openai-compatible';
+    if (input.privacyMode === 'local-only') return c.providerId === 'ollama';
     return true;
   });
   const enabled = input.configuredProviders.filter(p => p.enabled).sort((a, b) => a.priority - b.priority);
@@ -4726,7 +4725,6 @@ export function applyCacheHints(providerId: ProviderId, sections: PromptSection[
       };
     }
     case 'openai':
-    case 'openai-compatible':
     case 'ollama':
     default: {
       const ordered = [...sections].sort(stableFirst);

@@ -11,6 +11,7 @@ import {
   CompassOutlined,
   HighlightOutlined,
   FilePptOutlined,
+  PaperClipOutlined,
 } from '@ant-design/icons';
 
 import { ModelSelector } from '../common/ModelSelector';
@@ -26,7 +27,7 @@ import { PromptManagerModal } from '../common/PromptManagerModal';
 import { NowPilotAvatar } from '../common/NowPilotAvatar';
 
 import { useExtensionStore } from '../../store/useExtensionStore';
-import { streamChatResponse, AVAILABLE_MODELS } from '../../services/aiProvider';
+import { streamChatResponse, AVAILABLE_MODELS, type StreamChatParams } from '../../services/aiProvider';
 import { Message, PromptItem } from '../../types';
 
 const { Text, Title } = Typography;
@@ -82,6 +83,12 @@ export const SidepanelChat: React.FC<SidepanelChatProps> = ({
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!activeSession) {
+      createNewSession();
+    }
+  }, []);
+
+  useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
@@ -104,20 +111,22 @@ export const SidepanelChat: React.FC<SidepanelChatProps> = ({
     const textToSend = overridePrompt || inputPrompt;
     if (!textToSend.trim() && activeAttachments.length === 0) return;
 
+    if (!activeSession) {
+      createNewSession();
+    }
+    const currentSession = activeSession;
+    if (!currentSession) return;
+
+    const currentAttachments = [...activeAttachments];
+
     const userMessage: Message = {
       id: 'm_' + Date.now(),
       role: 'user',
       content: textToSend,
       timestamp: Date.now(),
-      attachments: [...activeAttachments],
+      attachments: currentAttachments,
     };
 
-    addMessageToActiveSession(userMessage);
-    setInputPrompt('');
-    const currentAttachments = [...activeAttachments];
-    setActiveAttachments([]);
-
-    // Prepare assistant message
     const assistantMsgId = 'm_ast_' + Date.now();
     const assistantMessage: Message = {
       id: assistantMsgId,
@@ -135,13 +144,16 @@ export const SidepanelChat: React.FC<SidepanelChatProps> = ({
       ]
     };
 
+    addMessageToActiveSession(userMessage);
     addMessageToActiveSession(assistantMessage);
+    setInputPrompt('');
+    setActiveAttachments([]);
     setIsGenerating(true);
 
     abortControllerRef.current = new AbortController();
 
     await streamChatResponse({
-      messages: activeSession.messages,
+      messages: [...currentSession.messages, userMessage],
       prompt: textToSend,
       attachments: currentAttachments,
       modelId: config.selectedModel,
@@ -243,7 +255,7 @@ export const SidepanelChat: React.FC<SidepanelChatProps> = ({
 
       {/* Chat Messages Area */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-3.5 py-3 space-y-4">
-        {activeSession.messages.length === 0 ? (
+        {!activeSession || activeSession.messages.length === 0 ? (
           /* Welcome View */
           <div className="flex flex-col justify-center items-start min-h-[320px] pt-8">
             <Title level={2} className="!mb-1 font-bold text-3xl tracking-tight text-zinc-900 dark:text-zinc-100">
@@ -291,6 +303,7 @@ export const SidepanelChat: React.FC<SidepanelChatProps> = ({
         ) : (
           /* Active Conversation Messages */
           (() => {
+            if (!activeSession) return null;
             const lastAiMessageId = [...activeSession.messages].reverse().find(m => m.role === 'assistant')?.id;
 
             return activeSession.messages.map((msg, index) => {
@@ -335,7 +348,7 @@ export const SidepanelChat: React.FC<SidepanelChatProps> = ({
                             <div className="mb-2 space-y-1">
                               {msg.attachments.map(att => (
                                 <div key={att.id} className="text-[11px] bg-white/70 dark:bg-zinc-900/70 p-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 truncate">
-                                  📎 {att.title}
+                                  <PaperClipOutlined className="mr-1" />{att.title}
                                 </div>
                               ))}
                             </div>

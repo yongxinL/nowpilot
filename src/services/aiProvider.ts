@@ -12,6 +12,16 @@ export interface StreamChatParams {
   signal?: AbortSignal;
 }
 
+function buildEndpointUrl(config: ProviderConfig): string {
+  if (config.activeProvider === 'gemini') {
+    const key = config.geminiKey || config.providers?.gemini?.apiKey || '';
+    const base = config.providers?.gemini?.proxyUrl?.replace(/\/+$/, '') || 'https://generativelanguage.googleapis.com';
+    return `${base}/v1beta/models/${config.selectedModel}:streamGenerateContent?alt=sse&key=${key}`;
+  }
+  const baseUrl = config.openAiBaseUrl?.replace(/\/+$/, '') || 'http://localhost:12380/v1';
+  return `${baseUrl}/chat/completions`;
+}
+
 export async function streamChatResponse({
   messages,
   prompt,
@@ -24,20 +34,21 @@ export async function streamChatResponse({
   signal,
 }: StreamChatParams) {
   try {
-    // Check if we can use server backend route or direct API
-    const response = await fetch('/api/chat', {
+    const endpoint = buildEndpointUrl(config);
+
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...(config.openAiKey ? { 'Authorization': `Bearer ${config.openAiKey}` } : {}),
       },
       body: JSON.stringify({
-        messages: messages.map(m => ({ role: m.role, content: m.content })),
-        prompt,
-        modelId,
-        provider: config.activeProvider,
-        openAiKey: config.openAiKey,
-        openAiBaseUrl: config.openAiBaseUrl,
-        geminiKey: config.geminiKey,
+        messages: [
+          ...messages.map(m => ({ role: m.role, content: m.content })),
+          { role: 'user', content: prompt },
+        ],
+        model: modelId,
+        stream: true,
         attachments: attachments?.map(a => ({ type: a.type, title: a.title, content: a.content })),
       }),
       signal,
@@ -45,7 +56,7 @@ export async function streamChatResponse({
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `HTTP error ${response.status}`);
+      throw new Error(errorData.error?.message || errorData.error || `HTTP error ${response.status}`);
     }
 
     const reader = response.body?.getReader();
@@ -69,7 +80,10 @@ export async function streamChatResponse({
       for (const line of lines) {
         if (line.startsWith('data: ')) {
           const dataStr = line.slice(6).trim();
-          if (dataStr === '[DONE]') break;
+          if (dataStr === '[DONE]') {
+            onDone(accumulatedText, accumulatedThought);
+            return;
+          }
 
           try {
             const data = JSON.parse(dataStr);
@@ -89,8 +103,8 @@ export async function streamChatResponse({
     }
 
     onDone(accumulatedText, accumulatedThought);
-  } catch (err: any) {
-    if (err.name === 'AbortError') {
+  } catch (err: unknown) {
+    if (err instanceof DOMException && err.name === 'AbortError') {
       return;
     }
     console.error('AI Stream Error:', err);

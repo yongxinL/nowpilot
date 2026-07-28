@@ -21,5 +21,14 @@ export default defineBackground({
       }
       chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
     });
+
+    // Handle raw content script messages (not using RuntimeEnvelope yet)
+    chrome.runtime.onMessage.addListener((message, sender) => {
+      if (message.type === 'CONTENT_SCRIPT_READY') {
+        console.debug('[BG] Content script ready:', sender.tab?.id, message.url);
+      } else if (message.type === 'SPA_NAVIGATION') {
+        console.debug('[BG] SPA navigation:', message.url);
+      }
+    });
   },
 });

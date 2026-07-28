@@ -40,6 +40,10 @@ import {
   BulbOutlined,
   DownOutlined,
   RightOutlined,
+  DoubleLeftOutlined,
+  DoubleRightOutlined,
+  BarsOutlined,
+  LayoutOutlined,
 } from '@ant-design/icons';
 import { NowPilotAvatar } from '../common/NowPilotAvatar';
 
@@ -225,6 +229,15 @@ export const NotesWorkspace: React.FC = () => {
   const [expandedFolder, setExpandedFolder] = useState<boolean>(true);
   const [isEditing, setIsEditing] = useState<boolean>(false);
 
+  // Column visibility states for responsive layout
+  const [showLeftCol, setShowLeftCol] = useState<boolean>(() =>
+    typeof window !== 'undefined' ? window.innerWidth >= 1024 : true
+  );
+  const [showListCol, setShowListCol] = useState<boolean>(true);
+  const [showRightCol, setShowRightCol] = useState<boolean>(() =>
+    typeof window !== 'undefined' ? window.innerWidth >= 1280 : true
+  );
+
   const selectedNote = notes.find(n => n.id === selectedNoteId) || notes[0];
 
   // Filter notes
@@ -309,9 +322,9 @@ export const NotesWorkspace: React.FC = () => {
   return (
     <div className="flex flex-col h-full w-full bg-[#f8f9fc] dark:bg-zinc-950 text-zinc-800 dark:text-zinc-100 font-sans overflow-hidden">
       {/* Top Header Bar */}
-      <div className="h-14 px-5 border-b border-zinc-200/80 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md flex items-center justify-between flex-shrink-0 z-10">
+      <div className="h-14 px-5 border-b border-zinc-200/80 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md flex items-center justify-between flex-shrink-0 z-10 gap-4">
         {/* Left Search Input */}
-        <div className="relative w-80">
+        <div className="relative w-72 sm:w-80 flex-shrink-0">
           <Input
             prefix={<SearchOutlined className="text-zinc-400 mr-1" />}
             placeholder="Search notes, tags, or content..."
@@ -326,21 +339,66 @@ export const NotesWorkspace: React.FC = () => {
           />
         </div>
 
+        {/* Center Column Toggle Controls */}
+        <div className="flex items-center gap-1 bg-zinc-100/80 dark:bg-zinc-800/80 p-1 rounded-xl border border-zinc-200/80 dark:border-zinc-700/80">
+          <Tooltip title={showLeftCol ? "Hide Directory Sidebar" : "Show Directory Sidebar"}>
+            <button
+              onClick={() => setShowLeftCol(!showLeftCol)}
+              className={`px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer ${
+                showLeftCol
+                  ? 'bg-white dark:bg-zinc-700 text-blue-600 dark:text-blue-400 shadow-2xs font-semibold'
+                  : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
+              }`}
+            >
+              <FolderOutlined />
+              <span className="hidden md:inline">Directory</span>
+            </button>
+          </Tooltip>
+
+          <Tooltip title={showListCol ? "Hide Notes Stream" : "Show Notes Stream"}>
+            <button
+              onClick={() => setShowListCol(!showListCol)}
+              className={`px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer ${
+                showListCol
+                  ? 'bg-white dark:bg-zinc-700 text-blue-600 dark:text-blue-400 shadow-2xs font-semibold'
+                  : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
+              }`}
+            >
+              <BarsOutlined />
+              <span className="hidden md:inline">Notes</span>
+            </button>
+          </Tooltip>
+
+          <Tooltip title={showRightCol ? "Hide Inspector" : "Show Inspector"}>
+            <button
+              onClick={() => setShowRightCol(!showRightCol)}
+              className={`px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer ${
+                showRightCol
+                  ? 'bg-white dark:bg-zinc-700 text-blue-600 dark:text-blue-400 shadow-2xs font-semibold'
+                  : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
+              }`}
+            >
+              <InfoCircleOutlined />
+              <span className="hidden md:inline">Inspector</span>
+            </button>
+          </Tooltip>
+        </div>
+
         {/* Right Header Buttons */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
           <Button
             type="primary"
             icon={<PlusOutlined />}
             onClick={handleCreateNewNote}
-            className="bg-blue-600 hover:bg-blue-500 font-medium text-xs rounded-lg px-4 h-9 border-none shadow-xs"
+            className="bg-blue-600 hover:bg-blue-500 font-medium text-xs rounded-lg px-3 sm:px-4 h-9 border-none shadow-xs"
           >
-            New Note
+            <span className="hidden sm:inline">New Note</span>
           </Button>
 
           <Button
             icon={<ImportOutlined />}
             onClick={() => antMessage.info('Opened Import Dialog')}
-            className="text-xs rounded-lg border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 h-9"
+            className="text-xs rounded-lg border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 h-9 hidden sm:inline-flex"
           >
             Import
           </Button>
@@ -348,26 +406,35 @@ export const NotesWorkspace: React.FC = () => {
           <Button
             icon={<CloudUploadOutlined />}
             onClick={() => antMessage.success('Knowledge Base Backup Complete')}
-            className="text-xs rounded-lg border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 h-9"
+            className="text-xs rounded-lg border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 h-9 hidden md:inline-flex"
           >
             Backup
           </Button>
 
-          <div className="ml-2 w-8 h-8 rounded-full overflow-hidden border border-zinc-200 dark:border-zinc-700 flex items-center justify-center bg-violet-100 dark:bg-violet-950">
+          <div className="ml-1 w-8 h-8 rounded-full overflow-hidden border border-zinc-200 dark:border-zinc-700 flex items-center justify-center bg-violet-100 dark:bg-violet-950">
             <NowPilotAvatar className="w-full h-full object-cover" />
           </div>
         </div>
       </div>
 
-      {/* Main 3-Panel Content Layout */}
+      {/* Main 4-Panel Content Layout */}
       <div className="flex-1 flex overflow-hidden">
         {/* PANEL 1: Navigation / Category Tree & Tags (Left Column) */}
-        <div className="w-60 border-r border-zinc-200/80 dark:border-zinc-800 bg-[#f8f9fc] dark:bg-zinc-900/50 flex flex-col justify-between flex-shrink-0 p-3 overflow-y-auto select-none">
-          <div>
-            {/* Navigation Header */}
-            <div className="text-[11px] font-extrabold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 px-2 py-1.5 mb-1 flex items-center justify-between">
-              <span>Directory</span>
-            </div>
+        {showLeftCol && (
+          <div className="w-60 border-r border-zinc-200/80 dark:border-zinc-800 bg-[#f8f9fc] dark:bg-zinc-900/50 flex flex-col justify-between flex-shrink-0 p-3 overflow-y-auto select-none transition-all">
+            <div>
+              {/* Navigation Header */}
+              <div className="text-[11px] font-extrabold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 px-2 py-1.5 mb-1 flex items-center justify-between">
+                <span>Directory</span>
+                <Tooltip title="Collapse Directory">
+                  <button
+                    onClick={() => setShowLeftCol(false)}
+                    className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 p-0.5 rounded transition-colors cursor-pointer"
+                  >
+                    <DoubleLeftOutlined className="text-xs" />
+                  </button>
+                </Tooltip>
+              </div>
 
             {/* Main Category List */}
             <div className="space-y-0.5 text-xs text-zinc-700 dark:text-zinc-300">
@@ -565,55 +632,63 @@ export const NotesWorkspace: React.FC = () => {
               </div>
             </div>
           </div>
-
-
         </div>
+      )}
 
         {/* PANEL 2: Note Cards Stream (Middle Column) */}
-        <div className="w-80 border-r border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex flex-col flex-shrink-0 overflow-hidden">
-          {/* Header of Note List */}
-          <div className="p-3.5 border-b border-zinc-200/80 dark:border-zinc-800 flex items-center justify-between">
-            <Dropdown
-              menu={{
-                items: [
-                  { key: 'sn_inc', label: 'ServiceNow / Incident' },
-                  { key: 'sn_prob', label: 'ServiceNow / Problem' },
-                  { key: 'sn_chg', label: 'ServiceNow / Change' },
-                ],
-                onClick: ({ key }) => {
-                  const map: Record<string, string> = {
-                    sn_inc: 'ServiceNow / Incident',
-                    sn_prob: 'ServiceNow / Problem',
-                    sn_chg: 'ServiceNow / Change',
-                  };
-                  setSelectedFolder(map[key] || selectedFolder);
-                },
-              }}
-            >
-              <div className="flex items-center gap-1.5 font-bold text-sm text-blue-600 dark:text-blue-400 cursor-pointer">
-                <span>{selectedFolder}</span>
-                <DownOutlined className="text-xs" />
-              </div>
-            </Dropdown>
+        {showListCol && (
+          <div className="w-80 border-r border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex flex-col flex-shrink-0 overflow-hidden transition-all">
+            {/* Header of Note List */}
+            <div className="p-3.5 border-b border-zinc-200/80 dark:border-zinc-800 flex items-center justify-between">
+              <Dropdown
+                menu={{
+                  items: [
+                    { key: 'sn_inc', label: 'ServiceNow / Incident' },
+                    { key: 'sn_prob', label: 'ServiceNow / Problem' },
+                    { key: 'sn_chg', label: 'ServiceNow / Change' },
+                  ],
+                  onClick: ({ key }) => {
+                    const map: Record<string, string> = {
+                      sn_inc: 'ServiceNow / Incident',
+                      sn_prob: 'ServiceNow / Problem',
+                      sn_chg: 'ServiceNow / Change',
+                    };
+                    setSelectedFolder(map[key] || selectedFolder);
+                  },
+                }}
+              >
+                <div className="flex items-center gap-1.5 font-bold text-sm text-blue-600 dark:text-blue-400 cursor-pointer">
+                  <span>{selectedFolder}</span>
+                  <DownOutlined className="text-xs" />
+                </div>
+              </Dropdown>
 
-            <div className="flex items-center gap-1 text-zinc-400">
-              <Tooltip title="Filter">
-                <button className="p-1 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors">
-                  <FilterOutlined />
-                </button>
-              </Tooltip>
-              <Tooltip title="Sort">
-                <button className="p-1 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors">
-                  <SortAscendingOutlined />
-                </button>
-              </Tooltip>
-              <Tooltip title="Switch View">
-                <button className="p-1 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors">
-                  <AppstoreOutlined />
-                </button>
-              </Tooltip>
+              <div className="flex items-center gap-1 text-zinc-400">
+                <Tooltip title="Filter">
+                  <button className="p-1 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors cursor-pointer">
+                    <FilterOutlined />
+                  </button>
+                </Tooltip>
+                <Tooltip title="Sort">
+                  <button className="p-1 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors cursor-pointer">
+                    <SortAscendingOutlined />
+                  </button>
+                </Tooltip>
+                <Tooltip title="Switch View">
+                  <button className="p-1 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors cursor-pointer">
+                    <AppstoreOutlined />
+                  </button>
+                </Tooltip>
+                <Tooltip title="Collapse Note List">
+                  <button
+                    onClick={() => setShowListCol(false)}
+                    className="p-1 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors cursor-pointer"
+                  >
+                    <DoubleLeftOutlined />
+                  </button>
+                </Tooltip>
+              </div>
             </div>
-          </div>
 
           {/* Cards List Stream */}
           <div className="flex-1 overflow-y-auto p-2.5 space-y-2">
@@ -672,14 +747,39 @@ export const NotesWorkspace: React.FC = () => {
             Total {filteredNotes.length} notes
           </div>
         </div>
+        )}
 
         {/* PANEL 3: Detailed Note Viewer/Editor + AI Meta Panel (Main Area) */}
         <div className="flex-1 flex overflow-hidden bg-[#f8f9fc] dark:bg-zinc-950 p-4 gap-4">
           {/* Main Note Canvas Panel */}
           <div className="flex-1 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 shadow-2xs flex flex-col overflow-hidden">
             {/* Note Detail Header */}
-            <div className="p-5 border-b border-zinc-100 dark:border-zinc-800/80 flex items-center justify-between">
-              <div className="flex items-center gap-2">
+            <div className="p-5 border-b border-zinc-100 dark:border-zinc-800/80 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2 flex-wrap">
+                {!showLeftCol && (
+                  <Tooltip title="Expand Directory Sidebar">
+                    <Button
+                      size="small"
+                      icon={<FolderOutlined />}
+                      onClick={() => setShowLeftCol(true)}
+                      className="text-xs rounded-lg border-zinc-200 dark:border-zinc-700"
+                    >
+                      Directory
+                    </Button>
+                  </Tooltip>
+                )}
+                {!showListCol && (
+                  <Tooltip title="Expand Notes List">
+                    <Button
+                      size="small"
+                      icon={<BarsOutlined />}
+                      onClick={() => setShowListCol(true)}
+                      className="text-xs rounded-lg border-zinc-200 dark:border-zinc-700"
+                    >
+                      Notes
+                    </Button>
+                  </Tooltip>
+                )}
                 <Title level={4} className="!mb-0 font-extrabold text-zinc-900 dark:text-zinc-100 tracking-tight">
                   {selectedNote.title}
                 </Title>
@@ -693,6 +793,18 @@ export const NotesWorkspace: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-2">
+                {!showRightCol && (
+                  <Tooltip title="Expand AI & Details Inspector">
+                    <Button
+                      size="small"
+                      icon={<InfoCircleOutlined />}
+                      onClick={() => setShowRightCol(true)}
+                      className="text-xs rounded-lg border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400"
+                    >
+                      Inspector
+                    </Button>
+                  </Tooltip>
+                )}
                 <Button
                   icon={<EditOutlined />}
                   onClick={() => setIsEditing(!isEditing)}
@@ -946,7 +1058,22 @@ export const NotesWorkspace: React.FC = () => {
           </div>
 
           {/* Right AI & Metadata Sidebar */}
-          <div className="w-64 flex flex-col gap-4 flex-shrink-0 overflow-y-auto">
+          {showRightCol && (
+            <div className="w-64 flex flex-col gap-4 flex-shrink-0 overflow-y-auto transition-all">
+              {/* Header with collapse button */}
+              <div className="flex items-center justify-between px-1 -mb-1">
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+                  Inspector
+                </span>
+                <Tooltip title="Collapse Inspector">
+                  <button
+                    onClick={() => setShowRightCol(false)}
+                    className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 p-0.5 rounded transition-colors cursor-pointer"
+                  >
+                    <DoubleRightOutlined className="text-xs" />
+                  </button>
+                </Tooltip>
+              </div>
             {/* AI Summary Card */}
             <div className="p-4 bg-gradient-to-br from-blue-50/80 to-purple-50/80 dark:from-zinc-900 dark:to-zinc-800/80 rounded-2xl border border-blue-100 dark:border-zinc-700/80 shadow-2xs">
               <div className="flex items-center gap-1.5 font-bold text-xs text-blue-700 dark:text-blue-300 mb-2">
@@ -1057,8 +1184,9 @@ export const NotesWorkspace: React.FC = () => {
               </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
-  );
+  </div>
+);
 };

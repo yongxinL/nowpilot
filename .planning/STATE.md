@@ -3,18 +3,18 @@ gsd_state_version: 1.0
 milestone: v0.1
 milestone_name: milestone
 current_phase: 01
-current_phase_name: project-scaffold-runtime-foundation
-status: verifying
+status: completed
 stopped_at: Completed 01-04-PLAN.md (OnboardingWizard + background install detection)
-last_updated: "2026-07-28T08:47:09.087Z"
+last_updated: "2026-07-28T08:48:59.928Z"
 last_activity: 2026-07-28
-last_activity_desc: Phase 01 execution started
+last_activity_desc: Phase 01 marked complete
 progress:
   total_phases: 11
   completed_phases: 1
   total_plans: 5
   completed_plans: 5
   percent: 9
+current_phase_name: project-scaffold-runtime-foundation
 ---
 
 # Project State
@@ -29,10 +29,10 @@ See: .planning/PROJECT.md (updated 2026-07-28)
 
 ## Current Position
 
-Phase: 01 (project-scaffold-runtime-foundation) — EXECUTING
+Phase: 01 — COMPLETE
 Plan: 5 of 5
-Status: Phase complete — ready for verification
-Last activity: 2026-07-28 — Phase 01 execution started
+Status: Phase 01 complete
+Last activity: 2026-07-28 — Phase 01 marked complete
 
 Progress: [██████████] 100%
 

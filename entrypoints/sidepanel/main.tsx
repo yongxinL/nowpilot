@@ -1,23 +1,38 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
 import { ConfigProvider, App as AntdApp } from 'antd';
-import { XProvider } from '@ant-design/x';
-import { getAntdConfig } from '../../src/core/theme/antdConfig';
-import { SidePanelShell } from '../../src/components/sidepanel/SidePanelShell';
+import { SidepanelChat } from '../../src/components/chat/SidepanelChat';
+import { getAppTheme } from '../../src/styles/theme';
+import { useThemeStore } from '../../src/core/theme/ThemeStore';
+import { useThemeSync } from '../../src/core/theme/ThemeSync';
+import '../../src/index.css';
 
-function Root() {
+const handleOpenStandalone = () => {
+  const url = chrome.runtime.getURL('standalone.html');
+  chrome.tabs.create({ url });
+};
+
+const handleOpenOptions = () => {
+  const url = chrome.runtime.getURL('options.html');
+  chrome.tabs.create({ url });
+};
+
+const SidepanelApp = () => {
+  const mode = useThemeStore((s) => s.mode);
+  const isDark = mode === 'dark' || (mode === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const theme = useMemo(() => getAppTheme(isDark), [isDark]);
+  useThemeSync();
+
   return (
-    <ConfigProvider {...getAntdConfig({ compact: true })}>
-      <AntdApp>
-        <XProvider>
-          <SidePanelShell />
-        </XProvider>
+    <ConfigProvider theme={theme}>
+      <AntdApp className="h-screen w-screen overflow-hidden">
+        <SidepanelChat onOpenStandalone={handleOpenStandalone} onOpenOptions={handleOpenOptions} />
       </AntdApp>
     </ConfigProvider>
   );
-}
+};
 
 const container = document.getElementById('root');
 if (container) {
-  createRoot(container).render(<Root />);
+  createRoot(container).render(<SidepanelApp />);
 }

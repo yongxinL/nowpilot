@@ -1,6 +1,20 @@
 import { defineConfig } from 'wxt';
+import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
+  vite: () => ({
+    plugins: [tailwindcss()],
+    build: {
+      chunkSizeWarningLimit: 1000,
+      rollupOptions: {
+        onwarn(warning, warn) {
+          if (warning.code === 'MODULE_LEVEL_DIRECTIVE') return;
+          if (warning.message?.includes('use client')) return;
+          warn(warning);
+        },
+      },
+    },
+  }),
   manifest: {
     name: 'NowPilot',
     description: 'Privacy-first AI assistant and personal knowledge platform for Chrome',
@@ -28,7 +42,7 @@ export default defineConfig({
     },
     options_page: 'options.html',
     content_security_policy: {
-      extension_pages: "script-src 'self'; object-src 'self'; connect-src *",
+      extension_pages: "script-src 'self'; object-src 'self'; connect-src http://localhost:* https://generativelanguage.googleapis.com https://api.anthropic.com https://api.openai.com",
     },
   },
 });
