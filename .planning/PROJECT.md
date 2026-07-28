@@ -8,6 +8,23 @@ NowPilot is a privacy-first, extensible Chrome MV3 extension AI assistant and pe
 
 Users can acquire knowledge from web pages, store it as interconnected atomic notes, understand it through AI enrichment (tagging/summary/RAG), and interact with it through a persona-driven, intention-aware conversational workspace — all running locally on their machine.
 
+## Current Milestone: v0.1 NowPilot Initial Release
+
+**Goal:** Build the full NowPilot v0.1 — a privacy-first Chrome MV3 AI assistant and personal knowledge platform with two UI surfaces, cost-effective AI pipeline, persistent memory, LLM-Wiki, layered page extraction, add-ons, and RICH conversational UX.
+
+**Target features:**
+- Dual-surface shell (Side Panel + Full App Tab) with shared WorkspaceStore
+- 5-provider AI pipeline (Planner→Executor→Renderer) with ContextOptimizer + PromptCache
+- Persistent memory (conversation + user facts + preferences + persona)
+- PageContentService with layered Defuddle→APC-lite extraction + MiniSearch index
+- Atomic notes + wikilinks + note graph + LLM-Wiki (auto-tag/RAG/filesystem sync)
+- AITransactionLog + TraceRedactor + DiagnosticsPanel
+- 12 built-in MCP tools + external MCP client (StreamableHTTP)
+- 4 add-ons (ServiceNow, Write, TeamGQM, Research)
+- RICH UX (persona, welcome/intent, clarification/follow-up, hybrid UI actions)
+- Encrypted storage, WriteJournal, IndexedDB migrations v1→v4
+- Security hardening + 9 phase verification scripts
+
 ## Context
 
 - **Target runtime:** Chrome MV3 extension using WXT + React 19 + TypeScript (strict mode) + Ant Design v6 + Ant Design X 2.x
