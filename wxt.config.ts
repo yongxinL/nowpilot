@@ -2,15 +2,23 @@ import { defineConfig } from 'wxt';
 
 export default defineConfig({
   manifest: {
-    name: 'NowPilot - RICH Chrome Extension AI Assistant',
-    description: 'Real-time tab assistant, standalone notebook workspace, and multi-provider AI engine.',
-    version: '1.0.0',
+    name: 'NowPilot',
+    description: 'Privacy-first AI assistant and personal knowledge platform for Chrome',
+    version: '0.1.0',
     permissions: [
-      'storage',
-      'activeTab',
-      'scripting',
       'sidePanel',
+      'storage',
+      'cookies',
+      'alarms',
+      'tabs',
+      'scripting',
       'contextMenus',
+      'notifications',
+      'declarativeNetRequest',
+    ],
+    host_permissions: [
+      '*://*.service-now.com/*',
+      '*://support.servicenow.com/*',
     ],
     action: {
       default_title: 'Open NowPilot Assistant',
@@ -19,5 +27,8 @@ export default defineConfig({
       default_path: 'sidepanel.html',
     },
     options_page: 'options.html',
+    content_security_policy: {
+      extension_pages: "script-src 'self'; object-src 'self'; connect-src *",
+    },
   },
 });

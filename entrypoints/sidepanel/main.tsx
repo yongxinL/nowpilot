@@ -1,21 +1,23 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { ConfigProvider, App } from 'antd';
-import { SidepanelChat } from '../../src/components/chat/SidepanelChat';
-import { getAppTheme } from '../../src/styles/theme';
-import '../../src/index.css';
+import { ConfigProvider, App as AntdApp } from 'antd';
+import { XProvider } from '@ant-design/x';
+import { getAntdConfig } from '../../src/core/theme/antdConfig';
+import { SidePanelShell } from '../../src/components/sidepanel/SidePanelShell';
 
-const SidepanelApp = () => {
+function Root() {
   return (
-    <ConfigProvider theme={getAppTheme(false)}>
-      <App className="h-screen w-screen overflow-hidden">
-        <SidepanelChat />
-      </App>
+    <ConfigProvider {...getAntdConfig({ compact: true })}>
+      <AntdApp>
+        <XProvider>
+          <SidePanelShell />
+        </XProvider>
+      </AntdApp>
     </ConfigProvider>
   );
-};
+}
 
 const container = document.getElementById('root');
 if (container) {
-  createRoot(container).render(<SidepanelApp />);
+  createRoot(container).render(<Root />);
 }

@@ -1,14 +1,17 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { ConfigProvider, App as AntdApp } from 'antd';
+import { XProvider } from '@ant-design/x';
 import { getAntdConfig } from '../../src/core/theme/antdConfig';
-import { OptionsPage } from '../../src/components/pages/OptionsPage';
+import { AppShell } from '../../src/components/app/AppShell';
 
 function Root() {
   return (
     <ConfigProvider {...getAntdConfig({ compact: false })}>
       <AntdApp>
-        <OptionsPage />
+        <XProvider>
+          <AppShell />
+        </XProvider>
       </AntdApp>
     </ConfigProvider>
   );

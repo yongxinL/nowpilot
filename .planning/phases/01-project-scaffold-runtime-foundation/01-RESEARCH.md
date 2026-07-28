@@ -639,19 +639,19 @@ chrome.runtime.onInstalled.addListener((details) => {
 | A4 | Chrome extension pages can use `window.matchMedia('(prefers-color-scheme: dark)')` for auto theme detection | Theme | LOW — Extension pages are regular web pages with full DOM API access; `matchMedia` is standard |
 | A5 | Existing `chrome.tabs.query` in WorkspaceRouter correctly finds existing app.html tabs | WorkspaceRouter | MEDIUM — If the `"tabs"` permission behaves differently than expected, tab deduplication may fail and duplicate tabs will open |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Should the Full App Tab be a WXT `newtab` entrypoint or a generic HTML page?**
+1. **[RESOLVED] Should the Full App Tab be a WXT `newtab` entrypoint or a generic HTML page?**
    - What we know: Currently `entrypoints/app/` is a generic HTML page (not a WXT-recognized type). WXT bundles it and `chrome.runtime.getURL('app.html')` resolves correctly. Using `newtab` would override the user's new tab page, which is not the intended behavior.
    - What's unclear: Whether using a generic HTML entrypoint has any drawbacks for the Full App Tab use case (e.g., hot reload behavior).
    - Recommendation: Keep as generic HTML page. The current approach works and doesn't interfere with browser new tab behavior.
 
-2. **Does Zustand persist with async storage cause a noticeable hydration delay?**
+2. **[RESOLVED] Does Zustand persist with async storage cause a noticeable hydration delay?**
    - What we know: `chrome.storage.local.get()` is async but typically resolves in < 5ms for small payloads. Zustand's persist middleware handles async hydration via `onRehydrateStorage` callback.
    - What's unclear: Whether the hydration delay is noticeable in the Side Panel (< 300ms paint target).
    - Recommendation: Implement with `Skeleton` loading state per UI-SPEC; measure hydration time in Wave 0; if > 100ms, consider synchronous hydration from a preloaded cache.
 
-3. **Should the command palette be a shared component or surface-specific?**
+3. **[RESOLVED] Should the command palette be a shared component or surface-specific?**
    - What we know: Both surfaces need Cmd+K. Phase 1 commands are limited ("Toggle Theme", "Open in Full Tab", "Reload Extension"). Phase 7 will add the full command set.
    - What's unclear: Whether certain commands should only appear on specific surfaces.
    - Recommendation: Build a shared `CommandPalette` component that accepts a `commands` array prop. Each shell passes surface-appropriate commands. This keeps the component reusable while allowing surface-specific command registration.

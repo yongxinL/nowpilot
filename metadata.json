@@ -1,6 +1,0 @@
-{
-  "name": "NowPilot",
-  "description": "NowPilot - AI Chrome Extension Assistant featuring RICH design with Ant Design v6 & Ant Design X",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}
