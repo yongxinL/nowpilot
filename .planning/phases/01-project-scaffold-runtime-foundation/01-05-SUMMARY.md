@@ -164,6 +164,19 @@ No additional threat surface introduced beyond what the plan's `<threat_model>` 
 - **T-01-12 (Information Disclosure):** Mitigated — cross-entrypoint isolation test passes; shell components do not import from the other surface.
 - **T-01-13 (Tampering):** Accept-listed — onboarding flag tampering only affects UX.
 
+## Self-Check: PASSED
+
+| Check | Result |
+|-------|--------|
+| `01-05-SUMMARY.md` exists | ✅ |
+| Commit `793ee42` (Task 1 — SidePanelShell integration) exists | ✅ |
+| Commit `f8cc3da` (Task 2 — AppShell + isolation test) exists | ✅ |
+| Commit `388113e` (SUMMARY + state update) exists | ✅ |
+| `src/components/OnboardingModal.tsx` deleted | ✅ |
+| `tests/isolation/cross-entrypoint-imports.test.ts` created | ✅ |
+| `pnpm run verify:phase-1` — tsc --noEmit + 39 core tests | ✅ |
+| Shell + isolation tests (46 additional) | ✅ |
+
 ## Next Steps
 
 Phase 1 is complete. Proceed to Phase 2 planning for AI provider integration and storage layer.
