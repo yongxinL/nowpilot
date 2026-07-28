@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 01
 current_phase_name: project-scaffold-runtime-foundation
 status: executing
-stopped_at: Completed 01-01-PLAN.md (theme persistence tracer)
-last_updated: "2026-07-28T08:06:40.846Z"
+stopped_at: Completed 01-02-PLAN.md (BroadcastChannel theme sync + AppShell integration)
+last_updated: "2026-07-28T08:22:47.044Z"
 last_activity: 2026-07-28
 last_activity_desc: Phase 01 execution started
 progress:
   total_phases: 11
   completed_phases: 0
   total_plans: 5
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -30,11 +30,11 @@ See: .planning/PROJECT.md (updated 2026-07-28)
 ## Current Position
 
 Phase: 01 (project-scaffold-runtime-foundation) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-07-28 — Phase 01 execution started
 
-Progress: [██░░░░░░░░] 20%
+Progress: [████░░░░░░] 40%
 
 ## Performance Metrics
 
@@ -60,6 +60,7 @@ Progress: [██░░░░░░░░] 20%
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
 | Phase 01-project-scaffold-runtime-foundation P01 | 12min | 3 tasks | 8 files |
+| Phase 01-project-scaffold-runtime-foundation P02 | 10min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -76,6 +77,9 @@ Recent decisions affecting current work:
 - Persona runtime seeds in Phase 3 (PersonaProfile + PersonaInjector), UI in Phase 7
 - [Phase ?]: chromeStorageAdapter kept as separate module for reuse
 - [Phase ?]: antdConfig stripped to UI-SPEC seed tokens only, no per-component overrides
+- [Phase ?]: useThemeSync as standalone hook (not inlined into each shell) for single-responsibility and testability
+- [Phase ?]: BroadcastChannel guard (typeof BroadcastChannel !== 'undefined') in ThemeStore.setMode for environments without BroadcastChannel support
+- [Phase ?]: ThemeStore.setMode directly calls publish (not publishThemeChange) to avoid circular dependency
 
 ### Pending Todos
 
@@ -95,6 +99,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-28T08:06:40.838Z
-Stopped at: Completed 01-01-PLAN.md (theme persistence tracer)
+Last session: 2026-07-28T08:22:47.037Z
+Stopped at: Completed 01-02-PLAN.md (BroadcastChannel theme sync + AppShell integration)
 Resume file: None
