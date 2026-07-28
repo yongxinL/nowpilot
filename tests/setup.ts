@@ -19,6 +19,29 @@ vi.stubGlobal('localStorage', {
   key: (index: number) => Array.from(storage.keys())[index] ?? null,
 });
 
+// --- ResizeObserver mock (required by antd Layout/Tabs in jsdom) ---
+class MockResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+vi.stubGlobal('ResizeObserver', MockResizeObserver);
+
+// --- matchMedia mock (required by antd responsive components) ---
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: vi.fn().mockImplementation((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })),
+});
+
 // --- Chrome storage.local mock (Map-backed, same pattern as localStorage) ---
 const chromeStorage = new Map<string, string>();
 

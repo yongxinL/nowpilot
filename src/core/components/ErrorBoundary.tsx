@@ -31,7 +31,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
         <Result
           status="500"
           title={t('common.error')}
-          subTitle={this.state.error?.message ?? 'An unexpected error occurred'}
+          subTitle={t('shell.error')}
           extra={
             <Button type="primary" onClick={this.handleReload}>
               {t('common.retry')}
