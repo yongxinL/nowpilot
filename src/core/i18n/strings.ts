@@ -60,6 +60,13 @@ const strings: Record<string, string> = {
   // Side Panel
   'sidepanel.footer': 'Open in Full Tab',
 
+  // Commands
+  'commands.placeholder': 'Search commands…',
+  'commands.noResults': 'No matching commands — try a different search term',
+  'commands.category.theme': 'Appearance',
+  'commands.category.navigation': 'Navigation',
+  'commands.category.system': 'System',
+
   // Common
   'common.retry': 'Retry',
   'common.cancel': 'Cancel',
