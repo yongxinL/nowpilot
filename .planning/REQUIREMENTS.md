@@ -97,44 +97,43 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SHELL-01 | — | Pending |
-| SHELL-02 | — | Pending |
-| SHELL-03 | — | Pending |
-| SHELL-04 | — | Pending |
-| SHELL-05 | — | Pending |
-| AI-01 | — | Pending |
-| AI-02 | — | Pending |
-| AI-03 | — | Pending |
-| AI-04 | — | Pending |
-| CTX-01 | — | Pending |
-| CTX-02 | — | Pending |
-| MEM-01 | — | Pending |
-| MEM-02 | — | Pending |
-| PAGE-01 | — | Pending |
-| NOTE-01 | — | Pending |
-| NOTE-02 | — | Pending |
-| NOTE-03 | — | Pending |
-| DIAG-01 | — | Pending |
-| STORAGE-01 | — | Pending |
-| STORAGE-02 | — | Pending |
-| TOOL-01 | — | Pending |
-| TOOL-02 | — | Pending |
-| ADDON-01 | — | Pending |
-| ADDON-02 | — | Pending |
-| ADDON-03 | — | Pending |
-| ADDON-04 | — | Pending |
-| RICH-01 | — | Pending |
-| RICH-02 | — | Pending |
-| RICH-03 | — | Pending |
-| RICH-04 | — | Pending |
-| SEC-01 | — | Pending |
-| STORAGE-01 | — | Pending |
-| TEST-01 | — | Pending |
+| SHELL-01 | Phase 7 | Pending |
+| SHELL-02 | Phase 7 | Pending |
+| SHELL-03 | Phase 1 | Pending |
+| SHELL-04 | Phase 1 | Pending |
+| SHELL-05 | Phase 1 | Pending |
+| AI-01 | Phase 3 | Pending |
+| AI-02 | Phase 3 | Pending |
+| AI-03 | Phase 3 | Pending |
+| AI-04 | Phase 7 | Pending |
+| CTX-01 | Phase 4 | Pending |
+| CTX-02 | Phase 4 | Pending |
+| MEM-01 | Phase 5 | Pending |
+| MEM-02 | Phase 5 | Pending |
+| PAGE-01 | Phase 4a | Pending |
+| NOTE-01 | Phase 5 | Pending |
+| NOTE-02 | Phase 5a | Pending |
+| NOTE-03 | Phase 5a | Pending |
+| DIAG-01 | Phase 6 | Pending |
+| STORAGE-01 | Phase 2 | Pending |
+| STORAGE-02 | Phase 2 | Pending |
+| TOOL-01 | Phase 8 | Pending |
+| TOOL-02 | Phase 8 | Pending |
+| ADDON-01 | Phase 8 | Pending |
+| ADDON-02 | Phase 8 | Pending |
+| ADDON-03 | Phase 8 | Pending |
+| ADDON-04 | Phase 8 | Pending |
+| RICH-01 | Phase 7 | Pending |
+| RICH-02 | Phase 7 | Pending |
+| RICH-03 | Phase 7 | Pending |
+| RICH-04 | Phase 7 | Pending |
+| SEC-01 | Phase 9 | Pending |
+| TEST-01 | Phase 9 | Pending |
 
 **Coverage:**
-- v1 requirements: 33 total
-- Mapped to phases: 0
-- Unmapped: 33 ⚠️
+- v1 requirements: 32 unique (33 rows in table above included 1 duplicate STORAGE-01; removed during roadmap)
+- Mapped to phases: 32
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-07-28*
