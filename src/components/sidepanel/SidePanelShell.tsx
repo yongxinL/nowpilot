@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout, Tabs, Button, Tooltip, Skeleton, Typography, Empty, App } from 'antd';
 import {
   MessageOutlined,
@@ -10,10 +10,14 @@ import {
 import { ChatPage } from '../pages/ChatPage';
 import { AgentPage } from '../pages/AgentPage';
 import { ThemeToggle } from '../common/ThemeToggle';
+import { CommandPalette } from '../common/CommandPalette';
+import { OnboardingWizard } from '../common/OnboardingWizard';
 import { ErrorBoundary } from '../../core/components/ErrorBoundary';
 import { openFullApp } from '../../core/workspace/WorkspaceRouter';
 import { useWorkspaceStore } from '../../core/workspace/WorkspaceStore';
-import { useThemeStore } from '../../core/theme/ThemeStore';
+import { useThemeStore, type ThemeMode } from '../../core/theme/ThemeStore';
+import { useThemeSync } from '../../core/theme/ThemeSync';
+import { CommandRegistry } from '../../core/commands/CommandRegistry';
 import { t } from '../../core/i18n/strings';
 
 type SidePanelPage = 'chat' | 'agent' | 'write' | 'teamgqm';
@@ -21,11 +25,81 @@ type SidePanelPage = 'chat' | 'agent' | 'write' | 'teamgqm';
 const { Header, Content, Footer } = Layout;
 
 export const SidePanelShell: React.FC = () => {
+  useThemeSync();
+
   const [activePage, setActivePage] = useState<SidePanelPage>('chat');
+  const [onboardingComplete, setOnboardingComplete] = useState<boolean | null>(null);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const { message } = App.useApp();
   const workspaceId = useWorkspaceStore((s) => s.workspaceId);
   const conversationId = useWorkspaceStore((s) => s.conversationId);
   const hasHydrated = useThemeStore.persist.hasHydrated();
+
+  // Load onboarding completion flag from chrome.storage.local
+  useEffect(() => {
+    chrome.storage.local.get('onboardingComplete').then((result) => {
+      // Default to false (show onboarding) if key is missing or not strictly true
+      setOnboardingComplete(result.onboardingComplete === true);
+    });
+  }, []);
+
+  // Register Side Panel-specific commands (runs once)
+  useEffect(() => {
+    CommandRegistry.register({
+      id: 'toggle-theme',
+      name: 'Toggle Theme',
+      description: 'Cycle between light, dark, and auto theme modes',
+      category: t('commands.category.theme'),
+      action: () => {
+        const modes: ThemeMode[] = ['light', 'dark', 'auto'];
+        const cur = useThemeStore.getState().mode;
+        const next = modes[(modes.indexOf(cur) + 1) % 3];
+        useThemeStore.getState().setMode(next);
+        setPaletteOpen(false);
+      },
+    });
+    CommandRegistry.register({
+      id: 'open-full-app',
+      name: 'Open in Full Tab',
+      description: 'Open the full app workspace in a new tab',
+      category: t('commands.category.navigation'),
+      action: () => {
+        openFullApp(
+          useWorkspaceStore.getState().workspaceId,
+          useWorkspaceStore.getState().conversationId ?? undefined,
+        );
+        setPaletteOpen(false);
+      },
+    });
+    CommandRegistry.register({
+      id: 'reload-extension',
+      name: 'Reload Extension',
+      description: 'Reload the extension to apply changes',
+      category: t('commands.category.system'),
+      action: () => {
+        chrome.runtime.reload();
+      },
+    });
+
+    return () => {
+      CommandRegistry.unregister('toggle-theme');
+      CommandRegistry.unregister('open-full-app');
+      CommandRegistry.unregister('reload-extension');
+    };
+  }, []);
+
+  // Cmd+K / Ctrl+K keydown listener (only when onboarding is complete)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (onboardingComplete !== true) return;
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setPaletteOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onboardingComplete]);
 
   const handleOpenFullApp = () => {
     try {
@@ -35,8 +109,13 @@ export const SidePanelShell: React.FC = () => {
     }
   };
 
-  // Loading state: show Skeleton while ThemeStore rehydrates from chrome.storage.local
-  if (!hasHydrated) {
+  const handleOnboardingComplete = () => {
+    chrome.storage.local.set({ onboardingComplete: true });
+    setOnboardingComplete(true);
+  };
+
+  // Loading state: show Skeleton while ThemeStore rehydrates or onboarding flag loads
+  if (!hasHydrated || onboardingComplete === null) {
     return (
       <ErrorBoundary>
         <Layout style={{ height: '100vh', overflow: 'hidden' }}>
@@ -58,6 +137,15 @@ export const SidePanelShell: React.FC = () => {
             </Typography.Text>
           </Content>
         </Layout>
+      </ErrorBoundary>
+    );
+  }
+
+  // Onboarding state: show onboarding wizard instead of the shell
+  if (onboardingComplete === false) {
+    return (
+      <ErrorBoundary>
+        <OnboardingWizard open={true} onComplete={handleOnboardingComplete} />
       </ErrorBoundary>
     );
   }
@@ -171,6 +259,13 @@ export const SidePanelShell: React.FC = () => {
           </Button>
         </Footer>
       </Layout>
+
+      {/* Command palette overlay */}
+      <CommandPalette
+        commands={CommandRegistry.getAll()}
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+      />
     </ErrorBoundary>
   );
 };
