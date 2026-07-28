@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import { chromeStorageAdapter } from './chromeStorageAdapter';
+import { publish } from '../runtime/BroadcastBus';
 
 export type ThemeMode = 'light' | 'dark' | 'auto';
 
@@ -20,6 +21,9 @@ export const useThemeStore = create<ThemeState>()(
         set((state) => {
           state.mode = mode;
         });
+        if (typeof BroadcastChannel !== 'undefined') {
+          publish('np_theme', { type: 'THEME_CHANGED', mode });
+        }
       },
 
       resolvedMode: () => {
