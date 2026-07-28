@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Menu, Button, Typography, theme } from 'antd';
+import { Layout, Menu, Button, Typography, theme, Skeleton, Tooltip } from 'antd';
 import {
   MessageOutlined,
   RobotOutlined,
@@ -15,7 +15,11 @@ import { NotesPage } from '../pages/NotesPage';
 import { OptionsPage } from '../pages/OptionsPage';
 import { ErrorBoundary } from '../../core/components/ErrorBoundary';
 import { useWorkspaceStore } from '../../core/workspace/WorkspaceStore';
+import { useThemeStore } from '../../core/theme/ThemeStore';
+import { useThemeSync } from '../../core/theme/ThemeSync';
+import { ThemeToggle } from '../common/ThemeToggle';
 import { hydrateFromURL } from '../../core/workspace/WorkspaceRouter';
+import { t } from '../../core/i18n/strings';
 
 const { Header, Sider, Content } = Layout;
 
@@ -25,12 +29,25 @@ const menuItems = [
   { key: 'chat', icon: <MessageOutlined />, label: 'Chat' },
   { key: 'agent', icon: <RobotOutlined />, label: 'Agent' },
   { key: 'notes', icon: <FileTextOutlined />, label: 'Notes' },
+  {
+    key: 'teamgqm',
+    icon: <TeamOutlined />,
+    label: (
+      <Tooltip title="Available in Phase 7">
+        <span>TeamGQM</span>
+      </Tooltip>
+    ),
+    disabled: true,
+  },
   { key: 'options', icon: <SettingOutlined />, label: 'Options' },
 ];
 
 export const AppShell: React.FC = () => {
+  useThemeSync();
+
   const [activePage, setActivePage] = useState<FullAppPage>('chat');
   const [collapsed, setCollapsed] = useState(false);
+  const hasHydrated = useThemeStore.persist.hasHydrated();
   const {
     token: { colorBgContainer },
   } = theme.useToken();
@@ -44,6 +61,33 @@ export const AppShell: React.FC = () => {
       setActivePage(pageParam as FullAppPage);
     }
   }, []);
+
+  // Hydration guard: show skeleton while ThemeStore rehydrates from chrome.storage.local
+  if (!hasHydrated) {
+    return (
+      <ErrorBoundary>
+        <Layout style={{ height: '100vh' }}>
+          <Content
+            style={{
+              padding: 24,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 12,
+              justifyContent: 'center',
+            }}
+          >
+            <Skeleton active paragraph={{ rows: 4 }} />
+            <Typography.Text
+              type="secondary"
+              style={{ textAlign: 'center', fontSize: 13 }}
+            >
+              {t('shell.loading')}
+            </Typography.Text>
+          </Content>
+        </Layout>
+      </ErrorBoundary>
+    );
+  }
 
   const renderPage = () => {
     switch (activePage) {
@@ -99,6 +143,15 @@ export const AppShell: React.FC = () => {
               padding: 8,
             }}
           >
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'center',
+                marginBottom: 4,
+              }}
+            >
+              <ThemeToggle />
+            </div>
             <Button
               type="text"
               icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
