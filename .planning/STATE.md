@@ -4,17 +4,17 @@ milestone: v0.1
 milestone_name: milestone
 current_phase: 01
 current_phase_name: project-scaffold-runtime-foundation
-status: executing
+status: verifying
 stopped_at: Completed 01-04-PLAN.md (OnboardingWizard + background install detection)
-last_updated: "2026-07-28T08:41:02.331Z"
+last_updated: "2026-07-28T08:47:09.087Z"
 last_activity: 2026-07-28
 last_activity_desc: Phase 01 execution started
 progress:
   total_phases: 11
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 5
-  completed_plans: 4
-  percent: 0
+  completed_plans: 5
+  percent: 9
 ---
 
 # Project State
@@ -31,10 +31,10 @@ See: .planning/PROJECT.md (updated 2026-07-28)
 
 Phase: 01 (project-scaffold-runtime-foundation) — EXECUTING
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-28 — Phase 01 execution started
 
-Progress: [████████░░] 80%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -63,6 +63,7 @@ Progress: [████████░░] 80%
 | Phase 01-project-scaffold-runtime-foundation P02 | 10min | 2 tasks | 5 files |
 | Phase 01-project-scaffold-runtime-foundation P03 | 11min | 2 tasks | 5 files |
 | Phase 01-project-scaffold-runtime-foundation P04 | 3 min | 2 tasks | 4 files |
+| Phase 01-project-scaffold-runtime-foundation P05 | 4 min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -82,6 +83,8 @@ Recent decisions affecting current work:
 - [Phase ?]: useThemeSync as standalone hook (not inlined into each shell) for single-responsibility and testability
 - [Phase ?]: BroadcastChannel guard (typeof BroadcastChannel !== 'undefined') in ThemeStore.setMode for environments without BroadcastChannel support
 - [Phase ?]: ThemeStore.setMode directly calls publish (not publishThemeChange) to avoid circular dependency
+- [Phase ?]: SidePanel and AppShell each have their own CommandRegistry singleton (per-entrypoint JS context) — surface-specific commands with shared IDs work correctly
+- [Phase ?]: Common component files tested for cross-entrypoint import isolation in addition to surface-specific shell checks
 
 ### Pending Todos
 
@@ -101,6 +104,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-28T08:41:02.078Z
-Stopped at: Completed 01-04-PLAN.md (OnboardingWizard + background install detection)
+Last session: 2026-07-28T18:42:00.000Z
+Stopped at: Completed 01-05-PLAN.md (shell integration — CommandPalette + Onboarding) — Phase 1 complete, ready for verification
 Resume file: None
