@@ -40,12 +40,12 @@ created: 2026-07-29
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
 | 02-01-01 | 01 | 1 | STORAGE-01 | T-2-01 | AES-GCM encrypt/decrypt round-trip with correct key derivation | unit | `npx vitest run tests/core/storage/CryptoService.test.ts -t "round-trip"` | ❌ W0 | ⬜ pending |
 | 02-01-02 | 01 | 1 | STORAGE-01 | T-2-02 | No plaintext keys in chrome.storage.local | unit | `npx vitest run tests/core/storage/ApiKeyStore.test.ts -t "no plaintext"` | ❌ W0 | ⬜ pending |
-| 02-02-01 | 02 | 2 | STORAGE-01 | T-2-03 | WriteJournal replays incomplete transactions on startup | integration | `npx vitest run tests/core/storage/WriteJournal.test.ts -t "replay"` | ❌ W0 | ⬜ pending |
-| 02-02-02 | 02 | 2 | STORAGE-01 | T-2-04 | WriteJournal lazy repair validates on record access | integration | `npx vitest run tests/core/storage/WriteJournal.test.ts -t "lazy repair"` | ❌ W0 | ⬜ pending |
+| 02-02-01 | 02 | 1 | STORAGE-01 | T-2-03 | WriteJournal replays incomplete transactions on startup | integration | `npx vitest run tests/core/storage/WriteJournal.test.ts -t "replay"` | ❌ W0 | ⬜ pending |
+| 02-02-02 | 02 | 1 | STORAGE-01 | T-2-04 | WriteJournal lazy repair validates on record access | integration | `npx vitest run tests/core/storage/WriteJournal.test.ts -t "lazy repair"` | ❌ W0 | ⬜ pending |
 | 02-03-01 | 03 | 2 | STORAGE-01 | T-2-05 | idb v1→v4 migration runs idempotently (run twice) | integration | `npx vitest run tests/core/storage/MigrationRunner.test.ts -t "idempotent"` | ❌ W0 | ⬜ pending |
-| 02-04-01 | 04 | 3 | STORAGE-02 | — | SessionStore persists only to chrome.storage.session | unit | `npx vitest run tests/core/storage/SessionStore.test.ts -t "session"` | ❌ W0 | ⬜ pending |
-| 02-04-02 | 04 | 3 | STORAGE-02 | — | WorkspaceStore persists via chrome.storage.local adapter | integration | `npx vitest run tests/core/workspace/WorkspaceStore.test.ts -t "persist"` | ✅ P1 | ⬜ pending |
-| 02-04-03 | 04 | 3 | STORAGE-02 | — | Workspace state survives page reload | integration | `npx vitest run tests/core/workspace/WorkspacePersistence.test.ts -t "reload"` | ❌ W0 | ⬜ pending |
+| 02-04-01 | 04 | 2 | STORAGE-02 | — | SessionStore persists only to chrome.storage.session | unit | `npx vitest run tests/core/storage/SessionStore.test.ts -t "session"` | ❌ W0 | ⬜ pending |
+| 02-04-02 | 04 | 2 | STORAGE-02 | — | WorkspaceStore persists via chrome.storage.local adapter | integration | `npx vitest run tests/core/workspace/WorkspaceStore.test.ts -t "persist"` | ✅ P1 | ⬜ pending |
+| 02-04-03 | 04 | 2 | STORAGE-02 | — | Workspace state survives page reload | integration | `npx vitest run tests/core/workspace/WorkspacePersistence.test.ts -t "reload"` | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -60,9 +60,8 @@ created: 2026-07-29
 - [ ] `tests/core/storage/SessionStore.test.ts` — session storage lifecycle (get/set/remove/clear on session end)
 - [ ] `tests/core/workspace/WorkspacePersistence.test.ts` — cross-reload state, chrome.storage.local adapter persistence
 - [ ] `tests/core/security/redactSensitive.test.ts` — TraceRedactor secret redaction patterns
-- [ ] `tests/core/storage/chromeStorageAdapter.test.ts` — adapter getItem/setItem/removeItem with localStorage fallback
-- [ ] `tests/setup.ts` — add `chrome.storage.session` mock, register `fake-indexeddb/auto`
-- [ ] Framework install: `npm install --save-dev fake-indexeddb@^6.2.5`
+ - [ ] `tests/setup.ts` — add `chrome.storage.session` mock, register `fake-indexeddb/auto`
+ - [ ] Framework install: `npm install --save-dev fake-indexeddb@^6.2.5`
 
 ---
 

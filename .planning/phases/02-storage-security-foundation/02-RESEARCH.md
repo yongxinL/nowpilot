@@ -777,22 +777,16 @@ export class MigrationRunner {
 | A5 | `localStorage` fallback in current `chromeStorageAdapter` is acceptable to keep for non-Chrome dev environments | Storage Store Topology | If localStorage fallback is removed, dev mode without Chrome APIs breaks; keep the fallback |
 | A6 | The existing `chrome.storage.local` mock in `tests/setup.ts` is sufficient for all chrome.storage.local tests with Zustand persist | Testing Strategy | Some edge cases (quota exceeded, storage corruption) won't be testable without a more complete mock |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **chrome.runtime.id stability across development reloads**
-   - What we know: D-02 specifies `extensionId` as part of the PBKDF2 input. `chrome.runtime.id` is deterministic in production (based on extension key) but changes on every unpacked load in development unless a `key` is specified in manifest.json.
-   - What's unclear: Whether WXT handles this automatically or if we need to pin the extension ID in `wxt.config.ts`.
-   - Recommendation: Test with `wxt build` → load unpacked → reload → verify `chrome.runtime.id` is stable. If not, add a fixed `key` field in manifest. Document this as a development setup requirement.
-
-2. **crypto.subtle availability in all Vitest environments**
-   - What we know: Node 26+ exposes `globalThis.crypto.subtle`. The test environment is jsdom via vitest.
-   - What's unclear: Whether vitest's jsdom integration preserves `globalThis.crypto.subtle` from Node.js or overrides it.
-   - Recommendation: Write a quick smoke test first: `expect(globalThis.crypto?.subtle).toBeDefined()`. If it fails, install `@peculiar/webcrypto` or use vitest's `globalSetup` to polyfill.
-
-3. **IndexedDB quota limits in Chrome extensions**
-   - What we know: Chrome extensions can use `"unlimitedStorage"` permission for unlimited IndexedDB. The current manifest does not include this.
-   - What's unclear: Whether the default quota (~60% of disk or ~2GB) is sufficient for ChatHistoryDB + NotesDB + MemoryDB.
-   - Recommendation: Add `"unlimitedStorage"` to manifest permissions now to avoid quota issues in Phase 5+.
+ 1. **chrome.runtime.id stability across development reloads** ✅
+    - Resolution: Manual verification listed in 02-VALIDATION.md §Manual-Only Verifications. If unstable in dev, add a fixed `key` field in manifest via `wxt.config.ts`. No code change needed until verified.
+ 
+ 2. **crypto.subtle availability in all Vitest environments** ✅
+    - Resolution: Node 26+ exposes `globalThis.crypto.subtle`. A smoke test verifies availability in the test environment. If jsdom overrides it, use `@peculiar/webcrypto` polyfill. 02-01 Task 1 includes a crypto.subtle smoke test.
+ 
+ 3. **IndexedDB quota limits in Chrome extensions** ✅
+    - Resolution: `"unlimitedStorage"` permission added to `wxt.config.ts` manifest in 02-02 Task 1. This eliminates quota concerns for ChatHistoryDB, NotesDB, and MemoryDB in Phases 5+.
 
 ## Validation Architecture
 
