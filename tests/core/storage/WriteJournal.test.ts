@@ -6,18 +6,14 @@ import {
   repairEntry,
   getEntry,
   getEntriesByStatus,
+  resetJournalDb,
   type WriteJournalEntry,
 } from '../../../src/core/storage/WriteJournal';
 
 describe('WriteJournal', () => {
   beforeEach(async () => {
-    // Clear the IndexedDB database between tests
-    const dbs = await indexedDB.databases();
-    for (const db of dbs) {
-      if (db.name === 'WriteJournalDB') {
-        indexedDB.deleteDatabase(db.name);
-      }
-    }
+    // Clear the IndexedDB database between tests with properly-awaited cleanup
+    await resetJournalDb();
     vi.clearAllMocks();
   });
 
