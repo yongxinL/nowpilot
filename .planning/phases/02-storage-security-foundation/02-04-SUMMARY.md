@@ -85,7 +85,7 @@ status: complete
   - URL query parameter API keys (`key=sk-...`)
   - Graceful handling of empty string, null, and undefined inputs
 - Non-sensitive content passed through unchanged (zero false positives)
-- Documented CSP status: `wxt.config.ts` CSP is adequate for Phase 2; Phase 3 must revise `connect-src` for Ollama and user-configured OpenAI-compatible endpoints
+- Documented CSP status: `wxt.config.ts` CSP is adequate for Phase 2; Phase 3 must revise `connect-src` for Ollama and user-configured provider endpoints
 - All 9 tests pass (7 behavioral + 2 edge case)
 
 ## Task Commits
@@ -113,7 +113,7 @@ Each task was committed atomically:
 - **No persist middleware on skeletons:** MessageStore, NotesStore, and DiagnosticsStore will be IndexedDB-backed in Phases 5/6/7. The persist middleware pattern used by ThemeStore/ApiKeyStore is for `chrome.storage.local` stores only.
 - **Separate bare `sk-` vs key=value patterns:** OpenAI-style `sk-...` keys appear as standalone strings (not just in `api_key=...` format). Using `\bsk-` prefix detection with `[a-zA-Z0-9_-]+` suffix catches both bare and URL-embedded `sk-` keys without false positives on normal text.
 - **Ordered replace chain:** Patterns run from most-specific (JWT `eyJ` with 20+ char minimum) to least-specific (ServiceNow session IDs). This prevents the bare `sk-` pattern from consuming parts of a JWT or Bearer token before those patterns run.
-- **CSP unchanged for Phase 2:** The existing `wxt.config.ts` CSP (self-scripts, whitelisted connect-src for OpenAI/Anthropic/Gemini/localhost) is adequate. Phase 3 must add connect-src for Ollama/Ollama-compatible/local endpoints per spec section 16.3.
+- **CSP unchanged for Phase 2:** The existing `wxt.config.ts` CSP (self-scripts, whitelisted connect-src for OpenAI/Anthropic/Gemini/localhost) is adequate. Phase 3 must add connect-src for Ollama and user-configured provider endpoints per spec section 16.3.
 
 ## TDD Gate Compliance
 
@@ -140,7 +140,7 @@ script-src 'self'; object-src 'self'; connect-src http://localhost:* https://gen
 ```
 
 - **No changes needed in Phase 2.**
-- **Phase 3 must add:** `connect-src` entries for Ollama (localhost), user-configured OpenAI-compatible endpoints (possibly `connect-src *` for arbitrary endpoints per spec section 16.3).
+- **Phase 3 must add:** `connect-src` entries for Ollama (localhost) and any custom provider URLs users configure (possibly `connect-src *` for arbitrary endpoints per spec section 16.3).
 - CSP is enforced via WXT manifest generation (`wxt.config.ts` → `manifest.content_security_policy.extension_pages`).
 - CSP reporting (`report-uri`) is not implemented in v0.1 — violations log to extension console only (per RESEARCH.md CSP Configuration).
 

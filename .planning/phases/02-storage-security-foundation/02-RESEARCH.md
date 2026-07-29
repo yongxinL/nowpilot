@@ -470,8 +470,8 @@ script-src 'self' 'wasm-unsafe-eval'; object-src 'self'
 
 **Phase 2 CSP recommendations:**
 - The current CSP is adequate for Phase 2 (no AI providers called yet)
-- Phase 3 will need to add connect-src entries for Ollama (localhost), OpenAI-compatible endpoints (user-configured URLs)
-- Phase 3 may need `connect-src *` for arbitrary OpenAI-compatible endpoints (as spec §16.3 suggests)
+- Phase 3 will need to add connect-src entries for Ollama (localhost), plus any custom provider URLs users configure
+- Phase 3 may need `connect-src *` for arbitrary provider endpoints (as spec §16.3 suggests)
 - **Phase 2 action:** Document that CSP is configured in `wxt.config.ts` → `manifest.content_security_policy.extension_pages` and should be revised in Phase 3. No CSP changes needed in Phase 2 beyond what already exists.
 
 **CSP reporting:** Not implemented in v0.1 — `report-uri` directive requires a report endpoint which NowPilot does not have. CSP violations will log to the extension's console only.

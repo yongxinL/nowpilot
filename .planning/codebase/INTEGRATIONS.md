@@ -12,12 +12,12 @@
 - **Integration point:** `server.ts` — `GoogleGenAI` instance created per request; content streamed via `ai.models.generateContentStream()`
 - **Fallback:** If Gemini call fails, the server falls back to a simulated response stream (predefined text tokenized and sent word-by-word)
 
-### OpenAI-compatible API (Custom Proxy)
-- **Usage:** Alternative AI provider via OpenAI-compatible endpoints
-- **Default proxy URL:** `http://localhost:12380/v1` (configurable in settings)
-- **Auth:** API key stored in `localStorage` as `openAiKey`, sent to server via chat request body
-- **Supported models (configured):** `Qwen3.5-9B-OptiQ-4bit`, `Qwythos-9B-Claude-Mythos-5-1M-mxfp4-mlx`, `gemma-4-e2b-it-4bit`, `MiniCPM5-1B-OptiQ-4bit`
-- **Note:** API calls are proxied through the Express server (`/api/chat` endpoint) which forwards to the configured proxy URL
+### OpenAI (Custom Proxy)
+- **Usage:** OpenAI provider with custom baseURL for OpenAI-compatible endpoints (covers both OpenAI and compatible providers)
+- **Default baseURL:** `https://api.openai.com/v1` (configurable per-provider in settings)
+- **Auth:** API key encrypted with AES-GCM-256 via CryptoService (see Phase 2), stored in chrome.storage.local
+- **Integration point:** Uses `@ai-sdk/openai` with resolved baseURL from ProviderRegistry
+- **Note:** All provider API calls go through the browser directly (no server proxy in v0.1+ architecture)
 
 ### Anthropic Claude API
 - **Usage:** Configured as an AI provider option

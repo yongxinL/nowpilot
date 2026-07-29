@@ -17,7 +17,7 @@
 **Purpose:** This document is the single, self-contained product specification for NowPilot v0.1. It does not reference any prior document. Any AI coding agent implementing this spec must treat this file as authoritative and complete.
 
 **Target implementation agents:** Anthropic Claude Haiku, Google Gemini Flash, DeepSeek Flash, or equivalent cost-effective coding models.
-**Target runtime providers:** Claude Haiku, Gemini Flash, DeepSeek Flash, Ollama, LM Studio, OpenAI-compatible endpoints, OpenAI, Anthropic, Gemini.
+**Target runtime providers:** OpenAI, Anthropic, Gemini, Ollama
 **Primary application:** Chrome MV3 extension using WXT + React + TypeScript + Ant Design v6 + Ant Design X 2.x.
 
 ### How to Read This Specification
@@ -964,7 +964,7 @@ Core never knows about specific websites. Add-ons never bypass core APIs.
 - Side panel shell (Chat, Agent, Write, TeamGQM, Open Full App)
 - Full app shell (Chat, Agent, Notes, TeamGQM, Options)
 - Shared WorkspaceStore across both surfaces
-- 5 provider adapters
+- 4 provider adapters (OpenAI, Anthropic, Gemini, Ollama)
 - PageContentService (core) — layered page extraction (Defuddle → APC-lite DOM walk), feeding ContextOptimizerInput.pageContext, indexed by MiniSearch.
 - Persistent memory (conversation + user + preference)
 - 12 built-in MCP tools + external MCP client
@@ -3140,7 +3140,7 @@ Runs nightly via Scheduler. v0.1 produces exactly three Insight values: tag-tren
 | **Browser automation** | **Deferred to v2** (chrome.debugger + CDP Input) | Trusted-event automation needs the debugger; out of scope for read-only v0.1 |
 | State | Zustand | 1 KB, no boilerplate, works outside React |
 | AI SDK | Vercel AI SDK + custom orchestrator | Streaming/abort/tools; lighter than LangChain |
-| AI providers | @ai-sdk/* only | Single codepath for 5 providers |
+| AI providers | @ai-sdk/* only | Single codepath for 4 providers (OpenAI uses custom baseURL for compatible endpoints) |
 | Runtime orchestration | Planner → Executor → Renderer | Cheap models cannot drive maxSteps=15 loops safely |
 | Tier resolution | TierResolver (Appendix D) | Prevents hallucinated model names |
 | Animation | motion | Do not install framer-motion — v12 is published under motion |

@@ -66,7 +66,7 @@ DOMPurify → All AI-generated content rendering
 Prioritize Phase 1 (Shell), Phase 2 (AI Core), Phase 4a (Page Content), and Phase 5 (Notes) for the initial milestone:
 
 1. **Shell (Phase 1):** Side Panel + Full App Tab shells, WorkspaceStore, theme toggle, Cmd+K palette
-2. **AI Core (Phase 2):** Five provider adapters, Planner→Executor→Renderer pipeline, PersonaInjector, chat UI
+2. **AI Core (Phase 3):** Four provider adapters, Planner→Executor→Renderer pipeline, PersonaInjector, chat UI
 3. **Page Content (Phase 4a):** defuddle extraction, ephemeral MiniSearch per tab, page-to-chat context injection
 4. **Notes + LLM-Wiki (Phase 5-6):** Atomic notes with wikilinks, auto-enrichment, RAG, filesystem sync
 

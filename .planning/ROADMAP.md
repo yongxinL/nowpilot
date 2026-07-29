@@ -13,7 +13,7 @@ NowPilot v0.1 is built in 11 phases following a knowledge-first data-flow: acqui
 
 - [ ] **Phase 1: Project Scaffold & Runtime Foundation** — WXT entrypoints, messaging, workspace store, theme, dual-surface shells with skeletons
 - [ ] **Phase 2: Storage & Security Foundation** — Encrypted API keys, WriteJournal, IndexedDB migrations, CSP
-- [ ] **Phase 3: AI Core Pipeline** — Five providers, Planner/Executor/Renderer, AgentOrchestrator, persona seed
+- [ ] **Phase 3: AI Core Pipeline** — Four providers, Planner/Executor/Renderer, AgentOrchestrator, persona seed
 - [ ] **Phase 4: Context Optimization Pipeline** — ContextOptimizer, ContextCompressor, PromptCacheManager
 - [ ] **Phase 4a: Page Content Extraction** — PageContentService, Defuddle, APC-lite, MiniSearch page index
 - [ ] **Phase 5: Knowledge Base** — Notes CRUD, wikilinks, note graph, Conversation/User/Preference memory, MiniSearch
@@ -63,23 +63,23 @@ Plans:
   4. User's IndexedDB migrates from v1 fixture through all versions idempotently
   5. Workspace state persists across page reload and cross-surface handoff
 
-**Plans**: 4 plans
+**Plans**: 4/4 plans executed
 
 Plans:
 
-- [ ] 02-01-PLAN.md — Tracer: CryptoService + ApiKeyStore end-to-end (encrypt→store→decrypt round-trip)
-- [ ] 02-02-PLAN.md — WriteJournal + MigrationRunner + test infrastructure (idb, fake-indexeddb, session mock)
-- [ ] 02-03-PLAN.md — Adapter relocation + SessionStore + WorkspaceStore migration to chrome.storage.local
-- [ ] 02-04-PLAN.md — Storage topology completion (MessageStore, NotesStore, DiagnosticsStore skeletons, redactSensitive, CSP docs)
+- [x] 02-01-PLAN.md — Tracer: CryptoService + ApiKeyStore end-to-end (encrypt→store→decrypt round-trip)
+- [x] 02-02-PLAN.md — WriteJournal + MigrationRunner + test infrastructure (idb, fake-indexeddb, session mock)
+- [x] 02-03-PLAN.md — Adapter relocation + SessionStore + WorkspaceStore migration to chrome.storage.local
+- [x] 02-04-PLAN.md — Storage topology completion (MessageStore, NotesStore, DiagnosticsStore skeletons, redactSensitive, CSP docs)
 
 ### Phase 3: AI Core Pipeline
 
-**Goal**: User can configure any of five AI providers and send prompts that flow through PlannerService → ExecutorService → RendererService with tier-based step limits and persona injection
+**Goal**: User can configure any of four AI providers and send prompts that flow through PlannerService → ExecutorService → RendererService with tier-based step limits and persona injection
 **Depends on**: Phase 2
 **Requirements**: AI-01, AI-02, AI-03
 **Success Criteria** (what must be TRUE):
 
-  1. User configures OpenAI, Anthropic, Gemini, Ollama, and an OpenAI-compatible provider — each validates connection and is available for selection
+  1. User configures OpenAI, Anthropic, Gemini, or Ollama — each validates connection and is available for selection
   2. User sends a prompt that PlannerService routes to an answer decision; the ExecutorService rejects unknown/hallucinated tool names deterministically; the RendererService produces a concise response within output caps
   3. User's provider fails mid-operation — ProviderRouter falls back to next available provider or opens circuit breaker after 3 consecutive failures
   4. User's persona configuration (from PreferenceMemoryStore) is prepended into every Planner, Executor, Renderer, and MemoryExtractor system prompt via PersonaInjector, placed in the cached [SYSTEM] section
@@ -221,7 +221,7 @@ Decimal phases execute after their parent integer phase: 4 → 4a → 5 → 5a �
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Project Scaffold & Runtime Foundation | 5/5 | Completed | 2026-07-28 |
-| 2. Storage & Security Foundation | 0/4 | Planned | - |
+| 2. Storage & Security Foundation | 4/4 | Completed | 2026-07-29 |
 | 3. AI Core Pipeline | TBD | Not started | - |
 | 4. Context Optimization Pipeline | TBD | Not started | - |
 | 4a. Page Content Extraction | TBD | Not started | - |

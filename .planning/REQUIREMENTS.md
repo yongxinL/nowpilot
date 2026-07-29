@@ -17,7 +17,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### AI Pipeline
 
-- [ ] **AI-01**: User can configure five AI providers (OpenAI, Anthropic, Gemini, Ollama, OpenAI-compatible) with automatic fallback and circuit breaker
+- [ ] **AI-01**: User can configure four AI providers (OpenAI, Anthropic, Gemini, Ollama) with automatic fallback and circuit breaker
 - [ ] **AI-02**: User interactions flow through PlannerService → ExecutorService → RendererService with tier-based step limits
 - [ ] **AI-03**: User's persona configuration is injected into every AI system prompt via PersonaInjector
 - [ ] **AI-04**: User sees welcome cards, context-aware quick-action chips, clarification chips, and follow-up chips (RICH P0 interactions)

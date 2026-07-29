@@ -37,7 +37,7 @@
 | `@ai-sdk/openai` | `^4` | OpenAI provider | Official AI SDK provider for OpenAI. Supports GPT-4o, GPT-4o-mini, o-series models. |
 | `@ai-sdk/anthropic` | `^4` | Anthropic provider | Official AI SDK provider for Claude (Haiku/Sonnet/Opus). |
 | `@ai-sdk/google` | `^4` | Gemini provider | Official AI SDK provider for Gemini (Flash/Pro). |
-| `ollama-ai-provider` | `^1.2` | Ollama provider | Community provider for local Ollama models. OpenAI-compatible endpoint support. |
+| `ollama-ai-provider` | `^1.2` | Ollama provider | Community provider for local Ollama models. Uses the `@ai-sdk/openai` adapter with custom baseURL. |
 | zod | `^4.4` | Schema validation | TypeScript-first schema validation. `z.discriminatedUnion` for PlannerDecisionSchema (answer/run_tool/ask_clarification), `z.object`/`z.enum` for tool schemas. v4: `z.strictObject()` replaces `.strict()`, `z.looseObject()` replaces `.passthrough()`. |
 
 ### State Management

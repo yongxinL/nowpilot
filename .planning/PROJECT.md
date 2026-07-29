@@ -14,7 +14,7 @@ Users can acquire knowledge from web pages, store it as interconnected atomic no
 
 **Target features:**
 - Dual-surface shell (Side Panel + Full App Tab) with shared WorkspaceStore
-- 5-provider AI pipeline (Planner→Executor→Renderer) with ContextOptimizer + PromptCache
+- 4-provider AI pipeline (Planner→Executor→Renderer) with ContextOptimizer + PromptCache
 - Persistent memory (conversation + user facts + preferences + persona)
 - PageContentService with layered Defuddle→APC-lite extraction + MiniSearch index
 - Atomic notes + wikilinks + note graph + LLM-Wiki (auto-tag/RAG/filesystem sync)
@@ -28,7 +28,7 @@ Users can acquire knowledge from web pages, store it as interconnected atomic no
 ## Context
 
 - **Target runtime:** Chrome MV3 extension using WXT + React 19 + TypeScript (strict mode) + Ant Design v6 + Ant Design X 2.x
-- **AI providers:** OpenAI, Anthropic, Gemini, Ollama, OpenAI-compatible endpoints via @ai-sdk/* adapters
+- **AI providers:** OpenAI, Anthropic, Gemini, Ollama via @ai-sdk/* adapters
 - **Architecture:** Core layer (AI, storage, memory, extraction, notes) + Add-on layer (site-specific, first-party add-ons)
 - **Two UI surfaces:** Side Panel (~400px, compact) for daily workflow; Full App Tab (full viewport) for deep work, configuration, diagnostics
 - **Cost-effective runtime:** PlannerService (cheap haiku JSON decisions) → ExecutorService (deterministic tool validation/execution) → RendererService (concise flash answers), with agent step limits by context tier
@@ -55,7 +55,7 @@ Users can acquire knowledge from web pages, store it as interconnected atomic no
 - [ ] **SHELL-03**: Shared WorkspaceStore across both surfaces with handoff (Flow 11)
 - [ ] **SHELL-04**: Theme toggle (light/dark/auto) affects both surfaces immediately
 - [ ] **SHELL-05**: Cmd+K command palette on both surfaces
-- [ ] **AI-01**: Five provider adapters (OpenAI, Anthropic, Gemini, Ollama, OpenAI-compatible) with ProviderRouter fallback/circuit-breaker
+- [ ] **AI-01**: Four provider adapters (OpenAI, Anthropic, Gemini, Ollama) with ProviderRouter fallback/circuit-breaker
 - [ ] **AI-02**: PlannerService → ExecutorService → RendererService pipeline with tier caps (Appendix I)
 - [ ] **AI-03**: PersonaInjector prepends persona block into all AI system prompts (RICH-R-01/02)
 - [ ] **AI-04**: P0 Interaction — Welcome cards, context-aware quick-action chips, clarification chips, follow-up chips (RICH P0)
