@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import { chromeStorageAdapter } from './chromeStorageAdapter';
+import { chromeStorageAdapter } from '../storage/chromeStorageAdapter';
 import { publish } from '../runtime/BroadcastBus';
 import type { ThemeId } from '../../themes/types';
 

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useThemeStore } from '../../../src/core/theme/ThemeStore';
-import { chromeStorageAdapter } from '../../../src/core/theme/chromeStorageAdapter';
+import { chromeStorageAdapter } from '../../../src/core/storage/chromeStorageAdapter';
 
 describe('ThemeStore', () => {
   beforeEach(() => {
