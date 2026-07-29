@@ -95,7 +95,11 @@ export interface ProviderConfig {
   geminiKey: string;
   selectedModel: string;
   fontSize: 'Small' | 'Regular' | 'Large' | 'Auto';
-  themeMode: 'Auto' | 'Light' | 'Dark';
+  appTheme?: string;
+  themeMode: string;
+  displayMode?: 'auto' | 'light' | 'dark';
+  themeId?: 'system' | 'ant-design-blue' | 'liquid-glass' | 'claude';
+  accentColor?: string;
   language: string;
   sidepanelPosition: 'Right' | 'Left';
   chatGptWebappEnabled: boolean;

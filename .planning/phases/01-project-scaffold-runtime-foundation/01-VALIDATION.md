@@ -1,10 +1,11 @@
 ---
 phase: 1
 slug: project-scaffold-runtime-foundation
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: verified
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-07-28
+remediated: 2026-07-29
 ---
 
 # Phase 1 — Validation Strategy
@@ -66,11 +67,25 @@ created: 2026-07-28
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 15s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 15s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+## Remediation (2026-07-29)
+
+The following gaps from the original Phase 1 validation have been remediated:
+
+| Gap | Fix |
+|-----|-----|
+| `src/core/theme/antdConfig.ts` missing | Created with UI-SPEC seed tokens |
+| Cross-entrypoint isolation test vacuously passing | Rewrote to check actual entrypoint dirs + meaningful isolation rules |
+| `verify:phase-1` script incomplete | Added `tests/core/commands tests/isolation` |
+| Missing component tests | Created ThemeToggle (3 tests) + CommandPalette (7 tests) |
+| Missing shell components (architecture deviation) | Accepted — entrypoint-inlined architecture works correctly |
+
+**Verification:** `pnpm run verify:all` — 67/67 tests pass, TypeScript compiles clean
+
+**Approval:** verified

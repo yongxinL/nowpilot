@@ -70,7 +70,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ commands, open, 
       footer={null}
       width={560}
       centered
-      destroyOnClose
+      destroyOnHidden
     >
       <Input
         autoFocus

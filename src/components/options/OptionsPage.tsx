@@ -21,7 +21,10 @@ import {
 } from '@ant-design/icons';
 
 import { useExtensionStore } from '../../store/useExtensionStore';
+import { useThemeStore } from '../../core/theme/ThemeStore';
 import { NowPilotAvatar } from '../common/NowPilotAvatar';
+import { AppearanceSettings } from '../../entrypoints/options/components/AppearanceSettings';
+import { UserAvatar } from '../common/UserAvatar';
 import { PromptCategory, CustomProviderId, CustomModelItem, CustomProviderDetail } from '../../types';
 
 const { Title } = Typography;
@@ -329,15 +332,15 @@ export const OptionsPage: React.FC = () => {
   const providerListKeys: CustomProviderId[] = ['openai', 'gemini', 'ollama', 'claude'];
 
   return (
-    <div className="flex h-screen w-screen bg-zinc-100 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-100 font-sans overflow-hidden p-[10px] gap-[10px]">
+    <div className="flex h-screen w-screen bg-[var(--np-bg)] text-[var(--np-fg)] font-sans overflow-hidden p-[10px] gap-[10px]">
       {/* Options Sidebar Navigation */}
-      <div className="w-60 bg-[#f6f6f8] dark:bg-zinc-900 rounded-[20px] border border-zinc-200/80 dark:border-zinc-800 p-4 flex flex-col justify-between flex-shrink-0 select-none shadow-2xs">
+      <div className="w-60 bg-transparent text-[var(--np-fg)] rounded-[20px] border-none p-4 flex flex-col justify-between flex-shrink-0 select-none">
         <div>
           <div className="flex items-center gap-2.5 px-2 mb-8">
-            <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center border border-zinc-200/80 dark:border-zinc-700/80 shadow-xs">
+            <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center border border-[var(--np-border)] shadow-xs">
               <NowPilotAvatar className="w-full h-full object-cover" />
             </div>
-            <span className="font-bold text-base tracking-tight text-zinc-900 dark:text-zinc-100">NowPilot</span>
+            <span className="font-bold text-base tracking-tight text-[var(--np-fg)]">NowPilot</span>
           </div>
 
           <div className="space-y-1">
@@ -351,8 +354,8 @@ export const OptionsPage: React.FC = () => {
                 onClick={() => setActiveTab(item.key as any)}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-base font-medium cursor-pointer transition-all ${
                   activeTab === item.key
-                    ? 'bg-violet-100/90 dark:bg-violet-950/80 text-violet-700 dark:text-violet-300 font-semibold shadow-2xs'
-                    : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200/60 dark:hover:bg-zinc-800/80'
+                    ? 'bg-[var(--np-accent)] text-[var(--np-accent-fg)] font-semibold shadow-2xs'
+                    : 'text-[var(--np-muted-fg)] hover:bg-[var(--np-muted)]'
                 }`}
               >
                 <span className="text-lg">{item.icon}</span>
@@ -360,18 +363,18 @@ export const OptionsPage: React.FC = () => {
               </button>
             ))}
 
-            <div className="my-2 border-t border-zinc-200/80 dark:border-zinc-800" />
+            <div className="my-2 border-t border-[var(--np-border)]" />
 
             <a
               href="#"
               onClick={e => { e.preventDefault(); antMessage.info('Help Center opened'); }}
-              className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-base font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200/60 dark:hover:bg-zinc-800/80 transition-all cursor-pointer"
+              className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-base font-medium text-[var(--np-muted-fg)] hover:bg-[var(--np-muted)] transition-all cursor-pointer"
             >
               <span className="flex items-center gap-3">
                 <span className="text-lg"><QuestionCircleOutlined /></span>
                 <span>Help Center</span>
               </span>
-              <span className="text-zinc-400 text-sm">↗</span>
+              <span className="text-[var(--np-muted-fg)] text-sm">↗</span>
             </a>
           </div>
         </div>
@@ -384,7 +387,7 @@ export const OptionsPage: React.FC = () => {
             {/* Account Card */}
             <div>
               <div className="flex items-center justify-between mb-4">
-                <Title level={3} className="!mb-0 font-bold text-zinc-900 dark:text-zinc-100">Account</Title>
+                <Title level={3} className="!mb-0 font-bold !text-[var(--np-fg)]">Account</Title>
                 {listUpdated && (
                   <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 rounded-full text-xs font-semibold text-emerald-600 dark:text-emerald-400 shadow-2xs">
                     <CheckOutlined className="text-xs" />
@@ -392,19 +395,19 @@ export const OptionsPage: React.FC = () => {
                   </div>
                 )}
               </div>
-              <div className="p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 flex items-center justify-between shadow-2xs">
+              <div className="p-4 bg-[var(--np-card)] text-[var(--np-fg)] rounded-2xl border border-[var(--np-border)] flex items-center justify-between shadow-2xs">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full overflow-hidden border border-zinc-200 dark:border-zinc-700">
-                    <NowPilotAvatar className="w-full h-full object-cover" />
+                  <div className="w-10 h-10 rounded-full overflow-hidden border border-[var(--np-border)]">
+                    <UserAvatar className="w-full h-full object-cover" />
                   </div>
                   <div>
-                    <div className="font-bold text-sm text-zinc-900 dark:text-zinc-100">George Li</div>
-                    <div className="text-xs text-zinc-400">oraclexp@hotmail.com</div>
+                    <div className="font-bold text-sm text-[var(--np-fg)]">George Li</div>
+                    <div className="text-xs text-[var(--np-muted-fg)]">oraclexp@hotmail.com</div>
                   </div>
                 </div>
                 <Button
                   size="middle"
-                  className="!rounded-full !px-5 !border-zinc-200 dark:!border-zinc-700 !text-violet-600 dark:!text-violet-400 font-medium text-xs hover:!border-violet-300"
+                  className="!rounded-full !px-5 !border-[var(--np-border)] !text-violet-600 dark:!text-violet-400 font-medium text-xs hover:!border-violet-300"
                 >
                   Log out
                 </Button>
@@ -413,10 +416,10 @@ export const OptionsPage: React.FC = () => {
 
             {/* AI Access Settings */}
             <div>
-              <Title level={3} className="!mb-4 font-bold text-zinc-900 dark:text-zinc-100">AI access</Title>
-              <div className="p-5 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 space-y-4 shadow-2xs">
+              <Title level={3} className="!mb-4 font-bold !text-[var(--np-fg)]">AI access</Title>
+              <div className="p-5 bg-[var(--np-card)] text-[var(--np-fg)] rounded-2xl border border-[var(--np-border)] space-y-4 shadow-2xs">
                 <div className="flex items-center justify-between">
-                  <span className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">Service provider</span>
+                  <span className="font-semibold text-sm text-[var(--np-fg)]">Service provider</span>
                   <Select
                     value={config.serviceProvider || 'ChatGPT Webapp'}
                     onChange={(val) => updateConfig({ serviceProvider: val })}
@@ -430,30 +433,30 @@ export const OptionsPage: React.FC = () => {
 
                 {(config.serviceProvider || 'ChatGPT Webapp') === 'ChatGPT Webapp' ? (
                   <>
-                    <div className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                    <div className="text-xs text-[var(--np-muted-fg)] leading-relaxed">
                       Experience may vary for visitors and logged-in users due to OpenAI's restrictions.
                     </div>
 
-                    <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/80 space-y-4">
+                    <div className="pt-2 border-t border-[var(--np-border)] space-y-4">
                       <Button
                         onClick={() => {
                           setListUpdated(true);
                           antMessage.success('Model updated successfully');
                           setTimeout(() => setListUpdated(false), 3500);
                         }}
-                        className="!rounded-full !px-4 !border-zinc-200 dark:!border-zinc-700 text-xs font-medium text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5"
+                        className="!rounded-full !px-4 !border-[var(--np-border)] text-xs font-medium text-[var(--np-fg)] flex items-center gap-1.5"
                       >
-                        <ReloadOutlined className="text-xs text-zinc-500" />
+                        <ReloadOutlined className="text-xs text-[var(--np-muted-fg)]" />
                         <span>Refresh models</span>
                       </Button>
 
                       {/* Important Reminders Box */}
-                      <div className="p-4 bg-emerald-50/40 dark:bg-emerald-950/20 rounded-xl border border-emerald-100/80 dark:border-emerald-900/30 text-xs space-y-2 text-zinc-700 dark:text-zinc-300">
-                        <div className="font-bold flex items-center gap-1.5 text-zinc-800 dark:text-zinc-200">
+                      <div className="p-4 bg-emerald-50/40 dark:bg-emerald-950/20 rounded-xl border border-emerald-100/80 dark:border-emerald-900/30 text-xs space-y-2 text-[var(--np-fg)]">
+                        <div className="font-bold flex items-center gap-1.5 text-[var(--np-fg)]">
                           <InfoCircleOutlined className="text-emerald-600 dark:text-emerald-400 text-sm" />
                           <span>Important reminders</span>
                         </div>
-                        <ul className="list-disc pl-5 space-y-1 text-zinc-600 dark:text-zinc-400">
+                        <ul className="list-disc pl-5 space-y-1 text-[var(--np-muted-fg)]">
                           <li>Remain logged in to your account.</li>
                           <li>
                             This service may be unstable due to OpenAI policy changes. For fast and stable performance, we recommend using Sider.
@@ -464,7 +467,7 @@ export const OptionsPage: React.FC = () => {
                   </>
                 ) : (
                   <>
-                    <div className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                    <div className="text-xs text-[var(--np-muted-fg)] leading-relaxed">
                       Your API key is stored locally in your browser and is never sent elsewhere.
                     </div>
 
@@ -486,13 +489,13 @@ export const OptionsPage: React.FC = () => {
                         return (
                           <div
                             key={key}
-                            className="p-3 bg-zinc-50/70 dark:bg-zinc-800/40 rounded-xl border border-zinc-200/80 dark:border-zinc-800 flex items-center justify-between transition-all hover:border-zinc-300 dark:hover:border-zinc-700"
+                            className="p-3 bg-[var(--np-muted)] rounded-xl border border-[var(--np-border)] flex items-center justify-between transition-all hover:border-[var(--np-ring)]"
                           >
                             <div className="flex items-center gap-2.5">
-                              <div className="w-6 h-6 rounded-md bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-700/80 flex items-center justify-center shadow-2xs">
+                              <div className="w-6 h-6 rounded-md bg-[var(--np-card)] border border-[var(--np-border)] flex items-center justify-center shadow-2xs">
                                 {info.icon}
                               </div>
-                              <span className="font-medium text-xs text-zinc-900 dark:text-zinc-100">
+                              <span className="font-medium text-xs text-[var(--np-fg)]">
                                 {info.name}
                               </span>
                             </div>
@@ -502,7 +505,7 @@ export const OptionsPage: React.FC = () => {
                                 <>
                                   <button
                                     onClick={() => handleOpenProviderModal(key)}
-                                    className="text-zinc-400 hover:text-violet-600 dark:hover:text-violet-400 p-1 transition-colors cursor-pointer"
+                                    className="text-[var(--np-muted-fg)] hover:text-violet-600 dark:hover:text-violet-400 p-1 transition-colors cursor-pointer"
                                   >
                                     <EditOutlined className="text-xs" />
                                   </button>
@@ -532,57 +535,47 @@ export const OptionsPage: React.FC = () => {
 
             {/* Appearance Settings */}
             <div>
-              <Title level={3} className="!mb-4 font-bold text-zinc-900 dark:text-zinc-100">Appearance</Title>
-              <div className="p-5 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 space-y-4 shadow-2xs">
-                <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800/80 pb-3">
-                  <span className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">Display mode</span>
-                  <Select
-                    value={config.themeMode || 'Auto'}
-                    onChange={val => updateConfig({ themeMode: val })}
-                    options={[
-                      { value: 'Auto', label: 'Auto' },
-                      { value: 'Light', label: 'Light' },
-                      { value: 'Dark', label: 'Dark' },
-                    ]}
-                    className="w-36"
-                  />
-                </div>
+              <Title level={3} className="!mb-4 font-bold !text-[var(--np-fg)]">Appearance</Title>
+              <div className="space-y-4">
+                <AppearanceSettings />
 
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">Display language</span>
-                  <Select
-                    value={config.language || 'English'}
-                    onChange={val => updateConfig({ language: val })}
-                    options={[
-                      { value: 'English', label: 'English' },
-                      { value: 'Chinese', label: 'Chinese (Simplified)' },
-                      { value: 'Japanese', label: 'Japanese' },
-                    ]}
-                    className="w-36"
-                  />
+                <div className="p-5 bg-[var(--np-card)] rounded-[24px] border border-[var(--np-border)] shadow-2xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-sm text-[var(--np-fg)]">Display language</span>
+                    <Select
+                      value={config.language || 'English'}
+                      onChange={val => updateConfig({ language: val })}
+                      options={[
+                        { value: 'English', label: 'English' },
+                        { value: 'Chinese', label: 'Chinese (Simplified)' },
+                        { value: 'Japanese', label: 'Japanese' },
+                      ]}
+                      className="w-48"
+                    />
+                  </div>
                 </div>
               </div>
 
               {/* Shoutout Banner Box */}
-              <div className="mt-4 p-5 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 space-y-4 shadow-2xs">
+              <div className="mt-4 p-5 bg-[var(--np-card)] rounded-2xl border border-[var(--np-border)] space-y-4 shadow-2xs">
                 <div className="p-4 rounded-2xl bg-gradient-to-r from-violet-50/80 via-purple-50/50 to-indigo-50/80 dark:from-violet-950/30 dark:via-purple-950/20 dark:to-indigo-950/30 border border-violet-100 dark:border-violet-900/40 space-y-2">
-                  <div className="text-xs text-zinc-600 dark:text-zinc-400">
+                  <div className="text-xs text-[var(--np-muted-fg)]">
                     Give a shoutout to the Sider extension.
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-5 h-5 rounded-full bg-violet-600 text-white flex items-center justify-center text-[10px] font-bold">
                       S
                     </div>
-                    <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">Sider Fusion</span>
+                    <span className="text-xs font-bold text-[var(--np-fg)]">Sider Fusion</span>
                   </div>
-                  <div className="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed">
+                  <div className="text-xs text-[var(--np-muted-fg)] leading-relaxed">
                     Sider enhances browsing with AI, streamlining tasks and boosting productivity. An essential tool for efficient online navigation!
                   </div>
                 </div>
 
                 <div className="flex items-center justify-between pt-1">
                   <div>
-                    <div className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">Font size for message</div>
+                    <div className="font-semibold text-sm text-[var(--np-fg)]">Font size for message</div>
                   </div>
                   <Select
                     value={config.fontSize || 'Regular'}
@@ -600,12 +593,12 @@ export const OptionsPage: React.FC = () => {
             </div>
 
             {/* Side panel position */}
-            <div className="p-5 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 flex items-center justify-between shadow-2xs">
+            <div className="p-5 bg-[var(--np-card)] rounded-2xl border border-[var(--np-border)] flex items-center justify-between shadow-2xs">
               <div>
-                <div className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">Side panel position</div>
-                <div className="text-xs text-zinc-400 mt-0.5">For Chrome 114 or higher, can only be changed in browser settings</div>
+                <div className="font-semibold text-sm text-[var(--np-fg)]">Side panel position</div>
+                <div className="text-xs text-[var(--np-muted-fg)] mt-0.5">For Chrome 114 or higher, can only be changed in browser settings</div>
               </div>
-              <a href="#" onClick={(e) => { e.preventDefault(); antMessage.info('Opened browser settings'); }} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 text-sm">
+              <a href="#" onClick={(e) => { e.preventDefault(); antMessage.info('Opened browser settings'); }} className="text-[var(--np-muted-fg)] hover:text-[var(--np-fg)] text-sm">
                 ↗
               </a>
             </div>
@@ -613,9 +606,9 @@ export const OptionsPage: React.FC = () => {
         )}
 
         {activeTab !== 'General' && activeTab !== 'Translate' && activeTab !== 'Prompts' && (
-          <div className="p-8 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 space-y-4 max-w-2xl shadow-2xs">
-            <Title level={3} className="!mb-2 font-bold text-zinc-900 dark:text-zinc-100">{activeTab}</Title>
-            <p className="text-xs text-zinc-500 leading-relaxed">
+          <div className="p-8 bg-[var(--np-card)] rounded-2xl border border-[var(--np-border)] space-y-4 max-w-2xl shadow-2xs">
+            <Title level={3} className="!mb-2 font-bold !text-[var(--np-fg)]">{activeTab}</Title>
+            <p className="text-xs text-[var(--np-muted-fg)] leading-relaxed">
               Configure options and settings for {activeTab}. Preferences are synchronized automatically.
             </p>
           </div>
@@ -623,22 +616,22 @@ export const OptionsPage: React.FC = () => {
 
         {activeTab === 'Translate' && (
           <div className="space-y-6 max-w-3xl">
-            <Title level={2} className="!mb-6 font-bold text-zinc-900 dark:text-zinc-100">Page translate</Title>
+            <Title level={2} className="!mb-6 font-bold !text-[var(--np-fg)]">Page translate</Title>
 
-            <div className="p-6 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200/80 dark:border-zinc-800 shadow-2xs space-y-6">
+            <div className="p-6 bg-[var(--np-card)] text-[var(--np-fg)] rounded-3xl border border-[var(--np-border)] shadow-2xs space-y-6">
               {/* Sample translation preview box */}
-              <div className="p-6 bg-gradient-to-b from-zinc-50/80 to-zinc-50/30 dark:from-zinc-800/40 dark:to-zinc-800/20 rounded-2xl border border-zinc-100/80 dark:border-zinc-800/60 shadow-2xs space-y-3">
+              <div className="p-6 bg-[var(--np-muted)] rounded-2xl border border-[var(--np-border)] shadow-2xs space-y-3">
                 {(config.translateDisplayMode || 'Bilingual') === 'Bilingual' && (
-                  <p className="text-zinc-700 dark:text-zinc-300 font-normal leading-relaxed text-sm">
+                  <p className="text-[var(--np-fg)] font-normal leading-relaxed text-sm">
                     {sampleOriginalText}
                   </p>
                 )}
                 <p className={`text-sm font-normal leading-relaxed ${
                   (config.translateDisplayStyle || 'Underline') === 'Underline'
-                    ? 'text-zinc-800 dark:text-zinc-200 underline decoration-dotted decoration-zinc-400 dark:decoration-zinc-500 underline-offset-4'
+                    ? 'text-[var(--np-fg)] underline decoration-dotted decoration-[var(--np-muted-fg)] underline-offset-4'
                     : (config.translateDisplayStyle || 'Underline') === 'Weaken'
-                    ? 'text-zinc-400 dark:text-zinc-500'
-                    : 'text-zinc-800 dark:text-zinc-200'
+                    ? 'text-[var(--np-muted-fg)]'
+                    : 'text-[var(--np-fg)]'
                 }`}>
                   {getSampleTranslation(config.translateTargetLang || 'English')}
                 </p>
@@ -646,7 +639,7 @@ export const OptionsPage: React.FC = () => {
 
               {/* Translation service */}
               <div className="flex items-center justify-between pt-1">
-                <span className="font-bold text-sm text-zinc-900 dark:text-zinc-100">Translation service</span>
+                <span className="font-bold text-sm text-[var(--np-fg)]">Translation service</span>
                 <Select
                   value={config.translateService || 'MiniCPM5-1B-OptiQ-4bit'}
                   onChange={(val) => updateConfig({ translateService: val })}
@@ -663,8 +656,8 @@ export const OptionsPage: React.FC = () => {
               </div>
 
               {/* Target language */}
-              <div className="flex items-center justify-between border-t border-zinc-100 dark:border-zinc-800/80 pt-5">
-                <span className="font-bold text-sm text-zinc-900 dark:text-zinc-100">Target language</span>
+              <div className="flex items-center justify-between border-t border-[var(--np-border)] pt-5">
+                <span className="font-bold text-sm text-[var(--np-fg)]">Target language</span>
                 <Select
                   value={config.translateTargetLang || 'English'}
                   onChange={(val) => updateConfig({ translateTargetLang: val })}
@@ -679,8 +672,8 @@ export const OptionsPage: React.FC = () => {
               </div>
 
               {/* Display mode */}
-              <div className="flex items-center justify-between border-t border-zinc-100 dark:border-zinc-800/80 pt-5">
-                <span className="font-bold text-sm text-zinc-900 dark:text-zinc-100">Display mode</span>
+              <div className="flex items-center justify-between border-t border-[var(--np-border)] pt-5">
+                <span className="font-bold text-sm text-[var(--np-fg)]">Display mode</span>
                 <Select
                   value={config.translateDisplayMode || 'Bilingual'}
                   onChange={(val) => updateConfig({ translateDisplayMode: val })}
@@ -693,10 +686,10 @@ export const OptionsPage: React.FC = () => {
               </div>
 
               {/* Display style */}
-              <div className="flex items-center justify-between border-t border-zinc-100 dark:border-zinc-800/80 pt-5">
+              <div className="flex items-center justify-between border-t border-[var(--np-border)] pt-5">
                 <div>
-                  <div className="font-bold text-sm text-zinc-900 dark:text-zinc-100">Display style</div>
-                  <div className="text-xs text-zinc-400 mt-0.5">Only for translations in bilingual comparison mode</div>
+                  <div className="font-bold text-sm text-[var(--np-fg)]">Display style</div>
+                  <div className="text-xs text-[var(--np-muted-fg)] mt-0.5">Only for translations in bilingual comparison mode</div>
                 </div>
                 <Select
                   value={config.translateDisplayStyle || 'Underline'}
@@ -716,7 +709,7 @@ export const OptionsPage: React.FC = () => {
         {activeTab === 'Prompts' && (
           <div>
             <div className="flex items-center justify-between mb-6">
-              <Title level={2} className="!m-0 font-bold">Prompts</Title>
+              <Title level={2} className="!m-0 font-bold !text-[var(--np-fg)]">Prompts</Title>
               <div className="flex items-center gap-2">
                 <Button icon={<ReloadOutlined />} onClick={() => antMessage.info('Prompts refreshed')}>
                   Refresh
@@ -744,8 +737,8 @@ export const OptionsPage: React.FC = () => {
                   onClick={() => setPromptCategory(cat)}
                   className={`px-4 py-2 rounded-xl text-xs font-semibold cursor-pointer transition-all ${
                     promptCategory === cat
-                      ? 'bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300 font-bold shadow-2xs'
-                      : 'bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                      ? 'bg-[var(--np-accent)] text-[var(--np-accent-fg)] font-bold shadow-2xs'
+                      : 'bg-[var(--np-card)] text-[var(--np-muted-fg)] hover:bg-[var(--np-muted)]'
                   }`}
                 >
                   {cat}
@@ -753,11 +746,11 @@ export const OptionsPage: React.FC = () => {
               ))}
             </div>
 
-            {/* Side-by-side Draggable List Columns (Matching Image 16) */}
+            {/* Side-by-side Draggable List Columns */}
             <div className="grid grid-cols-2 gap-6">
               {/* Show in list Column */}
-              <div className="p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800">
-                <div className="flex items-center gap-2 text-xs font-bold text-zinc-400 uppercase tracking-wider mb-3">
+              <div className="p-4 bg-[var(--np-card)] rounded-2xl border border-[var(--np-border)]">
+                <div className="flex items-center gap-2 text-xs font-bold text-[var(--np-muted-fg)] uppercase tracking-wider mb-3">
                   <span>Show in list</span>
                 </div>
                 <div className="space-y-2">
@@ -766,9 +759,9 @@ export const OptionsPage: React.FC = () => {
                     .map(p => (
                       <div
                         key={p.id}
-                        className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-800/60 rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 text-xs"
+                        className="flex items-center justify-between p-3 bg-[var(--np-muted)] rounded-xl border border-[var(--np-border)] text-xs"
                       >
-                        <span className="font-semibold text-zinc-800 dark:text-zinc-200 truncate">{p.title}</span>
+                        <span className="font-semibold text-[var(--np-fg)] truncate">{p.title}</span>
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => {
@@ -776,7 +769,7 @@ export const OptionsPage: React.FC = () => {
                               promptForm.setFieldsValue(p);
                               setNewPromptModalOpen(true);
                             }}
-                            className="text-zinc-400 hover:text-zinc-600 cursor-pointer"
+                            className="text-[var(--np-muted-fg)] hover:text-[var(--np-fg)] cursor-pointer"
                           >
                             <EditOutlined />
                           </button>
@@ -785,7 +778,7 @@ export const OptionsPage: React.FC = () => {
                               deletePrompt(p.id);
                               antMessage.success('Prompt deleted');
                             }}
-                            className="text-zinc-400 hover:text-red-500 cursor-pointer"
+                            className="text-[var(--np-muted-fg)] hover:text-red-500 cursor-pointer"
                           >
                             <DeleteOutlined />
                           </button>
@@ -796,8 +789,8 @@ export const OptionsPage: React.FC = () => {
               </div>
 
               {/* Hidden in list Column */}
-              <div className="p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800">
-                <div className="flex items-center gap-2 text-xs font-bold text-zinc-400 uppercase tracking-wider mb-3">
+              <div className="p-4 bg-[var(--np-card)] rounded-2xl border border-[var(--np-border)]">
+                <div className="flex items-center gap-2 text-xs font-bold text-[var(--np-muted-fg)] uppercase tracking-wider mb-3">
                   <span>Hidden in list</span>
                 </div>
                 <div className="space-y-2">
@@ -806,9 +799,9 @@ export const OptionsPage: React.FC = () => {
                     .map(p => (
                       <div
                         key={p.id}
-                        className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-800/60 rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 text-xs opacity-75"
+                        className="flex items-center justify-between p-3 bg-[var(--np-muted)] rounded-xl border border-[var(--np-border)] text-xs opacity-75"
                       >
-                        <span className="font-semibold text-zinc-800 dark:text-zinc-200 truncate">{p.title}</span>
+                        <span className="font-semibold text-[var(--np-fg)] truncate">{p.title}</span>
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => {
@@ -816,7 +809,7 @@ export const OptionsPage: React.FC = () => {
                               promptForm.setFieldsValue(p);
                               setNewPromptModalOpen(true);
                             }}
-                            className="text-zinc-400 hover:text-zinc-600 cursor-pointer"
+                            className="text-[var(--np-muted-fg)] hover:text-[var(--np-fg)] cursor-pointer"
                           >
                             <EditOutlined />
                           </button>
@@ -825,7 +818,7 @@ export const OptionsPage: React.FC = () => {
                               deletePrompt(p.id);
                               antMessage.success('Prompt deleted');
                             }}
-                            className="text-zinc-400 hover:text-red-500 cursor-pointer"
+                            className="text-[var(--np-muted-fg)] hover:text-red-500 cursor-pointer"
                           >
                             <DeleteOutlined />
                           </button>

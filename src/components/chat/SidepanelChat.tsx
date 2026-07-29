@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Typography, App, Tooltip } from 'antd';
+import { Typography, App, Tooltip, Dropdown } from 'antd';
 import {
   ClockCircleOutlined,
   PlusOutlined,
@@ -12,9 +12,14 @@ import {
   HighlightOutlined,
   FilePptOutlined,
   PaperClipOutlined,
+  BulbOutlined,
+  DownOutlined,
+  CloseOutlined,
+  SettingOutlined,
+  CodeOutlined,
+  ScissorOutlined,
 } from '@ant-design/icons';
 
-import { ThemeToggle } from '../common/ThemeToggle';
 import { OnboardingWizard } from '../common/OnboardingWizard';
 import { ModelSelector } from '../common/ModelSelector';
 import { ThoughtProcessBlock } from './ThoughtProcessBlock';
@@ -27,6 +32,8 @@ import { FollowupSuggestions } from './FollowupSuggestions';
 import { ChatHistoryModal } from '../history/ChatHistoryModal';
 import { PromptManagerModal } from '../common/PromptManagerModal';
 import { NowPilotAvatar } from '../common/NowPilotAvatar';
+import { UserAvatar } from '../common/UserAvatar';
+import { MarkdownContent } from './MarkdownContent';
 
 import { useExtensionStore } from '../../store/useExtensionStore';
 import { streamChatResponse, AVAILABLE_MODELS, type StreamChatParams } from '../../services/aiProvider';
@@ -79,21 +86,86 @@ export const SidepanelChat: React.FC<SidepanelChatProps> = ({
   const [isGenerating, setIsGenerating] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [promptManagerOpen, setPromptManagerOpen] = useState(false);
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [editingMsgId, setEditingMsgId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState<string>('');
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportSelectedMsgIds, setExportSelectedMsgIds] = useState<string[]>([]);
   const [onboardingComplete, setOnboardingComplete] = useState<boolean | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  const handleStartExportSession = (sessionId: string) => {
+    setActiveSessionId(sessionId);
+    const storeSessions = useExtensionStore.getState().sessions;
+    const session = storeSessions.find(s => s.id === sessionId) || sessions.find(s => s.id === sessionId);
+    if (session) {
+      setExportSelectedMsgIds(session.messages.map(m => m.id));
+    } else {
+      setExportSelectedMsgIds([]);
+    }
+    setIsExporting(true);
+  };
+
+  const handlePerformExport = (format: 'txt' | 'json') => {
+    if (!activeSession) return;
+    const selectedMsgs = activeSession.messages.filter(m => exportSelectedMsgIds.includes(m.id));
+    if (selectedMsgs.length === 0) {
+      antMessage.warning('Please select at least one message to export');
+      return;
+    }
+
+    if (format === 'json') {
+      const dataStr = JSON.stringify(selectedMsgs, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${activeSession.title.replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'chat'}-export.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } else {
+      const textContent = selectedMsgs
+        .map(m => `[${m.role === 'user' ? 'User' : 'NowPilot'}]:\n${m.content}\n`)
+        .join('\n---\n\n');
+      const blob = new Blob([textContent], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${activeSession.title.replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'chat'}-export.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+    antMessage.success(`Exported ${selectedMsgs.length} message(s) as ${format.toUpperCase()}`);
+  };
+
   useEffect(() => {
-    chrome.storage.local.get('onboardingComplete').then((result) => {
-      setOnboardingComplete(result.onboardingComplete !== false);
-    });
+    if (typeof chrome !== 'undefined' && chrome?.storage?.local) {
+      chrome.storage.local.get('onboardingComplete').then((result) => {
+        const isComplete = result.onboardingComplete === true;
+        setOnboardingComplete(isComplete);
+        if (!isComplete) {
+          setOnboardingOpen(true);
+        }
+      });
+    } else {
+      const val = localStorage.getItem('onboardingComplete');
+      const isComplete = val === 'true';
+      setOnboardingComplete(isComplete);
+      if (!isComplete) {
+        setOnboardingOpen(true);
+      }
+    }
   }, []);
 
   const handleOnboardingComplete = () => {
-    chrome.storage.local.set({ onboardingComplete: true });
+    if (typeof chrome !== 'undefined' && chrome?.storage?.local) {
+      chrome.storage.local.set({ onboardingComplete: true });
+    } else {
+      localStorage.setItem('onboardingComplete', 'true');
+    }
     setOnboardingComplete(true);
+    setOnboardingOpen(false);
   };
 
   useEffect(() => {
@@ -125,10 +197,11 @@ export const SidepanelChat: React.FC<SidepanelChatProps> = ({
     const textToSend = overridePrompt || inputPrompt;
     if (!textToSend.trim() && activeAttachments.length === 0) return;
 
-    if (!activeSession) {
+    let currentSession = activeSession;
+    if (!currentSession) {
       createNewSession();
+      currentSession = useExtensionStore.getState().activeSession;
     }
-    const currentSession = activeSession;
     if (!currentSession) return;
 
     const currentAttachments = [...activeAttachments];
@@ -150,7 +223,7 @@ export const SidepanelChat: React.FC<SidepanelChatProps> = ({
       timestamp: Date.now(),
       model: config.selectedModel,
       isThinking: true,
-      versions: ['1/1'],
+      versions: [''],
       currentVersionIndex: 0,
       followups: [
         'What are the core components of critical thinking?',
@@ -166,8 +239,10 @@ export const SidepanelChat: React.FC<SidepanelChatProps> = ({
 
     abortControllerRef.current = new AbortController();
 
+    const currentHistory = useExtensionStore.getState().activeSession?.messages || [userMessage];
+
     await streamChatResponse({
-      messages: [...currentSession.messages, userMessage],
+      messages: currentHistory,
       prompt: textToSend,
       attachments: currentAttachments,
       modelId: config.selectedModel,
@@ -239,53 +314,58 @@ export const SidepanelChat: React.FC<SidepanelChatProps> = ({
     );
   }
 
-  if (onboardingComplete === false) {
-    return (
-      <div className="flex items-center justify-center h-full bg-white dark:bg-zinc-900">
-        <OnboardingWizard open={true} onComplete={handleOnboardingComplete} />
-      </div>
-    );
-  }
-
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 font-sans relative overflow-hidden select-none">
+    <div className="flex flex-col h-full bg-[var(--np-bg)] text-[var(--np-fg)] font-sans relative overflow-hidden select-none">
       {/* Header Toolbar */}
       {!isStandalone && (
-        <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-200/60 dark:border-zinc-800 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md z-10">
+        <div className="flex items-center justify-between px-3.5 h-[56px] bg-[var(--np-bg)] text-[var(--np-fg)] z-10 border-b-0 select-none">
           <div className="flex items-center gap-2">
             {/* Extension Avatar */}
-            <div className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center border border-zinc-200/80 dark:border-zinc-700/80 shadow-xs">
+            <div className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center border border-[var(--np-border)] shadow-2xs">
               <NowPilotAvatar className="w-full h-full object-cover" />
             </div>
-            <span className="font-bold text-sm tracking-tight text-zinc-900 dark:text-zinc-100">NowPilot</span>
+            <span className="font-bold text-sm tracking-tight text-[var(--np-fg)]">NowPilot</span>
           </div>
 
           <div className="flex items-center gap-1">
-            <ThemeToggle />
-            {/* Open Options */}
-            <Tooltip title="Options">
+            {/* Onboarding Tour / Help */}
+            <Tooltip title="Help & Tour">
               <button
-                onClick={onOpenOptions}
-                className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 cursor-pointer text-xs flex items-center justify-center"
+                type="button"
+                onClick={() => setOnboardingOpen(true)}
+                className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 rounded-lg text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 cursor-pointer text-xs flex items-center justify-center transition-colors"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 60 60"><path fill="currentColor" fillRule="evenodd" d="M24.455 4.367h11.089c2.682 0 4.536-.002 6.236.55a11.25 11.25 0 0 1 4.051 2.34c1.329 1.196 2.255 2.802 3.595 5.125l.18.31 5.185 8.983.18.31c1.342 2.322 2.269 3.927 2.64 5.676a11.25 11.25 0 0 1 0 4.678c-.371 1.749-1.298 3.354-2.64 5.676l-.18.31-5.186 8.983-.179.31c-1.34 2.323-2.266 3.929-3.595 5.125a11.25 11.25 0 0 1-4.05 2.34c-1.701.552-3.555.55-6.236.55h-11.09c-2.682 0-4.535.002-6.235-.55a11.25 11.25 0 0 1-4.052-2.34c-1.328-1.196-2.254-2.802-3.594-5.125l-.18-.31-5.186-8.983-.18-.31c1.341-2.322-2.268-3.927-2.64-5.676a11.25 11.25 0 0 1 0-4.678c.372-1.749 1.299-3.354 2.64-5.676l.18-.31 5.186-8.983.18-.31c1.34-2.323 2.266-3.929 3.594-5.125a11.25 11.25 0 0 1 4.052-2.34c1.7-.552 3.553-.55 6.235-.55m.359 4.5c-3.18 0-4.268.026-5.204.33a6.75 6.75 0 0 0-2.43 1.404c-.732.659-1.298 1.587-2.889 4.341l-5.186 8.983c1.59 2.754-2.11 3.709-2.315 4.672a6.75 6.75 0 0 0 0 2.806c.204.963.725 1.918 2.315 4.672l5.186 8.983c1.59 2.754 2.157 3.682 2.888 4.34a6.75 6.75 0 0 0 2.431 1.404c.936.304 2.023.33 5.204.33h10.372c3.18 0 4.267-.026 5.203-.33A6.75 6.75 0 0 0 42.82 49.4c.732-.659 1.298-1.587 2.888-4.341l5.186-8.983c1.59-2.754 2.111-3.709 2.316-4.672a6.75 6.75 0 0 0 0-2.806c-.205-.963-.725-1.918-2.316-4.672l-5.186-8.983c-1.59-2.754-2.156-3.682-2.888-4.34a6.75 6.75 0 0 0-2.43-1.404c-.937-.305-2.023-.33-5.204-.33zM30 21.75a8.25 8.25 0 1 0 0 16.5 8.25 8.25 0 0 0 0-16.5M17.25 30c0-7.042 5.708-12.75 12.75-12.75S42.75 22.958 42.75 30 37.04 42.75 30 42.75 17.25 37.042 17.25 30" clipRule="evenodd"></path></svg>
+                <BulbOutlined className="text-amber-500 text-xs" />
               </button>
             </Tooltip>
-            {/* Open Standalone Workspace */}
-            <Tooltip title="Full page">
+            {/* Open Options / Settings */}
+            <Tooltip title="Settings">
               <button
-                onClick={onOpenStandalone}
-                className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 cursor-pointer text-xs flex items-center justify-center"
+                type="button"
+                onClick={onOpenOptions}
+                className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 rounded-lg text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 cursor-pointer text-xs flex items-center justify-center transition-colors"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 14 14"><path fill="currentColor" d="M4.762 3.362a.525.525 0 0 1 .743.743L2.609 7l2.896 2.895a.525.525 0 1 1-.743.743L1.825 7.7a.99.99 0 0 1 0-1.402zm4.476 0a.525.525 0 0 0-.743.743L11.391 7 8.495 9.895a.525.525 0 0 0 .743.743L12.175 7.7a.99.99 0 0 0 0-1.402z"></path></svg>
+                <SettingOutlined className="text-xs" />
+              </button>
+            </Tooltip>
+            {/* Full Page / Code Workspace */}
+            <Tooltip title="Full page workspace">
+              <button
+                type="button"
+                onClick={onOpenStandalone}
+                className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 rounded-lg text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 cursor-pointer text-xs flex items-center justify-center transition-colors"
+              >
+                <CodeOutlined className="text-xs" />
               </button>
             </Tooltip>
           </div>
         </div>
       )}
 
-      {/* Chat Messages Area */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-3.5 py-3 space-y-4">
+      {/* Main Chat Flow Container (centered when in standalone view) */}
+      <div className={`flex-1 flex flex-col h-full overflow-hidden ${isStandalone ? 'max-w-2xl mx-auto w-full' : 'w-full'}`}>
+        {/* Chat Messages Area */}
+        <div ref={scrollRef} className="flex-1 overflow-y-auto px-3.5 py-3 space-y-4">
         {!activeSession || activeSession.messages.length === 0 ? (
           /* Welcome View */
           <div className="flex flex-col justify-center items-start min-h-[320px] pt-8">
@@ -342,68 +422,87 @@ export const SidepanelChat: React.FC<SidepanelChatProps> = ({
                 const isEditingThis = editingMsgId === msg.id;
 
                 return (
-                  <div key={msg.id} className="group flex flex-col items-end my-2.5 w-full">
-                    <div className="max-w-[85%] w-fit">
-                      {isEditingThis ? (
-                        <div className="bg-zinc-100 dark:bg-zinc-800 p-2.5 rounded-2xl border border-violet-400 dark:border-violet-500 shadow-xs w-full">
-                          <textarea
-                            value={editingText}
-                            onChange={e => setEditingText(e.target.value)}
-                            className={`w-full bg-transparent border-none outline-none resize-none text-zinc-800 dark:text-zinc-100 font-sans ${getMessageFontSizeClass(config.fontSize)}`}
-                            rows={2}
-                            autoFocus
-                          />
-                          <div className="flex justify-end gap-1.5 mt-1.5">
-                            <button
-                              onClick={() => setEditingMsgId(null)}
-                              className="px-2 py-1 bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300 rounded-md text-[11px] font-medium hover:bg-zinc-300 dark:hover:bg-zinc-600 cursor-pointer"
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              onClick={() => {
-                                if (editingText.trim()) {
-                                  setEditingMsgId(null);
-                                  handleSend(editingText.trim());
-                                }
-                              }}
-                              className="px-2 py-1 bg-violet-600 text-white rounded-md text-[11px] font-semibold hover:bg-violet-700 cursor-pointer"
-                            >
-                              Save & Submit
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className={`px-4 py-2.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 rounded-2xl rounded-tr-xs font-normal leading-relaxed shadow-xs ${getMessageFontSizeClass(config.fontSize)}`}>
-                          {msg.attachments && msg.attachments.length > 0 && (
-                            <div className="mb-2 space-y-1">
-                              {msg.attachments.map(att => (
-                                <div key={att.id} className="text-[11px] bg-white/70 dark:bg-zinc-900/70 p-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 truncate">
-                                  <PaperClipOutlined className="mr-1" />{att.title}
-                                </div>
-                              ))}
+                  <div key={msg.id} className="group flex items-start gap-3 my-2.5 w-full">
+                    {isExporting && (
+                      <div className="pt-2 shrink-0">
+                        <input
+                          type="checkbox"
+                          checked={exportSelectedMsgIds.includes(msg.id)}
+                          onChange={e => {
+                            if (e.target.checked) {
+                              setExportSelectedMsgIds(prev => [...prev, msg.id]);
+                            } else {
+                              setExportSelectedMsgIds(prev => prev.filter(id => id !== msg.id));
+                            }
+                          }}
+                          className="w-4 h-4 rounded border-zinc-300 text-violet-600 focus:ring-violet-500 cursor-pointer"
+                        />
+                      </div>
+                    )}
+
+                    <div className="flex-1 min-w-0 flex flex-col items-end">
+                      <div className="max-w-[85%] w-fit">
+                        {isEditingThis ? (
+                          <div className="bg-zinc-100 dark:bg-zinc-800 p-2.5 rounded-2xl border border-violet-400 dark:border-violet-500 shadow-xs w-full">
+                            <textarea
+                              value={editingText}
+                              onChange={e => setEditingText(e.target.value)}
+                              className={`w-full bg-transparent border-none outline-none resize-none text-zinc-800 dark:text-zinc-100 font-sans ${getMessageFontSizeClass(config.fontSize)}`}
+                              rows={2}
+                              autoFocus
+                            />
+                            <div className="flex justify-end gap-1.5 mt-1.5">
+                              <button
+                                onClick={() => setEditingMsgId(null)}
+                                className="px-2 py-1 bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300 rounded-md text-[11px] font-medium hover:bg-zinc-300 dark:hover:bg-zinc-600 cursor-pointer"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (editingText.trim()) {
+                                    setEditingMsgId(null);
+                                    handleSend(editingText.trim());
+                                  }
+                                }}
+                                className="px-2 py-1 bg-violet-600 text-white rounded-md text-[11px] font-semibold hover:bg-violet-700 cursor-pointer"
+                              >
+                                Save & Submit
+                              </button>
                             </div>
-                          )}
-                          <div>{msg.content}</div>
-                        </div>
+                          </div>
+                        ) : (
+                          <div className={`px-4 py-2.5 bg-[var(--np-accent)] text-[var(--np-accent-fg)] rounded-2xl rounded-tr-xs font-normal leading-relaxed shadow-xs ${getMessageFontSizeClass(config.fontSize)}`}>
+                            {msg.attachments && msg.attachments.length > 0 && (
+                              <div className="mb-2 space-y-1">
+                                {msg.attachments.map(att => (
+                                  <div key={att.id} className="text-[11px] bg-white/70 dark:bg-zinc-900/70 p-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 truncate">
+                                    <PaperClipOutlined className="mr-1" />{att.title}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            <div>{msg.content}</div>
+                          </div>
+                        )}
+                      </div>
+
+                      {!isEditingThis && (
+                        <ActionPanel
+                          type="user"
+                          content={msg.content}
+                          onEdit={() => {
+                            setEditingMsgId(msg.id);
+                            setEditingText(msg.content);
+                          }}
+                          onQuote={handleQuoteText}
+                          onShare={(text) => {
+                            navigator.clipboard.writeText(text);
+                            antMessage.success('Link copied to clipboard');
+                          }}
+                        />
                       )}
                     </div>
-
-                    {!isEditingThis && (
-                      <ActionPanel
-                        type="user"
-                        content={msg.content}
-                        onEdit={() => {
-                          setEditingMsgId(msg.id);
-                          setEditingText(msg.content);
-                        }}
-                        onQuote={handleQuoteText}
-                        onShare={(text) => {
-                          navigator.clipboard.writeText(text);
-                          antMessage.success('Link copied to clipboard');
-                        }}
-                      />
-                    )}
                   </div>
                 );
               }
@@ -413,89 +512,99 @@ export const SidepanelChat: React.FC<SidepanelChatProps> = ({
               const currentVersionIdx = msg.currentVersionIndex ?? (versions.length - 1);
 
               return (
-                <div key={msg.id} className="group flex flex-col items-start my-3 w-full">
-                  {/* Assistant Name Header */}
-                  <div className="flex items-center justify-between w-full mb-1.5 px-0.5">
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-5 h-5 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center border border-zinc-200/80 dark:border-zinc-700/80 shadow-2xs">
-                        <NowPilotAvatar className="w-full h-full object-cover" />
-                      </div>
-                      <span className="px-2 py-0.5 bg-[#6d3e23] text-white dark:bg-amber-900/90 dark:text-amber-100 rounded-md text-[11px] font-semibold tracking-tight shadow-2xs">
-                        NowPilot
-                      </span>
+                <div key={msg.id} className="group flex items-start gap-3 my-3 w-full">
+                  {isExporting && (
+                    <div className="pt-2 shrink-0">
+                      <input
+                        type="checkbox"
+                        checked={exportSelectedMsgIds.includes(msg.id)}
+                        onChange={e => {
+                          if (e.target.checked) {
+                            setExportSelectedMsgIds(prev => [...prev, msg.id]);
+                          } else {
+                            setExportSelectedMsgIds(prev => prev.filter(id => id !== msg.id));
+                          }
+                        }}
+                        className="w-4 h-4 rounded border-zinc-300 text-violet-600 focus:ring-violet-500 cursor-pointer"
+                      />
                     </div>
+                  )}
 
+                  <div className="flex-1 min-w-0 flex flex-col items-start">
                     {/* Counter < 1/X > - ONLY shown when versions.length > 1 */}
                     {versions.length > 1 && (
-                      <div className="text-[10px] text-zinc-400 dark:text-zinc-500 font-medium flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800/80 px-2 py-0.5 rounded-full select-none border border-zinc-200/60 dark:border-zinc-700/60">
-                        <button
-                          type="button"
-                          onClick={() => switchMessageVersion(msg.id, -1)}
-                          disabled={currentVersionIdx <= 0}
-                          className="hover:text-zinc-800 dark:hover:text-zinc-200 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer font-bold px-0.5 transition-colors"
-                          title="Previous version"
-                        >
-                          &lt;
-                        </button>
-                        <span>
-                          {currentVersionIdx + 1}/{versions.length}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => switchMessageVersion(msg.id, 1)}
-                          disabled={currentVersionIdx >= versions.length - 1}
-                          className="hover:text-zinc-800 dark:hover:text-zinc-200 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer font-bold px-0.5 transition-colors"
-                          title="Next version"
-                        >
-                          &gt;
-                        </button>
+                      <div className="flex justify-end w-full mb-1.5 px-0.5">
+                        <div className="text-[10px] text-zinc-400 dark:text-zinc-500 font-medium flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800/80 px-2 py-0.5 rounded-full select-none border border-zinc-200/60 dark:border-zinc-700/60">
+                          <button
+                            type="button"
+                            onClick={() => switchMessageVersion(msg.id, -1)}
+                            disabled={currentVersionIdx <= 0}
+                            className="hover:text-zinc-800 dark:hover:text-zinc-200 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer font-bold px-0.5 transition-colors"
+                            title="Previous version"
+                          >
+                            &lt;
+                          </button>
+                          <span>
+                            {currentVersionIdx + 1}/{versions.length}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => switchMessageVersion(msg.id, 1)}
+                            disabled={currentVersionIdx >= versions.length - 1}
+                            className="hover:text-zinc-800 dark:hover:text-zinc-200 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer font-bold px-0.5 transition-colors"
+                            title="Next version"
+                          >
+                            &gt;
+                          </button>
+                        </div>
                       </div>
                     )}
-                  </div>
 
-                  {/* Model Name Indicator above Thought process */}
-                  <div className="flex items-center gap-1.5 text-xs text-zinc-400 dark:text-zinc-500 font-medium my-0.5">
-                    <span className="text-violet-500 text-xs">⚡</span>
-                    <span>{msg.model || config.selectedModel}</span>
-                  </div>
+                    {/* Model Name Indicator above Thought process */}
+                    <div className="flex items-center gap-1.5 text-xs text-zinc-400 dark:text-zinc-500 font-medium my-0.5">
+                      <span className="text-violet-500 text-xs">⚡</span>
+                      <span>{msg.model || config.selectedModel}</span>
+                    </div>
 
-                  {/* Reasoning Thought Block */}
-                  <ThoughtProcessBlock
-                    thoughtText={msg.thoughtProcess || 'Thinking Process:\n\n1. **Analyze the Request**: Analyzing user prompt intent and context parameters.\n2. **Determine Identity and Context**: Scanning connected tabs and environment context.\n3. **Recall Core Knowledge**: Synthesizing optimal step-by-step resolution.\n4. **Formulate Response Strategy**:\n   - Structure explanation clearly\n   - Highlight key actionable takeaways\n5. **Draft Response & Refine**: Verifying accuracy before output generation.'}
-                    isThinking={msg.isThinking}
-                  />
+                    {/* Reasoning Thought Block */}
+                    <ThoughtProcessBlock
+                      thoughtText={msg.thoughtProcess || 'Thinking Process:\n\n1. **Analyze the Request**: Analyzing user prompt intent and context parameters.\n2. **Determine Identity and Context**: Scanning connected tabs and environment context.\n3. **Recall Core Knowledge**: Synthesizing optimal step-by-step resolution.\n4. **Formulate Response Strategy**:\n   - Structure explanation clearly\n   - Highlight key actionable takeaways\n5. **Draft Response & Refine**: Verifying accuracy before output generation.'}
+                      isThinking={msg.isThinking}
+                    />
 
-                  {/* AI Text Response Body */}
-                  <div className={`w-full leading-relaxed text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap font-normal ${getMessageFontSizeClass(config.fontSize)}`}>
-                    {msg.content}
-                  </div>
+                    {/* AI Text Response Body */}
+                    <MarkdownContent
+                      content={msg.content}
+                      fontSizeClass={getMessageFontSizeClass(config.fontSize)}
+                    />
 
-                  {/* Action Panel */}
-                  {!msg.isThinking && (
-                    <>
-                      <ActionPanel
-                        type="ai"
-                        content={msg.content}
-                        isLatest={isLatestAI}
-                        onRegenerate={() => regenerateMessageInActiveSession(msg.id)}
-                        onQuote={handleQuoteText}
-                        onSaveToNote={() => {
-                          antMessage.success('Saved snippet to Notes');
-                        }}
-                        onShare={(text) => {
-                          navigator.clipboard.writeText(text);
-                          antMessage.success('Link copied to clipboard');
-                        }}
-                      />
-                      {isLatestAI && (
-                        <FollowupSuggestions
-                          suggestions={msg.followups}
-                          onSelectSuggestion={(s) => handleSend(s)}
-                          onDeepResearch={() => handleSend('Go further with deep research')}
+                    {/* Action Panel */}
+                    {!msg.isThinking && (
+                      <>
+                        <ActionPanel
+                          type="ai"
+                          content={msg.content}
+                          isLatest={isLatestAI}
+                          onRegenerate={() => regenerateMessageInActiveSession(msg.id)}
+                          onQuote={handleQuoteText}
+                          onSaveToNote={() => {
+                            antMessage.success('Saved snippet to Notes');
+                          }}
+                          onShare={(text) => {
+                            navigator.clipboard.writeText(text);
+                            antMessage.success('Link copied to clipboard');
+                          }}
                         />
-                      )}
-                    </>
-                  )}
+                        {isLatestAI && (
+                          <FollowupSuggestions
+                            suggestions={msg.followups}
+                            onSelectSuggestion={(s) => handleSend(s)}
+                            onDeepResearch={() => handleSend('Go further with deep research')}
+                          />
+                        )}
+                      </>
+                    )}
+                  </div>
                 </div>
               );
             });
@@ -516,15 +625,27 @@ export const SidepanelChat: React.FC<SidepanelChatProps> = ({
         )}
       </div>
 
-      {/* Bottom Composer Bar (<Sender>) */}
-      <div className="p-3 border-t border-zinc-100 dark:border-zinc-800/80 bg-white dark:bg-zinc-900">
-        {/* Upper Controls Bar: Model selector, Attach folder, History, New Chat */}
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
+      {/* Bottom Composer Bar */}
+      <div className="p-3 bg-[var(--np-bg)] border-t-0 select-none">
+        {/* Controls Toolbar ABOVE Input Box Container */}
+        <div className="flex items-center justify-between mb-2 px-0.5">
+          {/* Left: Model Selector, Scissor/Screen cut, Attach Folder */}
+          <div className="flex items-center gap-1.5">
             <ModelSelector
               selectedModelId={config.selectedModel}
               onSelectModel={(m) => updateConfig({ selectedModel: m })}
             />
+            <Tooltip title="Screenshot">
+              <button
+                type="button"
+                onClick={handleScreenCut}
+                className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-300 cursor-pointer transition-colors text-xs flex items-center justify-center"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 16 16">
+                  <path fill="currentColor" fillRule="evenodd" d="M3.09 1.717a.6.6 0 0 0-.848.849L7.22 7.544 6.2 8.566a3.267 3.267 0 1 0 .821.876l1.049-1.05.84.84a.6.6 0 0 0 .14.105 3.267 3.267 0 1 0 .812-.814.6.6 0 0 0-.103-.139l-.84-.84 4.977-4.978a.6.6 0 1 0-.848-.849L8.069 6.695zM2.2 11.2a2.067 2.067 0 1 1 4.133 0 2.067 2.067 0 0 1-4.133 0m7.467 0a2.067 2.067 0 1 1 4.133 0 2.067 2.067 0 0 1-4.133 0" clipRule="evenodd"></path>
+                </svg>
+              </button>
+            </Tooltip>
             <TabContextSelector
               availableTabs={availableTabs}
               onToggleTab={toggleTabSelection}
@@ -535,120 +656,179 @@ export const SidepanelChat: React.FC<SidepanelChatProps> = ({
             />
           </div>
 
-          <div className="flex items-center gap-1">
-            <Tooltip title="Chat History">
+          {/* Right: History, New Chat */}
+          <div className="flex items-center gap-1.5">
+            <Tooltip title="Chat history">
               <button
+                type="button"
                 onClick={() => setHistoryOpen(true)}
                 className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-300 text-xs cursor-pointer transition-colors flex items-center justify-center"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 16 16">
                   <g fill="currentColor">
-                    <path d="M8.6 4.667a.6.6 0 0 0-1.2 0v3.448l2.976 2.976a.6.6 0 0 0 .848-.848L8.6 7.617z"></path>
+                    <path d="M8.6 4.667a.6.6 0 0 0-1.2 0v3.448l2.976 2.976a.6.6 0 0 0 .848-.848L8.6 7.617z">
+                    </path>
                     <path fillRule="evenodd" d="M8 .733a7.267 7.267 0 1 0 0 14.534A7.267 7.267 0 0 0 8 .733M1.933 8a6.067 6.067 0 1 1 12.134 0A6.067 6.067 0 0 1 1.933 8" clipRule="evenodd"></path>
                   </g>
                 </svg>
               </button>
             </Tooltip>
 
-            <Tooltip title="New Chat">
+            <Tooltip title="New chat">
               <button
+                type="button"
                 onClick={createNewSession}
-                className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-violet-600 dark:text-violet-400 cursor-pointer transition-colors flex items-center justify-center"
+                className="p-1.5 bg-[var(--np-primary)] hover:opacity-90 text-white rounded-lg text-xs cursor-pointer transition-colors flex items-center justify-center shadow-2xs"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 16 16" className="text-violet-600 dark:text-violet-400">
-                  <path fill="currentColor" d="M10.319 1.133H5.681c-.65 0-1.175 0-1.6.035-.437.036-.821.111-1.176.292a3 3 0 0 0-1.311 1.311c-.181.356-.257.74-.293 1.177-.034.425-.034.95-.034 1.6v8.134c0 .206 0 .4.014.557.015.164.051.38.188.578.177.255.45.426.757.473.238.037.449-.026.602-.084.149-.056.322-.14.507-.231l1.2-.585c.41-.2.566-.274.725-.327a2.7 2.7 0 0 1 .46-.106c.165-.022.338-.024.795-.024h3.804c.65 0 1.175 0 1.6-.034.437-.036.82-.112 1.176-.293a3 3 0 0 0 1.311-1.31c.181-.356.257-.74.293-1.178.034-.424.034-.949.034-1.599V5.548c0-.65 0-1.175-.034-1.6-.036-.437-.112-.821-.293-1.177a3 3 0 0 0-1.31-1.31c-.356-.182-.74-.257-1.178-.293-.424-.035-.949-.035-1.599-.035" />
-                  <path fill="#fff" d="M8.6 4.533a.6.6 0 0 0-1.2 0v2.334H5.067a.6.6 0 0 0 0 1.2H7.4V10.4a.6.6 0 1 0 1.2 0V8.067h2.334a.6.6 0 0 0 0-1.2H8.6z" />
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 16 16">
+                  <path fill="currentColor" d="M10.319 1.133H5.681c-.65 0-1.175 0-1.6.035-.437.036-.821.111-1.176.292a3 3 0 0 0-1.311 1.311c-.181.356-.257.74-.293 1.177-.034.425-.034.95-.034 1.6v8.134c0 .206 0 .4.014.557.015.164.051.38.188.578.177.255.45.426.757.473.238.037.449-.026.602-.084.149-.056.322-.14.507-.231l1.2-.585c.41-.2.566-.274.725-.327a2.7 2.7 0 0 1 .46-.106c.165-.022.338-.024.795-.024h3.804c.65 0 1.175 0 1.6-.034.437-.036.82-.11 1.176-.293a3 3 0 0 0 1.311-1.31c.181-.356.257-.74.293-1.178.034-.424.034-.949.034-1.599V5.548c0-.65 0-1.175-.034-1.6-.036-.437-.112-.821-.293-1.177a3 3 0 0 0-1.31-1.31c-.356-.182-.74-.257-1.178-.293-.424-.035-.949-.035-1.599-.035">
+                  </path>
+                  <path fill="#fff" d="M8.6 4.533a.6.6 0 0 0-1.2 0v2.334H5.067a.6.6 0 0 0 0 1.2H7.4V10.4a.6.6 0 1 0 1.2 0V8.067h2.334a.6.6 0 0 0 0-1.2H8.6z">
+                  </path>
                 </svg>
               </button>
             </Tooltip>
           </div>
         </div>
 
-        {/* Input Box Frame with Slash Command Modal */}
-        <SlashCommandModal
-          prompts={prompts}
-          onSelectPrompt={handleSelectPrompt}
-          onOpenPromptManager={() => setPromptManagerOpen(true)}
-          open={slashOpen}
-          onOpenChange={setSlashOpen}
-        >
-          <div className="p-2.5 bg-white dark:bg-zinc-800 rounded-2xl border border-zinc-200 dark:border-zinc-700 shadow-xs flex flex-col focus-within:border-violet-500 transition-colors">
-            {/* Pinned Tabs Bar */}
-            {!isStandalone && (
-              <PinnedTabsBar
-                pinnedTabs={availableTabs.filter(t => t.selected)}
-                onUnpinTab={toggleTabSelection}
-              />
-            )}
-
-            {/* Active Attachments Bar */}
-            <AttachmentBar
-              attachments={activeAttachments}
-              onRemove={removeAttachment}
-            />
-
-            {/* Prompt Quick Chips toolbar inside composer - shown when a tab is pinned (in sidepanel mode), or when file is attached or text quoted */}
-            {((!isStandalone && availableTabs.some(t => t.selected)) || activeAttachments.length > 0) && (
-              <div className="flex items-center gap-1.5 mb-2 overflow-x-auto pb-1 text-xs scrollbar-none">
-                {['For YouTube', 'Summarize', 'Explain'].map((chip, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setInputPrompt(prev => prev + (prev ? ' ' : '') + chip)}
-                    className="px-2.5 py-1 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-700/70 dark:hover:bg-zinc-700 rounded-lg text-zinc-700 dark:text-zinc-200 font-medium whitespace-nowrap cursor-pointer transition-colors text-[11px] shrink-0"
-                  >
-                    {chip}
-                  </button>
-                ))}
-
-                <SlashCommandModal
-                  prompts={prompts}
-                  onSelectPrompt={handleSelectPrompt}
-                  onOpenPromptManager={() => setPromptManagerOpen(true)}
+        {/* Input Box Area Container */}
+        {isExporting ? (
+          <div className="p-3 bg-white dark:bg-zinc-800 rounded-2xl border border-zinc-200 dark:border-zinc-700 shadow-lg flex flex-col gap-2.5">
+            <div className="flex items-center justify-between px-1">
+              <label className="flex items-center gap-2 text-xs font-semibold text-zinc-700 dark:text-zinc-200 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={
+                    !!activeSession &&
+                    activeSession.messages.length > 0 &&
+                    activeSession.messages.every(m => exportSelectedMsgIds.includes(m.id))
+                  }
+                  onChange={(e) => {
+                    if (!activeSession) return;
+                    if (e.target.checked) {
+                      setExportSelectedMsgIds(activeSession.messages.map(m => m.id));
+                    } else {
+                      setExportSelectedMsgIds([]);
+                    }
+                  }}
+                  className="w-4 h-4 rounded border-zinc-300 text-violet-600 focus:ring-violet-500 cursor-pointer"
                 />
-              </div>
-            )}
-
-            {/* Textarea Input */}
-            <textarea
-              value={inputPrompt}
-              onChange={e => {
-                const val = e.target.value;
-                setInputPrompt(val);
-                if (val.includes('/')) {
-                  setSlashOpen(true);
-                } else {
-                  setSlashOpen(false);
-                }
-              }}
-              onKeyDown={e => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
-              placeholder="Ask anything, @ models, / prompts"
-              rows={2}
-              className="w-full bg-transparent border-none outline-none resize-none text-xs text-zinc-800 dark:text-zinc-100 placeholder-zinc-400 font-sans"
-            />
-
-            {/* Send Button */}
-            <div className="flex justify-end mt-1">
-              <Tooltip title="Send message (Enter)">
-                <button
-                  onClick={() => handleSend()}
-                  disabled={!inputPrompt.trim() && activeAttachments.length === 0}
-                  className={`p-2 rounded-xl transition-all cursor-pointer ${
-                    inputPrompt.trim() || activeAttachments.length > 0
-                      ? 'bg-violet-600 text-white shadow-xs hover:bg-violet-700'
-                      : 'bg-zinc-100 dark:bg-zinc-700 text-zinc-300 dark:text-zinc-500 cursor-not-allowed'
-                  }`}
-                >
-                  <SendOutlined className="text-xs" />
-                </button>
-              </Tooltip>
+                <span>Select all</span>
+              </label>
+              <button
+                onClick={() => setIsExporting(false)}
+                className="p-1 rounded-full text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors cursor-pointer"
+                title="Exit export mode"
+              >
+                <CloseOutlined className="text-xs" />
+              </button>
             </div>
+
+            <Dropdown
+              menu={{
+                items: [
+                  {
+                    key: 'txt',
+                    label: 'Export as TXT',
+                    onClick: () => handlePerformExport('txt'),
+                  },
+                  {
+                    key: 'json',
+                    label: 'Export as JSON',
+                    onClick: () => handlePerformExport('json'),
+                  },
+                ],
+              }}
+              trigger={['click']}
+              placement="top"
+            >
+              <button className="w-full py-2 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-700 dark:hover:bg-zinc-600 text-zinc-800 dark:text-zinc-100 font-semibold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-zinc-200/80 dark:border-zinc-600">
+                <span>Export as</span>
+                <DownOutlined className="text-[10px]" />
+              </button>
+            </Dropdown>
           </div>
-        </SlashCommandModal>
+        ) : (
+          <SlashCommandModal
+            prompts={prompts}
+            onSelectPrompt={handleSelectPrompt}
+            onOpenPromptManager={() => setPromptManagerOpen(true)}
+            open={slashOpen}
+            onOpenChange={setSlashOpen}
+          >
+            <div className="p-3 bg-[var(--np-card)] text-[var(--np-fg)] rounded-2xl border border-[var(--np-border)] shadow-2xs flex flex-col justify-between min-h-[120px] focus-within:border-[var(--np-primary)] focus-within:bg-[var(--np-card)] transition-all">
+              {/* Pinned Tabs Bar */}
+              {!isStandalone && (
+                <PinnedTabsBar
+                  pinnedTabs={availableTabs.filter(t => t.selected)}
+                  onUnpinTab={toggleTabSelection}
+                />
+              )}
+
+              {/* Active Attachments Bar */}
+              <AttachmentBar
+                attachments={activeAttachments}
+                onRemove={removeAttachment}
+              />
+
+              {/* Prompt Quick Chips toolbar inside composer */}
+              {((!isStandalone && availableTabs.some(t => t.selected)) || activeAttachments.length > 0) && (
+                <div className="flex items-center gap-1.5 my-1.5 overflow-x-auto pb-0.5 text-xs scrollbar-none">
+                  {['For YouTube', 'Summarize', 'Explain'].map((chip, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setInputPrompt(prev => prev + (prev ? ' ' : '') + chip)}
+                      className="px-2.5 py-1 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-700/70 dark:hover:bg-zinc-700 rounded-lg text-zinc-700 dark:text-zinc-200 font-medium whitespace-nowrap cursor-pointer transition-colors text-[11px] shrink-0"
+                    >
+                      {chip}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Textarea Input */}
+              <textarea
+                value={inputPrompt}
+                onChange={e => {
+                  const val = e.target.value;
+                  setInputPrompt(val);
+                  if (val.includes('/')) {
+                    setSlashOpen(true);
+                  } else {
+                    setSlashOpen(false);
+                  }
+                }}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
+                placeholder="Ask anything, @ models, / prompts"
+                className="w-full bg-transparent border-none outline-none resize-none text-xs text-[var(--np-fg)] placeholder-[var(--np-muted-fg)] font-sans min-h-[56px] my-1 leading-relaxed"
+              />
+
+              {/* Floating Send Paper Plane Button */}
+              <div className="flex items-center justify-end pt-1">
+                <Tooltip title="Send message (Enter)">
+                  <button
+                    type="button"
+                    onClick={() => handleSend()}
+                    disabled={!inputPrompt.trim() && activeAttachments.length === 0}
+                    className={`p-2 rounded-xl transition-all cursor-pointer shadow-2xs ${
+                      inputPrompt.trim() || activeAttachments.length > 0
+                        ? 'bg-[var(--np-primary)] text-white hover:opacity-90'
+                        : 'bg-[var(--np-muted)] text-[var(--np-muted-fg)] cursor-not-allowed'
+                    }`}
+                  >
+                    <SendOutlined className="text-xs" />
+                  </button>
+                </Tooltip>
+              </div>
+            </div>
+          </SlashCommandModal>
+        )}
 
         {/* Footer Info Line */}
         <div className="flex items-center justify-between mt-2 px-1 text-[11px] text-zinc-400">
@@ -676,6 +856,13 @@ export const SidepanelChat: React.FC<SidepanelChatProps> = ({
           </div>
         </div>
       </div>
+      </div>
+
+      {/* Onboarding Wizard Modal */}
+      <OnboardingWizard
+        open={onboardingOpen}
+        onComplete={handleOnboardingComplete}
+      />
 
       {/* History Modal */}
       <ChatHistoryModal
@@ -688,6 +875,8 @@ export const SidepanelChat: React.FC<SidepanelChatProps> = ({
         onDeleteSession={deleteSession}
         onUpdateTitle={updateSessionTitle}
         onClearAll={clearAllSessions}
+        onStartExport={handleStartExportSession}
+        isStandalone={isStandalone}
       />
 
       {/* Prompt Manager Modal */}

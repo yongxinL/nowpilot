@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import { chromeStorageAdapter } from '../core/theme/chromeStorageAdapter';
+import { useThemeStore, type ThemeMode } from '../core/theme/ThemeStore';
 import type {
   ChatSession,
   Message,
@@ -83,7 +84,10 @@ const DEFAULT_CONFIG: ProviderConfig = {
   geminiKey: '',
   selectedModel: 'Qwythos-9B-Claude-Mythos-5-1M-mxfp4-mlx',
   fontSize: 'Auto',
+  appTheme: 'System',
   themeMode: 'Auto',
+  displayMode: 'auto',
+  themeId: 'system',
   language: 'English',
   sidepanelPosition: 'Right',
   chatGptWebappEnabled: true,
@@ -115,7 +119,7 @@ interface ExtensionState {
   toggleStarSession: (id: string) => void;
   deleteSession: (id: string) => void;
   updateSessionTitle: (id: string, newTitle: string) => void;
-  clearAllSessions: () => void;
+  clearAllSessions: (includeStarred?: boolean) => void;
   addAttachment: (attachment: Attachment) => void;
   removeAttachment: (id: string) => void;
   setActiveAttachments: (attachments: Attachment[]) => void;
@@ -145,6 +149,12 @@ export const useExtensionStore = create<ExtensionState>()(
           set((state) => {
             Object.assign(state.config, updates);
           });
+          if (updates.themeMode) {
+            const targetMode = updates.themeMode.toLowerCase() as ThemeMode;
+            if (useThemeStore.getState().mode !== targetMode) {
+              useThemeStore.getState().setMode(targetMode);
+            }
+          }
         },
 
         setActiveSessionId: (id) => {
@@ -155,6 +165,10 @@ export const useExtensionStore = create<ExtensionState>()(
         },
 
         createNewSession: () => {
+          const currentActive = get().activeSession;
+          if (currentActive && currentActive.messages.length === 0) {
+            return currentActive.id;
+          }
           const newId = 's_' + Date.now();
           const newSession: ChatSession = {
             id: newId,
@@ -167,6 +181,7 @@ export const useExtensionStore = create<ExtensionState>()(
             messages: [],
           };
           set((state) => {
+            state.sessions = state.sessions.filter(s => s.messages.length > 0);
             state.sessions.unshift(newSession);
             state.activeSessionId = newId;
             state.activeSession = newSession;
@@ -177,14 +192,29 @@ export const useExtensionStore = create<ExtensionState>()(
 
         addMessageToActiveSession: (msg) => {
           set((state) => {
-            const session = state.sessions.find(s => s.id === state.activeSessionId);
-            if (!session) return;
+            let session = state.sessions.find(s => s.id === state.activeSessionId);
+            if (!session) {
+              const newId = 's_' + Date.now();
+              session = {
+                id: newId,
+                title: 'New Chat',
+                preview: 'Ask anything...',
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
+                isStarred: false,
+                group: 'Today',
+                messages: [],
+              };
+              state.sessions.unshift(session);
+              state.activeSessionId = newId;
+            }
             session.messages.push(msg);
             if (session.messages.length === 1) {
               session.title = msg.content.slice(0, 35) || 'New Chat';
             }
             session.preview = msg.content.slice(0, 50);
             session.updatedAt = Date.now();
+            state.activeSession = computeActiveSession(state.sessions, state.activeSessionId);
           });
         },
 
@@ -205,6 +235,7 @@ export const useExtensionStore = create<ExtensionState>()(
             lastMsg.versions[curIdx] = lastMsg.content;
             lastMsg.currentVersionIndex = curIdx;
             lastMsg.isThinking = !isDone;
+            state.activeSession = computeActiveSession(state.sessions, state.activeSessionId);
           });
         },
 
@@ -222,6 +253,7 @@ export const useExtensionStore = create<ExtensionState>()(
             msg.versions = existingVersions;
             msg.currentVersionIndex = existingVersions.length - 1;
             msg.content = newContent;
+            state.activeSession = computeActiveSession(state.sessions, state.activeSessionId);
           });
         },
 
@@ -236,6 +268,7 @@ export const useExtensionStore = create<ExtensionState>()(
             const nextIdx = Math.max(0, Math.min(msg.versions.length - 1, currentIdx + delta));
             msg.currentVersionIndex = nextIdx;
             msg.content = msg.versions[nextIdx];
+            state.activeSession = computeActiveSession(state.sessions, state.activeSessionId);
           });
         },
 
@@ -268,22 +301,48 @@ export const useExtensionStore = create<ExtensionState>()(
           });
         },
 
-        clearAllSessions: () => {
-          const newId = 's_' + Date.now();
-          const newSession: ChatSession = {
-            id: newId,
-            title: 'New Chat',
-            preview: 'Ask anything...',
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            isStarred: false,
-            group: 'Today',
-            messages: [],
-          };
+        clearAllSessions: (includeStarred = true) => {
           set((state) => {
-            state.sessions = [newSession];
-            state.activeSessionId = newId;
-            state.activeSession = newSession;
+            if (includeStarred) {
+              const newId = 's_' + Date.now();
+              const newSession: ChatSession = {
+                id: newId,
+                title: 'New Chat',
+                preview: 'Ask anything...',
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
+                isStarred: false,
+                group: 'Today',
+                messages: [],
+              };
+              state.sessions = [newSession];
+              state.activeSessionId = newId;
+              state.activeSession = newSession;
+            } else {
+              const remaining = state.sessions.filter(s => s.isStarred);
+              if (remaining.length === 0) {
+                const newId = 's_' + Date.now();
+                const newSession: ChatSession = {
+                  id: newId,
+                  title: 'New Chat',
+                  preview: 'Ask anything...',
+                  createdAt: Date.now(),
+                  updatedAt: Date.now(),
+                  isStarred: false,
+                  group: 'Today',
+                  messages: [],
+                };
+                state.sessions = [newSession];
+                state.activeSessionId = newId;
+                state.activeSession = newSession;
+              } else {
+                state.sessions = remaining;
+                if (!remaining.some(s => s.id === state.activeSessionId)) {
+                  state.activeSessionId = remaining[0].id;
+                  state.activeSession = computeActiveSession(remaining, remaining[0].id);
+                }
+              }
+            }
             state.activeAttachments = [];
           });
         },

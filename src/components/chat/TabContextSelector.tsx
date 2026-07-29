@@ -160,7 +160,7 @@ export const TabContextSelector: React.FC<TabContextSelectorProps> = ({
             <span>Add image</span>
           </button>
 
-          {/* Select from screen */}
+          {/* Screenshot */}
           <button
             type="button"
             onClick={() => {
@@ -170,8 +170,10 @@ export const TabContextSelector: React.FC<TabContextSelectorProps> = ({
             className="w-full flex items-center justify-between px-2 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-left font-medium text-zinc-800 dark:text-zinc-200 cursor-pointer transition-colors text-xs"
           >
             <div className="flex items-center gap-2">
-              <DesktopOutlined className="text-zinc-500 text-sm" />
-              <span>Select from screen</span>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 16 16">
+                <path fill="currentColor" fillRule="evenodd" d="M3.09 1.717a.6.6 0 0 0-.848.849L7.22 7.544 6.2 8.566a3.267 3.267 0 1 0 .821.876l1.049-1.05.84.84a.6.6 0 0 0 .14.105 3.267 3.267 0 1 0 .812-.814.6.6 0 0 0-.103-.139l-.84-.84 4.977-4.978a.6.6 0 1 0-.848-.849L8.069 6.695zM2.2 11.2a2.067 2.067 0 1 1 4.133 0 2.067 2.067 0 0 1-4.133 0m7.467 0a2.067 2.067 0 1 1 4.133 0 2.067 2.067 0 0 1-4.133 0" clipRule="evenodd"></path>
+              </svg>
+              <span>Screenshot</span>
             </div>
             <span className="bg-blue-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
               NEW

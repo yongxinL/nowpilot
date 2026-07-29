@@ -2,8 +2,17 @@ import { defineConfig } from 'wxt';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
+  webExt: {
+    disabled: true,
+  },
+  dev: {
+    server: {
+      port: 3000,
+      host: '0.0.0.0',
+    },
+  },
   vite: () => ({
-    plugins: [tailwindcss()],
+    plugins: [tailwindcss() as any],
     build: {
       chunkSizeWarningLimit: 1000,
       rollupOptions: {

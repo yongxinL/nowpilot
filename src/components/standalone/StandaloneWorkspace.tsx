@@ -24,7 +24,6 @@ import {
 import { SidepanelChat } from '../chat/SidepanelChat';
 import { NotesWorkspace } from '../notes/NotesWorkspace';
 import { NowPilotAvatar } from '../common/NowPilotAvatar';
-import { ThemeToggle } from '../common/ThemeToggle';
 import { ToolItem } from '../../types';
 
 const { Title, Text } = Typography;
@@ -88,10 +87,109 @@ export const StandaloneWorkspace: React.FC<StandaloneWorkspaceProps> = ({
   };
 
   const navItems = [
-    { key: 'Chat', label: 'Chat', icon: <MessageOutlined /> },
-    { key: 'Note', label: 'Note', icon: <FileTextOutlined /> },
-    { key: 'Write', label: 'Write', icon: <EditOutlined /> },
-    { key: 'Tools', label: 'Tools', icon: <AppstoreOutlined /> },
+    {
+      key: 'Chat',
+      label: 'Chat',
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 20 20">
+          <path fill="currentColor" d="M12.899 1.417H7.1c-.813 0-1.468 0-2 .043-.546.045-1.026.139-1.47.365a3.75 3.75 0 0 0-1.639 1.64c-.226.443-.32.924-.365 1.47-.044.531-.044 1.187-.044 2v10.167c0 .258 0 .5.018.697.02.205.064.475.236.722.221.319.563.532.946.592.297.046.56-.032.752-.105.186-.07.403-.177.634-.29l1.499-.73c.513-.25.708-.343.907-.409q.281-.092.574-.132c.208-.029.424-.03.995-.03h4.755c.813 0 1.468 0 2-.044.546-.044 1.026-.139 1.47-.365a3.75 3.75 0 0 0 1.639-1.639c.226-.444.32-.924.365-1.47.044-.532.044-1.187.044-2V6.935c0-.813 0-1.469-.044-2-.044-.546-.139-1.027-.365-1.47a3.75 3.75 0 0 0-1.639-1.64c-.444-.226-.924-.32-1.47-.365-.532-.043-1.187-.043-2-.043z">
+          </path>
+          <path fill="#fff" fillRule="evenodd" d="M5.25 7.113a.75.75 0 0 1 .75-.75h8a.75.75 0 0 1 0 1.5H6a.75.75 0 0 1-.75-.75m0 4.667a.75.75 0 0 1 .75-.75h6a.75.75 0 0 1 0 1.5H6a.75.75 0 0 1-.75-.75" clipRule="evenodd"></path>
+        </svg>
+      ),
+    },
+    {
+      key: 'Note',
+      label: 'Note',
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60" width="20" height="20" preserveAspectRatio="xMidYMid meet" style={{ width: 20, height: 20 }}>
+          <defs>
+            <clipPath id="nav_note_clip_308">
+              <rect width="60" height="60" x="0" y="0"></rect>
+            </clipPath>
+            <clipPath id="nav_note_clip_319">
+              <path d="M0,0 L60,0 L60,60 L0,60z"></path>
+            </clipPath>
+          </defs>
+          <g clipPath="url(#nav_note_clip_308)">
+            <g clipPath="url(#nav_note_clip_319)" transform="matrix(1,0,0,1,0,0)" opacity="1">
+              <g transform="matrix(1,0,0,1,0,0)" opacity="1">
+                <path strokeLinecap="round" strokeLinejoin="miter" fillOpacity="0" strokeMiterlimit="4" className="stroke-current" stroke="currentColor" strokeOpacity="1" strokeWidth="4.5" d=" M30,47.75 C30.850000381469727,49.220001220703125 31.950000762939453,50.529998779296875 33.2400016784668,51.61000061035156 C35.7599983215332,53.72999954223633 39.0099983215332,55 42.560001373291016,55 C46.11000061035156,55 49.369998931884766,53.72999954223633 51.88999938964844,51.61000061035156 C53.18000030517578,50.529998779296875 54.279998779296875,49.220001220703125 55.130001068115234,47.75">
+                </path>
+              </g>
+              <g transform="matrix(1,0,0,1,0,0)" opacity="1">
+                <path strokeLinecap="butt" strokeLinejoin="miter" fillOpacity="0" strokeMiterlimit="4" className="stroke-current" stroke="currentColor" strokeOpacity="1" strokeWidth="4.5" d=" M42.5,28 C42.5,28 42.5,28 42.5,28 C46.09000015258789,28 49,30.90999984741211 49,34.5 C49,34.5 49,40.5 49,40.5 C49,44.09000015258789 46.09000015258789,47 42.5,47 C38.90999984741211,47 36,44.09000015258789 36,40.5 C36,40.5 36,34.5 36,34.5 C36,30.90999984741211 38.90999984741211,28 42.5,28z">
+                </path>
+              </g>
+            </g>
+            <g transform="matrix(1,0,0,1,0,0)" opacity="1">
+              <path strokeLinecap="round" strokeLinejoin="miter" fillOpacity="0" strokeMiterlimit="4" className="stroke-current" stroke="currentColor" strokeOpacity="1" strokeWidth="4.5" d=" M24,30 C24,30 17,30 17,30"></path>
+            </g>
+            <g transform="matrix(1,0,0,1,0,0)" opacity="1">
+              <path strokeLinecap="round" strokeLinejoin="miter" fillOpacity="0" strokeMiterlimit="4" className="stroke-current" stroke="currentColor" strokeOpacity="1" strokeWidth="4.5" d=" M34,18 C34,18 17,18 17,18"></path>
+            </g>
+            <g transform="matrix(1,0,0,1,0,0)" opacity="1">
+              <path strokeLinecap="round" strokeLinejoin="miter" fillOpacity="0" strokeMiterlimit="4" className="stroke-current" stroke="currentColor" strokeOpacity="1" strokeWidth="4.5" d=" M51,21.34000015258789 C51,21.34000015258789 51,19.399999618530273 51,19.399999618530273 C51,14.359999656677246 51,11.84000015258789 50.02000045776367,9.90999984741211 C49.15999984741211,8.220000267028809 47.779998779296875,6.840000152587891 46.09000015258789,5.980000019073486 C44.16999816894531,5 41.63999938964844,5 36.599998474121094,5 C36.599998474121094,5 20.399999618530273,5 20.399999618530273,5 C15.359999656677246,5 12.84000015258789,5 10.90999984741211,5.980000019073486 C9.220000267028809,6.840000152587891 7.840000152587891,8.220000267028809 6.980000019073486,9.90999984741211 C6,11.84000015258789 6,14.359999656677246 6,19.399999618530273 C6,19.399999618530273 6,35.599998474121094 6,35.599998474121094 C6,40.63999938964844 6,43.16999816894531 6.980000019073486,45.09000015258789 C7.840000152587891,46.779998779296875 9.220000267028809,48.15999984741211 10.90999984741211,49.02000045776367 C12.84000015258789,50 15.359999656677246,50 20.399999618530273,50 C20.399999618530273,50 21.31999969482422,50 21.31999969482422,50">
+              </path>
+            </g>
+          </g>
+        </svg>
+      ),
+    },
+    {
+      key: 'Write',
+      label: 'Write',
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="20" height="20" preserveAspectRatio="xMidYMid meet" style={{ width: 20, height: 20 }}>
+          <defs>
+            <clipPath id="nav_write_clip_358">
+              <rect width="120" height="120" x="0" y="0"></rect>
+            </clipPath>
+          </defs>
+          <g clipPath="url(#nav_write_clip_358)">
+            <g transform="matrix(1,0,0,1,27.68,92.66)" opacity="1">
+              <g opacity="1" transform="matrix(1,0,0,1,0,0)">
+                <path strokeLinecap="round" strokeLinejoin="round" fillOpacity="0" className="stroke-current" stroke="currentColor" strokeOpacity="1" strokeWidth="9" d=" M-8.24,8.26 C-8.24,8.26 8.24,-8.26 8.24,-8.26">
+                </path>
+              </g>
+            </g>
+            <g transform="matrix(1,0,0,1,82.11,38.13)" opacity="1">
+              <g opacity="1" transform="matrix(1,0,0,1,0,0)">
+                <path strokeLinecap="butt" strokeLinejoin="miter" fillOpacity="0" strokeMiterlimit="4" className="stroke-current" stroke="currentColor" strokeOpacity="1" strokeWidth="9" d=" M6.84,25.89 C6.84,25.89 -25.89,-6.84 -25.89,-6.84 C-25.89,-6.84 -23.37,-11.38 -23.37,-11.38 C-19.17,-18.93 -17.08,-22.7 -14.1,-24.37 C-11.49,-25.83 -8.42,-26.26 -5.51,-25.58 C-2.18,-24.8 0.88,-21.74 6.99,-15.63 C6.99,-15.63 15.63,-6.98 15.63,-6.98 C21.74,-0.87 24.8,2.18 25.58,5.51 C26.26,8.42 25.83,11.49 24.37,14.1 C22.71,17.08 18.93,19.18 11.38,23.38 C11.38,23.38 6.84,25.89 6.84,25.89z">
+                </path>
+              </g>
+            </g>
+            <g transform="matrix(1,0,0,1,52.55,67.81)" opacity="1">
+              <g opacity="1" transform="matrix(1,0,0,1,0,0)">
+                <path strokeLinecap="butt" strokeLinejoin="miter" fillOpacity="0" strokeMiterlimit="4" className="stroke-current" stroke="currentColor" strokeOpacity="1" strokeWidth="9" d=" M35.96,-3.1 C35.96,-3.1 35.96,12.25 35.96,12.25 C35.96,18.43 35.96,21.52 34.8,23.96 C33.78,26.11 32.14,27.91 30.09,29.13 C27.76,30.51 24.68,30.8 18.53,31.37 C18.53,31.37 -28.78,35.74 -28.78,35.74 C-31.41,35.98 -32.73,36.1 -33.71,35.65 C-34.57,35.25 -35.25,34.57 -35.65,33.71 C-36.1,32.73 -35.98,31.41 -35.74,28.78 C-35.74,28.78 -31.37,-18.53 -31.37,-18.53 C-30.8,-24.68 -30.51,-27.76 -29.13,-30.09 C-27.91,-32.14 -26.11,-33.78 -23.96,-34.8 C-21.52,-35.96 -18.43,-35.96 -12.25,-35.96 C-12.25,-35.96 3.1,-35.96 3.1,-35.96">
+                </path>
+              </g>
+            </g>
+          </g>
+        </svg>
+      ),
+    },
+    {
+      key: 'Tools',
+      label: 'Tools',
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="20" height="20" preserveAspectRatio="xMidYMid meet" style={{ width: 20, height: 20 }}>
+          <defs>
+            <clipPath id="nav_tools_clip_395">
+              <rect width="120" height="120" x="0" y="0"></rect>
+            </clipPath>
+          </defs>
+          <g clipPath="url(#nav_tools_clip_395)">
+            <g transform="matrix(1,0,0,1,60,60)" opacity="1">
+              <g opacity="1" transform="matrix(1,0,0,1,0,0)">
+                <path className="fill-current" fill="currentColor" fillOpacity="1" d=" M54.24,-13.39 C53.97,-16.67 53.41,-19.54 52.05,-22.21 C49.89,-26.44 46.45,-29.89 42.22,-32.05 C39.55,-33.41 36.67,-33.97 33.39,-34.24 C31.92,-34.36 30.28,-34.42 28.47,-34.46 C28.45,-35.33 28.43,-36.13 28.38,-36.87 C28.25,-38.77 27.96,-40.57 27.24,-42.31 C25.57,-46.35 22.35,-49.56 18.31,-51.24 C16.57,-51.96 14.77,-52.24 12.87,-52.37 C11.04,-52.49 8.82,-52.5 6.15,-52.5 C6.15,-52.5 -6.15,-52.5 -6.15,-52.5 C-8.82,-52.5 -11.04,-52.49 -12.87,-52.37 C-14.77,-52.24 -16.57,-51.96 -18.31,-51.24 C-22.35,-49.56 -25.56,-46.35 -27.24,-42.31 C-27.96,-40.57 -28.24,-38.77 -28.37,-36.87 C-28.42,-36.13 -28.45,-35.33 -28.47,-34.46 C-30.28,-34.42 -31.92,-34.36 -33.39,-34.24 C-36.67,-33.97 -39.54,-33.41 -42.21,-32.05 C-46.44,-29.89 -49.89,-26.44 -52.05,-22.21 C-53.41,-19.54 -53.97,-16.67 -54.24,-13.39 C-54.5,-10.2 -54.5,-6.27 -54.5,-1.39 C-54.5,-1.39 -54.5,13.39 -54.5,13.39 C-54.5,18.27 -54.5,22.21 -54.24,25.39 C-53.97,28.67 -53.41,31.56 -52.05,34.22 C-49.89,38.45 -46.44,41.89 -42.21,44.05 C-39.54,45.41 -36.67,45.97 -33.39,46.24 C-30.2,46.5 -26.27,46.5 -21.39,46.5 C-21.39,46.5 21.39,46.5 21.39,46.5 C26.27,46.5 30.21,46.5 33.39,46.24 C36.67,45.97 39.55,45.41 42.22,44.05 C46.45,41.89 49.89,38.45 52.05,34.22 C53.41,31.56 53.97,28.67 54.24,25.39 C54.5,22.21 54.5,18.27 54.5,13.39 C54.5,13.39 54.5,-1.39 54.5,-1.39 C54.5,-6.27 54.5,-10.2 54.24,-13.39z M-19.4,-36.26 C-19.3,-37.7 -19.12,-38.41 -18.93,-38.87 C-18.17,-40.71 -16.71,-42.17 -14.87,-42.93 C-14.41,-43.12 -13.7,-43.3 -12.26,-43.4 C-10.77,-43.5 -8.86,-43.5 -6,-43.5 C-6,-43.5 6,-43.5 6,-43.5 C8.86,-43.5 10.78,-43.5 12.26,-43.4 C13.7,-43.3 14.41,-43.12 14.87,-42.93 C16.71,-42.17 18.17,-40.71 18.93,-38.87 C19.12,-38.41 19.3,-37.7 19.4,-36.26 C19.44,-35.73 19.46,-35.16 19.47,-34.5 C19.47,-34.5 -19.47,-34.5 -19.47,-34.5 C-19.45,-35.16 -19.44,-35.73 -19.4,-36.26z M-45.27,-12.66 C-45.05,-15.38 -44.63,-16.94 -44.03,-18.13 C-42.74,-20.67 -40.67,-22.74 -38.13,-24.03 C-36.94,-24.63 -35.38,-25.05 -32.66,-25.27 C-29.92,-25.49 -26.4,-25.5 -21.38,-25.5 C-21.38,-25.5 21.38,-25.5 21.38,-25.5 C26.4,-25.5 29.92,-25.49 32.66,-25.27 C35.38,-25.05 36.95,-24.63 38.13,-24.03 C40.67,-22.74 42.74,-20.67 44.03,-18.13 C44.63,-16.94 45.05,-15.38 45.27,-12.66 C45.44,-10.52 45.49,-7.92 45.5,-4.5 C45.5,-4.5 17.95,-4.5 17.95,-4.5 C15.94,-12.54 8.66,-18.5 0,-18.5 C-8.66,-18.5 -15.94,-12.54 -17.95,-4.5 C-17.95,-4.5 -45.5,-4.5 -45.5,-4.5 C-45.49,-7.92 -45.44,-10.52 -45.27,-12.66z M9.5,0 C9.5,5.25 5.25,9.5 0,9.5 C-5.25,9.5 -9.5,5.25 -9.5,0 C-9.5,-5.25 -5.25,-9.5 0,-9.5 C5.25,-9.5 9.5,-5.25 9.5,0z M45.5,13.2 C45.5,18.32 45.5,21.88 45.27,24.66 C45.05,27.38 44.63,28.95 44.03,30.13 C42.74,32.67 40.67,34.74 38.13,36.03 C36.95,36.63 35.38,37.05 32.66,37.27 C29.88,37.5 26.32,37.5 21.2,37.5 C21.2,37.5 -21.2,37.5 -21.2,37.5 C-26.31,37.5 -29.88,37.5 -32.66,37.27 C-35.38,37.05 -36.94,36.63 -38.13,36.03 C-40.67,34.74 -42.74,32.67 -44.03,30.13 C-44.63,28.95 -45.05,27.38 -45.27,24.66 C-45.5,21.88 -45.5,18.32 -45.5,13.2 C-45.5,13.2 -45.5,4.5 -45.5,4.5 C-45.5,4.5 -17.95,4.5 -17.95,4.5 C-15.94,12.54 -8.66,18.5 0,18.5 C8.66,18.5 15.94,12.54 17.95,4.5 C17.95,4.5 45.5,4.5 45.5,4.5 C45.5,4.5 45.5,13.2 45.5,13.2z">
+                </path>
+              </g>
+            </g>
+          </g>
+        </svg>
+      ),
+    },
   ];
 
   const handleRunTool = () => {
@@ -104,18 +202,18 @@ export const StandaloneWorkspace: React.FC<StandaloneWorkspaceProps> = ({
   };
 
   return (
-    <div className="flex h-full w-full bg-zinc-100 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-100 font-sans overflow-hidden p-[10px] gap-[10px]">
+    <div className="flex h-full w-full bg-[var(--np-bg)] text-[var(--np-fg)] font-sans overflow-hidden p-[10px] gap-[10px]">
       {/* Switchbar Left Navigation */}
-      <div className={`flex flex-col justify-between py-4 bg-[#f6f6f8] dark:bg-zinc-900 rounded-[20px] shadow-2xs transition-all duration-300 z-20 ${collapsed ? 'w-16 px-2' : 'w-56 px-3'}`}>
+      <div className={`flex flex-col justify-between py-4 bg-transparent text-[var(--np-fg)] rounded-[20px] border-none transition-all duration-300 z-20 ${collapsed ? 'w-16 px-2' : 'w-56 px-3'}`}>
         <div>
           {/* Brand Header */}
           <div className={`flex items-center ${collapsed ? 'justify-center' : 'justify-between'} px-2 mb-6`}>
             <div className="flex items-center gap-2 min-w-0">
-              <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center border border-zinc-200/80 dark:border-zinc-700/80 shadow-xs">
+              <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center border border-[var(--np-border)] shadow-xs">
                 <NowPilotAvatar className="w-full h-full object-cover" />
               </div>
               {!collapsed && (
-                <span className="font-bold text-base tracking-tight text-zinc-900 dark:text-zinc-100 truncate">
+                <span className="font-bold text-base tracking-tight text-[var(--np-fg)] truncate">
                   NowPilot
                 </span>
               )}
@@ -125,7 +223,7 @@ export const StandaloneWorkspace: React.FC<StandaloneWorkspaceProps> = ({
               <Tooltip title="Switch to sidebar">
                 <button
                   onClick={onOpenSidepanel}
-                  className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer transition-colors flex items-center justify-center"
+                  className="p-1.5 hover:bg-[var(--np-muted)] rounded-lg text-[var(--np-muted-fg)] hover:text-[var(--np-fg)] cursor-pointer transition-colors flex items-center justify-center"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 14 14"><path fill="currentColor" d="M2.665 3.362a.525.525 0 1 0-.743.743L4.818 7 1.922 9.895a.525.525 0 1 0 .743.743L5.6 7.7a.99.99 0 0 0 0-1.402zm8.67 0a.525.525 0 0 1 .743.743L9.183 7l2.895 2.895a.525.525 0 0 1-.742.743L8.399 7.7a.99.99 0 0 1 0-1.402z"></path></svg>
                 </button>
@@ -187,8 +285,6 @@ export const StandaloneWorkspace: React.FC<StandaloneWorkspaceProps> = ({
               </Tooltip>
             </div>
 
-            <ThemeToggle />
-
             {/* Collapse icon button |< */}
             <Tooltip title="Collapse">
               <button
@@ -204,7 +300,6 @@ export const StandaloneWorkspace: React.FC<StandaloneWorkspaceProps> = ({
           </div>
         ) : (
           <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800/80 flex flex-col items-center gap-3">
-            <ThemeToggle />
             {/* Settings button */}
             <Tooltip title="Options" placement="right">
               <button
@@ -240,9 +335,9 @@ export const StandaloneWorkspace: React.FC<StandaloneWorkspaceProps> = ({
       </div>
 
       {/* Main Workspace Frame */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden bg-white dark:bg-zinc-900 rounded-[20px] border border-zinc-200/80 dark:border-zinc-800 shadow-2xs">
+      <div className="flex-1 flex flex-col h-full overflow-hidden bg-[var(--np-card)] rounded-[20px] border border-[var(--np-border)] shadow-2xs">
         {activeMenu === 'Chat' && (
-          <div className="h-full w-full max-w-2xl mx-auto">
+          <div className="h-full w-full relative overflow-hidden">
             <SidepanelChat onOpenOptions={onOpenOptions} isStandalone={true} />
           </div>
         )}

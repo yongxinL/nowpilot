@@ -9,7 +9,7 @@ export function openFullApp(workspaceId: string, conversationId?: string, page?:
   if (conversationId) params.set('conversationId', conversationId);
   if (page) params.set('page', page);
 
-  const url = chrome.runtime.getURL(`app.html?${params.toString()}`);
+  const url = chrome.runtime.getURL(`standalone.html?${params.toString()}`);
 
   publish(WORKSPACE_CHANNEL, {
     type: 'FULL_APP_OPEN',

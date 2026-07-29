@@ -45,7 +45,6 @@ import {
   BarsOutlined,
   LayoutOutlined,
 } from '@ant-design/icons';
-import { NowPilotAvatar } from '../common/NowPilotAvatar';
 
 export interface NoteItem {
   id: string;
@@ -410,10 +409,6 @@ export const NotesWorkspace: React.FC = () => {
           >
             Backup
           </Button>
-
-          <div className="ml-1 w-8 h-8 rounded-full overflow-hidden border border-zinc-200 dark:border-zinc-700 flex items-center justify-center bg-violet-100 dark:bg-violet-950">
-            <NowPilotAvatar className="w-full h-full object-cover" />
-          </div>
         </div>
       </div>
 
@@ -576,22 +571,6 @@ export const NotesWorkspace: React.FC = () => {
                   <span>Study Notes</span>
                 </span>
                 <span className="text-[11px] text-zinc-400">10</span>
-              </div>
-            </div>
-
-            {/* Profile Card (moved below nav items) */}
-            <div className="p-2 bg-white dark:bg-zinc-800/80 rounded-2xl border border-zinc-200/80 dark:border-zinc-700/80 shadow-2xs flex items-center gap-3 my-3">
-              <div className="relative flex-shrink-0">
-                <div className="w-9 h-9 rounded-full overflow-hidden border border-zinc-200 dark:border-zinc-700">
-                  <NowPilotAvatar className="w-full h-full object-cover" />
-                </div>
-                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white dark:border-zinc-800" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="font-bold text-xs text-zinc-900 dark:text-zinc-100 truncate">
-                  G Assistant
-                </div>
-                <div className="text-[10px] text-zinc-400 truncate">Always here to help you</div>
               </div>
             </div>
 
@@ -830,12 +809,6 @@ export const NotesWorkspace: React.FC = () => {
             {/* Note Sub-meta bar */}
             <div className="px-5 py-2.5 bg-zinc-50/60 dark:bg-zinc-800/40 border-b border-zinc-100 dark:border-zinc-800/80 flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
               <div className="flex items-center gap-4">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-5 h-5 rounded-full overflow-hidden border border-zinc-200">
-                    <NowPilotAvatar className="w-full h-full object-cover" />
-                  </div>
-                  <span className="font-semibold text-zinc-800 dark:text-zinc-200">G Assistant</span>
-                </div>
                 <span>Created {selectedNote.createdAt}</span>
                 <span>Updated {selectedNote.createdAt}</span>
               </div>

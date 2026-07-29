@@ -5,9 +5,9 @@ milestone_name: milestone
 current_phase: 01
 status: completed
 stopped_at: Completed 01-04-PLAN.md (OnboardingWizard + background install detection)
-last_updated: "2026-07-28T08:48:59.928Z"
-last_activity: 2026-07-28
-last_activity_desc: Phase 01 marked complete
+last_updated: "2026-07-29T20:53:00.000Z"
+last_activity: 2026-07-29
+last_activity_desc: Phase 01 remediation — fixed isolation test, verify script, antdConfig, component tests
 progress:
   total_phases: 11
   completed_phases: 1
