@@ -200,10 +200,6 @@ Each task was committed atomically:
 - **Verification:** All 17 CryptoService tests pass
 - **Committed in:** `de384d7` (Task 2 commit)
 
-**2. [Rule 3 - Blocking] Apache-licensed codebase-memory-mcp files found in repository**
-- **Details:** See forensics report
-- **Resolution:** Documented in 02-FORENSICS.md
-
 ---
 
 **Total deviations:** 1 auto-fixed (1 blocking)
