@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import { chromeStorageAdapter } from '../core/theme/chromeStorageAdapter';
+import { chromeStorageAdapter } from '../core/storage/chromeStorageAdapter';
 import { useThemeStore, type ThemeMode } from '../core/theme/ThemeStore';
 import type {
   ChatSession,
