@@ -63,7 +63,14 @@ Plans:
   4. User's IndexedDB migrates from v1 fixture through all versions idempotently
   5. Workspace state persists across page reload and cross-surface handoff
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+
+- [ ] 02-01-PLAN.md — Tracer: CryptoService + ApiKeyStore end-to-end (encrypt→store→decrypt round-trip)
+- [ ] 02-02-PLAN.md — WriteJournal + MigrationRunner + test infrastructure (idb, fake-indexeddb, session mock)
+- [ ] 02-03-PLAN.md — Adapter relocation + SessionStore + WorkspaceStore migration to chrome.storage.local
+- [ ] 02-04-PLAN.md — Storage topology completion (MessageStore, NotesStore, DiagnosticsStore skeletons, redactSensitive, CSP docs)
 
 ### Phase 3: AI Core Pipeline
 
@@ -214,7 +221,7 @@ Decimal phases execute after their parent integer phase: 4 → 4a → 5 → 5a �
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Project Scaffold & Runtime Foundation | 5/5 | Completed | 2026-07-28 |
-| 2. Storage & Security Foundation | TBD | Not started | - |
+| 2. Storage & Security Foundation | 0/4 | Planned | - |
 | 3. AI Core Pipeline | TBD | Not started | - |
 | 4. Context Optimization Pipeline | TBD | Not started | - |
 | 4a. Page Content Extraction | TBD | Not started | - |
