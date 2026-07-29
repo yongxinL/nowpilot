@@ -16,7 +16,14 @@ export class CryptoService {
 
   /** Get or create the install secret (generated once, persisted forever) */
   async getInstallSecret(): Promise<Uint8Array> {
-    const result = await chrome.storage.local.get(this.INSTALL_SECRET_KEY);
+    let result: Record<string, unknown>;
+    try {
+      result = await chrome.storage.local.get(this.INSTALL_SECRET_KEY);
+    } catch (err) {
+      throw new Error(
+        `chrome.storage.local is unavailable — cannot persist install secret: ${err instanceof Error ? err.message : 'unknown error'}`,
+      );
+    }
     if (result[this.INSTALL_SECRET_KEY]) {
       // stored as base64 in chrome.storage (only supports JSON-serializable values)
       return this.base64ToBytes(result[this.INSTALL_SECRET_KEY] as string);
@@ -71,10 +78,22 @@ export class CryptoService {
     salt: Uint8Array,
     iv: Uint8Array,
   ): Promise<string> {
+    // Use toString() for cross-realm safety (jsdom vs Node.js crypto realm)
+    const ciphertextTag = Object.prototype.toString.call(ciphertext);
+    if (ciphertextTag !== '[object ArrayBuffer]' && ciphertextTag !== '[object Uint8Array]') {
+      throw new TypeError('ciphertext must be an ArrayBuffer or Uint8Array');
+    }
+    // Normalize to ArrayBuffer if Uint8Array
+    const ciphertextBuffer = ciphertextTag === '[object Uint8Array]'
+      ? (ciphertext as Uint8Array).buffer
+      : ciphertext as ArrayBuffer;
+    if (iv.length !== 12) {
+      throw new Error(`Invalid IV length: expected 12 bytes, got ${iv.length}`);
+    }
     try {
       const key = await this.deriveKey(salt);
       const decrypted = await crypto.subtle.decrypt(
-        { name: 'AES-GCM', iv }, key, ciphertext,
+        { name: 'AES-GCM', iv }, key, ciphertextBuffer,
       );
       return new TextDecoder().decode(decrypted);
     } catch (err) {
