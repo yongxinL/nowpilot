@@ -13,10 +13,8 @@ describe('MigrationRunner', () => {
     it('should create all stores and indexes defined in each version step', async () => {
       await migrationRunner.migrate('WriteJournalDB', 4);
 
-      // Open without upgrade callback to inspect resulting schema
-      const db = await openDB('WriteJournalDB', 1, {
-        // Use a version <= current to avoid triggering upgrades
-      });
+      // Open at current version to inspect resulting schema
+      const db = await openDB('WriteJournalDB');
 
       // v1: 'entries' store with 'by-status' index
       expect(db.objectStoreNames.contains('entries')).toBe(true);
@@ -77,7 +75,7 @@ describe('MigrationRunner', () => {
       await migrationRunner.migrate('WriteJournalDB', 4);
 
       // Verify v3 index exists
-      const db = await openDB('WriteJournalDB', 1);
+      const db = await openDB('WriteJournalDB');
       const store = db.transaction('entries').objectStore('entries');
       expect(store.indexNames.contains('by-operation')).toBe(true);
       expect(store.indexNames.contains('by-status')).toBe(true);
@@ -105,7 +103,7 @@ describe('MigrationRunner', () => {
       await migrationRunner.migrate('WriteJournalDB', 4);
 
       // Put some data after first migration
-      const db1 = await openDB('WriteJournalDB', 1);
+      const db1 = await openDB('WriteJournalDB');
       await db1.put('entries', {
         id: 'entry-1',
         operation: 'update-workspace',
@@ -125,7 +123,7 @@ describe('MigrationRunner', () => {
       await migrationRunner.migrate('WriteJournalDB', 4);
 
       // Verify data still intact
-      const db2 = await openDB('WriteJournalDB', 1);
+      const db2 = await openDB('WriteJournalDB');
       const entry = await db2.get('entries', 'entry-1');
       expect(entry).toBeDefined();
       expect(entry!.id).toBe('entry-1');
@@ -157,7 +155,7 @@ describe('MigrationRunner', () => {
       await migrationRunner.migrate('WriteJournalDB', 4);
 
       // Verify migration actually happened
-      const db = await openDB('WriteJournalDB', 1);
+      const db = await openDB('WriteJournalDB');
       expect(db.objectStoreNames.contains('auditLog')).toBe(true);
       expect(db.objectStoreNames.contains('migrated')).toBe(true);
       db.close();
@@ -217,7 +215,7 @@ describe('MigrationRunner', () => {
       await migrationRunner.migrate('WriteJournalDB', 4);
 
       // Verify the migrated store has the transformed data
-      const db = await openDB('WriteJournalDB', 1);
+      const db = await openDB('WriteJournalDB');
       expect(db.objectStoreNames.contains('migrated')).toBe(true);
 
       const migratedEntries = await db.getAll('migrated');
