@@ -1,6 +1,7 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
+import { chromeStorageAdapter } from '../storage/chromeStorageAdapter';
 
 export type ActiveSurface = 'sidepanel' | 'full-app';
 
@@ -106,6 +107,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
     })),
     {
       name: 'np_workspace_store',
+      storage: createJSONStorage(() => chromeStorageAdapter),
       partialize: (state) => ({
         workspaceId: state.workspaceId,
         conversationId: state.conversationId,

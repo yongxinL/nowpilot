@@ -11,7 +11,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import { chromeStorageAdapter } from '../theme/chromeStorageAdapter';
+import { chromeStorageAdapter } from './chromeStorageAdapter';
 import { cryptoService } from './CryptoService';
 
 /** Binary-to-base64 conversion for chrome.storage.local compatibility */
