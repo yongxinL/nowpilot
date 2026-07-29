@@ -1,9 +1,14 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useWorkspaceStore } from '../../../src/core/workspace/WorkspaceStore';
 
 describe('WorkspaceStore', () => {
   beforeEach(() => {
+    // Clear chrome.storage.local mock
+    const map = (globalThis as any).__chromeStorageMap;
+    if (map) map.clear();
+
     useWorkspaceStore.getState().reset();
+    vi.clearAllMocks();
   });
 
   it('initializes with default state', () => {
@@ -62,5 +67,37 @@ describe('WorkspaceStore', () => {
     expect(newState.conversationId).toBeNull();
     expect(newState.pinnedTabs).toEqual([]);
     expect(newState.version).toBe(0);
+  });
+
+  describe('persistence via chromeStorageAdapter', () => {
+    it('should persist workspace state to chrome.storage.local after mutation', async () => {
+      useWorkspaceStore.getState().setConversationId('persist-test');
+
+      // Wait for Zustand persist middleware to flush to chrome.storage.local
+      await vi.waitFor(() => {
+        const map = (globalThis as any).__chromeStorageMap;
+        expect(map.has('np_workspace_store')).toBe(true);
+      });
+
+      const map = (globalThis as any).__chromeStorageMap;
+      const storedRaw = map.get('np_workspace_store');
+      expect(storedRaw).toBeDefined();
+      const parsed = JSON.parse(storedRaw);
+      expect(parsed.state.conversationId).toBe('persist-test');
+    });
+
+    it('should persist active surface changes to chrome.storage.local', async () => {
+      useWorkspaceStore.getState().setActiveSurface('full-app');
+
+      await vi.waitFor(() => {
+        const map = (globalThis as any).__chromeStorageMap;
+        expect(map.has('np_workspace_store')).toBe(true);
+      });
+
+      const map = (globalThis as any).__chromeStorageMap;
+      const storedRaw = map.get('np_workspace_store');
+      const parsed = JSON.parse(storedRaw);
+      expect(parsed.state.activeSurface).toBe('full-app');
+    });
   });
 });
