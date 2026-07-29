@@ -31,6 +31,7 @@ export default defineConfig({
     permissions: [
       'sidePanel',
       'storage',
+      'unlimitedStorage',
       'cookies',
       'alarms',
       'tabs',

@@ -1,3 +1,5 @@
+import 'fake-indexeddb/auto';
+
 import { vi } from 'vitest';
 
 const storage = new Map<string, string>();
@@ -97,7 +99,57 @@ const chromeStorageLocal = {
 if (!(globalThis as any).chrome) {
   (globalThis as any).chrome = {} as typeof chrome;
 }
-(globalThis as any).chrome.storage = { local: chromeStorageLocal as any };
+(globalThis as any).chrome.runtime = { id: 'test-extension-id' };
+// --- Chrome storage.session mock (Map-backed, same pattern as local) ---
+const chromeSessionMap = new Map<string, string>();
+
+const chromeStorageSession = {
+  get: vi.fn(
+    (keys?: string | string[] | Record<string, unknown> | null): Promise<Record<string, unknown>> => {
+      if (keys === undefined || keys === null) {
+        return Promise.resolve(Object.fromEntries(chromeSessionMap));
+      }
+      if (typeof keys === 'string') {
+        const val = chromeSessionMap.get(keys) ?? null;
+        return Promise.resolve({ [keys]: val });
+      }
+      if (Array.isArray(keys)) {
+        const result: Record<string, unknown> = {};
+        for (const k of keys) {
+          result[k] = chromeSessionMap.get(k) ?? null;
+        }
+        return Promise.resolve(result);
+      }
+      return Promise.resolve({ ...(keys as Record<string, unknown>) });
+    },
+  ),
+  set: vi.fn((items: Record<string, unknown>): Promise<void> => {
+    for (const [key, value] of Object.entries(items)) {
+      chromeSessionMap.set(key, value as string);
+    }
+    return Promise.resolve();
+  }),
+  remove: vi.fn((keys: string | string[]): Promise<void> => {
+    const keyList = Array.isArray(keys) ? keys : [keys];
+    for (const k of keyList) {
+      chromeSessionMap.delete(k);
+    }
+    return Promise.resolve();
+  }),
+  clear: vi.fn((): Promise<void> => {
+    chromeSessionMap.clear();
+    return Promise.resolve();
+  }),
+};
+
+// Expose helpers for tests to inspect/reset
+(globalThis as any).__chromeStorageSession = chromeStorageSession;
+(globalThis as any).__chromeSessionMap = chromeSessionMap;
+
+(globalThis as any).chrome.storage = {
+  local: chromeStorageLocal as any,
+  session: chromeStorageSession,
+};
 
 // --- BroadcastChannel mock ---
 const broadcastChannels = new Map<string, any[]>();
