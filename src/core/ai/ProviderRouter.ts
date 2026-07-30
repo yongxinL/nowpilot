@@ -1,38 +1,205 @@
 import { useApiKeyStore } from '../storage/ApiKeyStore';
 import { PipelineError } from './PipelineError';
 import { createOpenAIAdapter } from './providers/openai';
+import { createAnthropicAdapter } from './providers/anthropic';
+import { createGeminiAdapter } from './providers/gemini';
+import { createOllamaAdapter } from './providers/ollama';
 import type { ProviderAdapter } from './providers/ProviderAdapter';
 import type { PipelineProviderId } from './types';
 
+const PROVIDER_ORDER: PipelineProviderId[] = ['openai', 'anthropic', 'gemini', 'ollama'];
+
+const CIRCUIT_BREAKER_THRESHOLD = 3;
+const CIRCUIT_BREAKER_WINDOW_MS = 60_000;
+const CIRCUIT_BREAKER_COOLDOWN_MS = 5 * 60_000;
+
+interface CircuitState {
+  failureCount: number;
+  lastFailureTime: number;
+  openUntil: number | null;
+}
+
+interface OperationState {
+  hasStreamedFirstToken: boolean;
+  attempts: Array<{ providerId: string; error?: PipelineError }>;
+}
+
 export class ProviderRouter {
-  async selectProvider(preferred: PipelineProviderId): Promise<ProviderAdapter> {
-    const apiKey = await useApiKeyStore.getState().getKey(preferred);
-    if (!apiKey) {
-      throw new PipelineError(
-        'PROVIDER_AUTH',
-        `Authentication failed for ${preferred}. Check your API key in Options.`,
-        { providerId: preferred },
-      );
+  private circuitBreakers: Map<PipelineProviderId, CircuitState> = new Map();
+  private operationStates: Map<string, OperationState> = new Map();
+
+  private getCircuitState(providerId: PipelineProviderId): CircuitState {
+    let state = this.circuitBreakers.get(providerId);
+    if (!state) {
+      state = { failureCount: 0, lastFailureTime: 0, openUntil: null };
+      this.circuitBreakers.set(providerId, state);
+    }
+    return state;
+  }
+
+  isCircuitBreakerOpen(providerId: PipelineProviderId): boolean {
+    const state = this.getCircuitState(providerId);
+    if (state.openUntil === null) return false;
+    if (Date.now() >= state.openUntil) {
+      state.failureCount = 0;
+      state.openUntil = null;
+      return false;
+    }
+    return true;
+  }
+
+  recordFailure(providerId: PipelineProviderId, error: PipelineError): void {
+    const state = this.getCircuitState(providerId);
+    state.failureCount++;
+    state.lastFailureTime = Date.now();
+
+    if (state.failureCount >= CIRCUIT_BREAKER_THRESHOLD) {
+      const recentCount = this.countRecentFailures(providerId);
+      if (recentCount >= CIRCUIT_BREAKER_THRESHOLD) {
+        state.openUntil = Date.now() + CIRCUIT_BREAKER_COOLDOWN_MS;
+      }
+    }
+  }
+
+  recordSuccess(providerId: PipelineProviderId): void {
+    const state = this.getCircuitState(providerId);
+    state.failureCount = 0;
+    state.openUntil = null;
+  }
+
+  private countRecentFailures(providerId: PipelineProviderId): number {
+    const state = this.getCircuitState(providerId);
+    const windowStart = Date.now() - CIRCUIT_BREAKER_WINDOW_MS;
+    return state.lastFailureTime >= windowStart ? state.failureCount : 0;
+  }
+
+  private getOperationState(operationId: string): OperationState {
+    let state = this.operationStates.get(operationId);
+    if (!state) {
+      state = { hasStreamedFirstToken: false, attempts: [] };
+      this.operationStates.set(operationId, state);
+    }
+    return state;
+  }
+
+  markFirstTokenStreamed(operationId: string): void {
+    const state = this.getOperationState(operationId);
+    state.hasStreamedFirstToken = true;
+  }
+
+  hasStreamedFirstToken(operationId: string): boolean {
+    const state = this.operationStates.get(operationId);
+    return state?.hasStreamedFirstToken ?? false;
+  }
+
+  async selectProvider(preferred: PipelineProviderId): Promise<{ adapter: ProviderAdapter; providerId: PipelineProviderId }> {
+    const attemptedProviders: string[] = [];
+    const startIndex = PROVIDER_ORDER.indexOf(preferred);
+    const orderedProviders = [
+      ...PROVIDER_ORDER.slice(startIndex),
+      ...PROVIDER_ORDER.slice(0, startIndex),
+    ];
+
+    for (const providerId of orderedProviders) {
+      if (this.isCircuitBreakerOpen(providerId)) {
+        attemptedProviders.push(`${providerId} (circuit open)`);
+        continue;
+      }
+
+      if (providerId !== 'ollama') {
+        const apiKey = await useApiKeyStore.getState().getKey(providerId);
+        if (!apiKey) {
+          attemptedProviders.push(`${providerId} (no key)`);
+          continue;
+        }
+      }
+
+      let adapter: ProviderAdapter;
+      switch (providerId) {
+        case 'openai': {
+          const key = await useApiKeyStore.getState().getKey('openai');
+          adapter = createOpenAIAdapter(key!);
+          break;
+        }
+        case 'anthropic': {
+          const key = await useApiKeyStore.getState().getKey('anthropic');
+          adapter = createAnthropicAdapter(key!);
+          break;
+        }
+        case 'gemini': {
+          const key = await useApiKeyStore.getState().getKey('gemini');
+          adapter = createGeminiAdapter(key!);
+          break;
+        }
+        case 'ollama':
+          adapter = createOllamaAdapter();
+          break;
+        default:
+          attemptedProviders.push(`${providerId} (unknown)`);
+          continue;
+      }
+
+      return { adapter, providerId };
     }
 
-    switch (preferred) {
-      case 'openai':
-        return createOpenAIAdapter(apiKey);
-      case 'anthropic':
-      case 'gemini':
-      case 'ollama':
-        throw new PipelineError(
-          'PROVIDER_AUTH',
-          `${preferred} is not yet configured. Only OpenAI is available in this version.`,
-          { providerId: preferred },
-        );
-      default:
-        throw new PipelineError(
-          'PROVIDER_AUTH',
-          `Unknown provider: ${preferred}.`,
-          { providerId: preferred },
-        );
+    throw new PipelineError(
+      'CIRCUIT_OPEN',
+      'All providers are temporarily unavailable. Please try again in a few minutes.',
+      { attemptedProviders },
+    );
+  }
+
+  async executeWithFallback<T>(
+    preferredProvider: PipelineProviderId,
+    operation: (adapter: ProviderAdapter, providerId: PipelineProviderId) => Promise<T>,
+    operationId?: string,
+  ): Promise<T> {
+    const opId = operationId ?? crypto.randomUUID();
+    const state = this.getOperationState(opId);
+
+    let lastError: PipelineError | undefined;
+
+    const startIndex = PROVIDER_ORDER.indexOf(preferredProvider);
+    const orderedProviders = [
+      ...PROVIDER_ORDER.slice(startIndex),
+      ...PROVIDER_ORDER.slice(0, startIndex),
+    ];
+
+    for (const providerId of orderedProviders) {
+      if (this.isCircuitBreakerOpen(providerId)) continue;
+
+      if (state.hasStreamedFirstToken && state.attempts.length > 1) {
+        throw lastError ?? new PipelineError('UNKNOWN', 'Streaming fallback blocked.', {});
+      }
+
+      try {
+        const { adapter } = await this.selectProvider(providerId);
+        state.attempts.push({ providerId });
+        const result = await operation(adapter, providerId);
+        this.recordSuccess(providerId);
+        return result;
+      } catch (err) {
+        const error = err instanceof PipelineError ? err : new PipelineError('UNKNOWN', String(err), {});
+        state.attempts[state.attempts.length - 1] = { providerId, error };
+        this.recordFailure(providerId, error);
+
+        if (!error.retryable) {
+          throw error;
+        }
+
+        if (state.hasStreamedFirstToken) {
+          throw error;
+        }
+
+        lastError = error;
+      }
     }
+
+    throw lastError ?? new PipelineError(
+      'CIRCUIT_OPEN',
+      'All providers are temporarily unavailable. Please try again in a few minutes.',
+      { attemptedProviders: orderedProviders },
+    );
   }
 }
 

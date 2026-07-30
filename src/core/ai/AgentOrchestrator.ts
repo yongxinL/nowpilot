@@ -12,7 +12,7 @@ export class AgentOrchestrator {
     context: PlannerContext,
   ): Promise<string> {
     try {
-      const adapter = await providerRouter.selectProvider(providerId);
+      const { adapter } = await providerRouter.selectProvider(providerId);
       const decision = await plannerService.plan(adapter, tier, context);
 
       switch (decision.action) {

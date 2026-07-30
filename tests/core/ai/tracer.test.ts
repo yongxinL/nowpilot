@@ -19,13 +19,16 @@ vi.mock('../../../src/core/ai/ProviderRouter', () => {
       selectProvider: vi.fn((providerId: string) => {
         if (providerId === 'openai') {
           return Promise.resolve({
+            adapter: {
+              providerId: 'openai' as const,
+              createLanguageModel: vi.fn(),
+              validateConnection: vi.fn().mockResolvedValue({ ok: true, models: ['gpt-4o'] }),
+              supportsStructuredOutput: true,
+              getDefaultModelForTier: vi.fn().mockReturnValue('gpt-4o-mini'),
+              getCacheStrategy: vi.fn().mockReturnValue('prefix-only'),
+              getTelemetryMetadata: vi.fn().mockReturnValue({ provider: 'openai' }),
+            },
             providerId: 'openai',
-            createLanguageModel: vi.fn(),
-            validateConnection: vi.fn().mockResolvedValue({ ok: true, models: ['gpt-4o'] }),
-            supportsStructuredOutput: true,
-            getDefaultModelForTier: vi.fn().mockReturnValue('gpt-4o-mini'),
-            getCacheStrategy: vi.fn().mockReturnValue('prefix-only'),
-            getTelemetryMetadata: vi.fn().mockReturnValue({ provider: 'openai' }),
           });
         }
         return Promise.reject(
