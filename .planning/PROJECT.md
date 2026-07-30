@@ -8,6 +8,10 @@ NowPilot is a privacy-first, extensible Chrome MV3 extension AI assistant and pe
 
 Users can acquire knowledge from web pages, store it as interconnected atomic notes, understand it through AI enrichment (tagging/summary/RAG), and interact with it through a persona-driven, intention-aware conversational workspace — all running locally on their machine.
 
+## Current State
+
+Phase 3 complete — AI Core Pipeline operational. All 4 provider adapters, PlannerService/ExecutorService/RendererService pipeline, ProviderRouter with fallback/circuit-breaker, PersonaInjector, streaming infrastructure, and AgentOrchestrator multi-turn loop are implemented and tested (90 tests).
+
 ## Current Milestone: v0.1 NowPilot Initial Release
 
 **Goal:** Build the full NowPilot v0.1 — a privacy-first Chrome MV3 AI assistant and personal knowledge platform with two UI surfaces, cost-effective AI pipeline, persistent memory, LLM-Wiki, layered page extraction, add-ons, and RICH conversational UX.
@@ -36,7 +40,7 @@ Users can acquire knowledge from web pages, store it as interconnected atomic no
 
 ## Constraints
 
-- **Tech stack:** WXT ^0.19, React ^19, antd ^6, @ant-design/x ^2, @ant-design/x-markdown ^2, Zustand ^5, @ai-sdk/* ^1, zod ^3, MiniSearch ^7, idb ^8, motion ^12, yaml ^2, defuddle ^0.6 — NO tailwindcss, shadcn/ui, @radix-ui/react-*, @ant-design/x-sdk, @ant-design/x-card, framer-motion, or @anthropic-ai/sdk directly
+- **Tech stack:** WXT ^0.19, React ^19, antd ^6, @ant-design/x ^2, @ant-design/x-markdown ^2, Zustand ^5, ai ^7, @ai-sdk/* ^4, zod ^4, MiniSearch ^7, idb ^8, motion ^12, yaml ^2, defuddle ^0.6 — NO tailwindcss, shadcn/ui, @radix-ui/react-*, @ant-design/x-sdk, @ant-design/x-card, framer-motion, or @anthropic-ai/sdk directly
 - **MV3 rules:** No AI/MCP/IndexedDB in background SW; no custom User-Agent; no eval/remote code; content scripts extraction-only (no UI rendering, no host-page write-back in v0.1)
 - **Two surfaces, one workspace:** Side Panel and Full App share WorkspaceStore with single-writer primary election via BroadcastBus
 - **Page injection:** Deferred to v0.2+; v0.1 has no Shadow DOM, no host-page UI
@@ -46,7 +50,9 @@ Users can acquire knowledge from web pages, store it as interconnected atomic no
 
 ### Validated
 
-(None yet — ship to validate)
+- [x] **AI-01**: Four provider adapters (OpenAI, Anthropic, Gemini, Ollama) with ProviderRouter fallback/circuit-breaker — Phase 3
+- [x] **AI-02**: PlannerService → ExecutorService → RendererService pipeline with tier caps — Phase 3
+- [x] **AI-03**: PersonaInjector prepends persona block into all AI system prompts — Phase 3
 
 ### Active
 
@@ -55,9 +61,9 @@ Users can acquire knowledge from web pages, store it as interconnected atomic no
 - [ ] **SHELL-03**: Shared WorkspaceStore across both surfaces with handoff (Flow 11)
 - [ ] **SHELL-04**: Theme toggle (light/dark/auto) affects both surfaces immediately
 - [ ] **SHELL-05**: Cmd+K command palette on both surfaces
-- [ ] **AI-01**: Four provider adapters (OpenAI, Anthropic, Gemini, Ollama) with ProviderRouter fallback/circuit-breaker
-- [ ] **AI-02**: PlannerService → ExecutorService → RendererService pipeline with tier caps (Appendix I)
-- [ ] **AI-03**: PersonaInjector prepends persona block into all AI system prompts (RICH-R-01/02)
+- [x] **AI-01**: Four provider adapters (OpenAI, Anthropic, Gemini, Ollama) with ProviderRouter fallback/circuit-breaker
+- [x] **AI-02**: PlannerService → ExecutorService → RendererService pipeline with tier caps (Appendix I)
+- [x] **AI-03**: PersonaInjector prepends persona block into all AI system prompts (RICH-R-01/02)
 - [ ] **AI-04**: P0 Interaction — Welcome cards, context-aware quick-action chips, clarification chips, follow-up chips (RICH P0)
 - [ ] **CTX-01**: ContextOptimizer with dynamic token budgets, degradation pipeline, and minimal mode for tiny models
 - [ ] **CTX-02**: PromptCacheManager with per-provider cache-hint transformation (Appendix K)
@@ -130,4 +136,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-28 after initialization*
+*Last updated: 2026-07-30 after Phase 3 completion*
