@@ -17,9 +17,9 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### AI Pipeline
 
-- [ ] **AI-01**: User can configure four AI providers (OpenAI, Anthropic, Gemini, Ollama) with automatic fallback and circuit breaker
-- [ ] **AI-02**: User interactions flow through PlannerService → ExecutorService → RendererService with tier-based step limits
-- [ ] **AI-03**: User's persona configuration is injected into every AI system prompt via PersonaInjector
+- [x] **AI-01**: User can configure four AI providers (OpenAI, Anthropic, Gemini, Ollama) with automatic fallback and circuit breaker
+- [x] **AI-02**: User interactions flow through PlannerService → ExecutorService → RendererService with tier-based step limits
+- [x] **AI-03**: User's persona configuration is injected into every AI system prompt via PersonaInjector
 - [ ] **AI-04**: User sees welcome cards, context-aware quick-action chips, clarification chips, and follow-up chips (RICH P0 interactions)
 
 ### Context
@@ -102,9 +102,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SHELL-03 | Phase 1 | Complete |
 | SHELL-04 | Phase 1 | Complete |
 | SHELL-05 | Phase 1 | Complete |
-| AI-01 | Phase 3 | Pending |
-| AI-02 | Phase 3 | Pending |
-| AI-03 | Phase 3 | Pending |
+| AI-01 | Phase 3 | Complete |
+| AI-02 | Phase 3 | Complete |
+| AI-03 | Phase 3 | Complete |
 | AI-04 | Phase 7 | Pending |
 | CTX-01 | Phase 4 | Pending |
 | CTX-02 | Phase 4 | Pending |
