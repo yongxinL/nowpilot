@@ -85,7 +85,17 @@ Plans:
   4. User's persona configuration (from PreferenceMemoryStore) is prepended into every Planner, Executor, Renderer, and MemoryExtractor system prompt via PersonaInjector, placed in the cached [SYSTEM] section
   5. Structured output with malformed JSON is repaired once via one-shot repair; second failure returns a typed schema error
 
-**Plans**: TBD
+**Plans**: 7/7 plans created
+
+Plans:
+- [ ] 03-01-PLAN.md — TRACER: Install deps + core types + OpenAI adapter + minimal answer pipeline + tracer test (AI-01, AI-02)
+- [ ] 03-02-PLAN.md — Anthropic, Gemini, Ollama ProviderAdapters + contract tests (AI-01)
+- [ ] 03-03-PLAN.md — ProviderRouter full: fallback chain, circuit breaker, streaming guard + tests (AI-01)
+- [ ] 03-04-PLAN.md — PlannerService dual-mode + StructuredOutput one-shot JSON repair + tests (AI-02)
+- [ ] 03-05-PLAN.md — PersonaProfile + PersonaInjector with tiered injection + byte-stability tests (AI-03)
+- [ ] 03-06-PLAN.md — StreamAdapter + ChunkBuffer + RendererService.stream() + tests (AI-02)
+- [ ] 03-07-PLAN.md — AgentOrchestrator full loop + ExecutorService full + integration tests + phase verification (AI-01, AI-02, AI-03)
+
 **UI hint**: yes
 
 ### Phase 4: Context Optimization Pipeline
@@ -222,7 +232,7 @@ Decimal phases execute after their parent integer phase: 4 → 4a → 5 → 5a �
 |-------|----------------|--------|-----------|
 | 1. Project Scaffold & Runtime Foundation | 5/5 | Completed | 2026-07-28 |
 | 2. Storage & Security Foundation | 4/4 | Completed | 2026-07-29 |
-| 3. AI Core Pipeline | TBD | Not started | - |
+| 3. AI Core Pipeline | 0/7 | Planned | 2026-07-30 |
 | 4. Context Optimization Pipeline | TBD | Not started | - |
 | 4a. Page Content Extraction | TBD | Not started | - |
 | 5. Knowledge Base | TBD | Not started | - |
