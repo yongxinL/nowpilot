@@ -85,12 +85,12 @@ Plans:
   4. User's persona configuration (from PreferenceMemoryStore) is prepended into every Planner, Executor, Renderer, and MemoryExtractor system prompt via PersonaInjector, placed in the cached [SYSTEM] section
   5. Structured output with malformed JSON is repaired once via one-shot repair; second failure returns a typed schema error
 
-**Plans**: 1/7 plans executed
+**Plans**: 2/7 plans executed
 
 Plans:
 
 - [x] 03-01-PLAN.md — TRACER: Install deps + core types + OpenAI adapter + minimal answer pipeline + tracer test (AI-01, AI-02)
-- [ ] 03-02-PLAN.md — Anthropic, Gemini, Ollama ProviderAdapters + contract tests (AI-01)
+- [x] 03-02-PLAN.md — Anthropic, Gemini, Ollama ProviderAdapters + contract tests (AI-01)
 - [ ] 03-03-PLAN.md — ProviderRouter full: fallback chain, circuit breaker, streaming guard + tests (AI-01)
 - [ ] 03-04-PLAN.md — PlannerService dual-mode + StructuredOutput one-shot JSON repair + tests (AI-02)
 - [ ] 03-05-PLAN.md — PersonaProfile + PersonaInjector with tiered injection + byte-stability tests (AI-03)
@@ -233,7 +233,7 @@ Decimal phases execute after their parent integer phase: 4 → 4a → 5 → 5a �
 |-------|----------------|--------|-----------|
 | 1. Project Scaffold & Runtime Foundation | 5/5 | Completed | 2026-07-28 |
 | 2. Storage & Security Foundation | 4/4 | Completed | 2026-07-29 |
-| 3. AI Core Pipeline | 1/7 | In Progress|  |
+| 3. AI Core Pipeline | 2/7 | In Progress|  |
 | 4. Context Optimization Pipeline | TBD | Not started | - |
 | 4a. Page Content Extraction | TBD | Not started | - |
 | 5. Knowledge Base | TBD | Not started | - |
