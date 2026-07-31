@@ -30,7 +30,15 @@ export default defineContentScript({
         { url: location.href, timestamp: Date.now() },
         'content',
       );
-      chrome.runtime.sendMessage(envelope).catch(() => {});
+      chrome.runtime.sendMessage(envelope).catch((err) => {
+        // Extension may be reloading; navigation signals are best-effort.
+        // Log for diagnostics but do not propagate.
+        if (chrome.runtime.lastError) {
+          console.debug('[content.core] SPA_NAVIGATION send skipped:', chrome.runtime.lastError.message);
+        } else if (err instanceof Error) {
+          console.debug('[content.core] SPA_NAVIGATION send failed:', err.message);
+        }
+      });
     }
 
     const observer = new MutationObserver(() => {
