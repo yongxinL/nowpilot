@@ -26,7 +26,7 @@ must_haves:
     - "Gap-1-wiring: pageContentService.init() is called from entrypoints/sidepanel/main.tsx at startup (tabs.onUpdated, tabs.onRemoved, SPA_NAVIGATION handler registered)"
     - "Gap-2-pwd: Name-heuristic password redaction covers compound/suffix forms: user_pwd, user_passwd, db_pwd values omitted from SerializedPage.html"
     - "Gap-3-iso: Isolation bundle-size test (Test 2) and banned-string test (Test 3) target .output/chrome-mv3/content.js (not content-scripts/) — assertions run for real"
-    - "Gap-3-verify: pnpm run verify:phase-4a exits 0 — 85/85 vitest tests pass (0 failures)"
+    - "Gap-3-verify: pnpm run verify:phase-4a exits 0 — all vitest tests pass (0 failures)"
   artifacts:
     - "src/core/content/DomSerializer.ts:16 — PASSWORD_NAME_PATTERN restored to contains-match regex"
     - "tests/core/extraction/PageContentService.test.ts — SPA tests call service.init(); onRemoved test added"
@@ -71,6 +71,11 @@ Output: 4 files modified; all 4 failing tests become passing; isolation Test 2+3
 
 <task type="auto">
   <name>Task 1: Restore PASSWORD_NAME_PATTERN to contains-match regex (Gap 2)</name>
+  <read_first>
+    - src/core/content/DomSerializer.ts:16 — current PASSWORD_NAME_PATTERN to replace (exact-match list)
+    - .planning/phases/04a-page-content-extraction/04a-CONTEXT.md — D-02 privacy contract (err on false positives)
+    - .planning/phases/04a-page-content-extraction/04a-RESEARCH.md — Pitfall 4: password field false negatives policy
+  </read_first>
   <files>src/core/content/DomSerializer.ts</files>
   <action>
     Fix the password name-heuristic regression caused by WR-04 (commit 7f1fb50).
@@ -106,6 +111,10 @@ Output: 4 files modified; all 4 failing tests become passing; isolation Test 2+3
 
 <task type="auto">
   <name>Task 2: Fix SPA-nav cache invalidation test regression + add tabs.onRemoved test (Gap 1 + behavior-unverified)</name>
+  <read_first>
+    - tests/core/extraction/PageContentService.test.ts — existing test structure, beforeEach mocks (line 53), tabs.onUpdated test pattern (lines 404-418)
+    - src/core/extraction/PageContentService.ts:56-74 — init() method + idempotent guard
+  </read_first>
   <files>tests/core/extraction/PageContentService.test.ts</files>
   <action>
     Fix the SPA_NAVIGATION cache-invalidation test regression (WR-02, commit 2eb883d) and cover the tabs.onRemoved behavior-unverified item.
@@ -141,6 +150,12 @@ Output: 4 files modified; all 4 failing tests become passing; isolation Test 2+3
 
 <task type="auto">
   <name>Task 3: Fix isolation test output path + wire pageContentService.init() into side panel entrypoint (Gap 1 + Gap 3)</name>
+  <read_first>
+    - tests/isolation/no-content-script-ui.test.ts — current path references to fix
+    - tests/isolation/cross-entrypoint-imports.test.ts — WXT output path pattern reference
+    - entrypoints/sidepanel/main.tsx — current structure for init() insertion point
+    - src/core/extraction/PageContentService.ts:57 — init() idempotent guard
+  </read_first>
   <files>tests/isolation/no-content-script-ui.test.ts, entrypoints/sidepanel/main.tsx</files>
   <action>
     **Fix A — Isolation test output path (Gap 3, tests/isolation/no-content-script-ui.test.ts):**
@@ -217,13 +232,13 @@ Run the full phase verification after all three tasks complete:
 pnpm run verify:phase-4a
 ```
 
-Expected: exits 0. All vitest suites pass: `tests/core/extraction` (25 tests), `tests/core/content` (23 tests), `tests/isolation/no-content-script-ui.test.ts` (4 tests — all assertions run for real).
+Expected: exits 0. All vitest suites pass: `tests/core/extraction`, `tests/core/content`, `tests/isolation/no-content-script-ui.test.ts` (all assertions run for real).
 
 The tsc portion may still report pre-existing src/core/storage errors (9 — documented, out of phase scope per VERIFICATION.md line 36). These are not part of the gap closure.
 </verification>
 
 <success_criteria>
-1. `pnpm run verify:phase-4a` exits 0 (vitest: 85/85 passing)
+1. `pnpm run verify:phase-4a` exits 0 (vitest: all tests passing)
 2. SPA_NAVIGATION invalidation test passes with `service.init()` before dispatch
 3. Same-URL SPA test is non-vacuous (handler registered, cache stays hot)
 4. tabs.onRemoved test verifies index cleanup on tab close (behavior-unverified resolved)
