@@ -423,7 +423,7 @@ describe('ContextCompressor degradation', () => {
     const { contextCompressor } = await import('../../../src/core/context/ContextCompressor');
     const toolSchemas = Array.from({ length: 6 }, (_, i) => ({
       name: `tool-${i}`,
-      description: 'd'.repeat(200),
+      description: 'd'.repeat(150),
       dangerous: i === 5,
     }));
     const toolsText = JSON.stringify(toolSchemas);
@@ -439,7 +439,7 @@ describe('ContextCompressor degradation', () => {
       userInputSection(5),
     ];
     // medium tier → cap 5 safe tools (dangerous one excluded)
-    const mediumResult = await contextCompressor.compress(sections, 300, 'medium');
+    const mediumResult = await contextCompressor.compress(sections, 340, 'medium');
     const mediumTools = JSON.parse(
       mediumResult.sections.find((s) => s.kind === 'tool_schemas')!.text,
     ) as Array<{ name: string }>;
@@ -453,7 +453,7 @@ describe('ContextCompressor degradation', () => {
       'trim-tools',
     ]);
     // tiny tier → cap 1
-    const tinyResult = await contextCompressor.compress(sections, 300, 'tiny');
+    const tinyResult = await contextCompressor.compress(sections, 340, 'tiny');
     const tinyTools = JSON.parse(
       tinyResult.sections.find((s) => s.kind === 'tool_schemas')!.text,
     ) as Array<{ name: string }>;
