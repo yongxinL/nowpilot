@@ -10,7 +10,7 @@ Users can acquire knowledge from web pages, store it as interconnected atomic no
 
 ## Current State
 
-Phase 4 complete — Context Optimization Pipeline operational. Dynamic token budgets across 4 context tiers, 7-step degradation pipeline with AI summarization overflow, minimal mode for tiny models, per-provider prompt cache hints with health tracking, and ContextProvenanceManifest on every optimized context. 263/269 tests passing (6 pre-existing failures in StreamAdapter/ProviderAdapter deferred).
+Phase 4a complete — Page Content Extraction operational. Layered extraction pipeline (content script → MessageBus → PageContentService → Defuddle→Readability→ApcLite strategies), 2.9KB content bundle with zero forbidden imports, D-02 password/secret redaction at every boundary (clone-based DomSerializer, strategy value guards, 4-term allowlist), per-tab MiniSearch index with SPA-nav invalidation, mode-keyed cache (tabId:mode:url). 263+ extraction/security tests passing, all 25 UAT checks verified including live extension boot.
 
 ## Current Milestone: v0.1 NowPilot Initial Release
 
@@ -69,7 +69,7 @@ Phase 4 complete — Context Optimization Pipeline operational. Dynamic token bu
 - [ ] **AI-04**: P0 Interaction — Welcome cards, context-aware quick-action chips, clarification chips, follow-up chips (RICH P0)
 - [ ] **MEM-01**: Conversation memory (summary + recent turns) + User memory (cross-session facts, scored retrieval) + Preference memory (response style, persona)
 - [ ] **MEM-02**: Memory writes only from primary surface; secondary surfaces mirror read-only
-- [ ] **PAGE-01**: PageContentService with layered extraction (Defuddle → APC-lite → ServiceNow API), ephemeral MiniSearch index, per-tab cache with SPA-nav invalidation
+- [x] **PAGE-01**: PageContentService with layered extraction (Defuddle → APC-lite → ServiceNow API), ephemeral MiniSearch index, per-tab cache with SPA-nav invalidation — Phase 4a
 - [ ] **NOTE-01**: Atomic notes with wikilinks, tags, note graph (MiniSearch + cosine similarity), backlinks
 - [ ] **NOTE-02**: LLM-Wiki — auto-tag/category/summary via single haiku call, RAG "Ask notes" with citations, chat/page-to-note conversion
 - [ ] **NOTE-03**: One-way filesystem sync (app→FS .md with YAML frontmatter) and restore-from-folder with additive upsert
@@ -122,6 +122,12 @@ Phase 4 complete — Context Optimization Pipeline operational. Dynamic token bu
 | Single-call AI summarization overflow (no iterative loop) | One generateText via cheapest compression provider, then a single final budget check; graceful fallback on failure | ✓ Phase 4 |
 | FNV-1a non-cryptographic cache key hash | Collisions → cache miss only, never a security issue; hashes stable sections (system prompt/tool schemas) | ✓ Phase 4 |
 | In-memory cache health (5-miss cascade, 60s cooldown) | Per-provider missStreak/disabledUntil resets on SW restart; Phase 6 AITransactionLog will persist telemetry | ✓ Phase 4 |
+| Clone-based redaction — never mutate the live document | Setting `field.value = ''` would wipe the user's typed password; redaction runs on `doc.cloneNode(true)` with `removeAttribute('value')` (IDL property vs content attribute decoupling) | ✓ Phase 4a |
+| `defuddle/full` subpath import | Main entry's `markdown: true` is inert; `/full` wraps parse() with toMarkdown — delivers the markdown output the pipeline needs | ✓ Phase 4a |
+| MiniSearch.removeAll over discard(id) | discard defers inverted-index cleanup to auto-vacuum — stale results on next query; removeAll with full docs cleans immediately | ✓ Phase 4a |
+| Cache key ordering `tabId:mode:url` everywhere | Standardized across cache Map and in-flight coalescing Map — mode is part of cache identity, cross-mode serving impossible | ✓ Phase 4a |
+| D-02 contains-match regex + 4-term allowlist | `passenger\|passport\|compass\|bypass` only; passcode/passage stay redacted (err on false positive); shared `isPasswordFieldName` at both redaction sites | ✓ Phase 4a |
+| happy-dom per-file test environment | jsdom's nwsapi can't compile defuddle's `:has(source)` selectors; happy-dom exercises the real production pipeline | ✓ Phase 4a |
 
 ## Evolution
 
@@ -141,4 +147,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-31 after Phase 4 completion*
+*Last updated: 2026-07-31 after Phase 4a completion*

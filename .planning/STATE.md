@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v0.1
 milestone_name: milestone
-current_phase: 04a
-current_phase_name: page-content-extraction
-status: executing
+current_phase: 5
+current_phase_name: Knowledge Base
+status: planning
 stopped_at: Phase 4a context refined
-last_updated: "2026-07-31T10:00:00.228Z"
+last_updated: "2026-07-31T10:33:13.539Z"
 last_activity: 2026-07-31
-last_activity_desc: Phase 04a execution started
+last_activity_desc: Phase 04a complete, transitioned to Phase 5
 progress:
   total_phases: 11
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 25
-  completed_plans: 24
-  percent: 36
+  completed_plans: 25
+  percent: 45
 ---
 
 # Project State
@@ -25,22 +25,22 @@ See: .planning/PROJECT.md (updated 2026-07-31)
 
 **Core value:** Users can acquire knowledge from web pages, store it as interconnected atomic notes, understand it through AI enrichment (tagging/summary/RAG), and interact with it through a persona-driven, intention-aware conversational workspace — all running locally on their machine.
 
-**Current focus:** Phase 04a — page-content-extraction
+**Current focus:** Phase 5 — Knowledge Base (notes CRUD, wikilinks, note graph, memory)
 
 ## Current Position
 
-Phase: 04a (page-content-extraction) — EXECUTING
-Plan: 1 of 6
-Status: Executing Phase 04a
-Last activity: 2026-07-31 — Phase 04a execution started
+Phase: 5 — Knowledge Base
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-07-31 — Phase 04a complete, transitioned to Phase 5
 
-Progress: [██████████] 100%
+Progress: [████████████████████] 25/25 plans (100%)
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 10
+- Total plans completed: 16
 - Average duration: N/A
 - Total execution time: 0 hours
 
@@ -50,6 +50,7 @@ Progress: [██████████] 100%
 |-------|-------|-------|----------|
 | 03 | 7 | - | - |
 | 04 | 3 | - | - |
+| 04a | 6 | - | - |
 
 **Recent Trend:**
 
@@ -99,6 +100,10 @@ Recent decisions affecting current work:
 - [Phase 04]: prepareCacheHints keeps the flat PromptSection[] contract — Gemini's nested {cachedContent, inline} providerRequestSections is flattened (stable concat unstable) so cacheOptimized stays a valid OptimizedContext for plan()/synthesize()
 - [Phase 04]: recordResponse() in AgentOrchestrator uses defaults (cacheHit:false, cacheWrite:false) — current responses carry no native cache metadata; unknown cache status is treated as a miss per §19.13, as Plan 04-03 specifies; adapters populate real fields via response normalization later
 - [Phase 04]: PromptCacheManager.getHealthState() public read accessor added — required by the plan's own behavior tests and is the Phase 6 diagnostics hook (RESEARCH Pitfall 3); PromptCacheManager health is strictly in-memory per D-13 (never persisted)
+- [Phase 04a]: Redaction is clone-based — the live document is never mutated; removeAttribute('value') needed because the value IDL property and content attribute are decoupled (outerHTML serializes the attribute)
+- [Phase 04a]: D-02 contains-match regex kept with exactly 4 allowlist terms (passenger|passport|compass|bypass) via shared exported isPasswordFieldName; passcode/passage stay redacted — err on false positive, allowlist must never grow
+- [Phase 04a]: Cache identity is tabId:mode:url — mode-partitioned cache + in-flight coalescing keys; cross-mode serving impossible; SPA invalidation drops the whole tab across modes
+- [Phase 04a]: Hidden-input exclusion is walker-level in ApcLiteStrategy (covers tabindex edge) with inputRole null and value-guard as second/third layers
 
 ### Pending Todos
 
@@ -118,6 +123,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-31T03:40:04.444Z
-Stopped at: Phase 4a context refined
-Resume file: .planning/phases/04a-page-content-extraction/04a-CONTEXT.md
+Last session: 2026-07-31
+Stopped at: Phase 04a complete, ready to plan Phase 5 (Knowledge Base)
+Resume file: None

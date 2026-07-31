@@ -15,7 +15,7 @@ NowPilot v0.1 is built in 11 phases following a knowledge-first data-flow: acqui
 - [ ] **Phase 2: Storage & Security Foundation** — Encrypted API keys, WriteJournal, IndexedDB migrations, CSP
 - [x] **Phase 3: AI Core Pipeline** — Four providers, Planner/Executor/Renderer, AgentOrchestrator, persona seed (completed 2026-07-30)
 - [x] **Phase 4: Context Optimization Pipeline** — ContextOptimizer, ContextCompressor, PromptCacheManager (completed 2026-07-31)
-- [ ] **Phase 4a: Page Content Extraction** — PageContentService, Defuddle, APC-lite, MiniSearch page index
+- [x] **Phase 4a: Page Content Extraction** — PageContentService, Defuddle, APC-lite, MiniSearch page index (completed 2026-07-31)
 - [ ] **Phase 5: Knowledge Base** — Notes CRUD, wikilinks, note graph, Conversation/User/Preference memory, MiniSearch
 - [ ] **Phase 5a: LLM-Wiki & Filesystem Sync** — NoteTagger, NoteQA, NoteChatConverter, NoteFileSync, NoteMaintenance
 - [ ] **Phase 6: Telemetry & Diagnostics** — AITransactionLog, TraceRedactor, DiagnosticsPanel
@@ -270,7 +270,7 @@ Decimal phases execute after their parent integer phase: 4 → 4a → 5 → 5a �
 | 2. Storage & Security Foundation | 4/4 | Completed | 2026-07-29 |
 | 3. AI Core Pipeline | 7/7 | Complete    | 2026-07-30 |
 | 4. Context Optimization Pipeline | 3/3 | Complete    | 2026-07-31 |
-| 4a. Page Content Extraction | 6/6 | In Progress|  |
+| 4a. Page Content Extraction | 6/6 | Complete    | 2026-07-31 |
 | 5. Knowledge Base | TBD | Not started | - |
 | 5a. LLM-Wiki & Filesystem Sync | TBD | Not started | - |
 | 6. Telemetry & Diagnostics | TBD | Not started | - |
