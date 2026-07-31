@@ -114,29 +114,10 @@ export class ProviderRouter {
         }
       }
 
-      let adapter: ProviderAdapter;
-      switch (providerId) {
-        case 'openai': {
-          const key = await useApiKeyStore.getState().getKey('openai');
-          adapter = createOpenAIAdapter(key!);
-          break;
-        }
-        case 'anthropic': {
-          const key = await useApiKeyStore.getState().getKey('anthropic');
-          adapter = createAnthropicAdapter(key!);
-          break;
-        }
-        case 'gemini': {
-          const key = await useApiKeyStore.getState().getKey('gemini');
-          adapter = createGeminiAdapter(key!);
-          break;
-        }
-        case 'ollama':
-          adapter = createOllamaAdapter();
-          break;
-        default:
-          attemptedProviders.push(`${providerId} (unknown)`);
-          continue;
+      const adapter = await this.buildAdapter(providerId);
+      if (!adapter) {
+        attemptedProviders.push(`${providerId} (unavailable)`);
+        continue;
       }
 
       return { adapter, providerId };
@@ -147,6 +128,51 @@ export class ProviderRouter {
       'All providers are temporarily unavailable. Please try again in a few minutes.',
       { attemptedProviders },
     );
+  }
+
+  /**
+   * AI summarization overflow path (D-06, D-08): returns the cheapest
+   * available summarization-capable provider adapter, independent of the
+   * user's conversation tier. Iterates PROVIDER_ORDER skipping open
+   * circuit breakers; for Ollama no API key is required. Returns null
+   * when no provider is available — never throws; the caller
+   * (ContextCompressor) falls through to CONTEXT_TOO_LARGE.
+   */
+  async getCompressionModel(): Promise<ProviderAdapter | null> {
+    for (const providerId of PROVIDER_ORDER) {
+      if (this.isCircuitBreakerOpen(providerId)) continue;
+
+      if (providerId !== 'ollama') {
+        const apiKey = await useApiKeyStore.getState().getKey(providerId);
+        if (!apiKey) continue;
+      }
+
+      const adapter = await this.buildAdapter(providerId);
+      if (adapter) return adapter;
+    }
+
+    return null;
+  }
+
+  private async buildAdapter(providerId: PipelineProviderId): Promise<ProviderAdapter | null> {
+    switch (providerId) {
+      case 'openai': {
+        const key = await useApiKeyStore.getState().getKey('openai');
+        return key ? createOpenAIAdapter(key) : null;
+      }
+      case 'anthropic': {
+        const key = await useApiKeyStore.getState().getKey('anthropic');
+        return key ? createAnthropicAdapter(key) : null;
+      }
+      case 'gemini': {
+        const key = await useApiKeyStore.getState().getKey('gemini');
+        return key ? createGeminiAdapter(key) : null;
+      }
+      case 'ollama':
+        return createOllamaAdapter();
+      default:
+        return null;
+    }
   }
 
   async executeWithFallback<T>(

@@ -1,11 +1,18 @@
 import { z } from 'zod';
-import type { ContextOptimizerInput, OptimizedContext, PromptSection } from '../ai/types';
+import type {
+  ContextOptimizerInput,
+  ContextProvenanceEntry,
+  OptimizedContext,
+  PromptSection,
+} from '../ai/types';
 import { PipelineError } from '../ai/PipelineError';
+import { providerRouter } from '../ai/ProviderRouter';
 import { classifyModelContext } from './ModelContextTier';
 import { tokenBudget } from './TokenBudget';
+import { contextCompressor } from './ContextCompressor';
 import {
   createProvenanceManifest,
-  markTruncated,
+  markCompression,
   recordSection,
 } from './ContextProvenanceManifest';
 
@@ -71,7 +78,7 @@ export class ContextOptimizer {
     const budget = tokenBudget.allocateBudget(tier, input.modelContextWindow);
     const { inputBudget, outputBudget } = budget;
 
-    const sections: PromptSection[] = [
+    const assembledSections: PromptSection[] = [
       this.buildSystemSection(),
       this.buildToolSchemasSection(input.selectedToolSchemas),
       this.buildPreferencesSection(input.preferences),
@@ -81,52 +88,58 @@ export class ContextOptimizer {
       this.buildUserInputSection(input.userInput),
     ];
 
-    let sectionTotal = sections.reduce((sum, s) => sum + s.tokens, 0);
-    let truncatedUserInput = false;
+    // Step 3.5: degradation pipeline (D-06, D-07) — when the assembled
+    // context exceeds the input budget, ContextCompressor applies the 7
+    // ordered degradation steps (plus AI summarization overflow via
+    // ProviderRouter.getCompressionModel per D-08), then the budget is
+    // re-checked. This replaces the Plan 04-01 placeholder user-input
+    // trim: degradation is the canonical over-budget path.
+    let sections: PromptSection[] = assembledSections;
+    let stepsApplied: string[] = [];
+    const totalBeforeDegradation = sections.reduce((sum, s) => sum + s.tokens, 0);
 
-    // Budget check. Degradation (Plan 04-02) is not implemented yet — small
-    // over-budget scenarios are handled by trimming the USER_INPUT section
-    // from the start (keeping the most recent content); anything else that
-    // still cannot fit raises the terminal CONTEXT_TOO_LARGE error.
-    if (sectionTotal > inputBudget) {
-      const userSection = sections.find((s) => s.kind === 'user_input');
-      let guard = 0;
-      while (
-        sectionTotal > inputBudget &&
-        userSection &&
-        userSection.text.length > 0 &&
-        guard < 64
-      ) {
-        const overflow = sectionTotal - inputBudget;
-        // Dropping 4× the overflow in characters removes at least the
-        // overflow in estimated tokens for both /4 and /3 estimation rates.
-        const dropChars = Math.max(1, Math.ceil(overflow * 4));
-        userSection.text = userSection.text.slice(Math.min(dropChars, userSection.text.length));
-        userSection.tokens = tokenBudget.estimateTokens(userSection.text);
-        sectionTotal = sections.reduce((sum, s) => sum + s.tokens, 0);
-        guard++;
+    if (totalBeforeDegradation > inputBudget) {
+      const result = await contextCompressor.compress(
+        sections,
+        inputBudget,
+        tier,
+        () => providerRouter.getCompressionModel(),
+      );
+      sections = result.sections;
+      stepsApplied = result.stepsApplied;
+
+      // CONTEXT_TOO_LARGE is thrown only after ALL degradation steps
+      // (and AI summarization, if available) fail to satisfy the budget.
+      const totalAfterDegradation = sections.reduce((sum, s) => sum + s.tokens, 0);
+      if (totalAfterDegradation > inputBudget) {
+        throw new PipelineError(
+          'CONTEXT_TOO_LARGE',
+          `Context exceeds the available token budget (${inputBudget} tokens) after all degradation steps. ` +
+            `Current context: ${totalAfterDegradation} tokens. Try simplifying your request or reducing context.`,
+          { tier, inputBudget, totalTokens: totalAfterDegradation, stepsApplied },
+        );
       }
-      const userInputEmptied =
-        userSection !== undefined && userSection.text.length === 0 && input.userInput.length > 0;
-      if (sectionTotal > inputBudget || userInputEmptied) {
-        throw new PipelineError('CONTEXT_TOO_LARGE', 'Context exceeds available token budget.', {
-          tier,
-          inputBudget,
-          totalTokens: sectionTotal,
-        });
-      }
-      truncatedUserInput = true;
     }
 
-    const minimalMode = tier === 'tiny';
+    // Minimal mode is mandatory for tiny models (§2.5) and also activates
+    // when the 'minimal-mode' degradation step runs on any tier.
+    const minimalMode = tier === 'tiny' || stepsApplied.includes('minimal-mode');
 
     const manifest = createProvenanceManifest(input.workspaceId, input.activeSurface);
     for (const section of sections) {
       recordSection(manifest, section);
     }
     manifest.minimalMode = minimalMode;
-    if (truncatedUserInput) {
-      markTruncated(manifest, 'interaction.user.current-turn');
+
+    // Record degradation decisions in provenance (D-07): each section that
+    // changed during compression carries a compressionApplied value derived
+    // from the steps that ran. Sections dropped entirely (e.g. debug or
+    // page context) are simply absent from the manifest.
+    if (stepsApplied.length > 0) {
+      for (const section of sections) {
+        const method = this.deriveCompressionMethod(section, stepsApplied, assembledSections);
+        if (method) markCompression(manifest, section.sourceId, method);
+      }
     }
 
     return {
@@ -137,6 +150,42 @@ export class ContextOptimizer {
       provenance: manifest,
       minimalMode,
     };
+  }
+
+  /**
+   * Map a degraded section to its provenance compression method. The
+   * method is derived from the steps that ran (D-07): 'summarise-history'
+   * → 'summarise', 'compress-page' → 'structural', 'reduce-memory' →
+   * 'topk'. Minimal mode applies the §2.5 caps across kinds.
+   */
+  private deriveCompressionMethod(
+    section: PromptSection,
+    stepsApplied: string[],
+    assembledSections: PromptSection[],
+  ): ContextProvenanceEntry['compressionApplied'] | undefined {
+    const original = assembledSections.find((s) => s.sourceId === section.sourceId);
+    const unchanged =
+      original !== undefined && original.text === section.text && original.tokens === section.tokens;
+    if (unchanged) return undefined;
+
+    const minimal = stepsApplied.includes('minimal-mode');
+    if (section.kind === 'system') return minimal ? 'summarise' : undefined;
+    if (section.kind === 'tool_schemas') {
+      return stepsApplied.includes('trim-tools') || minimal ? 'structural' : undefined;
+    }
+    if (section.kind === 'memory') {
+      return stepsApplied.includes('reduce-memory') || minimal ? 'topk' : undefined;
+    }
+    if (section.kind === 'context') {
+      if (
+        section.sourceId.startsWith('history.') &&
+        (stepsApplied.includes('summarise-history') || minimal)
+      ) {
+        return 'summarise';
+      }
+      if (stepsApplied.includes('compress-page') || minimal) return 'structural';
+    }
+    return undefined;
   }
 
   private buildSystemSection(): PromptSection {

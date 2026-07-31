@@ -34,6 +34,9 @@ vi.mock('../../../src/core/ai/ProviderRouter', () => {
         },
         providerId: 'openai',
       }),
+      // No AI summarization in unit tests: getCompressionModel returns null,
+      // so overflow falls through to CONTEXT_TOO_LARGE (D-06, D-08).
+      getCompressionModel: vi.fn().mockResolvedValue(null),
     },
   };
 });
@@ -230,31 +233,32 @@ describe('ContextOptimizer', () => {
     expect(result.provenance.sections.every((e) => e.truncated === false)).toBe(true);
   });
 
-  it('trims user input from the start when over budget and marks provenance truncated', async () => {
+  it('throws CONTEXT_TOO_LARGE after full degradation when only user input overflows', async () => {
     const { contextOptimizer } = await import('../../../src/core/context/ContextOptimizer');
-    // tiny tier: inputBudget = 2867; 20k ASCII chars ≈ 5000 tokens → over budget
+    // tiny tier: inputBudget = 2867; 20k ASCII chars ≈ 5000 tokens — user
+    // input is the only degradable content and degradation never touches
+    // user_input, so the pipeline exhausts all 7 steps and the optimizer
+    // raises the terminal error (the Plan 04-01 placeholder user-input trim
+    // was replaced by the degradation pipeline).
     const longInput = 'a'.repeat(20000);
-    const result = await contextOptimizer.optimize(
-      buildOptimizerInput({ modelContextWindow: 4096, userInput: longInput }),
-    );
+    const err = await contextOptimizer
+      .optimize(buildOptimizerInput({ modelContextWindow: 4096, userInput: longInput }))
+      .then(
+        () => null,
+        (e: unknown) => e,
+      );
 
-    const userSection = result.sections.find((s) => s.kind === 'user_input')!;
-    // Trimmed from the start: the tail (most recent) of the input is preserved.
-    expect(userSection.text.length).toBeGreaterThan(0);
-    expect(userSection.text.length).toBeLessThan(longInput.length);
-    expect(longInput.endsWith(userSection.text)).toBe(true);
-
-    const total = result.sections.reduce((sum, s) => sum + s.tokens, 0);
-    expect(total).toBeLessThanOrEqual(result.inputBudget);
-
-    const userEntry = result.provenance.sections.find((e) => e.sourceId === 'interaction.user.current-turn')!;
-    expect(userEntry.truncated).toBe(true);
+    expect(err).toBeInstanceOf(PipelineError);
+    const pipelineError = err as PipelineError;
+    expect(pipelineError.code).toBe('CONTEXT_TOO_LARGE');
+    expect(pipelineError.userFacingMessage).toMatch(/\d+ tokens/);
   });
 
   it('throws CONTEXT_TOO_LARGE when user input alone cannot fit the budget', async () => {
     const { contextOptimizer } = await import('../../../src/core/context/ContextOptimizer');
-    // tiny tier: user input far exceeds the entire input budget even after trimming
-    const hugeInput = 'b'.repeat(200000);
+    // tiny tier: max schema-legal user input (100K chars ≈ 25K tokens)
+    // exceeds the entire input budget even after all 7 degradation steps
+    const hugeInput = 'b'.repeat(100000);
     await expect(
       contextOptimizer.optimize(
         buildOptimizerInput({ modelContextWindow: 4096, userInput: hugeInput }),
@@ -672,5 +676,127 @@ describe('ContextCompressor degradation', () => {
     const result = await contextCompressor.compress(sections, 120, 'medium');
     expect(result.stepsApplied).toEqual(['drop-debug']);
     expect(result.sections.map((s) => s.sourceId)).not.toContain('debug.mcp');
+  });
+});
+
+describe('ContextOptimizer degradation pipeline', () => {
+  it('brings oversized context under budget through optimize() and records degradation provenance', async () => {
+    const { contextOptimizer } = await import('../../../src/core/context/ContextOptimizer');
+    const result = await contextOptimizer.optimize(
+      buildOptimizerInput({
+        modelContextWindow: 16384, // small → inputBudget 11468
+        selectedToolSchemas: Array.from({ length: 12 }, (_, i) => ({
+          name: `tool-${i}`,
+          description: 'd'.repeat(200),
+        })),
+        memoryHints: Array.from({ length: 500 }, (_, i) => ({ id: `m${i}`, text: 'm'.repeat(100) })),
+        pageContext: { title: 'Big Page', url: 'https://example.com', body: 'x'.repeat(30000) },
+      }),
+    );
+
+    const total = result.sections.reduce((sum, s) => sum + s.tokens, 0);
+    expect(total).toBeLessThanOrEqual(result.inputBudget);
+
+    const bySourceId = new Map(result.provenance.sections.map((e) => [e.sourceId, e]));
+    expect(bySourceId.get('context.page.current')?.compressionApplied).toBe('structural');
+    expect(bySourceId.get('memory.user.facts')?.compressionApplied).toBe('topk');
+    expect(bySourceId.get('tools.builtin.selected')?.compressionApplied).toBe('structural');
+    expect(bySourceId.get('core.instructions.system')?.compressionApplied).toBeUndefined();
+    expect(result.minimalMode).toBe(false);
+  });
+
+  it('throws CONTEXT_TOO_LARGE with token counts after all degradation steps fail', async () => {
+    const { contextOptimizer } = await import('../../../src/core/context/ContextOptimizer');
+    // Max schema-legal input (100K chars ≈ 25K tokens) on tiny tier — far
+    // beyond the 2867-token budget and degradation never touches user input.
+    const hugeInput = 'b'.repeat(100000);
+    const err = await contextOptimizer
+      .optimize(buildOptimizerInput({ modelContextWindow: 4096, userInput: hugeInput }))
+      .then(
+        () => null,
+        (e: unknown) => e,
+      );
+
+    expect(err).toBeInstanceOf(PipelineError);
+    const pipelineError = err as PipelineError;
+    expect(pipelineError.code).toBe('CONTEXT_TOO_LARGE');
+    expect(pipelineError.userFacingMessage).toMatch(/\d+ tokens/);
+    expect(pipelineError.diagnostic).toMatchObject({ tier: 'tiny' });
+    expect((pipelineError.diagnostic?.stepsApplied as string[]).length).toBe(7);
+  });
+
+  it('enforces minimal mode for tiny tier: single tool, top-3 memories, under budget', async () => {
+    const { contextOptimizer } = await import('../../../src/core/context/ContextOptimizer');
+    const result = await contextOptimizer.optimize(
+      buildOptimizerInput({
+        modelContextWindow: 4096, // tiny → inputBudget 2867
+        selectedToolSchemas: Array.from({ length: 8 }, (_, i) => ({
+          name: `tool-${i}`,
+          description: 'd'.repeat(100),
+        })),
+        memoryHints: Array.from({ length: 120 }, (_, i) => ({ id: `m${i}`, text: 'm'.repeat(100) })),
+        pageContext: { title: 'T', url: 'https://e.com', body: 'x'.repeat(2000) },
+      }),
+    );
+
+    expect(result.minimalMode).toBe(true);
+    const tools = JSON.parse(
+      result.sections.find((s) => s.kind === 'tool_schemas')!.text,
+    ) as unknown[];
+    expect(tools).toHaveLength(1);
+    const memory = JSON.parse(result.sections.find((s) => s.kind === 'memory')!.text) as unknown[];
+    expect(memory.length).toBeLessThanOrEqual(3);
+    const total = result.sections.reduce((sum, s) => sum + s.tokens, 0);
+    expect(total).toBeLessThanOrEqual(result.inputBudget);
+  });
+
+  it('stops degradation early once the budget is satisfied', async () => {
+    const { contextOptimizer } = await import('../../../src/core/context/ContextOptimizer');
+    const result = await contextOptimizer.optimize(
+      buildOptimizerInput({
+        modelContextWindow: 16384, // small → inputBudget 11468
+        // Page body dominates the budget; compress-page alone resolves it,
+        // so tool/memory/minimal-mode steps must never run.
+        pageContext: { title: 'Big Page', url: 'https://example.com', headings: ['A'], body: 'x'.repeat(50000) },
+      }),
+    );
+
+    const total = result.sections.reduce((sum, s) => sum + s.tokens, 0);
+    expect(total).toBeLessThanOrEqual(result.inputBudget);
+
+    const bySourceId = new Map(result.provenance.sections.map((e) => [e.sourceId, e]));
+    expect(bySourceId.get('context.page.current')?.compressionApplied).toBe('structural');
+    // Steps after compress-page never ran — untouched sections carry no method.
+    expect(bySourceId.get('tools.builtin.selected')?.compressionApplied).toBeUndefined();
+    expect(bySourceId.get('memory.user.facts')?.compressionApplied).toBeUndefined();
+    expect(result.minimalMode).toBe(false);
+  });
+
+  it('records exact compressionApplied values matching the degradation steps that ran', async () => {
+    const { contextOptimizer } = await import('../../../src/core/context/ContextOptimizer');
+    const result = await contextOptimizer.optimize(
+      buildOptimizerInput({
+        modelContextWindow: 4096, // tiny → inputBudget 2867; full local degradation
+        selectedToolSchemas: Array.from({ length: 10 }, (_, i) => ({
+          name: `tool-${i}`,
+          description: 'd'.repeat(150),
+        })),
+        memoryHints: Array.from({ length: 130 }, (_, i) => ({ id: `m${i}`, text: 'm'.repeat(100) })),
+        pageContext: { title: 'T', url: 'https://e.com', body: 'x'.repeat(4000) },
+        userInput: 'query',
+      }),
+    );
+
+    const total = result.sections.reduce((sum, s) => sum + s.tokens, 0);
+    expect(total).toBeLessThanOrEqual(result.inputBudget);
+
+    const bySourceId = new Map(result.provenance.sections.map((e) => [e.sourceId, e]));
+    expect(bySourceId.get('context.page.current')?.compressionApplied).toBe('structural');
+    expect(bySourceId.get('tools.builtin.selected')?.compressionApplied).toBe('structural');
+    expect(bySourceId.get('memory.user.facts')?.compressionApplied).toBe('topk');
+    // Sections never touched by degradation carry no compressionApplied value.
+    expect(bySourceId.get('core.instructions.system')?.compressionApplied).toBeUndefined();
+    expect(bySourceId.get('interaction.user.current-turn')?.compressionApplied).toBeUndefined();
+    expect(result.minimalMode).toBe(true); // tiny tier
   });
 });
