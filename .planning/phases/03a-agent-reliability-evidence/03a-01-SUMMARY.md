@@ -114,7 +114,7 @@ Each task was committed atomically (TDD RED → GREEN):
 1. **Task 1: Define outcome, trajectory, evidence, permission, and idempotency contracts** — `6d19a94` (test), `43dcf2b` (feat)
 2. **Task 2: Implement trajectory machine and operation-scoped idempotency ledger** — `40326bf` (test), `4479d9b` (feat)
 
-**Plan metadata:** pending (docs commit follows this file)
+**Plan metadata:** `dc2e94e` (docs: complete contracts and idempotency primitive plan)
 
 **TDD gate compliance:** RED and GREEN commits exist for both tasks in the correct order; REFACTOR steps were not needed (implementations were already minimal).
 
