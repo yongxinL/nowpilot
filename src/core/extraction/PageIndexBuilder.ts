@@ -119,7 +119,7 @@ export class PageIndexBuilder {
    * taken in score-descending order until the cumulative chunkText length
    * reaches `budget` tokens (estimated at ~4 chars/token).
    */
-  selectRelevant(query: string, budget: number): IndexedChunk[] {
+  selectRelevant(tabId: number, query: string, budget: number): IndexedChunk[] {
     if (!query.trim() || budget <= 0) return [];
 
     const results = this.index.search(query);
@@ -128,6 +128,9 @@ export class PageIndexBuilder {
     let usedChars = 0;
 
     for (const result of results) {
+      // Restrict results to the requested tab only (D-14: per-tab index contract)
+      if (result.tabId !== tabId) continue;
+
       const chunk: IndexedChunk = {
         id: result.id as string,
         tabId: result.tabId as number,
