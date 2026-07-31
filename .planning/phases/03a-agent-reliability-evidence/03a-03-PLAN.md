@@ -4,51 +4,69 @@ plan: 03
 type: execute
 wave: 3
 depends_on:
-  - 03a-01
   - 03a-02
 files_modified:
-  - src/core/ai/ExecutorService.ts
-  - tests/core/ai/verifier/OutcomeVerifier.test.ts
-  - tests/core/ai/ReplanPolicy.test.ts
-  - tests/core/ai/RenderingOutcomePolicy.test.ts
-  - tests/core/ai/ExecutorService.test.ts
-  - tests/core/ai/types.test.ts
+  - src/core/ai/RenderingOutcomePolicy.ts
+  - src/core/ai/AgentOrchestrator.ts
+  - src/core/ai/PlannerService.ts
+  - src/core/ai/RendererService.ts
+  - src/core/ai/ProviderRouter.ts
+  - src/core/context/ContextOptimizer.ts
+  - tests/core/ai/AgentOrchestrator.test.ts
+  - tests/core/ai/integration.test.ts
+  - tests/core/ai/tracer.test.ts
+  - tests/core/context/ContextOptimizer.test.ts
 autonomous: true
 requirements:
+  - AGT-01
+  - AGT-02
+  - AGT-03
+  - AGT-04
   - TOL-03
-
+user_setup: []
 must_haves:
   truths:
-    - "TRUTH-12: ExecutorService.execute() for a tool with idempotency: 'required' derives a stable operation key from operationId + toolName + serialized(input) — per D-17"
-    - "TRUTH-13: ExecutorService.execute() for a prior completed idempotent call returns the cached result and evidence without re-executing — duplicate detection works in-memory"
-    - "TRUTH-14: ExecutorService.execute() for an in-flight or unresolved prior idempotent call throws IDEMPOTENCY_CONFLICT — duplicate execution is blocked"
-    - "TRUTH-15: Idempotency ledger is operation-scoped — a fresh ExecutorService instance has an empty ledger (per D-17, in-memory only)"
+    - "AgentOrchestrator.runTurn() returns an AgentTurnOutcome on answer, clarification, tool success, tool failure, permission denial, cap exhaustion, renderer failure, state failure, and abort paths; no path returns a bare string or throws a normal pipeline error."
+    - "ContextOptimizer.optimize() runs exactly once per turn, the same AbortSignal reaches optimizer/provider/planner/permission/executor/verifier/renderer stages, and abort at every await boundary returns aborted with no normal render, retry, or replan."
+    - "A permission-required tool enters waiting-for-permission before execution; grant resumes the same validated decision without a planner call, denial terminates, and cancellation becomes user_aborted or caller_aborted without bypass through replan."
+    - "After execution, required side effects enter verifying before any render; the orchestrator builds RenderingOutcomePolicy, blocks completion wording for unverified/failed evidence, detects contradictory generated text, records RENDERER_EVIDENCE_CONTRADICTION, and uses the policy's deterministic fallback."
+    - "Recovery makes exactly one additional PlannerService call with a structured redacted observation, does not rerun ContextOptimizer, reset counters, renew the deadline, or replay an irreversible/unknown operation."
+    - "Every current runTurn caller and test consumes AgentTurnOutcome or the deprecated runTurnText wrapper, and every current generated RegisteredTool explicitly receives sideEffect, idempotency, and evidence metadata through the existing selected-tool adapter."
   artifacts:
-    - "Modified: src/core/ai/ExecutorService.ts (idempotency ledger)"
+    - path: "src/core/ai/AgentOrchestrator.ts"
+      provides: "Only owner of operation-scoped trajectory, terminal outcome assembly, permission sequencing, verifier/replan wiring, abort finalization, and renderer contradiction fallback."
+      exports: ["AgentOrchestrator", "agentOrchestrator"]
+    - path: "src/core/ai/RenderingOutcomePolicy.ts"
+      provides: "Pure evidence-to-policy derivation and deterministic contradiction/fallback enforcement."
+      exports: ["buildRenderingOutcomePolicy", "enforceRenderingOutcomePolicy"]
+    - path: "src/core/ai/PlannerService.ts"
+      provides: "Optional redacted recovery observation input without changing the planner decision union or raw prompt boundary."
+      exports: ["PlannerService", "plannerService", "PlannerDecisionSchema"]
+    - path: "src/core/ai/RendererService.ts"
+      provides: "Required RenderingOutcomePolicy input for synthesize and stream; renderer cannot create or upgrade evidence."
+      exports: ["RendererService", "rendererService"]
   key_links:
-    - "ExecutorService.deriveOperationKey() → Map<string, IdempotencyEntry> — key uniqueness prevents false duplicate detection (RESEARCH.md Pitfall 2)"
-
-# Artifacts this phase produces (Plan 03)
-
-| Symbol | Kind | File |
-|--------|------|------|
-| `IdempotencyEntry` | interface | src/core/ai/ExecutorService.ts |
-| `ExecutorService.idempotencyLedger` | private Map property | src/core/ai/ExecutorService.ts |
-| `ExecutorService.deriveOperationKey()` | private method | src/core/ai/ExecutorService.ts |
-| `ExecutorService.execute()` (idempotency gate + operationId param) | modified method | src/core/ai/ExecutorService.ts |
-| `ExecutorService.executeBatch()` (operationId propagation) | modified method | src/core/ai/ExecutorService.ts |
-| OutcomeVerifier test suite | test file (≥8 cases) | tests/core/ai/verifier/OutcomeVerifier.test.ts |
-| ReplanPolicy test suite | test file (≥12 cases) | tests/core/ai/ReplanPolicy.test.ts |
-| RenderingOutcomePolicy test suite | test file (≥5 cases) | tests/core/ai/RenderingOutcomePolicy.test.ts |
-| ExecutorService idempotency tests | test extension (≥7 new cases) | tests/core/ai/ExecutorService.test.ts |
-| Type schema tests | test file (≥5 cases) | tests/core/ai/types.test.ts |
+    - from: "src/core/ai/AgentOrchestrator.ts"
+      to: "src/core/ai/AgentTrajectoryMachine.ts"
+      via: "Fresh machine per runTurn and every transition routed through the strict allowlist"
+    - from: "src/core/ai/AgentOrchestrator.ts"
+      to: "src/core/ai/verifier/OutcomeVerifier.ts"
+      via: "Successful side-effect execution transitions to verifying and awaits the shared-signal verifier before continuation/render"
+    - from: "src/core/ai/AgentOrchestrator.ts"
+      to: "src/core/ai/ReplanPolicy.ts"
+      via: "Execution and verification checkpoints pass immutable redacted ReplanContext and obey one recovery pass"
+    - from: "src/core/ai/AgentOrchestrator.ts"
+      to: "src/core/ai/RenderingOutcomePolicy.ts"
+      via: "Policy is built before synthesize/stream and generated output is enforced before entering AgentTurnOutcome"
+    - from: "src/core/ai/PlannerService.ts"
+      to: "src/core/ai/AgentOrchestrator.ts"
+       via: "Recovery planner call receives only tool name, bounded status, safe error code, and evidence summary; ContextOptimizer output is reused"
 ---
 
 <objective>
-Add an operation-scoped idempotency ledger to ExecutorService and build the comprehensive unit test suite for all Phase 3a new modules. After this plan, tools with `idempotency: 'required'` are protected from duplicate execution within a turn, and every new module has passing unit tests.
+Integrate the complete bounded reliability harness in one owner-controlled production slice and migrate every existing caller/test of the old string API. This is the only plan allowed to modify AgentOrchestrator, PlannerService, RendererService, or their integration tests.
 
-Purpose: Prevent duplicate execution of irreversible/side-effecting tools when replanning or recovery might retry them.
-Output: Idempotent ExecutorService, and passing unit tests for OutcomeVerifier, ReplanPolicy, RenderingOutcomePolicy, ExecutorService idempotency, and type schemas.
+Implement D-01 through D-07 and D-10 through D-17 as a coherent runTurn state machine. Preserve the existing Planner -> Executor -> Renderer and ContextOptimizer-once architecture, add the operation-scoped permission callback because the repository has no PermissionGate implementation despite the specification referring to one, and never invent a Phase 8a manifest or persistence layer.
 </objective>
 
 <execution_context>
@@ -57,244 +75,185 @@ Output: Idempotent ExecutorService, and passing unit tests for OutcomeVerifier, 
 </execution_context>
 
 <context>
+@.planning/PROJECT.md
+@.planning/ROADMAP.md
+@.planning/REQUIREMENTS.md
 @.planning/phases/03a-agent-reliability-evidence/03a-CONTEXT.md
 @.planning/phases/03a-agent-reliability-evidence/03a-RESEARCH.md
-@src/core/ai/ExecutorService.ts
+@.planning/phases/03a-agent-reliability-evidence/03a-01-SUMMARY.md
+@.planning/phases/03a-agent-reliability-evidence/03a-02-SUMMARY.md
 @src/core/ai/types.ts
-@src/core/ai/AgentTurnOutcome.ts
+@src/core/ai/AgentTurnInput.ts
+@src/core/ai/AgentOrchestrator.ts
+@src/core/ai/PlannerService.ts
+@src/core/ai/RendererService.ts
+@src/core/ai/ExecutorService.ts
 @src/core/ai/PipelineError.ts
-@tests/core/ai/ExecutorService.test.ts
+@src/core/ai/ProviderRouter.ts
+@src/core/context/ContextOptimizer.ts
+@tests/core/ai/AgentOrchestrator.test.ts
+@tests/core/ai/integration.test.ts
+@tests/core/ai/tracer.test.ts
+@tests/core/context/ContextOptimizer.test.ts
 </context>
 
 <tasks>
+  <task type="auto" tdd="true">
+    <name>Implement evidence-constrained rendering policy and renderer contract</name>
+    <files>src/core/ai/RenderingOutcomePolicy.ts, src/core/ai/RendererService.ts, src/core/ai/ProviderRouter.ts, src/core/context/ContextOptimizer.ts</files>
+    <behavior>
+      - Verified write evidence permits completion wording only for the matching toolCallId; submitted-but-unverified evidence permits submission-only wording with a caveat; failed verification permits no completion claim; aborted turns do not call the normal renderer.
+      - A generated answer that contains a completion claim forbidden by the policy is replaced by the deterministic policy fallback and exposes a technical contradiction record for the orchestrator; the renderer never upgrades evidence or outcome state.
+      - RendererService.synthesize() and stream() require the typed policy and shared AbortSignal and include only its bounded evidence instruction in the generated prompt.
+    </behavior>
+    <read_first>
+      - src/core/ai/RenderingOutcomePolicy.ts — create only if absent
+      - src/core/ai/RendererService.ts — existing synthesize and stream signatures, buildSystemPrompt, abort/error behavior
+      - src/core/ai/ProviderRouter.ts — current selectProvider(preferred) signature and awaited key/adapter selection
+      - src/core/context/ContextOptimizer.ts — current optimize input validation and the single compression await
+      - src/core/ai/types.ts — RenderingOutcomePolicy, CompletionEvidence, AgentTerminalState from Plan 01
+      - src/core/ai/AgentTurnOutcome.ts — canonical reason and outcome contract
+      - .planning/phases/03a-agent-reliability-evidence/03a-CONTEXT.md — D-09 and D-11
+      - tests/core/ai/tracer.test.ts — existing renderer test/mocking style
+    </read_first>
+    <action>
+      Create a pure RenderingOutcomePolicy derivation that matches evidence by exact toolCallId and operationId. It must expose whether verified write completion is allowed, whether only submission wording is allowed, the safe verified/unverified references, a deterministic fallback answer for each blocked terminal condition, and a bounded prompt summary. Do not include raw evidence checks, tool outputs, secrets, or model-generated text in the policy.
 
-<task type="auto">
-  <name>Add idempotency ledger to ExecutorService</name>
-  <files>src/core/ai/ExecutorService.ts</files>
-  <read_first>
-    - src/core/ai/ExecutorService.ts — existing `execute()` method (lines 54-97), `executeBatch()` (lines 99-114)
-    - src/core/ai/types.ts — `RegisteredTool` with `idempotency?: ToolIdempotency` (from Plan 01), `ToolExecutionResult` with `toolCallId?`, `evidence?` fields
-    - src/core/ai/PipelineError.ts — `PipelineError` constructor signature (code, message, diagnostic?)
-    - RESEARCH.md Pattern 3 — full implementation code for `IdempotencyEntry`, `deriveOperationKey()`, ledger logic
-    - CONTEXT.md D-17 — exact idempotency contract: in-memory, operation-scoped, duplicate completed returns cached result, in-flight/unresolved throws
-  </read_first>
-  <action>
-    Modify `src/core/ai/ExecutorService.ts` to add idempotency support per RESEARCH.md Pattern 3:
+      Add `enforceRenderingOutcomePolicy(generatedText, policy)` as a deterministic pure post-render check. Detect only the explicit completion-claim patterns defined in the test fixtures; if a forbidden claim appears, return the policy fallback and a `RENDERER_EVIDENCE_CONTRADICTION` signal for AgentOrchestrator diagnostics. Do not attempt to repair the model text or infer new evidence.
 
-    **1. Add `IdempotencyEntry` interface** at the top of the file (after imports, before the class):
-    ```typescript
-    interface IdempotencyEntry {
-      status: 'in-flight' | 'completed' | 'failed';
-      result?: unknown;
-      evidence?: import('./AgentTurnOutcome').CompletionEvidence;
-      executedAt: number;
-    }
-    ```
+      Change RendererService.synthesize and stream to accept final policy and AbortSignal parameters, initially handling an omitted policy defensively only to keep the pre-integration orchestrator runtime testable during this task. Append policy.evidenceSummary when present and retain provider, persona, stream, and PipelineError behavior. Task 2 supplies the required policy and signal at every call. RendererService must not inspect CompletionEvidence or make terminal-state decisions.
 
-    **2. Add `idempotencyLedger` to ExecutorService class** as a private property:
-    ```typescript
-    private idempotencyLedger: Map<string, IdempotencyEntry> = new Map();
-    ```
-    - This is a plain `Map` — in-memory, operation-scoped. It resets when the service is re-instantiated (does NOT persist across SW restarts — per D-17).
+      Update ProviderRouter.selectProvider(preferred, signal?) to check the shared signal before and after awaited API-key and adapter construction work. Update ContextOptimizer.optimize's existing input path to accept abortSignal, check it before and after compression, and pass it to ContextCompressor.compress; Plan 04 owns the nested compressor implementation. These are signal-boundary changes only and do not alter provider order or optimization policy.
+    </action>
+    <verify>
+      <automated>pnpm vitest run tests/core/ai/tracer.test.ts</automated>
+    </verify>
+    <acceptance_criteria>
+      - Policy tests in the existing tracer suite prove verified, unverified, failed, mixed, empty, and aborted cases and exact tool-call matching.
+      - Renderer signatures expose the final policy and AbortSignal parameters and preserve the current callers until Task 2 supplies them at every call site.
+      - ProviderRouter and ContextOptimizer expose the shared signal boundary without changing provider order or once-per-turn optimization.
+      - Contradiction handling returns a deterministic fallback and a technical signal without mutating evidence or outcome.
+      - The named test file executes tests and exits 0.
+    </acceptance_criteria>
+    <done>Rendering policy and renderer contract are complete and ready for the orchestrator owner to enforce.</done>
+  </task>
 
-    **3. Add `deriveOperationKey()` private method:**
-    ```typescript
-    private deriveOperationKey(operationId: string, toolName: string, input: unknown): string {
-      const serialized = JSON.stringify(input, Object.keys(input as object).sort());
-      return `${operationId}:${toolName}:${serialized}`;
-    }
-    ```
-    - Sorted keys for deterministic serialization. Simple concatenation — cryptographic hash not needed (in-memory only).
+  <task type="auto" tdd="true">
+    <name>Integrate AgentOrchestrator outcomes, trajectory, permission, abort, evidence, and replanning</name>
+    <files>src/core/ai/AgentOrchestrator.ts, src/core/ai/PlannerService.ts, tests/core/ai/AgentOrchestrator.test.ts</files>
+    <behavior>
+      - Answer, clarification, successful read, verified write, unverified write, failed tool, permission denial, permission cancellation, planner failure, renderer failure, cap exhaustion, invalid transition, and user/caller abort each return a terminal AgentTurnOutcome with the canonical reason code and complete finalized trajectory.
+      - Every await stage checks the same AbortSignal before and after; abort finalization is idempotent, skips verification/retry/replan/normal rendering, and distinguishes user_aborted from caller_aborted when the callback supplies origin.
+      - Grant resumes the exact validated tool decision, denial never invokes the executor, and replan cannot turn denial/cancellation into execution.
+      - Successful side-effect execution verifies before rendering; one retry-safe recovery planner call reuses the optimized context and does not reset planner/tool/replan counters or deadline.
+    </behavior>
+    <read_first>
+      - src/core/ai/AgentOrchestrator.ts — current runTurn implementation, buildRegisteredTools, cache preparation, and all existing exit paths
+      - src/core/ai/PlannerService.ts — current three-argument plan signature and prompt construction
+      - src/core/ai/RendererService.ts — required policy signature from Task 1
+      - src/core/ai/ExecutorService.ts — toolCallId, ledger, evidence attachment, and operationId signature from Plan 01
+      - src/core/ai/AgentTurnInput.ts — factory and permission callback type
+      - src/core/ai/types.ts — outcome, trajectory, permission, evidence, replan, cap, and tool metadata contracts
+      - src/core/ai/verifier/OutcomeVerifier.ts — verifier result and abort behavior from Plan 02
+      - src/core/ai/ReplanPolicy.ts — pure disposition priority from Plan 02
+      - src/core/ai/RenderingOutcomePolicy.ts — policy derivation/enforcement from Task 1
+      - .planning/phases/03a-agent-reliability-evidence/03a-CONTEXT.md — D-01 through D-07 and D-10 through D-17
+    </read_first>
+    <action>
+      Refactor runTurn to create a fresh AgentTrajectoryMachine and immutable per-turn accumulators at entry. Keep ContextOptimizer.optimize exactly once before planner calls. Pass input.abortSignal through the signal-aware optimizer/provider/renderer boundaries established by Task 1, pass it to PlannerService.plan(adapter, tier, optimized, signal, recoveryObservation), and check it before and after permission callback, executor, verifier, recovery planner, and renderer awaits. Normalize AbortError and signal state through one idempotent finalizer that transitions to aborted, sets renderedAnswer null, records origin/stage/timestamp, and never performs normal render, replan, or retry.
 
-    **4. Modify `execute()` method signature** — add optional `operationId?: string` parameter AFTER `signal` and BEFORE `timeoutMs`:
-    ```typescript
-    async execute(
-      toolName: string,
-      input: unknown,
-      registeredTools: RegisteredTool[],
-      signal?: AbortSignal,
-      operationId?: string,        // NEW: for idempotency (per D-17)
-      timeoutMs: number = DEFAULT_TIMEOUT_MS,
-    ): Promise<ToolExecutionResult>
-    ```
-    - Keep backward compatibility: `operationId` defaults to undefined; when missing, idempotency is skipped entirely.
+      Transition through assembling-context, planning, waiting-for-permission, executing, verifying, replanning, rendering, and a terminal state using only the allowlist. Build AgentTurnOutcome for every return path with operationId, terminalState, canonical reasonCode, rendered answer, readonly trajectory/evidence/tool results, cap counters and flags, abort metadata, zero/available usage, diagnostics, and timestamps. Catch invalid state transitions as failed invalid_state_transition with AGENT_STATE_INVALID diagnostics.
 
-    **5. Add idempotency gate** — insert AFTER `validateToolInput()` returns the `tool` but BEFORE the execution try/catch:
-    - `if (tool.idempotency === 'required' && operationId)`:
-      - Derive key: `const key = this.deriveOperationKey(operationId, toolName, input);`
-      - Check ledger: `const existing = this.idempotencyLedger.get(key);`
-      - If `existing && existing.status === 'completed'`: return `{ toolName, output: existing.result, durationMs: 0, toolCallId: crypto.randomUUID(), evidence: existing.evidence } as ToolExecutionResult` — WITHOUT re-executing (per D-17)
-      - If `existing && (existing.status === 'in-flight' || existing.status === 'failed')`: throw `new PipelineError('IDEMPOTENCY_CONFLICT', 'Tool "${toolName}" has an in-flight or unresolved prior execution.', { toolName, operationId, key })` — per D-17, do NOT re-execute
-      - If no existing entry: `this.idempotencyLedger.set(key, { status: 'in-flight', executedAt: Date.now() });` — mark as in-flight before execution
+      Use the existing selected-tool adapter as the closed registry boundary. Read the three reliability fields from ToolSchemaInfo, reject a missing field with SCHEMA_INVALID rather than silently defaulting, and construct RegisteredTool with explicit sideEffect, idempotency, and evidence values. Do not add category, risk, permissions, dataScopes, timeout, costClass, schema hashes, or discovery. For write/irreversible tools, invoke the operation-scoped permission callback before executor start. Grant resumes the same decision; denial returns permission_denied; cancellation finalizes caller/user abort. Tool call count increments only immediately before actual executor start.
 
-    **6. Update ledger after execution:**
-    - Inside the success path (after `const output = await Promise.race([...])`):
-      - If `tool.idempotency === 'required' && operationId`: `this.idempotencyLedger.set(key, { status: 'completed', result: output, executedAt: Date.now() });`
-    - Inside the catch path (after `const durationMs = performance.now() - startTime;`):
-      - If `tool.idempotency === 'required' && operationId`: `this.idempotencyLedger.set(key, { status: 'failed', executedAt: Date.now() });` — mark as failed
-    - Evidence can be set on the ledger entry later (Plan 02's orchestrator calls OutcomeVerifier after execute). For now, evidence is `undefined` on the ledger entry.
+      After execution, invoke OutcomeVerifier for required side effects, call the typed ExecutorService.attachEvidence(toolCallId, evidence) seam, evaluate ReplanPolicy at execution-failure and verification-complete checkpoints, and obey its disposition. A replan increments once and calls PlannerService exactly once with a bounded redacted observation containing only tool name, execution/evidence status, safe error code, and safe evidence summary. Do not pass raw output, PipelineError diagnostics, secrets, or idempotency keys. Before storing any PipelineError in AgentTurnOutcome, pass it through the Plan 01 safe diagnostic projection. Build RenderingOutcomePolicy before every render, enforce generated output, append the bounded warning RENDERER_EVIDENCE_CONTRADICTION to diagnostics when needed, and classify completed/partial/failed according to evidence and caps. Add the deprecated runTurnText wrapper over runTurn without adding getLastOutcome.
 
-    **7. Update `executeBatch()`** — pass `operationId` through to each `execute()` call (each call gets the same operationId but different toolName+input → unique keys).
+      Do not alter PipelineError retryability semantics, ContextOptimizer behavior, provider selection, tier caps, or add a persistent ledger.
 
-    **8. Use `'IDEMPOTENCY_CONFLICT'` from PipelineErrorCode:** Plan 01 already added `'IDEMPOTENCY_CONFLICT'` to the `PipelineErrorCode` type union in `types.ts`. Simply use it — no modification to `types.ts` needed in this plan. The code is NOT retryable — it's a terminal state for this specific tool call within this operation.
+      Update the existing AgentOrchestrator.test.ts in this same task with focused public-behavior tests for answer/clarification, failed/planner/renderer paths, planner/tool caps, abort at stage boundaries, permission grant/deny/cancel, verified/unverified evidence, one recovery pass, irreversible/unknown suppression, and runTurnText compatibility. These tests are the task's RED/GREEN behavioral gate; the broader integration suite remains owned by Task 3.
+    </action>
+    <verify>
+      <automated>pnpm vitest run tests/core/ai/AgentOrchestrator.test.ts && pnpm lint</automated>
+    </verify>
+    <acceptance_criteria>
+      - AgentOrchestrator.test.ts exercises the structured outcome contract, cap/abort/permission/evidence/replan paths, and the typed ExecutorService.attachEvidence seam.
+      - PlannerService accepts the shared AbortSignal plus only the optional structured redacted recovery observation and never receives raw tool output or PipelineError diagnostics.
+      - RendererService requires both RenderingOutcomePolicy and the shared AbortSignal at synthesize and stream call sites.
+      - `pnpm vitest run tests/core/ai/AgentOrchestrator.test.ts` and `pnpm lint` both exit 0.
+    </acceptance_criteria>
+    <done>AgentOrchestrator is the sole owner of the complete bounded reliability control flow and returns AgentTurnOutcome for every exit.</done>
+  </task>
 
-    **9. Ensure backward compatibility:**
-    - Tools without `idempotency` field (default: `'not-required'`) are NOT affected — the idempotency gate is never entered
-    - `operationId` is optional — when absent, idempotency is skipped
-    - Existing callers that don't pass `operationId` continue to work unchanged
-  </action>
-  <verify>
-    <automated>npx tsc --noEmit</automated>
-  </verify>
-  <acceptance_criteria>
-    - `ExecutorService` has private `idempotencyLedger: Map<string, IdempotencyEntry>` property
-    - `execute()` accepts optional `operationId?: string` parameter (after `signal`, before `timeoutMs`)
-    - `deriveOperationKey('op-1', 'save', { a: 1, b: 2 })` produces the same key as `deriveOperationKey('op-1', 'save', { b: 2, a: 1 })` (sorted keys are deterministic)
-    - Tool with `idempotency: 'required'` and prior completed entry returns cached result WITHOUT calling `tool.execute()` — durationMs is 0
-    - Tool with `idempotency: 'required'` and in-flight entry throws `PipelineError` with `IDEMPOTENCY_CONFLICT` code
-    - Tool with `idempotency: 'not-required'` (or missing idempotency) executes normally with no ledger check
-    - Tool without `operationId` parameter executes normally with no ledger check
-    - Ledger entry transitions: in-flight (before execution) → completed/failed (after execution)
-    - `executeBatch()` propagates `operationId` to each tool call
-    - Existing ExecutorService tests still pass (backward compatibility)
-    - `tsc --noEmit` passes
-  </acceptance_criteria>
-  <done>ExecutorService enforces idempotency for required tools: duplicate completed returns cached result, in-flight throws IDEMPOTENCY_CONFLICT, derivation key uses sorted deterministic serialization</done>
-  <reversibility rating="costly">D-17 — adding persistence to the in-memory idempotency ledger changes the durability guarantee; until then, SW restart resets the ledger; the interface (operationId parameter) is an additive extension</reversibility>
-</task>
+  <task type="auto">
+    <name>Migrate legacy callers and existing context/tracer assertions</name>
+    <files>tests/core/ai/integration.test.ts, tests/core/ai/tracer.test.ts, tests/core/context/ContextOptimizer.test.ts</files>
+    <read_first>
+      - tests/core/ai/integration.test.ts — existing pipeline integration assertions and selected-tool fixtures
+      - tests/core/ai/tracer.test.ts — existing response string assertions and throw expectations
+      - tests/core/context/ContextOptimizer.test.ts — existing runTurn consumer at the integration assertion
+      - src/core/ai/AgentOrchestrator.ts — runTurn and deprecated runTurnText exports
+      - src/core/ai/AgentTurnInput.ts — factory used by migrated tests
+      - src/core/ai/AgentTurnOutcome.ts — renderedAnswer and terminalState fields
+      - .planning/phases/03a-agent-reliability-evidence/03a-CONTEXT.md — D-01 compatibility rule
+    </read_first>
+    <action>
+      Search every source and test caller of AgentOrchestrator.runTurn. New callers must assert AgentTurnOutcome fields. A legacy text-only caller may call runTurnText and must be marked as compatibility usage; do not add a second outcome accessor. Update integration, tracer, and ContextOptimizer integration assertions to inspect renderedAnswer, terminalState, diagnostics, trajectory, and cap/abort fields rather than treating the result as a string or expecting a bare thrown PipelineError. The AgentOrchestrator.test.ts migration and focused behavior coverage belongs to Task 2, its sole owner.
 
-<task type="auto">
-  <name>Comprehensive unit test suite for all Phase 3a new modules</name>
-  <files>tests/core/ai/verifier/OutcomeVerifier.test.ts, tests/core/ai/ReplanPolicy.test.ts, tests/core/ai/RenderingOutcomePolicy.test.ts, tests/core/ai/ExecutorService.test.ts, tests/core/ai/types.test.ts</files>
-  <read_first>
-    - tests/core/ai/ExecutorService.test.ts — existing test patterns, mock creation, describe/it/beforeEach structure
-    - tests/core/ai/AgentOrchestrator.test.ts — existing mock patterns for services (vi.mock with module-level mocks)
-    - src/core/ai/OutcomeVerifier.ts — `OutcomeVerifier` class and `outcomeVerifier` singleton
-    - src/core/ai/ReplanPolicy.ts — `evaluateReplan()` function
-    - src/core/ai/RenderingOutcomePolicy.ts — `buildRenderingOutcomePolicy()` function
-    - src/core/ai/types.ts — all new types from Plan 01
-    - src/core/ai/AgentTurnOutcome.ts — `AgentTurnOutcomeSchema`, `createAgentTurnOutcome`, `CompletionEvidence`
-    - RESEARCH.md "Validation Architecture" section — test map for AGT-01 through TOL-03
-    - vitest.config.ts — jsdom environment, globals enabled
-  </read_first>
-  <action>
-    <!-- scope note: 5 test files are created together because test files are structurally uniform (same vitest patterns, same import structure, same mock conventions); grouping maximizes context reuse — the executor reads existing test patterns once and applies them consistently across all files -->
-    Create/update the following test files. Each test file follows the existing vitest patterns: `describe/it/expect/vi` with `beforeEach(vi.clearAllMocks)`. Test files import from `../../../src/core/ai/...`.
-
-    **1. Create `tests/core/ai/verifier/OutcomeVerifier.test.ts`:**
-    - Test: "returns VerifiedCompletionEvidence for tool without evidence policy" — `tool.evidence` is undefined, verify evidence.verified === true
-    - Test: "returns VerifiedCompletionEvidence for tool with evidence.required: false" — verify skips checks, returns verified:true
-    - Test: "calls schema verifier for tool with evidence.required: true and verifier: 'schema'" — verify schemaVerifier was invoked
-    - Test: "returns UnverifiedCompletionEvidence on verification timeout" — mock a slow verifier, verify failureReason is 'verification_timeout'
-    - Test: "returns UnverifiedCompletionEvidence on AbortSignal" — abort signal during verification
-    - Test: "includes operationId and toolName in evidence" — verify evidence fields
-    - Test: "generates unique id per call" — call verify twice, compare evidence.id values
-    - Test: "defaults verifier type to 'schema' when policy.verifier is undefined"
-    - Use `describe` blocks for organization. Create mock `RegisteredTool` objects inline with varying evidence policies. Use `vi.fn()` for mock verifier functions.
-
-    **2. Create `tests/core/ai/ReplanPolicy.test.ts`:**
-    - Test: "abort → terminate" — isAborted: true returns 'terminate' regardless of other context
-    - Test: "irreversible tool → terminate" — sideEffect: 'irreversible' returns 'terminate' even on success
-    - Test: "successful read tool → continue-planning" — sideEffect: 'read', success: true
-    - Test: "failed retryable error → replan (first time)" — replanCount: 0, error.retryable: true
-    - Test: "failed retryable error → render (second time)" — replanCount: 1, error.retryable: true
-    - Test: "terminal error → render" — error.category: 'terminal'
-    - Test: "SCHEMA_INVALID error → render" — specific error code check
-    - Test: "NO_SUCH_TOOL error → render" — specific error code check
-    - Test: "INVALID_TOOL_INPUT error → render" — specific error code check
-    - Test: "planner cap reached → render" — caps.plannerCapReached: true
-    - Test: "default → render" — no matching rule
-    - Test: "pure function — same input produces same output" — call twice, verify identical
-    - Create factory function `makeReplanContext(overrides)` that returns a valid `ReplanContext` with sensible defaults, then override specific fields per test.
-
-    **3. Create `tests/core/ai/RenderingOutcomePolicy.test.ts`:**
-    - Test: "empty evidence → canClaimWriteSuccess: false"
-    - Test: "all verified → canClaimWriteSuccess: true" — verify evidenceSummary mentions "verified"
-    - Test: "mixed verified and unverified → canClaimWriteSuccess: false" — verify evidenceSummary includes "could not be verified"
-    - Test: "all unverified → canClaimWriteSuccess: false"
-    - Test: "evidenceSummary does not claim write success when unverified" — string assertions
-    - Import `buildRenderingOutcomePolicy` and create `VerifiedCompletionEvidence`/`UnverifiedCompletionEvidence` test fixtures.
-
-    **4. Update `tests/core/ai/ExecutorService.test.ts`** — add idempotency test block:
-    - Test: "idempotency: required — duplicate completed call returns cached result" — execute once, execute again with same operationId/tool/input, verify second call returns cached output without calling tool.execute second time
-    - Test: "idempotency: required — in-flight call blocks duplicate" — first call in progress (don't await), attempt second call with same key, verify IDEMPOTENCY_CONFLICT thrown
-    - Test: "idempotency: required — failed call can be retried" — first call fails, ledger entry status='failed', second call with same key throws IDEMPOTENCY_CONFLICT (per D-17, failed with unknown final state is blocked)
-    - Test: "idempotency: not-required — no ledger check" — execute twice, verify tool.execute() called twice
-    - Test: "idempotency: missing operationId — no ledger check" — execute without operationId, verify no conflict
-    - Test: "deriveOperationKey deterministic — sorted input keys" — call with {b:2, a:1} and {a:1, b:2}, verify same key
-    - Test: "deriveOperationKey unique — different inputs produce different keys" — call with two different inputs, verify keys differ
-    - Use existing test patterns. Create mock tools with `idempotency: 'required'` and `idempotency: 'not-required'`. Use separate `ExecutorService` instances per test or per describe block to ensure ledger isolation.
-
-    **5. Create `tests/core/ai/types.test.ts`:**
-    - Test: "AgentTurnOutcomeSchema validates a well-formed outcome" — use `createAgentTurnOutcome()` factory
-    - Test: "AgentTurnOutcomeSchema rejects outcome with missing required field" — omit `operationId`
-    - Test: "AgentTurnOutcomeSchema rejects invalid terminalState" — use 'unknown-state'
-    - Test: "CompletionEvidence discriminated union — verified variant" — `CompletionEvidenceSchema.parse({verified: true, verifierType: 'schema', checks: [], ...})`
-    - Test: "CompletionEvidence discriminated union — unverified variant" — `CompletionEvidenceSchema.parse({verified: false, failureReason: 'verification_error', retryable: false, ...})`
-    - Test: "ALLOWED_TRANSITIONS has correct structure" — check all 10 states are present, terminal states have empty sets
-    - Test: "ALLOWED_TRANSITIONS from assembling-context includes planning, failed, aborted" — set membership check
-    - Create Zod schemas inline for this test file, or import `AgentTurnOutcomeSchema` from AgentTurnOutcome.ts. Test that existing type exports are correct.
-
-    ALL tests must pass. Use `npx vitest run` for each file individually in development, and the full suite command for verification.
-  </action>
-  <verify>
-    <automated>npx vitest run tests/core/ai/verifier/OutcomeVerifier.test.ts tests/core/ai/ReplanPolicy.test.ts tests/core/ai/RenderingOutcomePolicy.test.ts tests/core/ai/ExecutorService.test.ts tests/core/ai/types.test.ts</automated>
-  </verify>
-  <acceptance_criteria>
-    - `tests/core/ai/verifier/OutcomeVerifier.test.ts` — ≥8 test cases, all passing
-    - `tests/core/ai/ReplanPolicy.test.ts` — ≥12 test cases covering all disposition outcomes and edge cases, all passing
-    - `tests/core/ai/RenderingOutcomePolicy.test.ts` — ≥5 test cases covering empty/verified/mixed/unverified evidence, all passing
-    - `tests/core/ai/ExecutorService.test.ts` — existing tests still pass + ≥7 new idempotency tests, all passing
-    - `tests/core/ai/types.test.ts` — ≥5 test cases for Zod schema validation and type const correctness, all passing
-    - `npx vitest run` on all 5 test files exits 0
-    - No test has side effects or leaves shared state (ledger isolated per test)
-  </acceptance_criteria>
-  <done>All 5 test files pass: OutcomeVerifier (>=8 tests), ReplanPolicy (>=12 tests), RenderingOutcomePolicy (>=5 tests), ExecutorService idempotency (>=7 tests), types Zod validation (>=5 tests)</done>
-</task>
-
+      Add a regression assertion that runTurnText returns the same renderedAnswer as runTurn for a deterministic answer path and that no source caller outside the wrapper assumes the old return type. Keep all ContextOptimizer tests unrelated to orchestration behavior unchanged except for the required outcome assertion and explicit tool reliability metadata in their selected-tool fixtures.
+    </action>
+    <verify>
+      <automated>pnpm vitest run tests/core/ai/AgentOrchestrator.test.ts tests/core/ai/integration.test.ts tests/core/ai/tracer.test.ts tests/core/context/ContextOptimizer.test.ts</automated>
+    </verify>
+    <acceptance_criteria>
+      - A repository search finds no old string-return assertion for runTurn and no caller that destructures a string result.
+      - Integration, tracer, and ContextOptimizer suites pass with the structured outcome contract.
+      - Integration.test.ts and ContextOptimizer.test.ts explicitly declare the three Phase 3a reliability values at the selected-tool boundary.
+      - The compatibility wrapper is the only text-returning API and is visibly deprecated in source documentation.
+      - All three named test files execute tests and exit 0.
+    </acceptance_criteria>
+    <done>All existing callers are migrated or explicitly isolated behind runTurnText, with no legacy API ambiguity.</done>
+  </task>
 </tasks>
 
 <threat_model>
 ## Trust Boundaries
 
-| Boundary | Description |
-|----------|-------------|
-| Tool input → ExecutorService | Serialized input used as idempotency key component; must be deterministic |
-| Idempotency ledger (in-memory) | Operation-scoped Map; ledger resets on SW restart (acceptable per D-17) |
+| Boundary | Untrusted input or authority | Control |
+|---|---|---|
+| Planner -> orchestrator | Model-selected action/tool/input | Closed registry, schema validation, immutable operation state, permission before execution |
+| Permission callback -> executor | User/caller decision and cancellation | Waiting state, attributable decision, no execution on denial/cancel, no replan bypass |
+| Executor/verifier -> renderer | Tool result, evidence, generated text | Exact evidence mapping, policy input, post-generation contradiction fallback |
+| Concurrent runTurn calls | Shared singleton service instances | Fresh machine and accumulators per operation, no getLastOutcome or shared mutable snapshot |
 
-## STRIDE Threat Register
+## STRIDE Register
 
-| Threat ID | Category | Component | Severity | Disposition | Mitigation Plan |
-|-----------|----------|-----------|----------|-------------|-----------------|
-| T-03a-10 | Tampering | ExecutorService idempotency key derivation | medium | mitigate | Key uses `JSON.stringify` with sorted `Object.keys()` for deterministic serialization; `operationId` is `crypto.randomUUID()` per turn guaranteeing uniqueness namespace; key collisions are cryptographically infeasible (RESEARCH.md Pitfall 2 verified) |
-| T-03a-11 | Denial of Service | Idempotency ledger growth | low | accept | Ledger entries are operation-scoped (cleared on SW restart); map entries are small strings; growth is bounded by number of tool calls per SW session — not expected to exceed hundreds |
-| T-03a-R3 | Repudiation | Idempotency ledger entries | medium | mitigate | Each `IdempotencyEntry` records `status`, `result`, `executedAt` — proving a tool was or was not executed. The derivation key includes `operationId` + `toolName` + deterministic serialized `input`, creating an unambiguously traceable chain: input → key → ledger entry → execution outcome. Consumers cannot later deny that a specific input was or was not executed. |
-| T-03a-E2 | Elevation of Privilege | ExecutorService bypass via missing operationId | medium | mitigate | When `operationId` is absent, the idempotency gate is entirely skipped — a caller could bypass idempotency by omitting the parameter. Mitigation: the only caller of `ExecutorService.execute()` with `operationId` is `AgentOrchestrator.runTurn()`, which always generates an `operationId` via `crypto.randomUUID()` (per D-02). Direct calls to `ExecutorService` from any other code path skip idempotency, which is intentional — non-orchestrator tool execution is outside the reliability contract. |
+| ID | Category | Threat | Control and automated test |
+|---|---|---|---|
+| T-03a-13 | Spoofing | A result/evidence record is attributed to another call or operation | Exact IDs, closed selected-tool adapter, integration mapping tests |
+| T-03a-14 | Tampering | Renderer or callback changes outcome/evidence or invalid state silently continues | Policy is derived by orchestrator, callback isolation, invalid transition tests, readonly outcome assertions |
+| T-03a-15 | Repudiation | Permission, abort, state, and terminal reason cannot be audited | operation/tool-call IDs, timestamps, callback origin, trajectory, redacted diagnostics, exit-path tests |
+| T-03a-16 | Information disclosure | Recovery prompt or render prompt receives raw tool/error data | Redacted observation tests, bounded policy summary, no raw output assertions |
+| T-03a-17 | Denial of service | Abort/replan/cap loops continue indefinitely | Shared signal checks, one replan, unchanged deadline/counters, cap flag tests |
+| T-03a-18 | Elevation of privilege | Denial is bypassed, unverified write is upgraded, or irreversible action is replayed | Permission tests, contradiction fallback tests, irreversible/unknown idempotency integration tests |
 </threat_model>
 
 <verification>
-## Plan Verification
-
 ```bash
-# Full unit test suite for all new Phase 3a modules
-npx vitest run tests/core/ai/verifier/OutcomeVerifier.test.ts tests/core/ai/ReplanPolicy.test.ts tests/core/ai/RenderingOutcomePolicy.test.ts tests/core/ai/ExecutorService.test.ts tests/core/ai/types.test.ts
-
-# Existing tests still pass (regression)
-npx vitest run tests/core/ai/trajectory/tracer.test.ts tests/core/ai/AgentOrchestrator.test.ts tests/core/ai/integration.test.ts
-
-# Type check
-npx tsc --noEmit
+pnpm vitest run tests/core/ai/AgentOrchestrator.test.ts tests/core/ai/integration.test.ts tests/core/ai/tracer.test.ts tests/core/context/ContextOptimizer.test.ts
+pnpm lint
 ```
+
+ The first command must run all integration and migrated caller suites. The phase gate in Plan 05 consumes these exact files plus the Plan 01/02 unit suites, nested compression suite, and security suite.
 </verification>
 
 <success_criteria>
-1. ExecutorService enforces idempotency for `idempotency: 'required'` tools — duplicate completed returns cached, in-flight throws conflict
-2. All 5 new/updated test files pass: `npx vitest run` exits 0 on the full suite
-3. Existing tests still pass (no regression from adding `operationId` parameter)
-4. `tsc --noEmit` passes with zero errors
-5. Test coverage for all new modules: OutcomeVerifier, ReplanPolicy, RenderingOutcomePolicy, idempotency, type schemas
+1. All AgentOrchestrator exits return immutable AgentTurnOutcome with canonical reasons and finalized trajectory.
+2. ContextOptimizer runs once; abort, permission, evidence, cap, replan, idempotency, and renderer policies are enforced on every path.
+3. Renderer cannot upgrade evidence and contradiction fallback is deterministic.
+4. All current callers/tests are migrated and explicit reliability metadata is present at the selected-tool adapter boundary.
+5. All named tests and `pnpm lint` pass.
 </success_criteria>
 
 <output>
-Create `.planning/phases/03a-agent-reliability-evidence/03a-03-SUMMARY.md` when done
+Create `.planning/phases/03a-agent-reliability-evidence/03a-03-SUMMARY.md` with the outcome API, exit-path matrix, caller migration list, and downstream consumption notes.
 </output>

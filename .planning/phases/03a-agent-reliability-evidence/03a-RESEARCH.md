@@ -172,12 +172,9 @@ src/core/ai/
 ├── AgentTrajectoryMachine.ts   # NEW: FSM + ALLOWED_TRANSITIONS + history
 ├── AgentTurnOutcome.ts         # NEW: Outcome type, factory, Zod schemas
 ├── AgentTurnInput.ts           # Modified: add onTrajectoryTransition callback
-├── OutcomeVerifier.ts          # NEW: Postcondition verification service
 ├── verifier/                   # NEW directory
 │   ├── OutcomeVerifier.ts      # Main verifier service
-│   ├── SchemaVerifier.ts       # Schema-based postcondition checks
-│   ├── EnvironmentVerifier.ts  # Environment state checks
-│   └── VerifierTypes.ts        # Verifier type definitions
+│   └── VerifierTypes.ts        # Verifier type definitions and safe checks
 ├── ReplanPolicy.ts             # NEW: Pure function for replan decisions
 ├── PlannerService.ts           # Modified: accept replan context in plan()
 ├── ExecutorService.ts          # Modified: idempotency ledger, evidence fields
@@ -937,42 +934,28 @@ export function buildRenderingOutcomePolicy(
 |----------|-------|
 | Framework | vitest ^3.2.7 |
 | Config file | `./vitest.config.ts` (jsdom environment, globals enabled) |
-| Quick run command | `npx vitest run tests/core/ai/trajectory tests/core/ai/verifier tests/core/ai/replan` |
+| Quick run command | `pnpm vitest run tests/core/ai/types.test.ts tests/core/ai/trajectory/AgentTrajectoryMachine.test.ts tests/core/ai/verifier/OutcomeVerifier.test.ts tests/core/ai/ReplanPolicy.test.ts` |
 | Full suite command | `pnpm test -- tests/core/ai` |
 
 ### Phase Requirements → Test Map
 
 | Req ID | Behavior | Test Type | Automated Command | File Exists? |
 |--------|----------|-----------|-------------------|-------------|
-| AGT-01 | Trajectory states emit in correct sequence; invalid transitions reject | unit | `npx vitest run tests/core/ai/trajectory/AgentTrajectoryMachine.test.ts -t "transition"` | ❌ Wave 0 |
-| AGT-01 | All 10 states transition through valid paths end-to-end | integration | `npx vitest run tests/core/ai/trajectory/AgentTrajectoryMachine.test.ts -t "full pipeline"` | ❌ Wave 0 |
-| AGT-02 | Verified tool → OutcomeVerifier returns VerifiedCompletionEvidence | unit | `npx vitest run tests/core/ai/verifier/OutcomeVerifier.test.ts -t "verified"` | ❌ Wave 0 |
-| AGT-02 | Unverified tool → OutcomeVerifier returns UnverifiedCompletionEvidence | unit | `npx vitest run tests/core/ai/verifier/OutcomeVerifier.test.ts -t "unverified"` | ❌ Wave 0 |
-| AGT-02 | RendererService does not claim writes without verified evidence | integration | `npx vitest run tests/core/ai/RenderingOutcomePolicy.test.ts -t "blocks write"` | ❌ Wave 0 |
-| AGT-03 | Cap exhaustion → terminalState: 'partial', not 'completed' | integration | `npx vitest run tests/core/ai/AgentOrchestrator.test.ts -t "cap exhaustion partial"` | ❌ Wave 0 |
-| AGT-03 | Abort → terminalState: 'aborted', renderedAnswer is null | integration | `npx vitest run tests/core/ai/AgentOrchestrator.test.ts -t "abort"` | ❌ Wave 0 |
-| AGT-03 | Every exit path returns AgentTurnOutcome (no bare strings) | integration | `npx vitest run tests/core/ai/AgentOrchestrator.test.ts -t "returns AgentTurnOutcome"` | ❌ Wave 0 |
-| AGT-04 | ReplanPolicy: success → continue-planning | unit | `npx vitest run tests/core/ai/ReplanPolicy.test.ts -t "success continues"` | ❌ Wave 0 |
-| AGT-04 | ReplanPolicy: retryable error → one replan, then render | unit | `npx vitest run tests/core/ai/ReplanPolicy.test.ts -t "retryable one replan"` | ❌ Wave 0 |
-| AGT-04 | ReplanPolicy: irreversible tool → terminate | unit | `npx vitest run tests/core/ai/ReplanPolicy.test.ts -t "irreversible terminates"` | ❌ Wave 0 |
-| TOL-03 | Tool with sideEffect: 'write' + evidence.required → verifier called | integration | `npx vitest run tests/core/ai/verifier/OutcomeVerifier.test.ts -t "write side effect"` | ❌ Wave 0 |
+| AGT-01 | Trajectory states and invalid transitions | unit | `pnpm vitest run tests/core/ai/trajectory/AgentTrajectoryMachine.test.ts` | Plan 01 |
+| AGT-02 | Verified/unverified evidence and renderer guard | unit/integration | `pnpm vitest run tests/core/ai/verifier/OutcomeVerifier.test.ts tests/core/ai/tracer.test.ts` | Plans 02-03 |
+| AGT-03 | Structured outcomes, caps, abort, and caller migration | integration | `pnpm vitest run tests/core/ai/AgentOrchestrator.test.ts tests/core/ai/integration.test.ts tests/core/ai/tracer.test.ts` | Plan 03 |
+| AGT-04 | Pure dispositions, permission, one replan, irreversible guard | unit/integration | `pnpm vitest run tests/core/ai/ReplanPolicy.test.ts tests/core/ai/integration.test.ts` | Plans 02-03 |
+| TOL-03 | Side-effect postcondition and operation-scoped evidence/idempotency | unit/integration | `pnpm vitest run tests/core/ai/verifier/OutcomeVerifier.test.ts tests/core/ai/ExecutorService.test.ts` | Plans 01-02 |
 
 ### Sampling Rate
 
-- **Per task commit:** `npx vitest run tests/core/ai/trajectory tests/core/ai/verifier tests/core/ai/replan`
+- **Per task commit:** Run the task-specific commands in `03a-VALIDATION.md`.
 - **Per wave merge:** `pnpm test -- tests/core/ai`
-- **Phase gate:** Full AI test suite green (`pnpm run verify:phase-3` extended to include new tests)
+- **Phase gate:** Explicit Phase 3a suite green (`pnpm run verify:phase-3a`).
 
 ### Wave 0 Gaps
 
-- [ ] `tests/core/ai/trajectory/AgentTrajectoryMachine.test.ts` — covers AGT-01 (all transitions, invalid rejections, terminal lock, history immutability, callback fire-and-forget)
-- [ ] `tests/core/ai/verifier/OutcomeVerifier.test.ts` — covers AGT-02, TOL-03 (verified/unverified evidence, verifier type routing, timeout handling, missing verifier)
-- [ ] `tests/core/ai/ReplanPolicy.test.ts` — covers AGT-04 (all ReplanDisposition outcomes, irreversible guard, one-replan limit, abort priority, cap exhaustion)
-- [ ] `tests/core/ai/RenderingOutcomePolicy.test.ts` — covers AGT-02 (policy derivation, mixed evidence handling, empty evidence)
-- [ ] `tests/core/ai/AgentOrchestrator.test.ts` (extended) — covers AGT-03 (AgentTurnOutcome on every exit path, cap exhaustion, abort, runTurnText wrapper)
-- [ ] `tests/core/ai/ExecutorService.test.ts` (extended) — covers idempotency ledger (duplicate detection, in-flight guard, key uniqueness)
-- [ ] `tests/core/ai/types.test.ts` — Zod schema validation for AgentTurnOutcome, CompletionEvidence, ReplanDisposition
-- [ ] `tests/core/ai/integration.test.ts` (extended) — full trajectory + evidence + replan integration flow
+None. All validation artifacts are owned by Plans 01-05 and are listed in `03a-VALIDATION.md`.
 
 ## Security Domain
 

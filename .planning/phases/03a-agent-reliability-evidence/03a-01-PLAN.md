@@ -6,66 +6,54 @@ wave: 1
 depends_on: []
 files_modified:
   - src/core/ai/types.ts
+  - src/core/ai/PipelineError.ts
   - src/core/ai/AgentTurnOutcome.ts
   - src/core/ai/AgentTrajectoryMachine.ts
-  - src/core/ai/RenderingOutcomePolicy.ts
-  - src/core/ai/AgentOrchestrator.ts
-  - src/core/ai/RendererService.ts
-  - tests/core/ai/trajectory/tracer.test.ts
-autonomous: false
+  - src/core/ai/ExecutorService.ts
+  - tests/core/ai/types.test.ts
+  - tests/core/ai/trajectory/AgentTrajectoryMachine.test.ts
+  - tests/core/ai/ExecutorService.test.ts
+autonomous: true
 requirements:
   - AGT-01
   - AGT-03
-
+  - TOL-03
+user_setup: []
 must_haves:
   truths:
-    - "TRUTH-01: `agentOrchestrator.runTurn(input)` returns `AgentTurnOutcome` (not `string`) — `typeof result === 'object' && 'terminalState' in result` holds for the answer path"
-    - "TRUTH-02: `AgentTurnOutcome.trajectory` contains >=2 entries (`assembling-context` --> ... --> `completed`/`failed`/`aborted`) — no turn returns an empty or single-entry trajectory"
-    - "TRUTH-03: An invalid state transition (e.g. `completed` --> `planning`) throws `AGENT_STATE_INVALID` — the transition map is closed and enforced"
-    - "TRUTH-04: `agentOrchestrator.runTurnText(input)` returns the same string as `(await runTurn(input)).renderedAnswer` for the answer path — backward compatibility preserved"
-    - "TRUTH-05: An aborted turn via `AbortController.abort()` produces `AgentTurnOutcome.terminalState === 'aborted'` and `renderedAnswer === null` — abort is distinct from failure"
-    - "TRUTH-06: RenderingOutcomePolicy is derived from CompletionEvidence by the orchestrator — RendererService.synthesize() accepts `policy` parameter and never independently determines evidence sufficiency (per D-11)"
+    - "The public contracts represent the ten trajectory states, the four terminal outcome states, the closed Phase 3a reason-code union, and the exact three RegisteredTool reliability metadata fields without any Phase 8a manifest fields."
+    - "AgentTrajectoryMachine rejects every transition not in the explicit allowlist, rejects transitions after completed, failed, or aborted, finalizes timestamps, and isolates histories between instances."
+    - "A required-idempotency tool uses one operation-scoped logical key, returns a previously completed validated result without executing again, permits at most one explicitly marked failed-before-effect recovery, and never re-executes an unknown or started effect."
+    - "AgentTurnOutcomeSchema accepts immutable comprehensive outcomes and rejects invalid terminal states, reason codes, evidence variants, and incomplete timestamps."
   artifacts:
-    - src/core/ai/AgentTurnOutcome.ts
-    - src/core/ai/AgentTrajectoryMachine.ts
-    - src/core/ai/RenderingOutcomePolicy.ts
+    - path: "src/core/ai/types.ts"
+      provides: "AgentTurnInput permission/abort signal callback, selected-tool metadata handoff, trajectory/evidence/idempotency contracts, PipelineErrorCode additions, and RegisteredTool reliability metadata."
+      exports: ["AgentTrajectoryState", "ALLOWED_TRANSITIONS", "CompletionEvidence", "RegisteredTool", "ToolExecutionResult", "ReplanContext", "ToolSchemaInfo"]
+    - path: "src/core/ai/AgentTurnOutcome.ts"
+      provides: "Readonly AgentTurnOutcome contract, closed reason codes, Zod schemas, and outcome factory."
+      exports: ["AgentTurnOutcome", "AgentTurnReasonCode", "AgentTurnOutcomeSchema", "createAgentTurnOutcome"]
+    - path: "src/core/ai/AgentTrajectoryMachine.ts"
+      provides: "Operation-scoped strict state machine with immutable transition snapshots and callback isolation."
+      exports: ["AgentTrajectoryMachine"]
+    - path: "src/core/ai/ExecutorService.ts"
+      provides: "Tool-call IDs and in-memory operation-scoped idempotency ledger with completed, failed-before-effect, and unknown states."
+      exports: ["ExecutorService", "executorService"]
   key_links:
-    - "AgentOrchestrator.runTurn() --> AgentTrajectoryMachine.transitionTo() — every state change flows through the allowlist"
-    - "AgentOrchestrator.runTurn() --> AgentTurnOutcome — every exit path (answer/error/abort/cap-exhaustion) builds an outcome"
-    - "AgentTurnOutcome.renderedAnswer — must NOT be a non-null string when terminalState is 'aborted'"
-
-# Artifacts this phase produces (Plan 01)
-
-| Symbol | Kind | File |
-|--------|------|------|
-| `AgentTurnOutcome` | interface | src/core/ai/AgentTurnOutcome.ts |
-| `AgentTerminalState` | type ('completed'\|'partial'\|'failed'\|'aborted') | src/core/ai/AgentTurnOutcome.ts |
-| `AgentTurnReasonCode` | type | src/core/ai/AgentTurnOutcome.ts |
-| `AgentTurnOutcomeSchema` | Zod schema | src/core/ai/AgentTurnOutcome.ts |
-| `createAgentTurnOutcome` | factory function | src/core/ai/AgentTurnOutcome.ts |
-| `AgentTrajectoryState` | type | src/core/ai/types.ts |
-| `TrajectoryStateEntry` | interface | src/core/ai/types.ts |
-| `ALLOWED_TRANSITIONS` | const (Record<AgentTrajectoryState, Set<AgentTrajectoryState>>) | src/core/ai/types.ts |
-| `ToolSideEffect` | type ('none'\|'read'\|'write'\|'irreversible') | src/core/ai/types.ts |
-| `ToolIdempotency` | type ('not-required'\|'supported'\|'required') | src/core/ai/types.ts |
-| `ToolEvidencePolicy` | interface | src/core/ai/types.ts |
-| `CompletionEvidence` | discriminated union type | src/core/ai/types.ts |
-| `CompletionEvidenceCheck` | interface | src/core/ai/types.ts |
-| `ReplanDisposition` | type | src/core/ai/types.ts |
-| `ReplanContext` | interface | src/core/ai/types.ts |
-| `RenderingOutcomePolicy` | interface | src/core/ai/types.ts |
-| `AgentTrajectoryMachine` | class | src/core/ai/AgentTrajectoryMachine.ts |
-| `buildRenderingOutcomePolicy` | function | src/core/ai/RenderingOutcomePolicy.ts |
-| `RegisteredTool` (extended) | interface + sideEffect?/evidence?/idempotency? | src/core/ai/types.ts |
-| `ToolExecutionResult` (extended) | interface + toolCallId?/evidence? | src/core/ai/types.ts |
-| `AgentTurnInput` (extended) | interface + onTrajectoryTransition? | src/core/ai/types.ts |
+    - from: "src/core/ai/AgentTrajectoryMachine.ts"
+      to: "src/core/ai/types.ts"
+      via: "transitionTo reads the exported ALLOWED_TRANSITIONS map and raises PipelineError code AGENT_STATE_INVALID for rejected edges"
+    - from: "src/core/ai/ExecutorService.ts"
+      to: "src/core/ai/types.ts"
+      via: "execute derives the logical key from operationId, toolName, and canonical serialized input while returning a distinct toolCallId"
+    - from: "src/core/ai/AgentTurnOutcome.ts"
+      to: "src/core/ai/types.ts"
+      via: "Outcome schemas validate trajectory entries, CompletionEvidence variants, ToolExecutionResult references, limits, abort metadata, diagnostics, and timestamps"
 ---
 
 <objective>
-Wire the full trajectory state machine and structured outcome contract end-to-end through one answer path: types --> AgentTrajectoryMachine --> AgentOrchestrator.runTurn() --> AgentTurnOutcome. After this plan, `runTurn()` returns a typed outcome with trajectory history, abort is handled distinctly from failure, and `runTurnText()` provides backward compatibility. The answer path is production-quality; error/abort/cap-exhaustion paths are complete.
+Establish the stable Phase 3a contracts and the operation-scoped idempotency primitive before any orchestrator integration. This plan owns all shared type and executor changes so later plans consume complete, compiling interfaces rather than modifying them concurrently.
 
-Purpose: Prove the trajectory FSM architecture and return-type contract in a single working slice before expanding into evidence verification and replanning.
-Output: New types module (AgentTurnOutcome.ts), trajectory FSM (AgentTrajectoryMachine.ts), rendering policy (RenderingOutcomePolicy.ts), refactored orchestrator, updated renderer, and passing tracer test.
+The contracts follow D-01 through D-09 and D-16/D-17. `runTurn()` will later return the immutable comprehensive `AgentTurnOutcome`; this plan defines that record, the strict trajectory machine, exact tool-call identity, and bounded in-memory duplicate protection without adding Phase 8a capability-manifest fields or persistence.
 </objective>
 
 <execution_context>
@@ -76,219 +64,141 @@ Output: New types module (AgentTurnOutcome.ts), trajectory FSM (AgentTrajectoryM
 <context>
 @.planning/PROJECT.md
 @.planning/ROADMAP.md
-@.planning/STATE.md
+@.planning/REQUIREMENTS.md
 @.planning/phases/03a-agent-reliability-evidence/03a-CONTEXT.md
 @.planning/phases/03a-agent-reliability-evidence/03a-RESEARCH.md
+@.planning/PRODUCT_SPEC_v0_1.md
+@.planning/PRODUCT_REQUIREMENTS_AGENT_HARNESS.md
 @src/core/ai/types.ts
-@src/core/ai/AgentTurnInput.ts
-@src/core/ai/AgentOrchestrator.ts
-@src/core/ai/RendererService.ts
 @src/core/ai/PipelineError.ts
+@src/core/ai/AgentTurnInput.ts
+@src/core/ai/ExecutorService.ts
+@tests/core/ai/ExecutorService.test.ts
 </context>
 
 <tasks>
+  <task type="auto" tdd="true">
+    <name>Define outcome, trajectory, evidence, permission, and idempotency contracts</name>
+    <files>src/core/ai/types.ts, src/core/ai/PipelineError.ts, src/core/ai/AgentTurnOutcome.ts, tests/core/ai/types.test.ts</files>
+    <behavior>
+      - A valid AgentTurnOutcome parses with terminalState completed, partial, failed, or aborted and the canonical reason codes planner_answer, planner_clarification, planner_cap_reached, tool_cap_reached, tool_completed, tool_failed, permission_denied, completion_verified, completion_unverified, verification_failed, planner_failed, renderer_failed, pipeline_failed, invalid_state_transition, irreversible_action_executed, user_aborted, or caller_aborted.
+      - AgentTurnOutcomeSchema rejects an unknown terminalState, unknown reasonCode, missing operationId, malformed trajectory entry, mismatched evidence discriminator, or non-null renderedAnswer for an aborted outcome.
+      - ALLOWED_TRANSITIONS contains every valid edge from D-04 and no terminal-state edges; the optional permission callback returns granted, denied, or cancelled with an attributable user/caller origin when known.
+      - RegisteredTool exposes only sideEffect, idempotency, and evidence as new Phase 3a reliability metadata; CompletionEvidence is keyed by operationId, toolCallId, and toolName and checks contain safe bounded references rather than raw tool output.
+      - A PipelineError containing secret-bearing input or exception text produces a safe public diagnostic with only a code-allowlisted message.
+    </behavior>
+    <read_first>
+      - src/core/ai/types.ts — existing AgentTurnInput, PlannerDecision, RegisteredTool, ToolExecutionResult, PipelineErrorCode, TIER_CAPS
+      - src/core/ai/PipelineError.ts — existing retryable/terminal mapping that must remain the technical classification authority
+      - src/core/ai/AgentTurnInput.ts — factory defaults and re-export boundary
+      - .planning/phases/03a-agent-reliability-evidence/03a-CONTEXT.md — D-01 through D-09 and D-16/D-17
+      - .planning/PRODUCT_SPEC_v0_1.md — §§28.2, 31.2, and 31.3
+      - .planning/PRODUCT_REQUIREMENTS_AGENT_HARNESS.md — AGT-01 through AGT-04 and TOL-03
+    </read_first>
+    <action>
+      Add the exact readonly public contracts in the existing core AI type boundary. Keep PipelineError as the technical error type and add the canonical Rev. C technical codes AGENT_STATE_INVALID, TOOL_POSTCONDITION_FAILED, COMPLETION_EVIDENCE_MISSING, and TOOL_IDEMPOTENCY_CONFLICT as terminal classifications; do not use these codes as AgentTurnReasonCode values. D-12 remains intact: PipelineError continues to own technical retryable/terminal classification, while these additive canonical codes carry technical diagnostics. RENDERER_EVIDENCE_CONTRADICTION is a bounded outcome warning, not a new PipelineError classification.
 
-<task type="checkpoint:decision" gate="blocking">
-  <name>Confirm one-way contract decisions before implementation</name>
-  <decision>Phase 3a type contracts (D-01, D-03, D-04, D-05, D-07, D-08, D-09, D-14, D-16) are one-way doors — changing field semantics later would require updating every downstream consumer. All decisions were locked by the user in CONTEXT.md.</decision>
-  <context>This checkpoint confirms the type contracts specified in CONTEXT.md sections D-01 through D-16 are accepted as-is before any code is written. The executor will implement these contracts exactly.</context>
-  <options>
-    <option id="proceed">
-      <name>Proceed — implement all 17 locked decisions as specified</name>
-      <pros>Matches user intent exactly; no divergence from CONTEXT.md</pros>
-      <cons>One-way contract change; downstream consumers must follow</cons>
-    </option>
-    <option id="amend">
-      <name>Amend — adjust specific contracts before implementation</name>
-      <pros>Flexibility if research reveals issues</pros>
-      <cons>Requires re-gathering context; delays phase</cons>
-    </option>
-  </options>
-  <resume-signal>Type "proceed" to implement as specified, or "amend: [details]" to adjust</resume-signal>
-</task>
+      Define AgentTrajectoryState, TrajectoryStateEntry, ALLOWED_TRANSITIONS, ToolSideEffect, ToolIdempotency, CompletionEvidenceCheck, VerifiedCompletionEvidence, UnverifiedCompletionEvidence, and RenderingOutcomePolicy. Make evidence checks safe: use check name, passed, expected scalar/reference, actualRef, and bounded message; never carry unrestricted output, secrets, or an idempotency key in public diagnostics.
 
-<task type="tracer">
-  <name>End-to-end tracer — "Answer path produces AgentTurnOutcome with trajectory history"</name>
-  <files>src/core/ai/AgentTurnOutcome.ts, src/core/ai/AgentTrajectoryMachine.ts, src/core/ai/types.ts</files>
-  <read_first>
-    - src/core/ai/types.ts — existing `RegisteredTool`, `ToolExecutionResult`, `PipelineErrorCode`, `AgentTurnInput`
-    - RESEARCH.md Patterns 1 and 2 (AgentTrajectoryMachine FSM, CompletionEvidence discriminated union)
-    - CONTEXT.md D-01 through D-07, D-09, D-14, D-16 — exact contract definitions for every type field
-  </read_first>
-  <action>
-    Create ALL core types for Phase 3a in two files:
+      Extend RegisteredTool only with optional sideEffect, idempotency, and evidence fields. The evidence policy has required plus an optional typed verifier descriptor whose type is schema, environment, read-after-write, or tool-provided and whose checker returns safe CompletionEvidenceCheck values. Add the same three optional reliability fields to ToolSchemaInfo solely as the existing selected-tool adapter handoff; no category, risk, permissions, dataScopes, timeout, costClass, schema hashes, or discovery fields are allowed. Add abortSignal to both AgentTurnInput and ContextOptimizerInput, and validate that optional signal as a runtime pass-through field rather than prompt data. Add toolCallId to ToolExecutionResult, preserving optionality until ExecutorService supplies it. Add the operation-scoped permission callback and redacted ReplanContext observation types without adding a PermissionGate file that does not exist in this repository.
 
-    **1. Create `src/core/ai/AgentTurnOutcome.ts`** — new file with:
-    - `AgentTerminalState` type = `'completed' | 'partial' | 'failed' | 'aborted'` (per D-02)
-    - `AgentTurnReasonCode` type = `'direct_answer' | 'planner_terminated' | 'clarification_requested' | 'user_declined' | 'planner_cap_exhausted' | 'tool_cap_exhausted' | 'permission_terminated' | 'verification_failed' | 'pipeline_failure' | 'user_aborted'` (per D-05)
-    - `AgentTurnOutcome` interface with ALL fields from D-02: `operationId`, `terminalState`, `reasonCode`, `renderedAnswer`, `trajectory`, `evidence`, `toolResults`, `limits` (plannerCalls/plannerCap/plannerCapReached/toolCalls/toolCap/toolCapReached), `abort` (requested/requestedAt/stage), `usage` (inputTokens/outputTokens/totalTokens/estimatedCost/currency), `diagnostics` (errors/warnings), `startedAt`, `endedAt`, `durationMs`. ALL fields are `readonly`.
-    - Zod schema `AgentTurnOutcomeSchema` using `z.strictObject()` — validate every field.
-    - `createAgentTurnOutcome()` factory function that fills defaults: `startedAt: Date.now()`, empty arrays for trajectory/evidence/toolResults/diagnostics, zeroed usage, `abort.requested: false`.
-    - Export type AND schema AND factory.
+      Define AgentTurnOutcome with all D-02 fields plus abort origin when known, readonly arrays, a Zod schema, and a factory. The schema must enforce the aborted-answer invariant and the exact closed reason-code union above. Export a safe PipelineError projection that preserves code, category, retryable flag, timestamp, and a code-allowlisted user-facing message while removing the original arbitrary message, raw input/output, exception text, secrets, and idempotency keys before a PipelineError enters public outcome diagnostics. Do not retain stale reason names from the existing research examples.
+    </action>
+    <verify>
+      <automated>pnpm vitest run tests/core/ai/types.test.ts</automated>
+    </verify>
+    <acceptance_criteria>
+      - `src/core/ai/types.ts` exports the ten trajectory states, exact D-04 allowlist, evidence union, permission decision/request, ReplanContext, and the three RegisteredTool reliability fields only.
+      - `ToolSchemaInfo` carries only the same three reliability metadata fields as an adapter handoff and both AgentTurnInput.abortSignal and ContextOptimizerInput.abortSignal are available to the optimizer/orchestrator path.
+      - `src/core/ai/AgentTurnOutcome.ts` exports AgentTurnOutcome, AgentTerminalState, AgentTurnReasonCode, AgentTurnOutcomeSchema, CompletionEvidenceSchema, and createAgentTurnOutcome.
+      - `PipelineError.ts` maps every newly added technical code to terminal and leaves existing retryable codes unchanged.
+      - `PipelineError.ts` exports a safe diagnostic projection that preserves technical classification and code-allowlisted messages while removing raw input/output, arbitrary exception text, secrets, and logical idempotency keys.
+      - `types.test.ts` contains positive and negative schema cases and checks every canonical reason code and every valid/invalid transition.
+      - `pnpm vitest run tests/core/ai/types.test.ts` executes at least one test and exits 0.
+    </acceptance_criteria>
+    <done>Shared contracts compile, validate the canonical Phase 3a surface, and explicitly exclude Phase 8a manifest fields and persistent replay guarantees.</done>
+  </task>
 
-    **2. Extend `src/core/ai/types.ts`** — modify existing file:
-    - Add `AgentTrajectoryState` type (per D-04)
-    - Add `TrajectoryStateEntry` interface (per D-07)
-    - Add `ToolSideEffect`, `ToolIdempotency`, `ToolEvidencePolicy` types (per D-08/D-16)
-    - Extend `RegisteredTool` with `sideEffect?`, `evidence?`, `idempotency?` — ONLY these 3 fields (per D-16)
-    - Extend `ToolExecutionResult` with `toolCallId?`, `evidence?`
-    - Add `ReplanDisposition` type (per D-14)
-    - Add `ReplanContext` interface (per RESEARCH.md Pattern 5)
-    - Add `CompletionEvidence` discriminated union: `VerifiedCompletionEvidence` (verified:true) and `UnverifiedCompletionEvidence` (verified:false) (per D-09)
-    - Add `CompletionEvidenceCheck` interface
-    - Add `RenderingOutcomePolicy` interface (per D-11)
-    - Add `'IDEMPOTENCY_CONFLICT'` to the `PipelineErrorCode` type union (per D-17 — Plan 03 depends on this pre-existing code in types.ts)
-    - Add `ALLOWED_TRANSITIONS` constant with exact transitions from D-04
-    - Extend `AgentTurnInput` with optional `onTrajectoryTransition?` callback (per D-03)
-  </action>
-  <verify>
-    <automated>npx tsc --noEmit</automated>
-  </verify>
-  <acceptance_criteria>
-    - `src/core/ai/AgentTurnOutcome.ts` exports `AgentTurnOutcome`, `AgentTerminalState`, `AgentTurnReasonCode`, `AgentTurnOutcomeSchema`, `createAgentTurnOutcome`
-    - `src/core/ai/types.ts` exports all new types: `AgentTrajectoryState`, `TrajectoryStateEntry`, `ToolSideEffect`, `ToolIdempotency`, `ToolEvidencePolicy`, `ReplanDisposition`, `ReplanContext`, `CompletionEvidence`, `CompletionEvidenceCheck`, `RenderingOutcomePolicy`, `ALLOWED_TRANSITIONS`, `PipelineErrorCode` extended with `'IDEMPOTENCY_CONFLICT'`
-    - `RegisteredTool` has `sideEffect?`, `evidence?`, `idempotency?` in addition to existing fields
-    - `ToolExecutionResult` has `toolCallId?`, `evidence?` in addition to existing fields
-    - `AgentTurnInput` has optional `onTrajectoryTransition?` field
-    - `ALLOWED_TRANSITIONS` has all 10 states with correct transition sets; terminal states have empty sets
-    - `AgentTurnOutcomeSchema.parse()` validates a well-formed outcome object without throwing
-    - `tsc --noEmit` passes
-  </acceptance_criteria>
-  <done>All Phase 3a types compile, AgentTurnOutcome.ts and types.ts are created/modified, ALLOWED_TRANSITIONS covers all 10 states, Zod schemas parse valid outcomes</done>
-</task>
+  <task type="auto" tdd="true">
+    <name>Implement trajectory machine and operation-scoped idempotency ledger</name>
+    <files>src/core/ai/AgentTrajectoryMachine.ts, src/core/ai/ExecutorService.ts, tests/core/ai/trajectory/AgentTrajectoryMachine.test.ts, tests/core/ai/ExecutorService.test.ts</files>
+    <behavior>
+      - The machine starts at assembling-context, records closed entries with enteredAt, exitedAt, and durationMs, and invokes a throwing observer without failing the transition or mutating the observer's snapshot.
+      - Every legal D-04 path, terminal protection, invalid transition, concurrent instance isolation, and callback failure isolation is tested.
+      - A required-idempotency call marks its logical key started before execution; a completed duplicate returns the validated output and prior evidence without running the tool, with a new toolCallId; a failed-before-effect duplicate is allowed once; started or unknown state throws TOOL_IDEMPOTENCY_CONFLICT and never runs the tool again.
+    </behavior>
+    <read_first>
+      - src/core/ai/types.ts — ALLOWED_TRANSITIONS, PipelineErrorCode, RegisteredTool, ToolExecutionResult, and idempotency status contracts from Task 1
+      - src/core/ai/PipelineError.ts — constructor and technical conflict code
+      - src/core/ai/AgentTrajectoryMachine.ts — include this path only if a previous partial attempt created it; otherwise create the exact export named below
+      - src/core/ai/ExecutorService.ts — existing execute and executeBatch signatures and timeout/error behavior
+      - tests/core/ai/ExecutorService.test.ts — existing mock-tool fixtures and test conventions
+      - .planning/phases/03a-agent-reliability-evidence/03a-RESEARCH.md — FSM and idempotency patterns, with D-17 corrected for failed-before-effect versus unknown state
+    </read_first>
+    <action>
+      Create AgentTrajectoryMachine as an operation-scoped class. `transitionTo` must consult ALLOWED_TRANSITIONS, throw PipelineError AGENT_STATE_INVALID for an illegal edge or any post-terminal transition, close the current immutable entry, open the next entry, and invoke the optional callback inside an isolated try/catch. `history` returns a readonly copy and `finalize()` closes the final entry exactly once for the current turn.
 
-<task type="auto">
-  <name>AgentTrajectoryMachine class + AgentOrchestrator.runTurn() full refactor</name>
-  <files>src/core/ai/AgentTrajectoryMachine.ts, src/core/ai/AgentOrchestrator.ts</files>
-  <read_first>
-    - src/core/ai/types.ts — new types from Task 1
-    - src/core/ai/AgentTurnOutcome.ts — `AgentTurnOutcome`, `createAgentTurnOutcome`
-    - src/core/ai/AgentOrchestrator.ts — existing `runTurn()` method (lines 84-197)
-    - src/core/ai/PipelineError.ts — existing error taxonomy
-    - RESEARCH.md Pattern 1 (AgentTrajectoryMachine) and Pattern 4 (abort-aware pipeline)
-    - CONTEXT.md D-01, D-03, D-04, D-06, D-07, D-15
-  </read_first>
-  <action>
-    **1. Create `src/core/ai/AgentTrajectoryMachine.ts`** per RESEARCH.md Pattern 1:
-    - `TERMINAL_STATES` Set for `completed`/`failed`/`aborted`
-    - `AgentTrajectoryMachine` class: `transitionTo(next, metadata?)` validates against `ALLOWED_TRANSITIONS`, throws `AGENT_STATE_INVALID` on invalid, closes current entry, pushes to history, fires `onTransition` callback wrapped in try/catch
-    - `finalize()` closes current entry and returns complete history
-    - `current`, `history`, `isTerminal` getters
+      Modify ExecutorService without changing its closed-tool validation or timeout semantics. Generate a distinct toolCallId for each logical call, require a non-empty operationId whenever a tool declares idempotency required, and propagate operationId through executeBatch. Derive a deterministic logical key from operationId, tool name, and canonical recursively sorted JSON input; never expose this key in public outcome diagnostics. Store only operation-scoped in-memory ledger data. A caught error is failed-before-effect only when its diagnostic explicitly says effectStarted is false; all other started, aborted, timeout, and unknown states are unresolved and must not be re-executed. Permit one bounded recovery attempt for failed-before-effect, then treat further failure as unresolved. Export the exact typed method `attachEvidence(toolCallId: string, evidence: CompletionEvidence): void`; it must locate the ledger entry by toolCallId and accept the evidence only when evidence.operationId and evidence.toolName exactly match the entry, otherwise throw TOOL_POSTCONDITION_FAILED without overwriting the entry. This is the later orchestrator's validated cache seam; do not persist the ledger across turns or restarts.
 
-    **2. Refactor `src/core/ai/AgentOrchestrator.ts`:**
-    - `runTurn()` returns `Promise<AgentTurnOutcome>` (NOT `Promise<string>`) per D-01
-    - Create fresh `AgentTrajectoryMachine` at top of `runTurn()` — NOT as instance property (per RESEARCH.md Pitfall 3)
-    - Track `startedAt`, `replanCount = 0`
-    - Insert `signal?.throwIfAborted()` before each pipeline stage
-    - Transition states: assembling-context (start) --> planning (each loop iteration) --> executing (run_tool) --> rendering --> completed (answer) / failed (error) / aborted (abort)
-    - `buildAbortedOutcome()`: transitions to `aborted`, returns outcome with `terminalState: 'aborted'`, `renderedAnswer: null` per D-06
-    - `buildFailedOutcome(error)`: transitions to `failed`, returns outcome with error message
-    - Cap exhaustion: `terminalState: 'partial'` and `reasonCode: 'planner_cap_exhausted'` per D-02
-    - **Add `runTurnText()`** marked `@deprecated`: calls `this.runTurn()` and returns `outcome.renderedAnswer ?? dispatchError(...)`
-    - Evidence and replan integration are NOT added in this plan — those are Plan 02 additions
-  </action>
-  <verify>
-    <automated>npx tsc --noEmit</automated>
-  </verify>
-  <acceptance_criteria>
-    - `src/core/ai/AgentTrajectoryMachine.ts` exports `AgentTrajectoryMachine` class
-    - `agentOrchestrator.runTurn(input)` returns `Promise<AgentTurnOutcome>`
-    - Answer path: `outcome.terminalState === 'completed'`, trajectory has >=2 entries, renderedAnswer non-null
-    - Error path: `outcome.terminalState === 'failed'`, renderedAnswer has error message
-    - Abort path: `outcome.terminalState === 'aborted'`, renderedAnswer === null
-    - `runTurnText()` returns same string as `runTurn().renderedAnswer` for answer path
-    - Invalid FSM transitions throw `AGENT_STATE_INVALID`
-    - Trajectory is fresh per `runTurn()` call (no leakage across calls)
-  </acceptance_criteria>
-  <done>AgentTrajectoryMachine class works with strict transition validation; runTurn() returns AgentTurnOutcome with trajectory for answer/error/abort paths; runTurnText() is a working backward-compat wrapper</done>
-  <reversibility rating="one-way">D-01 — runTurn() return type is the API contract consumed by all callers; changing back to string would require undoing all downstream outcome consumers</reversibility>
-</task>
-
-<task type="auto">
-  <name>RenderingOutcomePolicy + RendererService update + tracer test suite</name>
-  <files>src/core/ai/RenderingOutcomePolicy.ts, src/core/ai/RendererService.ts, tests/core/ai/trajectory/tracer.test.ts</files>
-  <read_first>
-    - src/core/ai/RendererService.ts — existing `synthesize()` and `stream()` signatures
-    - src/core/ai/types.ts — `RenderingOutcomePolicy` type
-    - src/core/ai/AgentTurnOutcome.ts — outcome type for test assertions
-    - RESEARCH.md code: `buildRenderingOutcomePolicy()` function
-    - CONTEXT.md D-11 — orchestrator builds policy, renderer consumes it
-    - tests/core/ai/AgentOrchestrator.test.ts — existing test patterns
-  </read_first>
-  <action>
-    **1. Create `src/core/ai/RenderingOutcomePolicy.ts`:**
-    - `buildRenderingOutcomePolicy(evidence)` — filters into verified/unverified, derives `canClaimWriteSuccess = verified.length > 0 && unverified.length === 0`
-    - `evidenceSummary` text: verified → "may reference verified results"; unverified → "do not claim write operations succeeded"
-    - Export function and re-export type from types.ts
-
-    **2. Update `src/core/ai/RendererService.ts`:**
-    - Add `policy?: RenderingOutcomePolicy` as optional final param to `synthesize()` and `stream()`
-    - When policy provided, append `policy.evidenceSummary` to system prompt
-    - All existing logic unchanged
-
-    **3. Create `tests/core/ai/trajectory/tracer.test.ts`** — >=10 test cases:
-    - FSM: valid transitions, invalid rejection, terminal lock, finalize(), callback fire-and-forget
-    - RenderingOutcomePolicy: empty/verified/mixed evidence
-    - Orchestrator: answer path, abort path, error path, runTurnText() compat
-    - Use existing vi.mock patterns from AgentOrchestrator.test.ts
-  </action>
-  <verify>
-    <automated>npx vitest run tests/core/ai/trajectory/tracer.test.ts</automated>
-  </verify>
-  <acceptance_criteria>
-    - `tests/core/ai/trajectory/tracer.test.ts` contains >=10 passing test cases
-    - `src/core/ai/RenderingOutcomePolicy.ts` exports `buildRenderingOutcomePolicy`
-    - `RendererService.synthesize()` and `stream()` accept optional `policy?` parameter
-    - Tracer tests prove FSM + orchestrator + outcome end-to-end
-    - `tsc --noEmit` passes
-  </acceptance_criteria>
-  <done>RenderingOutcomePolicy created, RendererService updated with policy parameter, >=10 tracer tests pass proving full answer/abort/error paths</done>
-</task>
-
+      Update the existing executor tests and create the trajectory test file. Use real public behavior, not private-field assertions, and include completed duplicate, failed-before-effect recovery, unknown-state suppression, distinct tool-call IDs, canonical key ordering, operation isolation, all valid/invalid transitions, terminal protection, immutable history, concurrent machine isolation, and callback failure isolation.
+    </action>
+    <verify>
+      <automated>pnpm vitest run tests/core/ai/trajectory/AgentTrajectoryMachine.test.ts tests/core/ai/ExecutorService.test.ts</automated>
+    </verify>
+    <acceptance_criteria>
+      - AgentTrajectoryMachine tests cover every valid transition and every invalid transition category, including all three terminal states.
+      - ExecutorService tests prove a duplicate completed call does not invoke the tool, failed-before-effect recovery is bounded, unknown final state is never replayed, distinct logical calls do not collide, and a fresh ExecutorService has no prior ledger state.
+      - ExecutorService rejects a required-idempotency call with no operationId and executeBatch propagates the same rejection; no direct caller can bypass the required ledger.
+      - `attachEvidence(toolCallId, evidence)` is a typed public integration seam and tests prove a completed duplicate reuses the attached evidence without exposing the logical key.
+      - A spoofed operationId or toolName passed to `attachEvidence` is rejected and cannot overwrite the cached ledger evidence.
+      - Existing ExecutorService tests continue to pass and abort/timeout errors remain PipelineError values.
+      - No ledger persistence, cross-turn guarantee, raw idempotency key, or Phase 8a manifest property is added.
+      - Both explicit test files execute nonzero test counts and exit 0.
+    </acceptance_criteria>
+    <done>Plan 01 exports compiling contracts and owns the complete executor/FSM primitive that later plans consume without modifying these files.</done>
+  </task>
 </tasks>
 
 <threat_model>
 ## Trust Boundaries
 
-| Boundary | Description |
-|----------|-------------|
-| AgentTurnInput --> AgentOrchestrator | Untrusted user input, tool schemas, abort signal cross this boundary |
-| AgentOrchestrator --> RendererService | RenderingOutcomePolicy constrains what the renderer may claim |
-| Trajectory state machine internals | State transitions validated by ALLOWED_TRANSITIONS; external callbacks are fire-and-forget |
+| Boundary | Untrusted input or authority | Control |
+|---|---|---|
+| AgentTurnInput -> contracts | Caller-supplied IDs, callback, tool metadata | Zod validation, closed unions, operation scope, no public mutable snapshots |
+| Tool input -> ExecutorService | Planner-selected name and JSON input | Closed registry validation, deterministic key, toolCallId, no raw key disclosure |
+| ExecutorService -> trajectory observer | Consumer callback | Callback receives a copy and cannot approve transitions; callback failures are isolated |
 
-## STRIDE Threat Register
+## STRIDE Register
 
-| Threat ID | Category | Component | Severity | Disposition | Mitigation Plan |
-|-----------|----------|-----------|----------|-------------|-----------------|
-| T-03a-01 | Tampering | AgentTrajectoryMachine.transitionTo() | high | mitigate | ALLOWED_TRANSITIONS is a compile-time constant; transitionTo() validates every state change and throws AGENT_STATE_INVALID on invalid transitions |
-| T-03a-02 | Spoofing | AgentTurnOutcome.terminalState | high | mitigate | terminalState set ONLY by orchestrator exit-path helpers; no external code can set it |
-| T-03a-03 | Information Disclosure | RendererService answer text | high | mitigate | RenderingOutcomePolicy.evidenceSummary injected into renderer system prompt to constrain claims |
-| T-03a-04 | Denial of Service | AgentOrchestrator abort handling | high | mitigate | signal?.throwIfAborted() before each pipeline stage; abort produces 'aborted' not 'failed' |
-| T-03a-05 | Denial of Service | AgentOrchestrator planner loop | medium | accept | Cap enforcement via TierCapForTier produces terminalState: 'partial' per D-02 |
-| T-03a-SC | Tampering | npm/pip/cargo installs | low | accept | No new packages added in this phase |
-| T-03a-R1 | Repudiation | AgentTrajectoryMachine trajectory entries | high | mitigate | Trajectory entries are immutable (`readonly TrajectoryStateEntry[]`), sequenced with `enteredAt`/`exitedAt` timestamps, and carried in the signed `AgentTurnOutcome` — every tool execution and state transition is recorded and non-repudiable. Consumers reading `outcome.trajectory` see a complete, unmodifiable audit trail. |
+| ID | Category | Threat | Control and automated test |
+|---|---|---|---|
+| T-03a-01 | Spoofing | Evidence or replay record is associated with another operation/tool call | Required operationId/toolCallId fields and exact-key tests in types and ExecutorService suites |
+| T-03a-02 | Tampering | A caller rewrites trajectory history or bypasses the allowlist | Readonly copies, strict ALLOWED_TRANSITIONS, invalid/terminal transition tests |
+| T-03a-03 | Repudiation | A turn cannot attribute a state or tool execution | operationId, toolCallId, timestamps, and immutable finalized entries are asserted in trajectory tests |
+| T-03a-04 | Information disclosure | Raw output, secrets, or idempotency keys leak through evidence/diagnostics | Safe check fields and negative schema fixtures reject unrestricted fields and public keys |
+| T-03a-05 | Denial of service | Duplicate execution or unbounded replay consumes tool budget | started/unknown suppression and one failed-before-effect recovery are tested |
+| T-03a-06 | Elevation of privilege | Planner invents an executable tool or bypasses operation identity | Executor validates against the closed RegisteredTool list and requires operation-scoped ledger identity |
 </threat_model>
 
 <verification>
-## Tracer Verification
+Run the contract and primitive tests after both tasks:
 
 ```bash
-npx vitest run tests/core/ai/trajectory/tracer.test.ts
-npx tsc --noEmit
+pnpm vitest run tests/core/ai/types.test.ts tests/core/ai/trajectory/AgentTrajectoryMachine.test.ts tests/core/ai/ExecutorService.test.ts
+pnpm lint
 ```
+
+The first command must execute all three named files and the second must pass TypeScript compilation. Later plans consume the exported contracts and do not modify these files.
 </verification>
 
 <success_criteria>
-1. `agentOrchestrator.runTurn()` returns `AgentTurnOutcome` (not `string`) with trajectory array of 2+ entries
-2. Answer path: `terminalState === 'completed'`, `renderedAnswer` is non-null string
-3. Error path: `terminalState === 'failed'`, `renderedAnswer` has error message
-4. Abort path: `terminalState === 'aborted'`, `renderedAnswer === null`
-5. `runTurnText()` returns same string as `runTurn().renderedAnswer` for answer path
-6. Invalid FSM transitions throw `AGENT_STATE_INVALID`
-7. All tracer tests pass (>=10 tests, `npx vitest run` exits 0)
-8. `tsc --noEmit` passes
+1. All public Phase 3a contract schemas and exact closed unions are present.
+2. All ten states and invalid/terminal transition behavior are tested.
+3. Idempotency duplicate completed, failed-before-effect, and unknown-state behavior is tested and operation-scoped.
+4. `pnpm lint` and all named Vitest files pass.
+5. No Phase 8a fields, persistence, or cross-turn replay claim appears in the implementation.
 </success_criteria>
 
 <output>
-Create `.planning/phases/03a-agent-reliability-evidence/03a-01-SUMMARY.md` when done
+Create `.planning/phases/03a-agent-reliability-evidence/03a-01-SUMMARY.md` with the exported contracts, test commands, and the D-17 durability boundary.
 </output>

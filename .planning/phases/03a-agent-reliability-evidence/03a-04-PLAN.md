@@ -4,48 +4,39 @@ plan: 04
 type: execute
 wave: 4
 depends_on:
-  - 03a-01
-  - 03a-02
   - 03a-03
 files_modified:
-  - tests/core/ai/AgentOrchestrator.test.ts
-  - tests/core/ai/integration.test.ts
-  - tests/core/ai/trajectory/AgentTrajectoryMachine.test.ts
-  - package.json
+  - src/core/context/ContextCompressor.ts
+  - tests/core/context/ContextCompressor.test.ts
 autonomous: true
 requirements:
-  - AGT-01
-  - AGT-02
   - AGT-03
-  - AGT-04
-  - TOL-03
-
+user_setup: []
 must_haves:
   truths:
-    - "TRUTH-16: A full integration test exercises the complete pipeline: trajectory → execute → verify → replan decision → render with evidence-aware policy — all five requirements (AGT-01 through TOL-03) verified in one flow"
-    - "TRUTH-17: Cap exhaustion produces AgentTurnOutcome with terminalState: 'partial' (not 'completed') and reasonCode: 'planner_cap_exhausted' or 'tool_cap_exhausted' — per D-02/AGT-03"
-    - "TRUTH-18: `pnpm run verify:phase-3a` runs all Phase 3a tests and exits 0 — phase verification script exists and is green"
+    - "ContextOptimizer's nested compression operation receives the same AbortSignal, passes it to the optional AI summarization request, and does not swallow an abort as an ordinary compression failure."
+    - "Abort during local degradation or AI summarization stops further pipeline work and is observable by the orchestrator as an abort rather than CONTEXT_TOO_LARGE or a successful optimization."
+    - "Compression behavior, step ordering, and graceful non-abort failure handling remain unchanged when the signal is not aborted."
   artifacts:
-    - "package.json (verify:phase-3a script)"
-    - tests/core/ai/trajectory/AgentTrajectoryMachine.test.ts
+    - path: "src/core/context/ContextCompressor.ts"
+      provides: "Abort-aware compress and tryAiSummarization signatures with signal propagation to provider selection and generateText."
+      exports: ["ContextCompressor", "contextCompressor"]
+    - path: "tests/core/context/ContextCompressor.test.ts"
+      provides: "Abort and regression fixtures for nested context compression."
+      exports: []
   key_links:
-    - "verify:phase-3a → all test files — the phase gate script that downstream phases depend on"
-
-# Artifacts this phase produces (Plan 04)
-
-| Symbol | Kind | File |
-|--------|------|------|
-| AgentOrchestrator test suite (migrated) | modified test file | tests/core/ai/AgentOrchestrator.test.ts |
-| AgentTrajectoryMachine unit test suite | test file (≥16 cases) | tests/core/ai/trajectory/AgentTrajectoryMachine.test.ts |
-| Integration test suite (extended) | modified test file (≥7 new cases) | tests/core/ai/integration.test.ts |
-| `verify:phase-3a` script | npm script | package.json |
+    - from: "src/core/context/ContextOptimizer.ts"
+      to: "src/core/context/ContextCompressor.ts"
+      via: "optimize passes its ContextOptimizerInput.abortSignal into compress and checks it before and after the await"
+     - from: "src/core/context/ContextCompressor.ts"
+       to: "ai generateText"
+       via: "tryAiSummarization passes the same AbortSignal and rethrows AbortError instead of converting cancellation to an ordinary compression miss"
 ---
 
 <objective>
-Tie the entire Phase 3a reliability architecture together with integration tests and a phase verification script. After this plan, every exit path of the AgentOrchestrator is tested end-to-end, and `pnpm run verify:phase-3a` serves as the phase gate for downstream consumers.
+Complete abort propagation through the only nested asynchronous context stage that remains after Plan 03. This plan owns the existing ContextCompressor and its focused unit test so the central orchestrator plan remains within the cost-effective file limit.
 
-Purpose: Prove that the agent reliability architecture works as a cohesive system — not just individual units.
-Output: Comprehensive integration test suite, complete AgentTrajectoryMachine unit tests, and a `verify:phase-3a` npm script.
+This is still AGT-03 bounded cancellation, not a second optimization feature: preserve the existing seven-step degradation policy and one summarization call while ensuring cancellation is explicit and cannot be misreported as a normal failed compression.
 </objective>
 
 <execution_context>
@@ -54,227 +45,82 @@ Output: Comprehensive integration test suite, complete AgentTrajectoryMachine un
 </execution_context>
 
 <context>
-@.planning/phases/03a-agent-reliability-evidence/03a-CONTEXT.md
-@.planning/phases/03a-agent-reliability-evidence/03a-RESEARCH.md
+@.planning/PROJECT.md
 @.planning/ROADMAP.md
-@src/core/ai/AgentOrchestrator.ts
-@src/core/ai/AgentTrajectoryMachine.ts
-@src/core/ai/OutcomeVerifier.ts
-@src/core/ai/ReplanPolicy.ts
-@src/core/ai/RenderingOutcomePolicy.ts
-@src/core/ai/ExecutorService.ts
+@.planning/phases/03a-agent-reliability-evidence/03a-CONTEXT.md
+@.planning/phases/03a-agent-reliability-evidence/03a-03-SUMMARY.md
+@src/core/context/ContextOptimizer.ts
+@src/core/context/ContextCompressor.ts
 @src/core/ai/types.ts
-@src/core/ai/AgentTurnOutcome.ts
-@tests/core/ai/integration.test.ts
-@tests/core/ai/trajectory/tracer.test.ts
-@package.json
+@tests/core/context/ContextOptimizer.test.ts
 </context>
 
 <tasks>
+  <task type="auto" tdd="true">
+    <name>Propagate AbortSignal through context compression</name>
+    <files>src/core/context/ContextCompressor.ts, tests/core/context/ContextCompressor.test.ts</files>
+    <behavior>
+      - `compress(..., signal)` checks the signal before every degradation step and before/after AI summarization; an abort rejects with the original abort error.
+      - The compression-model provider callback and `generateText` receive the same signal; an abort is not converted into a swallowed warning or CONTEXT_TOO_LARGE result.
+      - Non-aborted local degradation and summarization failure retain the existing output and step-order behavior.
+    </behavior>
+    <read_first>
+      - src/core/context/ContextCompressor.ts — current compress, tryAiSummarization, seven-step loop, and catch blocks
+      - src/core/context/ContextOptimizer.ts — Plan 03 signal handoff and outer abort checks
+      - src/core/ai/types.ts — ContextOptimizerInput.abortSignal
+      - tests/core/context/ContextOptimizer.test.ts — existing compression fixtures and fake provider patterns
+      - .planning/phases/03a-agent-reliability-evidence/03a-CONTEXT.md — D-06 and AGT-03 abort rules
+    </read_first>
+    <action>
+      Add an optional AbortSignal parameter to ContextCompressor.compress and its internal AI summarization path. Check the signal before each local step, before provider selection, before generateText, and after each awaited operation. Pass the signal to the compression-model provider callback and to the AI SDK generation request. In the error handler, identify AbortError or an aborted signal and rethrow it; continue to the existing graceful fallback only for non-abort failures.
 
-<task type="auto">
-  <name>Migrate AgentOrchestrator.test.ts to work with AgentTurnOutcome return type (per D-01)</name>
-  <files>tests/core/ai/AgentOrchestrator.test.ts</files>
-  <read_first>
-    - tests/core/ai/AgentOrchestrator.test.ts — existing test file with string-typed assertions (lines around 67, 80, 151 check `typeof result === 'string'` and exact string matches)
-    - src/core/ai/AgentOrchestrator.ts — now returns `AgentTurnOutcome` instead of `string` per D-01
-    - src/core/ai/AgentTurnOutcome.ts — `AgentTurnOutcome` interface with `renderedAnswer` field
-  </read_first>
-  <action>
-    Update `tests/core/ai/AgentOrchestrator.test.ts` to work with the new `AgentTurnOutcome` return type from `runTurn()` (per D-01). This is a **mechanical migration** of existing assertions — not a rewrite of test logic.
-
-    1. Replace `typeof result === 'string'` assertions with `typeof result.renderedAnswer === 'string'`
-    2. Replace exact string match assertions on the return value with assertions on `result.renderedAnswer` (e.g., `expect(result).toBe('expected')` → `expect(result.renderedAnswer).toBe('expected')`)
-    3. Where tests destructure or assign `const r = await runTurn(...)`, add `.renderedAnswer` access for the old string value
-    4. Add type import if needed: `import type { AgentTurnOutcome } from '../../../src/core/ai/AgentTurnOutcome'` — but only if the test file doesn't already import something that provides the type
-
-    Existing mock setups (ProviderRouter, PlannerService, ExecutorService, RendererService) and test structure do NOT change — only the assertions on the return value.
-  </action>
-  <verify>
-    <automated>npx vitest run tests/core/ai/AgentOrchestrator.test.ts</automated>
-  </verify>
-  <acceptance_criteria>
-    - `npx vitest run tests/core/ai/AgentOrchestrator.test.ts` exits 0 — all existing tests pass after migration
-    - `typeof result === 'string'` assertions are replaced with checks on `result.renderedAnswer`
-    - `npx tsc --noEmit` passes for the modified test file
-  </acceptance_criteria>
-  <done>AgentOrchestrator.test.ts migrated to AgentTurnOutcome return type; all existing tests pass; no bare string-typed return assertions remain</done>
-</task>
-
-<task type="auto" tdd="true">
-  <name>Complete AgentTrajectoryMachine unit tests + full integration test suite</name>
-  <files>tests/core/ai/trajectory/AgentTrajectoryMachine.test.ts, tests/core/ai/integration.test.ts</files>
-  <behavior>
-    - Test: "AgentTrajectoryMachine full pipeline: assembling-context → planning → executing → verifying → rendering → completed" — 6 states, verify all entries have exitedAt and durationMs, history length = 6, final state = completed
-    - Test: "AgentTrajectoryMachine replanning loop: assembling-context → planning → executing → verifying → replanning → planning → rendering → completed" — verify history contains both planning entries and replanning entry
-    - Test: "AgentTrajectoryMachine abort mid-execution: assembling-context → planning → executing → aborted" — verify final state is aborted, not failed
-    - Test: "Integration: full pipeline with evidence — planner returns run_tool, executor executes, verification passes, replanPolicy says continue, renderer renders with evidence-aware policy"
-    - Test: "Integration: replanning after tool failure — planner returns run_tool, executor fails with retryable error, replanPolicy returns replan, planner called again, renders with partial results"
-    - Test: "Integration: irreversible tool blocks replanning — execute irreversible tool, verify outcome has terminalState based on replan termination"
-    - Test: "Integration: cap exhaustion produces partial outcome — FAST tier planner=3, loop through 3 run_tool decisions, verify terminalState: 'partial', reasonCode: 'planner_cap_exhausted'"
-    - Test: "Integration: abort during tool execution — AbortController.abort() during executor call, verify outcome.terminalState: 'aborted'"
-    - Test: "Integration: evidence accumulation — two tool executions, both with evidence.required, verify AgentTurnOutcome.evidence has 2 entries"
-    - Test: "Integration: runTurnText backward compatibility — runTurnText() returns string matching runTurn().renderedAnswer for answer path"
-  </behavior>
-  <read_first>
-    - src/core/ai/AgentTrajectoryMachine.ts — class API: `constructor`, `transitionTo()`, `finalize()`, `current`, `history`, `isTerminal`
-    - src/core/ai/AgentOrchestrator.ts — `runTurn()` full implementation (trajectory + evidence + replan + abort)
-    - src/core/ai/OutcomeVerifier.ts — `outcomeVerifier.verify()` method
-    - src/core/ai/ReplanPolicy.ts — `evaluateReplan()` function
-    - src/core/ai/ExecutorService.ts — `execute()` with idempotency
-    - tests/core/ai/trajectory/tracer.test.ts — existing tracer test patterns
-    - tests/core/ai/integration.test.ts — existing integration test patterns with mock setup
-    - tests/core/ai/AgentOrchestrator.test.ts — existing mock patterns for ProviderRouter, PlannerService, ExecutorService, RendererService
-    - RESEARCH.md "Validation Architecture" section — test map and phase gate requirements
-  </read_first>
-  <action>
-    **1. Create `tests/core/ai/trajectory/AgentTrajectoryMachine.test.ts`** — comprehensive FSM tests:
-
-    Import `AgentTrajectoryMachine` from source. No mocks needed — the class is self-contained.
-
-    Test cases:
-    - "initializes at assembling-context" — `new AgentTrajectoryMachine()` → `current === 'assembling-context'`
-    - "initializes at custom state" — `new AgentTrajectoryMachine('planning')` → `current === 'planning'`
-    - "transitionTo planning from assembling-context" — `machine.transitionTo('planning')` → `current === 'planning'`, `history[0].state === 'assembling-context'`, `history[0].exitedAt` is non-null, `history[0].durationMs` is >= 0
-    - "full successful pipeline: assembling-context → planning → executing → verifying → rendering → completed" — 6 transitions, verify `history.length === 6` (after finalize), `isTerminal === true`, each entry has `enteredAt`, `exitedAt`, `durationMs`
-    - "replanning loop: ... → verifying → replanning → planning → rendering → completed" — 8 transitions (2 planning entries), verify `history` contains both planning entries with different `enteredAt` times
-    - "abort path: assembling-context → planning → executing → aborted" — verify `isTerminal === true` after aborted, `history[3].state === 'aborted'`
-    - "invalid transition throws AGENT_STATE_INVALID" — from `assembling-context`, `transitionTo('completed')` throws error with 'AGENT_STATE_INVALID'
-    - "terminal state rejects all transitions" — after reaching `completed`, any `transitionTo()` throws
-    - "terminal state isTerminal returns true" — after `completed`/`failed`/`aborted`, `isTerminal === true`
-    - "finalize() includes current entry" — after 3 transitions, `finalize()` returns 3 entries (NOT 2 — the current entry is included)
-    - "finalize() sets exitedAt and durationMs on last entry" — verify last entry in `finalize()` result has non-null `exitedAt` and `durationMs`
-    - "transitionTo carries metadata" — `transitionTo('planning', { plannerCall: 1 })` → verify `history` entry has `plannerCall: 1`
-    - "onTransition callback fires with closed entry" — pass `vi.fn()` as callback, verify called with the entry that was just closed (NOT the newly opened one)
-    - "onTransition callback failure swallowed" — pass callback that throws, verify `transitionTo()` still completes without error
-    - "history is immutable from outside" — verify that modifying the returned `history` array does not affect internal state (TypeScript's `readonly` ensures this at compile time)
-    - "ALLOWED_TRANSITIONS from assembling-context" — verify `ALLOWED_TRANSITIONS['assembling-context'].has('planning')` is true, `has('completed')` is false
-    - "ALLOWED_TRANSITIONS terminal states empty" — verify `ALLOWED_TRANSITIONS['completed'].size === 0`, same for failed and aborted
-    - Use `vi.useFakeTimers()` only if timing-dependent assertions are needed; otherwise prefer real timestamps.
-
-    **2. Extend `tests/core/ai/integration.test.ts`** — full orchestration integration tests:
-
-    Use the existing mock pattern from the file: `vi.mock` for ProviderRouter, PlannerService, ExecutorService, RendererService. The key addition: the REAL `AgentOrchestrator`, `OutcomeVerifier`, and `ReplanPolicy` are used (not mocked) so the full integration is tested.
-
-    New integration test cases:
-    - "full pipeline with evidence: plan→execute→verify→continue→render" — mock planner to return `run_tool` then `answer`, mock executor to succeed, verify `outcome.evidence` has entries, `outcome.terminalState === 'completed'`, `outcome.trajectory` includes `verifying` state, `rendererService.synthesize` was called with a `policy` parameter where `policy.canClaimWriteSuccess` reflects evidence
-    - "replanning after retryable tool failure" — mock planner: run_tool → answer. Mock executor: first call fails with retryable PipelineError, second call succeeds. Verify `plannerService.plan` is called 3 times (initial + replan + final answer), `outcome.trajectory` includes `replanning` state, `replanCount` was incremented
-    - "irreversible tool blocks replanning" — create mock tool with `sideEffect: 'irreversible'`, `evidence: { required: false }`. Mock executor succeeds. Then mock another tool call that fails. Verify `evaluateReplan` returns `terminate`, `outcome.terminalState` reflects termination
-    - "cap exhaustion produces partial: FAST tier (planner=3)" — mock planner to always return `run_tool`. FAST tier cap is 3 planner calls. After 3 iterations, verify `outcome.terminalState === 'partial'`, `outcome.reasonCode === 'planner_cap_exhausted'`
-    - "abort during tool execution" — create `AbortController`, pass `signal` in AgentTurnInput, call `controller.abort()` during executor's first call (use mock that checks signal). Verify `outcome.terminalState === 'aborted'`, `outcome.renderedAnswer === null`
-    - "evidence accumulation — two tools" — planner returns run_tool twice then answer. Both tools have `evidence: { required: true }`. Verify `outcome.evidence.length === 2`, both evidence entries are verified
-    - "runTurnText backward compatibility" — call both `runTurn()` and `runTurnText()` with answer-path input, verify `runTurnText()` returns the same string as `outcome.renderedAnswer`
-
-    Import patterns: use dynamic `import()` inside test cases (after `vi.mock` setup) to ensure module resolution order is correct. Follow the existing pattern in integration.test.ts:
-    `const { agentOrchestrator } = await import('../../../src/core/ai/AgentOrchestrator');`
-
-    Each test creates its own `AgentTurnInput` using `createAgentTurnInput()` with appropriate overrides.
-
-    ALL tests must pass.
-  </action>
-  <verify>
-    <automated>npx vitest run tests/core/ai/trajectory/AgentTrajectoryMachine.test.ts tests/core/ai/integration.test.ts</automated>
-  </verify>
-  <acceptance_criteria>
-    - `tests/core/ai/trajectory/AgentTrajectoryMachine.test.ts` — ≥16 test cases (all states, transitions, terminal lock, metadata, callback, finalize), all passing
-    - `tests/core/ai/integration.test.ts` — existing tests still pass + ≥7 new integration tests (evidence, replanning, irreversible, cap exhaustion, abort, evidence accumulation, runTurnText compat), all passing
-    - Integration tests use real `AgentOrchestrator`, `OutcomeVerifier`, `ReplanPolicy` — not mocked
-    - `npx vitest run` on both files exits 0
-    - All assertable behaviors from D-01 through D-17 are covered by at least one passing test
-  </acceptance_criteria>
-  <done>AgentTrajectoryMachine unit tests (>=16 cases) and integration tests (>=7 new cases) all pass; full pipeline from trajectory through evidence to rendering verified</done>
-</task>
-
-<task type="auto">
-  <name>Phase verification script + final regression check</name>
-  <files>package.json</files>
-  <read_first>
-    - package.json — existing `"scripts"` section to find pattern for `"verify:phase-*"` scripts
-    - ROADMAP.md Phase 3a Success Criteria (4 items) — must verify against these
-    - RESEARCH.md "Validation Architecture" — test map, full suite command, phase gate requirement
-    - All test files from Plans 01-03 and this plan
-  </read_first>
-  <action>
-    **1. Add `verify:phase-3a` script to `package.json`:**
-
-    Read `package.json` to find existing `verify:phase-*` script patterns. Add the following script:
-
-    ```json
-    "verify:phase-3a": "npx vitest run tests/core/ai/trajectory/ --reporter=verbose && npx vitest run tests/core/ai/verifier/ --reporter=verbose && npx vitest run tests/core/ai/ReplanPolicy.test.ts --reporter=verbose && npx vitest run tests/core/ai/RenderingOutcomePolicy.test.ts --reporter=verbose && npx vitest run tests/core/ai/ExecutorService.test.ts --reporter=verbose && npx vitest run tests/core/ai/types.test.ts --reporter=verbose && npx vitest run tests/core/ai/integration.test.ts --reporter=verbose && npx vitest run tests/core/ai/AgentOrchestrator.test.ts --reporter=verbose && npx tsc --noEmit"
-    ```
-
-    This runs ALL Phase 3a test files in order, with verbose output, then type-checks. If any test file fails, the `&&` chain stops.
-
-    **Simplified version if the full chain is too verbose:**
-    ```json
-    "verify:phase-3a": "npx vitest run tests/core/ai/trajectory tests/core/ai/verifier tests/core/ai/ReplanPolicy.test.ts tests/core/ai/RenderingOutcomePolicy.test.ts tests/core/ai/ExecutorService.test.ts tests/core/ai/types.test.ts tests/core/ai/integration.test.ts tests/core/ai/AgentOrchestrator.test.ts && npx tsc --noEmit"
-    ```
-
-    Match the existing style of `verify:phase-*` scripts in `package.json`. If no existing `verify:phase-*` scripts exist, establish the pattern here.
-
-    **2. Run full Phase 3a test suite as final regression check:**
-
-    Execute `pnpm run verify:phase-3a` (or `npm run verify:phase-3a`) and verify it exits 0. All test files from Plans 01, 02, 03, and 04 must pass. Fix any failures before considering this plan complete.
-
-    **3. Verify against ROADMAP.md Phase 3a Success Criteria:**
-    - SC1: `AgentOrchestrator` emits typed trajectory states → verified by AgentTrajectoryMachine tests + tracer tests + integration tests
-    - SC2: Side-effecting tool results verified via OutcomeVerifier → verified by OutcomeVerifier tests + integration tests with evidence
-    - SC3: AgentTurnOutcome on every exit path → verified by integration tests for cap exhaustion (partial), abort (aborted), error (failed), answer (completed)
-    - SC4: Replanning follows deterministic policy → verified by ReplanPolicy unit tests + integration tests for replanning loop
-
-    All 4 success criteria are covered by passing tests.
-  </action>
-  <verify>
-    <automated>pnpm run verify:phase-3a</automated>
-  </verify>
-  <acceptance_criteria>
-    - `package.json` contains `"verify:phase-3a"` script that runs ALL Phase 3a test files + `tsc --noEmit`
-    - `pnpm run verify:phase-3a` exits 0 — all tests pass, no type errors
-    - All 4 ROADMAP Phase 3a Success Criteria are test-verified (each SC maps to passing test cases)
-    - Test output shows all test files executed (AgentTrajectoryMachine, OutcomeVerifier, ReplanPolicy, RenderingOutcomePolicy, ExecutorService, types, integration, AgentOrchestrator, tracer)
-    - `tsc --noEmit` exits 0
-  </acceptance_criteria>
-  <done>`pnpm run verify:phase-3a` added to package.json and exits 0; all Phase 3a tests pass; type-check passes; all 4 ROADMAP success criteria verified</done>
-</task>
-
+      Consume the ContextOptimizer call-site signal handoff from Plan 03 by adding the matching optional signal parameter to ContextCompressor.compress and its internal AI summarization path. Create a dedicated ContextCompressor test file covering abort during local steps, provider selection, and summarization; no-abort regression; and non-abort summarization failure. Do not modify ContextOptimizer.ts in this plan, and do not change the seven-step order, token budgets, summary count, or provider selection policy.
+    </action>
+    <verify>
+      <automated>pnpm vitest run tests/core/context/ContextCompressor.test.ts tests/core/context/ContextOptimizer.test.ts</automated>
+    </verify>
+    <acceptance_criteria>
+      - The nested compressor and AI summarization receive the same signal used by AgentOrchestrator.runTurn.
+      - Abort is distinguishable from ordinary compression failure at the ContextOptimizer boundary.
+      - Both named test files execute tests and exit 0; existing ContextOptimizer behavior remains green.
+    </acceptance_criteria>
+    <done>Abort propagation is complete through ContextOptimizer's nested asynchronous compression path.</done>
+  </task>
 </tasks>
 
 <threat_model>
 ## Trust Boundaries
 
-| Boundary | Description |
-|----------|-------------|
-| Test assertions → Production code | Tests exercise real orchestrator, verifier, replan policy — no mocks at integration level |
-| Phase gate → Downstream phases | `verify:phase-3a` must be green before Phase 4b/5 can depend on the reliability contracts |
+| Boundary | Untrusted input or authority | Control |
+|---|---|---|
+| Optimizer -> compressor | User context, budget, and cancellation | Signal checks before/after every nested await; no input data becomes control policy |
+| Compression provider -> optimizer | External model response/error | Abort distinction and existing bounded fallback behavior |
 
-## STRIDE Threat Register
+## STRIDE Register
 
-| Threat ID | Category | Component | Severity | Disposition | Mitigation Plan |
-|-----------|----------|-----------|----------|-------------|-----------------|
-| T-03a-12 | Tampering | verify:phase-3a script | medium | mitigate | Script runs ALL test files in sequence with `&&` — failure in any file stops the chain; includes `tsc --noEmit` for type safety; the script is committed to version control |
-| T-03a-R4 | Repudiation | Integration test assertions on trajectory completeness | medium | mitigate | Integration tests assert `outcome.trajectory.length >= 2` and verify every exit path (completed/failed/aborted/partial) records a complete trajectory — these tests serve as executable proof that the orchestrator cannot produce an outcome without a verifiable audit trail. |
-| T-03a-E3 | Elevation of Privilege | Unverified evidence injection via mock bypass in tests | low | accept | Test files use `vi.mock` to isolate services; production code uses real `OutcomeVerifier` which is the sole evidence authority. Test isolation does not weaken production enforcement — the test boundary itself prevents elevation. |
+| ID | Category | Threat | Control and automated test |
+|---|---|---|---|
+| T-03a-25 | Spoofing | A compression error is mistaken for caller abort or vice versa | AbortError/signal-specific fixtures |
+| T-03a-26 | Tampering | Cancellation is swallowed and the optimizer returns altered output | Rethrow-on-abort and unchanged non-abort regression tests |
+| T-03a-27 | Repudiation | Nested cancellation lacks stage evidence | Outer optimizer/orchestrator stage and test assertions |
+| T-03a-28 | Information disclosure | Raw model error enters compression diagnostics | Existing bounded warning behavior plus no raw output assertions |
+| T-03a-29 | Denial of service | Summarization continues after cancellation | Signal passed to provider/generateText and abort tests |
+| T-03a-30 | Elevation of privilege | Untrusted compressed text changes execution policy | Compressor remains data transformation only; no tool/permission mutation |
 </threat_model>
 
 <verification>
-## Phase Gate Verification
-
 ```bash
-# The one command that proves Phase 3a is complete
-pnpm run verify:phase-3a
+pnpm vitest run tests/core/context/ContextCompressor.test.ts tests/core/context/ContextOptimizer.test.ts
+pnpm lint
 ```
-
-This must exit 0. All test files run, all passing, no type errors.
 </verification>
 
 <success_criteria>
-1. `tests/core/ai/trajectory/AgentTrajectoryMachine.test.ts` — ≥16 passing tests covering all FSM behaviors
-2. `tests/core/ai/integration.test.ts` — existing + ≥7 new integration tests covering full pipeline
-3. `package.json` has `verify:phase-3a` script
-4. `pnpm run verify:phase-3a` exits 0 — all tests pass, no type errors
-5. All 4 ROADMAP Phase 3a Success Criteria map to passing tests
+1. The shared AbortSignal reaches and controls nested context compression.
+2. Abort is not swallowed or converted into a normal compression result.
+3. Existing compression behavior and tests remain green.
 </success_criteria>
 
 <output>
-Create `.planning/phases/03a-agent-reliability-evidence/03a-04-SUMMARY.md` when done
+Create `.planning/phases/03a-agent-reliability-evidence/03a-04-SUMMARY.md` documenting nested signal propagation and the preserved compression boundary.
 </output>

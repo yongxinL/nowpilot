@@ -117,20 +117,25 @@ Plans:
   1. AgentOrchestrator emits typed trajectory states (assembling-context → planning → waiting-for-permission → executing → verifying → replanning → rendering → completed/failed/aborted) — invalid transitions return AGENT_STATE_INVALID
   2. Side-effecting tool results are verified via OutcomeVerifier before RendererService claims completion — rendered text must not claim writes without matching CompletionEvidence
   3. Every exit path returns an AgentTurnOutcome; cap exhaustion is terminalState:partial not completed; abort does not render a success answer
-  4. Replanning follows deterministic policy — success→verify→render, retryable→one replan, permission/auth/schema→terminal; no retry after irreversible actions unless idempotency proves safety
+  4. Replanning follows deterministic policy — success→verify→render, retryable→one replan, permission/auth/schema→terminal; irreversible execution always terminates without retry or replan (cross-turn replay safety remains Phase 8a)
 
-**Plans**: 4 plans
+**Plans**: 5 plans
 
 Plans:
 **Wave 1**
-- [ ] 03a-01-PLAN.md — TRACER: Core types + AgentTrajectoryMachine + AgentOrchestrator runTurn() --> AgentTurnOutcome + RenderingOutcomePolicy + tracer tests (AGT-01, AGT-03)
+- [ ] 03a-01-PLAN.md — Contracts, strict trajectory machine, and operation-scoped idempotency primitive (AGT-01, AGT-03, TOL-03)
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 03a-02-PLAN.md — OutcomeVerifier + ReplanPolicy + evidence integration into orchestrator (AGT-02, AGT-04, TOL-03)
-- [ ] 03a-03-PLAN.md — Idempotency ledger + comprehensive unit test suite (TOL-03)
+- [ ] 03a-02-PLAN.md — OutcomeVerifier and pure ReplanPolicy with exhaustive unit tests (AGT-02, AGT-04, TOL-03)
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 03a-04-PLAN.md — Integration tests + phase verification script (AGT-01, AGT-02, AGT-03, AGT-04, TOL-03)
+- [ ] 03a-03-PLAN.md — AgentOrchestrator integration, evidence-constrained renderer, signal propagation, and caller migration (AGT-01, AGT-02, AGT-03, AGT-04, TOL-03)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 03a-04-PLAN.md — Abort propagation through nested ContextCompressor summarization (AGT-03)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+- [ ] 03a-05-PLAN.md — STRIDE regression suite and explicit phase verification script (AGT-01, AGT-02, AGT-03, AGT-04, TOL-03)
 
 ### Phase 4: Context Optimization Pipeline
 

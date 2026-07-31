@@ -1,89 +1,88 @@
 ---
 phase: 03a
 slug: agent-reliability-evidence
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: ready
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-08-01
 ---
 
-# Phase 03a — Validation Strategy
+# Phase 03a - Validation Strategy
 
-> Per-phase validation contract for feedback sampling during execution.
-
----
+This validation contract is aligned with the five replacement PLAN.md files. There is no unowned Wave 0 gap: each behavioral test is created or updated by the plan that owns the production contract it verifies, and the final gate runs every named file explicitly.
 
 ## Test Infrastructure
 
 | Property | Value |
-|----------|-------|
-| **Framework** | vitest ^3.2.7 |
-| **Config file** | `./vitest.config.ts` (jsdom environment, globals enabled) |
-| **Quick run command** | `npx vitest run tests/core/ai/trajectory tests/core/ai/verifier tests/core/ai/replan` |
-| **Full suite command** | `pnpm test -- tests/core/ai` |
-| **Estimated runtime** | ~15 seconds |
-
----
+|---|---|
+| Framework | vitest ^3.0.0 |
+| Config | `vitest.config.ts` |
+| Package manager | pnpm |
+| Type check | `pnpm lint` |
+| Phase gate | `pnpm run verify:phase-3a` |
 
 ## Sampling Rate
 
-- **After every task commit:** Run `npx vitest run tests/core/ai/trajectory tests/core/ai/verifier tests/core/ai/replan`
-- **After every plan wave:** Run `pnpm test -- tests/core/ai`
-- **Before `/gsd-verify-work`:** Full suite must be green
-- **Max feedback latency:** 15 seconds
+- After Plan 01 Task 1: `pnpm vitest run tests/core/ai/types.test.ts`
+- After Plan 01 Task 2: `pnpm vitest run tests/core/ai/trajectory/AgentTrajectoryMachine.test.ts tests/core/ai/ExecutorService.test.ts`
+- After Plan 02 Task 1: `pnpm vitest run tests/core/ai/verifier/OutcomeVerifier.test.ts`
+- After Plan 02 Task 2: `pnpm vitest run tests/core/ai/ReplanPolicy.test.ts`
+- After Plan 03 Task 1: `pnpm vitest run tests/core/ai/tracer.test.ts`
+- After Plan 03 Task 2: `pnpm vitest run tests/core/ai/AgentOrchestrator.test.ts && pnpm lint`
+- After Plan 03 Task 3: `pnpm vitest run tests/core/ai/integration.test.ts tests/core/ai/tracer.test.ts tests/core/context/ContextOptimizer.test.ts`
+- After Plan 04 Task 1: `pnpm vitest run tests/core/context/ContextCompressor.test.ts tests/core/context/ContextOptimizer.test.ts`
+- After Plan 05 Task 1: `pnpm vitest run tests/security/agent-harness.test.ts`
+- Phase gate: `pnpm run verify:phase-3a`
 
----
+Every behavioral command names an existing or current-task-created file and must execute at least one test. Type-check-only commands are limited to production-signature tasks and are followed by behavioral verification in the owning test task. No test-name filter is used as the only proof.
 
-## Per-Task Verification Map
+## Plan-Owned Validation Map
 
-| Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
-|---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| — | — | 1 | AGT-01 | — | Invalid transitions throw AGENT_STATE_INVALID | unit | `npx vitest run tests/core/ai/trajectory/AgentTrajectoryMachine.test.ts -t "transition"` | ❌ W0 | ⬜ pending |
-| — | — | 1 | AGT-01 | — | All 10 states transition correctly end-to-end | integration | `npx vitest run tests/core/ai/trajectory/AgentTrajectoryMachine.test.ts -t "full pipeline"` | ❌ W0 | ⬜ pending |
-| — | — | 1 | AGT-02 | T-03a-02 | Verified tool returns VerifiedCompletionEvidence | unit | `npx vitest run tests/core/ai/verifier/OutcomeVerifier.test.ts -t "verified"` | ❌ W0 | ⬜ pending |
-| — | — | 1 | AGT-02 | T-03a-02 | Unverified tool returns UnverifiedCompletionEvidence | unit | `npx vitest run tests/core/ai/verifier/OutcomeVerifier.test.ts -t "unverified"` | ❌ W0 | ⬜ pending |
-| — | — | 1 | AGT-02 | T-03a-03 | Renderer does not claim writes without verified evidence | integration | `npx vitest run tests/core/ai/RenderingOutcomePolicy.test.ts -t "blocks write"` | ❌ W0 | ⬜ pending |
-| — | — | 1 | AGT-03 | — | Cap exhaustion → partial, not completed | integration | `npx vitest run tests/core/ai/AgentOrchestrator.test.ts -t "cap exhaustion partial"` | ❌ W0 | ⬜ pending |
-| — | — | 1 | AGT-03 | — | Abort yields aborted state, null answer | integration | `npx vitest run tests/core/ai/AgentOrchestrator.test.ts -t "abort"` | ❌ W0 | ⬜ pending |
-| — | — | 1 | AGT-03 | — | Every exit path returns AgentTurnOutcome | integration | `npx vitest run tests/core/ai/AgentOrchestrator.test.ts -t "returns AgentTurnOutcome"` | ❌ W0 | ⬜ pending |
-| — | — | 1 | AGT-04 | — | Success → continue-planning | unit | `npx vitest run tests/core/ai/ReplanPolicy.test.ts -t "success continues"` | ❌ W0 | ⬜ pending |
-| — | — | 1 | AGT-04 | — | Retryable error → one replan | unit | `npx vitest run tests/core/ai/ReplanPolicy.test.ts -t "retryable one replan"` | ❌ W0 | ⬜ pending |
-| — | — | 1 | AGT-04 | — | Irreversible tool → terminate | unit | `npx vitest run tests/core/ai/ReplanPolicy.test.ts -t "irreversible terminates"` | ❌ W0 | ⬜ pending |
-| — | — | 1 | TOL-03 | T-03a-04 | Write side-effect tool triggers verifier | integration | `npx vitest run tests/core/ai/verifier/OutcomeVerifier.test.ts -t "write side effect"` | ❌ W0 | ⬜ pending |
+| Plan/task | Requirement | Observable behavior | Automated command |
+|---|---|---|---|
+| 03a-01/T1 | AGT-01, AGT-03 | Contracts, schemas, all canonical reason codes, valid/invalid transition data | `pnpm vitest run tests/core/ai/types.test.ts` |
+| 03a-01/T2 | AGT-01, TOL-03 | Full FSM, terminal protection, callback isolation, idempotency completed/failed-before-effect/unknown states | `pnpm vitest run tests/core/ai/trajectory/AgentTrajectoryMachine.test.ts tests/core/ai/ExecutorService.test.ts` |
+| 03a-02/T1 | AGT-02, TOL-03 | Exact evidence mapping, safe checks, missing verifier, failure, timeout, and abort | `pnpm vitest run tests/core/ai/verifier/OutcomeVerifier.test.ts` |
+| 03a-02/T2 | AGT-04 | Four dispositions, permission/abort priority, one-replan cap, irreversible/unknown suppression, purity | `pnpm vitest run tests/core/ai/ReplanPolicy.test.ts` |
+| 03a-03/T1 | AGT-02 | Policy wording, exact tool-call matching, renderer contradiction fallback contract | `pnpm vitest run tests/core/ai/tracer.test.ts` |
+| 03a-03/T2 | AGT-01/02/03/04, TOL-03 | Orchestrator exit paths, signal propagation, permission, evidence, replan, caps, and safe diagnostics | `pnpm vitest run tests/core/ai/AgentOrchestrator.test.ts && pnpm lint` |
+| 03a-03/T3 | AGT-03 | Legacy caller migration and structured outcome assertions | `pnpm vitest run tests/core/ai/integration.test.ts tests/core/ai/tracer.test.ts tests/core/context/ContextOptimizer.test.ts` |
+| 03a-04/T1 | AGT-03 | Nested compressor abort propagation and non-abort regression | `pnpm vitest run tests/core/context/ContextCompressor.test.ts tests/core/context/ContextOptimizer.test.ts` |
+| 03a-05/T1 | AGT-01/02/03/04, TOL-03 | STRIDE controls, no disclosure, no bypass, bounded execution, no Phase 8a claims | `pnpm vitest run tests/security/agent-harness.test.ts` |
+| 03a-05/T2 | AGT-01/02/03/04, TOL-03 | Explicit phase-wide suite and type-check gate | `pnpm run verify:phase-3a` |
 
-*Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
+## Required Coverage
 
----
+- All ten trajectory states, all valid transitions, invalid transitions, terminal protection, concurrent isolation, and callback failure isolation.
+- All AgentTurnOutcome exit paths, cap flags, immutable snapshots, abort at every stage, caller/user distinction, and timeout distinction.
+- Exact CompletionEvidence operation/tool-call mapping, safe checks, verifier routing, unavailable/failed/timeout/abort variants, and renderer contradiction fallback.
+- Pure ReplanPolicy dispositions, one recovery planner call, no ContextOptimizer rerun, no counter reset, permission grant/deny/cancel, and irreversible/unknown replay suppression.
+- Explicit sideEffect/idempotency/evidence metadata for every current selected-tool adapter fixture; no Phase 8a fields.
+- Spoofing, tampering, repudiation, information disclosure, denial of service, and elevation of privilege controls.
 
-## Wave 0 Requirements
+## Phase Gate File List
 
-- [ ] `tests/core/ai/trajectory/AgentTrajectoryMachine.test.ts` — covers AGT-01 (all transitions, invalid rejections, terminal lock, history immutability, callback fire-and-forget)
-- [ ] `tests/core/ai/verifier/OutcomeVerifier.test.ts` — covers AGT-02, TOL-03 (verified/unverified evidence, verifier type routing, timeout handling, missing verifier)
-- [ ] `tests/core/ai/ReplanPolicy.test.ts` — covers AGT-04 (all ReplanDisposition outcomes, irreversible guard, one-replan limit, abort priority, cap exhaustion)
-- [ ] `tests/core/ai/RenderingOutcomePolicy.test.ts` — covers AGT-02 (policy derivation, mixed evidence handling, empty evidence)
-- [ ] `tests/core/ai/AgentOrchestrator.test.ts` (extended) — covers AGT-03 (AgentTurnOutcome on every exit path, cap exhaustion, abort, runTurnText wrapper)
-- [ ] `tests/core/ai/ExecutorService.test.ts` (extended) — covers idempotency ledger (duplicate detection, in-flight guard, key uniqueness)
-- [ ] `tests/core/ai/types.test.ts` — Zod schema validation for AgentTurnOutcome, CompletionEvidence, ReplanDisposition
-- [ ] `tests/core/ai/integration.test.ts` (extended) — full trajectory + evidence + replan integration flow
+The Plan 05 script must explicitly list these eleven test files:
 
----
-
-## Manual-Only Verifications
-
-| Behavior | Requirement | Why Manual | Test Instructions |
-|----------|-------------|------------|-------------------|
-| `runTurnText()` compatibility wrapper preserves existing consumer behavior | AGT-03 | Depends on external consumers from Phase 3 and Phase 4 | Run existing Phase 3/4 tests after migration; verify all pass |
-| `onTrajectoryTransition` callback does not throw or block turn | AGT-01 | Callback integration across surfaces | Register a throwing callback; confirm turn completes normally |
-
----
+```text
+tests/core/ai/types.test.ts
+tests/core/ai/trajectory/AgentTrajectoryMachine.test.ts
+tests/core/ai/ExecutorService.test.ts
+tests/core/ai/verifier/OutcomeVerifier.test.ts
+tests/core/ai/ReplanPolicy.test.ts
+tests/core/ai/tracer.test.ts
+tests/core/ai/AgentOrchestrator.test.ts
+tests/core/ai/integration.test.ts
+tests/core/context/ContextOptimizer.test.ts
+tests/core/context/ContextCompressor.test.ts
+tests/security/agent-harness.test.ts
+```
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 15s
-- [ ] `nyquist_compliant: true` set in frontmatter
-
-**Approval:** pending
+- [x] Every behavioral task has an automated command.
+- [x] No vacuous test-name-only gate is required.
+- [x] Every test file has one owning plan/task.
+- [x] Same-wave file conflicts are absent because all five plans are serial.
+- [x] Security includes Repudiation and Elevation of Privilege.
+- [x] Phase 8a durability, full manifests, active discovery, and long-running operations are explicitly excluded.
