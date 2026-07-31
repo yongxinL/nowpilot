@@ -63,60 +63,38 @@ describe('content script bundle isolation (D-20)', () => {
 
   // ── Test 2: Content bundle size < 50KB ─────────────────────────────
   it('has a built content script bundle under 50KB', () => {
-    const outputDir = path.resolve('.output/chrome-mv3/content-scripts');
+    const outputDir = path.resolve('.output/chrome-mv3');
+    const contentJsPath = path.join(outputDir, 'content.js');
 
-    if (!fs.existsSync(outputDir)) {
+    if (!fs.existsSync(contentJsPath)) {
       // No build output yet — graceful skip
       console.warn(
-        'No build output at .output/chrome-mv3/content-scripts — run `pnpm run build` first to verify bundle size.',
+        'No build output at .output/chrome-mv3/content.js — run `pnpm run build` first to verify bundle size.',
       );
       return;
     }
 
-    const files = fs.readdirSync(outputDir).filter((f) => f.endsWith('.js'));
-    if (files.length === 0) {
-      console.warn(
-        'No .js files found in .output/chrome-mv3/content-scripts — skipping bundle size check.',
-      );
-      return;
-    }
-
-    for (const file of files) {
-      const filePath = path.join(outputDir, file);
-      const size = fs.statSync(filePath).size;
-      expect(size).toBeLessThan(50 * 1024);
-    }
+    const size = fs.statSync(contentJsPath).size;
+    expect(size).toBeLessThan(50 * 1024);
   });
 
   // ── Test 3: No banned package names in built content bundle ─────────
   it('contains no banned package names (defuddle, readability, react, antd, yaml) in the built content bundle', () => {
-    const outputDir = path.resolve('.output/chrome-mv3/content-scripts');
+    const outputDir = path.resolve('.output/chrome-mv3');
+    const contentJsPath = path.join(outputDir, 'content.js');
 
-    if (!fs.existsSync(outputDir)) {
+    if (!fs.existsSync(contentJsPath)) {
       console.warn(
-        'No build output at .output/chrome-mv3/content-scripts — skipping built-bundle string check.',
-      );
-      return;
-    }
-
-    const files = fs.readdirSync(outputDir).filter((f) => f.endsWith('.js'));
-    if (files.length === 0) {
-      console.warn(
-        'No .js files found in .output/chrome-mv3/content-scripts — skipping built-bundle string check.',
+        'No build output at .output/chrome-mv3/content.js — skipping built-bundle string check.',
       );
       return;
     }
 
     const bannedStrings = ['defuddle', 'readability', 'react', 'antd', 'yaml'];
-
-    for (const file of files) {
-      const content = fs.readFileSync(path.join(outputDir, file), 'utf-8');
-      for (const banned of bannedStrings) {
-        if (content.includes(banned)) {
-          throw new Error(
-            `Built content bundle "${file}" contains banned string: "${banned}"`,
-          );
-        }
+    const content = fs.readFileSync(contentJsPath, 'utf-8');
+    for (const banned of bannedStrings) {
+      if (content.includes(banned)) {
+        throw new Error(`Built content bundle "content.js" contains banned string: "${banned}"`);
       }
     }
 
