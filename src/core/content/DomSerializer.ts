@@ -25,6 +25,26 @@ export interface SerializedPage {
 }
 
 /**
+ * Unicode-aware truncation: slices at code-point boundaries to avoid
+ * splitting surrogate pairs (characters outside BMP: emoji, rare CJK, etc.).
+ * If the truncation point lands on a leading surrogate (U+D800–U+DBFF),
+ * the orphaned code unit is removed to prevent downstream parsing failures
+ * in DOMParser / JSON.stringify.
+ */
+function truncateAtCodePoint(str: string, maxLen: number): string {
+  if (str.length <= maxLen) return str;
+  const sliced = str.slice(0, maxLen);
+  // If the last code unit is a leading surrogate, remove it
+  if (
+    sliced.charCodeAt(sliced.length - 1) >= 0xd800 &&
+    sliced.charCodeAt(sliced.length - 1) <= 0xdbff
+  ) {
+    return sliced.slice(0, -1);
+  }
+  return sliced;
+}
+
+/**
  * Serializes the given document to HTML with password values redacted.
  *
  * Redaction runs on an in-memory clone (never the live document): clearing
@@ -75,7 +95,7 @@ export function serializePage(doc: Document): SerializedPage {
   let html = source.documentElement.outerHTML;
   let truncated = false;
   if (html.length > SIZE_CAP) {
-    html = html.slice(0, SIZE_CAP);
+    html = truncateAtCodePoint(html, SIZE_CAP);
     truncated = true;
   }
 
