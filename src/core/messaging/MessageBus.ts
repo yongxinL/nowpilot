@@ -3,7 +3,7 @@ import { isEnvelope, type RuntimeEnvelope } from '../runtime/RuntimeEnvelope';
 type MessageHandler<T = unknown> = (
   envelope: RuntimeEnvelope<T>,
   sender: chrome.runtime.MessageSender,
-) => void | Promise<void>;
+) => unknown;
 
 const handlers = new Map<string, Set<MessageHandler>>();
 
@@ -42,6 +42,14 @@ export async function dispatch(
     // eslint-disable-next-line no-console
     console.error('[MessageBus] handler errors:', errors);
   }
+
+  // D-04: a single fulfilled handler forwards its return value so sendResponse
+  // carries the actual result (e.g. SerializedPage from the content script's
+  // EXTRACT_PAGE_CONTENT handler). Multi-handler sets keep the settled array.
+  if (results.length === 1 && results[0].status === 'fulfilled') {
+    return results[0].value;
+  }
+  return results;
 }
 
 let initialized = false;
