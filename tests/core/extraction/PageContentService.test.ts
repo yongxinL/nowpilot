@@ -50,6 +50,7 @@ beforeEach(() => {
   (globalThis as any).chrome.tabs = {
     sendMessage: sendMessageMock,
     onUpdated: { addListener: vi.fn() },
+    onRemoved: { addListener: vi.fn() },
   };
 });
 
