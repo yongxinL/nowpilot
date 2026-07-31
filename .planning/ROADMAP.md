@@ -119,7 +119,18 @@ Plans:
   3. Every exit path returns an AgentTurnOutcome; cap exhaustion is terminalState:partial not completed; abort does not render a success answer
   4. Replanning follows deterministic policy — success→verify→render, retryable→one replan, permission/auth/schema→terminal; no retry after irreversible actions unless idempotency proves safety
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+**Wave 1**
+- [ ] 03a-01-PLAN.md — TRACER: Core types + AgentTrajectoryMachine + AgentOrchestrator runTurn() --> AgentTurnOutcome + RenderingOutcomePolicy + tracer tests (AGT-01, AGT-03)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 03a-02-PLAN.md — OutcomeVerifier + ReplanPolicy + evidence integration into orchestrator (AGT-02, AGT-04, TOL-03)
+- [ ] 03a-03-PLAN.md — Idempotency ledger + comprehensive unit test suite (TOL-03)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 03a-04-PLAN.md — Integration tests + phase verification script (AGT-01, AGT-02, AGT-03, AGT-04, TOL-03)
 
 ### Phase 4: Context Optimization Pipeline
 
@@ -411,7 +422,7 @@ Decimal phases execute after their parent integer phase: 3 → 3a → 4 → 4a �
 | 1. Project Scaffold & Runtime Foundation | 5/5 | Completed | 2026-07-28 |
 | 2. Storage & Security Foundation | 4/4 | Completed | 2026-07-29 |
 | 3. AI Core Pipeline | 7/7 | Completed | 2026-07-30 |
-| 3a. Agent Reliability & Evidence | TBD | Not started | - |
+| 3a. Agent Reliability & Evidence | 0/4 | Not started | - |
 | 4. Context Optimization Pipeline | 3/3 | Completed | 2026-07-31 |
 | 4a. Page Content Extraction | 6/6 | Completed | 2026-07-31 |
 | 4b. Trust-Aware Context & Receipts | TBD | Not started | - |
