@@ -4,6 +4,7 @@ import { createEnvelope } from '../../../src/core/runtime/RuntimeEnvelope';
 import { dispatch } from '../../../src/core/messaging/MessageBus';
 import { serializePage, type SerializedPage } from '../../../src/core/content/DomSerializer';
 import { PageContentService } from '../../../src/core/extraction/PageContentService';
+import { pageIndexBuilder } from '../../../src/core/extraction/PageIndexBuilder';
 import type { IExtractionStrategy } from '../../../src/core/extraction/strategies/IExtractionStrategy';
 
 /**
@@ -652,5 +653,32 @@ describe('PageContentService (hardening)', () => {
     if (!defaultAgain.ok) throw new Error('expected ok result');
     expect(defaultAgain.pageContext.mode).toBe('default');
     expect(sendMessageMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps the per-tab MiniSearch index when SPA_NAVIGATION announces the same URL (WR-02)', async () => {
+    sendMessageMock.mockResolvedValue(makeSerializedPage());
+    const service = new PageContentService();
+    service.init();
+
+    await service.extract(1, 'default', 'https://example.com/article');
+    expect(sendMessageMock).toHaveBeenCalledTimes(1);
+    expect(pageIndexBuilder.selectRelevant(1, 'Extraction Tracer Fixture', 100).length).toBeGreaterThan(0);
+
+    await dispatch(
+      createEnvelope(
+        'SPA_NAVIGATION',
+        { url: 'https://example.com/article', timestamp: Date.now() },
+        'content',
+      ),
+      { tab: { id: 1 } } as chrome.runtime.MessageSender,
+    );
+
+    // Pre-fix: removeTab ran unconditionally, leaving index-less cache hits
+    // (D-14 broken). The index must survive a same-URL event…
+    expect(pageIndexBuilder.selectRelevant(1, 'Extraction Tracer Fixture', 100).length).toBeGreaterThan(0);
+    // …and the cache must still be hot.
+    const result = await service.extract(1, 'default', 'https://example.com/article');
+    expect(result.ok).toBe(true);
+    expect(sendMessageMock).toHaveBeenCalledTimes(1);
   });
 });

@@ -113,10 +113,13 @@ export class PageContentService {
   /**
    * D-03, D-14 wiring: SPA_NAVIGATION events from the content script
    * invalidate the index and cache for the sending tab when the announced
-   * URL differs from the cached URL. Index cleanup happens BEFORE cache
-   * invalidation so old index entries are gone before the next extraction
-   * builds new ones (Pitfall 5: no stale chunk accumulation). Same-URL
-   * navigations keep the cache hot.
+   * URL differs from the cached URL. The cache decides whether the event
+   * invalidates anything: only when it does (URL changed) is the per-tab
+   * index removed too (WR-02 — same-URL events keep both, so cache hits
+   * always have their index, D-14 contract holds). When the URL did change,
+   * index removal happens AFTER cache invalidation so old chunks are gone
+   * before the next extraction builds new ones (Pitfall 5: no stale chunk
+   * accumulation). Same-URL navigations keep the cache hot.
    */
   private registerSpaNavigationHandler(): void {
     // Idempotent guard: prevents double registration across multiple instances
@@ -126,9 +129,16 @@ export class PageContentService {
       (envelope, sender) => {
         const tabId = sender.tab?.id;
         if (tabId === undefined) return;
-        // ORDER MATTERS: index cleanup before cache invalidation (Pitfall 5)
-        pageIndexBuilder.removeTab(tabId);
-        this.pageContentCache.invalidateIfChanged(tabId, envelope.payload.url);
+        // WR-02: index lifetime follows cache lifetime. A same-URL event
+        // (panel extracted the post-navigation URL before the message
+        // arrived) keeps BOTH the cache entries and the per-tab index.
+        const invalidated = this.pageContentCache.invalidateIfChanged(
+          tabId,
+          envelope.payload.url,
+        );
+        if (invalidated) {
+          pageIndexBuilder.removeTab(tabId);
+        }
       },
     );
   }
