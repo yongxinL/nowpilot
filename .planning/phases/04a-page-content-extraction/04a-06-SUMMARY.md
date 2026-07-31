@@ -213,3 +213,12 @@ None - no external service configuration required.
 
 *Phase: 04a-page-content-extraction*
 *Completed: 2026-07-31*
+
+## Self-Check: PASSED
+
+- All 6 modified source files exist on disk ✓
+- SUMMARY.md exists at `.planning/phases/04a-page-content-extraction/04a-06-SUMMARY.md` ✓
+- All 6 commits present in git log: `855d032` (T1 CR-01), `4cd692b` (T2 WR-01), `cf3b5cf` (T3 WR-02), `f4ec719` (T4 WR-03), `d4dd16c` (T5 WR-04), `6ffaeb5` (docs) ✓
+- Phase vitest gate: 93/93 pass, 0 failures (86 pre-existing + 7 new) ✓
+- tsc: zero new errors beyond the 9 pre-existing src/core/storage ones ✓
+- Scope discipline: entrypoints/ and tests/isolation/ untouched ✓
