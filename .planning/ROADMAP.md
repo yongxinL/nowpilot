@@ -115,9 +115,16 @@ Plans:
 **Plans**: 3/3 plans planned (ready to execute)
 
 Plans:
+**Wave 1**
 
 - [ ] 04-01-PLAN.md — TRACER: Core types + foundation services (ModelContextTier, TokenBudget, ContextProvenanceManifest, ContextOptimizer) + AgentOrchestrator/PlannerService/RendererService pipeline integration + tracer integration test (CTX-01, CTX-02)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 04-02-PLAN.md — Degradation pipeline: ContextCompressor with 7 ordered steps + AI summarization overflow + minimal mode + ProviderRouter.getCompressionModel() (CTX-01)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 04-03-PLAN.md — Prompt cache management: PromptCacheAdapter per Appendix K + PromptCacheManager with health tracking/cooldown + ProviderAdapter.countTokens() + ContextOptimizer cache integration (CTX-02)
 
 ### Phase 4a: Page Content Extraction
