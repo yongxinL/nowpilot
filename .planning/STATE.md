@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v0.1
 milestone_name: milestone
-current_phase: 4
-current_phase_name: Context Optimization Pipeline
+current_phase: 04
+current_phase_name: context-optimization-pipeline
 status: executing
-stopped_at: Phase 4 context gathered
-last_updated: "2026-07-31T01:33:23.838Z"
-last_activity: 2026-07-30
-last_activity_desc: Phase 03 complete, transitioned to Phase 4
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-07-31T01:45:50.572Z"
+last_activity: 2026-07-31
+last_activity_desc: Plan 04-01 completed — context optimization tracer
 progress:
   total_phases: 11
   completed_phases: 3
   total_plans: 19
-  completed_plans: 16
-  percent: 27
+  completed_plans: 17
+  percent: 89
 ---
 
 # Project State
@@ -25,16 +25,16 @@ See: .planning/PROJECT.md (updated 2026-07-28)
 
 **Core value:** Users can acquire knowledge from web pages, store it as interconnected atomic notes, understand it through AI enrichment (tagging/summary/RAG), and interact with it through a persona-driven, intention-aware conversational workspace — all running locally on their machine.
 
-**Current focus:** Phase 03 — ai-core-pipeline
+**Current focus:** Phase 04 — context-optimization-pipeline
 
 ## Current Position
 
-Phase: 4 — Context Optimization Pipeline
-Plan: Not started
+Phase: 04 (context-optimization-pipeline) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-07-30 — Phase 03 complete, transitioned to Phase 4
+Last activity: 2026-07-31 — Phase 04 execution started
 
-Progress: [████████░░] 78%
+Progress: [█████████░] 89%
 
 ## Performance Metrics
 
@@ -64,6 +64,7 @@ Progress: [████████░░] 78%
 | Phase 01-project-scaffold-runtime-foundation P03 | 11min | 2 tasks | 5 files |
 | Phase 01-project-scaffold-runtime-foundation P04 | 3 min | 2 tasks | 4 files |
 | Phase 01-project-scaffold-runtime-foundation P05 | 4 min | 2 tasks | 6 files |
+| Phase 04-context-optimization-pipeline P01 | 6min | 1 task | 15 files |
 
 ## Accumulated Context
 
@@ -85,6 +86,10 @@ Recent decisions affecting current work:
 - [Phase ?]: ThemeStore.setMode directly calls publish (not publishThemeChange) to avoid circular dependency
 - [Phase ?]: SidePanel and AppShell each have their own CommandRegistry singleton (per-entrypoint JS context) — surface-specific commands with shared IDs work correctly
 - [Phase ?]: Common component files tested for cross-entrypoint import isolation in addition to surface-specific shell checks
+- [Phase 04 P01]: §2.2 section allocations computed against modelContextWindow (must_have/test contract), not inputBudget as action text said — Test 4/tiny-4000 pins this
+- [Phase 04 P01]: ContextOptimizer is a first-class pipeline stage invoked once per turn (D-01/D-02): AgentOrchestrator.runTurn(AgentTurnInput) calls optimize() before the planner loop and passes OptimizedContext to plan()/synthesize()
+- [Phase 04 P01]: Over-budget placeholder behavior: trim USER_INPUT from start to fit; throw CONTEXT_TOO_LARGE when trimming empties the user input entirely (degradation pipeline lands in Plan 04-02)
+- [Phase 04 P01]: Deferred requirements mark-complete for CTX-01/CTX-02 — both span later phase plans (04-02 degradation, 04-03 cache); marked complete at phase end instead
 
 ### Pending Todos
 
@@ -104,6 +109,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-31T00:52:26.942Z
-Stopped at: Phase 4 context gathered
-Resume file: .planning/phases/04-context-optimization-pipeline/04-CONTEXT.md
+Last session: 2026-07-31T01:45:50.572Z
+Stopped at: Completed 04-01-PLAN.md
+Resume file: None

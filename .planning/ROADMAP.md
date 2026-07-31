@@ -112,12 +112,12 @@ Plans:
   4. User's prompt cache hints are transformed per-provider (Anthropic cache breakpoints, OpenAI system message prefix, etc.) and cache hit/miss is logged
   5. Every OptimizedContext carries a ContextProvenanceManifest recording where each section came from
 
-**Plans**: 3/3 plans planned (ready to execute)
+**Plans**: 1/3 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 04-01-PLAN.md — TRACER: Core types + foundation services (ModelContextTier, TokenBudget, ContextProvenanceManifest, ContextOptimizer) + AgentOrchestrator/PlannerService/RendererService pipeline integration + tracer integration test (CTX-01, CTX-02)
+- [x] 04-01-PLAN.md — TRACER: Core types + foundation services (ModelContextTier, TokenBudget, ContextProvenanceManifest, ContextOptimizer) + AgentOrchestrator/PlannerService/RendererService pipeline integration + tracer integration test (CTX-01, CTX-02) — completed 2026-07-31
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
