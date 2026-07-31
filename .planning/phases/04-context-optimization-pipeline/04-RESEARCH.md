@@ -486,22 +486,13 @@ console.log(result.usage.inputTokenDetails.cacheWriteTokens);
 | A3 | The `usage.inputTokens` value from AI SDK v7 is the authoritative token count and no separate `countTokens()` API call is needed | TokenBudget | If some providers return inaccurate or zero `usage.inputTokens`, the character-based fallback (D-10) serves as the backup. |
 | A4 | Gemini's `cachedContent` feature (min 32,768 tokens) is supported by `@ai-sdk/google@^4.0.28` via provider options | PromptCacheAdapter | If the v4 Google provider package doesn't support cachedContent natively, Gemini caching will fall back to prefix-only per Appendix K's `default` case. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **How is `modelContextWindow` determined for Ollama/local models?**
-   - What we know: `classifyModelContext(contextWindow)` needs a numeric window size. OpenAI/Anthropic/Gemini have known context windows per model. Ollama models are user-installed and may not report context window.
-   - What's unclear: Should we prompt the user to configure context window for Ollama models? Should we default to 'tiny' (4K) for unknown local models?
-   - Recommendation: Default Ollama models to 'small' (8K) with an option to override in provider config. The `validateConnection()` method in the Ollama adapter could be extended to query `/api/show` for model metadata including context length.
+1. **RESOLVED: `modelContextWindow` for Ollama/local models** — Default Ollama models to 'small' (8K) with an option to override in provider config. The `validateConnection()` method in the Ollama adapter could be extended to query `/api/show` for model metadata including context length.
 
-2. **When should `ProviderRouter.getCompressionModel()` route to which provider?**
-   - What we know: D-08 says "cheapest available summarisation-capable model." The compression model is independent of the user's conversation tier.
-   - What's unclear: Should it always use the same provider as the conversation, or pick the cheapest across all configured providers? Should it prefer local (Ollama) for cost?
-   - Recommendation: Implement as a simple policy: try the conversation's provider first (if it has a cheap model), then fall back to the cheapest configured provider. For now, the compression call is a Code Example placeholder — the actual model selection policy is D-08's discretion.
+2. **RESOLVED: `ProviderRouter.getCompressionModel()` routing** — Implement as a simple policy: try the conversation's provider first (if it has a cheap model), then fall back to the cheapest configured provider. The compression call is a Code Example placeholder for now — the actual model selection policy is D-08's discretion.
 
-3. **How to detect model tier dynamically for provider-returned models?**
-   - What we know: `classifyModelContext()` needs a numeric context window. OpenAI/Gemini model lists from `validateConnection()` don't include context window metadata.
-   - What's unclear: Should we maintain a static lookup table of known model → context window mappings?
-   - Recommendation: Maintain a `KNOWN_MODEL_WINDOWS` map in `ModelContextTier.ts` with known models (e.g., `'claude-haiku-4-latest': 200000`, `'gpt-4o-mini': 128000`, `'gemini-2.0-flash': 1048576`). Fall back to the tier resolution from Phase 3's `TierResolver` for unknown models: FAST → small (16K), BALANCED → medium (128K), ADVANCED → large (200K).
+3. **RESOLVED: Dynamic model tier detection** — Maintain a `KNOWN_MODEL_WINDOWS` map in `ModelContextTier.ts` with known models (e.g., `'claude-haiku-4-latest': 200000`, `'gpt-4o-mini': 128000`, `'gemini-2.0-flash': 1048576`). Fall back to the tier resolution from Phase 3's `TierResolver` for unknown models: FAST → small (16K), BALANCED → medium (128K), ADVANCED → large (200K).
 
 ## Environment Availability
 

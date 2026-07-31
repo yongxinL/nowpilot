@@ -859,22 +859,13 @@ export default defineContentScript({
 | A5 | MiniSearch `boost` option on `headingText`/`headingPath` fields sufficiently implements D-15 heading-aware scoring | Code Examples | If BM25 field boost alone doesn't provide enough heading weighting, may need custom scoring function |
 | A6 | SPA navigation detection via MutationObserver + `wxt:locationchange` catches all navigation events | Architecture Patterns | If some SPA frameworks use History API without triggering MutationObserver or locationchange, cache invalidation may miss navigations |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **DOMParser in extension page contexts — availability confirmed?**
-   - What we know: DOMParser is a standard Web API available in most browser window contexts. Extension pages (side panel, full app) run in chrome-extension:// origin with full DOM access.
-   - What's unclear: Whether any security restrictions in Chrome MV3 affect DOMParser availability in extension pages. The spec §26.4 explicitly says "Side Panel / Full App: DOMParser → new Defuddle(doc).parse()" — treating this as confirmed.
-   - Recommendation: Verify in Phase 4a Wave 0: write a test that constructs `new DOMParser().parseFromString('<html></html>', 'text/html')` and check `document.querySelector`. If unavailable, fall back to linkedom (lighter than JSDOM).
+1. **DOMParser in extension page contexts — availability confirmed?** **RESOLVED:** Treat as confirmed per spec §26.4. Verify in Phase 4a Wave 0: write a test that constructs `new DOMParser().parseFromString('<html></html>', 'text/html')` and check `document.querySelector`. If unavailable, fall back to linkedom (lighter than JSDOM).
 
-2. **defuddle `markdown: true` output quality vs. separate HTML→Markdown conversion?**
-   - What we know: defuddle v0.19.2 supports `{ markdown: true }` option for direct Markdown output, plus `separateMarkdown: true` to get both HTML and Markdown. The separate option requires the `defuddle/full` bundle.
-   - What's unclear: Quality of the built-in Markdown conversion vs. a dedicated library. The full bundle includes extra deps (mathml-to-latex, temml).
-   - Recommendation: Start with defuddle core bundle + `markdown: true`. If Markdown quality is insufficient, evaluate `defuddle/full` for `separateMarkdown` or a dedicated HTML→Markdown converter like turndown.
+2. **defuddle `markdown: true` output quality vs. separate HTML→Markdown conversion?** **RESOLVED:** Start with defuddle core bundle + `markdown: true`. If Markdown quality is insufficient, evaluate `defuddle/full` for `separateMarkdown` or a dedicated HTML→Markdown converter like turndown.
 
-3. **Heading chunking boundary behavior — how to handle non-heading document starts?**
-   - What we know: Some pages start with content before the first heading (e.g., intro paragraphs). D-15 specifies heading-aware chunks with breadcrumb paths.
-   - What's unclear: Where to place leading content before the first heading.
-   - Recommendation: Use a "preamble" heading path `"(top)"` for content before the first heading. Include it in the index with a lower boost weight (1.0 vs. 2.0 for real headings) so heading-matched content still ranks higher.
+3. **Heading chunking boundary behavior — how to handle non-heading document starts?** **RESOLVED:** Use a "(preamble)" heading path for content before the first heading. Include it in the index with a lower boost weight (1.0 vs. 2.0 for real headings) so heading-matched content still ranks higher.
 
 ## Environment Availability
 

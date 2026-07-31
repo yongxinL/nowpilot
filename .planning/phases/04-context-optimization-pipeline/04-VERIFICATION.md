@@ -2,18 +2,14 @@
 phase: 04-context-optimization-pipeline
 verified: 2026-07-31T02:28:11Z
 status: passed
-score: 6/7 must-haves verified
-behavior_unverified: 1
+score: 7/7 must-haves verified
+behavior_unverified: 0
 overrides_applied: 0
 re_verification:
   previous_status: null
 gaps: []
-behavior_unverified_items:
+behavior_unverified_items: []
 
-  - truth: "AI summarization overflow (D-06/D-08) fires when local degradation fails and routes to ProviderRouter.getCompressionModel()"
-    test: "Configure any provider API key (e.g. OPENAI_API_KEY), build an input whose context still exceeds the budget after all 7 local degradation steps (e.g. tiny window + ~100K-char userInput is schema-legal and forces overflow past every step), call contextOptimizer.optimize() and observe the single generateText call produce a summary section (sourceId 'ai.compression.summary') with 'ai-summarisation' appended to stepsApplied"
-    expected: "Context comes under budget after one AI summarization call; stepsApplied includes 'ai-summarisation' exactly once; provenance carries the compressed summary section; a second overflow (all local + AI fail) still throws CONTEXT_TOO_LARGE"
-    why_human: "The test ProviderRouter mock always resolves getCompressionModel() to null (tests/core/context/ContextOptimizer.test.ts:37-39), so the successful generateText branch — a real state transition requiring a live provider adapter and network — is never exercised by any test. Symbol presence + wiring are verified; the success-path behavior is not."
 deferred:
 
   - truth: "Minimal mode blocks MCP chaining and LLM-Wiki RAG synthesis (SC 3 second clause)"
@@ -21,7 +17,8 @@ deferred:
     evidence: "OptimizedContext.minimalMode is always true for tiny tier (ContextOptimizer.ts:127) and is the designated control flag (04-02 plan must-have: 'OptimizedContext.minimalMode flag controls these blocks'); no consumer gating exists because MCP tool chaining and LLM-Wiki RAG synthesis features do not exist in the codebase yet (ROADMAP Phase 8 SC 1: 12 built-in MCP tools; Phase 5a SC 2: NoteQA RAG synthesis). The flag is the mechanism this phase delivers; the blocking consumers arrive with those features."
 human_verification:
 
-  - test: "AI summarization overflow success branch — see behavior_unverified_items[0]"
+  - test: "AI summarization overflow success branch"
+    result: "PASS — verified live 2026-07-31 (see 04-UAT.md, tests/human-verification/04-ai-summarization-overflow.test.ts)"
     expected: "One generateText call via compression provider brings context under budget; 'ai-summarisation' recorded once; graceful fallback on empty/failed output"
     why_human: "Requires a live provider adapter with API key and network — the unit-test ProviderRouter mock returns null, so the success-path transition is unexercised"
 ---
@@ -41,13 +38,13 @@ human_verification:
 |---|-------|--------|----------|
 | 1 | Prompt optimized differently for tiny (≤4K), small (8K–16K), medium (32K–128K), large (≥200K) with appropriate token distribution | ✓ VERIFIED | `classifyModelContext` boundary logic (src/core/context/ModelContextTier.ts:9-14); per-tier allocation table (src/core/context/TokenBudget.ts:10-15); per-tier degradation caps (src/core/context/ContextCompressor.ts:134-146). Tests: "classifies model context windows at boundary values", "allocates exact §2.2 section budgets for all four tiers", "trim-tools enforces per-tier tool caps", "reduce-memory keeps top-K hints per tier" — all pass |
 | 2 | Overflow → degradation pipeline drops debug, summarizes history, compresses page, trims tools before minimal mode | ✓ VERIFIED | 7 ordered steps as immutable `STEPS` policy (ContextCompressor.ts:37-45); stepwise budget re-check with early stop (ContextCompressor.ts:59-64); CONTEXT_TOO_LARGE only after all steps + AI overflow fail, with token counts (ContextOptimizer.ts:102-123). Tests: "applies all seven steps in policy order", "stops early once the budget is satisfied", "throws CONTEXT_TOO_LARGE with token counts after all degradation steps fail", per-step tests — all pass |
-| 3 | AI summarization overflow fires when local techniques fail, via cheapest available compression provider (D-06/D-08) | ⚠️ PRESENT_BEHAVIOR_UNVERIFIED | Wiring present: compress() → tryAiSummarization() single generateText call (ContextCompressor.ts:71-75, 88-124); ProviderRouter.getCompressionModel() iterates PROVIDER_ORDER, skips open circuit breakers, null-not-throw (ProviderRouter.ts:141-155). Fallback paths (null provider / empty output / call error → keep sections) covered by guards. BUT the successful generateText branch is never exercised — test mock always resolves getCompressionModel() → null (tests/core/context/ContextOptimizer.test.ts:37-39). See Human Verification item 1 |
+| 3 | AI summarization overflow fires when local techniques fail, via cheapest available compression provider (D-06/D-08) | ✓ VERIFIED (live) | Wiring: compress() → tryAiSummarization() single generateText call (ContextCompressor.ts:71-75, 88-124); ProviderRouter.getCompressionModel() iterates PROVIDER_ORDER, skips open circuit breakers, null-not-throw (ProviderRouter.ts:141-155). Fallback paths (null provider / empty output / call error → keep sections) covered by guards and the unit suite. SUCCESS branch verified live 2026-07-31 via tests/human-verification/04-ai-summarization-overflow.test.ts against a real OpenAI-compatible endpoint: one generateText call produced 'ai.compression.summary', context dropped from ~6205 → ~4190 tokens (budget 5600); exactly 1 call (spied); provenance carries the summary section |
 | 4 | Tiny model minimal mode: minimalMode flag set; 1 safe tool + top-3 memories caps | ✓ VERIFIED | minimalMode = tier==='tiny' OR 'minimal-mode' step ran (ContextOptimizer.ts:127); §2.5 caps — 1 tool, top-3 memory, ≤200-token system, last 1-2 turns ≤200 tokens, page dropped (ContextCompressor.ts:242-295). Tests: "enforces minimal mode for tiny tier: single tool, top-3 memories, under budget", "minimal-mode enforces the §2.5 restrictions" — pass. MCP chaining / RAG synthesis *blocking* consumers are deferred to Phases 5a/8 (flag is the delivered mechanism — see Deferred Items) |
 | 5 | Per-provider cache hints (Anthropic breakpoints, OpenAI system prefix ordering, Gemini cachedContent) + cache hit/miss tracked | ✓ VERIFIED | applyCacheHints for all 4 providers (PromptCacheAdapter.ts:19-69): anthropic max 4 ephemeral breakpoints (L27-31), gemini cachedContent ≥32,768 stable tokens else prefix-only (L40-57), openai/ollama stable-first kind-alpha ordering (L61-67); FNV-1a hash 8-char hex (L74-82). recordResponse hit/miss health: hit resets streak + clears disabled, 5-miss cascade disable + 60,000ms cooldown re-enable (PromptCacheManager.ts:53-94); module-level singleton, in-memory only (L37, L167). Orchestrator wiring: prepareCacheHints after provider selection (AgentOrchestrator.ts:97-100), recordCacheResponse after every successful provider call (L132/146/162/195). 27 cache tests pass; AgentOrchestrator tests exercise recordResponse inside runTurn (stderr shows §19.13 disable firing during runTurn tests). Hit/miss is recorded per response and observable via getHealthState(); cache prep is console.debug-logged with cacheKeyHash/strategy; cascade disable console.warn-logged (Phase 6 AITransactionLog will persist per §4.3) |
 | 6 | Every OptimizedContext carries a ContextProvenanceManifest recording section origin | ✓ VERIFIED | Manifest created per optimize() (ContextOptimizer.ts:129-133), one entry per distinct sourceId (ContextProvenanceManifest.ts:29-40), dot-separated sourceId validation (L10-14), compressionApplied + truncated flags (L42-54, ContextOptimizer.ts:139-144). Tests: "records provenance with one entry per assembled section", "records exact compressionApplied values matching the degradation steps that ran" — pass |
 | 7 | Pipeline integration: AgentTurnInput → optimize() → OptimizedContext through PlannerService/RendererService; CONTEXT_TOO_LARGE terminal code | ✓ VERIFIED | runTurn(AgentTurnInput) calls optimize() once before planner loop (AgentOrchestrator.ts:84-88); PlannerService extracts user message from sections (PlannerService.ts:85-89), tools from tool_schemas section (L44-58); RendererService extracts system/user from sections (RendererService.ts:19-25, 33-38); CONTEXT_TOO_LARGE registered terminal in CODE_CATEGORY (PipelineError.ts:23). Tests: tracer end-to-end test passes; AgentOrchestrator 5/5, ContextOptimizer 27/27 |
 
-**Score:** 6/7 truths verified (1 present, behavior-unverified)
+**Score:** 7/7 truths verified (0 present, behavior-unverified — AI summarization success branch verified live 2026-07-31)
 
 ### Deferred Items
 
@@ -109,7 +106,7 @@ Items not yet met but explicitly addressed in later milestone phases — informa
 | Degradation early stop | Test "stops early once the budget is satisfied" | drop-debug alone resolves; no later steps run | ✓ PASS |
 | CONTEXT_TOO_LARGE terminal path | Test "throws CONTEXT_TOO_LARGE with token counts after all degradation steps fail" | Terminal error with budget + current tokens in diagnostics | ✓ PASS |
 | §19.13 cascade inside runTurn | AgentOrchestrator test stderr | `[PromptCacheManager] cache disabled for openai after N consecutive misses` observed | ✓ PASS (runtime proof recordResponse fires in runTurn) |
-| AI-summarization success branch | No test exercises it (mock returns null) | — | ? SKIP → Human Verification item 1 |
+| AI-summarization success branch | `GEMINI_API_KEY`/`OPENAI_API_KEY`(+`OPENAI_BASE_URL`) + `npx vitest run tests/human-verification/04-ai-summarization-overflow.test.ts` | ✓ PASS — live run 2026-07-31 (1/1; summary section produced, under budget) |
 
 ### Probe Execution
 
@@ -129,23 +126,22 @@ No orphaned requirements: REQUIREMENTS.md maps exactly CTX-01 and CTX-02 to Phas
 | File | Line | Pattern | Severity | Impact |
 | ---- | ---- | ------- | -------- | ------ |
 | — | — | No TBD/FIXME/XXX/TODO/HACK/PLACEHOLDER markers in any phase source file | — | None |
-| tests/core/context/ContextOptimizer.test.ts | 37-39 | getCompressionModel mocked to null — AI success branch never tested | ⚠️ WARNING | Documented in 04-02/04-03 summaries; flagged as behavior_unverified item (see Human Verification) |
+| tests/core/context/ContextOptimizer.test.ts | 37-39 | getCompressionModel mocked to null — AI success branch not covered by unit tests | ℹ️ INFO | Resolved via live human verification (04-UAT.md); env-gated test at tests/human-verification/04-ai-summarization-overflow.test.ts |
 | src/core/ai/AgentOrchestrator.ts | 116-120 | Cache metadata exposed only via console.debug | ℹ️ INFO | Intentional per 04-03 decision — Phase 6 AITransactionLog is the persistence consumer; runTurn returns plain string (Phase 3 contract) |
 | src/core/context/ContextCompressor.ts | 393-405 | applyAiSummary creates new `context` section replacing memory/context sections | ℹ️ INFO | New-section creation, not stable-flag mutation (D-14 compliant); provenance for dropped sections = absent, documented pattern |
 
-### Human Verification Required
+### Human Verification Completed
 
-1. **AI summarization overflow success branch (PRESENT_BEHAVIOR_UNVERIFIED truth #3)**
-   - **Test:** Configure a real provider API key (e.g. `OPENAI_API_KEY`), build an optimizer input that remains over budget after all 7 local degradation steps (e.g. `modelContextWindow: 4096` + ~100K-char `userInput` — schema-legal, forces overflow past every step), and call `contextOptimizer.optimize()`.
-   - **Expected:** A single `generateText` call via `ProviderRouter.getCompressionModel()` produces a summary section (sourceId `ai.compression.summary`) that brings the context under budget; `stepsApplied` includes `'ai-summarisation'` exactly once; if the provider call fails or returns empty, pre-summarization sections are kept and the final budget check throws `CONTEXT_TOO_LARGE` (graceful fallback).
-   - **Why human:** The unit-test mock always resolves `getCompressionModel()` → null (tests/core/context/ContextOptimizer.test.ts:37-39), so the successful branch — a state transition requiring a live provider adapter and network — is never exercised. Presence and wiring are verified; the success-path behavior is not.
+1. **AI summarization overflow success branch (was PRESENT_BEHAVIOR_UNVERIFIED truth #3) — PASS 2026-07-31**
+   - **Test:** `npx vitest run tests/human-verification/04-ai-summarization-overflow.test.ts` with a real provider key (run against a local OpenAI-compatible endpoint via `OPENAI_API_KEY`/`OPENAI_BASE_URL`/`OPENAI_MODEL`; also supports `GEMINI_API_KEY`/`ANTHROPIC_API_KEY`). Input: small tier @ 8000 (5600-token budget) with 300×4000-char memory hints + 12 tools + 12000-char user input — after all 7 local degradation steps the context still totaled ~6205 tokens, forcing the AI overflow path.
+   - **Observed:** exactly ONE live `generateText` call via the compression provider; a summary section (sourceId `ai.compression.summary`) replaced the memory section; final total ~4190 tokens ≤ 5600 budget; provenance records the summary section.
+   - **Fallback confirmation:** a second live run with a failing provider (quota-exhausted key) exercised the graceful T-04-09 path — pre-summarization sections kept, `CONTEXT_TOO_LARGE` with token counts thrown.
 
 ### Gaps Summary
 
-No failed truths, no missing/stub artifacts, no unwired key links, no blocker anti-patterns. 59/59 phase tests pass. Two informational items:
+No failed truths, no missing/stub artifacts, no unwired key links, no blocker anti-patterns. 59/59 phase tests pass. Human verification item resolved — the AI-summarization success branch was exercised live on 2026-07-31 (see 04-UAT.md) and passed. One informational item:
 
-1. **Behavior-unverified (1):** the AI-summarization success branch has no behavioral test (mock always null). The fallback paths are guarded and the CONTEXT_TOO_LARGE fallthrough is tested. Not a defect — an untested-but-present path requiring live-provider verification.
-2. **Deferred (1):** minimal-mode gating of MCP chaining / LLM-Wiki RAG synthesis — the `minimalMode` flag is always set for tiny tier and exposed on OptimizedContext as the control surface; the blocking consumers arrive with the features themselves in Phases 5a/8.
+1. **Deferred (1):** minimal-mode gating of MCP chaining / LLM-Wiki RAG synthesis — the `minimalMode` flag is always set for tiny tier and exposed on OptimizedContext as the control surface; the blocking consumers arrive with the features themselves in Phases 5a/8.
 
 Nuances (documented, test-pinned decisions, not defects):
 
