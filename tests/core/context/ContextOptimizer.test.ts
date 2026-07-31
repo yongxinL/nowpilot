@@ -4,6 +4,7 @@ import type {
   ContextOptimizerInput,
   PlannerDecision,
   OptimizedContext,
+  PromptSection,
 } from '../../../src/core/ai/types';
 import { PipelineError } from '../../../src/core/ai/PipelineError';
 
@@ -51,6 +52,25 @@ function buildOptimizerInput(overrides?: Partial<ContextOptimizerInput>): Contex
     preferences: {},
     ...overrides,
   };
+}
+
+function buildSection(overrides: Partial<PromptSection>): PromptSection {
+  return {
+    kind: 'system',
+    text: '',
+    tokens: 0,
+    stable: true,
+    sourceId: 'core.instructions.system',
+    ...overrides,
+  };
+}
+
+function systemSection(tokens: number): PromptSection {
+  return buildSection({ kind: 'system', text: 'system', tokens, stable: true, sourceId: 'core.instructions.system' });
+}
+
+function userInputSection(tokens: number): PromptSection {
+  return buildSection({ kind: 'user_input', text: 'hello', tokens, stable: false, sourceId: 'interaction.user.current-turn' });
 }
 
 describe('ModelContextTier', () => {
@@ -282,4 +302,375 @@ describe('Tracer end-to-end', () => {
     expect(optimizeSpy).toHaveBeenCalledTimes(1);
     expect(mockGenerateText).toHaveBeenCalledTimes(2);
   }, 10000);
+});
+
+describe('ContextCompressor degradation', () => {
+  it('drop-debug removes debug sections and stops the pipeline', async () => {
+    const { contextCompressor } = await import('../../../src/core/context/ContextCompressor');
+    const sections = [
+      systemSection(10),
+      buildSection({
+        kind: 'context',
+        text: 'verbose debug trace',
+        tokens: 200,
+        stable: false,
+        sourceId: 'debug.verbose',
+      }),
+      userInputSection(5),
+    ];
+    const result = await contextCompressor.compress(sections, 15, 'medium');
+    expect(result.sections.map((s) => s.sourceId)).not.toContain('debug.verbose');
+    expect(result.sections).toHaveLength(2);
+    expect(result.stepsApplied).toEqual(['drop-debug']);
+  });
+
+  it('drop-secondary removes secondary and optional sections while keeping primary', async () => {
+    const { contextCompressor } = await import('../../../src/core/context/ContextCompressor');
+    const sections = [
+      systemSection(10),
+      buildSection({
+        kind: 'context',
+        text: 'secondary notes',
+        tokens: 150,
+        stable: false,
+        sourceId: 'context.secondary',
+      }),
+      buildSection({
+        kind: 'context',
+        text: 'optional metadata',
+        tokens: 50,
+        stable: false,
+        sourceId: 'context.optional',
+      }),
+      buildSection({
+        kind: 'context',
+        text: 'primary page',
+        tokens: 10,
+        stable: false,
+        sourceId: 'context.page.current',
+      }),
+      userInputSection(5),
+    ];
+    const result = await contextCompressor.compress(sections, 30, 'medium');
+    const sourceIds = result.sections.map((s) => s.sourceId);
+    expect(sourceIds).not.toContain('context.secondary');
+    expect(sourceIds).not.toContain('context.optional');
+    expect(sourceIds).toContain('context.page.current');
+    expect(result.stepsApplied).toEqual(['drop-debug', 'drop-secondary']);
+  });
+
+  it('summarise-history truncates long history, appends marker, and recalculates tokens', async () => {
+    const { contextCompressor } = await import('../../../src/core/context/ContextCompressor');
+    const { tokenBudget } = await import('../../../src/core/context/TokenBudget');
+    const longHistory = 'b'.repeat(5000);
+    const sections = [
+      systemSection(10),
+      buildSection({
+        kind: 'context',
+        text: longHistory,
+        tokens: 1250,
+        stable: false,
+        sourceId: 'history.conversation.123',
+      }),
+      userInputSection(5),
+    ];
+    const result = await contextCompressor.compress(sections, 400, 'medium');
+    const history = result.sections.find((s) => s.sourceId === 'history.conversation.123')!;
+    expect(history.text.length).toBeLessThanOrEqual(525); // ~500 chars + marker
+    expect(history.text.endsWith('[... history summarized]')).toBe(true);
+    expect(history.tokens).toBe(tokenBudget.estimateTokens(history.text));
+    expect(history.tokens).toBeLessThan(1250);
+    expect(result.stepsApplied).toEqual(['drop-debug', 'drop-secondary', 'summarise-history']);
+  });
+
+  it('compress-page replaces body text with a structured summary', async () => {
+    const { contextCompressor } = await import('../../../src/core/context/ContextCompressor');
+    const { tokenBudget } = await import('../../../src/core/context/TokenBudget');
+    const pageText = JSON.stringify({
+      title: 'Test Page',
+      url: 'https://example.com',
+      headings: ['Introduction', 'Details'],
+      body: 'x'.repeat(3000),
+    });
+    const sections = [
+      systemSection(10),
+      buildSection({
+        kind: 'context',
+        text: pageText,
+        tokens: 1000,
+        stable: false,
+        sourceId: 'context.page.current',
+      }),
+      userInputSection(5),
+    ];
+    const result = await contextCompressor.compress(sections, 100, 'medium');
+    const page = result.sections.find((s) => s.sourceId === 'context.page.current')!;
+    expect(page.text).toContain('Page: Test Page');
+    expect(page.text).toContain('URL: https://example.com');
+    expect(page.text).toContain('Key headings: Introduction, Details');
+    expect(page.text).toContain('[content compressed]');
+    expect(page.tokens).toBe(tokenBudget.estimateTokens(page.text));
+    expect(page.tokens).toBeLessThan(200);
+    expect(result.stepsApplied).toEqual([
+      'drop-debug',
+      'drop-secondary',
+      'summarise-history',
+      'compress-page',
+    ]);
+  });
+
+  it('trim-tools enforces per-tier tool caps and drops dangerous tools', async () => {
+    const { contextCompressor } = await import('../../../src/core/context/ContextCompressor');
+    const toolSchemas = Array.from({ length: 6 }, (_, i) => ({
+      name: `tool-${i}`,
+      description: 'd'.repeat(200),
+      dangerous: i === 5,
+    }));
+    const toolsText = JSON.stringify(toolSchemas);
+    const sections = [
+      systemSection(10),
+      buildSection({
+        kind: 'tool_schemas',
+        text: toolsText,
+        tokens: 350,
+        stable: true,
+        sourceId: 'tools.builtin.selected',
+      }),
+      userInputSection(5),
+    ];
+    // medium tier → cap 5 safe tools (dangerous one excluded)
+    const mediumResult = await contextCompressor.compress(sections, 300, 'medium');
+    const mediumTools = JSON.parse(
+      mediumResult.sections.find((s) => s.kind === 'tool_schemas')!.text,
+    ) as Array<{ name: string }>;
+    expect(mediumTools).toHaveLength(5);
+    expect(mediumTools.every((t) => t.name !== 'tool-5')).toBe(true);
+    expect(mediumResult.stepsApplied).toEqual([
+      'drop-debug',
+      'drop-secondary',
+      'summarise-history',
+      'compress-page',
+      'trim-tools',
+    ]);
+    // tiny tier → cap 1
+    const tinyResult = await contextCompressor.compress(sections, 300, 'tiny');
+    const tinyTools = JSON.parse(
+      tinyResult.sections.find((s) => s.kind === 'tool_schemas')!.text,
+    ) as Array<{ name: string }>;
+    expect(tinyTools).toHaveLength(1);
+  });
+
+  it('reduce-memory keeps top-K hints per tier and skips small memory sections', async () => {
+    const { contextCompressor } = await import('../../../src/core/context/ContextCompressor');
+    const memoryHints = Array.from({ length: 8 }, (_, i) => ({ id: `h${i}`, text: 'm'.repeat(100) }));
+    const memoryText = JSON.stringify(memoryHints);
+    const sections = [
+      systemSection(10),
+      buildSection({
+        kind: 'memory',
+        text: memoryText,
+        tokens: 220,
+        stable: false,
+        sourceId: 'memory.user.facts',
+      }),
+      userInputSection(5),
+    ];
+    // small tier → top-3, preserving rank order
+    const smallResult = await contextCompressor.compress(sections, 200, 'small');
+    const smallMem = JSON.parse(
+      smallResult.sections.find((s) => s.kind === 'memory')!.text,
+    ) as Array<{ id: string }>;
+    expect(smallMem).toHaveLength(3);
+    expect(smallMem.map((m) => m.id)).toEqual(['h0', 'h1', 'h2']);
+    expect(smallResult.stepsApplied).toEqual([
+      'drop-debug',
+      'drop-secondary',
+      'summarise-history',
+      'compress-page',
+      'trim-tools',
+      'reduce-memory',
+    ]);
+    // tiny tier → top-1
+    const tinyResult = await contextCompressor.compress(sections, 200, 'tiny');
+    const tinyMem = JSON.parse(
+      tinyResult.sections.find((s) => s.kind === 'memory')!.text,
+    ) as Array<{ id: string }>;
+    expect(tinyMem).toHaveLength(1);
+    // already-small memory (≤3 entries) → step skips, entries preserved
+    const twoHints = JSON.stringify([
+      { id: 'a', text: 'x'.repeat(100) },
+      { id: 'b', text: 'y'.repeat(100) },
+    ]);
+    const skipResult = await contextCompressor.compress(
+      [
+        systemSection(10),
+        buildSection({
+          kind: 'memory',
+          text: twoHints,
+          tokens: 60,
+          stable: false,
+          sourceId: 'memory.user.facts',
+        }),
+        userInputSection(5),
+      ],
+      40,
+      'tiny',
+    );
+    const skipMem = JSON.parse(
+      skipResult.sections.find((s) => s.kind === 'memory')!.text,
+    ) as Array<{ id: string }>;
+    expect(skipMem).toHaveLength(2);
+  });
+
+  it('minimal-mode enforces the §2.5 restrictions (1 tool, top-3 memory, compact system, last turns, page dropped)', async () => {
+    const { contextCompressor } = await import('../../../src/core/context/ContextCompressor');
+    const { tokenBudget } = await import('../../../src/core/context/TokenBudget');
+    const historyText = JSON.stringify(
+      Array.from({ length: 6 }, (_, i) => ({
+        role: i % 2 === 0 ? 'user' : 'assistant',
+        content: `turn ${i} content`,
+      })),
+    );
+    const preferencesText = JSON.stringify({ responseStyle: 'concise' });
+    const sections = [
+      buildSection({ kind: 'system', text: 's'.repeat(4000), tokens: 1000, stable: true }),
+      buildSection({
+        kind: 'tool_schemas',
+        text: JSON.stringify(
+          Array.from({ length: 4 }, (_, i) => ({ name: `tool-${i}`, description: 'd'.repeat(50) })),
+        ),
+        tokens: 200,
+        stable: true,
+        sourceId: 'tools.builtin.selected',
+      }),
+      buildSection({
+        kind: 'preferences',
+        text: preferencesText,
+        tokens: 10,
+        stable: true,
+        sourceId: 'core.preferences.user',
+      }),
+      buildSection({
+        kind: 'memory',
+        text: JSON.stringify(Array.from({ length: 6 }, (_, i) => ({ id: `m${i}`, text: 'm'.repeat(100) }))),
+        tokens: 200,
+        stable: false,
+        sourceId: 'memory.user.facts',
+      }),
+      buildSection({
+        kind: 'context',
+        text: historyText,
+        tokens: 80,
+        stable: false,
+        sourceId: 'history.conversation.123',
+      }),
+      buildSection({
+        kind: 'context',
+        text: JSON.stringify({ title: 'T', url: 'https://e.com', body: 'x'.repeat(2000) }),
+        tokens: 600,
+        stable: false,
+        sourceId: 'context.page.current',
+      }),
+      userInputSection(5),
+    ];
+    const result = await contextCompressor.compress(sections, 150, 'medium');
+    const sys = result.sections.find((s) => s.kind === 'system')!;
+    expect(sys.tokens).toBeLessThanOrEqual(200);
+    const tools = JSON.parse(result.sections.find((s) => s.kind === 'tool_schemas')!.text) as unknown[];
+    expect(tools).toHaveLength(1);
+    const memory = JSON.parse(result.sections.find((s) => s.kind === 'memory')!.text) as unknown[];
+    expect(memory.length).toBeLessThanOrEqual(3);
+    const history = result.sections.find((s) => s.sourceId === 'history.conversation.123')!;
+    const parsedHistory = JSON.parse(history.text) as unknown[];
+    expect(parsedHistory.length).toBeLessThanOrEqual(2);
+    expect(tokenBudget.estimateTokens(history.text)).toBeLessThanOrEqual(200);
+    expect(result.sections.find((s) => s.sourceId === 'context.page.current')).toBeUndefined();
+    const preferences = result.sections.find((s) => s.kind === 'preferences')!;
+    expect(preferences.text).toBe(preferencesText); // already compact — untouched
+    expect(result.stepsApplied[result.stepsApplied.length - 1]).toBe('minimal-mode');
+  });
+
+  it('applies all seven steps in policy order when the budget cannot be met, without mutating the input', async () => {
+    const { contextCompressor } = await import('../../../src/core/context/ContextCompressor');
+    const sections = [
+      buildSection({ kind: 'system', text: 's'.repeat(4000), tokens: 1000, stable: true }),
+      buildSection({
+        kind: 'tool_schemas',
+        text: JSON.stringify(
+          Array.from({ length: 6 }, (_, i) => ({ name: `tool-${i}`, description: 'd'.repeat(200) })),
+        ),
+        tokens: 350,
+        stable: true,
+        sourceId: 'tools.builtin.selected',
+      }),
+      buildSection({
+        kind: 'memory',
+        text: JSON.stringify(Array.from({ length: 10 }, (_, i) => ({ id: `m${i}`, text: 'm'.repeat(100) }))),
+        tokens: 300,
+        stable: false,
+        sourceId: 'memory.user.facts',
+      }),
+      buildSection({
+        kind: 'context',
+        text: 'h'.repeat(5000),
+        tokens: 1250,
+        stable: false,
+        sourceId: 'history.conversation.123',
+      }),
+      buildSection({
+        kind: 'context',
+        text: JSON.stringify({ title: 'T', url: 'https://e.com', body: 'x'.repeat(3000) }),
+        tokens: 800,
+        stable: false,
+        sourceId: 'context.page.current',
+      }),
+      buildSection({
+        kind: 'user_input',
+        text: 'u'.repeat(40000),
+        tokens: 10000,
+        stable: false,
+        sourceId: 'interaction.user.current-turn',
+      }),
+    ];
+    const result = await contextCompressor.compress(sections, 1000, 'medium');
+    expect(result.stepsApplied).toEqual([
+      'drop-debug',
+      'drop-secondary',
+      'summarise-history',
+      'compress-page',
+      'trim-tools',
+      'reduce-memory',
+      'minimal-mode',
+    ]);
+    const total = result.sections.reduce((sum, s) => sum + s.tokens, 0);
+    expect(total).toBeGreaterThan(1000); // still over — the caller decides CONTEXT_TOO_LARGE
+    // input array and elements are never mutated
+    expect(sections).toHaveLength(6);
+    expect(sections.find((s) => s.kind === 'user_input')!.text).toBe('u'.repeat(40000));
+  });
+
+  it('stops early once the budget is satisfied', async () => {
+    const { contextCompressor } = await import('../../../src/core/context/ContextCompressor');
+    const sections = [
+      systemSection(10),
+      buildSection({
+        kind: 'context',
+        text: 'debug trace',
+        tokens: 100,
+        stable: false,
+        sourceId: 'debug.mcp',
+      }),
+      buildSection({
+        kind: 'context',
+        text: 'secondary notes',
+        tokens: 50,
+        stable: false,
+        sourceId: 'context.secondary',
+      }),
+      userInputSection(5),
+    ];
+    const result = await contextCompressor.compress(sections, 120, 'medium');
+    expect(result.stepsApplied).toEqual(['drop-debug']);
+    expect(result.sections.map((s) => s.sourceId)).not.toContain('debug.mcp');
+  });
 });
