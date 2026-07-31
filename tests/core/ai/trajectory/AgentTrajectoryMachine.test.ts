@@ -9,21 +9,21 @@ import {
 import { PipelineError } from '../../../../src/core/ai/PipelineError';
 
 /**
- * A legal D-04 path (excluding the target) that drives a fresh machine to
- * the requested state. Every state is reachable per the allowlist.
+ * A legal D-04 transition sequence that drives a fresh machine (initial
+ * state assembling-context) to END at the requested state.
  */
 function pathTo(state: AgentTrajectoryState): AgentTrajectoryState[] {
   const paths: Record<AgentTrajectoryState, AgentTrajectoryState[]> = {
     'assembling-context': [],
-    planning: ['assembling-context'],
-    'waiting-for-permission': ['assembling-context', 'planning'],
-    executing: ['assembling-context', 'planning'],
-    verifying: ['assembling-context', 'planning', 'executing'],
-    replanning: ['assembling-context', 'planning', 'executing'],
-    rendering: ['assembling-context', 'planning'],
-    completed: ['assembling-context', 'planning', 'rendering'],
-    failed: ['assembling-context'],
-    aborted: ['assembling-context'],
+    planning: ['planning'],
+    'waiting-for-permission': ['planning', 'waiting-for-permission'],
+    executing: ['planning', 'executing'],
+    verifying: ['planning', 'executing', 'verifying'],
+    replanning: ['planning', 'executing', 'replanning'],
+    rendering: ['planning', 'rendering'],
+    completed: ['planning', 'rendering', 'completed'],
+    failed: ['failed'],
+    aborted: ['aborted'],
   };
   return paths[state];
 }
@@ -125,12 +125,13 @@ describe('AgentTrajectoryMachine', () => {
 
   it('records optional entry metadata on transition', () => {
     const machine = new AgentTrajectoryMachine();
+    machine.transitionTo('planning');
     machine.transitionTo('executing', { toolCall: 1, toolName: 'writeNote' });
     machine.transitionTo('verifying', { reasonCode: 'tool_completed' });
     const history = machine.history;
-    expect(history[1].toolCall).toBe(1);
-    expect(history[1].toolName).toBe('writeNote');
-    expect(history[2].reasonCode).toBe('tool_completed');
+    expect(history[2].toolCall).toBe(1);
+    expect(history[2].toolName).toBe('writeNote');
+    expect(history[3].reasonCode).toBe('tool_completed');
   });
 
   it('invokes the observer after each successful transition with a snapshot', () => {

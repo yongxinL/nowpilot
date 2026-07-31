@@ -157,7 +157,11 @@ describe('AgentTurnOutcome contract', () => {
 
   it('accepts every terminal state', () => {
     for (const state of AGENT_TERMINAL_STATES) {
-      const result = AgentTurnOutcomeSchema.safeParse(minimalOutcome({ terminalState: state }));
+      const overrides: Record<string, unknown> = { terminalState: state };
+      if (state === 'aborted') {
+        overrides.renderedAnswer = null;
+      }
+      const result = AgentTurnOutcomeSchema.safeParse(minimalOutcome(overrides));
       expect(result.success, `terminal state ${state} should parse`).toBe(true);
     }
   });
@@ -368,70 +372,24 @@ describe('Reliability metadata contracts', () => {
     expect(tool.evidence?.verifier?.type).toBe('read-after-write');
   });
 
-  it('rejects Phase 8a ToolCapabilityManifest fields on RegisteredTool at compile time', () => {
-    // @ts-expect-error — category is a Phase 8a manifest field, not part of the Phase 3a contract
-    const withCategory: RegisteredTool = {
-      name: 't',
-      description: 'd',
-      inputSchema: {},
-      execute: async () => null,
-      category: 'system',
-    };
-    void withCategory;
-    // @ts-expect-error — permissions is a Phase 8a manifest field
-    const withPermissions: RegisteredTool = {
-      name: 't',
-      description: 'd',
-      inputSchema: {},
-      execute: async () => null,
-      permissions: [],
-    };
-    void withPermissions;
-    // @ts-expect-error — dataScopes is a Phase 8a manifest field
-    const withDataScopes: RegisteredTool = {
-      name: 't',
-      description: 'd',
-      inputSchema: {},
-      execute: async () => null,
-      dataScopes: [],
-    };
-    void withDataScopes;
-    // @ts-expect-error — timeout is a Phase 8a manifest field
-    const withTimeout: RegisteredTool = {
-      name: 't',
-      description: 'd',
-      inputSchema: {},
-      execute: async () => null,
-      timeout: 30_000,
-    };
-    void withTimeout;
-    // @ts-expect-error — costClass is a Phase 8a manifest field
-    const withCostClass: RegisteredTool = {
-      name: 't',
-      description: 'd',
-      inputSchema: {},
-      execute: async () => null,
-      costClass: 'cheap',
-    };
-    void withCostClass;
-    // @ts-expect-error — schemaHashes is a Phase 8a manifest field
-    const withSchemaHashes: RegisteredTool = {
-      name: 't',
-      description: 'd',
-      inputSchema: {},
-      execute: async () => null,
-      schemaHashes: {},
-    };
-    void withSchemaHashes;
-    // @ts-expect-error — risk is a Phase 8a manifest field
-    const withRisk: RegisteredTool = {
-      name: 't',
-      description: 'd',
-      inputSchema: {},
-      execute: async () => null,
-      risk: 'high',
-    };
-    void withRisk;
+  it('excludes Phase 8a ToolCapabilityManifest fields from RegisteredTool and ToolSchemaInfo (compile-time gate)', () => {
+    // Compile-time guard: each assignment only type-checks while NONE of
+    // the Phase 8a manifest keys exist on the target type. If a manifest
+    // field is ever added, `pnpm lint` (tsc --noEmit) fails on this file.
+    type ManifestKeys =
+      | 'category'
+      | 'risk'
+      | 'permissions'
+      | 'dataScopes'
+      | 'timeout'
+      | 'costClass'
+      | 'schemaHashes'
+      | 'discovery';
+    type NoManifestFields<T> = [keyof T & ManifestKeys] extends [never] ? true : false;
+    const _registeredToolHasNoManifestFields: NoManifestFields<RegisteredTool> = true;
+    const _schemaInfoHasNoManifestFields: NoManifestFields<ToolSchemaInfo> = true;
+    expect(_registeredToolHasNoManifestFields).toBe(true);
+    expect(_schemaInfoHasNoManifestFields).toBe(true);
   });
 
   it('ToolSchemaInfo carries the same three reliability fields as the adapter handoff', () => {
