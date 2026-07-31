@@ -1,7 +1,7 @@
 ---
 phase: 04a
 slug: page-content-extraction
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-07-31
@@ -121,11 +121,12 @@ Downstream copy participation (data-only, standing contract — not new in this 
 
 ## UI Considerations
 
-Applicable state considerations resolved: **0 covered, 0 backstop, 0 unresolved — none applicable (zero-UI phase)**
+Applicable state considerations resolved: **1 covered, 0 backstop, 1 unresolved — zero-UI phase, shape-rooted UI coverage vacuous**
 
 | Category | Element(s) | Status | Resolution / Reason |
 |----------|------------|--------|---------------------|
-| — | no UI elements exist in this phase | ✅ covered | Dismissal: the phase creates zero `form` / `list-collection` / `nav` / `media` / `interactive-control` / `static-content` elements on any extension surface; the content script is extraction-only per §5.6 (no rendering, no Shadow DOM, no CSS injection, no host-page write-back). Shape-rooted UI-state coverage is therefore vacuous for this phase. |
+| overflow / long-text | pageContext data contract (E2) | ✅ covered | "When extracted tokens exceed the 2,000-token webpage budget (§22.2), only `selectRelevant(query)` results are injected and `compressionApplied: 'topk'` is recorded in the provenance manifest; minimal mode always routes through `selectRelevant` (D-09)." — data-shape state, not a UI state; covered by D-09 acceptance criteria. |
+| unclassified | content script bundle negative contract (E1) | ⚠ unresolved — planner must treat as assumption | The content script renders no UI (extraction-only per §5.6: no rendering, no Shadow DOM, no CSS injection, no host-page write-back) — the surface is a negative contract enforced by `tests/isolation/no-content-script-ui.test.ts` + <50KB bundle assertion (D-13), not a UI-state surface. Planner must treat the bundle-isolation contract as an assumption enforced via must_haves, not via UI states. |
 
 ### Data-Shape State Contract (non-UI — feeds future UI, not UI itself)
 
