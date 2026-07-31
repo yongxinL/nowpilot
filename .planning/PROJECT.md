@@ -10,7 +10,7 @@ Users can acquire knowledge from web pages, store it as interconnected atomic no
 
 ## Current State
 
-Phase 3 complete — AI Core Pipeline operational. All 4 provider adapters, PlannerService/ExecutorService/RendererService pipeline, ProviderRouter with fallback/circuit-breaker, PersonaInjector, streaming infrastructure, and AgentOrchestrator multi-turn loop are implemented and tested (90 tests).
+Phase 4 complete — Context Optimization Pipeline operational. Dynamic token budgets across 4 context tiers, 7-step degradation pipeline with AI summarization overflow, minimal mode for tiny models, per-provider prompt cache hints with health tracking, and ContextProvenanceManifest on every optimized context. 263/269 tests passing (6 pre-existing failures in StreamAdapter/ProviderAdapter deferred).
 
 ## Current Milestone: v0.1 NowPilot Initial Release
 
@@ -53,6 +53,8 @@ Phase 3 complete — AI Core Pipeline operational. All 4 provider adapters, Plan
 - [x] **AI-01**: Four provider adapters (OpenAI, Anthropic, Gemini, Ollama) with ProviderRouter fallback/circuit-breaker — Phase 3
 - [x] **AI-02**: PlannerService → ExecutorService → RendererService pipeline with tier caps — Phase 3
 - [x] **AI-03**: PersonaInjector prepends persona block into all AI system prompts — Phase 3
+- [x] **CTX-01**: ContextOptimizer with dynamic token budgets, degradation pipeline, and minimal mode for tiny models — Phase 4
+- [x] **CTX-02**: PromptCacheManager with per-provider cache-hint transformation (Appendix K) — Phase 4
 
 ### Active
 
@@ -65,8 +67,6 @@ Phase 3 complete — AI Core Pipeline operational. All 4 provider adapters, Plan
 - [x] **AI-02**: PlannerService → ExecutorService → RendererService pipeline with tier caps (Appendix I)
 - [x] **AI-03**: PersonaInjector prepends persona block into all AI system prompts (RICH-R-01/02)
 - [ ] **AI-04**: P0 Interaction — Welcome cards, context-aware quick-action chips, clarification chips, follow-up chips (RICH P0)
-- [ ] **CTX-01**: ContextOptimizer with dynamic token budgets, degradation pipeline, and minimal mode for tiny models
-- [ ] **CTX-02**: PromptCacheManager with per-provider cache-hint transformation (Appendix K)
 - [ ] **MEM-01**: Conversation memory (summary + recent turns) + User memory (cross-session facts, scored retrieval) + Preference memory (response style, persona)
 - [ ] **MEM-02**: Memory writes only from primary surface; secondary surfaces mirror read-only
 - [ ] **PAGE-01**: PageContentService with layered extraction (Defuddle → APC-lite → ServiceNow API), ephemeral MiniSearch index, per-tab cache with SPA-nav invalidation
@@ -117,6 +117,11 @@ Phase 3 complete — AI Core Pipeline operational. All 4 provider adapters, Plan
 | Defuddle over Readability for main-content extraction | Purpose-built successor; preserves footnotes/math/code; richer metadata; MIT | — Pending |
 | Cost-effective runtime (Haiku/Flash tier for planning, Flash for rendering) | No dependency on large models; works with local/cheap providers | — Pending |
 | PlannerDecisionSchema as 3-branch discriminated union (answer/run_tool/ask_clarification) | Safe for cheap models; ExecutorService validates all tool calls deterministically | — Pending |
+| Character-based token estimation over js-tiktoken (D-10) | Avoids a new native dependency; CJK-aware (char/3) vs English (char/4); js-tiktoken verified but skipped | ✓ Phase 4 |
+| 7-step immutable degradation policy with append-only stepsApplied | Order is a private readonly constant — external input cannot reorder; audit trail from provenance | ✓ Phase 4 |
+| Single-call AI summarization overflow (no iterative loop) | One generateText via cheapest compression provider, then a single final budget check; graceful fallback on failure | ✓ Phase 4 |
+| FNV-1a non-cryptographic cache key hash | Collisions → cache miss only, never a security issue; hashes stable sections (system prompt/tool schemas) | ✓ Phase 4 |
+| In-memory cache health (5-miss cascade, 60s cooldown) | Per-provider missStreak/disabledUntil resets on SW restart; Phase 6 AITransactionLog will persist telemetry | ✓ Phase 4 |
 
 ## Evolution
 
@@ -136,4 +141,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-30 after Phase 3 completion*
+*Last updated: 2026-07-31 after Phase 4 completion*
