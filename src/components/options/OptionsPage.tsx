@@ -26,6 +26,12 @@ import { NowPilotAvatar } from '../common/NowPilotAvatar';
 import { AppearanceSettings } from '../../entrypoints/options/components/AppearanceSettings';
 import { UserAvatar } from '../common/UserAvatar';
 import { PromptCategory, CustomProviderId, CustomModelItem, CustomProviderDetail } from '../../types';
+import { createOpenAIAdapter } from '../../core/ai/providers/openai';
+import { createAnthropicAdapter } from '../../core/ai/providers/anthropic';
+import { createGeminiAdapter } from '../../core/ai/providers/gemini';
+import { createOllamaAdapter } from '../../core/ai/providers/ollama';
+import { fetchProviderModels } from '../../services/aiProvider';
+import type { ProviderAdapter } from '../../core/ai/providers/ProviderAdapter';
 
 const { Title } = Typography;
 
@@ -61,8 +67,8 @@ const PROVIDER_INFO: Record<CustomProviderId, { name: string; icon: React.ReactN
   openai: {
     name: 'OpenAI',
     icon: <OpenAiIcon />,
-    defaultProxy: 'http://localhost:12380/v1',
-    defaultModels: ['Qwen3.5-9B-OptiQ-4bit', 'Qwythos-9B-Claude-Mythos-5-1M-mxfp4-mlx', 'gemma-4-e2b-it-4bit'],
+    defaultProxy: '',
+    defaultModels: ['gemma-4-e2b-it-4bit', 'gpt-4o', 'gpt-4o-mini'],
   },
   gemini: {
     name: 'Google (Gemini)',
@@ -103,11 +109,10 @@ export const OptionsPage: React.FC = () => {
     }
 
     const defaults = [
-      'MiniCPM5-1B-OptiQ-4bit',
-      'Qwen3.5-9B-OptiQ-4bit',
-      'Qwythos-9B-Claude-Mythos-5-1M-mxfp4-mlx',
       'gemma-4-e2b-it-4bit',
-      'claude-3-5-sonnet',
+      'gpt-4o',
+      'gpt-4o-mini',
+      'claude-3-5-sonnet-20241022',
       'gemini-1.5-pro',
     ];
 
@@ -231,39 +236,77 @@ export const OptionsPage: React.FC = () => {
     antMessage.info(`${PROVIDER_INFO[providerId].name} ${enabled ? 'enabled' : 'disabled'}`);
   };
 
-  const handleCheckConnection = () => {
+  const handleCheckConnection = async () => {
     if (!activeModalProviderId) return;
     setModalCheckingConn(true);
-    setTimeout(() => {
-      setModalCheckingConn(false);
-      antMessage.success('Connection verified successfully!');
-
-      // Populate models if empty
-      if (modalModels.length === 0) {
-        const defaults = PROVIDER_INFO[activeModalProviderId].defaultModels.map((m, idx) => ({
-          id: m,
-          name: m,
-          enabled: idx === 1 || idx === 0,
-        }));
-        setModalModels(defaults);
+    try {
+      const proxyUrl = modalUseCustomProxy && modalProxyUrl ? modalProxyUrl : undefined;
+      let adapter: ProviderAdapter;
+      switch (activeModalProviderId) {
+        case 'openai':
+          adapter = createOpenAIAdapter(modalApiKey, proxyUrl);
+          break;
+        case 'claude':
+          adapter = createAnthropicAdapter(modalApiKey);
+          break;
+        case 'gemini':
+          adapter = createGeminiAdapter(modalApiKey);
+          break;
+        case 'ollama':
+          adapter = createOllamaAdapter(proxyUrl);
+          break;
       }
-    }, 1000);
+      const result = await adapter!.validateConnection();
+      if (result.ok) {
+        antMessage.success('Connection verified successfully!');
+        const models = result.models.length > 0
+          ? result.models.map((m, idx) => ({ id: m, name: m, enabled: idx < 2 }))
+          : PROVIDER_INFO[activeModalProviderId].defaultModels.map((m, idx) => ({
+              id: m, name: m, enabled: idx === 1 || idx === 0,
+            }));
+        setModalModels(models);
+      } else {
+        antMessage.error('Connection failed. Check your API key and proxy URL.');
+      }
+    } catch {
+      antMessage.error('Connection failed. Check your API key and proxy URL.');
+    } finally {
+      setModalCheckingConn(false);
+    }
   };
 
-  const handleUpdateList = () => {
+  const handleUpdateList = async () => {
     if (!activeModalProviderId) return;
-    const defaults = PROVIDER_INFO[activeModalProviderId].defaultModels;
-
-    const existingCustoms = modalModels.filter(m => m.isCustom);
-    const newStandards = defaults.map((m, idx) => {
-      const existing = modalModels.find(x => x.id === m);
-      return existing || { id: m, name: m, enabled: idx === 1 };
-    });
-
-    const merged = [...newStandards, ...existingCustoms];
-    setModalModels(merged);
     setListUpdated(true);
-    antMessage.success(`Updated model list (${merged.length} models available)`);
+
+    const fetched = await fetchProviderModels(
+      activeModalProviderId,
+      modalApiKey,
+      modalUseCustomProxy ? modalProxyUrl : undefined,
+    );
+
+    if (fetched.length > 0) {
+      const existingCustoms = modalModels.filter(m => m.isCustom);
+      const merged = [
+        ...fetched.map((m, idx) => ({
+          ...m,
+          enabled: idx < 2,
+        })),
+        ...existingCustoms,
+      ];
+      setModalModels(merged);
+      antMessage.success(`Updated model list (${merged.length} models available)`);
+    } else {
+      const defaults = PROVIDER_INFO[activeModalProviderId].defaultModels;
+      const existingCustoms = modalModels.filter(m => m.isCustom);
+      const newStandards = defaults.map((m, idx) => {
+        const existing = modalModels.find(x => x.id === m);
+        return existing || { id: m, name: m, enabled: idx === 1 };
+      });
+      const merged = [...newStandards, ...existingCustoms];
+      setModalModels(merged);
+      antMessage.success(`Updated model list (${merged.length} models available)`);
+    }
   };
 
   const handleAddCustomModel = () => {
@@ -641,7 +684,7 @@ export const OptionsPage: React.FC = () => {
               <div className="flex items-center justify-between pt-1">
                 <span className="font-bold text-sm text-[var(--np-fg)]">Translation service</span>
                 <Select
-                  value={config.translateService || 'MiniCPM5-1B-OptiQ-4bit'}
+                  value={config.translateService || 'gemma-4-e2b-it-4bit'}
                   onChange={(val) => updateConfig({ translateService: val })}
                   options={availableTranslationModels.map(m => ({
                     value: m.value,
@@ -1016,6 +1059,11 @@ export const OptionsPage: React.FC = () => {
                     >
                       <div className="flex items-center gap-1.5 min-w-0 pr-2">
                         <span className="font-mono text-zinc-800 dark:text-zinc-200 truncate">{m.name}</span>
+                        {m.capabilities?.vision && (
+                          <span className="text-blue-500 dark:text-blue-400 text-xs" title="Supports image/vision input">
+                            <EyeOutlined />
+                          </span>
+                        )}
                         {m.isCustom && (
                           <div className="flex items-center gap-0.5 ml-1">
                             <button

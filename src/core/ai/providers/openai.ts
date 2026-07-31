@@ -10,7 +10,7 @@ export function createOpenAIAdapter(apiKey: string, baseURL?: string): ProviderA
     providerId: 'openai' as PipelineProviderId,
 
     createLanguageModel(modelId: string): LanguageModel {
-      return client(modelId);
+      return client.chat(modelId);
     },
 
     get supportsStructuredOutput(): boolean {
@@ -19,7 +19,10 @@ export function createOpenAIAdapter(apiKey: string, baseURL?: string): ProviderA
 
     async validateConnection(): Promise<{ ok: boolean; models: string[] }> {
       try {
-        const res = await fetch('https://api.openai.com/v1/models', {
+        const url = baseURL
+          ? `${baseURL.replace(/\/+$/, '')}/models`
+          : 'https://api.openai.com/v1/models';
+        const res = await fetch(url, {
           headers: { Authorization: `Bearer ${apiKey}` },
         });
         if (!res.ok) return { ok: false, models: [] };

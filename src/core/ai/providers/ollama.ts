@@ -10,7 +10,7 @@ export function createOllamaAdapter(baseURL?: string): ProviderAdapter {
     providerId: 'ollama' as PipelineProviderId,
 
     createLanguageModel(modelId: string): LanguageModel {
-      return client(modelId) as unknown as LanguageModel;
+      return client.chat(modelId) as unknown as LanguageModel;
     },
 
     get supportsStructuredOutput(): boolean {

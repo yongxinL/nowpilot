@@ -36,8 +36,8 @@ import { UserAvatar } from '../common/UserAvatar';
 import { MarkdownContent } from './MarkdownContent';
 
 import { useExtensionStore } from '../../store/useExtensionStore';
-import { streamChatResponse, AVAILABLE_MODELS, type StreamChatParams } from '../../services/aiProvider';
-import { Message, PromptItem } from '../../types';
+import { streamChatResponse, type StreamChatParams } from '../../services/aiProvider';
+import { Message, PromptItem, CustomProviderId } from '../../types';
 
 const { Text, Title } = Typography;
 
@@ -219,7 +219,7 @@ export const SidepanelChat: React.FC<SidepanelChatProps> = ({
       id: assistantMsgId,
       role: 'assistant',
       content: '',
-      thoughtProcess: 'Analyzing prompt and scanning context tabs...',
+      thoughtProcess: '',
       timestamp: Date.now(),
       model: config.selectedModel,
       isThinking: true,
@@ -568,7 +568,7 @@ export const SidepanelChat: React.FC<SidepanelChatProps> = ({
 
                     {/* Reasoning Thought Block */}
                     <ThoughtProcessBlock
-                      thoughtText={msg.thoughtProcess || 'Thinking Process:\n\n1. **Analyze the Request**: Analyzing user prompt intent and context parameters.\n2. **Determine Identity and Context**: Scanning connected tabs and environment context.\n3. **Recall Core Knowledge**: Synthesizing optimal step-by-step resolution.\n4. **Formulate Response Strategy**:\n   - Structure explanation clearly\n   - Highlight key actionable takeaways\n5. **Draft Response & Refine**: Verifying accuracy before output generation.'}
+                      thoughtText={msg.thoughtProcess}
                       isThinking={msg.isThinking}
                     />
 
@@ -576,6 +576,7 @@ export const SidepanelChat: React.FC<SidepanelChatProps> = ({
                     <MarkdownContent
                       content={msg.content}
                       fontSizeClass={getMessageFontSizeClass(config.fontSize)}
+                      isStreaming={msg.isThinking}
                     />
 
                     {/* Action Panel */}
@@ -834,12 +835,14 @@ export const SidepanelChat: React.FC<SidepanelChatProps> = ({
         <div className="flex items-center justify-between mt-2 px-1 text-[11px] text-zinc-400">
           <span className="font-medium text-zinc-500 dark:text-zinc-400">
             {(() => {
-              const selectedModelObj = AVAILABLE_MODELS.find(m => m.id === config.selectedModel) || AVAILABLE_MODELS[0];
-              if (selectedModelObj) {
-                if (selectedModelObj.group === 'Google Gemini' || selectedModelObj.provider === 'gemini') return 'Gemini';
-                if (selectedModelObj.group) return selectedModelObj.group;
+              const keys: CustomProviderId[] = ['openai', 'claude', 'gemini', 'ollama'];
+              for (const pid of keys) {
+                const detail = config.providers?.[pid];
+                if (detail?.enabled && detail.models?.some(m => m.id === config.selectedModel || m.name === config.selectedModel)) {
+                  return detail.name;
+                }
               }
-              return 'OpenAI';
+              return config.providers?.[config.activeProvider as CustomProviderId]?.name || 'OpenAI';
             })()}
           </span>
           <div className="flex items-center gap-2">

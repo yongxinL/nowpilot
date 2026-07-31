@@ -43,6 +43,10 @@ export default defineConfig({
     host_permissions: [
       '*://*.service-now.com/*',
       '*://support.servicenow.com/*',
+      'https://api.anthropic.com/*',
+      'https://api.openai.com/*',
+      'https://generativelanguage.googleapis.com/*',
+      'http://localhost:11434/*',
     ],
     action: {
       default_title: 'Open NowPilot Assistant',

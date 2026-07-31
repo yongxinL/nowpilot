@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Typography, Button, Switch, Input, theme, Tooltip } from 'antd';
+import { Modal, Typography, Button, Switch, Input, theme, Tooltip, App } from 'antd';
 import {
   CheckOutlined,
   SyncOutlined,
@@ -18,6 +18,11 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useExtensionStore } from '../../store/useExtensionStore';
 import { CustomProviderId, CustomModelItem } from '../../types';
 import { fetchProviderModels } from '../../services/aiProvider';
+import { createOpenAIAdapter } from '../../core/ai/providers/openai';
+import { createAnthropicAdapter } from '../../core/ai/providers/anthropic';
+import { createGeminiAdapter } from '../../core/ai/providers/gemini';
+import { createOllamaAdapter } from '../../core/ai/providers/ollama';
+import type { ProviderAdapter } from '../../core/ai/providers/ProviderAdapter';
 
 const { Title, Text } = Typography;
 
@@ -55,6 +60,7 @@ const PROVIDERS: {
 
 export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ open, onComplete }) => {
   const { token } = theme.useToken();
+  const { message: antMessage } = App.useApp();
   const { config, updateConfig } = useExtensionStore();
 
   const [step, setStep] = useState<number>(1);
@@ -111,11 +117,40 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ open, onComp
 
   const handleTestConnection = async () => {
     setTestingConnection(true);
-    const proxy = enableCustomEndpoint ? customEndpoint : undefined;
-    const models = await fetchProviderModels(selectedProvider, apiKey, proxy);
-    setModelsList(models);
-    setTestingConnection(false);
-    setConnectionTested(true);
+    try {
+      let adapter: ProviderAdapter;
+      const proxy = enableCustomEndpoint && customEndpoint ? customEndpoint : undefined;
+      switch (selectedProvider) {
+        case 'openai':
+          adapter = createOpenAIAdapter(apiKey, proxy);
+          break;
+        case 'claude':
+          adapter = createAnthropicAdapter(apiKey);
+          break;
+        case 'gemini':
+          adapter = createGeminiAdapter(apiKey);
+          break;
+        case 'ollama':
+          adapter = createOllamaAdapter(proxy);
+          break;
+      }
+      const result = await adapter!.validateConnection();
+      if (result.ok) {
+        const models = result.models.length > 0
+          ? result.models.map((m, idx) => ({ id: m, name: m, enabled: idx < 2 }))
+          : await fetchProviderModels(selectedProvider, apiKey, proxy);
+        setModelsList(models);
+        setConnectionTested(true);
+      } else {
+        antMessage.error('Connection failed. Check your API key and endpoint.');
+        setConnectionTested(false);
+      }
+    } catch {
+      antMessage.error('Connection failed. Check your API key and endpoint.');
+      setConnectionTested(false);
+    } finally {
+      setTestingConnection(false);
+    }
   };
 
   const handleSaveProviderConfig = () => {
@@ -153,13 +188,13 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ open, onComp
 
   const getContextWindowText = (modelName: string) => {
     const lower = modelName.toLowerCase();
-    if (lower.includes('cpm') || lower.includes('optiq') || lower.includes('128')) {
-      return 'Context Window: 128,000 tokens';
-    }
-    if (lower.includes('mythos') || lower.includes('claude') || lower.includes('200')) {
+    if (lower.includes('claude') || lower.includes('200')) {
       return 'Context Window: 200,000 tokens';
     }
-    if (lower.includes('1m') || lower.includes('pro') || lower.includes('gemini-1.5')) {
+    if (lower.includes('gemma') || lower.includes('128')) {
+      return 'Context Window: 128,000 tokens';
+    }
+    if (lower.includes('gemini-1.5') || lower.includes('1m') || lower.includes('pro')) {
       return 'Context Window: 1,000,000 tokens';
     }
     return 'Context Window: 128,000 tokens';

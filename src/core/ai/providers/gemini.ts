@@ -10,7 +10,7 @@ export function createGeminiAdapter(apiKey: string): ProviderAdapter {
     providerId: 'gemini' as PipelineProviderId,
 
     createLanguageModel(modelId: string): LanguageModel {
-      return google(modelId);
+      return google.chat(modelId);
     },
 
     get supportsStructuredOutput(): boolean {

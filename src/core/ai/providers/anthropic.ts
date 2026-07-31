@@ -10,7 +10,7 @@ export function createAnthropicAdapter(apiKey: string): ProviderAdapter {
     providerId: 'anthropic' as PipelineProviderId,
 
     createLanguageModel(modelId: string): LanguageModel {
-      return client(modelId);
+      return client.chat(modelId);
     },
 
     get supportsStructuredOutput(): boolean {

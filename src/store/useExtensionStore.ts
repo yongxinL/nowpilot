@@ -40,12 +40,12 @@ const DEFAULT_CONFIG: ProviderConfig = {
       isConfigured: false,
       enabled: false,
       apiKey: '',
-      useCustomProxy: true,
-      proxyUrl: 'http://localhost:12380/v1',
+      useCustomProxy: false,
+      proxyUrl: '',
       models: [
-        { id: 'Qwen3.5-9B-OptiQ-4bit', name: 'Qwen3.5-9B-OptiQ-4bit', enabled: false },
-        { id: 'Qwythos-9B-Claude-Mythos-5-1M-mxfp4-mlx', name: 'Qwythos-9B-Claude-Mythos-5-1M-mxfp4-mlx', enabled: true },
-        { id: 'gemma-4-e2b-it-4bit', name: 'gemma-4-e2b-it-4bit', enabled: false },
+        { id: 'gemma-4-e2b-it-4bit', name: 'gemma-4-e2b-it-4bit', enabled: true },
+        { id: 'gpt-4o', name: 'gpt-4o', enabled: false },
+        { id: 'gpt-4o-mini', name: 'gpt-4o-mini', enabled: false },
       ],
     },
     gemini: {
@@ -82,7 +82,7 @@ const DEFAULT_CONFIG: ProviderConfig = {
   openAiKey: '',
   openAiBaseUrl: 'http://localhost:12380/v1',
   geminiKey: '',
-  selectedModel: 'Qwythos-9B-Claude-Mythos-5-1M-mxfp4-mlx',
+  selectedModel: 'gemma-4-e2b-it-4bit',
   fontSize: 'Auto',
   appTheme: 'System',
   themeMode: 'Auto',
@@ -91,7 +91,7 @@ const DEFAULT_CONFIG: ProviderConfig = {
   language: 'English',
   sidepanelPosition: 'Right',
   chatGptWebappEnabled: true,
-  translateService: 'MiniCPM5-1B-OptiQ-4bit',
+  translateService: 'gemma-4-e2b-it-4bit',
   translateTargetLang: 'English',
   translateDisplayMode: 'Bilingual',
   translateDisplayStyle: 'Underline',
@@ -413,3 +413,11 @@ export const useExtensionStore = create<ExtensionState>()(
     },
   ),
 );
+
+if (typeof chrome !== 'undefined' && chrome?.storage?.onChanged) {
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === 'local' && changes['np_store']) {
+      useExtensionStore.persist.rehydrate();
+    }
+  });
+}

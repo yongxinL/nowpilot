@@ -68,11 +68,19 @@ export interface TabItem {
 
 export type CustomProviderId = 'openai' | 'gemini' | 'ollama' | 'claude';
 
+export interface ModelCapabilities {
+  vision?: boolean;
+  files?: boolean;
+  tools?: boolean;
+  streaming?: boolean;
+}
+
 export interface CustomModelItem {
   id: string;
   name: string;
   enabled: boolean;
   isCustom?: boolean;
+  capabilities?: ModelCapabilities;
 }
 
 export interface CustomProviderDetail {
