@@ -2,25 +2,33 @@
 
 ## Overview
 
-NowPilot v0.1 is built in 11 phases following a knowledge-first data-flow: acquire → store → understand → display → extend → harden. Phase 1 establishes the MV3 runtime, workspace, and dual-surface shells. Phases 2–4 build the secure storage, AI pipeline, and context optimization foundations. Phases 4a–5a form the knowledge core: page extraction, notes/wikilinks/memory, and LLM-Wiki enrichment. Phases 6–7 add telemetry and the full RICH workspace experience. Phase 8 delivers the add-on ecosystem. Phase 9 hardens everything for release.
+NowPilot v0.1 is built in 19 phases following a knowledge-first data-flow: acquire → store → understand → display → extend → harden. Phase 1 establishes the MV3 runtime, workspace, and dual-surface shells. Phases 2–4 build the secure storage, AI pipeline, context optimization, and agent reliability foundations. Phases 4a–5b form the knowledge core: page extraction, notes/wikilinks/memory, LLM-Wiki enrichment, trust-aware context, and memory governance. Phases 6–6c add telemetry, agent evaluation, continual evolution, and bounded multi-role collaboration. Phases 7–7a deliver the full RICH workspace experience and multimodal input. Phase 8–8a delivers the add-on ecosystem with tool governance. Phase 9 hardens everything for release.
 
 ## Phases
 
 **Phase Numbering:**
 
 - Integer phases (1, 2, 3): Planned milestone work
-- Decimal phases (4a, 5a): Knowledge sub-phases from product spec §18
+- Decimal phases (3a, 4a, 4b, 5a, 5b, 6a, 6b, 6c, 7a, 8a): Knowledge/agent-harness sub-phases from product spec §18 and §§28-32 (Rev. C)
 
 - [ ] **Phase 1: Project Scaffold & Runtime Foundation** — WXT entrypoints, messaging, workspace store, theme, dual-surface shells with skeletons
 - [ ] **Phase 2: Storage & Security Foundation** — Encrypted API keys, WriteJournal, IndexedDB migrations, CSP
 - [x] **Phase 3: AI Core Pipeline** — Four providers, Planner/Executor/Renderer, AgentOrchestrator, persona seed (completed 2026-07-30)
+- [ ] **Phase 3a: Agent Reliability & Evidence** — Trajectory states, evidence-backed completion, structured turn outcomes, deterministic replanning (Rev. C)
 - [x] **Phase 4: Context Optimization Pipeline** — ContextOptimizer, ContextCompressor, PromptCacheManager (completed 2026-07-31)
 - [x] **Phase 4a: Page Content Extraction** — PageContentService, Defuddle, APC-lite, MiniSearch page index (completed 2026-07-31)
+- [ ] **Phase 4b: Trust-Aware Context & Receipts** — ContextItem contracts, prompt-injection isolation, context receipts, stable-prefix, progressive skill disclosure (Rev. C)
 - [ ] **Phase 5: Knowledge Base** — Notes CRUD, wikilinks, note graph, Conversation/User/Preference memory, MiniSearch
 - [ ] **Phase 5a: LLM-Wiki & Filesystem Sync** — NoteTagger, NoteQA, NoteChatConverter, NoteFileSync, NoteMaintenance
+- [ ] **Phase 5b: Memory Governance & Experience Candidates** — Memory taxonomy, lifecycle, conflict resolution, user controls, procedural experience store (Rev. C)
 - [ ] **Phase 6: Telemetry & Diagnostics** — AITransactionLog, TraceRedactor, DiagnosticsPanel
+- [ ] **Phase 6a: Agent Evaluation** — Versioned golden suites, trajectory rubric, layered validators, failure taxonomy, release regression gates (Rev. C)
+- [ ] **Phase 6b: Verified Continual Evolution** — Evidence-to-candidate pipeline, sandbox/approval/rollout/rollback (Rev. C)
+- [ ] **Phase 6c: Bounded Multi-Role Collaboration** — Closed role registry, typed handoff artefacts, single coordinator/permission/commit authority, single-agent baseline gate (Rev. C)
 - [ ] **Phase 7: Workspace Experience + RICH UX** — Full Chat/Agent/Notes/Options UI, RICH P0/P1 surfaces
+- [ ] **Phase 7a: Multimodal Input Foundation** — Image paste/upload, voice transcription, interruption/cancellation, modality routing (Rev. C)
 - [ ] **Phase 8: Add-on Ecosystem** — ServiceNow, Write, TeamGQM, Research, MCP tools
+- [ ] **Phase 8a: Tool Governance & Active Discovery** — ToolCapabilityManifest, risk-based execution, postcondition verification, idempotency, active discovery (Rev. C)
 - [ ] **Phase 9: Hardening & Release** — Security audit, perf tests, isolation tests, edge-case verification
 
 ## Phase Details
@@ -99,6 +107,20 @@ Plans:
 
 **UI hint**: yes
 
+### Phase 3a: Agent Reliability & Evidence
+
+**Goal**: Every agent turn records explicit trajectory states, produces structured outcomes, and requires verified evidence for side-effecting completion — the agent is trustworthy by construction before any downstream work depends on it
+**Depends on**: Phase 3
+**Requirements**: AGT-01, AGT-02, AGT-03, AGT-04, TOL-03
+**Success Criteria** (what must be TRUE):
+
+  1. AgentOrchestrator emits typed trajectory states (assembling-context → planning → waiting-for-permission → executing → verifying → replanning → rendering → completed/failed/aborted) — invalid transitions return AGENT_STATE_INVALID
+  2. Side-effecting tool results are verified via OutcomeVerifier before RendererService claims completion — rendered text must not claim writes without matching CompletionEvidence
+  3. Every exit path returns an AgentTurnOutcome; cap exhaustion is terminalState:partial not completed; abort does not render a success answer
+  4. Replanning follows deterministic policy — success→verify→render, retryable→one replan, permission/auth/schema→terminal; no retry after irreversible actions unless idempotency proves safety
+
+**Plans**: TBD
+
 ### Phase 4: Context Optimization Pipeline
 
 **Goal**: User's prompts are optimized with dynamic token budgets across four context tiers; prompts degrade gracefully instead of failing on overflow
@@ -164,6 +186,21 @@ Plans:
 
 - [x] 04a-06-PLAN.md — Code-review closure: mode-aware cache (CR-01), crypto.randomUUID guard (WR-01), SPA index/cache consistency (WR-02), redaction false-positive allowlist (WR-03), hidden-input exclusion (WR-04)
 
+### Phase 4b: Trust-Aware Context & Receipts
+
+**Goal**: Every context source carries trust/sensitivity/provenance metadata, prompt-injection is isolated at the data boundary, and a context receipt explains what was included/omitted/compressed without exposing sensitive text
+**Depends on**: Phase 4
+**Requirements**: CTX-T01, CTX-T02, CTX-T03, CTX-T04, CTX-T05, CTX-T06, TOL-04
+**Success Criteria** (what must be TRUE):
+
+  1. Every ContextItem has relevance, freshness, trust, sensitivity, and instructionAuthority metadata — secret items are excluded from cloud prompts and logs
+  2. Prompt-injection fixtures from page HTML, notes, memory text, and tool output cannot alter tool availability, permission outcomes, or system instructions
+  3. Context receipt (ContextReceiptEntry) explains inclusion, compression, and omission (budget/irrelevant/stale/sensitive/policy) for every source — PromptInspector displays this without raw sensitive text
+  4. Persona, system rules, and sorted tool schemas are byte-identical for identical configuration — snapshot tests fail on unexpected whitespace/order changes
+  5. Irrelevant skill instructions consume zero prompt tokens (progressive disclosure); receipt records which skills were loaded
+
+**Plans**: TBD
+
 ### Phase 5: Knowledge Base
 
 **Goal**: User can create atomic notes with wikilinks, browse a note graph with backlinks, and have conversation/user/preference memory persist across sessions
@@ -196,6 +233,22 @@ Plans:
 **Plans**: TBD
 **UI hint**: yes
 
+### Phase 5b: Memory Governance & Experience Candidates
+
+**Goal**: Memory records carry full lifecycle metadata (type, source, confidence, status, expiry), conflicts are resolved by precedence not silent merge, and procedural experience from verified trajectories feeds a governed evolution candidate store
+**Depends on**: Phase 5
+**Requirements**: MEM-G01, MEM-G02, MEM-G03, MEM-G04, MEM-G05, KNW-01, EVO-04
+**Success Criteria** (what must be TRUE):
+
+  1. Memory records are classified by taxonomy (working/episodic/semantic/preference/procedural) — notes remain outside MemoryDB as user-owned knowledge
+  2. Every durable MemoryRecord has source/confidence/lifecycle status; forgotten records are immediately excluded from retrieval; secret records never enter cloud context
+  3. Contradictions follow precedence: explicit user correction > verified external state > previous explicit > inferred — losing record becomes superseded/disputed, no silent merge
+  4. Memory UI supports view, source, confidence, edit, pin, forget, disable by type, export, and cloud-exclusion controls (UI in Phase 7)
+  5. ProceduralExperience candidates are created only from verified trajectories — candidates are not active until evaluation and approval
+  6. AI-suggested knowledge edges remain proposals until user acceptance
+
+**Plans**: TBD
+
 ### Phase 6: Telemetry & Diagnostics
 
 **Goal**: User can inspect AI transaction logs, view redacted traces, and diagnose provider/tool/cache issues from the Diagnostics panel in Full App → Options
@@ -211,6 +264,58 @@ Plans:
 **Plans**: TBD
 **UI hint**: yes
 
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 6a: Agent Evaluation
+
+**Goal**: Every AI subsystem is covered by versioned golden suites with layered validators (environment→process→LLM judge); a release regression gate blocks safety/policy breaches; cost/latency/quality Pareto comparisons inform tier/provider selection
+**Depends on**: Phase 3, Phase 6
+**Requirements**: EVAL-01, EVAL-02, EVAL-03, EVAL-04, EVAL-05, EVAL-06, EVAL-07, CTX-T06
+**Success Criteria** (what must be TRUE):
+
+  1. Versioned golden suites exist for planner, context, tools, permissions, providers, memory, RAG, completion evidence, and multimodal routing
+  2. Trajectory rubric evaluates outcome, process, safety, grounding, memory, quality, latency, and cost independently — safety dimensions are blocking (no hidden averages)
+  3. Environment/code validators are preferred; LLM judges are calibrated and used only for qualitative dimensions
+  4. FailureLayer taxonomy assigns the first failing layer (context/planning/tool-selection/tool-arguments/permission/execution/verification/rendering/memory/provider/multimodal/user-abort)
+  5. Golden suites run as release regression gates — permission enforcement, secret leakage, prompt injection, false completion, citation grounding, and cross-workspace isolation are blocking regressions
+  6. Cost/latency/quality frontier reports Pareto-efficient tier/provider combinations
+
+**Plans**: TBD
+
+### Phase 6b: Verified Continual Evolution
+
+**Goal**: Verified trajectories feed a sandboxed evolution pipeline (diagnosis → candidate → sandbox replay → security gates → approval → rollout → monitor → promote/rollback); no untrusted data directly modifies active prompts, tools, or procedural memory
+**Depends on**: Phase 6a
+**Requirements**: EVO-01, EVO-02, EVO-03, EVO-05, EVO-06
+**Success Criteria** (what must be TRUE):
+
+  1. Verified trajectories produce EvolutionCandidates targeting exactly one layer (knowledge/retrieval/instruction/experience/tool/workflow/model-tier)
+  2. Every candidate passes sandbox replay, affected golden suites, and security tests before approval
+  3. Approved candidates undergo scoped rollout with monitoring — promote or rollback based on metrics
+  4. Untrusted pages/notes/uploads/tool output/raw feedback/raw traces cannot directly rewrite active prompts, permissions, tools, or procedural memory
+  5. Agent-generated tools remain sandbox proposals — static checks, dependency allowlist, network disabled by default, no self-publication
+
+**Plans**: TBD
+
+### Phase 6c: Bounded Multi-Role Collaboration
+
+**Goal**: Complex workflows (ServiceNow investigation, multi-source research, knowledge consolidation, verified evolution, NowPilot development) can use staged specialist roles with typed handoff artefacts — a single coordinator controls sequencing, permissions, and side effects; a reviewer independently validates outputs
+**Depends on**: Phase 6a, Phase 6b
+**Requirements**: COLLAB-01, COLLAB-02, COLLAB-03, COLLAB-04, COLLAB-05, COLLAB-06, COLLAB-07, COLLAB-08, COLLAB-09, COLLAB-10, COLLAB-11, COLLAB-13
+**Success Criteria** (what must be TRUE):
+
+  1. Collaboration activates only via explicit user selection or deterministic complexity policy + user preference — planner may recommend but cannot silently enable; routine tasks stay single-agent
+  2. Roles are a closed registry (coordinator/investigator/researcher/implementer/reviewer/renderer) with restricted tool allowlists and context projections; roles are not invented at runtime
+  3. CollaborationPlan enforces staged-shared-context strategy with max 3 active specialist roles + coordinator/reviewer; caps are product policy, not LLM-configurable
+  4. Roles exchange typed AgentHandoffArtifacts (facts with source provenance, open questions, output refs) — no hidden reasoning; large outputs stored by reference
+  5. Only CollaborationCoordinator sequences roles, requests permission, commits side effects, and terminates; workers cannot self-grant permissions or write persistent memory
+  6. Independent reviewer (not the role that created output) can approve, reject, or request one correction cycle — rejected results cannot render as successful
+  7. Role failure returns typed partial result; coordinator may retry once, substitute role/model, continue reduced, fall back to single-agent, or terminate with explanation
+  8. Collaboration trace records activation reason, roles/policies, context sources, handoff references, per-role and total tokens/cost/latency, reviewer decision, and completion evidence
+
+**Plans**: TBD
+
 ### Phase 7: Workspace Experience + RICH UX
 
 **Goal**: User interacts through fully functional Chat, Agent, Notes, and Options surfaces on both Side Panel and Full App Tab with persona header, welcome cards, clarification/follow-up chips, code-block actions, and streaming stage indicators
@@ -224,6 +329,25 @@ Plans:
   4. User on an empty conversation sees Welcome Cards (4–6 capability cards) and context-aware quick-action chips (URL/hostname-based, no LLM); clicking a card or chip populates the Sender
   5. User types an ambiguous prompt — Planner returns ask_clarification with 2–4 option chips (max 2 rounds, then best-effort with caveat); after a response, 1–3 contextual follow-up chips appear (non-blocking, graceful timeout)
   6. User sees code-block inline actions (Copy, Save-as-macro, Insert=clipboard-only in v0.1); a "Save to note" first-class button on every assistant message; streaming stage indicators (Reading page context… → Planning response… → Generating…)
+
+**Plans**: TBD
+**UI hint**: yes
+
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 7a: Multimodal Input Foundation
+
+**Goal**: Users can paste/upload images for analysis (screenshots, diagrams, tables) and use voice input with editable transcription — binary payloads never enter prompt text directly, routing follows explicit provider/privacy policy, and AbortSignal propagates through all active stages
+**Depends on**: Phase 7
+**Requirements**: MM-01, MM-02, MM-03, MM-04, MM-06, MM-07
+**Success Criteria** (what must be TRUE):
+
+  1. Normalised ModalityInput represents text/image/audio/document; binary payloads never enter PromptSection directly
+  2. ModalityObservations pass through ContextOptimizer, provenance, redaction, trust, and token budgets like other data sources
+  3. Image paste/upload routes only to a vision-capable provider; silent local→cloud switch is blocked; blobs are operation-scoped; raw images are never logged
+  4. Voice input flows: microphone → SpeechInputAdapter → partial/final transcript → editable Sender → explicit Send → Agent pipeline; no tool executes from unconfirmed partial transcript
+  5. Multimodal session states (listening/transcribing/ready/thinking/speaking/interrupted/cancelled) propagate AbortSignal through all active pipeline stages
 
 **Plans**: TBD
 **UI hint**: yes
@@ -244,6 +368,24 @@ Plans:
 **Plans**: TBD
 **UI hint**: yes
 
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 8a: Tool Governance & Active Discovery
+
+**Goal**: Every tool carries a ToolCapabilityManifest (category, risk, side effect, permissions, idempotency, schema hashes); execution follows a risk-based permission matrix; write tools are idempotent; tool results are shaped before context re-entry; active tool discovery keeps prompts within budget
+**Depends on**: Phase 8
+**Requirements**: TOL-01, TOL-02, TOL-05, TOL-06, TOL-07
+**Success Criteria** (what must be TRUE):
+
+  1. Every tool has a ToolCapabilityManifest — registry rejects incomplete manifests
+  2. Risk-based execution: read-only+low-risk auto per user autonomy; reversible writes require confirmation or scoped grant; irreversible/high-risk always preview+confirm
+  3. Write tools accept/derive an idempotency key — replay after retry/journal recovery/surface reload does not repeat external effects
+  4. When tool-schema tokens exceed configured budget, expose small core set + discover-tools capability with normal permission checks
+  5. Long-running async operations use operationId/status/progress/cancellation/checkpoint/resume/idempotency — hidden work is not buried in sync turn loop (deferred to future 8b)
+
+**Plans**: TBD
+
 ### Phase 9: Hardening & Release
 
 **Goal**: The application passes all phase verification scripts, isolation tests, performance targets, security checks, and edge-case recovery flows
@@ -262,18 +404,26 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Decimal phases execute after their parent integer phase: 4 → 4a → 5 → 5a → 6
+Decimal phases execute after their parent integer phase: 3 → 3a → 4 → 4a → 4b → 5 → 5a → 5b → 6 → 6a → 6b → 6c → 7 → 7a → 8 → 8a → 9
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Project Scaffold & Runtime Foundation | 5/5 | Completed | 2026-07-28 |
 | 2. Storage & Security Foundation | 4/4 | Completed | 2026-07-29 |
-| 3. AI Core Pipeline | 7/7 | Complete    | 2026-07-30 |
-| 4. Context Optimization Pipeline | 3/3 | Complete    | 2026-07-31 |
-| 4a. Page Content Extraction | 6/6 | Complete    | 2026-07-31 |
+| 3. AI Core Pipeline | 7/7 | Completed | 2026-07-30 |
+| 3a. Agent Reliability & Evidence | TBD | Not started | - |
+| 4. Context Optimization Pipeline | 3/3 | Completed | 2026-07-31 |
+| 4a. Page Content Extraction | 6/6 | Completed | 2026-07-31 |
+| 4b. Trust-Aware Context & Receipts | TBD | Not started | - |
 | 5. Knowledge Base | TBD | Not started | - |
 | 5a. LLM-Wiki & Filesystem Sync | TBD | Not started | - |
+| 5b. Memory Governance & Experience Candidates | TBD | Not started | - |
 | 6. Telemetry & Diagnostics | TBD | Not started | - |
+| 6a. Agent Evaluation | TBD | Not started | - |
+| 6b. Verified Continual Evolution | TBD | Not started | - |
+| 6c. Bounded Multi-Role Collaboration | TBD | Not started | - |
 | 7. Workspace Experience + RICH UX | TBD | Not started | - |
+| 7a. Multimodal Input Foundation | TBD | Not started | - |
 | 8. Add-on Ecosystem | TBD | Not started | - |
+| 8a. Tool Governance & Active Discovery | TBD | Not started | - |
 | 9. Hardening & Release | TBD | Not started | - |

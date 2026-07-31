@@ -5,16 +5,16 @@ milestone_name: milestone
 current_phase: 5
 current_phase_name: Knowledge Base
 status: planning
-stopped_at: Phase 4a context refined
-last_updated: "2026-07-31T10:33:13.539Z"
+stopped_at: Phase 4a context refined; Rev. C agent-harness requirements integrated
+last_updated: "2026-07-31T14:00:00.000Z"
 last_activity: 2026-07-31
-last_activity_desc: Phase 04a complete, transitioned to Phase 5
+last_activity_desc: Phase 04a complete, Rev. C agent-harness requirements (AGT/CTX-T/MEM-G/TOL/EVAL/EVO/COLLAB/MM) integrated into PROJECT/ROADMAP/REQUIREMENTS/STATE
 progress:
-  total_phases: 11
+  total_phases: 19
   completed_phases: 5
   total_plans: 25
   completed_plans: 25
-  percent: 45
+  percent: 26
 ---
 
 # Project State
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-07-31)
 
 **Core value:** Users can acquire knowledge from web pages, store it as interconnected atomic notes, understand it through AI enrichment (tagging/summary/RAG), and interact with it through a persona-driven, intention-aware conversational workspace — all running locally on their machine.
 
-**Current focus:** Phase 5 — Knowledge Base (notes CRUD, wikilinks, note graph, memory)
+**Current focus:** Phase 5 — Knowledge Base (notes CRUD, wikilinks, note graph, memory). Agent harness sub-phases (3a/4b/5b/6a/6b/6c/7a/8a) derived from Rev. C are defined in ROADMAP but not yet planned.
 
 ## Current Position
 
@@ -34,7 +34,7 @@ Plan: Not started
 Status: Ready to plan
 Last activity: 2026-07-31 — Phase 04a complete, transitioned to Phase 5
 
-Progress: [████████████████████] 25/25 plans (100%)
+Progress: [████████████████████] 25/25 plans (100%) (5/19 phases complete)
 
 ## Performance Metrics
 
@@ -104,6 +104,12 @@ Recent decisions affecting current work:
 - [Phase 04a]: D-02 contains-match regex kept with exactly 4 allowlist terms (passenger|passport|compass|bypass) via shared exported isPasswordFieldName; passcode/passage stay redacted — err on false positive, allowlist must never grow
 - [Phase 04a]: Cache identity is tabId:mode:url — mode-partitioned cache + in-flight coalescing keys; cross-mode serving impossible; SPA invalidation drops the whole tab across modes
 - [Phase 04a]: Hidden-input exclusion is walker-level in ApcLiteStrategy (covers tabindex edge) with inputRole null and value-guard as second/third layers
+- [Rev. C 07-31]: Agent harness remains bounded — trajectory states + evidence + governance strengthen the Planner→Executor→Renderer harness without increasing agent autonomy
+- [Rev. C 07-31]: Bounded multi-role collaboration only; staged-shared-context strategy, closed role registry, single coordinator/permission/commit authority — never open-ended agent society
+- [Rev. C 07-31]: Evidence-backed completion required before RendererService claims any write action succeeded; AgentTurnOutcome.exitPaths with cap exhaustion = partial not completed
+- [Rev. C 07-31]: No direct self-modification — untrusted pages/notes/tool output/raw traces must never rewrite active prompts, permissions, tools, or procedural memory
+- [Rev. C 07-31]: Multimodal data must follow explicit provider/privacy policy; no silent local→cloud switch on image input; raw images never logged
+- [Rev. C 07-31]: 19-phase roadmap (11 original + 3a/4b/5b/6a/6b/6c/7a/8a); 91 total requirements (32 pre-Rev. C + 59 Rev. C)
 
 ### Pending Todos
 

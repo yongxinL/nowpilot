@@ -2,7 +2,7 @@
 
 ## What This Is
 
-NowPilot is a privacy-first, extensible Chrome MV3 extension AI assistant and personal knowledge platform. It provides AI chat with streaming/abort, agentic tool-calling, atomic note-taking with wikilinks and a note graph, an LLM-Wiki knowledge layer (auto-tagging, RAG, filesystem sync), and a RICH conversational UX across two surfaces — a Chrome Side Panel for quick workflows and a Full App Tab for deep work. Everything runs locally against user-configured AI providers.
+NowPilot is a privacy-first, extensible Chrome MV3 extension AI assistant and personal knowledge platform. It provides AI chat with streaming/abort, agentic tool-calling with evidence-backed completion and trust-aware context, governed memory (working/episodic/semantic/preference/procedural), tool capability manifests, atomic note-taking with wikilinks and a note graph, an LLM-Wiki knowledge layer (auto-tagging, RAG, filesystem sync), trajectory evaluation with golden suites, verified continual evolution, bounded multi-role collaboration, multimodal input (image/audio), and a RICH conversational UX across two surfaces — a Chrome Side Panel for quick workflows and a Full App Tab for deep work. Everything runs locally against user-configured AI providers.
 
 ## Core Value
 
@@ -19,15 +19,23 @@ Phase 4a complete — Page Content Extraction operational. Layered extraction pi
 **Target features:**
 - Dual-surface shell (Side Panel + Full App Tab) with shared WorkspaceStore
 - 4-provider AI pipeline (Planner→Executor→Renderer) with ContextOptimizer + PromptCache
+- Agent runtime reliability — explicit trajectory states, evidence-backed completion, structured turn outcomes, deterministic replanning (Rev. C)
+- Trust-aware context engineering — ContextItem contracts, prompt-injection isolation, context receipts, stable-prefix contract, progressive skill disclosure (Rev. C)
 - Persistent memory (conversation + user facts + preferences + persona)
+- Memory governance — taxonomy (working/episodic/semantic/preference/procedural), lifecycle, conflict resolution, user controls, procedural experience store (Rev. C)
+- Tool governance — ToolCapabilityManifest, risk-based execution, postcondition verification, idempotency, active discovery (Rev. C)
 - PageContentService with layered Defuddle→APC-lite extraction + MiniSearch index
 - Atomic notes + wikilinks + note graph + LLM-Wiki (auto-tag/RAG/filesystem sync)
 - AITransactionLog + TraceRedactor + DiagnosticsPanel
+- Agent evaluation — versioned golden suites, trajectory rubric, layered validators, failure taxonomy, release regression gates (Rev. C)
+- Verified continual evolution — evidence-to-candidate pipeline, sandbox/approval/rollout, no self-modification (Rev. C)
+- Bounded multi-role collaboration — closed role registry, typed handoff artefacts, single coordinator/permission/commit authority, single-agent baseline gate (Rev. C)
+- Multimodal input — image paste/upload analysis, voice transcription, interruption/cancellation (Rev. C)
 - 12 built-in MCP tools + external MCP client (StreamableHTTP)
 - 4 add-ons (ServiceNow, Write, TeamGQM, Research)
 - RICH UX (persona, welcome/intent, clarification/follow-up, hybrid UI actions)
 - Encrypted storage, WriteJournal, IndexedDB migrations v1→v4
-- Security hardening + 9 phase verification scripts
+- Security hardening + 19 phase verification scripts (Rev. C adds 3a, 4b, 5b, 6a, 6b, 6c, 7a, 8a)
 
 ## Context
 
@@ -36,7 +44,7 @@ Phase 4a complete — Page Content Extraction operational. Layered extraction pi
 - **Architecture:** Core layer (AI, storage, memory, extraction, notes) + Add-on layer (site-specific, first-party add-ons)
 - **Two UI surfaces:** Side Panel (~400px, compact) for daily workflow; Full App Tab (full viewport) for deep work, configuration, diagnostics
 - **Cost-effective runtime:** PlannerService (cheap haiku JSON decisions) → ExecutorService (deterministic tool validation/execution) → RendererService (concise flash answers), with agent step limits by context tier
-- **Prior work:** Existing codebase has a `.planning/PRODUCT_SPEC_v0_1.md` as the canonical specification (Rev. B, 2026-07-27, knowledge-first reorganization)
+- **Prior work:** Existing codebase has a `.planning/PRODUCT_SPEC_v0_1.md` as the canonical specification (Rev. C, 2026-07-31 — adds §§28-32 verified agent harness, multimodal, multi-agent; retains all Rev. B content). An implementation amendment lives at `.planning/PRODUCT_REQUIREMENTS_AGENT_HARNESS.md`.
 
 ## Constraints
 
@@ -89,6 +97,86 @@ Phase 4a complete — Page Content Extraction operational. Layered extraction pi
 - [ ] **SEC-01**: XSS prevention (PortableMarkdown via x-markdown, DOMPurify), sender validation, CSP, secret redaction in all logs/exports/backups
 - [ ] **TEST-01**: Phase-level verification scripts (verify:phase-1 through verify:phase-9), isolation tests (no React/AntD/defuddle/yaml in content bundle), performance tests
 
+### Agent Reliability (Rev. C §28.2)
+
+- [ ] **AGT-01** (P0): Explicit trajectory states (assembling-context → planning → waiting-for-permission → executing → verifying → replanning → rendering → completed/failed/aborted) with state-transition validation
+- [ ] **AGT-02** (P0): Evidence-backed completion — side-effecting tasks require verified CompletionEvidence; RendererService must not claim writes without matching evidence
+- [ ] **AGT-03** (P0): Structured AgentTurnOutcome on every exit path; cap exhaustion is partial not completed; abort does not render success
+- [ ] **AGT-04** (P0): Deterministic replanning policy — success→verify, retryable→one replan, permission/auth→terminal; no retry after irreversible action
+
+### Trust-Aware Context Engineering (Rev. C §28.3)
+
+- [ ] **CTX-T01** (P0): ContextItem carries relevance, freshness, trust, sensitivity, and instruction-authority metadata; secret items excluded from cloud prompts
+- [ ] **CTX-T02** (P0): Prompt-injection isolation — page/note/memory/tool data cannot redefine system instructions, grant tool permission, or change risk classifications
+- [ ] **CTX-T03** (P0): Context receipt (ContextReceiptEntry) records inclusion, omission reasons, compression, and cache eligibility per source
+- [ ] **CTX-T04** (P0): Stable-prefix contract — persona/system rules/sorted tool schemas must be byte-identical for identical configuration; snapshot tests required
+- [ ] **CTX-T05** (P1): Progressive skill disclosure — irrelevant full instructions consume zero prompt tokens; receipt records loaded/unloaded skills
+- [ ] **CTX-T06** (P1): Context quality telemetry — injected-source count, utilization %, compression ratio, omission reasons, provenance coverage
+
+### Memory Governance (Rev. C §28.4)
+
+- [ ] **MEM-G01** (P0): Memory taxonomy includes working, episodic, semantic, preference, and procedural records; notes remain user-owned outside MemoryDB
+- [ ] **MEM-G02** (P0): Durable MemoryRecord requires source, confidence, lifecycle (active/superseded/disputed/forgotten), sensitivity, and verification timestamps
+- [ ] **MEM-G03** (P0): Conflict resolution precedence — explicit user correction > verified current state > previous explicit memory > inference; contradictions preserved as history
+- [ ] **MEM-G04** (P0): User memory controls — view, source, confidence, edit, pin, forget, disable by type, export, and cloud-exclusion (UI in Phase 7)
+- [ ] **MEM-G05** (P1): ProceduralExperience store — verified-trajectory candidates require evaluation and approval before activation
+- [ ] **KNW-01** (P1): Knowledge-edge provenance (explicit-wikilink/imported-frontmatter/ai-suggested/accepted-suggestion); AI-suggested edges remain proposals until accepted
+
+### Tool Governance (Rev. C §28.5)
+
+- [ ] **TOL-01** (P0): Every tool has a ToolCapabilityManifest with category, risk, sideEffect, permissions, dataScopes, timeout, costClass, idempotency, verifier, and schema hashes
+- [ ] **TOL-02** (P0): Risk-based execution matrix — read-only+low-risk auto, reversible writes require confirmation, irreversible/high-risk always preview+confirm
+- [ ] **TOL-03** (P0): Postcondition verification — every side-effecting tool declares a verifier; unverified transport success is partial, not completed
+- [ ] **TOL-04** (P0): Tool result shaping — validate output schema, redact secrets, apply max size, summarise/retrieve relevant, assign provenance/trust metadata before context re-entry
+- [ ] **TOL-05** (P0): Idempotency — write tools accept or derive an idempotency key; replay must not repeat external effects
+- [ ] **TOL-06** (P1): Active tool discovery — when schemas exceed budget, expose small core set + discover-tools capability with permission checks
+- [ ] **TOL-07** (P2): Long-running async operation contract — operationId, status, progress, cancellation, checkpoint, resume, idempotency (deferred to future 8b)
+
+### Agent Evaluation (Rev. C §28.6)
+
+- [ ] **EVAL-01** (P0): Versioned golden suites — planner, context, tools, permissions, providers, memory, RAG, completion evidence, multimodal routing
+- [ ] **EVAL-02** (P0): Trajectory rubric — independent outcome, process, safety, grounding, memory, quality, latency, and cost dimensions; safety dimensions are blocking
+- [ ] **EVAL-03** (P0): Layered validators — environment/code validators > process validators > calibrated LLM judges (only for qualitative dimensions)
+- [ ] **EVAL-04** (P0): Failure taxonomy (FailureLayer) — context/planning/tool-selection/tool-arguments/permission/execution/verification/rendering/memory/provider/multimodal/user-abort; diagnostics show first failing layer
+- [ ] **EVAL-05** (P0): Release regression gate — relevant golden suite must run after model/prompt/tool/retrieval/memory/compression/persona/multimodal changes; blocking regressions include permissions, secrets, injection, false-completion, citations, isolation
+- [ ] **EVAL-06** (P1): Cost/latency/quality frontier — Pareto comparisons across tier/provider combinations
+- [ ] **EVAL-07** (P1): Judge calibration — expert-labelled calibration set, per-dimension agreement reporting, re-calibration on model/rubric changes
+
+### Verified Continual Evolution (Rev. C §28.7)
+
+- [ ] **EVO-01** (P1): Evidence-to-candidate pipeline — verified trajectory → evaluation → diagnosis → candidate → sandbox replay → security gates → approval → rollout → monitor → promote/rollback
+- [ ] **EVO-02** (P1): Single target layer per candidate — knowledge/retrieval/instruction/experience/tool/workflow/model-tier
+- [ ] **EVO-03** (P1): EvolutionCandidate contract — id, targetLayer, diagnosis, proposedChange, evidenceRefs, baseline/candidate/security results, version, status, rollbackRef
+- [ ] **EVO-04** (P0): No direct self-modification — untrusted pages/notes/uploads/tool output/raw traces must never directly rewrite active prompts, permissions, tools, or procedural memory
+- [ ] **EVO-05** (P1): Sandbox, approval, rollout, rollback — every candidate requires affected golden suites, security tests, explicit approval, versioning, scoped rollout, monitoring
+- [ ] **EVO-06** (P2): Agent-generated tool proposals — sandbox only; require static checks, dependency allowlist, declared permissions, network disabled by default, tests, approval, no self-publish
+
+### Bounded Multi-Agent Collaboration (Rev. C §32)
+
+- [ ] **COLLAB-01** (P1): Explicit activation gate — collaboration starts only on user selection or deterministic complexity policy + user preference; planner may recommend but not silently enable
+- [ ] **COLLAB-02** (P1): Closed role registry (coordinator/investigator/researcher/implementer/reviewer/renderer) — roles registered in code, not invented at runtime; restricted tool allowlists and context projections
+- [ ] **COLLAB-03** (P1): CollaborationPlan — staged-shared-context only; max 3 active specialist roles + coordinator/reviewer pipeline; caps are product policy, not LLM-configurable
+- [ ] **COLLAB-04** (P1): Typed AgentHandoffArtifact — facts with source-level provenance, open questions, output refs; no hidden reasoning exchanged
+- [ ] **COLLAB-05** (P0): Single coordinator and permission authority — only CollaborationCoordinator sequences roles, requests permissions, commits side effects, or terminates; workers cannot self-grant
+- [ ] **COLLAB-06** (P0): Single commit authority — only coordinator/commit stage may execute side-effecting tools, write durable memory, modify notes, activate evolution candidates, or export data
+- [ ] **COLLAB-07** (P1): Independent review — high-impact outputs require a reviewer role that did not create the candidate; reviewer can approve/reject/request one correction cycle
+- [ ] **COLLAB-08** (P1): Failure containment — role failure returns typed partial result; coordinator may retry once, substitute role/model, continue reduced, fall back to single-agent, or terminate with explanation
+- [ ] **COLLAB-09** (P1): Context strategy — staged roles share one OptimizedContext plus projections; if projected context > 50% window, switch to isolated handoff or stop; notes/files stored by reference
+- [ ] **COLLAB-10** (P1): Collaboration trace — activation reason, roles/policies, context sources, handoff references, tool/permission decisions, per-role and total tokens/cost/latency, reviewer decision, completion evidence
+- [ ] **COLLAB-11** (P1): Single-agent baseline gate — collaboration cannot ship unless golden suite shows improvement in ≥1 quality dimension without breaching safety/cost/latency limits
+- [ ] **COLLAB-12** (P2): Parallel isolated workers — deferred to future Phase 8b; independent, parallelisable sub-tasks with isolated contexts and validated handoff artefacts
+- [ ] **COLLAB-13** (P0): Multi-agent hard boundaries — DO NOT: open-ended agent-to-agent chat, dynamic role creation, worker side effects, worker memory writes, agent-to-agent permission grants, secret sharing, default collaboration for routine tasks, agreement-as-verification, budget/deadline overrun
+
+### Multimodal Input (Rev. C §29)
+
+- [ ] **MM-01** (P1): Normalised ModalityInput — text/image/audio/document; binary payloads never enter PromptSection directly
+- [ ] **MM-02** (P1): ModalityObservation contract — passes through ContextOptimizer, provenance, redaction, trust, and token budgets like other data sources
+- [ ] **MM-03** (P1): Image paste/upload analysis — error screenshots, diagrams, UI-state interpretation, screenshot-to-note; route only to vision-capable provider, no silent local→cloud switch
+- [ ] **MM-04** (P1): Voice input as editable transcription — microphone → SpeechInputAdapter → partial/final transcript → editable Sender → explicit Send; no tool executes from unconfirmed partial transcript
+- [ ] **MM-05** (P2): Fast/slow interaction split — fast path handles listening/transcription/cancel; slow path handles context/planning/tools/rendering; fast path cannot perform irreversible actions (future Phase 7b)
+- [ ] **MM-06** (P1): Interruption and cancellation — multimodal session state (listening/transcribing/ready/thinking/speaking/interrupted/cancelled); AbortSignal propagates through all active pipeline stages
+- [ ] **MM-07** (P0): Computer use remains deferred — APC-lite does not authorise click/type automation; future spec must define debugger permission, domain allowlists, and evaluation fixtures
+
 ### Out of Scope
 
 - Page injection (Shadow DOM UI, floating widgets, host-page write-back) — deferred to v0.2+
@@ -100,6 +188,9 @@ Phase 4a complete — Page Content Extraction operational. Layered extraction pi
 - @ant-design/x-sdk (useXChat/ChatProvider) — explicitly excluded; AgentOrchestrator/ProviderRouter/ContextOptimizer own the data flow
 - Real-time chat, video posts, OAuth login — N/A (not a social/community app; it's a personal knowledge assistant)
 - Mobile app — Chrome extension only
+- Open-ended agent-to-agent conversation — bounded multi-role only; no dynamic unbounded agent spawning
+- Click/type automation (computer use) — APC-lite does not authorise page automation; deferred to v0.2+/v2
+- Agent-generated tools self-publishing — sandbox proposals only; require static checks, approval, no self-publication
 
 ## Key Decisions
 
@@ -128,6 +219,12 @@ Phase 4a complete — Page Content Extraction operational. Layered extraction pi
 | Cache key ordering `tabId:mode:url` everywhere | Standardized across cache Map and in-flight coalescing Map — mode is part of cache identity, cross-mode serving impossible | ✓ Phase 4a |
 | D-02 contains-match regex + 4-term allowlist | `passenger\|passport\|compass\|bypass` only; passcode/passage stay redacted (err on false positive); shared `isPasswordFieldName` at both redaction sites | ✓ Phase 4a |
 | happy-dom per-file test environment | jsdom's nwsapi can't compile defuddle's `:has(source)` selectors; happy-dom exercises the real production pipeline | ✓ Phase 4a |
+| Agent harness upgrade strengthens bounded loop, does not increase autonomy | NowPilot already uses Planner→Executor→Renderer; the upgrade adds trajectory states, evidence, governance — agent stays bounded by tier caps (Rev. C §28.1) | — Pending |
+| Bounded multi-role collaboration, not autonomous agent society | Single orchestrator + staged specialist roles + shared verified state; parallel isolated workers deferred (Rev. C §32.1/COLLAB-12) | — Pending |
+| Routines stay single-agent; collaboration is gated | User must explicitly select collaborative workflow or policy must match; planner may recommend but cannot silently enable (Rev. C COLLAB-01) | — Pending |
+| Evidence-backed completion required for side-effecting tools | Transport success alone is insufficient; OutcomeVerifier checks postconditions before RendererService claims completion (Rev. C AGT-02) | — Pending |
+| No self-modification — evolution is sandboxed | Untrusted data cannot directly rewrite active prompts/tools/permissions/procedural memory; EvolutionCandidate requires approval→rollout→monitor→rollback (Rev. C EVO-04/EVO-05) | — Pending |
+| Multimodal data follows explicit provider/privacy policy | Image only to vision-capable providers; no silent local→cloud switch; blobs operation-scoped; raw images never logged (Rev. C MM-03) | — Pending |
 
 ## Evolution
 
@@ -147,4 +244,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-31 after Phase 4a completion*
+*Last updated: 2026-07-31 after Phase 4a completion + Rev. C agent-harness requirements integration*
