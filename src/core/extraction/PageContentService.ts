@@ -33,6 +33,9 @@ export class PageContentService {
   private readonly pageContentCache = new PageContentCache();
   private _initialized = false;
 
+  /** Guards SPA_NAVIGATION handler against double registration on multiple instances. */
+  private static spaNavUnregister: (() => void) | null = null;
+
   constructor(
     strategies: IExtractionStrategy[] = [
       new DefuddleStrategy(),
@@ -41,18 +44,22 @@ export class PageContentService {
     ],
   ) {
     this.strategies = strategies;
-    this.registerSpaNavigationHandler();
   }
 
   /**
    * Initializes extension-page-side listeners (tabs.onUpdated navigation
-   * invalidation, tabs.onRemoved cleanup). Call from the side panel / full
-   * app entry point at startup — NOT from the service worker or content
-   * script.
+   * invalidation, tabs.onRemoved cleanup) and the SPA_NAVIGATION handler.
+   * Call from the side panel / full app entry point at startup — NOT from
+   * the service worker or content script. Safe to call multiple times;
+   * subsequent calls are no-ops.
    */
   init(): void {
     if (this._initialized) return;
     this._initialized = true;
+
+    // SPA_NAVIGATION handler: registered once globally, idempotent guard
+    this.registerSpaNavigationHandler();
+
     chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
       if (changeInfo.status === 'complete' && changeInfo.url) {
         this.reExtract(tabId);
@@ -109,13 +116,18 @@ export class PageContentService {
    * navigations keep the cache hot.
    */
   private registerSpaNavigationHandler(): void {
-    register<{ url: string; timestamp: number }>('SPA_NAVIGATION', (envelope, sender) => {
-      const tabId = sender.tab?.id;
-      if (tabId === undefined) return;
-      // ORDER MATTERS: index cleanup before cache invalidation (Pitfall 5)
-      pageIndexBuilder.removeTab(tabId);
-      this.pageContentCache.invalidateIfChanged(tabId, envelope.payload.url);
-    });
+    // Idempotent guard: prevents double registration across multiple instances
+    if (PageContentService.spaNavUnregister) return;
+    PageContentService.spaNavUnregister = register<{ url: string; timestamp: number }>(
+      'SPA_NAVIGATION',
+      (envelope, sender) => {
+        const tabId = sender.tab?.id;
+        if (tabId === undefined) return;
+        // ORDER MATTERS: index cleanup before cache invalidation (Pitfall 5)
+        pageIndexBuilder.removeTab(tabId);
+        this.pageContentCache.invalidateIfChanged(tabId, envelope.payload.url);
+      },
+    );
   }
 
   private async doExtract(
