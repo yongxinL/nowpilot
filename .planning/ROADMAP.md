@@ -140,7 +140,7 @@ Plans:
   4. User navigates via SPA (wxt:locationchange) or switches tabs — the per-tab cache invalidates and re-extracts
   5. Content script bundle contains no React, AntD, defuddle, yaml, or File System Access API usage and is under 50KB; password fields are never captured (isPassword ⇒ value omitted)
 
-**Plans**: 5/5 plans executed
+**Plans**: 6 plans (5 executed, 1 pending)
 
 Plans:
 **Wave 1**
@@ -159,6 +159,10 @@ Plans:
 **Wave 4** *(gap closure)*
 
 - [x] 04a-05-PLAN.md — Gap closure: fix password name-heuristic regression (D-02), SPA-nav invalidation test regression (WR-02), isolation test output path, wire init() to side panel
+
+**Wave 5** *(code-review closure)*
+
+- [ ] 04a-06-PLAN.md — Code-review closure: mode-aware cache (CR-01), crypto.randomUUID guard (WR-01), SPA index/cache consistency (WR-02), redaction false-positive allowlist (WR-03), hidden-input exclusion (WR-04)
 
 ### Phase 5: Knowledge Base
 
