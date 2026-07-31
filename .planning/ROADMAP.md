@@ -140,7 +140,7 @@ Plans:
   4. User navigates via SPA (wxt:locationchange) or switches tabs — the per-tab cache invalidates and re-extracts
   5. Content script bundle contains no React, AntD, defuddle, yaml, or File System Access API usage and is under 50KB; password fields are never captured (isPassword ⇒ value omitted)
 
-**Plans**: 1/4 plans executed
+**Plans**: 2/4 plans executed
 
 Plans:
 **Wave 1**
@@ -149,7 +149,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 04a-02-PLAN.md — Strategy expansion: ReadabilityFallback + ApcLiteStrategy + full mode-discriminated PageContext output
+- [x] 04a-02-PLAN.md — Strategy expansion: ReadabilityFallback + ApcLiteStrategy + full mode-discriminated PageContext output
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -262,7 +262,7 @@ Decimal phases execute after their parent integer phase: 4 → 4a → 5 → 5a �
 | 2. Storage & Security Foundation | 4/4 | Completed | 2026-07-29 |
 | 3. AI Core Pipeline | 7/7 | Complete    | 2026-07-30 |
 | 4. Context Optimization Pipeline | 3/3 | Complete    | 2026-07-31 |
-| 4a. Page Content Extraction | 1/4 | In Progress|  |
+| 4a. Page Content Extraction | 2/4 | In Progress|  |
 | 5. Knowledge Base | TBD | Not started | - |
 | 5a. LLM-Wiki & Filesystem Sync | TBD | Not started | - |
 | 6. Telemetry & Diagnostics | TBD | Not started | - |
