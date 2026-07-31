@@ -137,6 +137,7 @@ Output: New types module (AgentTurnOutcome.ts), trajectory FSM (AgentTrajectoryM
     - Add `CompletionEvidence` discriminated union: `VerifiedCompletionEvidence` (verified:true) and `UnverifiedCompletionEvidence` (verified:false) (per D-09)
     - Add `CompletionEvidenceCheck` interface
     - Add `RenderingOutcomePolicy` interface (per D-11)
+    - Add `'IDEMPOTENCY_CONFLICT'` to the `PipelineErrorCode` type union (per D-17 — Plan 03 depends on this pre-existing code in types.ts)
     - Add `ALLOWED_TRANSITIONS` constant with exact transitions from D-04
     - Extend `AgentTurnInput` with optional `onTrajectoryTransition?` callback (per D-03)
   </action>
@@ -145,7 +146,7 @@ Output: New types module (AgentTurnOutcome.ts), trajectory FSM (AgentTrajectoryM
   </verify>
   <acceptance_criteria>
     - `src/core/ai/AgentTurnOutcome.ts` exports `AgentTurnOutcome`, `AgentTerminalState`, `AgentTurnReasonCode`, `AgentTurnOutcomeSchema`, `createAgentTurnOutcome`
-    - `src/core/ai/types.ts` exports all new types: `AgentTrajectoryState`, `TrajectoryStateEntry`, `ToolSideEffect`, `ToolIdempotency`, `ToolEvidencePolicy`, `ReplanDisposition`, `ReplanContext`, `CompletionEvidence`, `CompletionEvidenceCheck`, `RenderingOutcomePolicy`, `ALLOWED_TRANSITIONS`
+    - `src/core/ai/types.ts` exports all new types: `AgentTrajectoryState`, `TrajectoryStateEntry`, `ToolSideEffect`, `ToolIdempotency`, `ToolEvidencePolicy`, `ReplanDisposition`, `ReplanContext`, `CompletionEvidence`, `CompletionEvidenceCheck`, `RenderingOutcomePolicy`, `ALLOWED_TRANSITIONS`, `PipelineErrorCode` extended with `'IDEMPOTENCY_CONFLICT'`
     - `RegisteredTool` has `sideEffect?`, `evidence?`, `idempotency?` in addition to existing fields
     - `ToolExecutionResult` has `toolCallId?`, `evidence?` in addition to existing fields
     - `AgentTurnInput` has optional `onTrajectoryTransition?` field
@@ -265,6 +266,7 @@ Output: New types module (AgentTurnOutcome.ts), trajectory FSM (AgentTrajectoryM
 | T-03a-04 | Denial of Service | AgentOrchestrator abort handling | high | mitigate | signal?.throwIfAborted() before each pipeline stage; abort produces 'aborted' not 'failed' |
 | T-03a-05 | Denial of Service | AgentOrchestrator planner loop | medium | accept | Cap enforcement via TierCapForTier produces terminalState: 'partial' per D-02 |
 | T-03a-SC | Tampering | npm/pip/cargo installs | low | accept | No new packages added in this phase |
+| T-03a-R1 | Repudiation | AgentTrajectoryMachine trajectory entries | high | mitigate | Trajectory entries are immutable (`readonly TrajectoryStateEntry[]`), sequenced with `enteredAt`/`exitedAt` timestamps, and carried in the signed `AgentTurnOutcome` — every tool execution and state transition is recorded and non-repudiable. Consumers reading `outcome.trajectory` see a complete, unmodifiable audit trail. |
 </threat_model>
 
 <verification>

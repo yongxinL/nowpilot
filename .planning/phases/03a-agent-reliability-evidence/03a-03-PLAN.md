@@ -2,9 +2,10 @@
 phase: 03a-agent-reliability-evidence
 plan: 03
 type: execute
-wave: 2
+wave: 3
 depends_on:
   - 03a-01
+  - 03a-02
 files_modified:
   - src/core/ai/ExecutorService.ts
   - tests/core/ai/verifier/OutcomeVerifier.test.ts
@@ -26,6 +27,21 @@ must_haves:
     - "Modified: src/core/ai/ExecutorService.ts (idempotency ledger)"
   key_links:
     - "ExecutorService.deriveOperationKey() → Map<string, IdempotencyEntry> — key uniqueness prevents false duplicate detection (RESEARCH.md Pitfall 2)"
+
+# Artifacts this phase produces (Plan 03)
+
+| Symbol | Kind | File |
+|--------|------|------|
+| `IdempotencyEntry` | interface | src/core/ai/ExecutorService.ts |
+| `ExecutorService.idempotencyLedger` | private Map property | src/core/ai/ExecutorService.ts |
+| `ExecutorService.deriveOperationKey()` | private method | src/core/ai/ExecutorService.ts |
+| `ExecutorService.execute()` (idempotency gate + operationId param) | modified method | src/core/ai/ExecutorService.ts |
+| `ExecutorService.executeBatch()` (operationId propagation) | modified method | src/core/ai/ExecutorService.ts |
+| OutcomeVerifier test suite | test file (≥8 cases) | tests/core/ai/verifier/OutcomeVerifier.test.ts |
+| ReplanPolicy test suite | test file (≥12 cases) | tests/core/ai/ReplanPolicy.test.ts |
+| RenderingOutcomePolicy test suite | test file (≥5 cases) | tests/core/ai/RenderingOutcomePolicy.test.ts |
+| ExecutorService idempotency tests | test extension (≥7 new cases) | tests/core/ai/ExecutorService.test.ts |
+| Type schema tests | test file (≥5 cases) | tests/core/ai/types.test.ts |
 ---
 
 <objective>
@@ -120,11 +136,7 @@ Output: Idempotent ExecutorService, and passing unit tests for OutcomeVerifier, 
 
     **7. Update `executeBatch()`** — pass `operationId` through to each `execute()` call (each call gets the same operationId but different toolName+input → unique keys).
 
-    **8. Add `IDEMPOTENCY_CONFLICT` to `PipelineErrorCode`** type in types.ts if not already present. This is NOT in the original PipelineErrorCode list from types.ts. Either:
-    - Add `'IDEMPOTENCY_CONFLICT'` to the `PipelineErrorCode` type union in types.ts (preferred — clean), OR
-    - Use an existing code like `'UNKNOWN'` with a diagnostic that includes `idempotencyConflict: true` (fallback)
-
-    The IDEMPOTENCY_CONFLICT code should NOT be retryable — it's a terminal state for this specific tool call within this operation.
+    **8. Use `'IDEMPOTENCY_CONFLICT'` from PipelineErrorCode:** Plan 01 already added `'IDEMPOTENCY_CONFLICT'` to the `PipelineErrorCode` type union in `types.ts`. Simply use it — no modification to `types.ts` needed in this plan. The code is NOT retryable — it's a terminal state for this specific tool call within this operation.
 
     **9. Ensure backward compatibility:**
     - Tools without `idempotency` field (default: `'not-required'`) are NOT affected — the idempotency gate is never entered
@@ -132,7 +144,7 @@ Output: Idempotent ExecutorService, and passing unit tests for OutcomeVerifier, 
     - Existing callers that don't pass `operationId` continue to work unchanged
   </action>
   <verify>
-    <automated>npx vitest run tests/core/ai/ExecutorService.test.ts -t "idempotency"</automated>
+    <automated>npx tsc --noEmit</automated>
   </verify>
   <acceptance_criteria>
     - `ExecutorService` has private `idempotencyLedger: Map<string, IdempotencyEntry>` property
@@ -256,6 +268,8 @@ Output: Idempotent ExecutorService, and passing unit tests for OutcomeVerifier, 
 |-----------|----------|-----------|----------|-------------|-----------------|
 | T-03a-10 | Tampering | ExecutorService idempotency key derivation | medium | mitigate | Key uses `JSON.stringify` with sorted `Object.keys()` for deterministic serialization; `operationId` is `crypto.randomUUID()` per turn guaranteeing uniqueness namespace; key collisions are cryptographically infeasible (RESEARCH.md Pitfall 2 verified) |
 | T-03a-11 | Denial of Service | Idempotency ledger growth | low | accept | Ledger entries are operation-scoped (cleared on SW restart); map entries are small strings; growth is bounded by number of tool calls per SW session — not expected to exceed hundreds |
+| T-03a-R3 | Repudiation | Idempotency ledger entries | medium | mitigate | Each `IdempotencyEntry` records `status`, `result`, `executedAt` — proving a tool was or was not executed. The derivation key includes `operationId` + `toolName` + deterministic serialized `input`, creating an unambiguously traceable chain: input → key → ledger entry → execution outcome. Consumers cannot later deny that a specific input was or was not executed. |
+| T-03a-E2 | Elevation of Privilege | ExecutorService bypass via missing operationId | medium | mitigate | When `operationId` is absent, the idempotency gate is entirely skipped — a caller could bypass idempotency by omitting the parameter. Mitigation: the only caller of `ExecutorService.execute()` with `operationId` is `AgentOrchestrator.runTurn()`, which always generates an `operationId` via `crypto.randomUUID()` (per D-02). Direct calls to `ExecutorService` from any other code path skip idempotency, which is intentional — non-orchestrator tool execution is outside the reliability contract. |
 </threat_model>
 
 <verification>

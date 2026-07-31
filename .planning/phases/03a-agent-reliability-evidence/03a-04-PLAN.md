@@ -2,8 +2,9 @@
 phase: 03a-agent-reliability-evidence
 plan: 04
 type: execute
-wave: 3
+wave: 4
 depends_on:
+  - 03a-01
   - 03a-02
   - 03a-03
 files_modified:
@@ -29,6 +30,15 @@ must_haves:
     - tests/core/ai/trajectory/AgentTrajectoryMachine.test.ts
   key_links:
     - "verify:phase-3a → all test files — the phase gate script that downstream phases depend on"
+
+# Artifacts this phase produces (Plan 04)
+
+| Symbol | Kind | File |
+|--------|------|------|
+| AgentOrchestrator test suite (migrated) | modified test file | tests/core/ai/AgentOrchestrator.test.ts |
+| AgentTrajectoryMachine unit test suite | test file (≥16 cases) | tests/core/ai/trajectory/AgentTrajectoryMachine.test.ts |
+| Integration test suite (extended) | modified test file (≥7 new cases) | tests/core/ai/integration.test.ts |
+| `verify:phase-3a` script | npm script | package.json |
 ---
 
 <objective>
@@ -242,6 +252,8 @@ Output: Comprehensive integration test suite, complete AgentTrajectoryMachine un
 | Threat ID | Category | Component | Severity | Disposition | Mitigation Plan |
 |-----------|----------|-----------|----------|-------------|-----------------|
 | T-03a-12 | Tampering | verify:phase-3a script | medium | mitigate | Script runs ALL test files in sequence with `&&` — failure in any file stops the chain; includes `tsc --noEmit` for type safety; the script is committed to version control |
+| T-03a-R4 | Repudiation | Integration test assertions on trajectory completeness | medium | mitigate | Integration tests assert `outcome.trajectory.length >= 2` and verify every exit path (completed/failed/aborted/partial) records a complete trajectory — these tests serve as executable proof that the orchestrator cannot produce an outcome without a verifiable audit trail. |
+| T-03a-E3 | Elevation of Privilege | Unverified evidence injection via mock bypass in tests | low | accept | Test files use `vi.mock` to isolate services; production code uses real `OutcomeVerifier` which is the sole evidence authority. Test isolation does not weaken production enforcement — the test boundary itself prevents elevation. |
 </threat_model>
 
 <verification>

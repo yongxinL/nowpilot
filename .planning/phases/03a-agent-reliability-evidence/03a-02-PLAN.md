@@ -12,9 +12,6 @@ files_modified:
   - src/core/ai/verifier/EnvironmentVerifier.ts
   - src/core/ai/ReplanPolicy.ts
   - src/core/ai/AgentOrchestrator.ts
-  - tests/core/ai/verifier/OutcomeVerifier.test.ts
-  - tests/core/ai/ReplanPolicy.test.ts
-  - tests/core/ai/RenderingOutcomePolicy.test.ts
 autonomous: false
 requirements:
   - AGT-02
@@ -38,6 +35,21 @@ must_haves:
     - "AgentOrchestrator.runTurn() → OutcomeVerifier.verify() — called after ExecutorService.execute() for tools with evidence.required=true"
     - "OutcomeVerifier.verify() → ReplanPolicy.evaluateReplan() — verification result feeds the replan decision"
     - "ReplanPolicy.evaluateReplan() → AgentOrchestrator control flow — disposition determines next state (continue/replan/render/terminate)"
+
+# Artifacts this phase produces (Plan 02)
+
+| Symbol | Kind | File |
+|--------|------|------|
+| `VerifierType` | type ('schema'\|'environment'\|'read-after-write'\|'tool-provided') | src/core/ai/verifier/VerifierTypes.ts |
+| `VerifierFn` | type | src/core/ai/verifier/VerifierTypes.ts |
+| `VerifierRegistry` | interface | src/core/ai/verifier/VerifierTypes.ts |
+| `schemaVerifier` | VerifierFn | src/core/ai/verifier/SchemaVerifier.ts |
+| `environmentVerifier` | VerifierFn | src/core/ai/verifier/EnvironmentVerifier.ts |
+| `OutcomeVerifier` | class | src/core/ai/OutcomeVerifier.ts |
+| `outcomeVerifier` | singleton | src/core/ai/OutcomeVerifier.ts |
+| `OutcomeVerifier.verify()` | method → `Promise<CompletionEvidence>` | src/core/ai/OutcomeVerifier.ts |
+| `evaluateReplan()` | pure function → `ReplanDisposition` | src/core/ai/ReplanPolicy.ts |
+| `AgentOrchestrator.runTurn()` (evidence + replan integration) | modified method | src/core/ai/AgentOrchestrator.ts |
 ---
 
 <objective>
@@ -116,7 +128,7 @@ Output: OutcomeVerifier service, verifier strategy modules, ReplanPolicy pure fu
     IMPORTANT: The verifier does NOT throw — it always returns a `CompletionEvidence` object (either verified or unverified). The orchestrator is responsible for acting on the evidence.
   </action>
   <verify>
-    <automated>npx vitest run tests/core/ai/verifier/OutcomeVerifier.test.ts</automated>
+    <automated>npx tsc --noEmit</automated>
   </verify>
   <acceptance_criteria>
     - `src/core/ai/OutcomeVerifier.ts` exports `OutcomeVerifier` class with `verify()` method and module-level singleton `outcomeVerifier`
@@ -164,7 +176,7 @@ Output: OutcomeVerifier service, verifier strategy modules, ReplanPolicy pure fu
     - Export both the function and the types it uses (re-export for convenience).
   </action>
   <verify>
-    <automated>npx vitest run tests/core/ai/ReplanPolicy.test.ts</automated>
+    <automated>npx tsc --noEmit</automated>
   </verify>
   <acceptance_criteria>
     - `src/core/ai/ReplanPolicy.ts` exports `evaluateReplan` function
@@ -259,7 +271,7 @@ Output: OutcomeVerifier service, verifier strategy modules, ReplanPolicy pure fu
     - The orchestrator builds RenderingOutcomePolicy; the renderer never independently inspects evidence (per D-11).
   </action>
   <verify>
-    <automated>npx vitest run tests/core/ai/verifier/OutcomeVerifier.test.ts tests/core/ai/ReplanPolicy.test.ts tests/core/ai/RenderingOutcomePolicy.test.ts</automated>
+    <automated>npx tsc --noEmit</automated>
   </verify>
   <acceptance_criteria>
     - `agentOrchestrator.runTurn()` imports `outcomeVerifier`, `evaluateReplan`, `buildRenderingOutcomePolicy`
@@ -296,16 +308,15 @@ Output: OutcomeVerifier service, verifier strategy modules, ReplanPolicy pure fu
 | T-03a-07 | Denial of Service | ReplanPolicy evaluateReplan | medium | mitigate | `replanCount` increments once and blocks subsequent replans; irreversible tools block all replanning; abort terminates replan-first; cap exhaustion renders instead of replans |
 | T-03a-08 | Tampering | AgentOrchestrator evidence accumulation | medium | mitigate | Evidence accumulator is scoped to a single `runTurn()` call; evidence records are `readonly` in the outcome; no external code can inject evidence — only OutcomeVerifier.verify() can create it |
 | T-03a-09 | Information Disclosure | RendererService with policy | high | mitigate | `buildRenderingOutcomePolicy()` derives `canClaimWriteSuccess` from verified evidence only; `evidenceSummary` text instructs the renderer to NOT claim write success when unverified; the orchestrator always passes the policy before rendering (per D-11) |
+| T-03a-R2 | Repudiation | OutcomeVerifier evidence records | high | mitigate | Every `CompletionEvidence` record carries `id` (UUID), `operationId`, `toolCallId`, `verifiedAt` (timestamp), and `durationMs` — the evidence trail is cryptographically identifiable and timestamped. The `verified: boolean` discriminator makes it impossible to later claim a verification did or did not occur. `AgentTurnOutcome.evidence` is `readonly` and accumulated by the orchestrator (not the tool or verifier). |
+| T-03a-E1 | Elevation of Privilege | OutcomeVerifier as sole evidence authority (per D-10/D-11) | high | mitigate | Only `OutcomeVerifier.verify()` can produce `VerifiedCompletionEvidence`. The `AgentOrchestrator` is the sole caller of `OutcomeVerifier.verify()`. `RendererService` receives a derived `RenderingOutcomePolicy` — it cannot create evidence, upgrade unverified to verified, or independently determine evidence sufficiency (per D-11). No other module imports the `VerifiedCompletionEvidence` factory. |
 </threat_model>
 
 <verification>
 ## Plan Verification
 
 ```bash
-# Unit tests for all new modules
-npx vitest run tests/core/ai/verifier/OutcomeVerifier.test.ts tests/core/ai/ReplanPolicy.test.ts tests/core/ai/RenderingOutcomePolicy.test.ts
-
-# Type check
+# Type check (Plan 02 creates source files only; tests are created in Plan 03)
 npx tsc --noEmit
 
 # Ensure existing tracer tests still pass (regression check)
