@@ -80,10 +80,13 @@ export class PageContentService {
    * into a single in-flight extraction (D-18).
    */
   async extract(tabId: number, mode: ExtractionMode, url: string): Promise<ExtractionResult> {
-    const cached = this.pageContentCache.get(tabId, url);
+    // CR-01: the cache is keyed by tabId + mode + url — a default-mode entry
+    // must never satisfy an actionable request (and vice versa).
+    const cached = this.pageContentCache.get(tabId, mode, url);
     if (cached) return cached;
 
-    const key = `${tabId}:${url}:${mode}`;
+    // Same composite components as the cache key, same ordering: tabId, mode, url.
+    const key = `${tabId}:${mode}:${url}`;
     const existing = this.inFlight.get(key);
     if (existing) return existing;
 
@@ -92,7 +95,7 @@ export class PageContentService {
     try {
       const result = await promise;
       if (result.ok) {
-        this.pageContentCache.set(tabId, url, result);
+        this.pageContentCache.set(tabId, mode, url, result);
       }
       return result;
     } finally {

@@ -618,4 +618,39 @@ describe('PageContentService (hardening)', () => {
     expect(result.error.code).toBe('PARSE_ERROR');
     expect(result.error.strategiesAttempted).toEqual(['defuddle', 'readability']);
   });
+
+  it('returns mode-specific cached results — actionable extraction after default is a fresh extraction (CR-01)', async () => {
+    sendMessageMock.mockResolvedValue(makeSerializedPage());
+    const service = new PageContentService(); // full three-strategy registry
+
+    const defaultFirst = await service.extract(1, 'default', 'https://example.com/article');
+    expect(defaultFirst.ok).toBe(true);
+    if (!defaultFirst.ok) throw new Error('expected ok result');
+    expect(defaultFirst.pageContext.mode).toBe('default');
+    expect(sendMessageMock).toHaveBeenCalledTimes(1);
+
+    // A default-mode cache entry must NOT satisfy an actionable request —
+    // this is a fresh extraction (pre-fix: mode === 'default' returned here).
+    const actionable = await service.extract(1, 'actionable', 'https://example.com/article');
+    expect(actionable.ok).toBe(true);
+    if (!actionable.ok) throw new Error('expected ok result');
+    expect(actionable.pageContext.mode).toBe('actionable');
+    if (actionable.pageContext.mode !== 'actionable') throw new Error('expected actionable mode');
+    expect(actionable.pageContext.source).toBe('apc-lite');
+    expect(sendMessageMock).toHaveBeenCalledTimes(2);
+
+    // The actionable entry is now cached — repeat call reuses it.
+    const actionableAgain = await service.extract(1, 'actionable', 'https://example.com/article');
+    expect(actionableAgain.ok).toBe(true);
+    if (!actionableAgain.ok) throw new Error('expected ok result');
+    expect(actionableAgain.pageContext.mode).toBe('actionable');
+    expect(sendMessageMock).toHaveBeenCalledTimes(2);
+
+    // The default entry survived the actionable extraction — no cross-mode eviction.
+    const defaultAgain = await service.extract(1, 'default', 'https://example.com/article');
+    expect(defaultAgain.ok).toBe(true);
+    if (!defaultAgain.ok) throw new Error('expected ok result');
+    expect(defaultAgain.pageContext.mode).toBe('default');
+    expect(sendMessageMock).toHaveBeenCalledTimes(2);
+  });
 });
