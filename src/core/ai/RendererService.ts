@@ -1,6 +1,6 @@
 import { generateText } from 'ai';
 import type { ProviderAdapter } from './providers/ProviderAdapter';
-import type { PlannerContext, ModelTier, StreamEvent } from './types';
+import type { OptimizedContext, ModelTier, StreamEvent } from './types';
 import { resolveTierModel } from './TierResolver';
 import { PipelineError } from './PipelineError';
 import { streamToAsyncIterable } from './StreamAdapter';
@@ -10,15 +10,32 @@ const BASE_SYSTEM_PROMPT = 'You are a helpful assistant. Provide clear, concise 
 
 function buildMessages(
   decision: { action: 'answer'; reasonCode: string },
-  context: PlannerContext,
+  optimized: OptimizedContext,
   systemPrompt?: string,
 ): Array<{ role: 'system' | 'user' | 'assistant'; content: string }> {
   const prompt = systemPrompt ?? BASE_SYSTEM_PROMPT;
+
+  // Conversation history assembly (kind: 'history') is future work in this
+  // phase — no history sections are produced yet (Plan 04-02/04-03).
+  const history: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+
+  const userSection = optimized.sections.find((s) => s.kind === 'user_input');
   return [
     { role: 'system' as const, content: prompt },
-    ...context.conversationHistory,
-    { role: 'user' as const, content: context.userMessage },
+    ...history,
+    { role: 'user' as const, content: userSection?.text ?? '' },
   ];
+}
+
+function buildSystemPrompt(
+  optimized: OptimizedContext,
+  decision: { action: 'answer'; reasonCode: string },
+): string {
+  const systemSection = optimized.sections.find((s) => s.kind === 'system');
+  return inject('renderer', [
+    systemSection?.text ?? BASE_SYSTEM_PROMPT,
+    `Response strategy: ${decision.reasonCode}`,
+  ].join('\n'));
 }
 
 export class RendererService {
@@ -26,21 +43,17 @@ export class RendererService {
     adapter: ProviderAdapter,
     tier: ModelTier,
     decision: { action: 'answer'; reasonCode: string },
-    context: PlannerContext,
+    optimized: OptimizedContext,
   ): Promise<string> {
     const { modelId } = resolveTierModel(adapter, tier);
     const model = adapter.createLanguageModel(modelId);
 
-    const systemPrompt = inject('renderer', [
-      BASE_SYSTEM_PROMPT,
-      `Response strategy: ${decision.reasonCode}`,
-    ].join('\n'));
+    const systemPrompt = buildSystemPrompt(optimized, decision);
 
     try {
       const { text } = await generateText({
         model,
-        messages: buildMessages(decision, context, systemPrompt),
-        abortSignal: context.abortSignal,
+        messages: buildMessages(decision, optimized, systemPrompt),
       });
       return text;
     } catch (err) {
@@ -56,20 +69,16 @@ export class RendererService {
     adapter: ProviderAdapter,
     tier: ModelTier,
     decision: { action: 'answer'; reasonCode: string },
-    context: PlannerContext,
+    optimized: OptimizedContext,
   ): Promise<AsyncIterable<StreamEvent>> {
     const { modelId } = resolveTierModel(adapter, tier);
     const model = adapter.createLanguageModel(modelId);
 
-    const systemPrompt = inject('renderer', [
-      BASE_SYSTEM_PROMPT,
-      `Response strategy: ${decision.reasonCode}`,
-    ].join('\n'));
+    const systemPrompt = buildSystemPrompt(optimized, decision);
 
     return streamToAsyncIterable({
       model,
-      messages: buildMessages(decision, context, systemPrompt),
-      abortSignal: context.abortSignal,
+      messages: buildMessages(decision, optimized, systemPrompt),
     });
   }
 }

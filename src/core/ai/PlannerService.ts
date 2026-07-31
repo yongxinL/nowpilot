@@ -1,7 +1,7 @@
 import { generateText, Output, isStepCount } from 'ai';
 import { z } from 'zod';
 import type { ProviderAdapter } from './providers/ProviderAdapter';
-import type { PlannerContext, PlannerDecision, ModelTier } from './types';
+import type { OptimizedContext, PlannerDecision, ModelTier } from './types';
 import { PipelineError } from './PipelineError';
 import { resolveTierModel } from './TierResolver';
 import { repairJSON } from './StructuredOutput';
@@ -29,8 +29,10 @@ export const PlannerDecisionSchema = z.discriminatedUnion('action', [
   AskClarificationSchema,
 ]);
 
-function buildPlannerSystemPrompt(context: PlannerContext): string {
+function buildPlannerSystemPrompt(optimized: OptimizedContext): string {
+  const systemSection = optimized.sections.find((s) => s.kind === 'system');
   const parts: string[] = [
+    systemSection?.text ?? 'You are a helpful AI assistant.',
     'You are a planning agent that decides the next action based on the user message and conversation history.',
     'Pick exactly ONE action:',
     '- answer: respond directly to the user (you have sufficient information)',
@@ -38,39 +40,58 @@ function buildPlannerSystemPrompt(context: PlannerContext): string {
     '- ask_clarification: ask the user for more details',
   ];
 
-  if (context.availableTools.length > 0) {
-    parts.push('', 'Available tools:');
-    for (const tool of context.availableTools) {
-      parts.push(`- ${tool.name}: ${tool.description}`);
+  // OptimizedContext does not carry availableTools directly — the tool list
+  // is reconstructed from the tool_schemas section text.
+  const toolSection = optimized.sections.find((s) => s.kind === 'tool_schemas');
+  if (toolSection?.text) {
+    try {
+      const tools = JSON.parse(toolSection.text) as Array<{ name: string; description: string }>;
+      if (tools.length > 0) {
+        parts.push('', 'Available tools:');
+        for (const tool of tools) {
+          parts.push(`- ${tool.name}: ${tool.description}`);
+        }
+      }
+    } catch {
+      // Malformed tool schemas text — proceed without a tool list.
     }
   }
 
-  return inject('planner', parts.join('\n'), context.personaBehavior ? { profile: undefined } : undefined);
+  return inject('planner', parts.join('\n'));
 }
 
-function buildPlannerMessagesWithJSONInstructions(context: PlannerContext): Array<{ role: 'system' | 'user'; content: string }> {
-  const baseSystem = buildPlannerSystemPrompt(context);
+function buildPlannerMessagesWithJSONInstructions(
+  optimized: OptimizedContext,
+): Array<{ role: 'system' | 'user'; content: string }> {
+  const baseSystem = buildPlannerSystemPrompt(optimized);
   return [
     {
       role: 'system',
       content: `${baseSystem}\n\nRespond ONLY with a JSON object. Do not include markdown fences, explanations, or any text outside the JSON.`,
     },
-    { role: 'user', content: context.userMessage },
+    { role: 'user', content: extractUserMessage(optimized) },
   ];
 }
 
-function buildPlannerMessages(context: PlannerContext): Array<{ role: 'system' | 'user'; content: string }> {
+function buildPlannerMessages(
+  optimized: OptimizedContext,
+): Array<{ role: 'system' | 'user'; content: string }> {
   return [
-    { role: 'system', content: buildPlannerSystemPrompt(context) },
-    { role: 'user', content: context.userMessage },
+    { role: 'system', content: buildPlannerSystemPrompt(optimized) },
+    { role: 'user', content: extractUserMessage(optimized) },
   ];
+}
+
+function extractUserMessage(optimized: OptimizedContext): string {
+  const userSection = optimized.sections.find((s) => s.kind === 'user_input');
+  return userSection?.text ?? '';
 }
 
 export class PlannerService {
   async plan(
     adapter: ProviderAdapter,
     tier: ModelTier,
-    context: PlannerContext,
+    optimized: OptimizedContext,
   ): Promise<PlannerDecision> {
     const { modelId } = resolveTierModel(adapter, tier);
     const model = adapter.createLanguageModel(modelId);
@@ -80,16 +101,14 @@ export class PlannerService {
         const { output } = await generateText({
           model,
           output: Output.object({ schema: PlannerDecisionSchema }),
-          messages: buildPlannerMessages(context),
+          messages: buildPlannerMessages(optimized),
           stopWhen: isStepCount(1),
-          abortSignal: context.abortSignal,
         });
         return output as PlannerDecision;
       } else {
         const { text } = await generateText({
           model,
-          messages: buildPlannerMessagesWithJSONInstructions(context),
-          abortSignal: context.abortSignal,
+          messages: buildPlannerMessagesWithJSONInstructions(optimized),
         });
         return repairJSON(text, PlannerDecisionSchema);
       }

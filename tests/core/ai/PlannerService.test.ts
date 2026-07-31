@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import type { PlannerContext } from '../../../src/core/ai/types';
+import type { OptimizedContext } from '../../../src/core/ai/types';
 import type { ProviderAdapter } from '../../../src/core/ai/providers/ProviderAdapter';
 import { PipelineError } from '../../../src/core/ai/PipelineError';
 
@@ -22,15 +22,42 @@ function createMockAdapter(overrides?: Partial<ProviderAdapter>): ProviderAdapte
   };
 }
 
-function buildMockContext(overrides?: Partial<PlannerContext>): PlannerContext {
+function buildMockOptimizedContext(overrides?: Partial<OptimizedContext>): OptimizedContext {
   return {
-    version: 1,
-    userMessage: 'Test message',
-    conversationHistory: [],
-    toolCallHistory: [],
-    availableTools: [],
-    personaBehavior: { brevity: 'concise', clarificationStrategy: 'ask when uncertain', reasoningStyle: 'direct' },
-    abortSignal: undefined,
+    tier: 'medium',
+    inputBudget: 89600,
+    outputBudget: 25600,
+    sections: [
+      {
+        kind: 'system',
+        text: 'You are a helpful AI assistant. You have access to tools and context to help the user.',
+        tokens: 21,
+        stable: true,
+        sourceId: 'core.instructions.system',
+      },
+      {
+        kind: 'tool_schemas',
+        text: '[]',
+        tokens: 2,
+        stable: true,
+        sourceId: 'tools.builtin.selected',
+      },
+      {
+        kind: 'user_input',
+        text: 'Test message',
+        tokens: 3,
+        stable: false,
+        sourceId: 'interaction.user.current-turn',
+      },
+    ],
+    provenance: {
+      sections: [],
+      totalTokens: 26,
+      minimalMode: false,
+      workspaceId: 'ws-test',
+      activeSurface: 'sidepanel',
+    },
+    minimalMode: false,
     ...overrides,
   };
 }
@@ -44,7 +71,7 @@ describe('PlannerService', () => {
 
     const { plannerService } = await import('../../../src/core/ai/PlannerService');
     const adapter = createMockAdapter({ supportsStructuredOutput: true });
-    const result = await plannerService.plan(adapter, 'FAST', buildMockContext());
+    const result = await plannerService.plan(adapter, 'FAST', buildMockOptimizedContext());
 
     expect(result.action).toBe('answer');
     if (result.action === 'answer') {
@@ -60,7 +87,7 @@ describe('PlannerService', () => {
 
     const { plannerService } = await import('../../../src/core/ai/PlannerService');
     const adapter = createMockAdapter({ supportsStructuredOutput: false });
-    const result = await plannerService.plan(adapter, 'FAST', buildMockContext());
+    const result = await plannerService.plan(adapter, 'FAST', buildMockOptimizedContext());
 
     expect(result.action).toBe('answer');
   });
@@ -73,7 +100,7 @@ describe('PlannerService', () => {
 
     const { plannerService } = await import('../../../src/core/ai/PlannerService');
     const adapter = createMockAdapter({ supportsStructuredOutput: true });
-    const result = await plannerService.plan(adapter, 'FAST', buildMockContext());
+    const result = await plannerService.plan(adapter, 'FAST', buildMockOptimizedContext());
 
     expect(result.action).toBe('run_tool');
     if (result.action === 'run_tool') {
@@ -89,7 +116,7 @@ describe('PlannerService', () => {
 
     const { plannerService } = await import('../../../src/core/ai/PlannerService');
     const adapter = createMockAdapter({ supportsStructuredOutput: true });
-    const result = await plannerService.plan(adapter, 'FAST', buildMockContext());
+    const result = await plannerService.plan(adapter, 'FAST', buildMockOptimizedContext());
 
     expect(result.action).toBe('ask_clarification');
     if (result.action === 'ask_clarification') {
@@ -107,7 +134,7 @@ describe('PlannerService', () => {
     const adapter = createMockAdapter({ supportsStructuredOutput: false });
 
     await expect(
-      plannerService.plan(adapter, 'FAST', buildMockContext()),
+      plannerService.plan(adapter, 'FAST', buildMockOptimizedContext()),
     ).rejects.toThrow(PipelineError);
   });
 
@@ -120,7 +147,7 @@ describe('PlannerService', () => {
 
     const { plannerService } = await import('../../../src/core/ai/PlannerService');
     const adapter = createMockAdapter({ supportsStructuredOutput: true });
-    const result = await plannerService.plan(adapter, 'FAST', buildMockContext());
+    const result = await plannerService.plan(adapter, 'FAST', buildMockOptimizedContext());
 
     expect(isStepCount).toHaveBeenCalledWith(1);
     expect(result.action).toBe('answer');

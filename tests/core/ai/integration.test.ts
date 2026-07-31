@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import type { PlannerContext, PlannerDecision } from '../../../src/core/ai/types';
-import { PipelineError } from '../../../src/core/ai/PipelineError';
+import type { PlannerDecision } from '../../../src/core/ai/types';
+import { createAgentTurnInput } from '../../../src/core/ai/AgentTurnInput';
 
 vi.mock('../../../src/core/ai/ProviderRouter', () => ({
   providerRouter: {
@@ -27,6 +27,25 @@ vi.mock('../../../src/core/ai/RendererService', () => ({
   rendererService: { synthesize: vi.fn() },
 }));
 
+const WEATHER_TOOL = {
+  name: 'getWeather',
+  description: 'Get weather for a city',
+  jsonSchema: { type: 'object', properties: { city: { type: 'string' } } },
+};
+
+function buildAgentTurnInput(
+  overrides?: Partial<ReturnType<typeof createAgentTurnInput>>,
+): ReturnType<typeof createAgentTurnInput> {
+  return createAgentTurnInput({
+    providerId: 'openai',
+    tier: 'FAST',
+    model: 'gpt-4o-mini',
+    modelContextWindow: 128000,
+    selectedToolSchemas: [WEATHER_TOOL],
+    ...overrides,
+  });
+}
+
 describe('Pipeline Integration', () => {
   it('full pipeline: plan -> execute -> plan -> render with tool calls', async () => {
     const { plannerService } = await import('../../../src/core/ai/PlannerService');
@@ -50,26 +69,10 @@ describe('Pipeline Integration', () => {
       'The weather in Tokyo is 22°C and sunny.',
     );
 
-    const tools: any[] = [
-      {
-        name: 'getWeather',
-        description: 'Get weather for a city',
-        inputSchema: { type: 'object', properties: { city: { type: 'string' } } },
-        execute: vi.fn().mockResolvedValue({ temperature: 22, condition: 'sunny', city: 'Tokyo' }),
-      },
-    ];
-
     const { agentOrchestrator } = await import('../../../src/core/ai/AgentOrchestrator');
-    const context: PlannerContext = {
-      version: 1,
-      userMessage: 'What is the weather in Tokyo?',
-      conversationHistory: [],
-      toolCallHistory: [],
-      availableTools: tools as any,
-      personaBehavior: { brevity: 'concise', clarificationStrategy: 'ask when uncertain', reasoningStyle: 'direct' },
-    };
-
-    const result = await agentOrchestrator.runTurn('openai', 'FAST', context);
+    const result = await agentOrchestrator.runTurn(
+      buildAgentTurnInput({ userInput: 'What is the weather in Tokyo?' }),
+    );
 
     expect(result).toBeTruthy();
     expect(result).toBe('The weather in Tokyo is 22°C and sunny.');
@@ -84,26 +87,8 @@ describe('Pipeline Integration', () => {
       input: {},
     } as PlannerDecision);
 
-    const tools: any[] = [
-      {
-        name: 'getWeather',
-        description: 'Get weather',
-        inputSchema: { type: 'object', properties: {} },
-        execute: vi.fn(),
-      },
-    ];
-
     const { agentOrchestrator } = await import('../../../src/core/ai/AgentOrchestrator');
-    const context: PlannerContext = {
-      version: 1,
-      userMessage: 'test',
-      conversationHistory: [],
-      toolCallHistory: [],
-      availableTools: tools as any,
-      personaBehavior: null,
-    };
-
-    const result = await agentOrchestrator.runTurn('openai', 'FAST', context);
+    const result = await agentOrchestrator.runTurn(buildAgentTurnInput({ userInput: 'test' }));
     expect(result).toBeTruthy();
   });
 });

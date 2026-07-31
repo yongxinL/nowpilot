@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
-import type { PlannerContext, PlannerDecision } from '../../../src/core/ai/types';
+import type { AgentTurnInput, PlannerDecision } from '../../../src/core/ai/types';
 import { PipelineError } from '../../../src/core/ai/PipelineError';
+import { createAgentTurnInput } from '../../../src/core/ai/AgentTurnInput';
 
 vi.mock('ai', () => {
   return {
@@ -22,7 +23,7 @@ vi.mock('../../../src/core/ai/ProviderRouter', () => {
             adapter: {
               providerId: 'openai' as const,
               createLanguageModel: vi.fn(),
-              validateConnection: vi.fn().mockResolvedValue({ ok: true, models: ['gpt-4o'] }),
+              validateConnection: vi.fn().mockResolvedValue({ ok: true, models: ['gpt-4o-mini'] }),
               supportsStructuredOutput: true,
               getDefaultModelForTier: vi.fn().mockReturnValue('gpt-4o-mini'),
               getCacheStrategy: vi.fn().mockReturnValue('prefix-only'),
@@ -43,21 +44,19 @@ vi.mock('../../../src/core/ai/ProviderRouter', () => {
   };
 });
 
-function buildMockPlannerContext(overrides?: Partial<PlannerContext>): PlannerContext {
-  return {
-    version: 1,
-    userMessage: 'Hello, what can you help me with?',
-    conversationHistory: [],
-    toolCallHistory: [],
-    availableTools: [],
-    personaBehavior: null,
-    abortSignal: undefined,
+function buildAgentTurnInput(overrides?: Partial<AgentTurnInput>): AgentTurnInput {
+  return createAgentTurnInput({
+    providerId: 'openai',
+    tier: 'FAST',
+    model: 'gpt-4o-mini',
+    modelContextWindow: 128000,
+    userInput: 'Hello, what can you help me with?',
     ...overrides,
-  };
+  });
 }
 
 describe('AI Pipeline Tracer', () => {
-  it('should complete a full prompt -> plan -> render cycle', async () => {
+  it('should complete a full prompt -> optimize -> plan -> render cycle', async () => {
     const { generateText } = await import('ai');
     const mockGenerateText = generateText as ReturnType<typeof vi.fn>;
 
@@ -69,9 +68,9 @@ describe('AI Pipeline Tracer', () => {
         text: 'Hello! I am here to help you with your questions about note-taking and knowledge management.',
       });
 
-    const context = buildMockPlannerContext();
+    const input = buildAgentTurnInput();
     const { agentOrchestrator } = await import('../../../src/core/ai/AgentOrchestrator');
-    const response = await agentOrchestrator.runTurn('openai', 'FAST', context);
+    const response = await agentOrchestrator.runTurn(input);
 
     expect(response).toBeTruthy();
     expect(typeof response).toBe('string');
@@ -91,19 +90,17 @@ describe('AI Pipeline Tracer', () => {
         text: 'I can help you organize your notes and find information quickly.',
       });
 
-    const context = buildMockPlannerContext({ userMessage: 'What do you do?' });
+    const input = buildAgentTurnInput({ userInput: 'What do you do?' });
     const { agentOrchestrator } = await import('../../../src/core/ai/AgentOrchestrator');
-    const response = await agentOrchestrator.runTurn('openai', 'FAST', context);
+    const response = await agentOrchestrator.runTurn(input);
 
     expect(response).toBe('I can help you organize your notes and find information quickly.');
   }, 10000);
 
   it('should throw PipelineError for unknown provider', async () => {
-    const context = buildMockPlannerContext();
+    const input = buildAgentTurnInput({ providerId: 'ollama' });
     const { agentOrchestrator } = await import('../../../src/core/ai/AgentOrchestrator');
 
-    await expect(
-      agentOrchestrator.runTurn('ollama' as any, 'FAST', context),
-    ).rejects.toThrow(PipelineError);
+    await expect(agentOrchestrator.runTurn(input)).rejects.toThrow(PipelineError);
   }, 10000);
 });

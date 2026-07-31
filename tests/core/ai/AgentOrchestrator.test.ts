@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { PlannerContext, PlannerDecision } from '../../../src/core/ai/types';
+import type { PlannerDecision } from '../../../src/core/ai/types';
 import { PipelineError } from '../../../src/core/ai/PipelineError';
+import { createAgentTurnInput } from '../../../src/core/ai/AgentTurnInput';
 
 vi.mock('../../../src/core/ai/ProviderRouter', () => ({
   providerRouter: {
@@ -37,17 +38,14 @@ vi.mock('../../../src/core/ai/RendererService', () => ({
   },
 }));
 
-function buildMockContext(overrides?: Partial<PlannerContext>): PlannerContext {
-  return {
-    version: 1,
-    userMessage: 'Test message',
-    conversationHistory: [],
-    toolCallHistory: [],
-    availableTools: [],
-    personaBehavior: { brevity: 'concise', clarificationStrategy: 'ask when uncertain', reasoningStyle: 'direct' },
-    abortSignal: undefined,
-    ...overrides,
-  };
+function buildAgentTurnInput(): ReturnType<typeof createAgentTurnInput> {
+  return createAgentTurnInput({
+    providerId: 'openai',
+    tier: 'FAST',
+    model: 'gpt-4o-mini',
+    modelContextWindow: 128000,
+    userInput: 'Test message',
+  });
 }
 
 describe('AgentOrchestrator', () => {
@@ -63,7 +61,7 @@ describe('AgentOrchestrator', () => {
     } as PlannerDecision);
 
     const { agentOrchestrator } = await import('../../../src/core/ai/AgentOrchestrator');
-    const result = await agentOrchestrator.runTurn('openai', 'FAST', buildMockContext());
+    const result = await agentOrchestrator.runTurn(buildAgentTurnInput());
 
     expect(result).toBeTruthy();
     expect(typeof result).toBe('string');
@@ -77,7 +75,7 @@ describe('AgentOrchestrator', () => {
     } as PlannerDecision);
 
     const { agentOrchestrator } = await import('../../../src/core/ai/AgentOrchestrator');
-    const result = await agentOrchestrator.runTurn('openai', 'FAST', buildMockContext());
+    const result = await agentOrchestrator.runTurn(buildAgentTurnInput());
 
     expect(result).toBe('Could you please provide more details?');
   });
@@ -104,7 +102,11 @@ describe('AgentOrchestrator', () => {
     });
 
     const { agentOrchestrator } = await import('../../../src/core/ai/AgentOrchestrator');
-    const result = await agentOrchestrator.runTurn('openai', 'FAST', buildMockContext());
+    const input = buildAgentTurnInput();
+    input.selectedToolSchemas = [
+      { name: 'getWeather', description: 'Get weather for a city', jsonSchema: {} },
+    ];
+    const result = await agentOrchestrator.runTurn(input);
 
     expect(result).toBeTruthy();
     expect(plannerService.plan).toHaveBeenCalledTimes(2);
@@ -128,7 +130,11 @@ describe('AgentOrchestrator', () => {
     });
 
     const { agentOrchestrator } = await import('../../../src/core/ai/AgentOrchestrator');
-    await agentOrchestrator.runTurn('openai', 'FAST', buildMockContext());
+    const input = buildAgentTurnInput();
+    input.selectedToolSchemas = [
+      { name: 'getWeather', description: 'Get weather for a city', jsonSchema: {} },
+    ];
+    await agentOrchestrator.runTurn(input);
 
     expect(rendererService.synthesize).toHaveBeenCalled();
   });
@@ -140,7 +146,7 @@ describe('AgentOrchestrator', () => {
     );
 
     const { agentOrchestrator } = await import('../../../src/core/ai/AgentOrchestrator');
-    const result = await agentOrchestrator.runTurn('openai', 'FAST', buildMockContext());
+    const result = await agentOrchestrator.runTurn(buildAgentTurnInput());
 
     expect(result).toBe('Authentication failed.');
   });

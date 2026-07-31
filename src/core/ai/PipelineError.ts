@@ -20,6 +20,7 @@ const CODE_CATEGORY: Record<PipelineErrorCode, PipelineErrorCategory> = {
   TIER_CAP_REACHED: 'terminal',
   CIRCUIT_OPEN: 'retryable',
   ABORTED: 'terminal',
+  CONTEXT_TOO_LARGE: 'terminal',
   UNKNOWN: 'terminal',
 };
 
