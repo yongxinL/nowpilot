@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { JSDOM } from 'jsdom';
-import { serializePage, SIZE_CAP } from '../../../src/core/content/DomSerializer';
+import {
+  serializePage,
+  SIZE_CAP,
+  isPasswordFieldName,
+} from '../../../src/core/content/DomSerializer';
 
 function makeDoc(bodyHtml: string, url = 'https://example.com/page'): Document {
   const dom = new JSDOM(
@@ -76,5 +80,47 @@ describe('DomSerializer', () => {
     expect(result.truncated).toBe(true);
     expect(result.html.length).toBeLessThanOrEqual(SIZE_CAP);
     expect(result.size).toBe(result.html.length);
+  });
+
+  it('does not redact values for passenger/passport/compass/bypass field names (WR-03)', () => {
+    const doc = makeDoc(
+      '<input name="passenger_first_name" id="a" value="JaneDoe">' +
+        '<input name="passport_number" id="b" value="AB1234567">' +
+        '<input name="compass_bearing" id="c" value="42">' +
+        '<input name="bypass_code" id="d" value="open">' +
+        '<input name="user_pwd" id="e" value="SecretPass">',
+    );
+    const result = serializePage(doc);
+    // All four allowlisted field values survive the contains-match heuristic…
+    expect(result.html).toContain('JaneDoe');
+    expect(result.html).toContain('AB1234567');
+    expect(result.html).toContain('42');
+    expect(result.html).toContain('open');
+    // …while a real password name stays redacted on the same page.
+    expect(result.html).not.toContain('SecretPass');
+  });
+
+  it('still redacts passcode-named values (D-02 err on false positives)', () => {
+    const doc = makeDoc('<input name="passcode" id="a" value="123456">');
+    const result = serializePage(doc);
+    expect(result.html).not.toContain('123456');
+  });
+
+  it('keeps passage-prefixed names out of the innocuous allowlist — values stay redacted (D-02, WR-03)', () => {
+    // passage is deliberately NOT in NON_PASSWORD_NAME_PATTERN (the allowlist
+    // must never grow to cover passage-class names — plan prohibition). These
+    // names therefore still match the password heuristic, so the predicate
+    // returns TRUE and their values remain redacted (accepted false-negative
+    // space). This test guards the allowlist against re-introducing passage.
+    expect(isPasswordFieldName('passage_number')).toBe(true);
+    expect(isPasswordFieldName('boarding_passage')).toBe(true);
+
+    const doc = makeDoc(
+      '<input name="passage_number" id="a" value="GATE-7">' +
+        '<input name="boarding_passage" id="b" value="B-12">',
+    );
+    const result = serializePage(doc);
+    expect(result.html).not.toContain('GATE-7');
+    expect(result.html).not.toContain('B-12');
   });
 });

@@ -15,6 +15,33 @@ const PASSWORD_INPUT_SELECTOR =
 
 const PASSWORD_NAME_PATTERN = /pass(word|wd)?|pwd/i;
 
+/**
+ * Innocuous substrings excluded from the name-heuristic (WR-03). Contains-match
+ * semantics are kept for D-02 (err on false positives) but these field classes
+ * carry no credential risk:
+ * - passenger / passport: travel and airline check-in forms
+ * - compass: bearing/sensor fields (compass_bearing)
+ * - bypass: auth-bypass flow fields (bypass_code)
+ *
+ * `passage` and `passcode` are deliberately NOT in this allowlist and must
+ * never be added back: passcode fields hold PIN-like secrets (D-02 says omit
+ * rather than capture — RESEARCH Pitfall 4), and passage-prefixed names
+ * (passage_number, boarding_passage) are travel/content fields covered by the
+ * accepted false-negative space of the contains-match heuristic.
+ */
+const NON_PASSWORD_NAME_PATTERN = /passenger|passport|compass|bypass/i;
+
+/**
+ * D-02 name-heuristic: true when a field name smells like a password
+ * (contains-match, so compound/suffix names — user_pwd, user_passwd, db_pwd,
+ * login_password, confirmPassword — all match) unless the name is on the
+ * documented innocuous allowlist (WR-03). Shared by DomSerializer and
+ * ApcLiteStrategy so both capture boundaries apply the identical heuristic.
+ */
+export function isPasswordFieldName(name: string): boolean {
+  return PASSWORD_NAME_PATTERN.test(name) && !NON_PASSWORD_NAME_PATTERN.test(name);
+}
+
 export interface SerializedPage {
   html: string;
   url: string;
@@ -66,8 +93,7 @@ export function serializePage(doc: Document): SerializedPage {
 
   const passwordFields = Array.from(doc.querySelectorAll(PASSWORD_INPUT_SELECTOR));
   const nameMatchedInputs = Array.from(doc.querySelectorAll('input')).filter(
-    (el) =>
-      isInput(el) && PASSWORD_NAME_PATTERN.test(el.name || '') && el.value.length > 0,
+    (el) => isInput(el) && isPasswordFieldName(el.name || '') && el.value.length > 0,
   );
 
   const hasTypedPassword = passwordFields.some((el) => isInput(el) && el.value.length > 0);
@@ -86,7 +112,7 @@ export function serializePage(doc: Document): SerializedPage {
     }
     for (const el of source.querySelectorAll('input')) {
       if (!isInput(el)) continue;
-      if (!PASSWORD_NAME_PATTERN.test(el.name || '') || !el.value) continue;
+      if (!isPasswordFieldName(el.name || '') || !el.value) continue;
       el.removeAttribute('value');
       el.value = '';
     }
