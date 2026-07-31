@@ -16,6 +16,10 @@ export type PipelineErrorCode =
   | 'CIRCUIT_OPEN'
   | 'ABORTED'
   | 'CONTEXT_TOO_LARGE'
+  | 'AGENT_STATE_INVALID'
+  | 'TOOL_POSTCONDITION_FAILED'
+  | 'COMPLETION_EVIDENCE_MISSING'
+  | 'TOOL_IDEMPOTENCY_CONFLICT'
   | 'UNKNOWN';
 
 export type PipelineErrorCategory = 'retryable' | 'terminal';
@@ -103,6 +107,16 @@ export interface ToolSchemaInfo {
   jsonSchema?: unknown;
   dangerous?: boolean;
   source?: string;
+  /**
+   * Phase 3a selected-tool adapter handoff (D-08/D-16): the same three
+   * reliability metadata fields as RegisteredTool, so the orchestrator can
+   * forward them from the optimizer path. No Phase 8a manifest fields
+   * (category, risk, permissions, dataScopes, timeout, costClass, schema
+   * hashes, discovery) are permitted here.
+   */
+  sideEffect?: ToolSideEffect;
+  idempotency?: ToolIdempotency;
+  evidence?: ToolEvidencePolicy;
 }
 
 /**
@@ -133,6 +147,12 @@ export interface ContextOptimizerInput {
     personaId?: string;
     personaOverrides?: unknown;
   };
+  /**
+   * Runtime pass-through signal for the optimizer/orchestrator path (Phase
+   * 3a). It is never assembled into prompt sections — it is an
+   * orchestration control, not prompt data.
+   */
+  abortSignal?: AbortSignal;
 }
 
 /**
@@ -154,6 +174,13 @@ export interface AgentTurnInput {
   preferences: ContextOptimizerInput['preferences'];
   personaBehavior: PlannerContext['personaBehavior'];
   abortSignal?: AbortSignal;
+  /**
+   * Operation-scoped permission gate (D-03/AGT-01). The orchestrator
+   * consults this callback before executing side-effecting tools; it
+   * resolves to granted, denied, or cancelled with an attributable
+   * user/caller origin when known.
+   */
+  requestPermission?: (request: PermissionRequest) => Promise<PermissionDecision>;
 }
 
 export type StreamEvent =
@@ -168,12 +195,32 @@ export interface RegisteredTool {
   description: string;
   inputSchema: Record<string, unknown>;
   execute: (input: unknown, signal?: AbortSignal) => Promise<unknown>;
+  /**
+   * Phase 3a reliability metadata (D-08/D-16). Exactly these three
+   * forward-compatible fields — the full ToolCapabilityManifest (category,
+   * risk, permissions, dataScopes, timeout, costClass, schema hashes,
+   * active discovery) remains Phase 8a responsibility.
+   */
+  sideEffect?: ToolSideEffect;
+  idempotency?: ToolIdempotency;
+  evidence?: ToolEvidencePolicy;
 }
 
 export interface ToolExecutionResult {
   toolName: string;
   output: unknown;
   durationMs: number;
+  /**
+   * Distinct identity of the logical tool call (Phase 3a). ExecutorService
+   * supplies it for every execution; evidence references it.
+   */
+  toolCallId: string;
+  /**
+   * Attached CompletionEvidence — populated for completed idempotent
+   * duplicates and via ExecutorService.attachEvidence (validated cache
+   * seam). Never carries raw output or the logical key.
+   */
+  evidence?: CompletionEvidence;
 }
 
 export const TIER_CAPS: Record<ModelTier, { planner: number; tool: number }> = {
@@ -181,3 +228,184 @@ export const TIER_CAPS: Record<ModelTier, { planner: number; tool: number }> = {
   BALANCED: { planner: 5, tool: 3 },
   ADVANCED: { planner: 7, tool: 5 },
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 3a — Agent reliability & evidence contracts (D-01..D-09, D-16, D-17)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * The ten explicit trajectory states (AGT-01, D-03). Terminal states
+ * (completed/failed/aborted) have empty transition allowlists.
+ */
+export type AgentTrajectoryState =
+  | 'assembling-context'
+  | 'planning'
+  | 'waiting-for-permission'
+  | 'executing'
+  | 'verifying'
+  | 'replanning'
+  | 'rendering'
+  | 'completed'
+  | 'failed'
+  | 'aborted';
+
+export const AGENT_TRAJECTORY_STATES: readonly AgentTrajectoryState[] = [
+  'assembling-context',
+  'planning',
+  'waiting-for-permission',
+  'executing',
+  'verifying',
+  'replanning',
+  'rendering',
+  'completed',
+  'failed',
+  'aborted',
+];
+
+/**
+ * D-04 strict transition allowlist. Every legal edge is explicit and
+ * independently reviewable; terminal states permit no further transitions.
+ */
+export const ALLOWED_TRANSITIONS: Readonly<
+  Record<AgentTrajectoryState, readonly AgentTrajectoryState[]>
+> = {
+  'assembling-context': ['planning', 'failed', 'aborted'],
+  planning: ['waiting-for-permission', 'executing', 'rendering', 'failed', 'aborted'],
+  'waiting-for-permission': ['executing', 'rendering', 'failed', 'aborted'],
+  executing: ['verifying', 'replanning', 'rendering', 'failed', 'aborted'],
+  verifying: ['replanning', 'rendering', 'failed', 'aborted'],
+  replanning: ['planning', 'rendering', 'failed', 'aborted'],
+  rendering: ['completed', 'failed', 'aborted'],
+  completed: [],
+  failed: [],
+  aborted: [],
+};
+
+/**
+ * One immutable trajectory record (D-07). `exitedAt`/`durationMs` are null
+ * while the entry is open; AgentTrajectoryMachine finalizes them on close.
+ */
+export interface TrajectoryStateEntry {
+  state: AgentTrajectoryState;
+  enteredAt: number;
+  exitedAt: number | null;
+  durationMs: number | null;
+  reasonCode?: string;
+  plannerCall?: number;
+  toolCall?: number;
+  toolName?: string;
+}
+
+/**
+ * Side-effect classification (D-08/D-16). `irreversible` blocks replanning.
+ */
+export type ToolSideEffect = 'none' | 'read' | 'write' | 'irreversible';
+
+/**
+ * Idempotency posture (D-08/D-16). Only `required` is enforced by
+ * ExecutorService in Phase 3a (D-17); durable cross-turn guarantees are
+ * Phase 8a.
+ */
+export type ToolIdempotency = 'not-required' | 'supported' | 'required';
+
+/**
+ * A safe, bounded evidence check (D-09/T-03a-04). Checks carry a name,
+ * pass/fail, an expected scalar or reference, an actual reference, and a
+ * bounded message — never raw tool output, secrets, or logical keys.
+ */
+export interface CompletionEvidenceCheck {
+  checkId: string;
+  name: string;
+  passed: boolean;
+  expected?: string | number | boolean | null;
+  actualRef?: string;
+  message?: string;
+}
+
+/**
+ * Bounded reference to a verified artifact (e.g. a created note), not the
+ * artifact payload itself.
+ */
+export interface CompletionResultRef {
+  type: string;
+  ref: string;
+}
+
+export type EvidenceVerifierType = 'schema' | 'environment' | 'read-after-write' | 'tool-provided';
+
+export interface ToolEvidenceVerifier {
+  type: EvidenceVerifierType;
+  check: (result: unknown, signal?: AbortSignal) => Promise<CompletionEvidenceCheck[]>;
+}
+
+export interface ToolEvidencePolicy {
+  required: boolean;
+  verifier?: ToolEvidenceVerifier;
+}
+
+export type EvidenceFailureReason =
+  | 'postcondition_failed'
+  | 'evidence_unavailable'
+  | 'verification_timeout'
+  | 'verification_error'
+  | 'aborted';
+
+/**
+ * Structured discriminated union of completion evidence (D-09). Verified
+ * evidence carries safe checks and an optional result reference; unverified
+ * evidence carries a closed failure reason and retryability. Shared fields:
+ * id, operationId, toolCallId, toolName, verifiedAt, durationMs.
+ */
+export type CompletionEvidence =
+  | {
+      id: string;
+      operationId: string;
+      toolCallId: string;
+      toolName: string;
+      verified: true;
+      verifierType: EvidenceVerifierType;
+      checks: readonly CompletionEvidenceCheck[];
+      resultRef?: CompletionResultRef;
+      verifiedAt: number;
+      durationMs: number;
+    }
+  | {
+      id: string;
+      operationId: string;
+      toolCallId: string;
+      toolName: string;
+      verified: false;
+      failureReason: EvidenceFailureReason;
+      retryable: boolean;
+      verifiedAt: number;
+      durationMs: number;
+    };
+
+export type PermissionOrigin = 'user' | 'caller';
+
+export interface PermissionRequest {
+  toolName: string;
+  operationId: string;
+  toolCallId: string;
+  sideEffect: ToolSideEffect;
+  reason?: string;
+}
+
+export type PermissionDecision =
+  | { decision: 'granted'; origin?: PermissionOrigin }
+  | { decision: 'denied'; origin?: PermissionOrigin }
+  | { decision: 'cancelled'; origin?: PermissionOrigin };
+
+/**
+ * Redacted observation handed to the planner on a replan recovery call
+ * (D-14/D-15). Carries only safe, code-allowlisted diagnostics — never raw
+ * input, exception text, secrets, or logical idempotency keys.
+ */
+export interface ReplanContext {
+  operationId: string;
+  replanCount: number;
+  toolName?: string;
+  toolCallId?: string;
+  cause?: import('./PipelineError').PipelineErrorProjection;
+  priorToolResults: readonly ToolExecutionResult[];
+}

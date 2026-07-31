@@ -21,6 +21,13 @@ const CODE_CATEGORY: Record<PipelineErrorCode, PipelineErrorCategory> = {
   CIRCUIT_OPEN: 'retryable',
   ABORTED: 'terminal',
   CONTEXT_TOO_LARGE: 'terminal',
+  // Phase 3a canonical Rev. C technical codes — all terminal. These are
+  // technical diagnostics owned by PipelineError (D-12); they are NOT
+  // AgentTurnReasonCode values.
+  AGENT_STATE_INVALID: 'terminal',
+  TOOL_POSTCONDITION_FAILED: 'terminal',
+  COMPLETION_EVIDENCE_MISSING: 'terminal',
+  TOOL_IDEMPOTENCY_CONFLICT: 'terminal',
   UNKNOWN: 'terminal',
 };
 
@@ -46,4 +53,34 @@ export class PipelineError extends Error {
   static isRetryable(error: PipelineError): boolean {
     return RETRYABLE_CODES.has(error.code);
   }
+}
+
+/**
+ * Code-allowlisted public diagnostic projection (Phase 3a). Preserves the
+ * technical classification (code, category, retryable, timestamp) and a
+ * bounded user-facing message while deliberately dropping the raw Error
+ * message, diagnostic metadata (raw input/output, arbitrary exception
+ * text, secrets), and logical idempotency keys before a PipelineError
+ * enters public outcome diagnostics.
+ */
+export interface PipelineErrorProjection {
+  code: PipelineErrorCode;
+  category: PipelineErrorCategory;
+  retryable: boolean;
+  message: string;
+  timestamp: number;
+}
+
+const SAFE_MESSAGE_MAX_LENGTH = 280;
+
+export function projectPipelineError(error: PipelineError): PipelineErrorProjection {
+  const raw = error.userFacingMessage ?? `[${error.code}]`;
+  const message = raw.length > SAFE_MESSAGE_MAX_LENGTH ? `${raw.slice(0, SAFE_MESSAGE_MAX_LENGTH)}…` : raw;
+  return {
+    code: error.code,
+    category: error.category,
+    retryable: error.retryable,
+    message,
+    timestamp: error.timestamp,
+  };
 }
