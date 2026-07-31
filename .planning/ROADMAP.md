@@ -140,7 +140,7 @@ Plans:
   4. User navigates via SPA (wxt:locationchange) or switches tabs — the per-tab cache invalidates and re-extracts
   5. Content script bundle contains no React, AntD, defuddle, yaml, or File System Access API usage and is under 50KB; password fields are never captured (isPassword ⇒ value omitted)
 
-**Plans**: 4/4 plans executed
+**Plans**: 4/4 plans executed + 1 gap-closure plan
 
 Plans:
 **Wave 1**
@@ -155,6 +155,10 @@ Plans:
 
 - [x] 04a-03-PLAN.md — Page indexing: PageIndexBuilder with MiniSearch heading-aware chunks + BM25 + index integration into PageContentService
 - [x] 04a-04-PLAN.md — Verification: bundle isolation test (<50KB, no banned imports) + messaging contract tests + verify:phase-4a green (parallel with 04a-03)
+
+**Wave 4** *(gap closure)*
+
+- [ ] 04a-05-PLAN.md — Gap closure: fix password name-heuristic regression (D-02), SPA-nav invalidation test regression (WR-02), isolation test output path, wire init() to side panel
 
 ### Phase 5: Knowledge Base
 
