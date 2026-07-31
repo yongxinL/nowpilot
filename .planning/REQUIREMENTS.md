@@ -34,7 +34,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Page Extraction
 
-- [ ] **PAGE-01**: User can extract page content via layered extraction (Defuddle → APC-lite) with ephemeral MiniSearch index and per-tab SPA-nav cache
+- [x] **PAGE-01**: User can extract page content via layered extraction (Defuddle → APC-lite) with ephemeral MiniSearch index and per-tab SPA-nav cache
 
 ### Notes & Knowledge
 
@@ -110,7 +110,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CTX-02 | Phase 4 | Complete |
 | MEM-01 | Phase 5 | Pending |
 | MEM-02 | Phase 5 | Pending |
-| PAGE-01 | Phase 4a | Pending |
+| PAGE-01 | Phase 4a | Complete |
 | NOTE-01 | Phase 5 | Pending |
 | NOTE-02 | Phase 5a | Pending |
 | NOTE-03 | Phase 5a | Pending |
