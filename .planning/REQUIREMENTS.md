@@ -25,7 +25,7 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Context
 
 - [x] **CTX-01**: User's prompts are optimized with dynamic token budgets, degradation pipeline, and minimal mode for tiny models
-- [ ] **CTX-02**: User benefits from prompt caching with per-provider cache-hint transformation
+- [x] **CTX-02**: User benefits from prompt caching with per-provider cache-hint transformation
 
 ### Memory
 
@@ -107,7 +107,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AI-03 | Phase 3 | Complete |
 | AI-04 | Phase 7 | Pending |
 | CTX-01 | Phase 4 | Complete |
-| CTX-02 | Phase 4 | Pending |
+| CTX-02 | Phase 4 | Complete |
 | MEM-01 | Phase 5 | Pending |
 | MEM-02 | Phase 5 | Pending |
 | PAGE-01 | Phase 4a | Pending |

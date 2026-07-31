@@ -112,7 +112,7 @@ Plans:
   4. User's prompt cache hints are transformed per-provider (Anthropic cache breakpoints, OpenAI system message prefix, etc.) and cache hit/miss is logged
   5. Every OptimizedContext carries a ContextProvenanceManifest recording where each section came from
 
-**Plans**: 2/3 plans executed
+**Plans**: 3/3 plans executed
 
 Plans:
 **Wave 1**
@@ -125,7 +125,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 04-03-PLAN.md — Prompt cache management: PromptCacheAdapter per Appendix K + PromptCacheManager with health tracking/cooldown + ProviderAdapter.countTokens() + ContextOptimizer cache integration (CTX-02)
+- [x] 04-03-PLAN.md — Prompt cache management: PromptCacheAdapter per Appendix K + PromptCacheManager with health tracking/cooldown + ProviderAdapter.countTokens() + ContextOptimizer cache integration (CTX-02)
 
 ### Phase 4a: Page Content Extraction
 
@@ -247,7 +247,7 @@ Decimal phases execute after their parent integer phase: 4 → 4a → 5 → 5a �
 | 1. Project Scaffold & Runtime Foundation | 5/5 | Completed | 2026-07-28 |
 | 2. Storage & Security Foundation | 4/4 | Completed | 2026-07-29 |
 | 3. AI Core Pipeline | 7/7 | Complete    | 2026-07-30 |
-| 4. Context Optimization Pipeline | 2/3 | In Progress|  |
+| 4. Context Optimization Pipeline | 3/3 | In Progress|  |
 | 4a. Page Content Extraction | TBD | Not started | - |
 | 5. Knowledge Base | TBD | Not started | - |
 | 5a. LLM-Wiki & Filesystem Sync | TBD | Not started | - |
