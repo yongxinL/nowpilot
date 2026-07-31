@@ -181,3 +181,11 @@ None - no external service configuration required.
 ---
 *Phase: 04a-page-content-extraction*
 *Completed: 2026-07-31*
+
+## Self-Check: PASSED
+
+- All 4 modified files exist on disk (DomSerializer.ts, PageContentService.test.ts, no-content-script-ui.test.ts, sidepanel/main.tsx) ✓
+- SUMMARY.md exists at `.planning/phases/04a-page-content-extraction/04a-05-SUMMARY.md` ✓
+- All 4 commits present in git log: `53674f6` (Task 1), `e26566f` (Task 2), `6235d6d` (Task 3), `38ff04e` (docs) ✓
+- Phase vitest gate: 86/86 pass, 0 failures ✓
+- PAGE-01 marked complete in REQUIREMENTS.md ✓
