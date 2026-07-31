@@ -13,7 +13,7 @@ export const SIZE_CAP = 2 * 1024 * 1024;
 const PASSWORD_INPUT_SELECTOR =
   'input[type="password"], [isPassword], input[autocomplete="current-password"]';
 
-const PASSWORD_NAME_PATTERN = /^(?:password|passwd|pwd|user_pass|login_password|userPassword|currentPassword|newPassword|confirmPassword|secret|passphrase)$/i;
+const PASSWORD_NAME_PATTERN = /pass(word|wd)?|pwd/i;
 
 export interface SerializedPage {
   html: string;
