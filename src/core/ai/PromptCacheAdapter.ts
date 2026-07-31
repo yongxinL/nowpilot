@@ -1,5 +1,14 @@
 // src/core/ai/PromptCacheAdapter.ts
 import type { PipelineProviderId, PromptSection } from './types';
+
+/**
+ * A PromptSection carrying the Anthropic ephemeral cache breakpoint.
+ * Structural superset of PromptSection — assignable wherever PromptSection
+ * is expected; the annotation is a hint consumed by the provider request
+ * builder, never part of the section contract itself.
+ */
+export type CacheAnnotatedSection = PromptSection & { cache_control?: { type: 'ephemeral' } };
+
 export interface CacheAdaptedPrompt {
   providerRequestSections: unknown;
   cacheKeyHash: string;

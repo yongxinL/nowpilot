@@ -39,8 +39,8 @@ function section(overrides: Partial<PromptSection>): PromptSection {
   };
 }
 
-function asSections(adapted: unknown): PromptSection[] {
-  return adapted as PromptSection[];
+function asSections(adapted: unknown): CacheAnnotatedSection[] {
+  return adapted as CacheAnnotatedSection[];
 }
 
 function asGeminiShape(adapted: unknown): { cachedContent?: PromptSection[]; inline: PromptSection[] } {

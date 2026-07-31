@@ -85,6 +85,16 @@ export interface OptimizedContext {
   sections: PromptSection[];
   provenance: ContextProvenanceManifest;
   minimalMode: boolean;
+  /**
+   * Prompt cache metadata computed at the final stage of optimize() (D-13).
+   * cacheKeyHash is the FNV-1a hash of stable sections (D-16); the actual
+   * per-provider cache hint transformation happens after provider selection
+   * via PromptCacheManager.prepareCacheHints().
+   */
+  cacheMetadata?: {
+    cacheKeyHash: string;
+    stableSectionCount: number;
+  };
 }
 
 export interface ToolSchemaInfo {

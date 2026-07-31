@@ -7,6 +7,7 @@ import type {
 } from '../ai/types';
 import { PipelineError } from '../ai/PipelineError';
 import { providerRouter } from '../ai/ProviderRouter';
+import { hashStableSections } from '../ai/PromptCacheAdapter';
 import { classifyModelContext } from './ModelContextTier';
 import { tokenBudget } from './TokenBudget';
 import { contextCompressor } from './ContextCompressor';
@@ -61,9 +62,9 @@ const SYSTEM_PROMPT_TEXT =
 
 /**
  * First-class pipeline stage (D-01): owns tier classification, budget
- * allocation, section assembly, provenance tracking, and the initial
- * budget check. Runs once per turn (D-02). Compression/degradation and
- * cache preparation arrive in Plans 04-02/04-03.
+ * allocation, section assembly, provenance tracking, the initial budget
+ * check, degradation (04-02), and prompt cache metadata (04-03). Runs
+ * once per turn (D-02).
  */
 export class ContextOptimizer {
   async optimize(input: ContextOptimizerInput): Promise<OptimizedContext> {
@@ -142,6 +143,19 @@ export class ContextOptimizer {
       }
     }
 
+    // Step 6: prepare prompt cache metadata (final stage, D-13). The
+    // provider is not known here (selection happens later in
+    // AgentOrchestrator), so optimize() computes the provider-agnostic
+    // cache metadata: the FNV-1a cache key hash of the stable sections
+    // (D-16) and the stable section count. The per-provider cache hint
+    // transformation runs via PromptCacheManager.prepareCacheHints() after
+    // provider selection; cacheKeyHash is stable across providers so
+    // cross-turn cache-hit detection is preserved (D-16).
+    const cacheMetadata = {
+      cacheKeyHash: hashStableSections(sections),
+      stableSectionCount: sections.filter((s) => s.stable).length,
+    };
+
     return {
       tier,
       inputBudget,
@@ -149,6 +163,7 @@ export class ContextOptimizer {
       sections,
       provenance: manifest,
       minimalMode,
+      cacheMetadata,
     };
   }
 
