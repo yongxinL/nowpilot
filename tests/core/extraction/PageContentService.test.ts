@@ -363,6 +363,7 @@ describe('PageContentService (hardening)', () => {
   it('invalidates the cache when SPA_NAVIGATION announces a different URL', async () => {
     sendMessageMock.mockResolvedValue(makeSerializedPage());
     const service = new PageContentService();
+    service.init();
 
     await service.extract(1, 'default', 'https://example.com/article');
     expect(sendMessageMock).toHaveBeenCalledTimes(1);
@@ -383,6 +384,7 @@ describe('PageContentService (hardening)', () => {
   it('keeps the cache hot when SPA_NAVIGATION announces the same URL', async () => {
     sendMessageMock.mockResolvedValue(makeSerializedPage());
     const service = new PageContentService();
+    service.init();
 
     await service.extract(1, 'default', 'https://example.com/article');
     expect(sendMessageMock).toHaveBeenCalledTimes(1);
@@ -405,13 +407,16 @@ describe('PageContentService (hardening)', () => {
     sendMessageMock.mockResolvedValue(makeSerializedPage());
     const addListenerMock = (globalThis as any).chrome.tabs.onUpdated
       .addListener as ReturnType<typeof vi.fn>;
+    // Capture the listener registered by THIS init() call — earlier tests
+    // (SPA_NAVIGATION) already registered listeners on their own instances.
+    const listenerIndex = addListenerMock.mock.calls.length;
     const service = new PageContentService();
     service.init();
 
     await service.extract(1, 'default', 'https://example.com/article');
     expect(sendMessageMock).toHaveBeenCalledTimes(1);
 
-    const listener = addListenerMock.mock.calls[0][0];
+    const listener = addListenerMock.mock.calls[listenerIndex][0];
     listener(1, { status: 'complete', url: 'https://example.com/next' });
 
     await service.extract(1, 'default', 'https://example.com/article');
@@ -422,19 +427,40 @@ describe('PageContentService (hardening)', () => {
     sendMessageMock.mockResolvedValue(makeSerializedPage());
     const addListenerMock = (globalThis as any).chrome.tabs.onUpdated
       .addListener as ReturnType<typeof vi.fn>;
+    const listenerIndex = addListenerMock.mock.calls.length;
     const service = new PageContentService();
     service.init();
 
     await service.extract(1, 'default', 'https://example.com/article');
     expect(sendMessageMock).toHaveBeenCalledTimes(1);
 
-    const listener = addListenerMock.mock.calls[0][0];
+    const listener = addListenerMock.mock.calls[listenerIndex][0];
     listener(1, { status: 'loading', url: 'https://example.com/next' }); // not complete
     listener(1, { status: 'complete' }); // no URL in changeInfo
 
     const result = await service.extract(1, 'default', 'https://example.com/article');
     expect(result.ok).toBe(true);
     expect(sendMessageMock).toHaveBeenCalledTimes(1); // still cached
+  });
+
+  it('removes tab index and invalidates cache when tabs.onRemoved fires', async () => {
+    sendMessageMock.mockResolvedValue(makeSerializedPage());
+    const addListenerMock = (globalThis as any).chrome.tabs.onRemoved
+      .addListener as ReturnType<typeof vi.fn>;
+    // Capture the listener registered by THIS init() call — earlier tests
+    // (SPA_NAVIGATION + tabs.onUpdated) already registered their own.
+    const listenerIndex = addListenerMock.mock.calls.length;
+    const service = new PageContentService();
+    service.init();
+
+    await service.extract(1, 'default', 'https://example.com/article');
+    expect(sendMessageMock).toHaveBeenCalledTimes(1);
+
+    const listener = addListenerMock.mock.calls[listenerIndex][0];
+    listener(1);
+
+    await service.extract(1, 'default', 'https://example.com/article');
+    expect(sendMessageMock).toHaveBeenCalledTimes(2); // invalidated → fresh extraction
   });
 
   it('reExtract(tabId) invalidates; the next extract performs a fresh capture', async () => {
