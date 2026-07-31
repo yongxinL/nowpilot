@@ -3,6 +3,8 @@ import { register } from '../messaging/MessageBus';
 import { redactSensitive } from '../security/redactSensitive';
 import type { SerializedPage } from '../content/DomSerializer';
 import { DefuddleStrategy } from './strategies/DefuddleStrategy';
+import { ReadabilityFallback } from './strategies/ReadabilityFallback';
+import { ApcLiteStrategy } from './strategies/ApcLiteStrategy';
 import type { IExtractionStrategy } from './strategies/IExtractionStrategy';
 import { PageContentCache } from './PageContentCache';
 import { buildPageContext } from './PageContentSerializer';
@@ -29,7 +31,13 @@ export class PageContentService {
   private readonly pageContentCache = new PageContentCache();
   private _initialized = false;
 
-  constructor(strategies: IExtractionStrategy[] = [new DefuddleStrategy()]) {
+  constructor(
+    strategies: IExtractionStrategy[] = [
+      new DefuddleStrategy(),
+      new ReadabilityFallback(),
+      new ApcLiteStrategy(),
+    ],
+  ) {
     this.strategies = strategies;
     this.registerSpaNavigationHandler();
   }
@@ -141,10 +149,11 @@ export class PageContentService {
       }
       strategiesAttempted.push(strategy.id);
 
-      // D-07: confidence gate at orchestrator level — below 500 chars the
-      // extraction is considered low-confidence and the chain falls through
-      // to the next strategy (Plan 04a-02 adds ReadabilityFallback).
-      if (mode === 'default' && (result.markdown ?? '').length < 500) {
+      // D-07: confidence gate at orchestrator level — a low-confidence Defuddle
+      // result (< 500 chars) falls through to ReadabilityFallback. Readability
+      // self-throws below the same threshold, so only defuddle results need
+      // the explicit gate here.
+      if (mode === 'default' && result.source === 'defuddle' && (result.markdown ?? '').length < 500) {
         continue;
       }
 

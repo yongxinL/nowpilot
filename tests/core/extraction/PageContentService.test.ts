@@ -286,6 +286,79 @@ describe('PageContentService (hardening)', () => {
     expect(result.pageContext.mode).toBe('default');
   });
 
+  it('falls back from a low-confidence defuddle result to the readability strategy (D-07)', async () => {
+    sendMessageMock.mockResolvedValue(makeSerializedPage());
+    const lowConfidenceStrategy: IExtractionStrategy = {
+      id: 'defuddle',
+      canHandle: () => true,
+      run: async () => ({
+        source: 'defuddle',
+        markdown: 'short snippet under the confidence threshold',
+        approxTokens: 10,
+        truncated: false,
+      }),
+    };
+    const fallbackStrategy: IExtractionStrategy = {
+      id: 'readability',
+      canHandle: () => true,
+      run: async () => ({
+        source: 'readability',
+        markdown: 'x'.repeat(600),
+        approxTokens: 150,
+        truncated: false,
+      }),
+    };
+    const service = new PageContentService([lowConfidenceStrategy, fallbackStrategy]);
+
+    const result = await service.extract(1, 'default', 'https://example.com/article');
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok result');
+    expect(result.pageContext.source).toBe('readability');
+    if (result.pageContext.mode !== 'default') throw new Error('expected default mode');
+    expect(result.pageContext.markdown.length).toBeGreaterThanOrEqual(500);
+  });
+
+  it('selects only ApcLiteStrategy for mode=actionable and records single attempt', async () => {
+    sendMessageMock.mockResolvedValue(makeSerializedPage());
+    const defuddleRan = vi.fn();
+    const actionableRan = vi.fn();
+    const defuddleStrategy: IExtractionStrategy = {
+      id: 'defuddle',
+      canHandle: (input) => input.mode === 'default',
+      run: async () => {
+        defuddleRan();
+        return { source: 'defuddle', markdown: LONG_MARKDOWN, approxTokens: 150, truncated: false };
+      },
+    };
+    const apcLiteStrategy: IExtractionStrategy = {
+      id: 'apc-lite',
+      canHandle: (input) => input.mode === 'actionable',
+      run: async () => {
+        actionableRan();
+        return {
+          source: 'apc-lite',
+          root: { role: 'document', id: 'document-root' },
+          meta: { title: 't' },
+          approxTokens: 8,
+          truncated: false,
+        };
+      },
+    };
+    const service = new PageContentService([defuddleStrategy, apcLiteStrategy]);
+
+    const result = await service.extract(1, 'actionable', 'https://example.com/article');
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok result');
+    expect(result.pageContext.mode).toBe('actionable');
+    if (result.pageContext.mode !== 'actionable') throw new Error('expected actionable mode');
+    expect(result.pageContext.source).toBe('apc-lite');
+    expect(result.pageContext.apcLiteTree.id).toBe('document-root');
+    expect(defuddleRan).not.toHaveBeenCalled(); // mode filter excludes default-only strategies
+    expect(actionableRan).toHaveBeenCalledTimes(1);
+  });
+
   it('invalidates the cache when SPA_NAVIGATION announces a different URL', async () => {
     sendMessageMock.mockResolvedValue(makeSerializedPage());
     const service = new PageContentService();
