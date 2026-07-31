@@ -2,9 +2,11 @@
 
 **Document ID:** PRODUCT_SPEC_v0_1.md
 **Status:** Canonical, standalone implementation reference
-**Date:** 2026-07-27 (Rev. B — Knowledge-first reorganization + LLM-Wiki + RICH Design; content-complete for cost-effective coding agents)
+**Date:** 2026-07-31 (Rev. C — Verified Agent Harness + Evaluation + Multimodal Input; retains all Rev. B content)
 **Version:** v0.1
 **Scope:** NowPilot v0.1 — Chrome MV3 AI Assistant using Side Panel + Full App Tab. Add-on architecture preserved. Page injection deferred to v0.2+.
+
+**Revision note (Rev. C — 2026-07-31):** This revision preserves every Rev. B requirement and adds the verified-agent upgrade set derived from the AI Agent Book study: evidence-backed completion, trust-aware context, context receipts, memory governance, tool capability manifests, trajectory evaluation, verified continual evolution, carefully scoped multimodal input, and bounded multi-agent collaboration. New requirements live in §§28–32 and new implementation sub-phases 3a, 4b, 5b, 6a, 6b, 6c, 7a, and 8a. The canonical implementation order is defined in §30.1.
 
 **Revision note (Rev. B — 2026-07-27):** This revision folds three previously separate documents into this canonical spec while **keeping the version at v0.1**, and preserves the full verbatim depth (all appendix code) required by cost-effective coding agents (Claude Haiku, DeepSeek Flash, Gemini Flash):
 
@@ -52,6 +54,11 @@ Read in this exact order:
 - §25 — Future Page Injection Architecture & Deferred UI Features
 - §26 — PageContentService (Layered Page Extraction)
 - §27 — LLM-Wiki & Filesystem Sync
+- §28 — Verified Agent Harness Requirements (Rev. C)
+- §29 — Multimodal Input & Real-Time Interaction Foundation (Rev. C)
+- §30 — Revised Master Implementation Order (Rev. C)
+- §31 — Rev. C Verification, Security, and Acceptance Gates
+- §32 — Bounded Multi-Agent Collaboration (Rev. C)
 - Appendices A–M — canonical constants, type registry, and reference implementations
 
 Appendices C, E, F, G, I, J, K, L, and M are **mandatory** reading for any AI coding agent.
@@ -5107,4 +5114,367 @@ export function classifyIntent(rawUrl: string): QuickAction[] {
 }
 ```
 
-**End of NowPilot Product Specification v0.1 (Rev. B) — content-complete for cost-effective coding agents.**
+---
+
+### §28 — Verified Agent Harness Requirements (NEW Rev. C)
+
+#### §28.1 Purpose
+
+This section adds evidence-backed completion, trust-aware context, governed memory, capability-based tools, trajectory evaluation, and verified evolution. It does not replace the bounded Planner → Executor → Renderer architecture.
+
+#### §28.2 Agent reliability requirements
+
+- **AGT-01 (P0):** Add explicit trajectory states: assembling-context, planning, waiting-for-permission, executing, verifying, replanning, rendering, completed, failed, aborted.
+- **AGT-02 (P0):** Side-effecting success requires `CompletionEvidence`. Renderer must not claim execution without matching evidence.
+- **AGT-03 (P0):** Every turn produces a structured `AgentTurnOutcome`; cap exhaustion is partial, not successful.
+- **AGT-04 (P0):** Replanning follows the deterministic retry/terminal policy in `NOWPILOT_ADDITIONAL_REQUIREMENTS_AGENT_HARNESS.md`.
+
+#### §28.3 Trust-aware context requirements
+
+- **CTX-01 (P0):** Context sources carry relevance, freshness, trust, sensitivity, and instruction-authority metadata.
+- **CTX-02 (P0):** Page, note, memory, upload, and tool output are untrusted data and cannot redefine system/tool/permission policy.
+- **CTX-03 (P0):** `ContextProvenanceManifest` becomes a context receipt with inclusion, omission, original/final tokens, compression, and cache eligibility.
+- **CTX-04 (P0):** Stable prefix snapshot tests are mandatory.
+- **CTX-05 (P1):** Skills use progressive disclosure; irrelevant full instructions consume zero prompt tokens.
+- **CTX-06 (P1):** Diagnostics track context quality without persisting raw sensitive text.
+
+#### §28.4 Memory and knowledge governance
+
+- **MEM-01 (P0):** Memory taxonomy includes working, episodic, semantic, preference, and procedural records.
+- **MEM-02 (P0):** Durable memories require source, confidence, lifecycle, sensitivity, and verification timestamps.
+- **MEM-03 (P0):** Conflict precedence is explicit correction > verified current state > prior explicit memory > inference.
+- **MEM-04 (P0):** User controls include view, source, confidence, edit, pin, forget, type disable, export, and cloud exclusion.
+- **MEM-05 (P1):** Procedural experience is stored separately and activated only after verification and approval.
+- **KNW-01 (P1):** Graph edges record explicit, imported, suggested, or accepted provenance.
+
+#### §28.5 Tool governance
+
+- **TOL-01 (P0):** Every tool has a `ToolCapabilityManifest` with category, risk, side effect, permissions, scopes, timeout, cost, idempotency, verifier, and schema hashes.
+- **TOL-02 (P0):** Permission policy is risk- and side-effect based.
+- **TOL-03 (P0):** Side-effecting tools define postcondition verification.
+- **TOL-04 (P0):** Tool results are validated, redacted, size-limited, shaped, and attributed before context injection.
+- **TOL-05 (P0):** Every write tool is replay-safe through idempotency.
+- **TOL-06 (P1):** Tool registries use active discovery when schemas exceed the tools budget.
+- **TOL-07 (P2):** Long-running operations use a resumable async contract in a future phase.
+
+#### §28.6 Evaluation requirements
+
+- **EVAL-01 (P0):** Maintain versioned golden suites for planner, context, tools, permissions, providers, memory, RAG, completion evidence, and multimodal routing.
+- **EVAL-02 (P0):** Use a trajectory rubric with separate outcome, process, safety, grounding, memory, quality, latency, and cost dimensions.
+- **EVAL-03 (P0):** Prefer deterministic environment/process validators; use calibrated LLM judges only for qualitative dimensions.
+- **EVAL-04 (P0):** Diagnostics assign the first failing layer.
+- **EVAL-05 (P0):** Safety, leakage, injection, false-completion, citation, and isolation regressions block release.
+- **EVAL-06 (P1):** Report cost/latency/quality Pareto comparisons.
+- **EVAL-07 (P1):** Calibrate and version LLM judges.
+
+#### §28.7 Verified evolution requirements
+
+- **EVO-01 (P1):** Verified trajectories create candidates, never direct production changes.
+- **EVO-02 (P1):** Each candidate targets one layer: knowledge, retrieval, instruction, experience, tool, workflow, or model tier.
+- **EVO-03 (P1):** `EvolutionCandidate` stores evidence, baseline, candidate, security, version, status, and rollback.
+- **EVO-04 (P0):** Untrusted/raw content cannot directly update active prompts, tools, permissions, code, or procedural memory.
+- **EVO-05 (P1):** Candidate activation requires sandbox evaluation, approval, scoped rollout, monitoring, and rollback.
+- **EVO-06 (P2):** Agent-generated tools remain sandbox proposals and cannot self-publish.
+
+### §29 — Multimodal Input and Real-Time Interaction Foundation (NEW Rev. C)
+
+#### §29.1 Scope
+
+v0.1 Rev. C adds a bounded multimodal input foundation, not a second agent architecture. Image, audio, and document inputs become normalised observations consumed by the existing ContextOptimizer and agent pipeline.
+
+#### §29.2 Requirements
+
+- **MM-01 (P1):** Define `ModalityInput` for text, image, audio, and document references. Binary payloads never enter prompt sections directly.
+- **MM-02 (P1):** `ModalityObservation` carries source ID, modality, extracted text/structure, confidence, sensitivity, and timestamps.
+- **MM-03 (P1):** Image paste/upload supports screenshot, diagram, table, UI-state, and note-draft use cases through a configured vision-capable model.
+- **MM-04 (P1):** Voice input is transcribed into an editable Sender; tool execution requires explicit send/confirmation.
+- **MM-05 (P2):** A later fast/slow architecture separates low-latency interaction from deep reasoning/tool work.
+- **MM-06 (P1):** Interruption propagates the existing AbortSignal across transcription, planning, tools, and rendering.
+- **MM-07 (P0 boundary):** APC-lite does not authorise computer use. Browser automation remains deferred to a separate addendum.
+
+#### §29.3 Privacy and provider routing
+
+- Modality blobs are operation-scoped unless explicitly saved.
+- No raw image/audio persistence in traces.
+- TraceRedactor applies to extracted/transcribed observations.
+- Never switch local to cloud for multimodal processing unless `allowCloudFallbackFromLocal` permits it.
+- If no compatible model is configured, return `MULTIMODAL_MODEL_UNAVAILABLE` with a settings action.
+
+### §30 — Revised Master Implementation Order (NEW Rev. C)
+
+#### §30.1 Canonical order
+
+```text
+1 → 2 → 3 → 3a → 4 → 4a → 4b → 5 → 5a → 5b
+  → 6 → 6a → 6b → 6c → 7 → 7a → 8 → 8a → 9
+```
+
+The original Phase 1–9 requirements remain intact. The following sub-phases insert new work without deleting or renumbering existing features.
+
+#### Phase 3a — Agent Reliability and Evidence
+
+**Depends on:** Phase 3  
+**Create/modify:** `AgentTrajectoryState`, `OutcomeVerifier`, `CompletionEvidence`, `AgentTurnOutcome`, AgentOrchestrator integration, Renderer completion guard.  
+**DONE when:** transitions, evidence, partial/cap behaviour, abort, and false-completion tests pass.
+
+#### Phase 4b — Trust-Aware Context and Receipts
+
+**Depends on:** Phases 4 and 4a  
+**Create/modify:** `ContextItem`, trust policy, context receipt, injection defences, stable-prefix snapshots, progressive skill disclosure.  
+**DONE when:** malicious page/note/tool fixtures cannot alter policy and Prompt Inspector reconstructs packing decisions.
+
+#### Phase 5b — Memory Governance and Experience Candidates
+
+**Depends on:** Phases 5 and 5a  
+**Create/modify:** `MemoryRecord`, conflict resolver, lifecycle controls, procedural experience candidate store, edge provenance.  
+**DONE when:** conflicts, forget, expiry, sensitivity, provenance, and Notes/Memory boundaries pass.
+
+#### Phase 6a — Agent Evaluation
+
+**Depends on:** Phase 6 and available core capabilities  
+**Create:** `src/core/evaluation/**`, `tests/evals/**`, evaluation reports in Diagnostics.  
+**DONE when:** golden suites produce per-dimension evidence and failure-layer categorisation.
+
+#### Phase 6b — Verified Continual Evolution
+
+**Depends on:** Phases 5b and 6a  
+**Create:** `src/core/evolution/**`, candidate store, sandbox runner, approval/version/rollback contracts.  
+**DONE when:** raw traces cannot self-activate; a candidate can be proposed, tested, approved, scoped, and rolled back.
+
+#### Phase 6c — Bounded Multi-Role Collaboration
+
+**Depends on:** Phases 3a, 4b, 6a, and 6b  
+**Create:** `src/core/collaboration/**`, typed role policies and handoffs, collaboration coordinator, trace integration, and baseline evaluation fixtures.  
+**DONE when:** roles, tools, contexts, budgets, permissions, handoffs, independent review, failure fallback, and single-agent baseline gates pass. Full requirements are in §32.
+
+#### Phase 7a — Multimodal Input Foundation
+
+**Depends on:** Phase 7 and Phase 4b  
+**Create:** `src/core/multimodal/**`, image input UI, voice transcription input, provider capability gates, modality fixtures.  
+**DONE when:** image/audio inputs become redacted ContextItems, unsupported providers fail safely, and abort works.
+
+#### Phase 8a — Tool Governance and Active Discovery
+
+**Depends on:** Phase 8 and Phase 3a  
+**Create/modify:** `ToolCapabilityManifest`, risk matrix, verifier registry, result shaping, idempotency, active tool discovery.  
+**DONE when:** manifests are complete, risky writes require confirmation, duplicate writes are prevented, and discovery stays within token budget.
+
+#### Phase 9 — Hardening and Release (expanded)
+
+In addition to all existing Phase 9 gates:
+
+- run every new sub-phase verification command;
+- block prompt-injection, secret-leakage, false-completion, permission, and memory-isolation regressions;
+- run multimodal privacy/provider fixtures;
+- run candidate activation/rollback drills;
+- include evaluation-suite and rubric versions in release records.
+
+### §31 — Rev. C Type, Error, Verification, and Security Additions
+
+#### §31.1 New canonical types
+
+The full shapes are defined in `NOWPILOT_ADDITIONAL_REQUIREMENTS_AGENT_HARNESS.md`. Add them to Appendix C when implementing their target sub-phase:
+
+- `AgentTrajectoryState`
+- `CompletionEvidence`
+- `AgentTurnOutcome`
+- `ContextItem`
+- `ContextReceiptEntry`
+- `MemoryRecord`
+- `ProceduralExperience`
+- `KnowledgeEdgeSource`
+- `ToolCapabilityManifest`
+- `FailureLayer`
+- `EvolutionCandidate`
+- `ModalityInput`
+- `ModalityObservation`
+- `CollaborationRole`
+- `RolePolicy`
+- `CollaborationPlan`
+- `AgentHandoffArtifact`
+- `CollaborationOutcome`
+
+#### §31.2 New error codes
+
+```text
+AGENT_STATE_INVALID
+TOOL_POSTCONDITION_FAILED
+COMPLETION_EVIDENCE_MISSING
+CONTEXT_INSTRUCTION_INJECTION_BLOCKED
+MEMORY_CONFLICT
+MEMORY_EXPIRED
+TOOL_MANIFEST_INVALID
+TOOL_IDEMPOTENCY_CONFLICT
+EVALUATION_FAILED
+EVOLUTION_CANDIDATE_REJECTED
+MULTIMODAL_MODEL_UNAVAILABLE
+MULTIMODAL_INPUT_INVALID
+MULTIMODAL_TRANSCRIPTION_FAILED
+COLLAB_DISABLED
+COLLAB_PLAN_INVALID
+COLLAB_ROLE_UNKNOWN
+COLLAB_ROLE_BUDGET_EXCEEDED
+COLLAB_TOTAL_BUDGET_EXCEEDED
+COLLAB_HANDOFF_INVALID
+COLLAB_TOOL_SCOPE_VIOLATION
+COLLAB_PERMISSION_VIOLATION
+COLLAB_REVIEW_REJECTED
+COLLAB_BASELINE_NOT_MET
+COLLAB_DEADLINE_EXCEEDED
+```
+
+#### §31.3 New verification scripts
+
+```json
+{
+  "verify:phase-3a": "tsc --noEmit && vitest run tests/core/ai/trajectory tests/core/ai/OutcomeVerifier.test.ts",
+  "verify:phase-4b": "tsc --noEmit && vitest run tests/core/context/trust tests/security/prompt-injection",
+  "verify:phase-5b": "tsc --noEmit && vitest run tests/core/memory/governance tests/core/knowledge/provenance",
+  "verify:phase-6a": "tsc --noEmit && vitest run tests/evals",
+  "verify:phase-6b": "tsc --noEmit && vitest run tests/core/evolution",
+  "verify:phase-6c": "tsc --noEmit && vitest run tests/core/collaboration tests/evals/collaboration tests/security/collaboration-permissions.test.ts",
+  "verify:phase-7a": "tsc --noEmit && vitest run tests/core/multimodal tests/components/multimodal",
+  "verify:phase-8a": "tsc --noEmit && vitest run tests/core/tools/governance tests/core/tools/discovery"
+}
+```
+
+`verify:all` must include every existing and new suite.
+
+#### §31.4 New hard rules
+
+- **DO NOT** claim a side effect completed without `CompletionEvidence`.
+- **DO NOT** treat retrieved data as instructions.
+- **DO NOT** write raw traces directly into procedural memory.
+- **DO NOT** activate an evolution candidate without evaluation and approval.
+- **DO NOT** persist raw image/audio data in diagnostics.
+- **DO NOT** execute tools from partial voice transcription.
+- **DO NOT** infer that APC-lite enables browser automation.
+- **DO NOT** allow open-ended agent-to-agent conversations or dynamic unbounded spawning.
+- **DO NOT** let worker roles grant permissions, execute side effects, or write durable memory directly.
+- **DO NOT** treat agreement among agents as evidence or verification.
+
+#### §31.5 Source study
+
+- [AI Agent Fundamentals](https://bojieli.github.io/ai-agent-book/book-en/chapter1/)
+- [Context Engineering](https://bojieli.github.io/ai-agent-book/book-en/chapter2/)
+- [User Memory and Knowledge](https://bojieli.github.io/ai-agent-book/book-en/chapter3/)
+- [Tools](https://bojieli.github.io/ai-agent-book/book-en/chapter4/)
+- [Evaluating Agents](https://bojieli.github.io/ai-agent-book/book-en/chapter6/)
+- [Continual Evolution of Agent](https://bojieli.github.io/ai-agent-book/book-en/chapter8/)
+- [Multimodality and Real-Time Interaction](https://bojieli.github.io/ai-agent-book/book-en/chapter9/)
+- [Multi-Agent Collaboration](https://bojieli.github.io/ai-agent-book/book-en/chapter10/)
+
+
+
+### §32 — Bounded Multi-Agent Collaboration (NEW Rev. C)
+
+#### §32.1 Product decision
+
+NowPilot may use specialised multi-agent collaboration for selected complex workflows, but v0.1 does not become an open-ended multi-agent platform. The initial architecture is one `CollaborationCoordinator` running bounded staged roles with shared verified task state and typed handoffs. Isolated parallel workers are deferred.
+
+Routine chat, summarisation, rewriting, and simple retrieval remain on the existing single-agent path.
+
+#### §32.2 Requirements
+
+- **COLLAB-01 (P1):** Collaboration requires explicit user/workflow activation or an allowed deterministic complexity policy. Planner recommendation alone cannot silently enable it.
+- **COLLAB-02 (P1):** Roles come from a closed `CollaborationRoleRegistry`; each has a role-specific prompt, tool allowlist, context projection, budget, and timeout.
+- **COLLAB-03 (P1):** `CollaborationPlan` defines stages, dependencies, roles, total planner/tool/token caps, and deadline.
+- **COLLAB-04 (P1):** Roles exchange `AgentHandoffArtifact` values containing summaries, sourced facts, open questions, output references, and completion status. Hidden reasoning is never exchanged or logged.
+- **COLLAB-05 (P0 boundary):** One coordinator owns sequencing, permission requests, side-effect commits, and termination.
+- **COLLAB-06 (P0 boundary):** Workers cannot directly write memory/notes, execute side effects, export data, or activate evolution candidates.
+- **COLLAB-07 (P1):** High-impact output requires an independent reviewer that did not create the candidate result.
+- **COLLAB-08 (P1):** Role failures are contained and may trigger one safe retry, substitution, reduced-confidence continuation, single-agent fallback, or termination.
+- **COLLAB-09 (P1):** Initial staged roles share one OptimizedContext through role-specific projections and typed artefacts; full trajectories are not duplicated across roles.
+- **COLLAB-10 (P1):** Collaboration traces record roles, policies, supplied sources, handoffs, tools, permissions, budgets, reviewer decision, evidence, and termination without raw prompts or hidden reasoning.
+- **COLLAB-11 (P1):** A collaborative workflow ships only after evaluation against the single-agent baseline and configured quality/cost/latency/safety gates.
+- **COLLAB-12 (P2):** Future isolated parallel workers are allowed only for independent sub-tasks and communicate through validated artefacts or referenced files.
+- **COLLAB-13 (P0 boundary):** Open-ended agent chat, dynamic unbounded spawning, peer-granted permissions, shared mutable worker memory, and agreement-as-verification are forbidden.
+
+#### §32.3 Initial workflow candidates
+
+1. Complex ServiceNow case investigation.
+2. Deep multi-source research.
+3. High-value LLM-Wiki knowledge review.
+4. Verified evolution review.
+5. Specification → implementation → test → architecture review.
+
+#### §32.4 Required types
+
+Add canonical Zod-validated types to Appendix C during Phase 6c:
+
+- `CollaborationRole`
+- `RolePolicy`
+- `CollaborationPlan`
+- `AgentHandoffArtifact`
+- `CollaborationOutcome`
+
+#### §32.5 Phase 6c — Bounded Multi-Role Collaboration
+
+**Depends on:** Phases 3a, 4b, 6a, and 6b.  
+**Create:**
+
+```text
+src/core/collaboration/CollaborationRoleRegistry.ts
+src/core/collaboration/CollaborationPlan.ts
+src/core/collaboration/CollaborationCoordinator.ts
+src/core/collaboration/AgentHandoffArtifact.ts
+src/core/collaboration/CollaborationPolicy.ts
+src/core/collaboration/CollaborationTrace.ts
+```
+
+**Required tests:**
+
+```text
+tests/core/collaboration/CollaborationCoordinator.test.ts
+tests/core/collaboration/CollaborationPolicy.test.ts
+tests/core/collaboration/AgentHandoffArtifact.test.ts
+tests/evals/collaboration/SingleAgentBaseline.test.ts
+tests/security/collaboration-permissions.test.ts
+```
+
+**DONE when:**
+
+- only registered roles can run;
+- per-role and total budgets are enforced;
+- workers receive only allowed tools/context;
+- all handoffs validate and preserve source provenance;
+- one coordinator owns permissions and commits;
+- reviewer cannot approve unsupported claims;
+- failure/fallback paths are deterministic;
+- the first workflow passes its single-agent baseline gate;
+- `pnpm run verify:phase-6c` passes.
+
+#### §32.6 Future Phase 8b — Isolated Parallel Workers
+
+Parallel worker execution is deferred until Phase 6c is stable and evaluated. It requires isolated contexts, bounded concurrency, cancellation, referenced artefacts, deterministic merge/review, and no shared mutable state. Agent-generated tool proposals remain a separate later capability and must not be combined with initial parallel-worker work.
+
+#### §32.7 New error codes
+
+```text
+COLLAB_DISABLED
+COLLAB_PLAN_INVALID
+COLLAB_ROLE_UNKNOWN
+COLLAB_ROLE_BUDGET_EXCEEDED
+COLLAB_TOTAL_BUDGET_EXCEEDED
+COLLAB_HANDOFF_INVALID
+COLLAB_TOOL_SCOPE_VIOLATION
+COLLAB_PERMISSION_VIOLATION
+COLLAB_REVIEW_REJECTED
+COLLAB_BASELINE_NOT_MET
+COLLAB_DEADLINE_EXCEEDED
+```
+
+#### §32.8 New verification command
+
+```json
+{
+  "verify:phase-6c": "tsc --noEmit && vitest run tests/core/collaboration tests/evals/collaboration tests/security/collaboration-permissions.test.ts"
+}
+```
+
+#### §32.9 Source study
+
+- [Multi-Agent Collaboration](https://bojieli.github.io/ai-agent-book/book-en/chapter10/)
+
+
+**End of NowPilot Product Specification v0.1 Rev. C — preserves all Rev. B requirements and adds §§28–32.**
