@@ -7,6 +7,7 @@ depends_on:
   - 03a-02
   - 03a-03
 files_modified:
+  - tests/core/ai/AgentOrchestrator.test.ts
   - tests/core/ai/integration.test.ts
   - tests/core/ai/trajectory/AgentTrajectoryMachine.test.ts
   - package.json
@@ -60,6 +61,35 @@ Output: Comprehensive integration test suite, complete AgentTrajectoryMachine un
 </context>
 
 <tasks>
+
+<task type="auto">
+  <name>Migrate AgentOrchestrator.test.ts to work with AgentTurnOutcome return type (per D-01)</name>
+  <files>tests/core/ai/AgentOrchestrator.test.ts</files>
+  <read_first>
+    - tests/core/ai/AgentOrchestrator.test.ts — existing test file with string-typed assertions (lines around 67, 80, 151 check `typeof result === 'string'` and exact string matches)
+    - src/core/ai/AgentOrchestrator.ts — now returns `AgentTurnOutcome` instead of `string` per D-01
+    - src/core/ai/AgentTurnOutcome.ts — `AgentTurnOutcome` interface with `renderedAnswer` field
+  </read_first>
+  <action>
+    Update `tests/core/ai/AgentOrchestrator.test.ts` to work with the new `AgentTurnOutcome` return type from `runTurn()` (per D-01). This is a **mechanical migration** of existing assertions — not a rewrite of test logic.
+
+    1. Replace `typeof result === 'string'` assertions with `typeof result.renderedAnswer === 'string'`
+    2. Replace exact string match assertions on the return value with assertions on `result.renderedAnswer` (e.g., `expect(result).toBe('expected')` → `expect(result.renderedAnswer).toBe('expected')`)
+    3. Where tests destructure or assign `const r = await runTurn(...)`, add `.renderedAnswer` access for the old string value
+    4. Add type import if needed: `import type { AgentTurnOutcome } from '../../../src/core/ai/AgentTurnOutcome'` — but only if the test file doesn't already import something that provides the type
+
+    Existing mock setups (ProviderRouter, PlannerService, ExecutorService, RendererService) and test structure do NOT change — only the assertions on the return value.
+  </action>
+  <verify>
+    <automated>npx vitest run tests/core/ai/AgentOrchestrator.test.ts</automated>
+  </verify>
+  <acceptance_criteria>
+    - `npx vitest run tests/core/ai/AgentOrchestrator.test.ts` exits 0 — all existing tests pass after migration
+    - `typeof result === 'string'` assertions are replaced with checks on `result.renderedAnswer`
+    - `npx tsc --noEmit` passes for the modified test file
+  </acceptance_criteria>
+  <done>AgentOrchestrator.test.ts migrated to AgentTurnOutcome return type; all existing tests pass; no bare string-typed return assertions remain</done>
+</task>
 
 <task type="auto" tdd="true">
   <name>Complete AgentTrajectoryMachine unit tests + full integration test suite</name>

@@ -187,7 +187,7 @@ Output: New types module (AgentTurnOutcome.ts), trajectory FSM (AgentTrajectoryM
     - Evidence and replan integration are NOT added in this plan — those are Plan 02 additions
   </action>
   <verify>
-    <automated>npx vitest run tests/core/ai/trajectory/tracer.test.ts</automated>
+    <automated>npx tsc --noEmit</automated>
   </verify>
   <acceptance_criteria>
     - `src/core/ai/AgentTrajectoryMachine.ts` exports `AgentTrajectoryMachine` class

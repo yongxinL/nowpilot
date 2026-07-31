@@ -75,6 +75,7 @@ Output: OutcomeVerifier service, verifier strategy modules, ReplanPolicy pure fu
     - CONTEXT.md D-08, D-09, D-10 — exact contracts for evidence fields, OutcomeVerifier, and discriminated union
   </read_first>
   <action>
+    <!-- scope note: 4 files below are logically one module — VerifierTypes.ts defines the contract consumed by SchemaVerifier, EnvironmentVerifier, and OutcomeVerifier; splitting the type definition from its consumers would require cross-task context coordination without benefit -->
     **1. Create `src/core/ai/verifier/VerifierTypes.ts`** — new file in new directory:
     - `VerifierType` type = `'schema' | 'environment' | 'read-after-write' | 'tool-provided'` (from D-09)
     - `VerifierFn` type = `(result: ToolExecutionResult, expectedSchema?: Record<string, unknown>) => Promise<CompletionEvidenceCheck[]>`

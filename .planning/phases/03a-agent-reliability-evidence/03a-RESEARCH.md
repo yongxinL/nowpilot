@@ -896,7 +896,7 @@ export function buildRenderingOutcomePolicy(
 | A3 | `JSON.stringify(input)` with sorted keys produces deterministic output for all tool input shapes | Idempotency Pattern | **Low** — all tool inputs are plain JSON-serializable objects. Exotic types (Map, Set, Date) are not used as tool inputs in this codebase. |
 | A4 | No external consumers call `agentOrchestrator.runTurn()` outside of `src/` | Common Pitfalls #1 | **Low** — verified by codebase analysis. `agentOrchestrator` is only exported from `src/core/ai/AgentOrchestrator.ts` and consumed via module imports within the project. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should `AgentTurnOutcome` be a class with methods or a plain interface?**
    - What we know: D-02 specifies a comprehensive interface with readonly fields. The codebase uses plain interfaces with Zod validation for most contracts (PlannerDecision, OptimizedContext, AgentTurnInput).

@@ -166,6 +166,7 @@ Output: Idempotent ExecutorService, and passing unit tests for OutcomeVerifier, 
     - vitest.config.ts — jsdom environment, globals enabled
   </read_first>
   <action>
+    <!-- scope note: 5 test files are created together because test files are structurally uniform (same vitest patterns, same import structure, same mock conventions); grouping maximizes context reuse — the executor reads existing test patterns once and applies them consistently across all files -->
     Create/update the following test files. Each test file follows the existing vitest patterns: `describe/it/expect/vi` with `beforeEach(vi.clearAllMocks)`. Test files import from `../../../src/core/ai/...`.
 
     **1. Create `tests/core/ai/verifier/OutcomeVerifier.test.ts`:**
