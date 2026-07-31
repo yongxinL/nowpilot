@@ -1,12 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { JSDOM } from 'jsdom';
+import { createEnvelope } from '../../../src/core/runtime/RuntimeEnvelope';
+import { dispatch } from '../../../src/core/messaging/MessageBus';
 import { serializePage, type SerializedPage } from '../../../src/core/content/DomSerializer';
 import { PageContentService } from '../../../src/core/extraction/PageContentService';
 import type { IExtractionStrategy } from '../../../src/core/extraction/strategies/IExtractionStrategy';
 
 /**
- * Tracer-level PageContentService tests: mocked chrome.tabs.sendMessage
- * stands in for the content-script EXTRACT_PAGE_CONTENT round-trip.
+ * PageContentService tests: mocked chrome.tabs.sendMessage stands in for the
+ * content-script EXTRACT_PAGE_CONTENT round-trip.
  */
 
 const FIXTURE_BODY = `
@@ -184,5 +186,251 @@ describe('PageContentService (tracer)', () => {
     expect(json.mode).toBe('default');
     expect(typeof json.markdown).toBe('string');
     expect((json.markdown as string).length).toBeGreaterThan(0);
+  });
+});
+
+describe('PageContentService (hardening)', () => {
+  const LONG_MARKDOWN = 'x'.repeat(600);
+
+  it('returns CAPTURE_FAILED when the content script request rejects', async () => {
+    sendMessageMock.mockRejectedValue(new Error('Receiving end does not exist'));
+    const service = new PageContentService();
+
+    const result = await service.extract(1, 'default', 'https://example.com/article');
+
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected failure result');
+    expect(result.error.code).toBe('CAPTURE_FAILED');
+    expect(result.error.strategiesAttempted).toEqual([]);
+  });
+
+  it('returns CAPTURE_FAILED when the content script response is malformed', async () => {
+    sendMessageMock.mockResolvedValue({ not: 'a SerializedPage' });
+    const service = new PageContentService();
+
+    const result = await service.extract(1, 'default', 'https://example.com/article');
+
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected failure result');
+    expect(result.error.code).toBe('CAPTURE_FAILED');
+    expect(result.error.message).toContain('invalid response');
+  });
+
+  it('returns NO_CONTENT when all strategies produce low-confidence content', async () => {
+    sendMessageMock.mockResolvedValue(makeSerializedPage());
+    const lowConfidenceStrategy: IExtractionStrategy = {
+      id: 'defuddle',
+      canHandle: () => true,
+      run: async () => ({
+        source: 'defuddle',
+        markdown: 'short snippet under the confidence threshold',
+        approxTokens: 10,
+        truncated: false,
+      }),
+    };
+    const service = new PageContentService([lowConfidenceStrategy]);
+
+    const result = await service.extract(1, 'default', 'https://example.com/article');
+
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected failure result');
+    expect(result.error.code).toBe('NO_CONTENT');
+    expect(result.error.strategiesAttempted).toEqual(['defuddle']);
+  });
+
+  it('returns PARSE_ERROR when a strategy throws', async () => {
+    sendMessageMock.mockResolvedValue(makeSerializedPage());
+    const throwingStrategy: IExtractionStrategy = {
+      id: 'defuddle',
+      canHandle: () => true,
+      run: async () => {
+        throw new Error('strategy crashed');
+      },
+    };
+    const service = new PageContentService([throwingStrategy]);
+
+    const result = await service.extract(1, 'default', 'https://example.com/article');
+
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected failure result');
+    expect(result.error.code).toBe('PARSE_ERROR');
+    expect(result.error.strategiesAttempted).toEqual(['defuddle']);
+  });
+
+  it('continues the fallback chain to the next strategy when the first throws', async () => {
+    sendMessageMock.mockResolvedValue(makeSerializedPage());
+    const throwingStrategy: IExtractionStrategy = {
+      id: 'defuddle',
+      canHandle: () => true,
+      run: async () => {
+        throw new Error('strategy crashed');
+      },
+    };
+    const succeedingStrategy: IExtractionStrategy = {
+      id: 'readability',
+      canHandle: () => true,
+      run: async () => ({
+        source: 'readability',
+        markdown: LONG_MARKDOWN,
+        approxTokens: 150,
+        truncated: false,
+      }),
+    };
+    const service = new PageContentService([throwingStrategy, succeedingStrategy]);
+
+    const result = await service.extract(1, 'default', 'https://example.com/article');
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok result');
+    expect(result.pageContext.source).toBe('readability');
+    expect(result.pageContext.mode).toBe('default');
+  });
+
+  it('invalidates the cache when SPA_NAVIGATION announces a different URL', async () => {
+    sendMessageMock.mockResolvedValue(makeSerializedPage());
+    const service = new PageContentService();
+
+    await service.extract(1, 'default', 'https://example.com/article');
+    expect(sendMessageMock).toHaveBeenCalledTimes(1);
+
+    await dispatch(
+      createEnvelope(
+        'SPA_NAVIGATION',
+        { url: 'https://example.com/other-page', timestamp: Date.now() },
+        'content',
+      ),
+      { tab: { id: 1 } } as chrome.runtime.MessageSender,
+    );
+
+    await service.extract(1, 'default', 'https://example.com/article');
+    expect(sendMessageMock).toHaveBeenCalledTimes(2); // cache miss → fresh extraction
+  });
+
+  it('keeps the cache hot when SPA_NAVIGATION announces the same URL', async () => {
+    sendMessageMock.mockResolvedValue(makeSerializedPage());
+    const service = new PageContentService();
+
+    await service.extract(1, 'default', 'https://example.com/article');
+    expect(sendMessageMock).toHaveBeenCalledTimes(1);
+
+    await dispatch(
+      createEnvelope(
+        'SPA_NAVIGATION',
+        { url: 'https://example.com/article', timestamp: Date.now() },
+        'content',
+      ),
+      { tab: { id: 1 } } as chrome.runtime.MessageSender,
+    );
+
+    const result = await service.extract(1, 'default', 'https://example.com/article');
+    expect(result.ok).toBe(true);
+    expect(sendMessageMock).toHaveBeenCalledTimes(1); // cache hit — no re-extraction
+  });
+
+  it('invalidates the cache when tabs.onUpdated fires with a complete navigation', async () => {
+    sendMessageMock.mockResolvedValue(makeSerializedPage());
+    const addListenerMock = (globalThis as any).chrome.tabs.onUpdated
+      .addListener as ReturnType<typeof vi.fn>;
+    const service = new PageContentService();
+    service.init();
+
+    await service.extract(1, 'default', 'https://example.com/article');
+    expect(sendMessageMock).toHaveBeenCalledTimes(1);
+
+    const listener = addListenerMock.mock.calls[0][0];
+    listener(1, { status: 'complete', url: 'https://example.com/next' });
+
+    await service.extract(1, 'default', 'https://example.com/article');
+    expect(sendMessageMock).toHaveBeenCalledTimes(2); // invalidated → fresh extraction
+  });
+
+  it('does not invalidate the cache on non-complete or URL-less tabs.onUpdated events', async () => {
+    sendMessageMock.mockResolvedValue(makeSerializedPage());
+    const addListenerMock = (globalThis as any).chrome.tabs.onUpdated
+      .addListener as ReturnType<typeof vi.fn>;
+    const service = new PageContentService();
+    service.init();
+
+    await service.extract(1, 'default', 'https://example.com/article');
+    expect(sendMessageMock).toHaveBeenCalledTimes(1);
+
+    const listener = addListenerMock.mock.calls[0][0];
+    listener(1, { status: 'loading', url: 'https://example.com/next' }); // not complete
+    listener(1, { status: 'complete' }); // no URL in changeInfo
+
+    const result = await service.extract(1, 'default', 'https://example.com/article');
+    expect(result.ok).toBe(true);
+    expect(sendMessageMock).toHaveBeenCalledTimes(1); // still cached
+  });
+
+  it('reExtract(tabId) invalidates; the next extract performs a fresh capture', async () => {
+    sendMessageMock.mockResolvedValue(makeSerializedPage());
+    const service = new PageContentService();
+
+    await service.extract(1, 'default', 'https://example.com/article');
+    service.reExtract(1);
+    await service.extract(1, 'default', 'https://example.com/article');
+
+    expect(sendMessageMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('redacts secrets from extracted markdown (script + visible text) leaving placeholders', async () => {
+    const dom = new JSDOM(
+      `<!DOCTYPE html><html><head><title>Secrets</title></head><body>
+<article>
+  <h1>Secrets Integration</h1>
+  <p>${'Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. '.repeat(6)}</p>
+  <p>Dashboard key: sk-abc123xyz789</p>
+  <p>Auth header: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U</p>
+  <p>Session: JSESSIONID=abc123def456</p>
+  <script>
+    window.__config = {
+      api_key: 'sk-abc123xyz789',
+      token: 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U',
+    };
+  </script>
+</article>
+</body></html>`,
+      { url: 'https://example.com/secrets' },
+    );
+    sendMessageMock.mockResolvedValue(serializePage(dom.window.document));
+    const service = new PageContentService();
+
+    const result = await service.extract(1, 'default', 'https://example.com/secrets');
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok result');
+    if (result.pageContext.mode !== 'default') throw new Error('expected default mode');
+    const markdown = result.pageContext.markdown;
+    expect(markdown).not.toContain('sk-abc123xyz789');
+    expect(markdown).not.toContain('eyJhbGciOiJIUzI1NiJ9');
+    expect(markdown).not.toContain('abc123def456');
+    expect(markdown).toContain('***REDACTED***');
+  });
+
+  it('produces the data shape consumed by ContextOptimizer.buildPageContextSection', async () => {
+    sendMessageMock.mockResolvedValue(makeSerializedPage());
+    const service = new PageContentService();
+
+    const result = await service.extract(1, 'default', 'https://example.com/article');
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok result');
+
+    // buildPageContextSection does JSON.stringify(pageContext) into a
+    // PromptSection { kind: 'context', sourceId: 'context.page.current' }.
+    // The serialized form must carry the fields the section relies on.
+    const section = JSON.stringify(result.pageContext);
+    const parsed = JSON.parse(section) as Record<string, unknown>;
+    expect(parsed).toMatchObject({
+      mode: 'default',
+      url: 'https://example.com/article',
+      title: 'Extraction Tracer Fixture',
+      source: 'defuddle',
+    });
+    for (const key of ['capturedAt', 'size', 'markdown']) {
+      expect(parsed[key]).toBeDefined();
+    }
+    expect(section.length).toBeGreaterThan(0);
   });
 });
