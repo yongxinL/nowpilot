@@ -2,6 +2,7 @@ import { APCLiteDocumentSchema } from '../apcLite.types';
 import type { APCLiteDocument, APCLiteNode } from '../apcLite.types';
 import type { IExtractionStrategy } from './IExtractionStrategy';
 import type { ExtractionMode, StrategyInput, StrategyResult } from '../types';
+import { isPasswordFieldName } from '../../content/DomSerializer';
 
 /**
  * APCLite structural extraction strategy (D-08).
@@ -130,8 +131,22 @@ function isHidden(el: Element): boolean {
   return el.hasAttribute('hidden') || el.getAttribute('aria-hidden') === 'true';
 }
 
-function inputRole(el: Element): string {
+/**
+ * WR-04: type=hidden inputs must never enter the tree — they carry CSRF/session
+ * tokens and pre-filled user data. Returns true for INPUT elements whose type
+ * attribute (defaulting to 'text') is 'hidden'.
+ */
+function isHiddenInput(el: Element): boolean {
+  return (
+    el.tagName.toLowerCase() === 'input' &&
+    (el.getAttribute('type') || 'text').toLowerCase() === 'hidden'
+  );
+}
+
+function inputRole(el: Element): string | null {
   switch ((el.getAttribute('type') || 'text').toLowerCase()) {
+    case 'hidden':
+      return null; // WR-04: defense in depth — hidden inputs never get a role
     case 'checkbox':
       return 'checkbox';
     case 'radio':
@@ -244,9 +259,23 @@ function attributesOf(el: Element): Record<string, string> | undefined {
         attributes[name] = attr.value;
         break;
       case 'value':
-        // D-02 / spec §16: password values are NEVER captured at source.
-        if (el.tagName.toLowerCase() === 'input' && (el.getAttribute('type') || '').toLowerCase() === 'password') {
-          break;
+        // D-02 / WR-04: sensitive input values are NEVER captured at source.
+        // Mirrors the DomSerializer guard via the shared isPasswordFieldName —
+        // type=password, type=hidden, name-heuristic, autocomplete and
+        // isPassword all skip the value; non-input elements (e.g. option)
+        // and ordinary text inputs keep theirs.
+        if (el.tagName.toLowerCase() === 'input') {
+          const type = (el.getAttribute('type') || '').toLowerCase();
+          const name = el.getAttribute('name') || '';
+          if (
+            type === 'password' ||
+            type === 'hidden' ||
+            isPasswordFieldName(name) ||
+            el.getAttribute('autocomplete') === 'current-password' ||
+            el.hasAttribute('isPassword')
+          ) {
+            break;
+          }
         }
         attributes[name] = attr.value;
         break;
@@ -313,7 +342,10 @@ class DomWalker {
     }
     const nodes: APCLiteNode[] = [];
     for (const child of Array.from(el.children)) {
-      if (SKIP_TAGS.has(child.tagName.toLowerCase()) || isHidden(child)) continue;
+      const tag = child.tagName.toLowerCase();
+      // WR-04: hidden inputs never become nodes — this walker-level gate is
+      // authoritative (covers the tabindex edge isInteractive would catch).
+      if (SKIP_TAGS.has(tag) || isHidden(child) || isHiddenInput(child)) continue;
       const node = this.buildNode(child, depth + 1);
       if (node) nodes.push(node);
       else nodes.push(...this.collectChildren(child, depth + 1));

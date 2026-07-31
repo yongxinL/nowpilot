@@ -254,6 +254,65 @@ describe('ApcLiteStrategy', () => {
       strategy.run({ url: 'https://example.com', title: 't', mode: 'actionable' }),
     ).rejects.toThrow(/no HTML/i);
   });
+
+  it('excludes type=hidden inputs from the tree and never captures their values (WR-04)', async () => {
+    const html = `<!DOCTYPE html>
+<html>
+<head><title>Hidden</title></head>
+<body>
+  <form>
+    <input type="hidden" name="csrf_token" value="csrf-token-secret-42">
+    <input type="hidden" tabindex="0" name="session" value="sess-token-abc">
+    <input type="text" name="query" value="hello">
+  </form>
+</body>
+</html>`;
+
+    const result = await strategy.run({
+      url: 'https://example.com',
+      title: 'Hidden',
+      mode: 'actionable',
+      html,
+    });
+
+    const json = JSON.stringify(result.root);
+    expect(json).not.toContain('csrf-token-secret-42');
+    expect(json).not.toContain('sess-token-abc');
+    expect(json).not.toContain('csrf_token');
+    // The visible textbox is still captured.
+    expect(json).toContain('hello');
+  });
+
+  it('applies name-heuristic, autocomplete and isPassword guards to input values at the strategy boundary (WR-04)', async () => {
+    const html = `<!DOCTYPE html>
+<html>
+<head><title>Guards</title></head>
+<body>
+  <form>
+    <input type="text" name="pwd" value="pwd-leak-secret">
+    <input type="text" name="login_password" value="login-leak-secret">
+    <input type="text" autocomplete="current-password" value="auto-leak-secret">
+    <input type="text" isPassword value="ispass-leak-secret">
+    <input type="text" name="passenger_first_name" value="alice">
+  </form>
+</body>
+</html>`;
+
+    const result = await strategy.run({
+      url: 'https://example.com',
+      title: 'Guards',
+      mode: 'actionable',
+      html,
+    });
+
+    const json = JSON.stringify(result.root);
+    expect(json).not.toContain('pwd-leak-secret');
+    expect(json).not.toContain('login-leak-secret');
+    expect(json).not.toContain('auto-leak-secret');
+    expect(json).not.toContain('ispass-leak-secret');
+    // Innocent values (allowlisted name) still flow into the tree.
+    expect(json).toContain('alice');
+  });
 });
 
 describe('PageContentService mode=actionable', () => {
