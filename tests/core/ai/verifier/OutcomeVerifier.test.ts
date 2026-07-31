@@ -4,13 +4,32 @@ import {
   outcomeVerifier,
   OUTCOME_VERIFIER_TIMEOUT_MS,
   OUTCOME_VERIFIER_EVIDENCE_MISSING_DIAGNOSTIC,
-} from '../../../src/core/ai/verifier/OutcomeVerifier';
-import { SCHEMA_VERIFIER, type VerifierCheck, type VerifierRegistry } from '../../../src/core/ai/verifier/VerifierTypes';
-import type { CompletionEvidence, RegisteredTool, ToolExecutionResult } from '../../../src/core/ai/types';
+} from '../../../../src/core/ai/verifier/OutcomeVerifier';
+import { SCHEMA_VERIFIER, type VerifierCheck, type VerifierRegistry } from '../../../../src/core/ai/verifier/VerifierTypes';
+import type {
+  CompletionEvidence,
+  CompletionEvidenceCheck,
+  RegisteredTool,
+  ToolEvidenceVerifier,
+  ToolExecutionResult,
+} from '../../../../src/core/ai/types';
 
 const OP_ID = 'op-verify-001';
 const TOOL_CALL_ID = 'call-0001';
 const TOOL_NAME = 'createNote';
+
+type VerifiedEvidence = Extract<CompletionEvidence, { verified: true }>;
+type UnverifiedEvidence = Extract<CompletionEvidence, { verified: false }>;
+
+/** Narrowing assertion: evidence is verified. */
+function expectVerified(evidence: CompletionEvidence): asserts evidence is VerifiedEvidence {
+  expect(evidence.verified).toBe(true);
+}
+
+/** Narrowing assertion: evidence is unverified. */
+function expectUnverified(evidence: CompletionEvidence): asserts evidence is UnverifiedEvidence {
+  expect(evidence.verified).toBe(false);
+}
 
 function buildTool(overrides: Partial<RegisteredTool> = {}): RegisteredTool {
   return {
@@ -34,11 +53,14 @@ function buildResult(overrides: Partial<ToolExecutionResult> = {}): ToolExecutio
   };
 }
 
-function verifierOf(impl: VerifierCheck, type: VerifierRegistry['type'] = 'schema'): VerifierRegistry {
-  return { type, check: impl };
+function verifierOf(impl: VerifierCheck, type: VerifierRegistry['type'] = 'schema'): ToolEvidenceVerifier {
+  // The registry contract narrows the callback input to the validated
+  // ToolExecutionResult; RegisteredTool's policy type accepts the broader
+  // ToolEvidenceVerifier shape.
+  return { type, check: impl as ToolEvidenceVerifier['check'] };
 }
 
-function passingCheck(overrides: Partial<NonNullable<CompletionEvidence['checks']>[number]> = {}) {
+function passingCheck(overrides: Partial<VerifiedEvidence['checks'][number]> = {}) {
   return {
     checkId: 'c1',
     name: 'postcondition holds',
@@ -63,7 +85,7 @@ describe('OutcomeVerifier', () => {
 
     const evidence = await outcomeVerifier.verify(buildResult(), tool, OP_ID);
 
-    expect(evidence.verified).toBe(true);
+    expectVerified(evidence);
     expect(evidence.operationId).toBe(OP_ID);
     expect(evidence.toolCallId).toBe(TOOL_CALL_ID);
     expect(evidence.toolName).toBe(TOOL_NAME);
@@ -88,23 +110,21 @@ describe('OutcomeVerifier', () => {
 
     const evidence = await outcomeVerifier.verify(buildResult(), tool, OP_ID);
 
-    expect(evidence.verified).toBe(true);
-    if (evidence.verified) {
-      expect(evidence.verifierType).toBe('read-after-write');
-    }
+    expectVerified(evidence);
+    expect(evidence.verifierType).toBe('read-after-write');
   });
 
   it('supplies concrete default schema checking for defined object-like results via the shared SCHEMA_VERIFIER', async () => {
-    const tool = buildTool({ evidence: { required: true, verifier: SCHEMA_VERIFIER } });
+    const tool = buildTool({
+      evidence: { required: true, verifier: SCHEMA_VERIFIER as ToolEvidenceVerifier },
+    });
     const evidence = await outcomeVerifier.verify(buildResult(), tool, OP_ID);
 
-    expect(evidence.verified).toBe(true);
-    if (evidence.verified) {
-      expect(evidence.verifierType).toBe('schema');
-      expect(evidence.checks.some((c) => c.passed)).toBe(true);
-      // Only bounded references are stored — never the raw output payload.
-      expect(JSON.stringify(evidence)).not.toContain('note-123');
-    }
+    expectVerified(evidence);
+    expect(evidence.verifierType).toBe('schema');
+    expect(evidence.checks.some((c) => c.passed)).toBe(true);
+    // Only bounded references are stored — never the raw output payload.
+    expect(JSON.stringify(evidence)).not.toContain('note-123');
   });
 
   it('returns unverified evidence_unavailable (not verified) for a required write tool with no declared verifier, with the COMPLETION_EVIDENCE_MISSING diagnostic hook', async () => {
@@ -216,8 +236,8 @@ describe('OutcomeVerifier', () => {
   });
 
   it('returns unverified aborted when the signal aborts while verification is in flight', async () => {
-    let release: (checks: NonNullable<CompletionEvidence['checks']>) => void = () => {};
-    const deferred = new Promise<NonNullable<CompletionEvidence['checks']>>((resolve) => {
+    let release: (checks: CompletionEvidenceCheck[]) => void = () => {};
+    const deferred = new Promise<CompletionEvidenceCheck[]>((resolve) => {
       release = resolve;
     });
     const verifier = verifierOf(() => deferred);
