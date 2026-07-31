@@ -1,14 +1,17 @@
 ---
-status: complete
+status: testing
 phase: 04a-page-content-extraction
-source: [04a-01-SUMMARY.md, 04a-02-SUMMARY.md, 04a-03-SUMMARY.md, 04a-04-SUMMARY.md]
+source: [04a-01-SUMMARY.md, 04a-02-SUMMARY.md, 04a-03-SUMMARY.md, 04a-04-SUMMARY.md, 04a-06-VERIFICATION.md]
 started: 2026-07-31T17:20:00Z
-updated: 2026-07-31T17:25:00Z
+updated: 2026-07-31T20:20:00Z
 ---
 
 ## Current Test
 
-[testing complete]
+number: 22
+name: Live extension boot + extraction flow
+expected: Side panel renders; no init()/listener-registration exceptions in the service-worker/extension console; extraction returns SerializedPage with password field values absent; SPA navigation on a real site invalidates the per-tab cache (next extraction is fresh)
+awaiting: user response
 
 ## Tests
 
@@ -117,12 +120,32 @@ expected: Multi-strategy audit trail (strategiesAttempted) on error path
 result: pass
 source: automated
 
+### 22. Live extension boot + extraction flow
+expected: Load the built extension (.output/chrome-mv3) in Chrome/Chromium; open the side panel, navigate to a real article page, trigger extraction; watch console for errors during startup (pageContentService.init() at module scope) and during extraction. Side panel boots and renders without exceptions; SPA_NAVIGATION + tabs.onUpdated/onRemoved listeners register silently; extraction returns page content with password field values absent from serialized HTML.
+result: pending
+source: human
+
+### 23. unverified-prohibition — D-02 allowlist must never grow
+expected: NON_PASSWORD_NAME_PATTERN (src/core/content/DomSerializer.ts:32) remains exactly the 4 documented terms (passenger|passport|compass|bypass) and never grows to cover passcode/pin/otp/secret/passphrase/passage-class names, now or in future refactors.
+result: pending
+source: human
+
+### 24. unverified-prohibition — hidden-input guard airtightness
+expected: All three guard layers in ApcLiteStrategy (isHiddenInput walker skip at collectChildren, inputRole 'hidden' → null, attributesOf value guard) stay consistent; no role/tabindex override path can reintroduce a hidden input or its value into the APCLite tree.
+result: pending
+source: human
+
+### 25. unverified-prohibition — cache mode isolation
+expected: Mode remains part of the cache identity (cacheKey(tabId, mode, url)); no code path can serve a PageContext across modes.
+result: pending
+source: human
+
 ## Summary
 
-total: 21
+total: 25
 passed: 21
 issues: 0
-pending: 0
+pending: 4
 skipped: 0
 blocked: 0
 
