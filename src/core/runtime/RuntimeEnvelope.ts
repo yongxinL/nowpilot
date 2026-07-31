@@ -1,3 +1,5 @@
+import { generateOperationId } from './OperationId';
+
 export const MessageTypeValues = [
   'GET_ACTIVE_TAB_CONTEXT',
   'EXTRACT_PAGE_CONTENT',
@@ -27,7 +29,9 @@ export function createEnvelope<T>(
 ): RuntimeEnvelope<T> {
   return {
     type,
-    operationId: crypto.randomUUID(),
+    // WR-01: routed through generateOperationId so envelope construction never
+    // throws on insecure origins (crypto.randomUUID is SecureContext-only).
+    operationId: generateOperationId(),
     timestamp: Date.now(),
     source,
     payload,

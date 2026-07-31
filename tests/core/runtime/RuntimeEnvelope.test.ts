@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { createEnvelope, isEnvelope, MessageTypeValues } from '../../../src/core/runtime/RuntimeEnvelope';
 
 describe('RuntimeEnvelope', () => {
@@ -30,5 +30,20 @@ describe('RuntimeEnvelope', () => {
       const envelope = createEnvelope(type, {}, 'sidepanel');
       expect(isEnvelope(envelope)).toBe(true);
     });
+  });
+
+  it('createEnvelope does not throw when crypto.randomUUID is unavailable (WR-01)', () => {
+    vi.stubGlobal('crypto', { ...(globalThis.crypto ?? {}), randomUUID: undefined });
+    try {
+      const envelope = createEnvelope(
+        'SPA_NAVIGATION',
+        { url: 'http://example.com', timestamp: 0 },
+        'content',
+      );
+      expect(envelope.operationId).toBeTruthy();
+      expect(typeof envelope.operationId).toBe('string');
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
