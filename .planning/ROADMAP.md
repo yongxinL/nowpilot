@@ -140,7 +140,7 @@ Plans:
   4. User navigates via SPA (wxt:locationchange) or switches tabs — the per-tab cache invalidates and re-extracts
   5. Content script bundle contains no React, AntD, defuddle, yaml, or File System Access API usage and is under 50KB; password fields are never captured (isPassword ⇒ value omitted)
 
-**Plans**: 6 plans (5 executed, 1 pending)
+**Plans**: 6/6 plans executed
 
 Plans:
 **Wave 1**
@@ -162,7 +162,7 @@ Plans:
 
 **Wave 5** *(code-review closure)*
 
-- [ ] 04a-06-PLAN.md — Code-review closure: mode-aware cache (CR-01), crypto.randomUUID guard (WR-01), SPA index/cache consistency (WR-02), redaction false-positive allowlist (WR-03), hidden-input exclusion (WR-04)
+- [x] 04a-06-PLAN.md — Code-review closure: mode-aware cache (CR-01), crypto.randomUUID guard (WR-01), SPA index/cache consistency (WR-02), redaction false-positive allowlist (WR-03), hidden-input exclusion (WR-04)
 
 ### Phase 5: Knowledge Base
 
@@ -270,7 +270,7 @@ Decimal phases execute after their parent integer phase: 4 → 4a → 5 → 5a �
 | 2. Storage & Security Foundation | 4/4 | Completed | 2026-07-29 |
 | 3. AI Core Pipeline | 7/7 | Complete    | 2026-07-30 |
 | 4. Context Optimization Pipeline | 3/3 | Complete    | 2026-07-31 |
-| 4a. Page Content Extraction | 5/5 | In Progress|  |
+| 4a. Page Content Extraction | 6/6 | In Progress|  |
 | 5. Knowledge Base | TBD | Not started | - |
 | 5a. LLM-Wiki & Filesystem Sync | TBD | Not started | - |
 | 6. Telemetry & Diagnostics | TBD | Not started | - |
