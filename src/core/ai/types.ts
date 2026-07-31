@@ -400,6 +400,13 @@ export type PermissionDecision =
  * Redacted observation handed to the planner on a replan recovery call
  * (D-14/D-15). Carries only safe, code-allowlisted diagnostics — never raw
  * input, exception text, secrets, or logical idempotency keys.
+ *
+ * Plan 02 additive fields (all optional, so existing consumers are
+ * unaffected): the pure ReplanPolicy consumes `sideEffect`,
+ * `effectKnownNotStarted`, `aborted`, and `caps` at both evaluation
+ * checkpoints. `effectKnownNotStarted` is true ONLY on proven
+ * failed-before-effect (diagnostic.effectStarted === false); every other
+ * failure state is unresolved and never re-executed.
  */
 export interface ReplanContext {
   operationId: string;
@@ -408,4 +415,15 @@ export interface ReplanContext {
   toolCallId?: string;
   cause?: import('./PipelineError').PipelineErrorProjection;
   priorToolResults: readonly ToolExecutionResult[];
+  sideEffect?: ToolSideEffect;
+  effectKnownNotStarted?: boolean;
+  aborted?: boolean;
+  caps?: {
+    plannerCalls: number;
+    plannerCap: number;
+    plannerCapReached: boolean;
+    toolCalls: number;
+    toolCap: number;
+    toolCapReached: boolean;
+  };
 }

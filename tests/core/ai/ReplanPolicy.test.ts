@@ -1,13 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { evaluateReplan, type ReplanDisposition } from '../../src/core/ai/ReplanPolicy';
-import { PipelineError, projectPipelineError } from '../../src/core/ai/PipelineError';
+import { evaluateReplan, type ReplanDisposition } from '../../../src/core/ai/ReplanPolicy';
+import { PipelineError, projectPipelineError, type PipelineErrorProjection } from '../../../src/core/ai/PipelineError';
 import type {
   CompletionEvidence,
   PipelineErrorCode,
-  PipelineErrorProjection,
   ReplanContext,
   ToolExecutionResult,
-} from '../../src/core/ai/types';
+} from '../../../src/core/ai/types';
 
 const DISPOSITIONS: readonly ReplanDisposition[] = ['continue-planning', 'replan', 'render', 'terminate'];
 
