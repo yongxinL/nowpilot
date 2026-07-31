@@ -507,4 +507,89 @@ describe('PageContentService (hardening)', () => {
     }
     expect(section.length).toBeGreaterThan(0);
   });
+
+  // ── Plan 04a-04 additional coverage ─────────────────────────────────
+
+  it('returns full pipeline result with all BaseMetadata fields populated (default mode)', async () => {
+    sendMessageMock.mockResolvedValue(makeSerializedPage());
+    const service = new PageContentService();
+
+    const result = await service.extract(1, 'default', 'https://example.com/article');
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok result');
+    if (result.pageContext.mode !== 'default') throw new Error('expected default mode');
+
+    // All BaseMetadata fields must be present and well-typed
+    expect(typeof result.pageContext.mode).toBe('string');
+    expect(typeof result.pageContext.markdown).toBe('string');
+    expect(result.pageContext.markdown.length).toBeGreaterThan(0);
+    expect(typeof result.pageContext.url).toBe('string');
+    expect(typeof result.pageContext.title).toBe('string');
+    expect(typeof result.pageContext.capturedAt).toBe('number');
+    expect(result.pageContext.capturedAt).toBeGreaterThan(0);
+    expect(typeof result.pageContext.size).toBe('number');
+    expect(typeof result.pageContext.source).toBe('string');
+    expect(typeof result.pageContext.extractionLevel).toBe('string');
+    expect(typeof result.pageContext.truncated).toBe('boolean');
+  });
+
+  it('returns actionable mode PageContext with apcLiteTree (not embedded in markdown)', async () => {
+    sendMessageMock.mockResolvedValue(makeSerializedPage());
+    // Use a strategy that produces apcLiteTree for actionable mode
+    const apcLiteStrategy: IExtractionStrategy = {
+      id: 'apc-lite',
+      canHandle: (input) => input.mode === 'actionable',
+      run: async () => ({
+        source: 'apc-lite' as const,
+        root: { role: 'document', id: 'root-id', children: [] },
+        meta: { title: 'Actionable Page' },
+        approxTokens: 5,
+        truncated: false,
+      }),
+    };
+    const service = new PageContentService([apcLiteStrategy]);
+
+    const result = await service.extract(1, 'actionable', 'https://example.com/actionable');
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok result');
+    expect(result.pageContext.mode).toBe('actionable');
+    if (result.pageContext.mode !== 'actionable') throw new Error('expected actionable mode');
+    // apcLiteTree must be present and shaped like an APCLiteNode
+    expect(result.pageContext.apcLiteTree).toBeDefined();
+    expect(result.pageContext.apcLiteTree.role).toBe('document');
+    expect(result.pageContext.apcLiteTree.id).toBe('root-id');
+    // metadata from the SerializedPage is preserved (title from captured doc, not strategy meta)
+    expect(result.pageContext.title).toBe('Extraction Tracer Fixture');
+    expect(result.pageContext.source).toBe('apc-lite');
+    // url comes from the SerializedPage (the content-script capture), not the extract call arg
+    expect(result.pageContext.url).toBe('https://example.com/article');
+  });
+
+  it('records strategiesAttempted on the error path when all strategies fail (D-07 audit trail)', async () => {
+    sendMessageMock.mockResolvedValue(makeSerializedPage());
+    const firstStrategy: IExtractionStrategy = {
+      id: 'defuddle',
+      canHandle: () => true,
+      run: async () => {
+        throw new Error('first crash');
+      },
+    };
+    const secondStrategy: IExtractionStrategy = {
+      id: 'readability',
+      canHandle: () => true,
+      run: async () => {
+        throw new Error('second crash');
+      },
+    };
+    const service = new PageContentService([firstStrategy, secondStrategy]);
+
+    const result = await service.extract(1, 'default', 'https://example.com/article');
+
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected failure result');
+    expect(result.error.code).toBe('PARSE_ERROR');
+    expect(result.error.strategiesAttempted).toEqual(['defuddle', 'readability']);
+  });
 });
