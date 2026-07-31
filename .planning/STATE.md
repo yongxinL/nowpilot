@@ -21,11 +21,11 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-07-28)
+See: .planning/PROJECT.md (updated 2026-07-31)
 
 **Core value:** Users can acquire knowledge from web pages, store it as interconnected atomic notes, understand it through AI enrichment (tagging/summary/RAG), and interact with it through a persona-driven, intention-aware conversational workspace — all running locally on their machine.
 
-**Current focus:** Phase 04 — context-optimization-pipeline
+**Current focus:** Phase 4a — Page Content Extraction
 
 ## Current Position
 
@@ -93,12 +93,12 @@ Recent decisions affecting current work:
 - [Phase 04 P01]: ContextOptimizer is a first-class pipeline stage invoked once per turn (D-01/D-02): AgentOrchestrator.runTurn(AgentTurnInput) calls optimize() before the planner loop and passes OptimizedContext to plan()/synthesize()
 - [Phase 04 P01]: Over-budget placeholder behavior: trim USER_INPUT from start to fit; throw CONTEXT_TOO_LARGE when trimming empties the user input entirely (degradation pipeline lands in Plan 04-02)
 - [Phase 04 P01]: Deferred requirements mark-complete for CTX-01/CTX-02 — both span later phase plans (04-02 degradation, 04-03 cache); marked complete at phase end instead
-- [Phase ?]: Degradation pipeline replaces the Plan 04-01 placeholder user-input trim: ContextCompressor applies the 7 ordered steps (D-07) and AI summarization overflow (D-06/D-08) as the canonical over-budget path; CONTEXT_TOO_LARGE with token counts thrown only when all steps fail
-- [Phase ?]: Minimal mode = tiny tier OR 'minimal-mode' step ran; caps (1 tool, top-3 memory, ≤200-token system, last 1-2 turns, page dropped) enforced only when degradation actually runs — under-budget tiny inputs keep the flag but no compression
-- [Phase ?]: Per-provider cache hint transformation runs in AgentOrchestrator after provider selection (prepareCacheHints), NOT inside ContextOptimizer — optimize() computes the provider-agnostic cacheMetadata (FNV-1a hash + stableSectionCount) as its final stage, resolving D-13 vs unknown-provider exactly as Plan 04-03 Part 3 directs
-- [Phase ?]: prepareCacheHints keeps the flat PromptSection[] contract — Gemini's nested {cachedContent, inline} providerRequestSections is flattened (stable concat unstable) so cacheOptimized stays a valid OptimizedContext for plan()/synthesize()
-- [Phase ?]: recordResponse() in AgentOrchestrator uses defaults (cacheHit:false, cacheWrite:false) — current responses carry no native cache metadata; unknown cache status is treated as a miss per §19.13, as Plan 04-03 specifies; adapters populate real fields via response normalization later
-- [Phase ?]: PromptCacheManager.getHealthState() public read accessor added — required by the plan's own behavior tests and is the Phase 6 diagnostics hook (RESEARCH Pitfall 3); PromptCacheManager health is strictly in-memory per D-13 (never persisted)
+- [Phase 04]: Degradation pipeline replaces the Plan 04-01 placeholder user-input trim: ContextCompressor applies the 7 ordered steps (D-07) and AI summarization overflow (D-06/D-08) as the canonical over-budget path; CONTEXT_TOO_LARGE with token counts thrown only when all steps fail
+- [Phase 04]: Minimal mode = tiny tier OR 'minimal-mode' step ran; caps (1 tool, top-3 memory, ≤200-token system, last 1-2 turns, page dropped) enforced only when degradation actually runs — under-budget tiny inputs keep the flag but no compression
+- [Phase 04]: Per-provider cache hint transformation runs in AgentOrchestrator after provider selection (prepareCacheHints), NOT inside ContextOptimizer — optimize() computes the provider-agnostic cacheMetadata (FNV-1a hash + stableSectionCount) as its final stage, resolving D-13 vs unknown-provider exactly as Plan 04-03 Part 3 directs
+- [Phase 04]: prepareCacheHints keeps the flat PromptSection[] contract — Gemini's nested {cachedContent, inline} providerRequestSections is flattened (stable concat unstable) so cacheOptimized stays a valid OptimizedContext for plan()/synthesize()
+- [Phase 04]: recordResponse() in AgentOrchestrator uses defaults (cacheHit:false, cacheWrite:false) — current responses carry no native cache metadata; unknown cache status is treated as a miss per §19.13, as Plan 04-03 specifies; adapters populate real fields via response normalization later
+- [Phase 04]: PromptCacheManager.getHealthState() public read accessor added — required by the plan's own behavior tests and is the Phase 6 diagnostics hook (RESEARCH Pitfall 3); PromptCacheManager health is strictly in-memory per D-13 (never persisted)
 
 ### Pending Todos
 
@@ -118,6 +118,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-31T02:20:27.025Z
-Stopped at: Completed 04-03-PLAN.md
+Last session: 2026-07-31
+Stopped at: Phase 04 complete, ready to plan Phase 4a
 Resume file: None
