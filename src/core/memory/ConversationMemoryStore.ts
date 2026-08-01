@@ -1,5 +1,7 @@
 import { openDB, type IDBPDatabase } from 'idb';
+import { generateText } from 'ai';
 import { migrationRunner } from '../storage/MigrationRunner';
+import type { ProviderAdapter } from '../ai/providers/ProviderAdapter';
 import {
   ConversationContextSchema,
   type ConversationContext,
@@ -12,6 +14,57 @@ import {
  */
 const RECENT_MESSAGE_LIMITS: Record<string, number> = { tiny: 4, small: 8, medium: 12, large: 12 };
 
+/**
+ * D-10 compaction boundary: every 12th appended message triggers
+ * summarization (messageCount % 12 === 0).
+ */
+const COMPACT_BOUNDARY = 12;
+
+/**
+ * D-10 context assembly: head = first 2 messages (establishing context).
+ * The summary replaces everything between the head and the recent tail.
+ */
+const HEAD_MESSAGE_COUNT = 2;
+
+/**
+ * Tail kept out of the summary. compactConversation() has no tier signal
+ * (it is a background operation), so it keeps the most conservative recent
+ * tail (tiny=4) and summarizes the largest middle portion (D-10 agent
+ * discretion within the head+summary+tail assembly formula).
+ */
+const COMPACT_TAIL_COUNT = 4;
+
+/** Summary length cap (D-10: 2-3 concise sentences; LLM output is untrusted). */
+const SUMMARY_MAX_CHARS = 500;
+
+/**
+ * D-10 summarization prompt. Message content is untrusted user/assistant
+ * text — wrapped in a <data-source> delimiter (CTX-T02 pattern) so
+ * injection content in the excerpt cannot hijack the summary instructions
+ * (T-05-10).
+ */
+const SUMMARY_PROMPT_TEMPLATE = `Summarize the following conversation excerpt in 2-3 concise sentences.
+Capture only: decisions made, goals set, user preferences stated, facts mentioned, and open tasks.
+Do NOT summarize conversational filler, greetings, or small talk.
+
+Conversation:
+<data-source>
+{messages}
+</data-source>
+
+Summary:`;
+
+function roleLabel(role: 'user' | 'assistant' | 'tool'): string {
+  switch (role) {
+    case 'user':
+      return 'User';
+    case 'assistant':
+      return 'Assistant';
+    default:
+      return 'Tool';
+  }
+}
+
 export interface MemoryMessageInput {
   role: 'user' | 'assistant' | 'tool';
   content: string;
@@ -21,6 +74,18 @@ export interface MemoryMessageInput {
 export interface AppendMessageResult {
   shouldCompact: boolean;
   messageCount: number;
+}
+
+/**
+ * D-10 compaction result — discriminated via `code`, never thrown for
+ * operational failures (provider errors, empty output). On failure the
+ * original messages are always preserved.
+ */
+export interface CompactConversationResult {
+  success: boolean;
+  error?: string;
+  code?: 'EMPTY_SUMMARY' | 'PROVIDER_ERROR';
+  summaryId?: string;
 }
 
 // ── Database connection (WriteJournal pattern: module-level cached promise) ──
@@ -58,8 +123,8 @@ function conversationRange(conversationId: string): IDBKeyRange {
  * ConversationMemoryStore — persistent summary + recent-turn memory (D-10).
  * Messages are stored in `memory_messages` (compound key [conversationId, seq]),
  * summaries in `conversation_summaries` (keyPath conversationId). The store
- * only emits the compaction SIGNAL at the 12-message boundary — LLM
- * summarization is invoked by MemoryEngine (Plan 03 scope).
+ * emits the compaction SIGNAL at the 12-message boundary and generates the
+ * LLM summary via compactConversation() (D-10, haiku-class tier).
  */
 export class ConversationMemoryStore {
   /**
@@ -89,7 +154,9 @@ export class ConversationMemoryStore {
   /**
    * Append one message with auto-incrementing per-conversation seq.
    * Returns the compaction signal: shouldCompact=true when the count after
-   * this append is a multiple of 12 (D-10). Never invokes the LLM itself.
+   * this append is a multiple of 12 (D-10). Never invokes the LLM itself —
+   * the caller decides when to run compactConversation() so the message
+   * write is never blocked on summarization.
    */
   async appendMessage(conversationId: string, message: MemoryMessageInput): Promise<AppendMessageResult> {
     const db = await openMemoryDb();
@@ -99,7 +166,72 @@ export class ConversationMemoryStore {
     await db.put('memory_messages', { conversationId, seq, ...message });
     const messageCount = seq + 1;
 
-    return { shouldCompact: messageCount % 12 === 0, messageCount };
+    return { shouldCompact: messageCount % COMPACT_BOUNDARY === 0, messageCount };
+  }
+
+  /** Explicit D-10 boundary check: true when messageCount % 12 === 0 (and the conversation has messages). */
+  async shouldCompact(conversationId: string): Promise<boolean> {
+    const count = await this.getMessageCount(conversationId);
+    return count > 0 && count % COMPACT_BOUNDARY === 0;
+  }
+
+  /**
+   * D-10 LLM compaction: summarizes the middle messages (everything after
+   * the 2-message head and before the 4-message tail) using the cheapest
+   * available summarization tier (FAST = haiku-class) — never the
+   * conversation tier. The summary is stored via saveSummary(); the
+   * original messages are NEVER deleted (D-10 resilience). Failure paths
+   * (empty output, provider error) return a result with `code` and leave
+   * the conversation untouched — the summary is simply absent.
+   */
+  async compactConversation(
+    conversationId: string,
+    providerAdapter: ProviderAdapter,
+  ): Promise<CompactConversationResult> {
+    const db = await openMemoryDb();
+    const messages = await db.getAll('memory_messages', conversationRange(conversationId));
+
+    // D-10 assembly: head (first 2) + summary (middle) + tail (last 4)
+    const headEnd = Math.min(HEAD_MESSAGE_COUNT, messages.length);
+    const tailStart = Math.max(headEnd, messages.length - COMPACT_TAIL_COUNT);
+    const middle = messages.slice(headEnd, tailStart);
+
+    if (middle.length === 0) {
+      // Nothing to summarize — treated like an empty summary, no data loss
+      return { success: false, code: 'EMPTY_SUMMARY' };
+    }
+
+    const formatted = middle.map((m) => `${roleLabel(m.role)}: ${m.content}`).join('\n');
+    const prompt = SUMMARY_PROMPT_TEMPLATE.replace('{messages}', formatted);
+
+    try {
+      // D-10: lowest-cost tier (haiku-class), independent of the user's
+      // conversation tier — summarization is a background operation.
+      const modelId = providerAdapter.getDefaultModelForTier('FAST');
+      const model = providerAdapter.createLanguageModel(modelId);
+      const result = await generateText({ model, prompt, maxOutputTokens: 200, temperature: 0.3 });
+
+      const summary = result?.text;
+      if (typeof summary !== 'string' || summary.trim().length === 0) {
+        return { success: false, code: 'EMPTY_SUMMARY' };
+      }
+
+      const summaryRecord: ConversationSummary = {
+        id: crypto.randomUUID(),
+        conversationId,
+        summary: summary.trim().slice(0, SUMMARY_MAX_CHARS),
+        messageRange: { start: headEnd, end: tailStart },
+        createdAt: Date.now(),
+      };
+      await this.saveSummary(summaryRecord);
+      return { success: true, summaryId: summaryRecord.id };
+    } catch (err) {
+      return {
+        success: false,
+        code: 'PROVIDER_ERROR',
+        error: err instanceof Error ? err.message : String(err),
+      };
+    }
   }
 
   /** Count messages stored for one conversation. */

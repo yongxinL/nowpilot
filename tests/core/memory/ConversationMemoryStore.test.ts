@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { generateText } from 'ai';
 import {
   ConversationMemoryStore,
   resetConversationMemoryDb,
@@ -15,6 +16,11 @@ vi.mock('ai', () => {
     generateText: vi.fn(),
   };
 });
+
+/** Shape the mocked AI SDK result with only the `text` field the store reads. */
+function llmResult(text: string): Awaited<ReturnType<typeof generateText>> {
+  return { text } as unknown as Awaited<ReturnType<typeof generateText>>;
+}
 
 /**
  * Minimal ProviderAdapter stub (ContextCompressor.test.ts pattern): the
@@ -174,10 +180,10 @@ describe('ConversationMemoryStore', () => {
     for (let i = 1; i <= 12; i++) {
       await store.appendMessage('conv-1', message(i));
     }
-    const mockGenerateText = vi.mocked((await import('ai')).generateText);
-    mockGenerateText.mockResolvedValue({
-      text: 'User decided to adopt theme X and set a goal to finish the migration.',
-    });
+    const mockGenerateText = vi.mocked(generateText);
+    mockGenerateText.mockResolvedValue(
+      llmResult('User decided to adopt theme X and set a goal to finish the migration.'),
+    );
 
     const result = await store.compactConversation('conv-1', adapter);
     expect(result.success).toBe(true);
@@ -212,8 +218,8 @@ describe('ConversationMemoryStore', () => {
     for (let i = 1; i <= 12; i++) {
       await store.appendMessage('conv-1', message(i));
     }
-    const mockGenerateText = vi.mocked((await import('ai')).generateText);
-    mockGenerateText.mockResolvedValue({ text: 'A concise summary of the conversation.' });
+    const mockGenerateText = vi.mocked(generateText);
+    mockGenerateText.mockResolvedValue(llmResult('A concise summary of the conversation.'));
 
     const result = await store.compactConversation('conv-1', adapter);
     expect(result.success).toBe(true);
@@ -227,8 +233,8 @@ describe('ConversationMemoryStore', () => {
     for (let i = 1; i <= 12; i++) {
       await store.appendMessage('conv-1', message(i));
     }
-    const mockGenerateText = vi.mocked((await import('ai')).generateText);
-    mockGenerateText.mockResolvedValue({ text: '   ' });
+    const mockGenerateText = vi.mocked(generateText);
+    mockGenerateText.mockResolvedValue(llmResult('   '));
 
     const result = await store.compactConversation('conv-1', adapter);
     expect(result.success).toBe(false);
@@ -266,8 +272,8 @@ describe('ConversationMemoryStore', () => {
     for (let i = 1; i <= 12; i++) {
       await store.appendMessage('conv-1', message(i));
     }
-    const mockGenerateText = vi.mocked((await import('ai')).generateText);
-    mockGenerateText.mockResolvedValue({ text: 'y'.repeat(2000) });
+    const mockGenerateText = vi.mocked(generateText);
+    mockGenerateText.mockResolvedValue(llmResult('y'.repeat(2000)));
 
     const result = await store.compactConversation('conv-1', adapter);
     expect(result.success).toBe(true);
