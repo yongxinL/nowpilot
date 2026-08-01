@@ -325,12 +325,17 @@ function minimalMode(sections: PromptSection[]): PromptSection[] {
       case 'tool_schemas': {
         try {
           const parsed = JSON.parse(s.text);
-          if (!Array.isArray(parsed) || parsed.length <= 1) return [s];
+          if (!Array.isArray(parsed)) return [s];
+          // Mirror trimTools (WR-05): only safe tool schemas survive into
+          // minimal mode. When every tool is flagged dangerous, keep none
+          // (rewrite to []) instead of falling back to the first —
+          // dangerous — entry, and do not exempt a lone dangerous tool.
+          // The §2.5 restriction permits at most one safe tool schema.
           const safe = parsed.filter(
             (t) =>
               t === null || typeof t !== 'object' || (t as Record<string, unknown>).dangerous !== true,
           );
-          const kept = safe.length > 0 ? safe.slice(0, 1) : parsed.slice(0, 1);
+          const kept = safe.slice(0, 1);
           const next = JSON.stringify(kept);
           return [{ ...s, text: next, tokens: tokenBudget.estimateTokens(next) }];
         } catch {
