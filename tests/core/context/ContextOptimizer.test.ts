@@ -1,6 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type {
   AgentTurnInput,
+  ContextItem,
   ContextOptimizerInput,
   PlannerDecision,
   OptimizedContext,
@@ -809,5 +810,272 @@ describe('ContextOptimizer degradation pipeline', () => {
     expect(bySourceId.get('core.instructions.system')?.compressionApplied).toBeUndefined();
     expect(bySourceId.get('interaction.user.current-turn')?.compressionApplied).toBeUndefined();
     expect(result.minimalMode).toBe(true); // tiny tier
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 04b-04 — receipt integration: omission reasons from the compressor,
+// freshness-expired item omission, totals cross-check (CTX-T03)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('ContextOptimizer.optimizeFromItems() receipt integration (04b-04)', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  /**
+   * ContextItem fixture with policy-correct metadata (D-06): callers must
+   * override trust/sensitivity/authority when the sourceId differs from the
+   * known-domain page default (D-07).
+   */
+  function makeContextItem(overrides: Partial<ContextItem>): ContextItem {
+    return {
+      kind: 'context',
+      text: 'fixture text',
+      tokens: 5,
+      stable: false,
+      sourceId: 'context.page.current-url',
+      relevance: 0.8,
+      freshness: 1,
+      trust: 0.5,
+      sensitivity: 'private',
+      instructionAuthority: 'data',
+      ...overrides,
+    };
+  }
+
+  it('records dropped data items with included:false and the compressor omission reason', async () => {
+    const { contextOptimizer } = await import('../../../src/core/context/ContextOptimizer');
+    // Tiny tier (inputBudget 2867): the oversized system item forces full
+    // degradation; minimal-mode drops the page section entirely (budget).
+    const systemItem = makeContextItem({
+      kind: 'system',
+      text: 's'.repeat(11600), // ≈ 2900 tokens
+      tokens: 2900,
+      stable: true,
+      sourceId: 'core.instructions.system',
+      trust: 1.0,
+      sensitivity: 'public',
+      instructionAuthority: 'system',
+    });
+    const pageItem = makeContextItem({
+      text: JSON.stringify({ title: 'T', url: 'https://e.com', body: 'x'.repeat(2000) }),
+      tokens: 1500,
+      sourceId: 'context.page.current',
+    });
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const result = await contextOptimizer.optimizeFromItems(
+      [systemItem, pageItem],
+      buildOptimizerInput({ modelContextWindow: 4096 }),
+    );
+
+    // Page dropped from the final prompt; system survives (minimal-mode caps).
+    expect(result.sections.map((s) => s.sourceId)).toEqual(['core.instructions.system']);
+    expect(result.provenance.sections).toHaveLength(2);
+
+    const sys = result.provenance.sections.find((s) => s.sourceId === 'core.instructions.system')!;
+    expect(sys.included).toBe(true);
+    expect(sys.originalTokens).toBe(2900);
+
+    const page = result.provenance.sections.find((s) => s.sourceId === 'context.page.current')!;
+    expect(page).toMatchObject({
+      included: false,
+      omissionReason: 'budget',
+      originalTokens: 1500,
+      finalTokens: 0,
+      cacheEligible: false,
+    });
+
+    // No false-positive receipt mismatch on a consistent run.
+    expect(warnSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining('Receipt totals do not match packed totals'),
+    );
+    warnSpy.mockRestore();
+  });
+
+  it('uses the compressor omission reason (policy) for policy-dropped debug items', async () => {
+    const { contextOptimizer } = await import('../../../src/core/context/ContextOptimizer');
+    // Tiny tier: oversized system item forces degradation; drop-debug removes
+    // the debug section — its receipt reason must come from the compressor's
+    // omissionReasons map ('policy'), not the generic budget fallback.
+    const systemItem = makeContextItem({
+      kind: 'system',
+      text: 's'.repeat(11200), // ≈ 2800 tokens
+      tokens: 2800,
+      stable: true,
+      sourceId: 'core.instructions.system',
+      trust: 1.0,
+      sensitivity: 'public',
+      instructionAuthority: 'system',
+    });
+    const debugItem = makeContextItem({
+      text: 'verbose debug trace',
+      tokens: 100,
+      sourceId: 'debug.verbose',
+      trust: 0.3, // unknown source verdict (D-07)
+    });
+
+    const result = await contextOptimizer.optimizeFromItems(
+      [systemItem, debugItem],
+      buildOptimizerInput({ modelContextWindow: 4096 }),
+    );
+
+    expect(result.sections.map((s) => s.sourceId)).toEqual(['core.instructions.system']);
+    expect(result.stepsApplied).toContain('drop-debug');
+    const debug = result.provenance.sections.find((s) => s.sourceId === 'debug.verbose')!;
+    expect(debug).toMatchObject({
+      included: false,
+      omissionReason: 'policy',
+      finalTokens: 0,
+    });
+  });
+
+  it('records all items as included when everything fits the budget', async () => {
+    const { contextOptimizer } = await import('../../../src/core/context/ContextOptimizer');
+    const systemItem = makeContextItem({
+      kind: 'system',
+      text: 'system',
+      tokens: 5,
+      stable: true,
+      sourceId: 'core.instructions.system',
+      trust: 1.0,
+      sensitivity: 'public',
+      instructionAuthority: 'system',
+    });
+    const userItem = makeContextItem({
+      kind: 'user_input',
+      text: 'hello',
+      tokens: 3,
+      stable: false,
+      sourceId: 'interaction.user.current-turn',
+      trust: 0.9,
+      instructionAuthority: 'user',
+    });
+    const dataItem = makeContextItem({ tokens: 5 });
+
+    const result = await contextOptimizer.optimizeFromItems(
+      [systemItem, userItem, dataItem],
+      buildOptimizerInput(),
+    );
+
+    expect(result.sections).toHaveLength(3);
+    expect(result.provenance.sections).toHaveLength(3);
+    for (const entry of result.provenance.sections) {
+      expect(entry.included).toBe(true);
+      expect(entry.omissionReason).toBeUndefined();
+    }
+  });
+
+  it('receipt totals cross-check passes: validateReceiptTotals(receipt, packedSections) is true', async () => {
+    const { contextOptimizer } = await import('../../../src/core/context/ContextOptimizer');
+    const { validateReceiptTotals } = await import(
+      '../../../src/core/context/ContextProvenanceManifest'
+    );
+    const systemItem = makeContextItem({
+      kind: 'system',
+      text: 'system',
+      tokens: 5,
+      stable: true,
+      sourceId: 'core.instructions.system',
+      trust: 1.0,
+      sensitivity: 'public',
+      instructionAuthority: 'system',
+    });
+    const dataItem = makeContextItem({ tokens: 8 });
+
+    const result = await contextOptimizer.optimizeFromItems(
+      [systemItem, dataItem],
+      buildOptimizerInput(),
+    );
+
+    // Sum of included finalTokens === sum of packed section tokens.
+    expect(validateReceiptTotals(result.provenance.sections, result.sections)).toBe(true);
+  });
+
+  it('omits hard-expired items as stale via ContextFreshnessPolicy before compression', async () => {
+    const { contextOptimizer } = await import('../../../src/core/context/ContextOptimizer');
+    const { contextFreshnessPolicy } = await import(
+      '../../../src/core/context/ContextFreshnessPolicy'
+    );
+    const computeSpy = vi.spyOn(contextFreshnessPolicy, 'compute');
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-01T12:00:00Z'));
+
+    const systemItem = makeContextItem({
+      kind: 'system',
+      text: 'system',
+      tokens: 5,
+      stable: true,
+      sourceId: 'core.instructions.system',
+      trust: 1.0,
+      sensitivity: 'public',
+      instructionAuthority: 'system',
+    });
+    const staleItem = makeContextItem({
+      text: 'expired cached page',
+      tokens: 50,
+      sourceId: 'context.page.cached',
+      trust: 0.3, // unknown-domain page verdict (D-07)
+      createdAt: 1,
+      expiresAt: 2, // long past the fixed clock → hard expiry → freshness 0
+    });
+
+    const result = await contextOptimizer.optimizeFromItems(
+      [systemItem, staleItem],
+      buildOptimizerInput(),
+    );
+
+    // The stale item never reaches the final prompt…
+    expect(result.sections.map((s) => s.sourceId)).toEqual(['core.instructions.system']);
+    // …but its receipt entry is recorded with the 'stale' omission reason.
+    const stale = result.provenance.sections.find((s) => s.sourceId === 'context.page.cached')!;
+    expect(stale).toMatchObject({
+      included: false,
+      omissionReason: 'stale',
+      originalTokens: 50,
+      finalTokens: 0,
+      cacheEligible: false,
+    });
+    expect(computeSpy).toHaveBeenCalledWith('context.page.cached', 'context', expect.anything(), 2);
+    expect(computeSpy).toHaveBeenCalled();
+  });
+
+  it('rejects trust-mismatched items via ContextTrustPolicy before the receipt stage', async () => {
+    const { contextOptimizer } = await import('../../../src/core/context/ContextOptimizer');
+    const { contextTrustPolicy } = await import('../../../src/core/context/ContextTrustPolicy');
+    const assessSpy = vi.spyOn(contextTrustPolicy, 'assess');
+    const validateSpy = vi.spyOn(contextTrustPolicy, 'validate');
+
+    // Unknown-domain page sourceId → policy verdict 0.3; self-assigned 0.5
+    // must be rejected (D-06 — trust is never self-assigned).
+    const mismatched = makeContextItem({ trust: 0.5, sourceId: 'context.page.other-url' });
+    await expect(
+      contextOptimizer.optimizeFromItems([mismatched], buildOptimizerInput()),
+    ).rejects.toMatchObject({ code: 'SCHEMA_INVALID' });
+
+    expect(assessSpy).toHaveBeenCalledWith('context.page.other-url', 'context');
+    expect(validateSpy).toHaveBeenCalled();
+  });
+
+  it('keeps the existing optimize() method working unchanged (backward compatibility)', async () => {
+    const { contextOptimizer } = await import('../../../src/core/context/ContextOptimizer');
+    const result = await contextOptimizer.optimize(buildOptimizerInput());
+
+    expect(result.tier).toBe('medium');
+    expect(result.sections).toHaveLength(7);
+    expect(result.sections.map((s) => s.kind)).toEqual([
+      'system',
+      'tool_schemas',
+      'preferences',
+      'memory',
+      'context',
+      'task',
+      'user_input',
+    ]);
+    expect(result.minimalMode).toBe(false);
+    expect(result.provenance.sections).toHaveLength(7);
+    expect(result.provenance.sections.every((e) => e.included === true)).toBe(true);
   });
 });
