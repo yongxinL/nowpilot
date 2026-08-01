@@ -1,6 +1,6 @@
 import { generateText } from 'ai';
 import type { ProviderAdapter } from './providers/ProviderAdapter';
-import type { OptimizedContext, ModelTier, StreamEvent } from './types';
+import type { OptimizedContext, ModelTier, StreamEvent, ToolExecutionResult } from './types';
 import { resolveTierModel } from './TierResolver';
 import { PipelineError } from './PipelineError';
 import { streamToAsyncIterable } from './StreamAdapter';
@@ -9,10 +9,22 @@ import type { RenderingOutcomePolicy } from './RenderingOutcomePolicy';
 
 const BASE_SYSTEM_PROMPT = 'You are a helpful assistant. Provide clear, concise responses.';
 
+/** Bounded serialization of one tool result — never exposes full output. */
+function summarizeToolResult(result: ToolExecutionResult): string {
+  let output: string;
+  try {
+    output = JSON.stringify(result.output);
+  } catch {
+    output = String(result.output);
+  }
+  return `Tool ${result.toolName} returned: ${output.slice(0, 2000)}`;
+}
+
 function buildMessages(
   decision: { action: 'answer'; reasonCode: string },
   optimized: OptimizedContext,
   systemPrompt?: string,
+  toolResults?: ToolExecutionResult[],
 ): Array<{ role: 'system' | 'user' | 'assistant'; content: string }> {
   const prompt = systemPrompt ?? BASE_SYSTEM_PROMPT;
 
@@ -21,9 +33,16 @@ function buildMessages(
   const history: Array<{ role: 'user' | 'assistant'; content: string }> = [];
 
   const userSection = optimized.sections.find((s) => s.kind === 'user_input');
+  // Bounded tool-results context: the renderer must be able to reference
+  // what the executed tools returned ("The weather in Tokyo is 22°C")
+  // instead of generating the final answer from the raw user input alone.
+  const toolContext = (toolResults ?? [])
+    .map((r) => summarizeToolResult(r))
+    .join('\n');
   return [
     { role: 'system' as const, content: prompt },
     ...history,
+    ...(toolContext ? [{ role: 'assistant' as const, content: toolContext }] : []),
     { role: 'user' as const, content: userSection?.text ?? '' },
   ];
 }
@@ -61,6 +80,7 @@ export class RendererService {
     optimized: OptimizedContext,
     policy?: RenderingOutcomePolicy,
     signal?: AbortSignal,
+    toolResults?: ToolExecutionResult[],
   ): Promise<string> {
     const { modelId } = resolveTierModel(adapter, tier);
     const model = adapter.createLanguageModel(modelId);
@@ -70,7 +90,7 @@ export class RendererService {
     try {
       const { text } = await generateText({
         model,
-        messages: buildMessages(decision, optimized, systemPrompt),
+        messages: buildMessages(decision, optimized, systemPrompt, toolResults),
         ...(signal ? { signal } : {}),
       });
       return text;
@@ -90,6 +110,7 @@ export class RendererService {
     optimized: OptimizedContext,
     policy?: RenderingOutcomePolicy,
     signal?: AbortSignal,
+    toolResults?: ToolExecutionResult[],
   ): Promise<AsyncIterable<StreamEvent>> {
     const { modelId } = resolveTierModel(adapter, tier);
     const model = adapter.createLanguageModel(modelId);
@@ -98,7 +119,7 @@ export class RendererService {
 
     return streamToAsyncIterable({
       model,
-      messages: buildMessages(decision, optimized, systemPrompt),
+      messages: buildMessages(decision, optimized, systemPrompt, toolResults),
       ...(signal ? { abortSignal: signal } : {}),
     });
   }

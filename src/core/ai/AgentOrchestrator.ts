@@ -260,6 +260,7 @@ export class AgentOrchestrator {
           cacheOptimized!,
           policy,
           signal,
+          toolResults,
         );
         if (signal?.aborted) return abortTurn('rendering', 'caller_aborted');
         this.recordCacheResponse(providerId);
