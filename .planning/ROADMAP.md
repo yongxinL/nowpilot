@@ -119,22 +119,27 @@ Plans:
   3. Every exit path returns an AgentTurnOutcome; cap exhaustion is terminalState:partial not completed; abort does not render a success answer
   4. Replanning follows deterministic policy — success→verify→render, retryable→one replan, permission/auth/schema→terminal; irreversible execution always terminates without retry or replan (cross-turn replay safety remains Phase 8a)
 
-**Plans**: 5 plans
+**Plans**: 3/5 plans executed
 
 Plans:
 **Wave 1**
-- [ ] 03a-01-PLAN.md — Contracts, strict trajectory machine, and operation-scoped idempotency primitive (AGT-01, AGT-03, TOL-03)
+
+- [x] 03a-01-PLAN.md — Contracts, strict trajectory machine, and operation-scoped idempotency primitive (AGT-01, AGT-03, TOL-03)
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 03a-02-PLAN.md — OutcomeVerifier and pure ReplanPolicy with exhaustive unit tests (AGT-02, AGT-04, TOL-03)
+
+- [x] 03a-02-PLAN.md — OutcomeVerifier and pure ReplanPolicy with exhaustive unit tests (AGT-02, AGT-04, TOL-03)
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 03a-03-PLAN.md — AgentOrchestrator integration, evidence-constrained renderer, signal propagation, and caller migration (AGT-01, AGT-02, AGT-03, AGT-04, TOL-03)
+
+- [x] 03a-03-PLAN.md — AgentOrchestrator integration, evidence-constrained renderer, signal propagation, and caller migration (AGT-01, AGT-02, AGT-03, AGT-04, TOL-03)
 
 **Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 03a-04-PLAN.md — Abort propagation through nested ContextCompressor summarization (AGT-03)
 
 **Wave 5** *(blocked on Wave 4 completion)*
+
 - [ ] 03a-05-PLAN.md — STRIDE regression suite and explicit phase verification script (AGT-01, AGT-02, AGT-03, AGT-04, TOL-03)
 
 ### Phase 4: Context Optimization Pipeline
@@ -427,7 +432,7 @@ Decimal phases execute after their parent integer phase: 3 → 3a → 4 → 4a �
 | 1. Project Scaffold & Runtime Foundation | 5/5 | Completed | 2026-07-28 |
 | 2. Storage & Security Foundation | 4/4 | Completed | 2026-07-29 |
 | 3. AI Core Pipeline | 7/7 | Completed | 2026-07-30 |
-| 3a. Agent Reliability & Evidence | 0/4 | Not started | - |
+| 3a. Agent Reliability & Evidence | 3/5 | In Progress|  |
 | 4. Context Optimization Pipeline | 3/3 | Completed | 2026-07-31 |
 | 4a. Page Content Extraction | 6/6 | Completed | 2026-07-31 |
 | 4b. Trust-Aware Context & Receipts | TBD | Not started | - |
