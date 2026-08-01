@@ -6,9 +6,9 @@ Phase 5 external API surface: the Vercel AI SDK (`ai@7`) exercised through the p
 
 | capability | decision | reason |
 |---|---|---|
-| generateText (non-streaming generation) | INTEGRATE | Conversation summarization at the 12-message boundary: `ConversationMemoryStore.compactConversation()` calls `generateText({ model, prompt, maxOutputTokens: 200, temperature: 0.3 })` with a FAST-tier model (D-10). Reuses the same SDK entrypoint as Phase 3/4 consumers (ContextCompressor, RendererService, PlannerService, StructuredOutput) |
+| generateText (non-streaming generation) | INTEGRATE | Conversation summarization at the 12-message boundary (D-10): `compactConversation()` calls `generateText` with a FAST-tier model, ≤500-char summary, messages preserved |
 | tier resolution via `getDefaultModelForTier('FAST')` | INTEGRATE | Summarization must land on the cheapest capable tier per D-10; ProviderAdapter + TierResolver compose the model id (ConversationMemoryStore.ts:254) |
-| provider factories (createOpenAI / createAnthropic / createGoogle / createOllama) | INTEGRATE | `ProviderAdapter.createLanguageModel(modelId)` resolves the FAST-tier model through the existing provider surface (Phase 3); no new provider wiring added in this phase |
+| provider factories (createOpenAI/Anthropic/Google/Ollama) | INTEGRATE | `ProviderAdapter.createLanguageModel(modelId)` resolves the FAST-tier model through the Phase 3 provider surface; no new provider wiring added this phase |
 | streamText (streaming) | INTEGRATE | No new consumer this phase; unchanged from Phase 3 (StreamAdapter) |
 | structured output (Output / Output.object) | INTEGRATE | No new consumer this phase; unchanged from Phase 3 (PlannerService) |
 | tool calling | INTEGRATE | No new consumer this phase; unchanged from Phase 3 (ExecutorService) |
