@@ -69,13 +69,67 @@ export interface ContextProvenanceEntry {
 /**
  * Source-level provenance manifest (spec §2.6, D-17): one entry per distinct
  * data source, keyed by hierarchical dot-separated sourceId (D-18).
+ *
+ * Phase 4b (D-03, CTX-T03): sections carry ContextReceiptEntry fields —
+ * receipt entries ARE provenance entries, extended with inclusion, omission,
+ * and cache-eligibility bookkeeping.
  */
 export interface ContextProvenanceManifest {
-  sections: ContextProvenanceEntry[];
+  sections: ContextReceiptEntry[];
   totalTokens: number;
   minimalMode: boolean;
   workspaceId: string;
   activeSurface: 'sidepanel' | 'full-app';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 4b — Trust-aware context contracts (D-01, D-03, D-06, D-07, D-09)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Data-sensitivity classification (D-09). Severity order:
+ * public < private < confidential < secret. `secret` items must never
+ * become ContextItem instances — ContextItemSchema rejects them (D-09).
+ */
+export type Sensitivity = 'public' | 'private' | 'confidential' | 'secret';
+
+/**
+ * Who authored a context source (D-06/D-07): system instructions, explicit
+ * user interaction, or machine-produced data. Trust validation and section
+ * ordering (system → user → data) derive from this — never self-assigned.
+ */
+export type InstructionAuthority = 'system' | 'user' | 'data';
+
+/** Why a context source was omitted from the final prompt (CTX-T03). */
+export type OmissionReason = 'budget' | 'irrelevant' | 'stale' | 'sensitive' | 'policy';
+
+/**
+ * Trust-aware context item (D-01): a PromptSection-shaped payload plus trust
+ * metadata assigned by source adapters. The wrapper is SEPARATE from
+ * PromptSection — metadata is stripped by unwrapToPromptSections() before
+ * any provider sees prompt text (D-01).
+ */
+export interface ContextItem extends PromptSection {
+  relevance: number;
+  freshness: number;
+  trust: number;
+  sensitivity: Sensitivity;
+  instructionAuthority: InstructionAuthority;
+  createdAt?: number;
+  expiresAt?: number;
+}
+
+/**
+ * Context receipt entry (D-03, CTX-T03): extends ContextProvenanceEntry with
+ * original/final token counts, inclusion status, omission reason, and cache
+ * eligibility. Receipt entries never carry raw text (T-04b-03).
+ */
+export interface ContextReceiptEntry extends ContextProvenanceEntry {
+  originalTokens: number;
+  finalTokens: number;
+  included: boolean;
+  omissionReason?: OmissionReason;
+  cacheEligible: boolean;
 }
 
 /**
@@ -435,3 +489,14 @@ export interface ReplanContext {
     toolCapReached: boolean;
   };
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 4b — ContextItem Zod schemas re-exported from the context layer so
+// consumers import types + validation from one place (D-01).
+// ─────────────────────────────────────────────────────────────────────────────
+export {
+  ContextItemSchema,
+  SensitivitySchema,
+  InstructionAuthoritySchema,
+  unwrapToPromptSections,
+} from '../context/ContextItem';

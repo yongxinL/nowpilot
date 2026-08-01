@@ -25,6 +25,11 @@ export function createProvenanceManifest(
  * invalid sourceId — sourceIds are internal constants, so a violation is a
  * programming error that must surface loudly rather than corrupt the
  * manifest.
+ *
+ * Phase 4b (D-03): entries satisfy ContextReceiptEntry. Legacy path default
+ * receipt fields (originalTokens === finalTokens, cacheEligible: false);
+ * optimizeFromItems() uses recordSectionWithReceipt() with per-section
+ * receipt data instead.
  */
 export function recordSection(manifest: ContextProvenanceManifest, section: PromptSection): void {
   if (!isValidSourceId(section.sourceId)) {
@@ -35,6 +40,10 @@ export function recordSection(manifest: ContextProvenanceManifest, section: Prom
     sourceId: section.sourceId,
     tokens: section.tokens,
     truncated: false,
+    originalTokens: section.tokens,
+    finalTokens: section.tokens,
+    included: true,
+    cacheEligible: false,
   });
   manifest.totalTokens += section.tokens;
 }
