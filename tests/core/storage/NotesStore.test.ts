@@ -49,14 +49,52 @@ describe('NotesStore', () => {
     expect(state.notes).toEqual([]);
   });
 
-  it('saveNote delegates to NotesDB.save and appends to local notes[] on success', async () => {
+  it('saveNote delegates to NotesDB.save and mirrors the PERSISTED note, not the raw input (WR-02)', async () => {
     const note = makeNote();
+    // NotesDB.save() derives the persisted record: resolved links, bumped
+    // version, fresh updatedAt — the mirror must hold THIS, not the input.
+    const persisted = {
+      ...note,
+      version: 2,
+      updatedAt: 2000,
+      links: ['other-note-id'],
+    };
     vi.spyOn(notesDb, 'save').mockResolvedValue({ success: true, noteId: note.id });
+    vi.spyOn(notesDb, 'get').mockResolvedValue({ success: true, note: persisted });
 
     const result = await useNotesStore.getState().saveNote(note);
 
     expect(result).toEqual({ success: true, noteId: note.id });
     expect(notesDb.save).toHaveBeenCalledWith(note);
+    expect(notesDb.get).toHaveBeenCalledWith(note.id);
+    expect(useNotesStore.getState().notes).toContainEqual(persisted);
+    expect(useNotesStore.getState().notes).not.toContainEqual(note);
+  });
+
+  it('saveNote replaces an existing mirror entry with the persisted note (WR-02)', async () => {
+    const note = makeNote();
+    useNotesStore.setState({ notes: [note] });
+    const persisted = { ...note, version: 2 };
+    vi.spyOn(notesDb, 'save').mockResolvedValue({ success: true, noteId: note.id });
+    vi.spyOn(notesDb, 'get').mockResolvedValue({ success: true, note: persisted });
+
+    await useNotesStore.getState().saveNote(note);
+
+    expect(useNotesStore.getState().notes).toEqual([persisted]);
+  });
+
+  it('saveNote falls back to the raw note when the persisted re-fetch fails (WR-02)', async () => {
+    const note = makeNote();
+    vi.spyOn(notesDb, 'save').mockResolvedValue({ success: true, noteId: note.id });
+    vi.spyOn(notesDb, 'get').mockResolvedValue({
+      success: false,
+      error: 'Note not found',
+      code: 'NOT_FOUND',
+    });
+
+    const result = await useNotesStore.getState().saveNote(note);
+
+    expect(result.success).toBe(true);
     expect(useNotesStore.getState().notes).toContainEqual(note);
   });
 

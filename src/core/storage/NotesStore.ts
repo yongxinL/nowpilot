@@ -42,12 +42,18 @@ export const useNotesStore = create<NotesState>()(
     saveNote: async (note) => {
       const result = await notesDb.save(note);
       if (result.success) {
+        // WR-02: mirror the PERSISTED (derived) note, not the raw input —
+        // NotesDB.save() resolves links[], increments version and refreshes
+        // updatedAt. Re-fetch so the mirror never diverges from IndexedDB;
+        // fall back to the input only if the re-fetch fails.
+        const persisted = await notesDb.get(result.noteId);
+        const mirrorNote = persisted.success ? persisted.note : note;
         set((state) => {
           const idx = state.notes.findIndex((n) => n.id === result.noteId);
           if (idx >= 0) {
-            state.notes[idx] = note;
+            state.notes[idx] = mirrorNote;
           } else {
-            state.notes.push(note);
+            state.notes.push(mirrorNote);
           }
         });
       }
