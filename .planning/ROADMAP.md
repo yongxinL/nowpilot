@@ -220,29 +220,29 @@ Plans:
   4. Persona, system rules, and sorted tool schemas are byte-identical for identical configuration — snapshot tests fail on unexpected whitespace/order changes
   5. Irrelevant skill instructions consume zero prompt tokens (progressive disclosure); receipt records which skills were loaded
 
-**Plans**: 6 plans in 5 waves
+**Plans**: 6/6 plans executed
 
 Plans:
 **Wave 1** *(tracer)*
 
-- [ ] 04b-01-PLAN.md — TRACER: ContextItem types + ContextTrustPolicy core + ContextOptimizer trust-gated pipeline end-to-end with delimiter wrapping and receipt generation (CTX-T01, CTX-T02, CTX-T03)
+- [x] 04b-01-PLAN.md — TRACER: ContextItem types + ContextTrustPolicy core + ContextOptimizer trust-gated pipeline end-to-end with delimiter wrapping and receipt generation (CTX-T01, CTX-T02, CTX-T03)
 
 **Wave 2** *(parallel — blocked on Wave 1 completion)*
 
-- [ ] 04b-02-PLAN.md — Full ContextTrustPolicy (8 source types) + ContextFreshnessPolicy (exponential decay, per-source TTLs) (CTX-T01)
-- [ ] 04b-03-PLAN.md — ToolResultShaper: redaction, size limits, provenance, immutable ContextItem (TOL-04)
+- [x] 04b-02-PLAN.md — Full ContextTrustPolicy (8 source types) + ContextFreshnessPolicy (exponential decay, per-source TTLs) (CTX-T01)
+- [x] 04b-03-PLAN.md — ToolResultShaper: redaction, size limits, provenance, immutable ContextItem (TOL-04)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 04b-04-PLAN.md — Receipt extension: ContextReceiptEntry in manifest, omission reasons from compressor, totals cross-check (CTX-T03)
+- [x] 04b-04-PLAN.md — Receipt extension: ContextReceiptEntry in manifest, omission reasons from compressor, totals cross-check (CTX-T03)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 04b-05-PLAN.md — Stable-prefix contract: FNV-1a hash + per-section hashes + snapshot tests (CTX-T04)
+- [x] 04b-05-PLAN.md — Stable-prefix contract: FNV-1a hash + per-section hashes + snapshot tests (CTX-T04)
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 04b-06-PLAN.md — Prompt-injection isolation tests + progressive skill disclosure basic mechanics (CTX-T02, CTX-T05)
+- [x] 04b-06-PLAN.md — Prompt-injection isolation tests + progressive skill disclosure basic mechanics (CTX-T02, CTX-T05)
 
 ### Phase 5: Knowledge Base
 
@@ -457,7 +457,7 @@ Decimal phases execute after their parent integer phase: 3 → 3a → 4 → 4a �
 | 3a. Agent Reliability & Evidence | 5/5 | Complete    | 2026-08-01 |
 | 4. Context Optimization Pipeline | 3/3 | Completed | 2026-07-31 |
 | 4a. Page Content Extraction | 6/6 | Completed | 2026-07-31 |
-| 4b. Trust-Aware Context & Receipts | 0/6 | Planned | — |
+| 4b. Trust-Aware Context & Receipts | 6/6 | In Progress|  |
 | 5. Knowledge Base | TBD | Not started | - |
 | 5a. LLM-Wiki & Filesystem Sync | TBD | Not started | - |
 | 5b. Memory Governance & Experience Candidates | TBD | Not started | - |
