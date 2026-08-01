@@ -8,6 +8,7 @@ import type {
   OmissionReason,
   OptimizedContext,
   PromptSection,
+  SkillSummary,
 } from '../ai/types';
 import { PipelineError } from '../ai/PipelineError';
 import { providerRouter } from '../ai/ProviderRouter';
@@ -51,6 +52,7 @@ const ContextOptimizerInputSchema = z.object({
   pageContext: z.unknown().optional(),
   selectedToolSchemas: z.array(ToolSchemaInfoSchema),
   memoryHints: z.array(z.unknown()),
+  unloadedSkillNames: z.array(z.string().min(1)).optional(),
   preferences: z
     .object({
       responseStyle: z.string().optional(),
@@ -95,6 +97,45 @@ export interface StablePrefixContract {
  * once per turn (D-02).
  */
 export class ContextOptimizer {
+  /**
+   * Progressive skill disclosure contract (CTX-T05, P1): turn a compact
+   * SkillSummary into a ContextItem for a LOADED skill. The optimizer does
+   * NOT decide which skills load — that is PlannerService's responsibility
+   * (Phase 7 integration); this helper is the contract for how loaded
+   * skills enter the pipeline:
+   *
+   * - kind 'system' + instructionAuthority 'system' — loaded skills
+   *   participate as system instructions (ContextTrustPolicy.assess()
+   *   returns the matching {1.0, public, system} verdict for
+   *   `skills.loaded.*` sourceIds, so validate() passes)
+   * - stable:true — they participate in stable-prefix hashing (CTX-T04)
+   *   and occupy their normal token budget
+   * - relevance/freshness 1.0 — skills are always relevant/fresh once the
+   *   planner chose to load them
+   *
+   * The caller (PlannerService) includes the returned items in the
+   * ContextItem[] passed to optimizeFromItems().
+   */
+  static createSkillContextItem(skill: SkillSummary): ContextItem {
+    const text = JSON.stringify({
+      name: skill.name,
+      description: skill.description,
+      keywords: skill.capabilityKeywords,
+    });
+    return {
+      kind: 'system',
+      text,
+      tokens: tokenBudget.estimateTokens(text),
+      stable: true,
+      sourceId: `skills.loaded.${skill.name}`,
+      relevance: 1.0,
+      freshness: 1.0,
+      trust: 1.0,
+      instructionAuthority: 'system',
+      sensitivity: 'public',
+    };
+  }
+
   async optimize(input: ContextOptimizerInput): Promise<OptimizedContext> {
     const validation = ContextOptimizerInputSchema.safeParse(input);
     if (!validation.success) {
@@ -371,6 +412,18 @@ export class ContextOptimizer {
       }
     }
     manifest.minimalMode = minimalMode;
+
+    // 5.25. Unloaded-skill receipts (CTX-T05, P1): skills the planner
+    //    considered but did NOT load consume zero prompt tokens — they never
+    //    became ContextItems and never appear in PromptSection[]. The receipt
+    //    records each one with omissionReason:'policy' and zero original/
+    //    final tokens, so diagnostics and the user see that the skill was
+    //    policy-omitted (and why). Skill names must be valid sourceId
+    //    segments (lowercase alphanumeric/underscore/hyphen); they come from
+    //    the developer-authored static registry (T-04b-20 accept).
+    for (const skillName of input.unloadedSkillNames ?? []) {
+      markOmitted(manifest, `skills.unloaded.${skillName}`, 'system', 'policy', 0);
+    }
 
     // 5.5. Receipt totals cross-check (RESEARCH Pitfall 4, CTX-T03): the sum
     //    of included finalTokens must equal the packed section total. A

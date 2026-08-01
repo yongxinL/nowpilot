@@ -42,6 +42,15 @@ export class ContextTrustPolicy {
    * unknown-domain page content and unknown sources → 0.3.
    */
   assess(sourceId: string, kind: PromptSection['kind']): TrustAssessment {
+    // Skills loaded by the planner (CTX-T05, P1): full trust, public
+    // sensitivity (no secrets in skill descriptions), system authority —
+    // loaded skills participate as system instructions. The branch is
+    // sourceId-driven so a skill item mislabeled with a data-kind still
+    // resolves to system authority and is rejected by validate() if the
+    // item self-assigns otherwise.
+    if (sourceId.startsWith('skills.loaded.')) {
+      return { trust: 1.0, sensitivity: 'public', instructionAuthority: 'system' };
+    }
     // System-authored content: highest trust, public, system authority.
     // persona.* is trust-classified by sourceId, even when kind is not
     // 'system' (D-07).

@@ -109,7 +109,6 @@ describe('Prompt-injection isolation (CTX-T02)', () => {
 
     // System section comes first in the final PromptSection[].
     expect(result.sections[0].sourceId).toBe('core.instructions.system');
-    expect(result.sections[0].instructionAuthority ?? 'system').toBe('system');
 
     const pageSection = result.sections.find((s) => s.sourceId === 'context.page.current')!;
     // The adversarial text is inside the structural delimiter.

@@ -100,6 +100,19 @@ export type Sensitivity = 'public' | 'private' | 'confidential' | 'secret';
  */
 export type InstructionAuthority = 'system' | 'user' | 'data';
 
+/**
+ * Compact skill capability summary for progressive disclosure (CTX-T05, P1).
+ * Just enough for the planner to decide relevance — the full skill
+ * instructions are only materialized when the skill is loaded. Summaries are
+ * authored by developers in a static registry (T-04b-20 accept: never
+ * user-generated content).
+ */
+export interface SkillSummary {
+  name: string;
+  description: string;
+  capabilityKeywords: string[];
+}
+
 /** Why a context source was omitted from the final prompt (CTX-T03). */
 export type OmissionReason = 'budget' | 'irrelevant' | 'stale' | 'sensitive' | 'policy';
 
@@ -223,6 +236,16 @@ export interface ContextOptimizerInput {
    * orchestration control, not prompt data.
    */
   abortSignal?: AbortSignal;
+  /**
+   * Skills the planner considered but decided NOT to load (CTX-T05, P1).
+   * The optimizer never decides skill selection — it only records the
+   * planner's policy omission in the receipt: each name gets an
+   * `included:false` entry with `omissionReason:'policy'` and zero token
+   * cost, so unloaded skills are visible to diagnostics without consuming
+   * prompt tokens. Optional — when absent, no unloaded-skill receipt
+   * entries are created.
+   */
+  unloadedSkillNames?: string[];
 }
 
 /**
