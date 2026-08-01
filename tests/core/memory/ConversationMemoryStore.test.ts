@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { openDB } from 'idb';
 import { generateText } from 'ai';
 import {
   ConversationMemoryStore,
@@ -80,6 +81,63 @@ describe('ConversationMemoryStore', () => {
     }
     // counts are scoped per conversation
     expect(await store.getMessageCount('conv-other')).toBe(0);
+  });
+
+  it('assigns seq atomically — concurrent appends never overwrite each other (WR-09)', async () => {
+    // Simulate rapid turns racing from TWO connections — each extension
+    // surface runs its own module instance (its own IndexedDB connection).
+    // The seq count+put must be atomic within one readwrite transaction;
+    // a read-then-write `seq = existing.length` would let two appends
+    // compute the same seq and silently overwrite one message.
+    const { migrationRunner } = await import('../../../src/core/storage/MigrationRunner');
+    await migrationRunner.migrate('NotesDB', 4);
+    const secondConn = await openDB('NotesDB', 4);
+    const range = IDBKeyRange.bound(
+      ['conv-race', 0],
+      ['conv-race', Number.MAX_SAFE_INTEGER],
+    );
+
+    const appendViaSecondConn = async (content: string): Promise<void> => {
+      const tx = secondConn.transaction('memory_messages', 'readwrite');
+      const s = tx.store;
+      let seq = 0;
+      let cursor = await s.openCursor(range);
+      while (cursor) {
+        seq++;
+        cursor = await cursor.continue();
+      }
+      await s.put({ conversationId: 'conv-race', seq, role: 'user', content, timestamp: 1_000 });
+      await tx.done;
+    };
+
+    // Pre-open the module connection so no lazy open races the concurrent
+    // transactions (fake-indexeddb wedges on a migrate/openDB interleaving
+    // another connection's in-flight transactions).
+    expect(await store.getMessageCount('conv-race')).toBe(0);
+
+    const jobs: Promise<unknown>[] = [];
+    for (let i = 0; i < 5; i++) {
+      jobs.push(
+        store.appendMessage('conv-race', {
+          role: 'user',
+          content: `race-${i}`,
+          timestamp: 1_000_000_000_000 + i,
+        }),
+      );
+      jobs.push(appendViaSecondConn(`race-${i + 5}`));
+    }
+    await Promise.all(jobs);
+    secondConn.close();
+
+    // every message survived — no two appends computed the same seq
+    const count = await store.getMessageCount('conv-race');
+    expect(count).toBe(10);
+    const ctx = await store.getContext('conv-race', 'large');
+    expect(ctx.recentMessages).toHaveLength(10);
+    const contents = ctx.recentMessages.map((m) => m.content);
+    for (let i = 0; i < 10; i++) {
+      expect(contents).toContain(`race-${i}`);
+    }
   });
 
   it('emits the compact signal at the 12-message boundary, and only there (Test 1 / D-10)', async () => {

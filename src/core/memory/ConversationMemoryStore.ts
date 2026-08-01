@@ -175,13 +175,26 @@ export class ConversationMemoryStore {
    * this append is a multiple of 12 (D-10). Never invokes the LLM itself —
    * the caller decides when to run compactConversation() so the message
    * write is never blocked on summarization.
+   *
+   * WR-09: the count and the put run inside ONE readwrite transaction (key
+   * cursor over [conversationId, *]) — seq assignment is atomic, so two
+   * concurrent appends to the same conversation can never compute the same
+   * seq and silently overwrite each other.
    */
   async appendMessage(conversationId: string, message: MemoryMessageInput): Promise<AppendMessageResult> {
     const db = await openMemoryDb();
-    const existing = await db.getAll('memory_messages', conversationRange(conversationId));
-    const seq = existing.length; // auto-increment within the conversation
+    const tx = db.transaction('memory_messages', 'readwrite');
+    const store = tx.store;
 
-    await db.put('memory_messages', { conversationId, seq, ...message });
+    let seq = 0;
+    let cursor = await store.openCursor(conversationRange(conversationId));
+    while (cursor) {
+      seq++;
+      cursor = await cursor.continue();
+    }
+
+    await store.put({ conversationId, seq, ...message });
+    await tx.done;
     const messageCount = seq + 1;
 
     return { shouldCompact: messageCount % COMPACT_BOUNDARY === 0, messageCount };
