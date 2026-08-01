@@ -1126,21 +1126,24 @@ export function scoreFact(fact: UserMemoryFact, queryTerms: string[], now: numbe
 | A9 | D-08 weights (35/25/20/10/10) take precedence over PRODUCT_SPEC §3.4 weights (45/25/15/10/5) | Retrieval Scoring | MEDIUM — D-08 is the discuss-phase output and more recent, but if the spec is authoritative, percentages need adjustment |
 | A10 | MemoryDB messages use compound key `[conversationId, seq]` | IndexedDB Schema | MEDIUM — if a flat keyPath is preferred, schema changes; compound key matches the spec's `keyPath [conversationId, seq]` note |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **D-08 weights vs PRODUCT_SPEC §3.4 weights discrepancy**
+1. **D-08 weights vs PRODUCT_SPEC §3.4 weights discrepancy** (RESOLVED)
    - What we know: CONTEXT.md D-08 specifies 35/25/20/10/10; PRODUCT_SPEC §3.4 specifies 45/25/15/10/5
-   - What's unclear: Which is canonical? D-08 is more recent (discuss-phase output) but §3.4 has been in the spec longer
+   - Resolution: Plans use D-08 weights (35/25/20/10/10) as the more recent discuss-phase decision; PRODUCT_SPEC §3.4 discrepancy noted for Phase 5b tuning
+   - Resolved in: Plan 05-02 Task 1 MemoryScorer exports WEIGHTS={keyword:0.35, tag:0.25, recency:0.20, confidence:0.10, useCount:0.10}
    - Recommendation: Use D-08 weights (more recent discuss-phase decision); note the discrepancy for Phase 5b tuning
 
-2. **Conversation summary LLM invocation details**
+2. **Conversation summary LLM invocation details** (RESOLVED)
    - What we know: D-10 specifies "active lowest-cost summarization tier (Haiku/Gemini Flash/Nano-class)" and 2-3 sentence format
-   - What's unclear: Exact provider/method for invoking summarization — does it go through AgentOrchestrator or a direct provider call?
+   - Resolution: Plan 05-03 Task 1 uses a direct lightweight provider call (not full AgentOrchestrator pipeline) — `providerAdapter.createLanguageModel(modelId).doGenerate({prompt, maxTokens:200, temperature:0.3})` with ProviderRouter.getCompressionModel() for the cheapest model
+   - Resolved in: Plan 05-03 Task 1 ConversationMemoryStore.compactConversation() — direct provider call, not AgentOrchestrator
    - Recommendation: Use a direct, lightweight provider call (not full AgentOrchestrator pipeline) since summarization is a deterministic, non-interactive task
 
-3. **MiniSearch index rebuild strategy on startup recovery**
+3. **MiniSearch index rebuild strategy on startup recovery** (RESOLVED)
    - What we know: D-12 specifies "Full rebuild reserved for startup recovery, import, schema migrations, and corruption recovery"
-   - What's unclear: When exactly does a rebuild trigger? On any load failure? On version mismatch? On dirtFactor threshold?
+   - Resolution: Plan 05-01 Task 1 MiniSearchNoteIndex.load() attempts deserialization; rebuild() is a public method invoked by caller on load failure or corruption; vacuum/scheduled rebuild deferred to caller or future phase
+   - Resolved in: Plan 05-01 Task 1 MiniSearchNoteIndex.load() + rebuild() methods; caller triggers rebuild when loadJSON fails
    - Recommendation: Rebuild when `loadJSON` fails (corrupted/absent data); schedule vacuum on startup for indices with high dirtFactor
 
 ## Sources
