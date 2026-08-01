@@ -67,6 +67,24 @@ const SYSTEM_PROMPT_TEXT =
   'You are a helpful AI assistant. You have access to tools and context to help the user.';
 
 /**
+ * Stable-prefix contract (CTX-T04, D-04): the deterministic FNV-1a hash of
+ * ALL stable sections (persona, system rules, preferences, sorted tool
+ * schemas) plus one per-section diagnostic hash per stable section.
+ *
+ * `combinedHash` is the authoritative guard — byte-level, so any
+ * whitespace, ordering, or content change in a stable section changes it.
+ * `perSectionHashes` identify exactly which section drifted when the
+ * combined hash changes. Volatile sections (user input, memory, page
+ * content, tool results, timestamps, scores, lifecycle fields) are EXCLUDED
+ * — only stable:true sections participate.
+ */
+export interface StablePrefixContract {
+  combinedHash: string;
+  perSectionHashes: Array<{ sourceId: string; hash: string }>;
+  stableSectionCount: number;
+}
+
+/**
  * First-class pipeline stage (D-01): owns tier classification, budget
  * allocation, section assembly, provenance tracking, the initial budget
  * check, degradation (04-02), and prompt cache metadata (04-03). Runs
@@ -144,9 +162,11 @@ export class ContextOptimizer {
     // transformation runs via PromptCacheManager.prepareCacheHints() after
     // provider selection; cacheKeyHash is stable across providers so
     // cross-turn cache-hit detection is preserved (D-16).
+    const stablePrefix = this.computeStablePrefix(sections);
     const cacheMetadata = {
-      cacheKeyHash: hashStableSections(sections),
-      stableSectionCount: sections.filter((s) => s.stable).length,
+      cacheKeyHash: stablePrefix.combinedHash,
+      stableSectionCount: stablePrefix.stableSectionCount,
+      perSectionHashes: stablePrefix.perSectionHashes,
     };
 
     return {
@@ -330,9 +350,17 @@ export class ContextOptimizer {
       }
     }
 
+    // 6. Stable-prefix contract (CTX-T04, D-04): the final step computes
+    //    the combined FNV-1a hash of all stable sections plus per-section
+    //    diagnostic hashes. combinedHash === cacheKeyHash (same FNV-1a over
+    //    the same stable text); perSectionHashes identify which section
+    //    drifted when the combined hash changes. Volatile sections are
+    //    excluded by computeStablePrefix().
+    const stablePrefix = this.computeStablePrefix(sections);
     const cacheMetadata = {
-      cacheKeyHash: hashStableSections(sections),
-      stableSectionCount: sections.filter((s) => s.stable).length,
+      cacheKeyHash: stablePrefix.combinedHash,
+      stableSectionCount: stablePrefix.stableSectionCount,
+      perSectionHashes: stablePrefix.perSectionHashes,
     };
 
     return {
@@ -343,6 +371,32 @@ export class ContextOptimizer {
       provenance: manifest,
       minimalMode,
       cacheMetadata,
+    };
+  }
+
+  /**
+   * Stable-prefix contract (CTX-T04, D-04): computes the combined FNV-1a
+   * hash of ALL stable sections (concatenated with '\u0000' separators) and
+   * one per-section FNV-1a hash per stable section for drift diagnostics.
+   * Volatile sections (user_input, memory, context, task, timestamps,
+   * scores, lifecycle fields) are EXCLUDED — only stable:true sections
+   * participate.
+   *
+   * Reuses `hashStableSections()` from PromptCacheAdapter — FNV-1a is never
+   * reimplemented. The hash input is the exact final bytes of each stable
+   * section's text (canonical separators, whitespace, and sorted tool
+   * schemas included), so any byte-level drift changes the hash and is
+   * caught by the snapshot tests guarding this contract.
+   */
+  computeStablePrefix(sections: PromptSection[]): StablePrefixContract {
+    const stableSections = sections.filter((s) => s.stable);
+    return {
+      combinedHash: hashStableSections(stableSections),
+      perSectionHashes: stableSections.map((s) => ({
+        sourceId: s.sourceId,
+        hash: hashStableSections([s]),
+      })),
+      stableSectionCount: stableSections.length,
     };
   }
 

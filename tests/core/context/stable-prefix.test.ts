@@ -260,9 +260,10 @@ describe('optimizeFromItems() — cacheMetadata.perSectionHashes (CTX-T04)', () 
     const result = await optimizer.optimizeFromItems(items, buildOptimizerInput());
 
     expect(result.cacheMetadata?.perSectionHashes).toHaveLength(2);
+    // D-02 deterministic ordering: system group, then sourceId alphabetically.
     expect(result.cacheMetadata?.perSectionHashes?.map((e) => e.sourceId)).toEqual([
-      'persona.runtime.active',
       'core.instructions.system',
+      'persona.runtime.active',
     ]);
     // combinedHash === cacheKeyHash — same FNV-1a over the same stable text.
     expect(result.cacheMetadata?.cacheKeyHash).toBeDefined();

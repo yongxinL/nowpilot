@@ -1,0 +1,16 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`computeStablePrefix() — stable-prefix contract (CTX-T04, D-04) > Test 7: SNAPSHOT — combinedHash guards against accidental drift 1`] = `"d20de8e8"`;
+
+exports[`computeStablePrefix() — stable-prefix contract (CTX-T04, D-04) > Test 8: SNAPSHOT — perSectionHashes provide diagnostic per-section hashes 1`] = `
+[
+  {
+    "hash": "94a80290",
+    "sourceId": "persona.runtime.active",
+  },
+  {
+    "hash": "1e7e2ff0",
+    "sourceId": "core.instructions.system",
+  },
+]
+`;

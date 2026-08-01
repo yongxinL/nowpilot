@@ -152,6 +152,14 @@ export interface OptimizedContext {
   cacheMetadata?: {
     cacheKeyHash: string;
     stableSectionCount: number;
+    /**
+     * Per-section FNV-1a hashes (CTX-T04, D-04): one hash per stable
+     * section, keyed by sourceId. When the combined hash changes across
+     * turns, the differing per-section hashes identify exactly which
+     * section drifted — diagnostic drift detection for the stable-prefix
+     * contract. Volatile sections never appear here.
+     */
+    perSectionHashes?: Array<{ sourceId: string; hash: string }>;
   };
 }
 
