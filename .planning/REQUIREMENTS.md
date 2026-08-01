@@ -29,8 +29,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Memory
 
-- [ ] **MEM-01**: User's conversation memory (summary + recent turns), cross-session user facts (scored retrieval), and preferences persist across sessions
-- [ ] **MEM-02**: User's memory writes only happen from the primary surface; secondary surfaces reflect read-only
+- [x] **MEM-01**: User's conversation memory (summary + recent turns), cross-session user facts (scored retrieval), and preferences persist across sessions
+- [x] **MEM-02**: User's memory writes only happen from the primary surface; secondary surfaces reflect read-only
 
 ### Page Extraction
 
@@ -38,7 +38,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Notes & Knowledge
 
-- [ ] **NOTE-01**: User can create atomic notes with wikilinks, tags, note graph (MiniSearch + cosine similarity), and backlinks
+- [x] **NOTE-01**: User can create atomic notes with wikilinks, tags, note graph (MiniSearch + cosine similarity), and backlinks
 - [ ] **NOTE-02**: User can enrich notes via LLM-Wiki (auto-tag/category/summary in one call), ask notes via RAG with citations, and convert chat/page to notes
 - [ ] **NOTE-03**: User can sync notes one-way to filesystem (.md with YAML frontmatter) and restore from folder with additive upsert
 
@@ -188,10 +188,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AI-04 | Phase 7 | Pending |
 | CTX-01 | Phase 4 | Complete |
 | CTX-02 | Phase 4 | Complete |
-| MEM-01 | Phase 5 | Pending |
-| MEM-02 | Phase 5 | Pending |
+| MEM-01 | Phase 5 | Complete |
+| MEM-02 | Phase 5 | Complete |
 | PAGE-01 | Phase 4a | Complete |
-| NOTE-01 | Phase 5 | Pending |
+| NOTE-01 | Phase 5 | Complete |
 | NOTE-02 | Phase 5a | Pending |
 | NOTE-03 | Phase 5a | Pending |
 | DIAG-01 | Phase 6 | Pending |

@@ -257,7 +257,7 @@ Plans:
   4. User's cross-session facts are scored (keyword + tag + recency + useCount + confidence), and top-5 (top-3 in tiny mode) are injected into prompts
   5. User's memory writes only happen from the primary surface (elected via BroadcastBus); secondary surfaces mirror read-only
 
-**Plans**: 1/3 plans executed
+**Plans**: 3/3 plans executed
 
 Plans:
 **Wave 1**
@@ -267,7 +267,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 05-03-PLAN.md — Integration + Verification — Conversation summarization LLM call, MemoryEngine→PersonaInjector feed, verify:phase-5 gate, integration tests (NOTE-01, MEM-01, MEM-02)
+- [x] 05-03-PLAN.md — Integration + Verification — Conversation summarization LLM call, MemoryEngine→PersonaInjector feed, verify:phase-5 gate, integration tests (NOTE-01, MEM-01, MEM-02)
 
 **UI hint**: yes
 
@@ -469,7 +469,7 @@ Decimal phases execute after their parent integer phase: 3 → 3a → 4 → 4a �
 | 4. Context Optimization Pipeline | 3/3 | Completed | 2026-07-31 |
 | 4a. Page Content Extraction | 6/6 | Completed | 2026-07-31 |
 | 4b. Trust-Aware Context & Receipts | 6/6 | Complete    | 2026-08-01 |
-| 5. Knowledge Base | 1/3 | In Progress|  |
+| 5. Knowledge Base | 3/3 | In Progress|  |
 | 5a. LLM-Wiki & Filesystem Sync | TBD | Not started | - |
 | 5b. Memory Governance & Experience Candidates | TBD | Not started | - |
 | 6. Telemetry & Diagnostics | TBD | Not started | - |
