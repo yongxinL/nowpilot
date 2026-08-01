@@ -10,7 +10,7 @@ Users can acquire knowledge from web pages, store it as interconnected atomic no
 
 ## Current State
 
-Phase 3a complete — Agent Reliability & Evidence. Every agent turn now records explicit trajectory states via a strict allowlist FSM, returns structured AgentTurnOutcome on every exit path (17 canonical reasons, cap exhaustion = partial, abort never renders success), and requires verified CompletionEvidence before side-effecting completion is claimed — with an evidence-gated RenderingOutcomePolicy and deterministic contradiction fallback, operation-scoped permission sequencing, a one-replan recovery loop with redacted observations, and in-memory idempotency protection for required tools. STRIDE regression suite + non-vacuous verify:phase-3a gate (209 tests) landed; lint clean repo-wide. Prior: Phase 4a complete — Page Content Extraction operational. Layered extraction pipeline (content script → MessageBus → PageContentService → Defuddle→Readability→ApcLite strategies), 2.9KB content bundle with zero forbidden imports, D-02 password/secret redaction at every boundary (clone-based DomSerializer, strategy value guards, 4-term allowlist), per-tab MiniSearch index with SPA-nav invalidation, mode-keyed cache (tabId:mode:url). 263+ extraction/security tests passing, all 25 UAT checks verified including live extension boot.
+Phase 04b complete — Trust-Aware Context & Receipts. Every context source now carries trust/sensitivity/provenance metadata (ContextItem + full D-07 source-type ContextTrustPolicy + exponential-decay ContextFreshnessPolicy), prompt injection is isolated at the data boundary (`<data-source>` delimiters + system-first ordering, 7-test adversarial suite), tool results are shaped before re-entry (ToolResultShaper: redaction-first, 32K cap, immutable), and a provenance manifest explains what was included/omitted/compressed with per-section receipts, totals cross-check, and cache eligibility — plus an FNV-1a stable-prefix hash contract with snapshot guards and progressive skill disclosure (zero-token unloaded-skill receipts). 618+ tests passing, all 7 requirement IDs accounted for, threat register 21/21 closed. Prior: Phase 3a complete — Agent Reliability & Evidence. Every agent turn now records explicit trajectory states via a strict allowlist FSM, returns structured AgentTurnOutcome on every exit path (17 canonical reasons, cap exhaustion = partial, abort never renders success), and requires verified CompletionEvidence before side-effecting completion is claimed — with an evidence-gated RenderingOutcomePolicy and deterministic contradiction fallback, operation-scoped permission sequencing, a one-replan recovery loop with redacted observations, and in-memory idempotency protection for required tools. STRIDE regression suite + non-vacuous verify:phase-3a gate (209 tests) landed; lint clean repo-wide. Prior: Phase 4a complete — Page Content Extraction operational. Layered extraction pipeline (content script → MessageBus → PageContentService → Defuddle→Readability→ApcLite strategies), 2.9KB content bundle with zero forbidden imports, D-02 password/secret redaction at every boundary (clone-based DomSerializer, strategy value guards, 4-term allowlist), per-tab MiniSearch index with SPA-nav invalidation, mode-keyed cache (tabId:mode:url). 263+ extraction/security tests passing, all 25 UAT checks verified including live extension boot.
 
 ## Current Milestone: v0.1 NowPilot Initial Release
 
@@ -106,12 +106,12 @@ Phase 3a complete — Agent Reliability & Evidence. Every agent turn now records
 
 ### Trust-Aware Context Engineering (Rev. C §28.3)
 
-- [ ] **CTX-T01** (P0): ContextItem carries relevance, freshness, trust, sensitivity, and instruction-authority metadata; secret items excluded from cloud prompts
-- [ ] **CTX-T02** (P0): Prompt-injection isolation — page/note/memory/tool data cannot redefine system instructions, grant tool permission, or change risk classifications
-- [ ] **CTX-T03** (P0): Context receipt (ContextReceiptEntry) records inclusion, omission reasons, compression, and cache eligibility per source
-- [ ] **CTX-T04** (P0): Stable-prefix contract — persona/system rules/sorted tool schemas must be byte-identical for identical configuration; snapshot tests required
-- [ ] **CTX-T05** (P1): Progressive skill disclosure — irrelevant full instructions consume zero prompt tokens; receipt records loaded/unloaded skills
-- [ ] **CTX-T06** (P1): Context quality telemetry — injected-source count, utilization %, compression ratio, omission reasons, provenance coverage
+- [x] **CTX-T01** (P0): ContextItem carries relevance, freshness, trust, sensitivity, and instruction-authority metadata; secret items excluded from cloud prompts — Validated in Phase 04b
+- [x] **CTX-T02** (P0): Prompt-injection isolation — page/note/memory/tool data cannot redefine system instructions, grant tool permission, or change risk classifications — Validated in Phase 04b
+- [x] **CTX-T03** (P0): Context receipt (ContextReceiptEntry) records inclusion, omission reasons, compression, and cache eligibility per source — Validated in Phase 04b
+- [x] **CTX-T04** (P0): Stable-prefix contract — persona/system rules/sorted tool schemas must be byte-identical for identical configuration; snapshot tests required — Validated in Phase 04b
+- [x] **CTX-T05** (P1): Progressive skill disclosure — irrelevant full instructions consume zero prompt tokens; receipt records loaded/unloaded skills — Mechanics validated in Phase 04b; skill-selection integration in Phase 7
+- [ ] **CTX-T06** (P1): Context quality telemetry — injected-source count, utilization %, compression ratio, omission reasons, provenance coverage — Structural prep delivered in Phase 04b; aggregation in Phase 6a
 
 ### Memory Governance (Rev. C §28.4)
 
@@ -127,7 +127,7 @@ Phase 3a complete — Agent Reliability & Evidence. Every agent turn now records
 - [ ] **TOL-01** (P0): Every tool has a ToolCapabilityManifest with category, risk, sideEffect, permissions, dataScopes, timeout, costClass, idempotency, verifier, and schema hashes
 - [ ] **TOL-02** (P0): Risk-based execution matrix — read-only+low-risk auto, reversible writes require confirmation, irreversible/high-risk always preview+confirm
 - [ ] **TOL-03** (P0): Postcondition verification — every side-effecting tool declares a verifier; unverified transport success is partial, not completed — Phase 3a delivers operation-scoped evidence verification + idempotency ledger; full manifest/tool coverage in Phase 8a
-- [ ] **TOL-04** (P0): Tool result shaping — validate output schema, redact secrets, apply max size, summarise/retrieve relevant, assign provenance/trust metadata before context re-entry
+- [x] **TOL-04** (P0): Tool result shaping — validate output schema, redact secrets, apply max size, summarise/retrieve relevant, assign provenance/trust metadata before context re-entry — ToolResultShaper delivered in Phase 04b; ExecutorService wiring in Phase 8a
 - [ ] **TOL-05** (P0): Idempotency — write tools accept or derive an idempotency key; replay must not repeat external effects
 - [ ] **TOL-06** (P1): Active tool discovery — when schemas exceed budget, expose small core set + discover-tools capability with permission checks
 - [ ] **TOL-07** (P2): Long-running async operation contract — operationId, status, progress, cancellation, checkpoint, resume, idempotency (deferred to future 8b)
@@ -244,4 +244,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-08-01 after Phase 3a completion (Agent Reliability & Evidence) + Rev. C agent-harness requirements integration*
+*Last updated: 2026-08-01 after Phase 04b completion (Trust-Aware Context & Receipts)*
