@@ -30,11 +30,74 @@ function entrypointSurfaceId(): string | undefined {
 /**
  * Write input: everything except the derived fields (id/useCount/confidence
  * and the timestamps — createdAt/updatedAt are derived by the store).
+ * `conversationId`/`role` are required for working/episodic writes, which
+ * route to ConversationMemoryStore.appendMessage (WR-03).
  */
 export type MemoryWriteInput = Omit<
   MemoryRecord,
   'id' | 'useCount' | 'confidence' | 'createdAt' | 'updatedAt'
-> & { source: ConfidenceSource };
+> & {
+  source: ConfidenceSource;
+  /** Working/episodic routing: the conversation the record belongs to. */
+  conversationId?: string;
+  /** Working/episodic routing: message role for appendMessage. */
+  role?: 'user' | 'assistant' | 'tool';
+};
+
+/**
+ * Route one memory record to its owning store (D-06 store independence,
+ * WR-03): semantic (and procedural) facts → UserMemoryStore, preferences →
+ * PreferenceMemoryStore, working/episodic → ConversationMemoryStore.
+ * Shared by the journaled write-memory-record step and WriteJournal replay
+ * (WR-05). Returns the persisted record id (for messages: the compound
+ * `conversationId:seq` key). Throws on validation/store errors so journal
+ * steps fail honestly instead of silently dropping the record.
+ */
+export async function persistMemoryRecord(record: MemoryWriteInput): Promise<string> {
+  switch (record.memoryType) {
+    case 'preference': {
+      // PreferenceMemoryStore convention: content = JSON.stringify({ key, value })
+      let key: string;
+      let value: unknown;
+      try {
+        const parsed = JSON.parse(record.content) as { key?: unknown; value?: unknown };
+        if (typeof parsed.key !== 'string') throw new Error('missing key');
+        key = parsed.key;
+        value = parsed.value;
+      } catch {
+        throw new Error('Preference writes require content = JSON.stringify({ key, value })');
+      }
+      const result = await new PreferenceMemoryStore().set(key, value);
+      if (!result.success) {
+        throw new Error(`Preference write rejected by store: ${result.error}`);
+      }
+      return result.recordId;
+    }
+    case 'working':
+    case 'episodic': {
+      if (!record.conversationId || !record.role) {
+        throw new Error('Working/episodic writes require conversationId and role');
+      }
+      const result = await new ConversationMemoryStore().appendMessage(record.conversationId, {
+        role: record.role,
+        content: record.content,
+        timestamp: Date.now(),
+      });
+      return `${record.conversationId}:${result.messageCount - 1}`;
+    }
+    default: {
+      // Semantic (and procedural) facts live in the user_facts store; the
+      // Zod boundary (UserMemoryFactSchema) rejects non-semantic records.
+      const result = await new UserMemoryStore().upsert(
+        record as unknown as UserFactUpsertInput,
+      );
+      if (!result.success) {
+        throw new Error(`Memory write rejected by store: ${result.error}`);
+      }
+      return result.recordId;
+    }
+  }
+}
 
 /**
  * MemoryEngine — the single entry point for all memory operations (MEM-01,
@@ -225,16 +288,13 @@ export class MemoryEngine {
       {
         name: 'write-memory-record',
         executor: async () => {
-          // Semantic facts are stored in the user_facts store; the Zod
-          // boundary (UserMemoryFactSchema) rejects non-semantic records,
-          // surfacing as a failed journal step instead of silent loss.
-          const result = await this.userStore.upsert(
-            record as unknown as UserFactUpsertInput,
-          );
-          if (!result.success) {
-            throw new Error(`Memory write rejected by store: ${result.error}`);
-          }
-          upsertedId = result.recordId;
+          // WR-03: route by memoryType — semantic → user_facts store,
+          // preference → PreferenceMemoryStore, working/episodic →
+          // ConversationMemoryStore. Previously every type was forced
+          // through UserMemoryStore, whose Zod boundary (memoryType
+          // literal 'semantic') rejected everything but semantic facts,
+          // making the D-05 AI-write path (working/episodic) dead.
+          upsertedId = await persistMemoryRecord(record);
         },
       },
       {
@@ -258,8 +318,10 @@ export class MemoryEngine {
         };
       }
 
-      // Retrieval-ranking counter (D-07); confidence untouched
-      if (upsertedId) {
+      // Retrieval-ranking counter (D-07); confidence untouched. Only
+      // semantic facts are D-08-scored — preferences and working/episodic
+      // messages do not inflate the fact useCount.
+      if (upsertedId && record.memoryType === 'semantic') {
         await this.userStore.incrementUseCount(upsertedId);
       }
 

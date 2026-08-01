@@ -388,6 +388,63 @@ describe('MemoryEngine', () => {
     expect(await userStore.getAll()).toHaveLength(0);
   });
 
+  it('routes user-action preference writes to PreferenceMemoryStore (WR-03)', async () => {
+    const result = await engine.write(
+      {
+        content: JSON.stringify({ key: 'ui_theme', value: 'dark' }),
+        memoryType: 'preference',
+        tags: ['preference', 'ui_theme'],
+        sensitivity: 'private',
+        source: 'explicit-user',
+      },
+      'user-action',
+    );
+    expect(result.success).toBe(true);
+
+    const prefStore = new PreferenceMemoryStore();
+    expect(await prefStore.get('ui_theme')).toBe('dark');
+    // preference records must not land in the user_facts semantic set
+    const userStore = new UserMemoryStore();
+    const records = await userStore.getAll();
+    expect(records.some((r) => r.memoryType === 'semantic')).toBe(false);
+  });
+
+  it('routes ai-pipeline working/episodic writes to ConversationMemoryStore (WR-03 / D-05)', async () => {
+    const result = await engine.write(
+      {
+        content: 'user wants the dark theme',
+        memoryType: 'working',
+        tags: [],
+        sensitivity: 'private',
+        source: 'inferred',
+        conversationId: 'conv-w1',
+        role: 'assistant',
+      },
+      'ai-pipeline',
+    );
+    expect(result.success).toBe(true);
+
+    const convStore = new ConversationMemoryStore();
+    const ctx = await convStore.getContext('conv-w1', 'tiny');
+    expect(ctx.recentMessages).toHaveLength(1);
+    expect(ctx.recentMessages[0].content).toBe('user wants the dark theme');
+    expect(ctx.recentMessages[0].role).toBe('assistant');
+  });
+
+  it('rejects working/episodic writes that omit conversationId/role (WR-03)', async () => {
+    const result = await engine.write(
+      {
+        content: 'orphan working record',
+        memoryType: 'working',
+        tags: [],
+        sensitivity: 'private',
+        source: 'inferred',
+      },
+      'user-action',
+    );
+    expect(result.success).toBe(false);
+  });
+
   it('retrieval is deterministic — same query and tier produce identical ContextItem[]', async () => {
     // freshness/relevance use the D-08 30-day decay against Date.now();
     // pin the clock so both retrieves run with identical time context
