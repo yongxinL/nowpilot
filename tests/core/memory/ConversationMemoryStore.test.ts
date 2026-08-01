@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   ConversationMemoryStore,
   resetConversationMemoryDb,
@@ -6,6 +6,39 @@ import {
 import { resetUserMemoryDb } from '../../../src/core/memory/UserMemoryStore';
 import { resetPreferenceMemoryDb } from '../../../src/core/memory/PreferenceMemoryStore';
 import type { ConversationSummary } from '../../../src/core/memory/MemoryRecord';
+import type { ProviderAdapter } from '../../../src/core/ai/providers/ProviderAdapter';
+
+// The store invokes LLM summarization via generateText from the AI SDK —
+// mock it here so no real provider is contacted (T-05-12: no external deps).
+vi.mock('ai', () => {
+  return {
+    generateText: vi.fn(),
+  };
+});
+
+/**
+ * Minimal ProviderAdapter stub (ContextCompressor.test.ts pattern): the
+ * FAST tier maps to the haiku-class model id, any other tier maps to the
+ * conversation-tier model — so Test 6 can prove compactConversation always
+ * requests the cheapest model.
+ */
+function makeAdapter(): { adapter: ProviderAdapter; requestedModels: string[] } {
+  const requestedModels: string[] = [];
+  const adapter = {
+    providerId: 'openai',
+    supportsStructuredOutput: true,
+    getDefaultModelForTier: (tier: string) =>
+      tier === 'FAST' ? 'haiku-test-model' : 'conversation-tier-model',
+    createLanguageModel: (modelId: string) => {
+      requestedModels.push(modelId);
+      return {};
+    },
+    validateConnection: () => Promise.resolve({ ok: true, models: [] }),
+    getCacheStrategy: () => 'prefix-only',
+    getTelemetryMetadata: () => ({}),
+  } as unknown as ProviderAdapter;
+  return { adapter, requestedModels };
+}
 
 async function resetMemoryDb(): Promise<void> {
   await Promise.all([resetConversationMemoryDb(), resetUserMemoryDb(), resetPreferenceMemoryDb()]);
@@ -121,5 +154,126 @@ describe('ConversationMemoryStore', () => {
 
     // sibling conversation untouched
     expect(await store.getMessageCount('conv-2')).toBe(1);
+  });
+
+  it('shouldCompact returns true only at the 12-message boundary (Test 2 / D-10)', async () => {
+    for (let i = 1; i <= 11; i++) {
+      await store.appendMessage('conv-1', message(i));
+      expect(await store.shouldCompact('conv-1')).toBe(false);
+    }
+    await store.appendMessage('conv-1', message(12));
+    expect(await store.shouldCompact('conv-1')).toBe(true);
+    // next trigger is 24 — no compact at 13
+    await store.appendMessage('conv-1', message(13));
+    expect(await store.shouldCompact('conv-1')).toBe(false);
+    expect(await store.shouldCompact('conv-empty')).toBe(false);
+  });
+
+  it('compactConversation stores an LLM summary at the 12-message boundary and preserves every original message (Test 1 / D-10)', async () => {
+    const { adapter, requestedModels } = makeAdapter();
+    for (let i = 1; i <= 12; i++) {
+      await store.appendMessage('conv-1', message(i));
+    }
+    const mockGenerateText = vi.mocked((await import('ai')).generateText);
+    mockGenerateText.mockResolvedValue({
+      text: 'User decided to adopt theme X and set a goal to finish the migration.',
+    });
+
+    const result = await store.compactConversation('conv-1', adapter);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.summaryId).toBeDefined();
+
+    // summary persisted with the D-10 2-3 sentence artifact shape
+    const summaries = await store.getSummaries('conv-1');
+    expect(summaries).toHaveLength(1);
+    expect(summaries[0].conversationId).toBe('conv-1');
+    expect(summaries[0].summary).toContain('theme X');
+    expect(summaries[0].messageRange.start).toBe(2); // head = first 2 messages
+    expect(summaries[0].messageRange.end).toBe(8); // tail = last 4 (indices 8..11)
+    expect(summaries[0].id).toBe(result.summaryId);
+
+    // original messages preserved — NEVER deleted during compaction (D-10)
+    expect(await store.getMessageCount('conv-1')).toBe(12);
+    const ctx = await store.getContext('conv-1', 'medium');
+    expect(ctx.recentMessages).toHaveLength(12);
+    expect(ctx.summary?.summary).toContain('theme X');
+
+    // middle messages (head-excluded, tail-excluded) are what got summarized
+    const prompt = mockGenerateText.mock.calls[0]?.[0]?.prompt as string;
+    expect(prompt).toContain('User: msg-3'); // first middle message
+    expect(prompt).toContain('User: msg-8'); // last middle message
+    expect(prompt).not.toContain('msg-1'); // head excluded
+    expect(prompt).not.toContain('msg-11'); // tail excluded
+  });
+
+  it('compactConversation requests the haiku-class model (FAST tier), never the conversation tier (Test 6 / D-10)', async () => {
+    const { adapter, requestedModels } = makeAdapter();
+    for (let i = 1; i <= 12; i++) {
+      await store.appendMessage('conv-1', message(i));
+    }
+    const mockGenerateText = vi.mocked((await import('ai')).generateText);
+    mockGenerateText.mockResolvedValue({ text: 'A concise summary of the conversation.' });
+
+    const result = await store.compactConversation('conv-1', adapter);
+    expect(result.success).toBe(true);
+    // the cheapest model was requested — never the conversation-tier mapping
+    expect(requestedModels).toEqual(['haiku-test-model']);
+    expect(requestedModels).not.toContain('conversation-tier-model');
+  });
+
+  it('compactConversation with an empty LLM response stores nothing and returns EMPTY_SUMMARY (Test 3 / D-10 resilience)', async () => {
+    const { adapter } = makeAdapter();
+    for (let i = 1; i <= 12; i++) {
+      await store.appendMessage('conv-1', message(i));
+    }
+    const mockGenerateText = vi.mocked((await import('ai')).generateText);
+    mockGenerateText.mockResolvedValue({ text: '   ' });
+
+    const result = await store.compactConversation('conv-1', adapter);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.code).toBe('EMPTY_SUMMARY');
+    }
+    // no summary artifact, original messages preserved — no data loss
+    expect(await store.getSummaries('conv-1')).toHaveLength(0);
+    expect(await store.getMessageCount('conv-1')).toBe(12);
+  });
+
+  it('compactConversation with a provider error returns PROVIDER_ERROR and preserves messages (Test 4 / D-10 resilience)', async () => {
+    const { adapter } = makeAdapter();
+    for (let i = 1; i <= 12; i++) {
+      await store.appendMessage('conv-1', message(i));
+    }
+    const mockGenerateText = vi.mocked((await import('ai')).generateText);
+    mockGenerateText.mockRejectedValue(new Error('provider boom'));
+
+    const result = await store.compactConversation('conv-1', adapter);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.code).toBe('PROVIDER_ERROR');
+      expect(result.error).toContain('provider boom');
+    }
+    // never throws; no summary; messages preserved
+    expect(await store.getSummaries('conv-1')).toHaveLength(0);
+    expect(await store.getMessageCount('conv-1')).toBe(12);
+    const ctx = await store.getContext('conv-1', 'medium');
+    expect(ctx.recentMessages).toHaveLength(12);
+  });
+
+  it('compactConversation trims the stored summary to at most 500 characters (Test 5 / D-10)', async () => {
+    const { adapter } = makeAdapter();
+    for (let i = 1; i <= 12; i++) {
+      await store.appendMessage('conv-1', message(i));
+    }
+    const mockGenerateText = vi.mocked((await import('ai')).generateText);
+    mockGenerateText.mockResolvedValue({ text: 'y'.repeat(2000) });
+
+    const result = await store.compactConversation('conv-1', adapter);
+    expect(result.success).toBe(true);
+    const summaries = await store.getSummaries('conv-1');
+    expect(summaries).toHaveLength(1);
+    expect(summaries[0].summary.length).toBeLessThanOrEqual(500);
+    expect(summaries[0].summary).toHaveLength(500);
   });
 });
