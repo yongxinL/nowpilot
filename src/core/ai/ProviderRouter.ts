@@ -196,10 +196,14 @@ export class ProviderRouter {
   async executeWithFallback<T>(
     preferredProvider: PipelineProviderId,
     operation: (adapter: ProviderAdapter, providerId: PipelineProviderId) => Promise<T>,
-    operationId?: string,
+    _operationId?: string,
   ): Promise<T> {
-    const opId = operationId ?? crypto.randomUUID();
-    const state = this.getOperationState(opId);
+    // Per-invocation fallback state (WR-08): `operationStates` is keyed by
+    // operationId and never reset, so reusing an operationId across calls
+    // previously carried hasStreamedFirstToken/attempts into a fresh call —
+    // a later call could throw UNKNOWN before attempting any provider.
+    // Scoping the state to this invocation prevents cross-call leakage.
+    const state: OperationState = { hasStreamedFirstToken: false, attempts: [] };
 
     let lastError: PipelineError | undefined;
 
