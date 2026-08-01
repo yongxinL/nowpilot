@@ -74,6 +74,7 @@ const READ_TOOL: ToolSchemaInfo = {
   name: 'getWeather',
   description: 'Get weather for a city',
   jsonSchema: { type: 'object', properties: { city: { type: 'string' } } },
+  execute: async () => ({ temp: 22 }),
   sideEffect: 'read',
   idempotency: 'not-required',
   evidence: { required: false },
@@ -88,6 +89,7 @@ const WRITE_TOOL: ToolSchemaInfo = {
   name: 'saveNote',
   description: 'Save a note',
   jsonSchema: {},
+  execute: async () => ({ saved: true }),
   sideEffect: 'write',
   idempotency: 'required',
   evidence: {
@@ -111,6 +113,7 @@ const IRREVERSIBLE_TOOL: ToolSchemaInfo = {
   name: 'deleteWorkspace',
   description: 'Delete the workspace',
   jsonSchema: {},
+  execute: async () => ({ deleted: true }),
   sideEffect: 'irreversible',
   idempotency: 'required',
   evidence: { required: true, verifier: WRITE_VERIFIER },

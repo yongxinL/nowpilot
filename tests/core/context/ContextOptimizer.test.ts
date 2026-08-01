@@ -297,6 +297,7 @@ describe('Tracer end-to-end', () => {
           name: 'search',
           description: 'Search notes',
           jsonSchema: { type: 'object' },
+          execute: async () => ({ hits: [] }),
           sideEffect: 'read',
           idempotency: 'not-required',
           evidence: { required: false },

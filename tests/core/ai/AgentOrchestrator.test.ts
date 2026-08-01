@@ -47,6 +47,7 @@ const READ_TOOL = {
   name: 'getWeather',
   description: 'Get weather for a city',
   jsonSchema: { type: 'object', properties: { city: { type: 'string' } } },
+  execute: vi.fn(async () => ({ temp: 22 })),
   sideEffect: 'read' as const,
   idempotency: 'not-required' as const,
   evidence: { required: false },
@@ -56,6 +57,7 @@ const VERIFIED_WRITE_TOOL = {
   name: 'saveNote',
   description: 'Save a note',
   jsonSchema: {},
+  execute: vi.fn(async () => ({ saved: true })),
   sideEffect: 'write' as const,
   idempotency: 'required' as const,
   evidence: {
@@ -82,6 +84,7 @@ const IRREVERSIBLE_TOOL = {
   name: 'deleteWorkspace',
   description: 'Delete the workspace',
   jsonSchema: {},
+  execute: vi.fn(async () => ({ deleted: true })),
   sideEffect: 'irreversible' as const,
   idempotency: 'required' as const,
   evidence: { required: true, verifier: VERIFIED_WRITE_TOOL.evidence.verifier },

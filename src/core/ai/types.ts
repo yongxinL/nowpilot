@@ -108,6 +108,14 @@ export interface ToolSchemaInfo {
   dangerous?: boolean;
   source?: string;
   /**
+   * Optional tool implementation (WR-04): when present it is forwarded to
+   * the registered tool so the orchestrator's run_tool loop can actually
+   * execute work. The orchestrator rejects a selected tool without an
+   * implementation with SCHEMA_INVALID rather than silently stubbing a
+   * null-returning executor.
+   */
+  execute?: (input: unknown, signal?: AbortSignal) => Promise<unknown>;
+  /**
    * Phase 3a selected-tool adapter handoff (D-08/D-16): the same three
    * reliability metadata fields as RegisteredTool, so the orchestrator can
    * forward them from the optimizer path. No Phase 8a manifest fields

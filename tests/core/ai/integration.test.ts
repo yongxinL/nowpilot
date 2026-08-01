@@ -27,12 +27,14 @@ vi.mock('../../../src/core/ai/RendererService', () => ({
   rendererService: { synthesize: vi.fn() },
 }));
 
-// The selected-tool adapter boundary (D-16): the three Phase 3a reliability
-// values are declared explicitly at the integration fixture.
+// The selected-tool adapter boundary (D-16): the Phase 3a reliability
+// values and the tool implementation are declared explicitly at the
+// integration fixture.
 const WEATHER_TOOL = {
   name: 'getWeather',
   description: 'Get weather for a city',
   jsonSchema: { type: 'object', properties: { city: { type: 'string' } } },
+  execute: vi.fn(async () => ({ temp: 22, city: 'Tokyo' })),
   sideEffect: 'read' as const,
   idempotency: 'not-required' as const,
   evidence: { required: false },

@@ -67,13 +67,20 @@ function buildOptimizerInput(input: AgentTurnInput): ContextOptimizerInput {
 
 /**
  * Selected-tool adapter (D-08/D-16): the closed registry boundary between
- * ToolSchemaInfo and RegisteredTool. The three Phase 3a reliability fields
- * are forwarded explicitly; a missing field is rejected with SCHEMA_INVALID
- * rather than silently defaulted. No Phase 8a manifest fields are added.
+ * ToolSchemaInfo and RegisteredTool. The Phase 3a reliability fields and
+ * the tool implementation are forwarded explicitly; a missing field is
+ * rejected with SCHEMA_INVALID rather than silently defaulted (WR-04 —
+ * a null-returning stub would make every run_tool inert). No Phase 8a
+ * manifest fields are added.
  */
 function buildRegisteredTools(input: AgentTurnInput): RegisteredTool[] {
   return input.selectedToolSchemas.map((t) => {
-    if (t.sideEffect === undefined || t.idempotency === undefined || t.evidence === undefined) {
+    if (
+      t.sideEffect === undefined ||
+      t.idempotency === undefined ||
+      t.evidence === undefined ||
+      t.execute === undefined
+    ) {
       throw new PipelineError(
         'SCHEMA_INVALID',
         `Tool "${t.name}" is missing required reliability metadata.`,
@@ -84,7 +91,7 @@ function buildRegisteredTools(input: AgentTurnInput): RegisteredTool[] {
       name: t.name,
       description: t.description,
       inputSchema: (t.jsonSchema ?? {}) as Record<string, unknown>,
-      execute: async () => null,
+      execute: t.execute,
       sideEffect: t.sideEffect,
       idempotency: t.idempotency,
       evidence: t.evidence,
