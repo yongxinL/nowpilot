@@ -47,8 +47,11 @@ export class PromptCacheManager {
    * Record a cache response — call after a provider request completes
    * (D-15). A hit resets the miss streak and clears any disabled state; a
    * miss increments the streak and disables the cache when the §19.13
-   * threshold is reached. Malformed metadata is logged and discarded as a
-   * graceful no-op (T-04-15).
+   * threshold is reached. An explicit `cacheStatus: 'unknown'` response
+   * (provider did not report native cache usage) is recorded as a health
+   * no-op — it must not feed the miss cascade, or fabricated misses would
+   * disable the cache permanently (WR-09). Malformed metadata is logged
+   * and discarded as a graceful no-op (T-04-15).
    */
   recordResponse(metadata: CacheResponseMetadata): void {
     if (!this.isValidMetadata(metadata)) {
@@ -57,8 +60,15 @@ export class PromptCacheManager {
     }
 
     const health = this.getOrCreateHealth(metadata.providerId);
+    const status = metadata.cacheStatus ?? (metadata.cacheHit ? 'hit' : 'miss');
 
-    if (metadata.cacheHit) {
+    if (status === 'unknown') {
+      // Unknown cache status is not evidence of a miss — recording it as
+      // one would poison the D-13 cascade with fabricated misses.
+      return;
+    }
+
+    if (status === 'hit') {
       health.missStreak = 0;
       health.lastHit = Date.now();
       health.disabledUntil = null;
@@ -153,12 +163,16 @@ export class PromptCacheManager {
     return state;
   }
 
-  /** Metadata validation per T-04-15: providerId + boolean flags. */
+  /** Metadata validation per T-04-15: providerId + boolean flags (+ optional status). */
   private isValidMetadata(metadata: CacheResponseMetadata): boolean {
     return (
       (VALID_PROVIDERS as readonly string[]).includes(metadata.providerId) &&
       typeof metadata.cacheHit === 'boolean' &&
-      typeof metadata.cacheWrite === 'boolean'
+      typeof metadata.cacheWrite === 'boolean' &&
+      (metadata.cacheStatus === undefined ||
+        metadata.cacheStatus === 'hit' ||
+        metadata.cacheStatus === 'miss' ||
+        metadata.cacheStatus === 'unknown')
     );
   }
 }

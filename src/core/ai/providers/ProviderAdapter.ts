@@ -27,6 +27,15 @@ export interface CacheResponseMetadata {
   providerId: PipelineProviderId;
   cacheHit: boolean;
   cacheWrite: boolean;
+  /**
+   * Explicit cache-status signal (WR-09). When the provider adapter does
+   * not report native cache usage, callers must pass `'unknown'` so the
+   * response is recorded without feeding the §19.13 miss cascade —
+   * fabricated misses would disable the cache permanently. When absent,
+   * the status is derived from `cacheHit` (hit/miss), preserving the
+   * legacy behavior for callers that do report real metadata.
+   */
+  cacheStatus?: 'hit' | 'miss' | 'unknown';
   providerCacheId?: string;
   estimatedSavedTokens?: number;
 }

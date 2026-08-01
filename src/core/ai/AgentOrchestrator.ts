@@ -115,16 +115,18 @@ export class AgentOrchestrator {
   /**
    * Record cache response metadata after a successful provider call
    * (D-15). The current provider adapters do not yet expose native cache
-   * usage — unknown cache status is treated as a miss, which is correct
-   * per §19.13 semantics (recordResponse() only ever sees post-response
-   * signals, never errors: caching behavior during failures is not
-   * indicative of cache health).
+   * usage — the response is recorded with an explicit `unknown` cache
+   * status. Per §19.13 an unknown status is not treated as a miss, so the
+   * D-13 miss cascade is never fed fabricated misses (WR-09): recording
+   * every call as a miss would disable the cache after 5 calls and
+   * re-disable it 60s after each cooldown, permanently.
    */
   private recordCacheResponse(providerId: PipelineProviderId): void {
     promptCacheManager.recordResponse({
       providerId,
       cacheHit: false,
       cacheWrite: false,
+      cacheStatus: 'unknown',
     });
   }
 
