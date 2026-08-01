@@ -141,8 +141,16 @@ export async function commitEntry(
         return;
       }
     } else {
-      // No executor provided — mark as completed (step without executor is a no-op)
-      step.status = 'completed';
+      // A missing executor means the operation was never applied — marking
+      // it completed would record silent data loss with a terminal journal
+      // record that replay/repair never revisits (WR-06). Fail the step
+      // (and the entry) so the record is truthful.
+      step.status = 'failed';
+      step.error = `No executor registered for step "${step.name}"`;
+      entry.status = 'failed';
+      entry.updatedAt = Date.now();
+      await db.put('entries', entry);
+      return;
     }
   }
 
@@ -176,9 +184,12 @@ export async function replayJournal(
       for (const step of entry.steps) {
         if (step.status !== 'completed') {
           const executor = stepExecutors.get(step.name);
-          if (executor) {
-            await executor();
+          if (!executor) {
+            // Missing executor: the operation was never applied — fail the
+            // step instead of silently marking it completed (WR-06).
+            throw new Error(`No executor registered for step "${step.name}"`);
           }
+          await executor();
           step.status = 'completed';
         }
       }
@@ -225,9 +236,12 @@ export async function repairEntry(
     for (const step of entry.steps) {
       if (step.status !== 'completed') {
         const executor = stepExecutors.get(step.name);
-        if (executor) {
-          await executor();
+        if (!executor) {
+          // Missing executor: the operation was never applied — fail the
+          // step instead of silently marking it completed (WR-06).
+          throw new Error(`No executor registered for step "${step.name}"`);
         }
+        await executor();
         step.status = 'completed';
       }
     }
