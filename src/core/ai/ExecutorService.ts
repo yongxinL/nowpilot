@@ -255,9 +255,10 @@ export class ExecutorService {
   /**
    * Validated cache seam for the later orchestrator/OutcomeVerifier:
    * attach CompletionEvidence to the recorded call. Accepted only when
-   * evidence.operationId and evidence.toolName exactly match the recorded
-   * entry — spoofed values throw TOOL_POSTCONDITION_FAILED and never
-   * overwrite cached evidence (T-03a-01).
+   * evidence.operationId, evidence.toolName AND evidence.toolCallId
+   * exactly match the recorded entry — spoofed values throw
+   * TOOL_POSTCONDITION_FAILED and never overwrite cached evidence
+   * (T-03a-01, WR-07).
    */
   attachEvidence(toolCallId: string, evidence: CompletionEvidence): void {
     const key = this.toolCallIndex.get(toolCallId);
@@ -269,7 +270,11 @@ export class ExecutorService {
         { toolCallId },
       );
     }
-    if (entry.operationId !== evidence.operationId || entry.toolName !== evidence.toolName) {
+    if (
+      entry.operationId !== evidence.operationId ||
+      entry.toolName !== evidence.toolName ||
+      entry.toolCallId !== evidence.toolCallId
+    ) {
       throw new PipelineError(
         'TOOL_POSTCONDITION_FAILED',
         'Evidence does not match the recorded tool call.',
