@@ -1,4 +1,10 @@
-import type { ContextProvenanceEntry, ContextProvenanceManifest, PromptSection } from '../ai/types';
+import type {
+  ContextProvenanceEntry,
+  ContextProvenanceManifest,
+  ContextReceiptEntry,
+  OmissionReason,
+  PromptSection,
+} from '../ai/types';
 
 export type { ContextProvenanceEntry, ContextProvenanceManifest } from '../ai/types';
 
@@ -67,6 +73,61 @@ export function recordSectionWithReceipt(
 export function markTruncated(manifest: ContextProvenanceManifest, sourceId: string): void {
   const entry = manifest.sections.find((s) => s.sourceId === sourceId);
   if (entry) entry.truncated = true;
+}
+
+/**
+ * Record an omitted source in the receipt (CTX-T03, D-03): an item that was
+ * filtered out BEFORE reaching the final PromptSection[] (freshness expiry,
+ * degradation drops, policy exclusion) still gets a receipt entry so its
+ * existence and size remain visible to the user and to diagnostics — with
+ * `included: false`, `finalTokens: 0`, and the omission reason. Omitted
+ * entries never contribute to `totalTokens` (the item produced no prompt
+ * content). Receipt entries never carry raw text (T-04b-03).
+ *
+ * Guarded against duplicates: if an entry for the sourceId already exists
+ * (e.g. the section survived degradation in a rewritten form), the omission
+ * is not double-recorded — one receipt entry per source (D-17).
+ */
+export function markOmitted(
+  manifest: ContextProvenanceManifest,
+  sourceId: string,
+  kind: PromptSection['kind'],
+  reason: OmissionReason,
+  originalTokens: number,
+): void {
+  if (!isValidSourceId(sourceId)) {
+    throw new Error(`ContextProvenanceManifest: invalid sourceId "${sourceId}".`);
+  }
+  if (manifest.sections.some((s) => s.sourceId === sourceId)) return;
+  manifest.sections.push({
+    kind,
+    sourceId,
+    tokens: 0,
+    truncated: false,
+    originalTokens,
+    finalTokens: 0,
+    included: false,
+    omissionReason: reason,
+    cacheEligible: false,
+  });
+}
+
+/**
+ * Cross-check the receipt against the actual packed prompt (RESEARCH
+ * Pitfall 4, CTX-T03): the sum of finalTokens over INCLUDED receipt entries
+ * must equal the sum of tokens over the packed sections. Any nonzero delta
+ * is a bug — the caller warns (never throws) so the inconsistency surfaces
+ * in Phase 6 telemetry without invalidating the prompt (T-04b-14 accept).
+ */
+export function validateReceiptTotals(
+  receipt: ContextReceiptEntry[],
+  packedSections: PromptSection[],
+): boolean {
+  const receiptTotal = receipt
+    .filter((e) => e.included)
+    .reduce((sum, e) => sum + e.finalTokens, 0);
+  const packedTotal = packedSections.reduce((sum, s) => sum + s.tokens, 0);
+  return receiptTotal === packedTotal;
 }
 
 export function markCompression(

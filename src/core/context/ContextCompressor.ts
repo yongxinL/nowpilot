@@ -1,6 +1,6 @@
 import { generateText } from 'ai';
 import type { ProviderAdapter } from '../ai/providers/ProviderAdapter';
-import type { ModelContextTier, PromptSection } from '../ai/types';
+import type { ModelContextTier, OmissionReason, PromptSection } from '../ai/types';
 import { tokenBudget } from './TokenBudget';
 
 interface CompressionStepContext {
@@ -58,10 +58,15 @@ export class ContextCompressor {
     tier: ModelContextTier,
     compressionModelProvider?: (signal?: AbortSignal) => Promise<ProviderAdapter | null>,
     signal?: AbortSignal,
-  ): Promise<{ sections: PromptSection[]; stepsApplied: string[] }> {
+  ): Promise<{
+    sections: PromptSection[];
+    stepsApplied: string[];
+    omissionReasons: Map<string, OmissionReason>;
+  }> {
     this.throwIfAborted(signal);
     let currentSections = sections.map((s) => ({ ...s }));
     const stepsApplied: string[] = [];
+    const omissionReasons = new Map<string, OmissionReason>();
 
     // Degradation loop (Pattern 3): check the budget BEFORE each step,
     // apply the step, record it, and let the next iteration's check stop
@@ -72,8 +77,10 @@ export class ContextCompressor {
       this.throwIfAborted(signal);
       const totalBefore = currentSections.reduce((sum, s) => sum + s.tokens, 0);
       if (totalBefore <= budget) break;
+      const before = currentSections;
       currentSections = step.apply(currentSections, { tier });
       stepsApplied.push(step.name);
+      this.trackOmissions(step.name, before, currentSections, omissionReasons);
     }
 
     // AI summarization overflow (D-06, D-08): only when all local
@@ -95,7 +102,54 @@ export class ContextCompressor {
     // If still over budget, the caller (ContextOptimizer) throws
     // CONTEXT_TOO_LARGE — the compressor only reports the result.
     this.throwIfAborted(signal);
-    return { sections: currentSections, stepsApplied };
+    return { sections: currentSections, stepsApplied, omissionReasons };
+  }
+
+  /**
+   * Record which sections a degradation step dropped and why (CTX-T03,
+   * D-03). Fully removed sections (drop-debug, drop-secondary, minimal-mode
+   * page drop) are recorded by sourceId; sections that SURVIVED but lost
+   * entries (trim-tools, reduce-memory, minimal-mode caps) are also
+   * recorded — the section is still included, but part of its content was
+   * omitted. Compressed-but-included steps (summarise-history,
+   * compress-page, ai-summarisation) never record omissions — the item is
+   * still in the output, just smaller.
+   *
+   * The map is a degradation audit trail: the consumer
+   * (ContextOptimizer.optimizeFromItems) must not treat it as a security
+   * decision — it only explains WHY content was dropped (T-04b-14).
+   */
+  private trackOmissions(
+    stepName: string,
+    before: PromptSection[],
+    after: PromptSection[],
+    omissionReasons: Map<string, OmissionReason>,
+  ): void {
+    // Fully removed sections: any sourceId present before the step and
+    // absent after it was omitted by this step.
+    const afterIds = new Set(after.map((s) => s.sourceId));
+    for (const section of before) {
+      if (afterIds.has(section.sourceId)) continue;
+      if (stepName === 'drop-debug' || stepName === 'drop-secondary') {
+        omissionReasons.set(section.sourceId, 'policy');
+      } else if (stepName === 'minimal-mode') {
+        omissionReasons.set(section.sourceId, 'budget');
+      }
+    }
+    // Rewritten (not removed) sections: entry drops inside tool_schemas /
+    // memory JSON still count as omissions (budget-driven).
+    if (stepName === 'trim-tools' || stepName === 'reduce-memory' || stepName === 'minimal-mode') {
+      for (const section of before) {
+        if (section.kind !== 'tool_schemas' && section.kind !== 'memory') continue;
+        const next = after.find(
+          (s) => s.sourceId === section.sourceId && s.kind === section.kind,
+        );
+        if (next === undefined || next.text === section.text) continue;
+        if (countDroppedEntries(section.text, next.text) > 0) {
+          omissionReasons.set(section.sourceId, 'budget');
+        }
+      }
+    }
   }
 
   /**
@@ -208,6 +262,22 @@ const HISTORY_MARKER = '\n[... history summarized]';
 const MINIMAL_SYSTEM_TOKENS = 200;
 const MINIMAL_SUMMARY_TOKENS = 200;
 const PREFERENCES_COMPACT_TOKENS = 50;
+
+/**
+ * Number of JSON array entries dropped between a section's pre-step and
+ * post-step text. Used by omission tracking for rewritten (not removed)
+ * sections — trim-tools / reduce-memory / minimal-mode caps.
+ */
+function countDroppedEntries(beforeText: string, afterText: string): number {
+  try {
+    const beforeArr = JSON.parse(beforeText);
+    const afterArr = JSON.parse(afterText);
+    if (!Array.isArray(beforeArr) || !Array.isArray(afterArr)) return 0;
+    return Math.max(0, beforeArr.length - afterArr.length);
+  } catch {
+    return 0;
+  }
+}
 
 /** 1. drop-debug: remove sections whose sourceId starts with 'debug.'. */
 function dropDebug(sections: PromptSection[]): PromptSection[] {
