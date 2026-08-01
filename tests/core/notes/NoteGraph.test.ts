@@ -96,7 +96,7 @@ describe('NoteGraph', () => {
   });
 
   it('computeSimilarity combines linkOverlap (50%) + tagOverlap (20%) + contentCosine (30%)', () => {
-    // share 2 of 3 links, 1 of 2 tags → identical text
+    // share 2 of 4 links (Jaccard 0.5), 1 of 3 tags (Jaccard 1/3), identical text (cosine 1.0)
     const a = note({
       id: 'a',
       title: 'Alpha',
@@ -112,7 +112,7 @@ describe('NoteGraph', () => {
       links: ['l1', 'l2', 'zzz'],
     });
     const score = computeSimilarity(a, b);
-    const expected = 2 / 3 * 0.5 + 1 / 2 * 0.2 + 1 * 0.3;
+    const expected = (2 / 4) * 0.5 + (1 / 3) * 0.2 + 1 * 0.3;
     expect(score).toBeCloseTo(expected, 6);
     expect(score).toBeGreaterThan(0);
     expect(score).toBeLessThanOrEqual(1);
