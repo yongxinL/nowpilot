@@ -11,7 +11,6 @@ import { PipelineError, projectPipelineError } from './PipelineError';
 import { TierCapForTier } from './TierResolver';
 import { contextOptimizer } from '../context/ContextOptimizer';
 import { promptCacheManager } from '../context/PromptCacheManager';
-import { KNOWN_MODEL_WINDOWS } from '../context/ModelContextTier';
 import { AgentTrajectoryMachine } from './AgentTrajectoryMachine';
 import {
   createAgentTurnOutcome,
@@ -37,8 +36,6 @@ import type {
 import type { AgentTurnInput } from './AgentTurnInput';
 import type { ProviderAdapter } from './providers/ProviderAdapter';
 
-const DEFAULT_MODEL_CONTEXT_WINDOW = 128000;
-
 function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === 'AbortError';
 }
@@ -52,7 +49,10 @@ function buildOptimizerInput(input: AgentTurnInput): ContextOptimizerInput {
   return {
     operationId: input.operationId,
     model: input.model,
-    modelContextWindow: KNOWN_MODEL_WINDOWS[input.model] ?? DEFAULT_MODEL_CONTEXT_WINDOW,
+    // The caller-supplied window is the primary source (D-03): for models
+    // outside KNOWN_MODEL_WINDOWS, silently substituting the default would
+    // misclassify the context tier and misbudget the prompt (WR-02).
+    modelContextWindow: input.modelContextWindow,
     userInput: input.userInput,
     conversationId: input.conversationId,
     workspaceId: input.workspaceId,
