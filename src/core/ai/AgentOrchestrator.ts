@@ -515,17 +515,30 @@ export class AgentOrchestrator {
                 }
                 case 'terminate':
                   return failTurn('verification_failed');
-                case 'render':
+                case 'render': {
+                  // The `render` disposition is reached both on cap
+                  // exhaustion (rule 4 — loop cannot continue regardless of
+                  // verification) and on unverified/unsatisfied evidence
+                  // paths (rules 6/9). When the last evidence is verified,
+                  // the truthful reason is a reached cap — labeling a
+                  // verified write as `completion_unverified` would mislead
+                  // downstream consumers (UI badges, telemetry, retry logic).
+                  const last = toolResults[toolResults.length - 1];
+                  const verified = last?.evidence?.verified === true;
                   return await renderAndFinish(
                     'partial',
-                    'completion_unverified',
-                    { action: 'answer', reasonCode: 'completion_unverified' },
+                    verified ? 'tool_cap_reached' : 'completion_unverified',
+                    {
+                      action: 'answer',
+                      reasonCode: verified ? 'tier_cap_reached' : 'completion_unverified',
+                    },
                     buildPolicyForRender({
                       toolName: tool.name,
                       toolCallId: result.toolCallId,
                       sideEffect: tool.sideEffect ?? 'none',
                     }),
                   );
+                }
               }
             } catch (err) {
               if (isAbortSignalOrError(err, signal)) return abortTurn('verifying', 'caller_aborted');
