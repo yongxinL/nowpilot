@@ -93,6 +93,9 @@ export class NotesDB {
           name: 'update-index',
           executor: async () => {
             noteSearchIndex.replace(toIndexDoc(finalNote));
+            // WR-01: persist the index after every mutation so search
+            // survives extension reloads (persist/load round-trip).
+            await noteSearchIndex.persist();
           },
         },
       ];
@@ -158,6 +161,8 @@ export class NotesDB {
       const db = await openNotesDb();
       await db.delete('notes', id);
       noteSearchIndex.remove(id);
+      // WR-01: keep the persisted index in sync with deletions too.
+      await noteSearchIndex.persist();
       return { success: true };
     } catch (err) {
       return {

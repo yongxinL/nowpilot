@@ -6,7 +6,14 @@ import { useThemeStore, type ThemeMode } from '../../core/theme/ThemeStore';
 import { useThemeSync } from '../../core/theme/ThemeSync';
 import { useWorkspaceStore } from '../../core/workspace/WorkspaceStore';
 import { openFullApp } from '../../core/workspace/WorkspaceRouter';
+import { initializeKnowledgeBase } from '../../core/knowledgeBaseBootstrap';
 import type { Command } from '../../core/commands/CommandRegistry';
+
+// Phase-5 startup wiring (WR-01/WR-04): elect this surface as primary
+// (MEM-02 single-writer) and restore the persistent search index. Runs in
+// the sidepanel's own JS context; the election is broadcast so every other
+// surface context converges on the same primary.
+void initializeKnowledgeBase('sidepanel');
 
 const MODE_CYCLE: ThemeMode[] = ['light', 'dark', 'auto'];
 

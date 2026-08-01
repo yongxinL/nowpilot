@@ -10,7 +10,13 @@ import { ThemeToggle } from './components/common/ThemeToggle';
 import { AppThemeProvider } from './components/common/AppThemeProvider';
 import { CommandRegistry } from './core/commands/CommandRegistry';
 import { useThemeStore, type ThemeMode } from './core/theme/ThemeStore';
+import { initializeKnowledgeBase } from './core/knowledgeBaseBootstrap';
 import './index.css';
+
+// Phase-5 startup wiring (WR-01/WR-04): the sidepanel is the primary
+// conversational surface — elect it so the MEM-02 single-writer gate is
+// effective, and restore the persistent search index before any query.
+void initializeKnowledgeBase('sidepanel');
 
 const MODE_CYCLE: ThemeMode[] = ['light', 'dark', 'auto'];
 

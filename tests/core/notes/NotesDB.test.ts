@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { notesDb, resetNotesDb } from '../../../src/core/notes/NotesDB';
+import { MiniSearchNoteIndex } from '../../../src/core/notes/MiniSearchNoteIndex';
 import { resetJournalDb, getEntriesByStatus } from '../../../src/core/storage/WriteJournal';
 import { on } from '../../../src/core/events/EventBus';
 import type { Note } from '../../../src/core/notes/NoteSchema';
@@ -133,5 +134,34 @@ describe('NotesDB', () => {
     expect(entry).toBeDefined();
     expect(entry!.steps.map((s) => s.name)).toEqual(['write-note', 'update-index']);
     expect(entry!.steps.every((s) => s.status === 'completed')).toBe(true);
+  });
+
+  it('persists the search index after save — a fresh index instance restores it (WR-01)', async () => {
+    const note = makeNote({
+      id: crypto.randomUUID(),
+      title: 'Persistent Index',
+      content: 'persisted searchable content',
+    });
+    await notesDb.save(note);
+
+    // a fresh index instance (new JS session) restores the persisted index
+    const fresh = new MiniSearchNoteIndex();
+    await fresh.load();
+    const results = fresh.search('persisted');
+    expect(results.some((r) => r.noteId === note.id)).toBe(true);
+  });
+
+  it('persists index removal — a fresh index instance no longer finds a deleted note (WR-01)', async () => {
+    const note = makeNote({
+      id: crypto.randomUUID(),
+      title: 'To Be Removed',
+      content: 'delete me from the index',
+    });
+    await notesDb.save(note);
+    await notesDb.remove(note.id);
+
+    const fresh = new MiniSearchNoteIndex();
+    await fresh.load();
+    expect(fresh.search('delete').some((r) => r.noteId === note.id)).toBe(false);
   });
 });

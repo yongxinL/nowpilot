@@ -6,6 +6,13 @@ import { CommandRegistry } from '../../core/commands/CommandRegistry';
 import { useThemeStore, type ThemeMode } from '../../core/theme/ThemeStore';
 import { useThemeSync } from '../../core/theme/ThemeSync';
 import { hydrateFromURL } from '../../core/workspace/WorkspaceRouter';
+import { initializeKnowledgeBase } from '../../core/knowledgeBaseBootstrap';
+
+// Phase-5 startup wiring (WR-01/WR-04): elect this surface as primary
+// (MEM-02 single-writer) and restore the persistent search index. Runs in
+// the full-app tab's own JS context; the election is broadcast so every
+// other surface context converges on the same primary.
+void initializeKnowledgeBase('full-app');
 
 const MODE_CYCLE: ThemeMode[] = ['light', 'dark', 'auto'];
 
