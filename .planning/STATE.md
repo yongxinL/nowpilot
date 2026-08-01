@@ -21,11 +21,11 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-07-31)
+See: .planning/PROJECT.md (updated 2026-08-01)
 
 **Core value:** Users can acquire knowledge from web pages, store it as interconnected atomic notes, understand it through AI enrichment (tagging/summary/RAG), and interact with it through a persona-driven, intention-aware conversational workspace — all running locally on their machine.
 
-**Current focus:** Phase 04b — trust-aware-context-receipts
+**Current focus:** Phase 5 — knowledge-base
 
 ## Current Position
 
@@ -132,6 +132,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-01T09:21:20.567Z
-Stopped at: Phase 04b UI-SPEC approved
-Resume file: /Users/george.li/Documents/workspaces/nowpilot/.planning/phases/04b-trust-aware-context-receipts/04b-UI-SPEC.md
+Last session: 2026-08-01
+Stopped at: Phase 04b complete, ready to plan Phase 5
+Resume file: None
