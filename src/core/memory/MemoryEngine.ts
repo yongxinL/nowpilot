@@ -301,15 +301,21 @@ export class MemoryEngine {
       return now - (this.lastActiveAt.get(id) ?? 0) <= IDLE_ARCHIVE_MS;
     });
     for (const id of this.active) {
-      if (!stillActive.includes(id)) {
+      if (!stillActive.includes(id) && !this.archived.includes(id)) {
         this.archived.push(id);
       }
     }
     this.active.length = 0;
     this.active.push(...stillActive);
 
-    // 2. Promote the current conversation to the active set
+    // 2. Promote the current conversation to the active set. A conversation
+    // must NEVER be in both sets (CR-01): remove it from `archived` first so
+    // step 4's eviction can never delete the data of a conversation that is
+    // currently active (an archived-but-active conversation used to be
+    // evictable while in use, silently wiping its messages + summary).
     if (!this.active.includes(conversationId)) {
+      const archIdx = this.archived.indexOf(conversationId);
+      if (archIdx >= 0) this.archived.splice(archIdx, 1);
       this.active.push(conversationId);
     }
 
@@ -327,7 +333,9 @@ export class MemoryEngine {
       }
       if (oldestId === null) break;
       this.active.splice(this.active.indexOf(oldestId), 1);
-      this.archived.push(oldestId);
+      if (!this.archived.includes(oldestId)) {
+        this.archived.push(oldestId);
+      }
     }
 
     // 4. Max 100 archived — evict the oldest archived first (D-11)

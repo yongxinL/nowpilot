@@ -461,10 +461,12 @@ describe('MemoryEngine', () => {
     await engine.trackConversationActivity('conv-c');
     expect(await engine.getConversationStats()).toEqual({ active: 1, archived: 2, total: 3 });
 
-    // another 31 minutes: conv-c now idle → archived; conv-a reactivates
+    // another 31 minutes: conv-c now idle → archived; conv-a reactivates —
+    // promotion removes conv-a from archived (CR-01: a conversation is
+    // never in both sets), so only the 3 DISTINCT conversations count
     now += 31 * MINUTE_MS;
     await engine.trackConversationActivity('conv-a');
-    expect(await engine.getConversationStats()).toEqual({ active: 1, archived: 3, total: 4 });
+    expect(await engine.getConversationStats()).toEqual({ active: 1, archived: 2, total: 3 });
   });
 
   it('getConversationStats reports accurate LRU state (Test 13)', async () => {
