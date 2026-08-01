@@ -1078,3 +1078,172 @@ describe('ContextOptimizer.optimizeFromItems() receipt integration (04b-04)', ()
     expect(result.provenance.sections.every((e) => e.included === true)).toBe(true);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 04b-06 — progressive skill disclosure: loaded skills as system sections,
+// unloaded skills tracked in the receipt with zero token cost (CTX-T05, P1)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('Progressive skill disclosure (04b-06, CTX-T05)', () => {
+  function makeContextItem(overrides: Partial<ContextItem>): ContextItem {
+    return {
+      kind: 'context',
+      text: 'fixture text',
+      tokens: 5,
+      stable: false,
+      sourceId: 'context.page.current-url',
+      relevance: 0.8,
+      freshness: 1,
+      trust: 0.5,
+      sensitivity: 'private',
+      instructionAuthority: 'data',
+      ...overrides,
+    };
+  }
+
+  it('createSkillContextItem() produces a system-authority ContextItem with estimated tokens', async () => {
+    const { ContextOptimizer } = await import('../../../src/core/context/ContextOptimizer');
+    const { tokenBudget } = await import('../../../src/core/context/TokenBudget');
+
+    const item = ContextOptimizer.createSkillContextItem({
+      name: 'search',
+      description: 'Search the user notes',
+      capabilityKeywords: ['search', 'notes', 'retrieval'],
+    });
+
+    expect(item.kind).toBe('system');
+    expect(item.sourceId).toBe('skills.loaded.search');
+    expect(item.instructionAuthority).toBe('system');
+    expect(item.sensitivity).toBe('public');
+    expect(item.stable).toBe(true);
+    expect(item.relevance).toBe(1.0);
+    expect(item.freshness).toBe(1.0);
+    expect(item.tokens).toBe(tokenBudget.estimateTokens(item.text));
+    expect(JSON.parse(item.text)).toEqual({
+      name: 'search',
+      description: 'Search the user notes',
+      keywords: ['search', 'notes', 'retrieval'],
+    });
+  });
+
+  it('a loaded skill participates in stable-prefix hashing, occupies its token budget, and sorts before data sections', async () => {
+    const { ContextOptimizer, contextOptimizer } = await import(
+      '../../../src/core/context/ContextOptimizer'
+    );
+    const skillItem = ContextOptimizer.createSkillContextItem({
+      name: 'search',
+      description: 'Search notes',
+      capabilityKeywords: ['search'],
+    });
+    const dataItem = makeContextItem({ text: 'page data', sourceId: 'context.page.current' });
+
+    const result = await contextOptimizer.optimizeFromItems(
+      [dataItem, skillItem],
+      buildOptimizerInput(),
+    );
+
+    const skillSection = result.sections.find((s) => s.sourceId === 'skills.loaded.search')!;
+    expect(skillSection).toBeDefined();
+    // Normal token budget allocation — estimated from the summary text.
+    expect(skillSection.tokens).toBe(skillItem.tokens);
+    expect(skillSection.tokens).toBeGreaterThan(0);
+    // Appears before data sections (system authority ranks first).
+    const dataIndex = result.sections.findIndex((s) => s.sourceId === 'context.page.current');
+    expect(result.sections.indexOf(skillSection)).toBeLessThan(dataIndex);
+    // Participates in stable-prefix hashing (stable:true → per-section hash).
+    expect(result.cacheMetadata?.stableSectionCount).toBe(1);
+    expect(
+      result.cacheMetadata?.perSectionHashes?.some((h) => h.sourceId === 'skills.loaded.search'),
+    ).toBe(true);
+  });
+
+  it('unloaded skills consume zero prompt tokens and are receipt-tracked with omissionReason policy', async () => {
+    const { ContextOptimizer, contextOptimizer } = await import(
+      '../../../src/core/context/ContextOptimizer'
+    );
+    const { validateReceiptTotals } = await import(
+      '../../../src/core/context/ContextProvenanceManifest'
+    );
+    const skillItem = ContextOptimizer.createSkillContextItem({
+      name: 'search',
+      description: 'Search notes',
+      capabilityKeywords: ['search'],
+    });
+
+    const result = await contextOptimizer.optimizeFromItems(
+      [skillItem],
+      buildOptimizerInput({ unloadedSkillNames: ['notes', 'web-search'] }),
+    );
+
+    // The loaded skill is in the prompt; unloaded skills never become sections.
+    expect(result.sections.some((s) => s.sourceId === 'skills.loaded.search')).toBe(true);
+    expect(result.sections.some((s) => s.sourceId.startsWith('skills.unloaded.'))).toBe(false);
+
+    const notes = result.provenance.sections.find((s) => s.sourceId === 'skills.unloaded.notes')!;
+    expect(notes).toMatchObject({
+      included: false,
+      omissionReason: 'policy',
+      originalTokens: 0,
+      finalTokens: 0,
+      cacheEligible: false,
+    });
+    const webSearch = result.provenance.sections.find(
+      (s) => s.sourceId === 'skills.unloaded.web-search',
+    )!;
+    expect(webSearch).toMatchObject({ included: false, omissionReason: 'policy', finalTokens: 0 });
+    // Omitted entries contribute nothing — the totals cross-check stays true.
+    expect(validateReceiptTotals(result.provenance.sections, result.sections)).toBe(true);
+  });
+
+  it('three loaded skills all appear as system sections with individual receipt entries', async () => {
+    const { ContextOptimizer, contextOptimizer } = await import(
+      '../../../src/core/context/ContextOptimizer'
+    );
+    const skills = ['search', 'notes', 'web-search'].map((name) =>
+      ContextOptimizer.createSkillContextItem({
+        name,
+        description: `description of ${name}`,
+        capabilityKeywords: [name],
+      }),
+    );
+
+    const result = await contextOptimizer.optimizeFromItems(skills, buildOptimizerInput());
+
+    const skillSections = result.sections.filter(
+      (s) => s.kind === 'system' && s.sourceId.startsWith('skills.loaded.'),
+    );
+    expect(skillSections).toHaveLength(3);
+    for (const name of ['search', 'notes', 'web-search']) {
+      const receipt = result.provenance.sections.find(
+        (s) => s.sourceId === `skills.loaded.${name}`,
+      )!;
+      expect(receipt.included).toBe(true);
+      expect(receipt.omissionReason).toBeUndefined();
+      expect(receipt.finalTokens).toBeGreaterThan(0);
+    }
+  });
+
+  it('rejects a misconfigured skill item claiming data authority — assess() maps skills.loaded.* to system', async () => {
+    const { contextOptimizer } = await import('../../../src/core/context/ContextOptimizer');
+    const { contextTrustPolicy } = await import('../../../src/core/context/ContextTrustPolicy');
+
+    // Policy verdict for skills.loaded.* is system authority regardless of kind.
+    expect(contextTrustPolicy.assess('skills.loaded.search', 'context')).toEqual({
+      trust: 1.0,
+      sensitivity: 'public',
+      instructionAuthority: 'system',
+    });
+
+    // A skill item built with kind 'context' + self-assigned data authority
+    // mismatches the policy verdict → hard rejection (D-06).
+    const misconfigured = makeContextItem({
+      sourceId: 'skills.loaded.search',
+      trust: 0.3,
+      sensitivity: 'private',
+      instructionAuthority: 'data',
+    });
+    await expect(
+      contextOptimizer.optimizeFromItems([misconfigured], buildOptimizerInput()),
+    ).rejects.toMatchObject({ code: 'SCHEMA_INVALID' });
+  });
+});
