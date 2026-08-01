@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { z } from 'zod';
 import { PipelineError } from '../../src/core/ai/PipelineError';
 import { AgentTrajectoryMachine } from '../../src/core/ai/AgentTrajectoryMachine';
 import { ExecutorService } from '../../src/core/ai/ExecutorService';
@@ -80,6 +79,11 @@ const READ_TOOL: ToolSchemaInfo = {
   evidence: { required: false },
 };
 
+const WRITE_VERIFIER = {
+  type: 'schema' as const,
+  check: async () => [{ checkId: 'c1', name: 'saved', passed: true }],
+};
+
 const WRITE_TOOL: ToolSchemaInfo = {
   name: 'saveNote',
   description: 'Save a note',
@@ -88,10 +92,7 @@ const WRITE_TOOL: ToolSchemaInfo = {
   idempotency: 'required',
   evidence: {
     required: true,
-    verifier: {
-      type: 'schema',
-      check: async () => [{ checkId: 'c1', name: 'saved', passed: true }],
-    },
+    verifier: WRITE_VERIFIER,
   },
 };
 
@@ -112,7 +113,7 @@ const IRREVERSIBLE_TOOL: ToolSchemaInfo = {
   jsonSchema: {},
   sideEffect: 'irreversible',
   idempotency: 'required',
-  evidence: { required: true, verifier: WRITE_TOOL.evidence.verifier },
+  evidence: { required: true, verifier: WRITE_VERIFIER },
 };
 
 /** Tool schema that omits the mandatory Phase 3a reliability metadata. */
@@ -180,7 +181,10 @@ function realTool(overrides: Partial<RegisteredTool> = {}): RegisteredTool {
   return {
     name: 'writeNote',
     description: 'Write a note',
-    inputSchema: z.object({ title: z.string() }),
+    // Plain JSON schema: ExecutorService wraps it in z.object({}).passthrough(),
+    // which rejects non-object input (INVALID_TOOL_INPUT) while accepting
+    // any object shape.
+    inputSchema: { type: 'object', properties: { title: { type: 'string' } } },
     execute: vi.fn(async () => ({ saved: true })),
     sideEffect: 'write',
     idempotency: 'required',
@@ -582,7 +586,7 @@ describe('STRIDE — Information disclosure (T-03a-34)', () => {
 
   it('raw tool output and secrets never appear in verified evidence', async () => {
     const tool = realTool({
-      evidence: { required: true, verifier: WRITE_TOOL.evidence.verifier },
+      evidence: { required: true, verifier: WRITE_VERIFIER },
     });
 
     const evidence = await outcomeVerifier.verify(

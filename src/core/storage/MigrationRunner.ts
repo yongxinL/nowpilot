@@ -1,4 +1,7 @@
-import { openDB, type IDBPDatabase } from 'idb';
+import { openDB, type IDBPDatabase, type IDBPTransaction } from 'idb';
+
+/** The transaction handed to the idb `upgrade` callback. */
+type VersionChangeTransaction = IDBPTransaction<unknown, string[], 'versionchange'>;
 
 /**
  * MigrationRunner orchestrates idb versioned upgrades with step isolation
@@ -52,7 +55,7 @@ export class MigrationRunner {
   }
 
   private createV3Schema(
-    transaction: IDBTransaction,
+    transaction: VersionChangeTransaction,
   ): void {
     const store = transaction.objectStore('entries');
     if (!store.indexNames.contains('by-operation')) {
@@ -61,9 +64,9 @@ export class MigrationRunner {
   }
 
   private async migrateV4(
-    transaction: IDBTransaction,
+    transaction: VersionChangeTransaction,
   ): Promise<void> {
-    const db = (transaction as any).db as IDBPDatabase;
+    const db = transaction.db;
 
     // Create the 'migrated' store if it doesn't exist
     if (!db.objectStoreNames.contains('migrated')) {

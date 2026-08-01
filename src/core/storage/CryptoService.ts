@@ -83,10 +83,12 @@ export class CryptoService {
     if (ciphertextTag !== '[object ArrayBuffer]' && ciphertextTag !== '[object Uint8Array]') {
       throw new TypeError('ciphertext must be an ArrayBuffer or Uint8Array');
     }
-    // Normalize to ArrayBuffer if Uint8Array
-    const ciphertextBuffer = ciphertextTag === '[object Uint8Array]'
-      ? (ciphertext as Uint8Array).buffer
-      : ciphertext as ArrayBuffer;
+    // Normalize to ArrayBuffer if Uint8Array (cross-realm safe: the runtime
+    // tag check above admits a Uint8Array from another realm, whose declared
+    // type here is ArrayBuffer — hence the explicit casts).
+    const ciphertextBuffer: ArrayBuffer = ciphertextTag === '[object Uint8Array]'
+      ? (ciphertext as unknown as Uint8Array<ArrayBufferLike>).buffer as ArrayBuffer
+      : ciphertext;
     if (iv.length !== 12) {
       throw new Error(`Invalid IV length: expected 12 bytes, got ${iv.length}`);
     }

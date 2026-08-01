@@ -113,7 +113,7 @@ export async function commitEntry(
   steps: Array<{ name: string; executor: () => Promise<void> }>,
 ): Promise<void> {
   const db = await getDb();
-  const entry = await db.get('entries', entryId);
+  const entry: WriteJournalEntry = await db.get('entries', entryId);
   if (!entry) {
     throw new Error(`Entry ${entryId} not found`);
   }
@@ -160,7 +160,7 @@ export async function replayJournal(
   stepExecutors: Map<string, () => Promise<void>>,
 ): Promise<number> {
   const db = await getDb();
-  const allEntries = await db.getAll('entries');
+  const allEntries: WriteJournalEntry[] = await db.getAll('entries');
   const nonTerminal = allEntries.filter(
     (e) => !['completed', 'failed', 'rolled-back'].includes(e.status),
   );
@@ -206,7 +206,7 @@ export async function repairEntry(
   stepExecutors: Map<string, () => Promise<void>>,
 ): Promise<void> {
   const db = await getDb();
-  const entry = await db.get('entries', entryId);
+  const entry: WriteJournalEntry = await db.get('entries', entryId);
   if (!entry) {
     throw new Error(`Entry ${entryId} not found`);
   }
@@ -251,7 +251,7 @@ export async function getEntriesByStatus(
   status: WriteJournalStatus,
 ): Promise<WriteJournalEntry[]> {
   const db = await getDb();
-  const allEntries = await db.getAll('entries');
+  const allEntries: WriteJournalEntry[] = await db.getAll('entries');
   return allEntries.filter((e) => e.status === status);
 }
 

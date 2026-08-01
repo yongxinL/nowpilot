@@ -13,6 +13,7 @@
     "verify:phase-1": "tsc --noEmit && vitest run tests/core/runtime tests/core/events tests/core/workspace tests/core/theme tests/core/commands tests/isolation",
     "verify:phase-2": "tsc --noEmit && vitest run tests/core/storage tests/core/security tests/core/utils tests/core/workspace/WorkspacePersistence.test.ts",
     "verify:phase-3": "tsc --noEmit && vitest run tests/core/ai tests/core/ai/persona",
+    "verify:phase-3a": "tsc --noEmit && vitest run tests/core/ai/types.test.ts tests/core/ai/trajectory/AgentTrajectoryMachine.test.ts tests/core/ai/ExecutorService.test.ts tests/core/ai/verifier/OutcomeVerifier.test.ts tests/core/ai/ReplanPolicy.test.ts tests/core/ai/tracer.test.ts tests/core/ai/AgentOrchestrator.test.ts tests/core/ai/integration.test.ts tests/core/context/ContextOptimizer.test.ts tests/core/context/ContextCompressor.test.ts tests/security/agent-harness.test.ts",
     "verify:phase-4": "tsc --noEmit && vitest run tests/core/context",
     "verify:phase-4a": "tsc --noEmit && vitest run tests/core/extraction tests/core/content tests/isolation/no-content-script-ui.test.ts",
     "verify:phase-5": "tsc --noEmit && vitest run tests/core/memory tests/core/search tests/core/notes/LinkParser.test.ts",
