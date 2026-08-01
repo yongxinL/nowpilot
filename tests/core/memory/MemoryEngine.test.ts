@@ -8,7 +8,7 @@ import {
 } from '../../../src/core/memory/PreferenceMemoryStore';
 import { resetConversationMemoryDb } from '../../../src/core/memory/ConversationMemoryStore';
 import { resetJournalDb, getEntriesByStatus } from '../../../src/core/storage/WriteJournal';
-import { subscribe } from '../../../src/core/runtime/BroadcastBus';
+import { subscribe, setPrimarySurfaceId } from '../../../src/core/runtime/BroadcastBus';
 
 /**
  * Minimal BroadcastChannel stub — BroadcastBus publishes WORKSPACE_UPDATED
@@ -54,12 +54,20 @@ describe('MemoryEngine', () => {
 
   beforeEach(async () => {
     resetMemoryEngine();
+    // MEM-02 production wiring (Plan 03): the engine reads its surface id
+    // from the entrypoint global; the BroadcastBus election elects this
+    // surface as primary so writes are allowed.
+    (globalThis as unknown as { __NOWPILOT_SURFACE_ID__?: string }).__NOWPILOT_SURFACE_ID__ =
+      'test-surface';
+    setPrimarySurfaceId('test-surface');
     engine = getMemoryEngine();
     await resetAllDbs();
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+    delete (globalThis as unknown as { __NOWPILOT_SURFACE_ID__?: string }).__NOWPILOT_SURFACE_ID__;
+    setPrimarySurfaceId(null);
   });
 
   it('retrieve returns conversation items, then scored user facts, then preferences — in that order (Test 1)', async () => {
@@ -225,6 +233,46 @@ describe('MemoryEngine', () => {
     const userStore = new UserMemoryStore();
     const facts = await userStore.getAll();
     expect(facts.some((f) => f.content === 'secondary write')).toBe(false);
+  });
+
+  it('enforces MEM-02 via the real BroadcastBus election — a non-elected surface is rejected with NOT_PRIMARY_SURFACE', async () => {
+    // beforeEach elected 'test-surface' as primary through BroadcastBus —
+    // this engine instance is on the elected primary
+    const ok = await engine.write(
+      {
+        content: 'primary write via election',
+        memoryType: 'semantic',
+        tags: [],
+        sensitivity: 'private',
+        source: 'explicit-user',
+      },
+      'user-action',
+    );
+    expect(ok.success).toBe(true);
+
+    // a fresh engine instance on a DIFFERENT surface is read-only
+    resetMemoryEngine();
+    const secondary = getMemoryEngine('other-surface');
+    const blocked = await secondary.write(
+      {
+        content: 'secondary write via election',
+        memoryType: 'semantic',
+        tags: [],
+        sensitivity: 'private',
+        source: 'explicit-user',
+      },
+      'user-action',
+    );
+    expect(blocked.success).toBe(false);
+    if (!blocked.success) {
+      expect(blocked.code).toBe('NOT_PRIMARY_SURFACE');
+    }
+    // the blocked write created no journal entry and persisted nothing
+    expect(await getEntriesByStatus('pending')).toHaveLength(0);
+    expect(await getEntriesByStatus('failed')).toHaveLength(0);
+    const userStore = new UserMemoryStore();
+    const facts = await userStore.getAll();
+    expect(facts.some((f) => f.content === 'secondary write via election')).toBe(false);
   });
 
   it('write wraps in a WriteJournal entry with the matching operation and broadcasts WORKSPACE_UPDATED (Test 6)', async () => {
