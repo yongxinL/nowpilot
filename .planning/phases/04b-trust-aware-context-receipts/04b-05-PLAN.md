@@ -19,11 +19,17 @@ must_haves:
     - "Vitest snapshot tests guard the stable-prefix contract — snapshot test fails on any whitespace, ordering, or content change in stable sections (CTX-T04)"
     - "Per-section hashes immediately identify which section drifted when the combined hash changes — diagnostics for stable-prefix breakage"
     - "Persona and system rules produce byte-identical output for identical configuration — snapshot tests fail on unexpected drift"
-  artifacts:
-    - path: "src/core/context/ContextOptimizer.ts"
-      provides: "computeStablePrefix() method added to ContextOptimizer — called as the final step of optimizeFromItems() to compute stable-prefix contract"
-    - path: "tests/core/context/stable-prefix.test.ts"
-      provides: "Snapshot tests (Vitest toMatchSnapshot) for combined hash + per-section hashes; byte-stability guards for persona/system/tool schema text"
+   artifacts:
+     - path: "src/core/context/ContextOptimizer.ts"
+       provides: "computeStablePrefix() method added to ContextOptimizer — called as the final step of optimizeFromItems() to compute stable-prefix contract"
+     - path: "tests/core/context/stable-prefix.test.ts"
+       provides: "Snapshot tests (Vitest toMatchSnapshot) for combined hash + per-section hashes; byte-stability guards for persona/system/tool schema text"
+   key_links:
+     - "PromptSection[] (stable:true only) → hashStableSections() from PromptCacheAdapter → combinedHash — FNV-1a reused, not reimplemented"
+     - "stableSections.map(s => hashStableSections([s])) → perSectionHashes[] — individual FNV-1a per stable section for drift diagnostics (D-04)"
+     - "computeStablePrefix() → cacheMetadata.perSectionHashes — optimizeFromItems() populates perSectionHashes in final return (CTX-T04)"
+     - "persona/system/tool_schemas PromptSection.text → snapshot tests (toMatchSnapshot) — byte-stability guarded against accidental drift"
+     - "volatile sections (user_input, memory, context page, timestamps) → EXCLUDED from hash computation — only stable:true sections participate"
 ---
 
 <objective>

@@ -21,13 +21,19 @@ must_haves:
     - "Progressive skill disclosure: skills not selected by the planner consume zero prompt tokens — their ContextItem entries are omitted from the final PromptSection[]; receipt records omissionReason:'policy' for unloaded skills"
     - "Progressive skill disclosure: loaded skills have ContextItem with instructionAuthority:'system' — they participate in stable-prefix hashing and occupy their normal token budget allocation"
     - "Skill selection is deterministic and independent of LLM — PlannerService (or a ContextOptimizer policy) decides which skills to load based on user intent/capability requirements"
-  artifacts:
-    - path: "tests/security/injection-isolation.test.ts"
-      provides: "Adversarial fixture tests proving prompt-injection cannot alter system instructions, tool availability, permission outcomes, or risk classifications"
-    - path: "src/core/ai/types.ts"
-      provides: "SkillSummary type for progressive skill disclosure — compact representation of a skill's capability"
-    - path: "src/core/context/ContextOptimizer.ts"
-      provides: "Skill loading policy — selected skills become ContextItem[*] with instructionAuthority:'system'; unselected skills tracked in receipt"
+   artifacts:
+     - path: "tests/security/injection-isolation.test.ts"
+       provides: "Adversarial fixture tests proving prompt-injection cannot alter system instructions, tool availability, permission outcomes, or risk classifications"
+     - path: "src/core/ai/types.ts"
+       provides: "SkillSummary type for progressive skill disclosure — compact representation of a skill's capability"
+     - path: "src/core/context/ContextOptimizer.ts"
+       provides: "Skill loading policy — selected skills become ContextItem[*] with instructionAuthority:'system'; unselected skills tracked in receipt"
+   key_links:
+     - "ContextItem (instructionAuthority:'data') → <data-source id=\"...\"> wrapping → final PromptSection[] — injection isolation via structural delimiters (D-02, CTX-T02)"
+     - "wrapDataSection() → stable:false on all wrapped sections — data is never cache-stable regardless of original ContextItem.stable"
+     - "SkillSummary → ContextOptimizer.createSkillContextItem() → ContextItem with instructionAuthority:'system' — loaded skills participate in stable-prefix hashing (CTX-T05)"
+     - "unloadedSkillNames[] → receipt entries with omissionReason:'policy', included:false, finalTokens:0 — zero prompt token cost for unloaded skills (CTX-T05)"
+     - "ContextTrustPolicy.assess('skills.loaded.*') → {trust:1.0, sensitivity:'public', instructionAuthority:'system'} — loaded skills treated as system instructions"
   prohibitions:
     - requirement_id: CTX-T02
       category: safety
@@ -189,9 +195,9 @@ export interface ContextItem {
 
     4. No new test file needed — the behavior tests can be verified via the existing ContextOptimizer test suite by adding skill ContextItems to the input and asserting correct positioning and receipt entries.
   </action>
-  <verify>
-    <automated>npx vitest run tests/core/context/ContextOptimizer.test.ts --reporter=verbose 2>&1 | grep -E '(skill|Skill|progressive)' || echo "Add skill-specific tests to ContextOptimizer test"</automated>
-  </verify>
+   <verify>
+     <automated>grep -q 'skill' tests/core/context/ContextOptimizer.test.ts && npx vitest run tests/core/context/ContextOptimizer.test.ts --reporter=verbose</automated>
+   </verify>
   <done>SkillSummary type exists in types.ts. ContextOptimizer.createSkillContextItem() produces correctly-formed ContextItem for loaded skills. Loaded skills appear as system sections with instructionAuthority:'system'. Unloaded skills tracked in receipt with omissionReason:'policy' and zero token cost. ContextTrustPolicy recognizes skills.loaded.* sourceIds as system authority.</done>
 </task>
 

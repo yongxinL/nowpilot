@@ -21,16 +21,21 @@ must_haves:
     - "ContextFreshnessPolicy.compute('context.page.current', 'context', createdAt, expiresAt) returns 0 when expiresAt has passed (hard expiry before decay per D-10)"
     - "ContextFreshnessPolicy.compute() returns 1.0 for system/persona types (Infinity TTL — no decay)"
     - "ContextFreshnessPolicy.compute() returns ~0.368 for a tool_result with ageMs === ttlMs (Math.exp(-1) ≈ 0.368 — exponential decay working correctly)"
-  artifacts:
-    - path: "src/core/context/ContextTrustPolicy.ts"
-      provides: "Full static source-type table covering all 8 source types from D-07, validate() enforcement, upgrade() sensitivity escalation"
-    - path: "src/core/context/ContextFreshnessPolicy.ts"
-      provides: "Exponential decay freshness computation with per-source TTLs and hard expiry enforcement per D-10"
-      exports: ["contextFreshnessPolicy", "ContextFreshnessPolicy"]
-    - path: "tests/core/context/ContextTrustPolicy.test.ts"
-      provides: "Fixture tests for every source type, no-self-assignment guard, sensitivity upgrade ordering"
-    - path: "tests/core/context/ContextFreshnessPolicy.test.ts"
-      provides: "Exponential decay math verification, TTL boundaries, expiresAt enforcement, Date.now() mocking"
+   artifacts:
+     - path: "src/core/context/ContextTrustPolicy.ts"
+       provides: "Full static source-type table covering all 8 source types from D-07, validate() enforcement, upgrade() sensitivity escalation"
+     - path: "src/core/context/ContextFreshnessPolicy.ts"
+       provides: "Exponential decay freshness computation with per-source TTLs and hard expiry enforcement per D-10"
+       exports: ["contextFreshnessPolicy", "ContextFreshnessPolicy"]
+     - path: "tests/core/context/ContextTrustPolicy.test.ts"
+       provides: "Fixture tests for every source type, no-self-assignment guard, sensitivity upgrade ordering"
+     - path: "tests/core/context/ContextFreshnessPolicy.test.ts"
+       provides: "Exponential decay math verification, TTL boundaries, expiresAt enforcement, Date.now() mocking"
+   key_links:
+     - "ContextTrustPolicy.assess() → ContextOptimizer.optimizeFromItems() — every ContextItem validated against static trust table (D-06, D-07)"
+     - "ContextTrustPolicy.validate() → ContextOptimizer trust gating — mismatches rejected before prompt assembly"
+     - "ContextFreshnessPolicy.compute() → ContextOptimizer staleness check — expired items (freshness=0) omitted before compression (D-10)"
+     - "ContextFreshnessPolicy.getTTL() → per-source TTL constants — sourceId prefix matching → kind fallback → default"
   prohibitions: []
 ---
 

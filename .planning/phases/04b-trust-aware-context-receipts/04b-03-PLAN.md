@@ -18,12 +18,17 @@ must_haves:
     - "ToolResultShaper enforces max output size (32,000 chars) — output longer than MAX_TOOL_RESULT_CHARS is truncated with '\n[truncated]' suffix appended"
     - "ToolResultShaper does NOT mutate the original ToolExecutionResult — shape() returns a new immutable ContextItem; original.output remains unchanged (D-05 immutability)"
     - "ToolResultShaper returns null when redaction removes all content (sensitivity would be 'secret') — no ContextItem is created for secret-level tool output"
-  artifacts:
-    - path: "src/core/ai/ToolResultShaper.ts"
-      provides: "Standalone service between ExecutorService and ContextOptimizer — validates output, redacts secrets, applies size limit, assigns provenance/trust per D-05"
-      exports: ["toolResultShaper", "ToolResultShaper"]
-    - path: "tests/core/ai/ToolResultShaper.test.ts"
-      provides: "Fixture tests covering redaction, size limits, provenance assignment, immutability contract"
+   artifacts:
+     - path: "src/core/ai/ToolResultShaper.ts"
+       provides: "Standalone service between ExecutorService and ContextOptimizer — validates output, redacts secrets, applies size limit, assigns provenance/trust per D-05"
+       exports: ["toolResultShaper", "ToolResultShaper"]
+     - path: "tests/core/ai/ToolResultShaper.test.ts"
+       provides: "Fixture tests covering redaction, size limits, provenance assignment, immutability contract"
+   key_links:
+     - "ToolExecutionResult.output → ToolResultShaper.shape() → redactSensitive() — secrets removed before ContextItem creation (TOL-04, D-05)"
+     - "ToolResultShaper.shape() → contextTrustPolicy.assess() → ContextItem — trust/sensitivity/authority from policy, never self-assigned (D-06)"
+     - "ToolResultShaper.shape() → ContextItem → ContextOptimizer.optimizeFromItems() — shaped tool results ready for trust validation and receipt generation"
+     - "ToolResultShaper → original ToolExecutionResult — read-only; immutability contract (D-05)"
   prohibitions:
     - requirement_id: TOL-04
       category: privacy

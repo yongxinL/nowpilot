@@ -13,6 +13,7 @@ files_modified:
 autonomous: true
 requirements:
   - CTX-T03
+  - CTX-T06  # (structural prep only; telemetry aggregation in Phase 6a per CONTEXT.md)
 
 must_haves:
   truths:
@@ -21,13 +22,19 @@ must_haves:
     - "ContextOptimizer.optimizeFromItems() populates omissionReason on receipt entries based on ContextCompressor omissionReasons — sections not in the final output get included:false and the correct omissionReason"
     - "validateReceiptTotals(receipt, packedSections) returns true when sum(receipt.included.filter(e => e.included).finalTokens) === sum(packedSections.map(s => s.tokens)) — receipt totals must equal packed section totals (CTX-T03 acceptance)"
     - "validateReceiptTotals() returns false when receipt totals and packed totals diverge — any nonzero delta is a bug (RESEARCH Pitfall 4)"
-  artifacts:
-    - path: "src/core/context/ContextProvenanceManifest.ts"
-      provides: "ContextReceiptEntry type, recordSectionWithReceipt(), validateReceiptTotals() — receipt-aware provenance tracking"
-    - path: "src/core/context/ContextCompressor.ts"
-      provides: "omissionReasons map emitted alongside compressed sections — each dropped/trimmed section gets an omission reason"
-    - path: "src/core/context/ContextOptimizer.ts"
-      provides: "optimizeFromItems() consumes omissionReasons from compressor, populates receipt entries with omissionReason, included:false for removed sections"
+   artifacts:
+     - path: "src/core/context/ContextProvenanceManifest.ts"
+       provides: "ContextReceiptEntry type, recordSectionWithReceipt(), validateReceiptTotals() — receipt-aware provenance tracking"
+     - path: "src/core/context/ContextCompressor.ts"
+       provides: "omissionReasons map emitted alongside compressed sections — each dropped/trimmed section gets an omission reason"
+     - path: "src/core/context/ContextOptimizer.ts"
+       provides: "optimizeFromItems() consumes omissionReasons from compressor, populates receipt entries with omissionReason, included:false for removed sections"
+   key_links:
+     - "ContextCompressor.compress() → omissionReasons Map → ContextOptimizer.optimizeFromItems() → markOmitted() — each dropped section's omission reason populated in receipt (CTX-T03)"
+     - "ContextOptimizer → ContextProvenanceManifest.recordSectionWithReceipt() — included sections get originalTokens/finalTokens/cacheEligible"
+     - "ContextOptimizer → ContextProvenanceManifest.markOmitted() — excluded sections get included:false, omissionReason, finalTokens:0"
+     - "ContextOptimizer → validateReceiptTotals(receipt, packedSections) — cross-check guarantees receipt = packed totals (RESEARCH Pitfall 4)"
+     - "ContextFreshnessPolicy.compute() → ContextOptimizer staleness → markOmitted(manifest, sourceId, 'stale') — stale items tracked pre-compression"
   prohibitions:
     - requirement_id: CTX-T03
       category: privacy

@@ -33,6 +33,8 @@ must_haves:
     - statement: "ContextItem with instructionAuthority mismatched from ContextTrustPolicy.assess() is rejected before reaching the prompt — no silent downgrade from system to data authority"
       verification: backstop
     - statement: "ContextTrustPolicy.assess() returns the same result for identical (sourceId, kind) inputs on every call — deterministic, LLM-independent, no caching side-effects"
+    - statement: "ContextItem.relevance is a turn-scoped field populated by source adapters per D-08; ContextOptimizer validates presence but does NOT recompute relevance — if a required source has no relevance score, the item fails validation with a PipelineError (D-08 contract)"
+      verification: backstop
       verification: backstop
     - statement: "ContextOptimizer.optimizeFromItems() returns within 50ms for <20 ContextItems with no degradation — performance regression is detectable"
       verification: backstop
@@ -84,6 +86,11 @@ must_haves:
       status: unresolved
       verification: null
       statement: "MUST NOT allow raw unredacted tool output containing API keys, Bearer tokens, JWTs, or ServiceNow session tokens to enter the context pipeline."
+  key_links:
+    - "ContextTrustPolicy.assess() → ContextOptimizer.optimizeFromItems() — trust is validated, never self-assigned (D-06)"
+    - "ContextItem → unwrapToPromptSections() → PromptSection[] — metadata stripped at final step (D-01)"
+    - "ContextOptimizer → ContextProvenanceManifest.recordSectionWithReceipt() — receipt fields populated per section (D-03)"
+    - "contextOptimizer.optimizeFromItems() → contextCompressor.compress() — degradation pipeline unchanged, receives post-wrap PromptSection[]"
 ---
 
 <objective>
