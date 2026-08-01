@@ -32,6 +32,22 @@ export function createProvenanceManifest(
  * receipt data instead.
  */
 export function recordSection(manifest: ContextProvenanceManifest, section: PromptSection): void {
+  recordSectionWithReceipt(manifest, section, section.tokens, false);
+}
+
+/**
+ * Record a provenance entry with full receipt metadata (D-03, CTX-T03):
+ * originalTokens come from the source ContextItem (pre-transformation),
+ * finalTokens from the post-compression PromptSection, and cacheEligible
+ * reflects whether the final section is cache-stable. Receipt entries
+ * never carry raw text — only sourceId and token counts (T-04b-03).
+ */
+export function recordSectionWithReceipt(
+  manifest: ContextProvenanceManifest,
+  section: PromptSection,
+  originalTokens: number,
+  cacheEligible: boolean,
+): void {
   if (!isValidSourceId(section.sourceId)) {
     throw new Error(`ContextProvenanceManifest: invalid sourceId "${section.sourceId}".`);
   }
@@ -40,10 +56,10 @@ export function recordSection(manifest: ContextProvenanceManifest, section: Prom
     sourceId: section.sourceId,
     tokens: section.tokens,
     truncated: false,
-    originalTokens: section.tokens,
+    originalTokens,
     finalTokens: section.tokens,
     included: true,
-    cacheEligible: false,
+    cacheEligible,
   });
   manifest.totalTokens += section.tokens;
 }
