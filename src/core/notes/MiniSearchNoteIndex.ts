@@ -43,8 +43,28 @@ function escapeRegExp(text: string): string {
 }
 
 /**
+ * Escape HTML entities so user-controlled content cannot execute as markup
+ * (WR-07 stored-XSS defense at the snippet render boundary).
+ */
+function escapeHtml(text: string): string {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/**
+ * Private-use placeholder tokens for the injected highlight tags — the
+ * escape pass must not alter them (escapeHtml only touches & < >), and
+ * content-originated markup can never masquerade as a highlight tag.
+ */
+const MARK_OPEN = '\uE010';
+const MARK_CLOSE = '\uE011';
+
+/**
  * Build a text excerpt around the first query-term match with <mark>-
  * wrapped highlights (must_haves: result.snippet contains <mark> highlights).
+ * Note content is user-controlled (possibly imported): terms are wrapped
+ * with placeholder tokens, the whole excerpt is HTML-escaped, and only then
+ * are the tokens restored to <mark> tags — so <mark> is the ONLY markup the
+ * snippet can ever contain (WR-07).
  */
 function buildSnippet(doc: NoteIndexDoc, query: string): string {
   const text = `${doc.title} ${doc.content}`;
@@ -68,8 +88,15 @@ function buildSnippet(doc: NoteIndexDoc, query: string): string {
   }
 
   for (const term of terms) {
-    excerpt = excerpt.replace(new RegExp(`(${escapeRegExp(term)})`, 'gi'), '<mark>$1</mark>');
+    excerpt = excerpt.replace(
+      new RegExp(`(${escapeRegExp(term)})`, 'gi'),
+      `${MARK_OPEN}$1${MARK_CLOSE}`,
+    );
   }
+  excerpt = escapeHtml(excerpt);
+  excerpt = excerpt
+    .replace(new RegExp(MARK_OPEN, 'g'), '<mark>')
+    .replace(new RegExp(MARK_CLOSE, 'g'), '</mark>');
   return excerpt;
 }
 

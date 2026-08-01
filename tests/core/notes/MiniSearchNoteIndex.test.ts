@@ -90,6 +90,27 @@ describe('MiniSearchNoteIndex', () => {
     expect(index.search('stale')).toEqual([]);
   });
 
+  it('escapes note content in snippets — note markup can never execute (WR-07)', () => {
+    const index = new MiniSearchNoteIndex();
+    index.replace(
+      makeDoc({
+        id: 'xss',
+        title: 'Safe',
+        content: 'payload <img src=x onerror=alert(1)> <script>alert(2)</script> alpha',
+      }),
+    );
+
+    const results = index.search('payload');
+    const snippet = results[0].snippet;
+    // the query term is still highlighted
+    expect(snippet).toContain('<mark>payload</mark>');
+    // content-originated markup is escaped to inert entities
+    expect(snippet).not.toContain('<img');
+    expect(snippet).not.toContain('<script');
+    expect(snippet).toContain('&lt;img');
+    expect(snippet).toContain('&lt;script&gt;');
+  });
+
   it('persist() + load() round-trip preserves search output identity', async () => {
     const index = new MiniSearchNoteIndex();
     index.replace(makeDoc({ id: 'a', title: 'Apple pie recipe', content: 'flour sugar butter' }));
