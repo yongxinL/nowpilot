@@ -629,22 +629,25 @@ export const contextFreshnessPolicy = new ContextFreshnessPolicy();
 | A4 | The `ContextAssembler` (source adapter coordinator that produces `ContextItem[]`) will be defined in this phase's types and implemented partially — full implementation per source adapter happens in Phase 5 (MemoryEngine), Phase 4a (PageContentService already exists), etc. | Architecture Patterns | If `ContextAssembler` doesn't exist as an integration point, source adapters need direct `ContextOptimizerInput` population |
 | A5 | Progressive skill disclosure mechanics (CTX-T05) can be implemented as a PlannerService enhancement without touching ContextOptimizer — planner selects skills, ContextOptimizer receives pre-filtered `ContextItem[]` | Architecture Patterns | If skills need per-token-level optimization decisions, ContextOptimizer would need skill-awareness |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Delimiter format for data sections (agent's discretion)**
+1. **Delimiter format for data sections (agent's discretion)** — **RESOLVED in Plan 04b-01 Task 3**
    - What we know: XML-style tags are recommended by OpenAI for marking content boundaries. The format must be unambiguous and not naturally occurring in user content.
    - What's unclear: Whether to use `<data-source id="..." kind="...">` or a namespace-prefixed variant like `<np:data id="...">` for additional collision avoidance.
    - Recommendation: Use `<data-source id="..." kind="...">` with a deterministic ID format (`{kind}.{sourceId}.{index}`). The `data-source` tag name is unlikely to appear in web page content or user input, and the `id` attribute provides traceability back to the receipt entry.
+   - **Decision:** Adopted as recommended — `<data-source id="{kind}.{sourceId}.{index}" kind="{kind}">` with XML-style tags. The ContextOptimizer.optimizeFromItems() wraps data sections using this format, and injection tests in Plan 04b-06 verify delimiter boundaries cannot be escaped.
 
-2. **Per-source TTL values for freshness decay (agent's discretion)**
+2. **Per-source TTL values for freshness decay (agent's discretion)** — **RESOLVED in Plan 04b-02 Task 2**
    - What we know: Exponential decay formula `Math.exp(-ageMs / ttlMs)` with per-source TTLs. System/persona → no decay. Page content → short TTL. Tool results → very short TTL.
    - What's unclear: Exact millisecond values for memory types (episodic vs. semantic vs. preference), and whether page content TTL should differ by domain (known vs. unknown).
    - Recommendation: Start with the TTLs in the `ContextFreshnessPolicy` example above (system: Infinity, user_input: 5min, memory: 1hr, page: 2min, tool: 1min). These are discoverable through fixture tests and tunable without interface changes.
+   - **Decision:** Adopted the recommended TTLs: system/tool_schemas/preferences/persona → Infinity; user_input → 300_000ms; memory.fact → 3_600_000ms; memory.episodic → 1_800_000ms; page.current → 120_000ms; page.cached → 600_000ms; tool_result → 60_000ms; default → 300_000ms. SourceId prefix matching resolves kind-specific TTLs (e.g., `persona.*` → Infinity, `memory.episodic.*` → episodic TTL). Fixture-tested in ContextFreshnessPolicy.test.ts.
 
-3. **Progressive skill disclosure implementation scope (agent's discretion)**
+3. **Progressive skill disclosure implementation scope (agent's discretion)** — **RESOLVED in Plan 04b-06 Task 2**
    - What we know: P1 priority. Core mechanics (summaries, selection triggers, receipt tracking) in Phase 4b. Active tool discovery (TOL-06) in Phase 8a.
    - What's unclear: Whether skill summaries should be inline in the prompt or fetched from a separate registry; whether `PlannerService` or `ContextOptimizer` drives skill selection.
    - Recommendation: Store skill summaries in `ContextItem` instances with `instructionAuthority: 'system'` when loaded. `PlannerService` decides which skills to load based on user intent. `ContextOptimizer` treats unloaded skills as `omissionReason: 'policy'` in the receipt. This keeps the optimizer skill-agnostic while the planner owns semantic selection.
+   - **Decision:** Adopted as recommended. `SkillSummary` type in types.ts drives `ContextOptimizer.createSkillContextItem()` which produces ContextItem with `instructionAuthority:'system'`, `sourceId:'skills.loaded.{name}'`, `stable:true`. `PlannerService` decides which skills to load (deferred to Phase 7). `ContextOptimizer` tracks unloaded skills via optional `unloadedSkillNames[]` with `omissionReason:'policy'` and zero token cost. `ContextTrustPolicy.assess()` recognizes `skills.loaded.*` sourceIds as system authority (trust: 1.0, public, system).
 
 ## Environment Availability
 
