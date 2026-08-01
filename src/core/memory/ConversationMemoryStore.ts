@@ -65,6 +65,24 @@ function roleLabel(role: 'user' | 'assistant' | 'tool'): string {
   }
 }
 
+/**
+ * WR-06 (T-05-10): untrusted message content must never break out of the
+ * <data-source> wrapper — a `</data-source>` (or a standalone `Summary:`
+ * line colliding with the prompt tail) inside a message would terminate the
+ * block early and inject instructions into the summarization call. Strip
+ * the delimiter sequences from the excerpt so the assembled prompt contains
+ * exactly one delimiter pair, making the delimiter collision-proof.
+ */
+function sanitizeExcerpt(text: string): string {
+  return text
+    .split('\n')
+    .map((line) => {
+      const stripped = line.replace(/<\/?data-source>/gi, '');
+      return /^\s*Summary:\s*$/i.test(stripped) ? '[redacted]' : stripped;
+    })
+    .join('\n');
+}
+
 export interface MemoryMessageInput {
   role: 'user' | 'assistant' | 'tool';
   content: string;
@@ -84,7 +102,7 @@ export interface AppendMessageResult {
 export interface CompactConversationResult {
   success: boolean;
   error?: string;
-  code?: 'EMPTY_SUMMARY' | 'PROVIDER_ERROR';
+  code?: 'EMPTY_SUMMARY' | 'PROVIDER_ERROR' | 'DELIMITER_ERROR';
   summaryId?: string;
 }
 
@@ -202,7 +220,20 @@ export class ConversationMemoryStore {
     }
 
     const formatted = middle.map((m) => `${roleLabel(m.role)}: ${m.content}`).join('\n');
-    const prompt = SUMMARY_PROMPT_TEMPLATE.replace('{messages}', formatted);
+    const prompt = SUMMARY_PROMPT_TEMPLATE.replace('{messages}', sanitizeExcerpt(formatted));
+
+    // WR-06: the sanitizer must guarantee exactly one delimiter pair — if
+    // the invariant ever breaks, refuse to call the model rather than let
+    // injected instructions reach it.
+    const openTags = (prompt.match(/<data-source>/g) ?? []).length;
+    const closeTags = (prompt.match(/<\/data-source>/g) ?? []).length;
+    if (openTags !== 1 || closeTags !== 1) {
+      return {
+        success: false,
+        code: 'DELIMITER_ERROR',
+        error: 'summary prompt delimiter invariant violated',
+      };
+    }
 
     try {
       // D-10: lowest-cost tier (haiku-class), independent of the user's
