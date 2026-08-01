@@ -108,7 +108,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **TOL-01** (P0): Every tool has a ToolCapabilityManifest — category, risk, sideEffect, permissions, dataScopes, timeout, costClass, idempotency, verifier, schema hashes
 - [ ] **TOL-02** (P0): Risk-based execution — read-only+low-risk auto, reversible writes→confirm, irreversible/high-risk→preview+explicit confirm
 - [x] **TOL-03** (P0): Postcondition verification — side-effecting tools declare a verifier; unverified transport = partial, not completed
-- [ ] **TOL-04** (P0): Tool result shaping — validate output, redact secrets, apply max size, summarise/retrieve, assign provenance/trust before re-entering context
+- [x] **TOL-04** (P0): Tool result shaping — validate output, redact secrets, apply max size, summarise/retrieve, assign provenance/trust before re-entering context
 - [ ] **TOL-05** (P0): Idempotency — write tools accept/derive idempotency key; replay must not repeat external effects
 - [ ] **TOL-06** (P1): Active tool discovery — when schemas exceed budget, expose core set + discover-tools with permission checks
 - [ ] **TOL-07** (P2): Long-running async operation contract (future Phase 8b — operationId/status/progress/cancel/checkpoint/resume/idempotency)
@@ -228,7 +228,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TOL-01 | Phase 8a | Pending |
 | TOL-02 | Phase 8a | Pending |
 | TOL-03 | Phase 3a / 8a | Complete |
-| TOL-04 | Phase 4b / 8a | Pending |
+| TOL-04 | Phase 4b / 8a | Complete |
 | TOL-05 | Phase 8a | Pending |
 | TOL-06 | Phase 8a | Pending |
 | TOL-07 | Future 8b | Pending |
