@@ -80,10 +80,10 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Agent Reliability (Rev. C §28.2 — Phase 3a)
 
-- [ ] **AGT-01** (P0): Explicit trajectory states (assembling-context → planning → waiting-for-permission → executing → verifying → replanning → rendering → completed/failed/aborted) — state transitions validated, invalid transitions rejected
-- [ ] **AGT-02** (P0): Evidence-backed completion — side-effecting tasks require CompletionEvidence; RendererService must not claim writes without verified postconditions
-- [ ] **AGT-03** (P0): Structured AgentTurnOutcome on every exit path — cap exhaustion is partial (not completed), abort does not render success
-- [ ] **AGT-04** (P0): Deterministic replanning policy — success→verify→render, retryable→one replan, permission/auth→terminal, no retry after irreversible
+- [x] **AGT-01** (P0): Explicit trajectory states (assembling-context → planning → waiting-for-permission → executing → verifying → replanning → rendering → completed/failed/aborted) — state transitions validated, invalid transitions rejected
+- [x] **AGT-02** (P0): Evidence-backed completion — side-effecting tasks require CompletionEvidence; RendererService must not claim writes without verified postconditions
+- [x] **AGT-03** (P0): Structured AgentTurnOutcome on every exit path — cap exhaustion is partial (not completed), abort does not render success
+- [x] **AGT-04** (P0): Deterministic replanning policy — success→verify→render, retryable→one replan, permission/auth→terminal, no retry after irreversible
 
 ### Trust-Aware Context (Rev. C §28.3 — Phase 4b)
 
@@ -107,7 +107,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [ ] **TOL-01** (P0): Every tool has a ToolCapabilityManifest — category, risk, sideEffect, permissions, dataScopes, timeout, costClass, idempotency, verifier, schema hashes
 - [ ] **TOL-02** (P0): Risk-based execution — read-only+low-risk auto, reversible writes→confirm, irreversible/high-risk→preview+explicit confirm
-- [ ] **TOL-03** (P0): Postcondition verification — side-effecting tools declare a verifier; unverified transport = partial, not completed
+- [x] **TOL-03** (P0): Postcondition verification — side-effecting tools declare a verifier; unverified transport = partial, not completed
 - [ ] **TOL-04** (P0): Tool result shaping — validate output, redact secrets, apply max size, summarise/retrieve, assign provenance/trust before re-entering context
 - [ ] **TOL-05** (P0): Idempotency — write tools accept/derive idempotency key; replay must not repeat external effects
 - [ ] **TOL-06** (P1): Active tool discovery — when schemas exceed budget, expose core set + discover-tools with permission checks
@@ -209,10 +209,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RICH-04 | Phase 7 | Pending |
 | SEC-01 | Phase 9 | Pending |
 | TEST-01 | Phase 9 | Pending |
-| AGT-01 | Phase 3a | Pending |
-| AGT-02 | Phase 3a | Pending |
-| AGT-03 | Phase 3a | Pending |
-| AGT-04 | Phase 3a | Pending |
+| AGT-01 | Phase 3a | Complete |
+| AGT-02 | Phase 3a | Complete |
+| AGT-03 | Phase 3a | Complete |
+| AGT-04 | Phase 3a | Complete |
 | CTX-T01 | Phase 4b | Pending |
 | CTX-T02 | Phase 4b | Pending |
 | CTX-T03 | Phase 4b | Pending |
@@ -227,7 +227,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | KNW-01 | Phase 5b | Pending |
 | TOL-01 | Phase 8a | Pending |
 | TOL-02 | Phase 8a | Pending |
-| TOL-03 | Phase 3a / 8a | Pending |
+| TOL-03 | Phase 3a / 8a | Complete |
 | TOL-04 | Phase 4b / 8a | Pending |
 | TOL-05 | Phase 8a | Pending |
 | TOL-06 | Phase 8a | Pending |
