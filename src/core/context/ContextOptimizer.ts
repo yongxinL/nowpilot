@@ -5,6 +5,7 @@ import type {
   ContextProvenanceEntry,
   InstructionAuthority,
   ModelContextTier,
+  OmissionReason,
   OptimizedContext,
   PromptSection,
 } from '../ai/types';
@@ -16,11 +17,14 @@ import { tokenBudget } from './TokenBudget';
 import { contextCompressor } from './ContextCompressor';
 import { ContextItemSchema, unwrapToPromptSections } from './ContextItem';
 import { contextTrustPolicy } from './ContextTrustPolicy';
+import { contextFreshnessPolicy } from './ContextFreshnessPolicy';
 import {
   createProvenanceManifest,
   markCompression,
+  markOmitted,
   recordSection,
   recordSectionWithReceipt,
+  validateReceiptTotals,
 } from './ContextProvenanceManifest';
 
 const ToolSchemaInfoSchema = z.object({
@@ -223,8 +227,7 @@ export class ContextOptimizer {
     //    is rejected, and the verdict overrides the item's metadata.
     //    Data-authority items are wrapped in structural delimiters BEFORE
     //    token estimation (D-02) with a deterministic per-source index.
-    const dataIndexBySource = new Map<string, number>();
-    const processedItems: ContextItem[] = items.map((item) => {
+    const validatedItems: ContextItem[] = items.map((item) => {
       const schemaCheck = ContextItemSchema.safeParse(item);
       if (!schemaCheck.success) {
         throw new PipelineError('SCHEMA_INVALID', 'ContextItem validation failed.', {
@@ -245,14 +248,42 @@ export class ContextOptimizer {
         );
       }
 
-      const base: ContextItem = {
+      return {
         ...item,
         trust: policy.trust,
         sensitivity: policy.sensitivity,
         instructionAuthority: policy.instructionAuthority,
       };
+    });
 
-      if (policy.instructionAuthority === 'data') {
+    // 1.5. Freshness gate (D-10, 04b-02): hard-expired items (freshness ===
+    //    0) never reach the compressor — they are marked 'stale' in the
+    //    receipt and excluded from the sections passed to degradation.
+    //    Runs on the validated, UNWRAPPED items so the receipt's
+    //    originalTokens reflect the source size, not the delimiter estimate.
+    //    Every item is validated first (including stale ones) so the D-09
+    //    secret gate can never be bypassed by expiring an item (T-04b-13).
+    const manifest = createProvenanceManifest(input.workspaceId, input.activeSurface);
+    const staleSourceIds = new Set<string>();
+    const freshItems = validatedItems.filter((item) => {
+      const freshness = contextFreshnessPolicy.compute(
+        item.sourceId,
+        item.kind,
+        item.createdAt,
+        item.expiresAt,
+      );
+      if (freshness === 0) {
+        staleSourceIds.add(item.sourceId);
+        markOmitted(manifest, item.sourceId, item.kind, 'stale', item.tokens);
+        return false;
+      }
+      return true;
+    });
+
+    // 1.6. Delimiter wrapping for data-authority items (fresh items only).
+    const dataIndexBySource = new Map<string, number>();
+    const processedItems: ContextItem[] = freshItems.map((base) => {
+      if (base.instructionAuthority === 'data') {
         const index = dataIndexBySource.get(base.sourceId) ?? 0;
         dataIndexBySource.set(base.sourceId, index + 1);
         const wrappedText = `<data-source id="${base.sourceId}.${index}" kind="${base.kind}">\n${base.text}\n</data-source>`;
@@ -296,7 +327,7 @@ export class ContextOptimizer {
     const assembledSections = unwrapToPromptSections(processedItems);
 
     // 4. Unchanged degradation pipeline on the post-wrap sections (D-07).
-    const { sections, stepsApplied } = await this.runDegradation(
+    const { sections, stepsApplied, omissionReasons } = await this.runDegradation(
       assembledSections,
       inputBudget,
       tier,
@@ -308,11 +339,13 @@ export class ContextOptimizer {
     // 5. Receipts (D-03, CTX-T03): one receipt per ORIGINAL ContextItem.
     //    originalTokens come from the source item, finalTokens from the
     //    post-compression section. Items dropped by degradation are still
-    //    recorded — included: false with an omission reason — so the
-    //    existence and size of omitted sources is visible to the user.
-    const manifest = createProvenanceManifest(input.workspaceId, input.activeSurface);
+    //    recorded — included: false with the compressor's omission reason
+    //    (fallback 'budget') — so the existence and size of omitted sources
+    //    is visible to the user. Stale items were already marked in the
+    //    freshness pass.
     const claimed = new Set<number>();
     for (const original of items) {
+      if (staleSourceIds.has(original.sourceId)) continue;
       let match: PromptSection | undefined;
       for (let i = 0; i < sections.length; i++) {
         if (
@@ -328,20 +361,26 @@ export class ContextOptimizer {
       if (match) {
         recordSectionWithReceipt(manifest, match, original.tokens, match.stable);
       } else {
-        manifest.sections.push({
-          kind: original.kind,
-          sourceId: original.sourceId,
-          tokens: 0,
-          truncated: false,
-          originalTokens: original.tokens,
-          finalTokens: 0,
-          included: false,
-          omissionReason: 'budget',
-          cacheEligible: false,
-        });
+        markOmitted(
+          manifest,
+          original.sourceId,
+          original.kind,
+          omissionReasons.get(original.sourceId) ?? 'budget',
+          original.tokens,
+        );
       }
     }
     manifest.minimalMode = minimalMode;
+
+    // 5.5. Receipt totals cross-check (RESEARCH Pitfall 4, CTX-T03): the sum
+    //    of included finalTokens must equal the packed section total. A
+    //    mismatch is a diagnostic bug — warned, never thrown (the prompt is
+    //    still valid; Phase 6 telemetry flags the inconsistency, T-04b-14).
+    if (!validateReceiptTotals(manifest.sections, sections)) {
+      console.warn(
+        '[ContextOptimizer] Receipt totals do not match packed totals — this is a bug (CTX-T03)',
+      );
+    }
 
     if (stepsApplied.length > 0) {
       for (const section of sections) {
@@ -413,7 +452,11 @@ export class ContextOptimizer {
     inputBudget: number,
     tier: ModelContextTier,
     signal?: AbortSignal,
-  ): Promise<{ sections: PromptSection[]; stepsApplied: string[] }> {
+  ): Promise<{
+    sections: PromptSection[];
+    stepsApplied: string[];
+    omissionReasons: Map<string, OmissionReason>;
+  }> {
     const totalBeforeDegradation = sections.reduce((sum, s) => sum + s.tokens, 0);
     if (totalBeforeDegradation > inputBudget) {
       if (signal?.aborted) {
@@ -444,7 +487,7 @@ export class ContextOptimizer {
       }
       return result;
     }
-    return { sections, stepsApplied: [] };
+    return { sections, stepsApplied: [], omissionReasons: new Map<string, OmissionReason>() };
   }
 
   /**
