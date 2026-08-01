@@ -94,6 +94,43 @@ export class MigrationRunner {
       };
       await migratedStore.put(migratedEntry);
     }
+
+    // ── NotesDB schema (Phase 5) ───────────────────────────────────────────
+    // notes store: atomic notes with by-title / by-updated / by-tag indexes
+    if (!db.objectStoreNames.contains('notes')) {
+      const notesStore = db.createObjectStore('notes', { keyPath: 'id' });
+      notesStore.createIndex('by-title', 'title');
+      notesStore.createIndex('by-updated', 'updatedAt');
+      notesStore.createIndex('by-tag', 'tags', { multiEntry: true });
+    }
+
+    // concepts store: schema-only in Phase 5 (D-14), populated by Phase 5a
+    if (!db.objectStoreNames.contains('concepts')) {
+      const conceptsStore = db.createObjectStore('concepts', { keyPath: 'slug' });
+      conceptsStore.createIndex('by-noteId', 'noteIds', { multiEntry: true });
+    }
+
+    // index store: serialized MiniSearch JSON blob (RESEARCH §Pattern 3)
+    if (!db.objectStoreNames.contains('index')) {
+      db.createObjectStore('index', { keyPath: 'id' });
+    }
+
+    // ── MemoryDB schema (Phase 5) — schema-only skeletons ─────────────────
+    // Populated by MemoryEngine in Plan 05-02.
+    if (!db.objectStoreNames.contains('memory_messages')) {
+      // Compound key: messages are scoped per conversation in seq order
+      db.createObjectStore('memory_messages', { keyPath: ['conversationId', 'seq'] });
+    }
+
+    if (!db.objectStoreNames.contains('user_facts')) {
+      const factsStore = db.createObjectStore('user_facts', { keyPath: 'id' });
+      factsStore.createIndex('by-tag', 'tags', { multiEntry: true });
+      factsStore.createIndex('by-confidence', 'confidence');
+    }
+
+    if (!db.objectStoreNames.contains('conversation_summaries')) {
+      db.createObjectStore('conversation_summaries', { keyPath: 'conversationId' });
+    }
   }
 }
 

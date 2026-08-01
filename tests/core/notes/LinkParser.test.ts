@@ -50,7 +50,7 @@ describe('parseWikilinks', () => {
 });
 
 describe('resolveLinks', () => {
-  const mockDb: { findByTitle: (title: string) => Promise<Note[]> } = {
+  const mockDb: { findByTitle: ReturnType<typeof vi.fn> } = {
     findByTitle: vi.fn(),
   };
 
