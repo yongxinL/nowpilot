@@ -1,4 +1,4 @@
-import { DEFAULT_PERSONA, getPlannerPersona, getRendererPersona } from './PersonaProfile';
+import { DEFAULT_PERSONA, PersonaProfileSchema, getPlannerPersona, getRendererPersona } from './PersonaProfile';
 import type { PersonaProfile } from './PersonaProfile';
 import { getMemoryEngine } from '../../memory/MemoryEngine';
 
@@ -14,11 +14,20 @@ export interface InjectOptions {
  * memory access (Phase 4b). Falls back to DEFAULT_PERSONA when the user
  * has not configured a persona. Additive — the existing inject() flow
  * remains unchanged.
+ *
+ * WR-08: np_persona is user-controlled JSON from IndexedDB — validate it
+ * against PersonaProfileSchema before use. A malformed stored value (e.g.
+ * missing/non-array coreValues, tone outside the enum) used to crash
+ * buildPersonaBlock (coreValues.sort() TypeError) or inject `undefined`
+ * into the system prompt; the DEFAULT_PERSONA fallback now covers every
+ * invalid shape, not just null.
  */
 export async function loadPersonaFromMemory(): Promise<PersonaProfile> {
   const memoryEngine = getMemoryEngine();
   const stored = await memoryEngine.getPersona();
-  return stored ? (stored as PersonaProfile) : DEFAULT_PERSONA;
+  if (!stored) return DEFAULT_PERSONA;
+  const parsed = PersonaProfileSchema.safeParse(stored);
+  return parsed.success ? parsed.data : DEFAULT_PERSONA;
 }
 
 export function buildPersonaBlock(profile: PersonaProfile): string {

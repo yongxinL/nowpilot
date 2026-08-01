@@ -24,6 +24,7 @@ import {
   loadPersonaFromMemory,
   inject,
 } from '../../../src/core/ai/persona/PersonaInjector';
+import { DEFAULT_PERSONA } from '../../../src/core/ai/persona/PersonaProfile';
 
 /**
  * Phase 5 end-to-end integration suite — imports REAL modules (only
@@ -199,7 +200,7 @@ describe('Phase 5 integration', () => {
     await prefStore.set('np_persona', {
       id: 'p1',
       name: 'Ada',
-      tone: 'formal',
+      tone: 'professional', // must be a PersonaProfileSchema enum value (WR-08)
       brevity: 'concise',
       coreValues: ['Precision'],
       languageStyle: 'Technical',
@@ -207,11 +208,29 @@ describe('Phase 5 integration', () => {
 
     const persona = await loadPersonaFromMemory();
     expect(persona.name).toBe('Ada');
-    expect(persona.tone).toBe('formal');
+    expect(persona.tone).toBe('professional');
 
     const rendered = inject('renderer', 'base system prompt', { profile: persona });
     expect(rendered).toContain('Name: Ada');
     expect(rendered).toContain('base system prompt');
+  });
+
+  it('loadPersonaFromMemory validates np_persona — malformed stored JSON falls back to DEFAULT_PERSONA (WR-08)', async () => {
+    await prefStore.set('np_persona', {
+      id: 'p3',
+      name: 'Broken',
+      tone: 'not-a-tone', // outside the tone enum
+      brevity: 'concise',
+      coreValues: 'not-an-array', // schema requires string[] — would crash
+      // coreValues.sort() without validation
+    });
+
+    const persona = await loadPersonaFromMemory();
+    expect(persona).toEqual(DEFAULT_PERSONA);
+
+    // and the render path stays healthy
+    const rendered = inject('renderer', 'base system prompt', { profile: persona });
+    expect(rendered).toContain('Name: NowPilot');
   });
 
   it('createAgentTurnInputWithMemory populates memoryHints, preferences, and personaBehavior from MemoryEngine', async () => {
