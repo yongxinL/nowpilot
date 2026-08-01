@@ -21,6 +21,26 @@ const strings: Record<string, string> = {
   'notes.empty': "No notes yet. Press + to create one.",
   'notes.loading': 'Loading notes...',
   'notes.error': 'Failed to load notes.',
+  'notes.saved': 'Note saved',
+  'notes.deleteConfirm': 'Delete this note? This cannot be undone.',
+  'notes.deleteAction': 'Delete Note',
+  'notes.searchEmpty': 'No notes match your search. Try different keywords.',
+  'notes.createNew': 'New Note',
+  'notes.save': 'Save Note',
+  'notes.search': 'Search notes',
+
+  // Wikilinks
+  'wikilink.unresolved': "Note doesn't exist yet — click to create",
+  'wikilink.create': 'Create Note "{title}"',
+  'wikilink.created': 'Note created — link resolved',
+  'wikilink.createAction': 'Create Note',
+  'linkparser.error': 'Failed to parse wikilinks in note content',
+  'notegraph.error': 'Failed to compute note relationships',
+
+  // Memory
+  'memory.retrievalError': 'Memory retrieval failed. Continuing without context.',
+  'memory.writeConflict': 'Memory write unavailable — another surface is active. Changes are read-only here.',
+  'memory.summaryError': 'Failed to summarize conversation. Full history preserved.',
 
   // Options
   'options.loading': 'Loading settings...',
