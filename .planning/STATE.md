@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v0.1
 milestone_name: milestone
-current_phase: 5
-current_phase_name: Knowledge Base
+current_phase: 05
+current_phase_name: knowledge-base
 status: executing
-stopped_at: Phase 05 UI-SPEC approved
-last_updated: "2026-08-01T21:18:31.578Z"
-last_activity: 2026-08-01
-last_activity_desc: Phase 04b complete, transitioned to Phase 5
+stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-08-01T21:36:25.011Z"
+last_activity: 2026-08-02
+last_activity_desc: Phase 05 execution started
 progress:
   total_phases: 19
   completed_phases: 7
   total_plans: 39
-  completed_plans: 36
+  completed_plans: 37
   percent: 37
 ---
 
@@ -25,16 +25,16 @@ See: .planning/PROJECT.md (updated 2026-08-01)
 
 **Core value:** Users can acquire knowledge from web pages, store it as interconnected atomic notes, understand it through AI enrichment (tagging/summary/RAG), and interact with it through a persona-driven, intention-aware conversational workspace — all running locally on their machine.
 
-**Current focus:** Phase 5 — knowledge-base
+**Current focus:** Phase 05 — knowledge-base
 
 ## Current Position
 
-Phase: 5 — Knowledge Base
-Plan: Not started
+Phase: 05 (knowledge-base) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-08-01 — Phase 04b complete, transitioned to Phase 5
+Last activity: 2026-08-02 — Phase 05 execution started
 
-Progress: [████████████████████] 25/25 plans ([██████████] 100%) (5/19 phases complete)
+Progress: [████████████████████] 25/25 plans ([██████████] 95%) (5/19 phases complete)
 
 ## Performance Metrics
 
@@ -72,6 +72,7 @@ Progress: [████████████████████] 25/25 p
 | Phase 04-context-optimization-pipeline P02 | 9min | 2 tasks | 4 files |
 | Phase 04-context-optimization-pipeline P04-03 | 9min | 3 tasks | 7 files |
 | Phase 03a P05 | 8 | 2 tasks | 3 files |
+| Phase 05 P01 | 8min | 3 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -113,6 +114,8 @@ Recent decisions affecting current work:
 - [Rev. C 07-31]: No direct self-modification — untrusted pages/notes/tool output/raw traces must never rewrite active prompts, permissions, tools, or procedural memory
 - [Rev. C 07-31]: Multimodal data must follow explicit provider/privacy policy; no silent local→cloud switch on image input; raw images never logged
 - [Rev. C 07-31]: 19-phase roadmap (11 original + 3a/4b/5b/6a/6b/6c/7a/8a); 91 total requirements (32 pre-Rev. C + 59 Rev. C)
+- [Phase 05]: search() returns UI-SPEC NoteSearchResult (noteId/matchedFields/snippet) with hand-built <mark> highlights — MiniSearch 7.2 has no built-in snippet(); docs registry persisted alongside index JSON for round-trip identity — MiniSearchNoteIndex.replace()/remove() use upsert guards — MiniSearch 7.2 replace()/discard() throw for unknown IDs
+- [Phase 05]: NotesDB keeps index sync inside the WriteJournal update-index step (atomic); no module-load event subscription in this plan (avoids circular import) — MiniSearchNoteIndex.replace()/remove() use upsert guards — MiniSearch 7.2 replace()/discard() throw for unknown IDs
 
 ### Pending Todos
 
@@ -132,6 +135,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-01T12:52:59.500Z
-Stopped at: Phase 05 UI-SPEC approved
-Resume file: /Users/george.li/Documents/workspaces/nowpilot/.planning/phases/05-knowledge-base/05-UI-SPEC.md
+Last session: 2026-08-01T21:36:18.229Z
+Stopped at: Completed 05-01-PLAN.md
+Resume file: None
