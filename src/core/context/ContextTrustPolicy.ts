@@ -23,14 +23,28 @@ const SENSITIVITY_ORDER: readonly Sensitivity[] = ['public', 'private', 'confide
  * Deterministic and LLM-independent — same (sourceId, kind) in, same
  * verdict out, every call, with no caching side-effects.
  */
+/**
+ * Standard page-current sourceIds produced by the ContextOptimizer pipeline.
+ * These are the known-domain page sources per D-07 (trust 0.5). Any other
+ * `context.page.*` sourceId carries an unknown-looking domain and defaults
+ * to trust 0.3 — a programmatic policy, not user-configurable.
+ */
+const KNOWN_PAGE_SOURCE_IDS: ReadonlySet<string> = new Set([
+  'context.page.current',
+  'context.page.current-url',
+]);
+
 export class ContextTrustPolicy {
   /**
-   * Static source-type table per D-07 (tracer scope): system instructions,
-   * user interaction, and data sources (memory, page context, tool output).
-   * The full 8-type table lands in Plan 04b-02.
+   * Full static source-type table per D-07 (all 8 source types): system,
+   * persona, tool_schemas, preferences → 1.0; user_input → 0.9; memory →
+   * 0.8; known-domain page context → 0.5; verified tool output → 0.9;
+   * unknown-domain page content and unknown sources → 0.3.
    */
   assess(sourceId: string, kind: PromptSection['kind']): TrustAssessment {
     // System-authored content: highest trust, public, system authority.
+    // persona.* is trust-classified by sourceId, even when kind is not
+    // 'system' (D-07).
     if (
       kind === 'system' ||
       kind === 'tool_schemas' ||
@@ -47,11 +61,13 @@ export class ContextTrustPolicy {
     if (kind === 'memory') {
       return { trust: 0.8, sensitivity: 'private', instructionAuthority: 'data' };
     }
-    // Page content — untrusted, data authority.
+    // Page content (D-07): known-domain sourceIds trust 0.5; unknown-domain
+    // pages default to 0.3. Data authority either way.
     if (sourceId.startsWith('context.page.')) {
-      return { trust: 0.5, sensitivity: 'private', instructionAuthority: 'data' };
+      const trust = KNOWN_PAGE_SOURCE_IDS.has(sourceId) ? 0.5 : 0.3;
+      return { trust, sensitivity: 'private', instructionAuthority: 'data' };
     }
-    // Tool output — data authority.
+    // Verified tool output — data authority.
     if (sourceId.startsWith('tools.')) {
       return { trust: 0.9, sensitivity: 'private', instructionAuthority: 'data' };
     }

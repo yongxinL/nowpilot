@@ -414,8 +414,18 @@ describe('optimizeFromItems() pipeline (Task 3)', () => {
   });
 
   it('equal-trust data sections order deterministically — sourceId alphabetical within kind groups', async () => {
-    const itemOther: ContextItem = { ...DATA_ITEM, sourceId: 'context.page.other-url' };
-    const itemAlpha: ContextItem = { ...DATA_ITEM, sourceId: 'context.page.alpha-url' };
+    // Unknown-domain page sourceIds per D-07 → trust 0.3 (full table lands in
+    // 04b-02); both items carry the policy verdict so ordering is what is tested.
+    const itemOther: ContextItem = {
+      ...DATA_ITEM,
+      sourceId: 'context.page.other-url',
+      trust: 0.3,
+    };
+    const itemAlpha: ContextItem = {
+      ...DATA_ITEM,
+      sourceId: 'context.page.alpha-url',
+      trust: 0.3,
+    };
 
     // Input order is the reverse of the deterministic output order.
     const result = await contextOptimizer.optimizeFromItems(
