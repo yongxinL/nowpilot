@@ -52,22 +52,22 @@ Exceptions: none for this phase.
 | Role | Size | Weight | Line Height |
 |------|------|--------|-------------|
 | Body | 14px | 400 (regular) | 1.5 |
-| Label | 12px | 500 (medium) | 1.3 |
+| Label | 12px | 400 (regular) | 1.3 |
 | Heading | 20px | 600 (semibold) | 1.2 |
-| Display | 28px | 700 (bold) | 1.1 |
+| Display | 28px | 600 (semibold) | 1.1 |
 
 ---
 
 ## Color
 
-> Source: Ant Design v6 token system. This phase introduces no new color contracts. Downstream UI inherits from the existing theme (light/dark) that was established in Phase 1. The accent color is Ant Design's blue-6 (#1677ff). No destructive color is introduced in this phase.
+> Source: Ant Design v6 token system. This phase introduces no new color contracts. Downstream UI inherits from the existing theme (light/dark) that was established in Phase 1. The accent color is Ant Design's blue-6 (#1677ff). Destructive color is Ant Design's red-6 (#ff4d4f) for delete actions defined in this phase's copywriting contract.
 
 | Role | Value | Usage |
 |------|-------|-------|
 | Dominant (60%) | Ant Design `--color-bg-container` (light: #ffffff, dark: #141414) | Page backgrounds, surfaces |
 | Secondary (30%) | Ant Design `--color-fill-quaternary` (light: #f5f5f5, dark: #1f1f1f) | Sidebar, nav, card containers |
 | Accent (10%) | Ant Design blue-6 (#1677ff) | Primary buttons, selected states, wikilink underline |
-| Destructive | none in this phase | — |
+| Destructive | Ant Design red-6 (#ff4d4f) | Delete buttons, confirmation dialogs, irreversible action warnings |
 
 Accent reserved for: primary CTA buttons, selected nav items, active wikilinks (resolved), focused input borders. Never used for decorative elements, badges, or non-interactive text.
 
@@ -81,7 +81,7 @@ Accent reserved for: primary CTA buttons, selected nav items, active wikilinks (
 |---------|-----|------|
 | Notes empty state | `notes.empty` | No notes yet. Press + to create one. |
 | Notes loading | `notes.loading` | Loading notes... |
-| Notes error | `notes.error` | Failed to load notes. |
+| Notes error | `notes.error` | Failed to load notes. Check your connection and try again. |
 | Notes save success | `notes.saved` | Note saved |
 | Notes delete confirmation | `notes.deleteConfirm` | Delete this note? This cannot be undone. |
 | Notes delete action label | `notes.deleteAction` | Delete Note |
@@ -100,7 +100,7 @@ Primary CTA labels (for downstream Phase 7, declared here as contract):
 | Context | Key | Label |
 |---------|-----|-------|
 | Create new note | `notes.createNew` | New Note |
-| Save edited note | `notes.save` | Save |
+| Save edited note | `notes.save` | Save Note |
 | Search notes | `notes.search` | Search notes |
 | Create note from unresolved wikilink | `wikilink.createAction` | Create Note |
 
