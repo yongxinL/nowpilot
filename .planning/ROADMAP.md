@@ -14,7 +14,7 @@ NowPilot v0.1 is built in 19 phases following a knowledge-first data-flow: acqui
 - [ ] **Phase 1: Project Scaffold & Runtime Foundation** — WXT entrypoints, messaging, workspace store, theme, dual-surface shells with skeletons
 - [ ] **Phase 2: Storage & Security Foundation** — Encrypted API keys, WriteJournal, IndexedDB migrations, CSP
 - [x] **Phase 3: AI Core Pipeline** — Four providers, Planner/Executor/Renderer, AgentOrchestrator, persona seed (completed 2026-07-30)
-- [ ] **Phase 3a: Agent Reliability & Evidence** — Trajectory states, evidence-backed completion, structured turn outcomes, deterministic replanning (Rev. C)
+- [x] **Phase 3a: Agent Reliability & Evidence** — Trajectory states, evidence-backed completion, structured turn outcomes, deterministic replanning (Rev. C) (completed 2026-08-01)
 - [x] **Phase 4: Context Optimization Pipeline** — ContextOptimizer, ContextCompressor, PromptCacheManager (completed 2026-07-31)
 - [x] **Phase 4a: Page Content Extraction** — PageContentService, Defuddle, APC-lite, MiniSearch page index (completed 2026-07-31)
 - [ ] **Phase 4b: Trust-Aware Context & Receipts** — ContextItem contracts, prompt-injection isolation, context receipts, stable-prefix, progressive skill disclosure (Rev. C)
@@ -432,7 +432,7 @@ Decimal phases execute after their parent integer phase: 3 → 3a → 4 → 4a �
 | 1. Project Scaffold & Runtime Foundation | 5/5 | Completed | 2026-07-28 |
 | 2. Storage & Security Foundation | 4/4 | Completed | 2026-07-29 |
 | 3. AI Core Pipeline | 7/7 | Completed | 2026-07-30 |
-| 3a. Agent Reliability & Evidence | 5/5 | In Progress|  |
+| 3a. Agent Reliability & Evidence | 5/5 | Complete    | 2026-08-01 |
 | 4. Context Optimization Pipeline | 3/3 | Completed | 2026-07-31 |
 | 4a. Page Content Extraction | 6/6 | Completed | 2026-07-31 |
 | 4b. Trust-Aware Context & Receipts | TBD | Not started | - |

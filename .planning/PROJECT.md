@@ -10,7 +10,7 @@ Users can acquire knowledge from web pages, store it as interconnected atomic no
 
 ## Current State
 
-Phase 4a complete — Page Content Extraction operational. Layered extraction pipeline (content script → MessageBus → PageContentService → Defuddle→Readability→ApcLite strategies), 2.9KB content bundle with zero forbidden imports, D-02 password/secret redaction at every boundary (clone-based DomSerializer, strategy value guards, 4-term allowlist), per-tab MiniSearch index with SPA-nav invalidation, mode-keyed cache (tabId:mode:url). 263+ extraction/security tests passing, all 25 UAT checks verified including live extension boot.
+Phase 3a complete — Agent Reliability & Evidence. Every agent turn now records explicit trajectory states via a strict allowlist FSM, returns structured AgentTurnOutcome on every exit path (17 canonical reasons, cap exhaustion = partial, abort never renders success), and requires verified CompletionEvidence before side-effecting completion is claimed — with an evidence-gated RenderingOutcomePolicy and deterministic contradiction fallback, operation-scoped permission sequencing, a one-replan recovery loop with redacted observations, and in-memory idempotency protection for required tools. STRIDE regression suite + non-vacuous verify:phase-3a gate (209 tests) landed; lint clean repo-wide. Prior: Phase 4a complete — Page Content Extraction operational. Layered extraction pipeline (content script → MessageBus → PageContentService → Defuddle→Readability→ApcLite strategies), 2.9KB content bundle with zero forbidden imports, D-02 password/secret redaction at every boundary (clone-based DomSerializer, strategy value guards, 4-term allowlist), per-tab MiniSearch index with SPA-nav invalidation, mode-keyed cache (tabId:mode:url). 263+ extraction/security tests passing, all 25 UAT checks verified including live extension boot.
 
 ## Current Milestone: v0.1 NowPilot Initial Release
 
@@ -99,10 +99,10 @@ Phase 4a complete — Page Content Extraction operational. Layered extraction pi
 
 ### Agent Reliability (Rev. C §28.2)
 
-- [ ] **AGT-01** (P0): Explicit trajectory states (assembling-context → planning → waiting-for-permission → executing → verifying → replanning → rendering → completed/failed/aborted) with state-transition validation
-- [ ] **AGT-02** (P0): Evidence-backed completion — side-effecting tasks require verified CompletionEvidence; RendererService must not claim writes without matching evidence
-- [ ] **AGT-03** (P0): Structured AgentTurnOutcome on every exit path; cap exhaustion is partial not completed; abort does not render success
-- [ ] **AGT-04** (P0): Deterministic replanning policy — success→verify, retryable→one replan, permission/auth→terminal; no retry after irreversible action
+- [x] **AGT-01** (P0): Explicit trajectory states (assembling-context → planning → waiting-for-permission → executing → verifying → replanning → rendering → completed/failed/aborted) with state-transition validation — Validated in Phase 3a
+- [x] **AGT-02** (P0): Evidence-backed completion — side-effecting tasks require verified CompletionEvidence; RendererService must not claim writes without matching evidence — Validated in Phase 3a
+- [x] **AGT-03** (P0): Structured AgentTurnOutcome on every exit path; cap exhaustion is partial not completed; abort does not render success — Validated in Phase 3a
+- [x] **AGT-04** (P0): Deterministic replanning policy — success→verify, retryable→one replan, permission/auth→terminal; no retry after irreversible action — Validated in Phase 3a
 
 ### Trust-Aware Context Engineering (Rev. C §28.3)
 
@@ -126,7 +126,7 @@ Phase 4a complete — Page Content Extraction operational. Layered extraction pi
 
 - [ ] **TOL-01** (P0): Every tool has a ToolCapabilityManifest with category, risk, sideEffect, permissions, dataScopes, timeout, costClass, idempotency, verifier, and schema hashes
 - [ ] **TOL-02** (P0): Risk-based execution matrix — read-only+low-risk auto, reversible writes require confirmation, irreversible/high-risk always preview+confirm
-- [ ] **TOL-03** (P0): Postcondition verification — every side-effecting tool declares a verifier; unverified transport success is partial, not completed
+- [ ] **TOL-03** (P0): Postcondition verification — every side-effecting tool declares a verifier; unverified transport success is partial, not completed — Phase 3a delivers operation-scoped evidence verification + idempotency ledger; full manifest/tool coverage in Phase 8a
 - [ ] **TOL-04** (P0): Tool result shaping — validate output schema, redact secrets, apply max size, summarise/retrieve relevant, assign provenance/trust metadata before context re-entry
 - [ ] **TOL-05** (P0): Idempotency — write tools accept or derive an idempotency key; replay must not repeat external effects
 - [ ] **TOL-06** (P1): Active tool discovery — when schemas exceed budget, expose small core set + discover-tools capability with permission checks
@@ -244,4 +244,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-31 after Phase 4a completion + Rev. C agent-harness requirements integration*
+*Last updated: 2026-08-01 after Phase 3a completion (Agent Reliability & Evidence) + Rev. C agent-harness requirements integration*
