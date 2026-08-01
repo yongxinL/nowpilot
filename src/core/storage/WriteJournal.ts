@@ -30,11 +30,42 @@ export interface WriteJournalEntry {
   attempts: number;
   targetIds: Record<string, string>;
   steps: WriteJournalStep[];
+  /**
+   * Optional write payload captured at createEntry() time (WR-05). Without
+   * it, replay cannot recover the data of interrupted write-note /
+   * write-memory-record steps — the journal would only record intent.
+   */
+  payload?: unknown;
 }
 
 export interface StoredStep {
   name: string;
   executor?: () => Promise<void>;
+}
+
+/**
+ * Replay executor: re-applies one journal step. Receives the entry so
+ * executors can read `payload`/`targetIds` (WR-05). The entry parameter is
+ * optional so plain `() => Promise<void>` executors (tests, simple steps)
+ * remain assignable.
+ */
+export type StepExecutor = (entry?: WriteJournalEntry) => Promise<void>;
+
+/**
+ * Registry of replay executors keyed by step name. Production wiring
+ * registers the phase step executors once at startup (knowledgeBaseBootstrap)
+ * so replayJournal() can recover interrupted entries with no per-call map.
+ */
+const registeredStepExecutors = new Map<string, StepExecutor>();
+
+/** Register a step executor for journal replay (idempotent per name). */
+export function registerStepExecutor(name: string, executor: StepExecutor): void {
+  registeredStepExecutors.set(name, executor);
+}
+
+/** All registered step executors (read-only snapshot for diagnostics/tests). */
+export function getRegisteredStepExecutors(): ReadonlyMap<string, StepExecutor> {
+  return registeredStepExecutors;
 }
 
 // ── Database helpers ─────────────────────────────────────────────────────────
@@ -80,11 +111,14 @@ export async function resetJournalDb(): Promise<void> {
 
 /**
  * Create a new journal entry with 'pending' status and persist it.
+ * `payload` (optional) captures the data needed to replay the write later
+ * (WR-05) — without it, interrupted write steps are unrecoverable.
  */
 export async function createEntry(
   operation: WriteJournalOperation,
   targetIds: Record<string, string>,
   steps: Array<{ name: string; executor: () => Promise<void> }>,
+  payload?: unknown,
 ): Promise<WriteJournalEntry> {
   const entry: WriteJournalEntry = {
     id: crypto.randomUUID(),
@@ -98,6 +132,7 @@ export async function createEntry(
       name: s.name,
       status: 'pending' as const,
     })),
+    ...(payload !== undefined ? { payload } : {}),
   };
 
   const db = await getDb();
@@ -164,9 +199,14 @@ export async function commitEntry(
 /**
  * Replay all non-terminal entries on startup.
  * Returns the count of entries that were replayed.
+ *
+ * `stepExecutors` is optional — when omitted, the registered executors
+ * (registerStepExecutor, wired at startup by knowledgeBaseBootstrap) are
+ * used (WR-05). Executors receive the journal entry so they can read the
+ * persisted payload/targetIds.
  */
 export async function replayJournal(
-  stepExecutors: Map<string, () => Promise<void>>,
+  stepExecutors?: Map<string, StepExecutor>,
 ): Promise<number> {
   const db = await getDb();
   const allEntries: WriteJournalEntry[] = await db.getAll('entries');
@@ -184,13 +224,13 @@ export async function replayJournal(
     try {
       for (const step of entry.steps) {
         if (step.status !== 'completed') {
-          const executor = stepExecutors.get(step.name);
+          const executor = stepExecutors?.get(step.name) ?? registeredStepExecutors.get(step.name);
           if (!executor) {
             // Missing executor: the operation was never applied — fail the
             // step instead of silently marking it completed (WR-06).
             throw new Error(`No executor registered for step "${step.name}"`);
           }
-          await executor();
+          await executor(entry);
           step.status = 'completed';
         }
       }
@@ -215,7 +255,7 @@ export async function replayJournal(
  */
 export async function repairEntry(
   entryId: string,
-  stepExecutors: Map<string, () => Promise<void>>,
+  stepExecutors?: Map<string, StepExecutor>,
 ): Promise<void> {
   const db = await getDb();
   const entry: WriteJournalEntry = await db.get('entries', entryId);
@@ -236,13 +276,13 @@ export async function repairEntry(
   try {
     for (const step of entry.steps) {
       if (step.status !== 'completed') {
-        const executor = stepExecutors.get(step.name);
+        const executor = stepExecutors?.get(step.name) ?? registeredStepExecutors.get(step.name);
         if (!executor) {
           // Missing executor: the operation was never applied — fail the
           // step instead of silently marking it completed (WR-06).
           throw new Error(`No executor registered for step "${step.name}"`);
         }
-        await executor();
+        await executor(entry);
         step.status = 'completed';
       }
     }

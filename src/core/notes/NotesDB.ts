@@ -80,7 +80,9 @@ export class NotesDB {
         updatedAt: Date.now(),
       };
 
-      // WriteJournal: write-note + update-index as journaled steps (key_links)
+      // WriteJournal: write-note + update-index as journaled steps (key_links).
+      // The fully-derived finalNote is persisted as the entry payload so an
+      // interrupted write-note step can be replayed after a crash (WR-05).
       const steps: Array<{ name: string; executor: () => Promise<void> }> = [
         {
           name: 'write-note',
@@ -101,7 +103,12 @@ export class NotesDB {
       ];
 
       // createEntry resolves the journal ENTRY (not an id) — use entry.id
-      const entry = await createEntry('save-note-with-links', { noteId: parsed.id }, steps);
+      const entry = await createEntry(
+        'save-note-with-links',
+        { noteId: parsed.id },
+        steps,
+        { note: finalNote },
+      );
       await commitEntry(entry.id, steps);
 
       const persisted = await getEntry(entry.id);
@@ -180,6 +187,18 @@ export class NotesDB {
     }
     const merged: Note = { ...existing.note, ...changes, id };
     return this.save(merged);
+  }
+
+  /**
+   * Non-journaled raw put — recovery path used by WriteJournal replay
+   * (WR-05). Unlike save(), this does not re-derive links, bump the
+   * version, create a journal entry, or touch the search index; it
+   * restores a note payload that was already fully derived at original
+   * write time (the update-index step rebuilds the index afterwards).
+   */
+  async restore(note: Note): Promise<void> {
+    const db = await openNotesDb();
+    await db.put('notes', note);
   }
 }
 

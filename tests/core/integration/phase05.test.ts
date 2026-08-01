@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { openDB } from 'idb';
 import { notesDb, resetNotesDb } from '../../../src/core/notes/NotesDB';
-import { noteSearchIndex } from '../../../src/core/notes/MiniSearchNoteIndex';
+import { noteSearchIndex, MiniSearchNoteIndex } from '../../../src/core/notes/MiniSearchNoteIndex';
 import { NoteGraph, getNoteGraph } from '../../../src/core/notes/NoteGraph';
 import type { Note } from '../../../src/core/notes/NoteSchema';
 import { getMemoryEngine, resetMemoryEngine } from '../../../src/core/memory/MemoryEngine';
@@ -10,9 +11,15 @@ import {
 } from '../../../src/core/memory/PreferenceMemoryStore';
 import { resetUserMemoryDb } from '../../../src/core/memory/UserMemoryStore';
 import { resetConversationMemoryDb } from '../../../src/core/memory/ConversationMemoryStore';
-import { resetJournalDb, getEntriesByStatus } from '../../../src/core/storage/WriteJournal';
+import {
+  resetJournalDb,
+  getEntriesByStatus,
+  createEntry,
+  getEntry,
+} from '../../../src/core/storage/WriteJournal';
 import { setPrimarySurfaceId } from '../../../src/core/runtime/BroadcastBus';
 import { createAgentTurnInputWithMemory } from '../../../src/core/ai/AgentTurnInput';
+import { initializeKnowledgeBase } from '../../../src/core/knowledgeBaseBootstrap';
 import {
   loadPersonaFromMemory,
   inject,
@@ -250,5 +257,55 @@ describe('Phase 5 integration', () => {
     expect(factHint).toBeDefined();
     expect((input.preferences as Record<string, unknown>).np_persona).toBeDefined();
     expect(input.personaBehavior).not.toBeNull();
+  });
+
+  it('startup replay recovers an interrupted save-note-with-links entry (WR-05)', async () => {
+    const note = makeNote({
+      id: crypto.randomUUID(),
+      title: 'Recover Me',
+      content: 'recoverable content',
+    });
+
+    // Simulate the crash state: the note's db.put COMPLETED (write-note
+    // step done) but the process died before update-index ran — the
+    // journal entry is stuck in `applying` with update-index pending, the
+    // in-memory index is stale, and the persisted index was never written.
+    const { migrationRunner } = await import('../../../src/core/storage/MigrationRunner');
+    await migrationRunner.migrate('NotesDB', 4);
+    const ndb = await openDB('NotesDB', 4);
+    await ndb.put('notes', note);
+    await ndb.delete('index', 'note-search');
+    ndb.close();
+    await noteSearchIndex.rebuild([]);
+
+    const entry = await createEntry(
+      'save-note-with-links',
+      { noteId: note.id },
+      [
+        { name: 'write-note', executor: async () => {} },
+        { name: 'update-index', executor: async () => {} },
+      ],
+      { note },
+    );
+    const jdb = await openDB('WriteJournalDB', 1);
+    const raw = await jdb.get('entries', entry.id);
+    raw.status = 'applying';
+    raw.steps[0].status = 'completed'; // write-note applied; update-index not
+    await jdb.put('entries', raw);
+    jdb.close();
+
+    // Startup: register executors, restore the index, replay the journal
+    await initializeKnowledgeBase('test-surface');
+
+    // Recovery: the entry completed and the index was rebuilt + persisted
+    const recovered = await getEntry(entry.id);
+    expect(recovered?.status).toBe('completed');
+    expect(recovered?.steps[1].status).toBe('completed');
+    expect(
+      noteSearchIndex.search('recoverable').some((r) => r.noteId === note.id),
+    ).toBe(true);
+    const fresh = new MiniSearchNoteIndex();
+    await fresh.load();
+    expect(fresh.search('recoverable').some((r) => r.noteId === note.id)).toBe(true);
   });
 });

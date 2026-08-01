@@ -306,7 +306,9 @@ export class MemoryEngine {
     ];
 
     try {
-      const entry = await createEntry(operation, {}, steps);
+      // The record payload is persisted with the entry so an interrupted
+      // write-memory-record step can be replayed after a crash (WR-05).
+      const entry = await createEntry(operation, {}, steps, { record });
       await commitEntry(entry.id, steps);
 
       const persisted = await getEntry(entry.id);
