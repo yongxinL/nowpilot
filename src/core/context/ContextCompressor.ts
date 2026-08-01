@@ -27,6 +27,14 @@ interface DegradationStep {
  * the input array and its elements are never mutated, preserving the
  * original sections for provenance comparison. The `stable` flag is
  * read-only metadata (D-14) and is never modified.
+ *
+ * Abort semantics (AGT-03, D-06): when the optional shared AbortSignal is
+ * aborted at any check point (before every degradation step, before and
+ * after provider selection, before and after AI summarization), compress
+ * rejects with the ORIGINAL abort error (`signal.reason` or the awaited
+ * operation's error). Cancellation is never downgraded to a bounded warning,
+ * a compression miss, or a CONTEXT_TOO_LARGE result — the caller observes
+ * the abort exactly as the orchestrator signalled it (T-03a-25/26/29).
  */
 export class ContextCompressor {
   /**
@@ -48,16 +56,20 @@ export class ContextCompressor {
     sections: PromptSection[],
     budget: number,
     tier: ModelContextTier,
-    compressionModelProvider?: () => Promise<ProviderAdapter | null>,
+    compressionModelProvider?: (signal?: AbortSignal) => Promise<ProviderAdapter | null>,
     signal?: AbortSignal,
   ): Promise<{ sections: PromptSection[]; stepsApplied: string[] }> {
+    this.throwIfAborted(signal);
     let currentSections = sections.map((s) => ({ ...s }));
     const stepsApplied: string[] = [];
 
     // Degradation loop (Pattern 3): check the budget BEFORE each step,
     // apply the step, record it, and let the next iteration's check stop
     // the pipeline at the first step that satisfies the budget (D-07).
+    // The abort signal is checked before every step so cancellation stops
+    // the pipeline without applying further degradation (T-03a-26).
     for (const step of ContextCompressor.STEPS) {
+      this.throwIfAborted(signal);
       const totalBefore = currentSections.reduce((sum, s) => sum + s.tokens, 0);
       if (totalBefore <= budget) break;
       currentSections = step.apply(currentSections, { tier });
@@ -70,30 +82,46 @@ export class ContextCompressor {
     // conversation tier. Single call — never iterative (T-04-08).
     const finalTotal = currentSections.reduce((sum, s) => sum + s.tokens, 0);
     if (finalTotal > budget && compressionModelProvider) {
-      const outcome = await this.tryAiSummarization(currentSections, compressionModelProvider);
+      this.throwIfAborted(signal);
+      const outcome = await this.tryAiSummarization(
+        currentSections,
+        compressionModelProvider,
+        signal,
+      );
       currentSections = outcome.sections;
       if (outcome.attempted) stepsApplied.push('ai-summarisation');
     }
 
     // If still over budget, the caller (ContextOptimizer) throws
     // CONTEXT_TOO_LARGE — the compressor only reports the result.
+    this.throwIfAborted(signal);
     return { sections: currentSections, stepsApplied };
   }
 
   /**
-   * Single AI summarization call per T-04-08. Any failure (provider
-   * unavailable, malformed/empty output, call error) degrades gracefully
-   * per T-04-09: keep the pre-summarization sections and let the caller's
-   * final budget check surface CONTEXT_TOO_LARGE.
+   * Single AI summarization call per T-04-08. Any NON-abort failure
+   * (provider unavailable, malformed/empty output, call error) degrades
+   * gracefully per T-04-09: keep the pre-summarization sections and let
+   * the caller's final budget check surface CONTEXT_TOO_LARGE.
+   *
+   * An abort (signalled or AbortError) is rethrown with its ORIGINAL
+   * error — never converted into a swallowed warning or a compression
+   * miss (T-03a-25/29). The same shared signal is passed to the
+   * compression-model provider callback and to the AI SDK generation
+   * request so cancellation reaches every awaited operation.
    */
   private async tryAiSummarization(
     sections: PromptSection[],
-    compressionModelProvider: () => Promise<ProviderAdapter | null>,
+    compressionModelProvider: (signal?: AbortSignal) => Promise<ProviderAdapter | null>,
+    signal?: AbortSignal,
   ): Promise<{ sections: PromptSection[]; attempted: boolean }> {
     let adapter: ProviderAdapter | null = null;
     try {
-      adapter = await compressionModelProvider();
+      this.throwIfAborted(signal);
+      adapter = await compressionModelProvider(signal);
+      this.throwIfAborted(signal);
     } catch (err) {
+      if (this.isAbortError(err, signal)) throw err;
       console.warn(
         '[ContextCompressor] compression model unavailable; falling through to CONTEXT_TOO_LARGE',
         err,
@@ -105,8 +133,14 @@ export class ContextCompressor {
     }
 
     try {
+      this.throwIfAborted(signal);
       const model = adapter.createLanguageModel(adapter.getDefaultModelForTier('FAST'));
-      const result = await generateText({ model, prompt: buildSummarizationPrompt(sections) });
+      const result = await generateText({
+        model,
+        prompt: buildSummarizationPrompt(sections),
+        abortSignal: signal,
+      });
+      this.throwIfAborted(signal);
       const summary = result?.text;
       if (typeof summary !== 'string' || summary.trim().length === 0) {
         console.warn(
@@ -116,12 +150,35 @@ export class ContextCompressor {
       }
       return { sections: applyAiSummary(sections, summary), attempted: true };
     } catch (err) {
+      if (this.isAbortError(err, signal)) throw err;
       console.warn(
         '[ContextCompressor] AI summarization failed; keeping pre-summarization sections (T-04-09)',
         err,
       );
       return { sections, attempted: true };
     }
+  }
+
+  /**
+   * Reject with the ORIGINAL abort error (`signal.reason`) when the
+   * shared signal is aborted. Throws the exact error the caller (or the
+   * awaited operation) produced so an abort is never mistaken for an
+   * ordinary compression failure (T-03a-25).
+   */
+  private throwIfAborted(signal?: AbortSignal): void {
+    if (signal?.aborted) {
+      throw signal.reason;
+    }
+  }
+
+  /**
+   * Distinguish an abort from an ordinary failure: either the shared
+   * signal is aborted, or the thrown error is an AbortError (e.g. the AI
+   * SDK's cancellation error from a generation request that received the
+   * signal). Any other error is an ordinary failure.
+   */
+  private isAbortError(err: unknown, signal?: AbortSignal): boolean {
+    return signal?.aborted === true || (err instanceof Error && err.name === 'AbortError');
   }
 }
 
