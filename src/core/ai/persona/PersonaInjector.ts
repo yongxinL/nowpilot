@@ -1,10 +1,24 @@
 import { DEFAULT_PERSONA, getPlannerPersona, getRendererPersona } from './PersonaProfile';
 import type { PersonaProfile } from './PersonaProfile';
+import { getMemoryEngine } from '../../memory/MemoryEngine';
 
 export type InjectionStage = 'planner' | 'executor' | 'renderer';
 
 export interface InjectOptions {
   profile?: PersonaProfile;
+}
+
+/**
+ * Load the active persona from memory (Phase 5 integration contract):
+ * reads np_persona through MemoryEngine — the single intermediary for all
+ * memory access (Phase 4b). Falls back to DEFAULT_PERSONA when the user
+ * has not configured a persona. Additive — the existing inject() flow
+ * remains unchanged.
+ */
+export async function loadPersonaFromMemory(): Promise<PersonaProfile> {
+  const memoryEngine = getMemoryEngine();
+  const stored = await memoryEngine.getPersona();
+  return stored ? (stored as PersonaProfile) : DEFAULT_PERSONA;
 }
 
 export function buildPersonaBlock(profile: PersonaProfile): string {

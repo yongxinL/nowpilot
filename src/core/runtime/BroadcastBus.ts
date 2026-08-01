@@ -8,6 +8,29 @@ interface BroadcastChannelEntry {
 
 const channels = new Map<string, BroadcastChannelEntry>();
 
+// ── Primary surface election (MEM-02 single-writer memory semantics) ────────
+// The entrypoint elects one surface as primary via setPrimarySurfaceId().
+// Until an election happens (null), every surface is treated as primary so
+// pre-election flows are not blocked; once elected, only the elected surface
+// may perform memory writes (secondary surfaces are read-only).
+
+let primarySurfaceId: string | null = null;
+
+/** Elect (or clear) the primary surface id. */
+export function setPrimarySurfaceId(surfaceId: string | null): void {
+  primarySurfaceId = surfaceId;
+}
+
+/** The currently elected primary surface id, or null when none is elected. */
+export function getPrimarySurfaceId(): string | null {
+  return primarySurfaceId;
+}
+
+/** True when the given surface is the elected primary (or none is elected yet). */
+export function isPrimarySurface(surfaceId: string): boolean {
+  return primarySurfaceId === null || primarySurfaceId === surfaceId;
+}
+
 export function getBroadcastChannel(name: string): BroadcastChannelEntry {
   if (!channels.has(name)) {
     const bc = new BroadcastChannel(name);

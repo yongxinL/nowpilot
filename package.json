@@ -16,7 +16,7 @@
     "verify:phase-3a": "tsc --noEmit && vitest run tests/core/ai/types.test.ts tests/core/ai/trajectory/AgentTrajectoryMachine.test.ts tests/core/ai/ExecutorService.test.ts tests/core/ai/verifier/OutcomeVerifier.test.ts tests/core/ai/ReplanPolicy.test.ts tests/core/ai/tracer.test.ts tests/core/ai/AgentOrchestrator.test.ts tests/core/ai/integration.test.ts tests/core/context/ContextOptimizer.test.ts tests/core/context/ContextCompressor.test.ts tests/security/agent-harness.test.ts",
     "verify:phase-4": "tsc --noEmit && vitest run tests/core/context",
     "verify:phase-4a": "tsc --noEmit && vitest run tests/core/extraction tests/core/content tests/isolation/no-content-script-ui.test.ts",
-    "verify:phase-5": "tsc --noEmit && vitest run tests/core/memory tests/core/search tests/core/notes/LinkParser.test.ts",
+    "verify:phase-5": "tsc --noEmit && npx vitest run tests/core/notes/LinkParser.test.ts tests/core/notes/MiniSearchNoteIndex.test.ts tests/core/notes/NoteGraph.test.ts tests/core/notes/NotesDB.test.ts tests/core/storage/NotesStore.test.ts tests/core/memory/MemoryScorer.test.ts tests/core/memory/UserMemoryStore.test.ts tests/core/memory/ConversationMemoryStore.test.ts tests/core/memory/MemoryEngine.test.ts tests/core/integration/phase05.test.ts",
     "verify:phase-5a": "tsc --noEmit && vitest run tests/core/notes tests/core/storage/migrations",
     "verify:phase-6": "tsc --noEmit && vitest run tests/core/telemetry tests/components/DiagnosticsSection.test.tsx",
     "verify:phase-7": "tsc --noEmit && vitest run tests/hooks tests/components tests/components/rich tests/core/intent tests/core/notes",

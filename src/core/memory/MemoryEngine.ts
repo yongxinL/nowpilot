@@ -10,7 +10,7 @@ import type {
   RetrievalOptions,
 } from './types';
 import { createEntry, commitEntry, getEntry } from '../storage/WriteJournal';
-import { publish } from '../runtime/BroadcastBus';
+import { isPrimarySurface, publish } from '../runtime/BroadcastBus';
 import { tokenBudget } from '../context/TokenBudget';
 import type { ContextItem } from '../context/ContextItem';
 
@@ -21,6 +21,11 @@ const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 const MAX_ACTIVE_CONVERSATIONS = 10;
 const MAX_ARCHIVED_CONVERSATIONS = 100;
 const IDLE_ARCHIVE_MS = 30 * 60 * 1000;
+
+/** Entrypoint-provided surface identity (see MemoryEngine constructor). */
+function entrypointSurfaceId(): string | undefined {
+  return (globalThis as { __NOWPILOT_SURFACE_ID__?: string }).__NOWPILOT_SURFACE_ID__;
+}
 
 /**
  * Write input: everything except the derived fields (id/useCount/confidence
@@ -45,14 +50,29 @@ export class MemoryEngine {
   private readonly userStore: UserMemoryStore;
   private readonly preferenceStore: PreferenceMemoryStore;
 
+  /** MEM-02: the surface identity this engine instance runs on. */
+  private readonly surfaceId: string;
+
   /** D-11 LRU state: conversationId → last activity timestamp. */
   private readonly lastActiveAt = new Map<string, number>();
   private readonly active: string[] = [];
   private readonly archived: string[] = []; // oldest first (eviction order)
 
-  /** Public constructor (PageIndexBuilder/ContextOptimizer pattern) — use
-   *  getMemoryEngine() for the shared singleton. */
-  constructor() {
+  /**
+   * Public constructor (PageIndexBuilder/ContextOptimizer pattern) — use
+   * getMemoryEngine() for the shared singleton. `surfaceId` identifies the
+   * surface this instance runs on for the MEM-02 single-writer gate; when
+   * omitted it is read from the entrypoint global
+   * (globalThis.__NOWPILOT_SURFACE_ID__).
+   */
+  constructor(surfaceId?: string) {
+    const resolvedSurfaceId = surfaceId ?? entrypointSurfaceId();
+    if (!resolvedSurfaceId) {
+      throw new Error(
+        'MemoryEngine requires surfaceId — pass to getMemoryEngine() or set globalThis.__NOWPILOT_SURFACE_ID__',
+      );
+    }
+    this.surfaceId = resolvedSurfaceId;
     this.conversationStore = new ConversationMemoryStore();
     this.userStore = new UserMemoryStore();
     this.preferenceStore = new PreferenceMemoryStore();
@@ -60,14 +80,12 @@ export class MemoryEngine {
 
   /**
    * Single-writer gate (MEM-02 / T-05-05): memory writes are only allowed on
-   * the primary surface elected via BroadcastBus. Currently defaults to true;
-   * the primary-election wiring (surface id from the entrypoint / BroadcastBus
-   * election) lands with the Plan 03 surface integration.
+   * the primary surface elected via BroadcastBus. Reads
+   * BroadcastBus.getPrimarySurfaceId() and compares with this instance's
+   * surfaceId; before any election happens every surface is primary.
    */
   isPrimarySurface(): boolean {
-    // TODO: wire BroadcastBus primary election (Plan 03) — reads
-    // BroadcastBus.getPrimarySurfaceId() === currentSurfaceId
-    return true;
+    return isPrimarySurface(this.surfaceId);
   }
 
   /**
@@ -353,10 +371,16 @@ export class MemoryEngine {
 
 let _instance: MemoryEngine | null = null;
 
-/** Accessor for the singleton. */
-export function getMemoryEngine(): MemoryEngine {
+/**
+ * Accessor for the singleton. `surfaceId` identifies the running surface
+ * (MEM-02 single-writer gate); when omitted it is read from the entrypoint
+ * global (globalThis.__NOWPILOT_SURFACE_ID__). The first call pins the
+ * instance — resetMemoryEngine() must be used to rebind a different
+ * surface.
+ */
+export function getMemoryEngine(surfaceId?: string): MemoryEngine {
   if (!_instance) {
-    _instance = new MemoryEngine();
+    _instance = new MemoryEngine(surfaceId);
   }
   return _instance;
 }
