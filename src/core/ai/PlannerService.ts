@@ -29,6 +29,38 @@ export const PlannerDecisionSchema = z.discriminatedUnion('action', [
   AskClarificationSchema,
 ]);
 
+/**
+ * Bounded redacted recovery observation (D-15/T-03a-16). Handed to the
+ * planner on the single recovery replan call. Carries only the tool name,
+ * a closed execution/evidence status, a safe PipelineError code, and a
+ * bounded evidence summary — never raw tool output, PipelineError
+ * diagnostics, secrets, or idempotency keys.
+ */
+export interface RecoveryObservation {
+  toolName: string;
+  executionStatus: 'failed' | 'verified' | 'unverified';
+  errorCode?: string;
+  evidenceSummary?: string;
+}
+
+function appendRecoveryObservation(userMessage: string, observation?: RecoveryObservation): string {
+  if (!observation) return userMessage;
+  const parts = [
+    userMessage,
+    '',
+    '[Recovery context] A previous action could not be completed with verified success.',
+    `Tool: ${observation.toolName}. Status: ${observation.executionStatus}.`,
+  ];
+  if (observation.errorCode) {
+    parts.push(`Error code: ${observation.errorCode}.`);
+  }
+  if (observation.evidenceSummary) {
+    parts.push(`Evidence: ${observation.evidenceSummary}.`);
+  }
+  parts.push('Choose a different action or answer directly; do not repeat the failed action.');
+  return parts.join('\n');
+}
+
 function buildPlannerSystemPrompt(optimized: OptimizedContext): string {
   const systemSection = optimized.sections.find((s) => s.kind === 'system');
   const parts: string[] = [
@@ -62,6 +94,7 @@ function buildPlannerSystemPrompt(optimized: OptimizedContext): string {
 
 function buildPlannerMessagesWithJSONInstructions(
   optimized: OptimizedContext,
+  recoveryObservation?: RecoveryObservation,
 ): Array<{ role: 'system' | 'user'; content: string }> {
   const baseSystem = buildPlannerSystemPrompt(optimized);
   return [
@@ -69,16 +102,17 @@ function buildPlannerMessagesWithJSONInstructions(
       role: 'system',
       content: `${baseSystem}\n\nRespond ONLY with a JSON object. Do not include markdown fences, explanations, or any text outside the JSON.`,
     },
-    { role: 'user', content: extractUserMessage(optimized) },
+    { role: 'user', content: appendRecoveryObservation(extractUserMessage(optimized), recoveryObservation) },
   ];
 }
 
 function buildPlannerMessages(
   optimized: OptimizedContext,
+  recoveryObservation?: RecoveryObservation,
 ): Array<{ role: 'system' | 'user'; content: string }> {
   return [
     { role: 'system', content: buildPlannerSystemPrompt(optimized) },
-    { role: 'user', content: extractUserMessage(optimized) },
+    { role: 'user', content: appendRecoveryObservation(extractUserMessage(optimized), recoveryObservation) },
   ];
 }
 
@@ -92,6 +126,8 @@ export class PlannerService {
     adapter: ProviderAdapter,
     tier: ModelTier,
     optimized: OptimizedContext,
+    signal?: AbortSignal,
+    recoveryObservation?: RecoveryObservation,
   ): Promise<PlannerDecision> {
     const { modelId } = resolveTierModel(adapter, tier);
     const model = adapter.createLanguageModel(modelId);
@@ -101,14 +137,16 @@ export class PlannerService {
         const { output } = await generateText({
           model,
           output: Output.object({ schema: PlannerDecisionSchema }),
-          messages: buildPlannerMessages(optimized),
+          messages: buildPlannerMessages(optimized, recoveryObservation),
           stopWhen: isStepCount(1),
+          ...(signal ? { signal } : {}),
         });
         return output as PlannerDecision;
       } else {
         const { text } = await generateText({
           model,
-          messages: buildPlannerMessagesWithJSONInstructions(optimized),
+          messages: buildPlannerMessagesWithJSONInstructions(optimized, recoveryObservation),
+          ...(signal ? { signal } : {}),
         });
         return repairJSON(text, PlannerDecisionSchema);
       }

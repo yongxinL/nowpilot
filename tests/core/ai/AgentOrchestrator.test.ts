@@ -8,20 +8,19 @@ import type {
 import { PipelineError } from '../../../src/core/ai/PipelineError';
 import { createAgentTurnInput } from '../../../src/core/ai/AgentTurnInput';
 
+const ADAPTER = {
+  providerId: 'openai',
+  createLanguageModel: vi.fn(),
+  validateConnection: vi.fn(),
+  supportsStructuredOutput: true,
+  getDefaultModelForTier: vi.fn(() => 'gpt-4o-mini'),
+  getCacheStrategy: vi.fn(() => 'prefix-only' as const),
+  getTelemetryMetadata: vi.fn(() => ({ provider: 'openai' })),
+};
+
 vi.mock('../../../src/core/ai/ProviderRouter', () => ({
   providerRouter: {
-    selectProvider: vi.fn().mockResolvedValue({
-      adapter: {
-        providerId: 'openai',
-        createLanguageModel: vi.fn(),
-        validateConnection: vi.fn(),
-        supportsStructuredOutput: true,
-        getDefaultModelForTier: vi.fn(() => 'gpt-4o-mini'),
-        getCacheStrategy: vi.fn(() => 'prefix-only' as const),
-        getTelemetryMetadata: vi.fn(() => ({ provider: 'openai' })),
-      },
-      providerId: 'openai',
-    }),
+    selectProvider: vi.fn().mockResolvedValue({ adapter: ADAPTER, providerId: 'openai' }),
   },
 }));
 
@@ -110,8 +109,14 @@ function buildAgentTurnInput(overrides?: Partial<AgentTurnInput>): AgentTurnInpu
 }
 
 describe('AgentOrchestrator outcomes', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+  beforeEach(async () => {
+    // Full reset — clearAllMocks alone leaves once-queued and rejected
+    // implementations from earlier tests on the shared mock instances.
+    vi.resetAllMocks();
+    const { providerRouter } = await import('../../../src/core/ai/ProviderRouter');
+    (providerRouter.selectProvider as any).mockResolvedValue({ adapter: ADAPTER, providerId: 'openai' });
+    const { rendererService } = await import('../../../src/core/ai/RendererService');
+    (rendererService.synthesize as any).mockResolvedValue('Mocked renderer response');
   });
 
   it('returns a completed outcome with renderedAnswer for an answer decision', async () => {
@@ -186,6 +191,7 @@ describe('AgentOrchestrator outcomes', () => {
       'assembling-context',
       'planning',
       'executing',
+      'replanning',
       'planning',
       'rendering',
       'completed',

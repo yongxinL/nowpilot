@@ -121,12 +121,13 @@ describe('AI Pipeline Tracer', () => {
 
     const input = buildAgentTurnInput();
     const { agentOrchestrator } = await import('../../../src/core/ai/AgentOrchestrator');
-    const response = await agentOrchestrator.runTurn(input);
+    const outcome = await agentOrchestrator.runTurn(input);
 
-    expect(response).toBeTruthy();
-    expect(typeof response).toBe('string');
-    expect(response.length).toBeGreaterThan(0);
-    expect(response).toContain('Hello');
+    expect(outcome.terminalState).toBe('completed');
+    expect(outcome.reasonCode).toBe('planner_answer');
+    expect(outcome.renderedAnswer).toBeTruthy();
+    expect(outcome.renderedAnswer!.length).toBeGreaterThan(0);
+    expect(outcome.renderedAnswer).toContain('Hello');
   }, 10000);
 
   it('should handle an answer decision returning the mocked response', async () => {
@@ -143,16 +144,20 @@ describe('AI Pipeline Tracer', () => {
 
     const input = buildAgentTurnInput({ userInput: 'What do you do?' });
     const { agentOrchestrator } = await import('../../../src/core/ai/AgentOrchestrator');
-    const response = await agentOrchestrator.runTurn(input);
+    const outcome = await agentOrchestrator.runTurn(input);
 
-    expect(response).toBe('I can help you organize your notes and find information quickly.');
+    expect(outcome.renderedAnswer).toBe('I can help you organize your notes and find information quickly.');
   }, 10000);
 
-  it('should throw PipelineError for unknown provider', async () => {
+  it('should return a failed outcome for unknown provider', async () => {
     const input = buildAgentTurnInput({ providerId: 'ollama' });
     const { agentOrchestrator } = await import('../../../src/core/ai/AgentOrchestrator');
 
-    await expect(agentOrchestrator.runTurn(input)).rejects.toThrow(PipelineError);
+    const outcome = await agentOrchestrator.runTurn(input);
+    expect(outcome.terminalState).toBe('failed');
+    expect(outcome.reasonCode).toBe('pipeline_failed');
+    expect(outcome.diagnostics.errors).toContain('PROVIDER_AUTH');
+    expect(outcome.renderedAnswer).toBeNull();
   }, 10000);
 });
 
