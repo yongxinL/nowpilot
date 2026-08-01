@@ -263,7 +263,7 @@ Plans:
 **Wave 1**
 
 - [x] 05-01-PLAN.md — TRACER: Notes persistence end-to-end — MigrationRunner v4, NoteSchema+LinkParser+NotesDB+MiniSearchNoteIndex+NoteGraph (NOTE-01)
-- [ ] 05-02-PLAN.md — Memory Foundation + Engine — MemoryRecord schemas, MemoryScorer, ConversationMemoryStore+UserMemoryStore+PreferenceMemoryStore, MemoryEngine orchestrator (MEM-01, MEM-02)
+- [x] 05-02-PLAN.md — Memory Foundation + Engine — MemoryRecord schemas, MemoryScorer, ConversationMemoryStore+UserMemoryStore+PreferenceMemoryStore, MemoryEngine orchestrator (MEM-01, MEM-02)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 

@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 05
 current_phase_name: knowledge-base
 status: executing
-stopped_at: Completed 05-01-PLAN.md
-last_updated: "2026-08-01T21:36:25.011Z"
+stopped_at: Completed 05-02-PLAN.md
+last_updated: "2026-08-01T22:17:37.967Z"
 last_activity: 2026-08-02
 last_activity_desc: Phase 05 execution started
 progress:
   total_phases: 19
   completed_phases: 7
   total_plans: 39
-  completed_plans: 37
+  completed_plans: 38
   percent: 37
 ---
 
@@ -30,11 +30,11 @@ See: .planning/PROJECT.md (updated 2026-08-01)
 ## Current Position
 
 Phase: 05 (knowledge-base) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-08-02 — Phase 05 execution started
 
-Progress: [████████████████████] 25/25 plans ([██████████] 95%) (5/19 phases complete)
+Progress: [████████████████████] 25/25 plans ([██████████] 97%) (5/19 phases complete)
 
 ## Performance Metrics
 
@@ -73,6 +73,7 @@ Progress: [████████████████████] 25/25 p
 | Phase 04-context-optimization-pipeline P04-03 | 9min | 3 tasks | 7 files |
 | Phase 03a P05 | 8 | 2 tasks | 3 files |
 | Phase 05 P01 | 8min | 3 tasks | 14 files |
+| Phase 05-knowledge-base P05-02 | 33min | 3 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -116,6 +117,13 @@ Recent decisions affecting current work:
 - [Rev. C 07-31]: 19-phase roadmap (11 original + 3a/4b/5b/6a/6b/6c/7a/8a); 91 total requirements (32 pre-Rev. C + 59 Rev. C)
 - [Phase 05]: search() returns UI-SPEC NoteSearchResult (noteId/matchedFields/snippet) with hand-built <mark> highlights — MiniSearch 7.2 has no built-in snippet(); docs registry persisted alongside index JSON for round-trip identity — MiniSearchNoteIndex.replace()/remove() use upsert guards — MiniSearch 7.2 replace()/discard() throw for unknown IDs
 - [Phase 05]: NotesDB keeps index sync inside the WriteJournal update-index step (atomic); no module-load event subscription in this plan (avoids circular import) — MiniSearchNoteIndex.replace()/remove() use upsert guards — MiniSearch 7.2 replace()/discard() throw for unknown IDs
+- [Phase 05-knowledge-base]: MemoryEngine.retrieve() preference item is a single compact JSON ContextItem with sourceId 'memory.preference' (Task 3 action step 3); per-key items would multiply token overhead for no retrieval gain
+
+MemoryEngine constructor is public (TS forbids module-level new on private constructors) matching the ContextOptimizer/PageIndexBuilder pattern; isPrimarySurface() public so tests can flip it
+'write-preference' added to the Phase 2 WriteJournalOperation union — the plan assumed it existed; MemoryStoreWriteOp now derives from the union via Extract (single source of truth)
+MemoryEngine.write() routes via UserMemoryStore.upsert (plan step 4); non-semantic writes fail the journal honestly (JOURNAL_ERROR); preferences via PreferenceMemoryStore.set, summaries via ConversationMemoryStore.saveSummary (Plan 03)
+ContextItem tokens use tokenBudget.estimateTokens() — canonical Phase 4 estimation service
+UserMemoryStore.getAll() returns all records in the shared store; MemoryEngine filters memoryType==='semantic' before D-09 fact scoring (D-06 store independence)
 
 ### Pending Todos
 
@@ -135,6 +143,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-01T21:36:18.229Z
-Stopped at: Completed 05-01-PLAN.md
+Last session: 2026-08-01T22:17:37.956Z
+Stopped at: Completed 05-02-PLAN.md
 Resume file: None
