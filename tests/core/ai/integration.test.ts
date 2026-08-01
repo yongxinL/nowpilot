@@ -27,10 +27,15 @@ vi.mock('../../../src/core/ai/RendererService', () => ({
   rendererService: { synthesize: vi.fn() },
 }));
 
+// The selected-tool adapter boundary (D-16): the three Phase 3a reliability
+// values are declared explicitly at the integration fixture.
 const WEATHER_TOOL = {
   name: 'getWeather',
   description: 'Get weather for a city',
   jsonSchema: { type: 'object', properties: { city: { type: 'string' } } },
+  sideEffect: 'read' as const,
+  idempotency: 'not-required' as const,
+  evidence: { required: false },
 };
 
 function buildAgentTurnInput(
@@ -70,16 +75,19 @@ describe('Pipeline Integration', () => {
     );
 
     const { agentOrchestrator } = await import('../../../src/core/ai/AgentOrchestrator');
-    const result = await agentOrchestrator.runTurn(
+    const outcome = await agentOrchestrator.runTurn(
       buildAgentTurnInput({ userInput: 'What is the weather in Tokyo?' }),
     );
 
-    expect(result).toBeTruthy();
-    expect(result).toBe('The weather in Tokyo is 22°C and sunny.');
+    expect(outcome.terminalState).toBe('completed');
+    expect(outcome.reasonCode).toBe('planner_answer');
+    expect(outcome.renderedAnswer).toBe('The weather in Tokyo is 22°C and sunny.');
     expect(plannerService.plan).toHaveBeenCalledTimes(2);
+    expect(outcome.toolResults).toHaveLength(1);
+    expect(outcome.toolResults[0].toolName).toBe('getWeather');
   });
 
-  it('handles unknown tool error gracefully', async () => {
+  it('handles unknown tool error as a failed tool_failed outcome', async () => {
     const { plannerService } = await import('../../../src/core/ai/PlannerService');
     (plannerService.plan as any).mockResolvedValue({
       action: 'run_tool',
@@ -88,7 +96,11 @@ describe('Pipeline Integration', () => {
     } as PlannerDecision);
 
     const { agentOrchestrator } = await import('../../../src/core/ai/AgentOrchestrator');
-    const result = await agentOrchestrator.runTurn(buildAgentTurnInput({ userInput: 'test' }));
-    expect(result).toBeTruthy();
+    const outcome = await agentOrchestrator.runTurn(buildAgentTurnInput({ userInput: 'test' }));
+
+    expect(outcome.terminalState).toBe('failed');
+    expect(outcome.reasonCode).toBe('tool_failed');
+    expect(outcome.diagnostics.errors).toContain('NO_SUCH_TOOL');
+    expect(outcome.renderedAnswer).toBeNull();
   });
 });

@@ -291,8 +291,16 @@ describe('Tracer end-to-end', () => {
       model: 'gpt-4o-mini',
       modelContextWindow: 128000,
       userInput: 'Hello, what can you help me with?',
+      // Explicit Phase 3a reliability metadata at the selected-tool boundary.
       selectedToolSchemas: [
-        { name: 'search', description: 'Search notes', jsonSchema: { type: 'object' } },
+        {
+          name: 'search',
+          description: 'Search notes',
+          jsonSchema: { type: 'object' },
+          sideEffect: 'read',
+          idempotency: 'not-required',
+          evidence: { required: false },
+        },
       ],
     }) as AgentTurnInput;
 
@@ -300,9 +308,11 @@ describe('Tracer end-to-end', () => {
     const optimizeSpy = vi.spyOn(contextOptimizer, 'optimize');
 
     const { agentOrchestrator } = await import('../../../src/core/ai/AgentOrchestrator');
-    const response = await agentOrchestrator.runTurn(input);
+    const outcome = await agentOrchestrator.runTurn(input);
 
-    expect(response).toBe('Hello! I am here to help you.');
+    expect(outcome.renderedAnswer).toBe('Hello! I am here to help you.');
+    expect(outcome.terminalState).toBe('completed');
+    expect(outcome.trajectory.map((t) => t.state)).toContain('planning');
     expect(optimizeSpy).toHaveBeenCalledTimes(1);
     expect(mockGenerateText).toHaveBeenCalledTimes(2);
   }, 10000);
