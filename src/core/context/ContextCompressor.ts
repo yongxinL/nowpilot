@@ -49,6 +49,7 @@ export class ContextCompressor {
     budget: number,
     tier: ModelContextTier,
     compressionModelProvider?: () => Promise<ProviderAdapter | null>,
+    signal?: AbortSignal,
   ): Promise<{ sections: PromptSection[]; stepsApplied: string[] }> {
     let currentSections = sections.map((s) => ({ ...s }));
     const stepsApplied: string[] = [];

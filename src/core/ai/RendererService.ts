@@ -5,6 +5,7 @@ import { resolveTierModel } from './TierResolver';
 import { PipelineError } from './PipelineError';
 import { streamToAsyncIterable } from './StreamAdapter';
 import { inject } from './persona/PersonaInjector';
+import type { RenderingOutcomePolicy } from './RenderingOutcomePolicy';
 
 const BASE_SYSTEM_PROMPT = 'You are a helpful assistant. Provide clear, concise responses.';
 
@@ -30,30 +31,47 @@ function buildMessages(
 function buildSystemPrompt(
   optimized: OptimizedContext,
   decision: { action: 'answer'; reasonCode: string },
+  policy?: RenderingOutcomePolicy,
 ): string {
   const systemSection = optimized.sections.find((s) => s.kind === 'system');
-  return inject('renderer', [
+  const parts: string[] = [
     systemSection?.text ?? BASE_SYSTEM_PROMPT,
     `Response strategy: ${decision.reasonCode}`,
-  ].join('\n'));
+  ];
+  // D-11: the renderer includes only the policy's bounded evidence
+  // instruction — it never inspects CompletionEvidence or decides
+  // evidence sufficiency itself.
+  if (policy?.evidenceSummary) {
+    parts.push(`Evidence guidance: ${policy.evidenceSummary}`);
+  }
+  return inject('renderer', parts.join('\n'));
 }
 
 export class RendererService {
+  /**
+   * Synthesize the final answer from the orchestrator-supplied
+   * RenderingOutcomePolicy (D-11). The policy is required at every
+   * orchestrator call site; omitted-policy handling below is a defensive
+   * fallback only — the renderer never upgrades evidence or outcome state.
+   */
   async synthesize(
     adapter: ProviderAdapter,
     tier: ModelTier,
     decision: { action: 'answer'; reasonCode: string },
     optimized: OptimizedContext,
+    policy?: RenderingOutcomePolicy,
+    signal?: AbortSignal,
   ): Promise<string> {
     const { modelId } = resolveTierModel(adapter, tier);
     const model = adapter.createLanguageModel(modelId);
 
-    const systemPrompt = buildSystemPrompt(optimized, decision);
+    const systemPrompt = buildSystemPrompt(optimized, decision, policy);
 
     try {
       const { text } = await generateText({
         model,
         messages: buildMessages(decision, optimized, systemPrompt),
+        ...(signal ? { signal } : {}),
       });
       return text;
     } catch (err) {
@@ -70,15 +88,18 @@ export class RendererService {
     tier: ModelTier,
     decision: { action: 'answer'; reasonCode: string },
     optimized: OptimizedContext,
+    policy?: RenderingOutcomePolicy,
+    signal?: AbortSignal,
   ): Promise<AsyncIterable<StreamEvent>> {
     const { modelId } = resolveTierModel(adapter, tier);
     const model = adapter.createLanguageModel(modelId);
 
-    const systemPrompt = buildSystemPrompt(optimized, decision);
+    const systemPrompt = buildSystemPrompt(optimized, decision, policy);
 
     return streamToAsyncIterable({
       model,
       messages: buildMessages(decision, optimized, systemPrompt),
+      ...(signal ? { abortSignal: signal } : {}),
     });
   }
 }

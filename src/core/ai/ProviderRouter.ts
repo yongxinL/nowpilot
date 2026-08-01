@@ -92,7 +92,10 @@ export class ProviderRouter {
     return state?.hasStreamedFirstToken ?? false;
   }
 
-  async selectProvider(preferred: PipelineProviderId): Promise<{ adapter: ProviderAdapter; providerId: PipelineProviderId }> {
+  async selectProvider(
+    preferred: PipelineProviderId,
+    signal?: AbortSignal,
+  ): Promise<{ adapter: ProviderAdapter; providerId: PipelineProviderId }> {
     const attemptedProviders: string[] = [];
     const startIndex = PROVIDER_ORDER.indexOf(preferred);
     const orderedProviders = [
@@ -101,6 +104,11 @@ export class ProviderRouter {
     ];
 
     for (const providerId of orderedProviders) {
+      if (signal?.aborted) {
+        throw new PipelineError('ABORTED', 'Provider selection was aborted.', {
+          stage: 'provider-select',
+        });
+      }
       if (this.isCircuitBreakerOpen(providerId)) {
         attemptedProviders.push(`${providerId} (circuit open)`);
         continue;
@@ -108,6 +116,11 @@ export class ProviderRouter {
 
       if (providerId !== 'ollama') {
         const apiKey = await useApiKeyStore.getState().getKey(providerId);
+        if (signal?.aborted) {
+          throw new PipelineError('ABORTED', 'Provider selection was aborted.', {
+            stage: 'api-key',
+          });
+        }
         if (!apiKey) {
           attemptedProviders.push(`${providerId} (no key)`);
           continue;
@@ -115,6 +128,11 @@ export class ProviderRouter {
       }
 
       const adapter = await this.buildAdapter(providerId);
+      if (signal?.aborted) {
+        throw new PipelineError('ABORTED', 'Provider selection was aborted.', {
+          stage: 'adapter-construction',
+        });
+      }
       if (!adapter) {
         attemptedProviders.push(`${providerId} (unavailable)`);
         continue;

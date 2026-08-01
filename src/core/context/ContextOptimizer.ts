@@ -75,6 +75,13 @@ export class ContextOptimizer {
       });
     }
 
+    const signal = input.abortSignal;
+    if (signal?.aborted) {
+      throw new PipelineError('ABORTED', 'Context optimization was aborted.', {
+        stage: 'optimize-entry',
+      });
+    }
+
     const tier = classifyModelContext(input.modelContextWindow);
     const budget = tokenBudget.allocateBudget(tier, input.modelContextWindow);
     const { inputBudget, outputBudget } = budget;
@@ -100,12 +107,23 @@ export class ContextOptimizer {
     const totalBeforeDegradation = sections.reduce((sum, s) => sum + s.tokens, 0);
 
     if (totalBeforeDegradation > inputBudget) {
+      if (signal?.aborted) {
+        throw new PipelineError('ABORTED', 'Context optimization was aborted.', {
+          stage: 'before-compression',
+        });
+      }
       const result = await contextCompressor.compress(
         sections,
         inputBudget,
         tier,
         () => providerRouter.getCompressionModel(),
+        signal,
       );
+      if (signal?.aborted) {
+        throw new PipelineError('ABORTED', 'Context optimization was aborted.', {
+          stage: 'after-compression',
+        });
+      }
       sections = result.sections;
       stepsApplied = result.stepsApplied;
 
