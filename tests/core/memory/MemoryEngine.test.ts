@@ -217,9 +217,11 @@ describe('MemoryEngine', () => {
       expect(blocked.code).toBe('NOT_PRIMARY_SURFACE');
     }
 
-    // No WriteJournal entry and no IndexedDB mutation happened
+    // The blocked write must not create ANY journal entry — only the
+    // successful write earlier in this test left one
     expect(await getEntriesByStatus('pending')).toHaveLength(0);
-    expect(await getEntriesByStatus('completed')).toHaveLength(0);
+    expect(await getEntriesByStatus('failed')).toHaveLength(0);
+    expect(await getEntriesByStatus('completed')).toHaveLength(1);
     const userStore = new UserMemoryStore();
     const facts = await userStore.getAll();
     expect(facts.some((f) => f.content === 'secondary write')).toBe(false);
@@ -339,6 +341,9 @@ describe('MemoryEngine', () => {
   });
 
   it('retrieval is deterministic — same query and tier produce identical ContextItem[]', async () => {
+    // freshness/relevance use the D-08 30-day decay against Date.now();
+    // pin the clock so both retrieves run with identical time context
+    vi.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000);
     for (let i = 0; i < 4; i++) {
       await engine.write(
         {
@@ -402,15 +407,16 @@ describe('MemoryEngine', () => {
     await engine.trackConversationActivity('conv-b');
     expect(await engine.getConversationStats()).toEqual({ active: 2, archived: 0, total: 2 });
 
-    // conv-a idle for 31 minutes → archived when conv-c becomes active
+    // 31 minutes later: conv-a AND conv-b are both idle (>30 min) → both
+    // archived when conv-c becomes active
     now += 31 * MINUTE_MS;
     await engine.trackConversationActivity('conv-c');
-    expect(await engine.getConversationStats()).toEqual({ active: 2, archived: 1, total: 3 });
+    expect(await engine.getConversationStats()).toEqual({ active: 1, archived: 2, total: 3 });
 
-    // conv-b idle after another 31 minutes
+    // another 31 minutes: conv-c now idle → archived; conv-a reactivates
     now += 31 * MINUTE_MS;
     await engine.trackConversationActivity('conv-a');
-    expect(await engine.getConversationStats()).toEqual({ active: 2, archived: 2, total: 4 });
+    expect(await engine.getConversationStats()).toEqual({ active: 1, archived: 3, total: 4 });
   });
 
   it('getConversationStats reports accurate LRU state (Test 13)', async () => {

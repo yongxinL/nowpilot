@@ -1,4 +1,5 @@
 import type { ContextItem } from '../context/ContextItem';
+import type { WriteJournalOperation } from '../storage/WriteJournal';
 
 /**
  * Retrieval result — discriminated union, never thrown for operational
@@ -36,7 +37,11 @@ export interface RetrievalOptions {
 }
 
 /**
- * WriteJournal operation names for memory writes (matches the Phase 2
- * WriteJournalOperation union).
+ * WriteJournal operation names for memory writes — extracted from the Phase 2
+ * WriteJournalOperation union (single source of truth, structurally
+ * assignable to WriteJournalOperation).
  */
-export type MemoryStoreWriteOp = 'update-user-memory' | 'write-preference' | 'compact-conversation';
+export type MemoryStoreWriteOp = Extract<
+  WriteJournalOperation,
+  'update-user-memory' | 'write-preference' | 'compact-conversation'
+>;

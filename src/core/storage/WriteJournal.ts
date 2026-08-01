@@ -10,6 +10,7 @@ export type WriteJournalOperation =
   | 'compact-conversation'
   | 'save-note-with-links'
   | 'update-user-memory'
+  | 'write-preference'
   | 'export-data';
 
 export type WriteJournalStatus = 'pending' | 'applying' | 'completed' | 'failed' | 'rolled-back';
