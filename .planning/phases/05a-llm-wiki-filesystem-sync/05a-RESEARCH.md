@@ -666,7 +666,7 @@ private async migrateV5(transaction: VersionChangeTransaction): Promise<void> {
 | A3 | `idb` package's `openDB` with structured clone can persist `FileSystemDirectoryHandle` across extension restarts | Architecture Patterns | Low — Chrome explicitly documents handle persistence via IndexedDB in the File System Access API guide. |
 | A4 | NoteTaggerResult Schema from PRODUCT_SPEC Appendix C (`NoteTagResultSchema`) is the authoritative schema shape — adapted with `enrichment`/`memoryFacts` partitions per D-01 | Code Examples | Low — CONTEXT.md D-01 provides the partition structure and references the Appendix C schema as the base contract. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **ProviderAdapter acquisition for LlmService**
    - What we know: LlmService needs a `ProviderAdapter` to create language models. TierResolver resolves model by tier. AgentOrchestrator already has a provider-selection flow.

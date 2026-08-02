@@ -38,7 +38,7 @@ prohibitions:
 ---
 
 <objective>
-Establish the foundation for Phase 5a: install new dependencies (yaml, @types/wicg-file-system-access), extend NoteSchema with Phase 5a fields, add MigrationRunner v5 for the backup_config store, bump NotesDB to v5, create the shared LlmService facade, and build the NoteTagger service with EventBus subscription — all wired as an end-to-end tracer proving the architecture.
+Establish the foundation for Phase 5a: install new dependencies (yaml, @types/wicg-file-system-access), extend NoteSchema with Phase 5a fields, add MigrationRunner v5 for the backup_config store, bump NotesDB to v5, create the shared LlmService facade, and build the NoteTagger service with EventBus subscription — all wired as an end-to-end tracer proving the architecture. NoteTagger's two output partitions map to two independent review surfaces (D-02): enrichment suggestions (tags/category/summary/concepts) render as accept/reject inline on the note editor, while memoryFacts render in a separate "New Memory Facts" notification/side-panel flow.
 
 Purpose: Prove the LLM enrichment architecture (LlmService → NoteTagger → EventBus → NotesDB) end-to-end before expanding to the other 4 services. Every subsequent plan builds on this proven slice.
 Output: Working LlmService + NoteTagger with a green end-to-end tracer test.
