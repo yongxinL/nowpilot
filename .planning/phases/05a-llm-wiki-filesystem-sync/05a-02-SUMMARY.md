@@ -212,3 +212,10 @@ None - no external service configuration required.
 ---
 *Phase: 05a-llm-wiki-filesystem-sync*
 *Completed: 2026-08-02*
+
+## Self-Check: PASSED
+
+- SUMMARY.md exists at `.planning/phases/05a-llm-wiki-filesystem-sync/05a-02-SUMMARY.md`
+- Commits verified in git log: `0ecb8b6` (T1 RED), `11e8d46` (T1 GREEN), `fb6b1ab` (T2 RED), `e2dc080` (T2 GREEN), `75ea173` (T3 RED), `c63e0a0` (T3 GREEN), `2d7c4b1` (SUMMARY)
+- All 7 modified files exist on disk
+- Plan-level verification: `npx vitest run tests/core/notes/NoteFileSync.test.ts tests/core/notes/NotesDB.test.ts tests/core/notes/NoteQA.test.ts tests/core/notes/NoteMaintenance.test.ts --no-coverage` → 89/89 pass; `npx tsc --noEmit` → clean; grep checks for `note:deleted`/`note:renamed` in both NotesDB.ts and NoteFileSync.ts and `tagsGeneratedAt=`/`summaryGeneratedAt=` in NotesDB.ts → all match
