@@ -72,8 +72,20 @@ export class NotesDB {
       const existing = await this.get(parsed.id);
       const version = existing.success ? existing.note.version + 1 : parsed.version;
 
+      // D-11: never reset lastSyncedAt on a re-save. The UI re-saves the
+      // full note object after enrichment acceptance (D-18); if the payload
+      // omits the sync timestamp, keep the persisted one — otherwise every
+      // re-save would look like an external change to NoteFileSync.
+      const lastSyncedAt =
+        parsed.lastSyncedAt !== undefined
+          ? parsed.lastSyncedAt
+          : existing.success
+            ? existing.note.lastSyncedAt
+            : undefined;
+
       const finalNote: Note = {
         ...parsed,
+        lastSyncedAt,
         links,
         unresolvedLinks,
         version,
