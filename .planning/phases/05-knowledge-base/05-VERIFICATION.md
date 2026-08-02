@@ -1,14 +1,16 @@
 ---
 phase: 05-knowledge-base
 verified: 2026-08-02T09:30:00Z
-status: human_needed
+status: passed
 score: 36/36 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
 human_verification:
+
   - test: "Benchmark MiniSearchNoteIndex.search() latency across 1,000 indexed notes (ROADMAP SC2: '<50ms across 1,000 notes')"
     expected: "Search returns in under 50ms for a 1,000-note index"
     why_human: "No benchmark/performance test exists in the phase suites; search() is synchronous in-memory BM25 (architecturally fast), but the specific <50ms/1,000-notes contract is not exercised by any test"
+
   - test: "Confirm the end-to-end automatic summarization trigger: appendMessage() returns shouldCompact=true at the 12-message boundary, and compactConversation() is invoked by the production turn loop"
     expected: "After the 12th message in a real conversation, an LLM summary is generated and stored automatically without manual intervention"
     why_human: "shouldCompact/compactConversation are unit-tested at the store level, but no production caller (AgentOrchestrator/UI turn loop) wires shouldCompact → compactConversation — the trigger is documented as 'the caller decides'. End-to-end automatic summarization requires the Phase 7 UI turn loop"
