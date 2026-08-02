@@ -72,20 +72,28 @@ export class NotesDB {
       const existing = await this.get(parsed.id);
       const version = existing.success ? existing.note.version + 1 : parsed.version;
 
-      // D-11: never reset lastSyncedAt on a re-save. The UI re-saves the
-      // full note object after enrichment acceptance (D-18); if the payload
-      // omits the sync timestamp, keep the persisted one — otherwise every
-      // re-save would look like an external change to NoteFileSync.
+      // D-11/WR-04: never reset the sync state on a re-save. The UI re-saves
+      // the full note object after enrichment acceptance (D-18); if the
+      // payload omits the sync fields, keep the persisted ones — otherwise
+      // every re-save would look like an external change to NoteFileSync
+      // (lastSyncedAt) and lose owned-file reuse (lastSyncedFileName).
       const lastSyncedAt =
         parsed.lastSyncedAt !== undefined
           ? parsed.lastSyncedAt
           : existing.success
             ? existing.note.lastSyncedAt
             : undefined;
+      const lastSyncedFileName =
+        parsed.lastSyncedFileName !== undefined
+          ? parsed.lastSyncedFileName
+          : existing.success
+            ? existing.note.lastSyncedFileName
+            : undefined;
 
       const finalNote: Note = {
         ...parsed,
         lastSyncedAt,
+        lastSyncedFileName,
         links,
         unresolvedLinks,
         version,
@@ -189,13 +197,27 @@ export class NotesDB {
     return undefined;
   }
 
-  /** Update only the lastSyncedAt field after a successful file write (D-11). */
-  async updateLastSyncedAt(id: string, timestamp: number): Promise<void> {
+  /**
+   * Update sync-state fields after a successful file write (D-11 / WR-04):
+   * a raw put merging state into the persisted note, mirroring the
+   * updateLastSyncedAt pattern. `lastSyncedAt` and `lastSyncedFileName`
+   * are persisted atomically so owned-file reuse (WR-04) never sees a
+   * stripped tracking field.
+   */
+  async updateSyncState(
+    id: string,
+    state: { lastSyncedAt?: number; lastSyncedFileName?: string },
+  ): Promise<void> {
     const db = await openNotesDb();
     const existing = await this.get(id);
     if (!existing.success) return;
-    const updated: Note = { ...existing.note, lastSyncedAt: timestamp };
+    const updated: Note = { ...existing.note, ...state };
     await db.put('notes', updated);
+  }
+
+  /** Update only the lastSyncedAt field after a successful file write (D-11). */
+  async updateLastSyncedAt(id: string, timestamp: number): Promise<void> {
+    await this.updateSyncState(id, { lastSyncedAt: timestamp });
   }
 
   /** Delete a note. */

@@ -324,34 +324,18 @@ export class NoteFileSync {
       if (!found.success) return; // note deleted between event and fire
       const note = found.note;
 
-      // D-11: external-change detection — file.lastModified vs lastSyncedAt
-      // with a 2s tolerance. A newer external file is never overwritten;
-      // the sync falls through to a D-12 collision write instead.
-      const existing = await this.tryGetExistingFile(note);
-      let externalChange = false;
-      if (existing) {
-        const lastSyncedAt = note.lastSyncedAt ?? 0;
-        externalChange = existing.lastModified > lastSyncedAt + EXTERNAL_CHANGE_TOLERANCE_MS;
-        if (externalChange) {
-          emit<ExternalChangeEvent>('sync:external-change', {
-            noteId: note.id,
-            title: note.title,
-            localModified: note.updatedAt,
-            fileModified: existing.lastModified,
-          });
-        }
-      }
-
-      // D-12 / SYNC-05: when the canonical file exists and is owned by a
-      // different (or externally-modified) file, resolve via numeric
-      // suffixing instead of overwriting.
-      const fileName = existing && externalChange ? await this.collideFileName(note) : `${sanitizeFilename(note.title)}.md`;
+      // CR-02 / WR-04: ownership-aware target selection — never overwrite a
+      // file whose frontmatter id belongs to a different note; reuse the
+      // note's own last-written file when it still exists and is fresh.
+      const fileName = await this.selectTargetFile(note);
 
       await this.writeNoteFile(note, fileName);
       const now = Date.now();
       this._lastSyncAt = now;
       this._error = undefined;
-      await getNotesDb().updateLastSyncedAt(noteId, now);
+      // D-11 / WR-04: persist both sync-state fields atomically so the next
+      // sync can reuse the exact file just written.
+      await getNotesDb().updateSyncState(noteId, { lastSyncedAt: now, lastSyncedFileName: fileName });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       const isNotAllowed = err instanceof DOMException && err.name === 'NotAllowedError';
@@ -368,16 +352,75 @@ export class NoteFileSync {
     }
   }
 
-  /** Existing file for the note's canonical path, or null when absent. */
-  private async tryGetExistingFile(note: Note): Promise<File | null> {
+  /**
+   * CR-02 / WR-04: choose the file to write for a note.
+   *
+   * Candidate order: the note's owned file (lastSyncedFileName) first, then
+   * the canonical `{title}.md`. For each existing candidate:
+   * - frontmatter id belongs to a DIFFERENT note → never overwrite; pure
+   *   D-12 collision (no sync:external-change event).
+   * - owned by this note (or frontmatter unparseable) → D-11 timestamp
+   *   check; a newer external file emits sync:external-change and collides.
+   * - otherwise the candidate is this note's file → overwrite it (D-18).
+   */
+  private async selectTargetFile(note: Note): Promise<string> {
+    const canonical = `${sanitizeFilename(note.title)}.md`;
+    const candidates = note.lastSyncedFileName ? [note.lastSyncedFileName, canonical] : [canonical];
+
+    for (const candidate of candidates) {
+      const existing = await this.tryGetFile(note, candidate);
+      if (!existing) {
+        // Missing candidate: an owned file that no longer exists falls
+        // through to the canonical check; the canonical file missing (or
+        // no owned file) means the canonical path is free — write it.
+        if (candidate === canonical) return candidate;
+        continue;
+      }
+      const ownerId = await this.readOwnerId(existing);
+      if (ownerId !== null && ownerId !== note.id) {
+        continue; // a different note's file → never overwrite (CR-02)
+      }
+      if (this.isExternalChange(note, existing)) {
+        // D-11: the user's newer file is never overwritten — fall through to
+        // a suffixed write and surface the conflict.
+        emit<ExternalChangeEvent>('sync:external-change', {
+          noteId: note.id,
+          title: note.title,
+          localModified: note.updatedAt,
+          fileModified: existing.lastModified,
+        });
+        return this.collideFileName(note);
+      }
+      return candidate; // owned by this note and fresh → overwrite (D-18)
+    }
+    return this.collideFileName(note);
+  }
+
+  /** Existing file for a given file name in the note's directory, or null. */
+  private async tryGetFile(note: Note, fileName: string): Promise<File | null> {
     try {
       const parent = await this.resolveDir(buildFilePath(note.categoryPath, note.title), false, true);
       if (!parent) return null;
-      const fileHandle = await parent.getFileHandle(`${sanitizeFilename(note.title)}.md`);
+      const fileHandle = await parent.getFileHandle(fileName);
       return await fileHandle.getFile();
     } catch {
       return null;
     }
+  }
+
+  /** Frontmatter owner id of an existing file; null when absent/unparseable. */
+  private async readOwnerId(file: File): Promise<string | null> {
+    try {
+      const id = parseNoteFile(await file.text()).frontmatter.id;
+      return typeof id === 'string' && id.length > 0 ? id : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** D-11: true when the file is newer than the note's last sync + tolerance. */
+  private isExternalChange(note: Note, file: File): boolean {
+    return file.lastModified > (note.lastSyncedAt ?? 0) + EXTERNAL_CHANGE_TOLERANCE_MS;
   }
 
   /** Write the .md file at {categoryPath}/{fileName} (SYNC-04/05). */
@@ -396,7 +439,12 @@ export class NoteFileSync {
 
   /**
    * D-12 / SYNC-05 collision resolution: `{title} 1.md`, `{title} 2.md`, …
-   * Returns the first suffixed file name that does not already exist.
+   * Returns the first suffixed file name that is usable — a candidate is
+   * usable when it is absent, or when it is neither foreign-owned (frontmatter
+   * id of a DIFFERENT note — CR-02) nor externally modified (D-11). An
+   * external edit of the note's own file — frontmatter intact or wiped —
+   * advances to a fresh suffix instead of being overwritten (WR-04 — no
+   * unbounded suffix accumulation across re-saves).
    */
   private async collideFileName(note: Note): Promise<string> {
     const stem = sanitizeFilename(note.title);
@@ -405,15 +453,31 @@ export class NoteFileSync {
     let suffix = 1;
     for (;;) {
       const candidate = `${stem} ${suffix}.md`;
-      try {
-        await dir.getFileHandle(candidate);
-        suffix++;
-      } catch (err) {
-        if (err instanceof DOMException && err.name === 'NotFoundError') {
-          return candidate;
-        }
-        throw err;
+      const existing = await this.tryReadFileInDir(dir, candidate);
+      if (!existing) return candidate; // absent → usable
+      const ownerId = await this.readOwnerId(existing);
+      if (ownerId !== null && ownerId !== note.id) {
+        suffix++; // a different note's file → skip (CR-02)
+        continue;
       }
+      if (this.isExternalChange(note, existing)) {
+        suffix++; // own or unparseable file but externally modified → never
+        continue; // overwrite a newer external file (D-11); fresh suffix (WR-04)
+      }
+      return candidate; // unparseable or own file, not external → usable
+    }
+  }
+
+  /** Read a file from a directory, or null when it does not exist. */
+  private async tryReadFileInDir(
+    dir: FileSystemDirectoryHandle,
+    fileName: string,
+  ): Promise<File | null> {
+    try {
+      const fileHandle = await dir.getFileHandle(fileName);
+      return await fileHandle.getFile();
+    } catch {
+      return null;
     }
   }
 
@@ -448,30 +512,7 @@ export class NoteFileSync {
   }
 
   /**
-   * D-12 / SYNC-05 collision resolution: `{title}.md` first; on
-   * NotFoundError retry with `{title} 1.md`, `{title} 2.md`, …
-   */
-  private async getFileHandleWithCollision(
-    dir: FileSystemDirectoryHandle,
-    baseName: string,
-  ): Promise<FileSystemFileHandle> {
-    const stem = baseName.replace(/\.md$/, '');
-    let suffix = 0;
-    for (;;) {
-      const candidate = suffix === 0 ? `${stem}.md` : `${stem} ${suffix}.md`;
-      try {
-        return await dir.getFileHandle(candidate, { create: true });
-      } catch (err) {
-        if (!(err instanceof DOMException && err.name === 'NotFoundError')) {
-          throw err;
-        }
-        suffix++;
-      }
-    }
-  }
-
-  /**
-   * D-12: after a note rename, delete the orphaned .md at the old path and
+   * D-12 / SYNC-05: after a note rename, delete the orphaned .md at the old path and
    * remove now-empty parent category folders (bottom-up, empty only).
    */
   async handleNoteRename(oldNoteId: string, oldFilePath: string): Promise<void> {
@@ -506,7 +547,6 @@ export class NoteFileSync {
     // Ascend: remove empty parent directories only (T-05a-12). The dir-path
     // resolution returns the target directory itself, so the entry must be
     // removed from the directory one level above (when one exists).
-    let current = dir;
     const pathSegments = [...segments];
     while (pathSegments.length > 0) {
       const target = await this.resolveDir(pathSegments.join('/'), false, false);
@@ -524,7 +564,6 @@ export class NoteFileSync {
           : this._handle;
       if (!parent) break;
       await parent.removeEntry(entryName);
-      current = target;
       pathSegments.pop();
     }
   }

@@ -356,9 +356,10 @@ describe('NoteFileSync', () => {
     expect(canonical.content).toContain(noteA.id);
 
     // B re-saves → reuses its own React 1.md (no new suffix, no canonical
-    // ping-pong); React.md keeps A's content AND frontmatter id.
+    // ping-pong); React.md keeps A's content AND frontmatter id. Re-save via
+    // save() (the app path) — it preserves lastSyncedAt/lastSyncedFileName.
     const updatedB = { ...noteB, content: 'B content v2' };
-    await getNotesDb().restore(updatedB);
+    await getNotesDb().save(updatedB);
     await sync.syncNote(noteB.id);
     expect(collided.content).toContain('B content v2');
     expect(collided.content).toContain(noteB.id);
@@ -410,7 +411,7 @@ describe('NoteFileSync', () => {
     const canonical = fs.categoryDir.children.get('React.md') as MockFileHandle;
     expect(canonical).toBeDefined();
 
-    await getNotesDb().restore({ ...noteA, content: 'v2' });
+    await getNotesDb().save({ ...noteA, content: 'v2' });
     await sync.syncNote(noteA.id);
     expect(fs.categoryDir.children.has('React 1.md')).toBe(false);
     expect(canonical.content).toContain('v2');
@@ -423,7 +424,14 @@ describe('NoteFileSync', () => {
     const sync = getNoteFileSync();
     await sync.setBackupFolder();
 
-    // React 1.md already belongs to note C (its frontmatter id).
+    // React.md belongs to note A (canonical write) and React 1.md already
+    // belongs to note C (its frontmatter id) — B's collision scan must skip
+    // both foreign-owned files and pick React 2.md.
+    const now = Date.now();
+    const noteA = makeNote({ title: 'React', categoryPath: 'Inbox', lastSyncedAt: now });
+    await getNotesDb().restore(noteA);
+    await sync.syncNote(noteA.id);
+
     const noteC = makeNote({ title: 'React', categoryPath: 'Inbox' });
     await getNotesDb().restore(noteC);
     addFile(fs.categoryDir, 'React 1.md', fm({ id: noteC.id, title: 'React' }), Date.now() + 10000);
@@ -435,7 +443,8 @@ describe('NoteFileSync', () => {
     const second = fs.categoryDir.children.get('React 2.md') as MockFileHandle;
     expect(second).toBeDefined();
     expect(second.content).toContain(noteB.id);
-    expect(fs.categoryDir.children.get('React 1.md')!.content).toContain(noteC.id);
+    expect((fs.categoryDir.children.get('React 1.md') as MockFileHandle).content).toContain(noteC.id);
+    expect((fs.categoryDir.children.get('React.md') as MockFileHandle).content).toContain(noteA.id);
   });
 
   // ── Permission ─────────────────────────────────────────────────────────────

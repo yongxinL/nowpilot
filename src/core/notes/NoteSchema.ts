@@ -36,6 +36,7 @@ export const NoteSchema = z.object({
   // ── Phase 5a additions (all optional — existing Phase 5 notes/tests unchanged) ──
   summary: z.string().optional(),
   lastSyncedAt: z.number().optional(), // D-11: NoteFileSync external-change detection
+  lastSyncedFileName: z.string().optional(), // WR-04: exact file name this note last wrote (owned-file reuse)
   summaryGeneratedAt: z.number().optional(), // NoteMaintenance staleness (D-21)
   tagsGeneratedAt: z.number().optional(), // NoteMaintenance staleness (D-21)
 });
