@@ -11,23 +11,19 @@ files_modified:
   - src/core/notes/NotesDB.ts
   - src/core/ai/LlmService.ts
   - src/core/notes/NoteTagger.ts
-  - tests/core/ai/LlmService.test.ts
   - tests/core/notes/NoteTagger.test.ts
 autonomous: true
 requirements: [NOTE-02, NOTE-03]
 
 must_haves:
   truths:
-    - "NoteSchema exports summary, lastSyncedAt, summaryGeneratedAt, tagsGeneratedAt as optional number/string fields — existing Phase 5 tests still pass"
-    - "MigrationRunner.migrateV5 creates backup_config object store (keyPath: id) when oldVersion < 5"
-    - "NotesDB.openNotesDb() opens at version 5 — idb openDB/upgrade uses v5 schema"
-    - "LlmService.generate() accepts adapter, tier, systemPrompt, userPrompt, schema, abortSignal and returns Zod-validated typed output via generateWithRepair"
-    - "NoteTagger.analyze() calls LlmService.generate() with FAST tier, Temperature 0, and NoteTaggerResultSchema"
-    - "NoteTagger.initNoteTagger() subscribes to EventBus note:saved — handler fires non-blocking, errors swallowed"
-    - "Tracer end-to-end: a note is saved → note:saved emitted → NoteTagger LLM call resolves a valid NoteTaggerResult with enrichment and memoryFacts partitions"
-    - "{ statement: \"NOTE-02: auto-tag/category/summary enrichment must not silently drop features — unclassified scope\", verification: \"backstop\" }"
-    - "{ statement: \"NOTE-03: What happens if save triggers sync on the same note twice in rapid succession?\", verification: \"backstop\" }"
-    - "{ statement: \"NOTE-03: If interrupted or run in parallel across surfaces, what is guaranteed about filesystem state?\", verification: \"backstop\" }"
+    - "Saving a note generates both enrichment suggestions (tags, category, summary) and memory facts from a single haiku-tier AI call"
+    - "The notes database upgrades from v4 to v5 without data loss — existing notes, graphs, and search indices survive the migration"
+    - "A backup folder configuration store exists after migration so handles can persist across browser sessions"
+    - "AI enrichment runs asynchronously without blocking note saving — the user can continue editing immediately"
+    - "Malformed or invalid AI responses are caught and silently discarded without crashing the application"
+    - "The enrichment pipeline yields two distinct result partitions — one for note display suggestions and one for memory extraction candidates"
+    - "An end-to-end save triggers the complete tracer path: event emission → AI analysis → validated enrichment result with both partitions"
   artifacts:
     - src/core/ai/LlmService.ts
     - src/core/notes/NoteTagger.ts
