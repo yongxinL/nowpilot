@@ -170,7 +170,18 @@ export class NoteQA {
       if (used.has(c.referenceNumber)) continue;
       if (c.referenceNumber < 1 || c.referenceNumber > snippets.length) continue;
       used.add(c.referenceNumber);
-      out.push(c);
+      // WR-05: rebuild from the snippet array by index — the LLM is not
+      // trusted for note identity (T-05a-08). Its noteId/title/
+      // relevantSnippet fields are IGNORED entirely; only the snippet
+      // data derived from the actual index is authoritative (D-13:
+      // never cite non-existent notes).
+      const s = snippets[c.referenceNumber - 1];
+      out.push({
+        noteId: s.noteId,
+        title: s.title,
+        relevantSnippet: s.snippet,
+        referenceNumber: c.referenceNumber,
+      });
     }
     return out;
   }
