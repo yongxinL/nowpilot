@@ -18,7 +18,7 @@ must_haves:
   truths:
     - "A native-shaped FileSystemDirectoryHandle persists through IndexedDB and a simulated extension restart resumes syncing without re-selection — writes reach the filesystem, not a phantom in-memory tree (CR-01, D-09)"
     - "A class-based test-double handle still persists via the plain-data snapshot path and rehydrates functionally (existing behavior preserved)"
-    - "Two notes with the same sanitized title never cross-write: the second note's re-saves reuse its own suffixed file and the first note's canonical .md keeps its content and frontmatter id (CR-02, WR-04)"
+    - "Two notes with the same sanitized title never cross-write: the second note's re-saves reuse its own suffixed file and the first note's canonical .md keeps its content and frontmatter id (CR-02, WR-04, D-12)"
     - "A note whose owned .md file was externally modified writes to a fresh numeric suffix instead of overwriting (D-11 preserved; WR-04 — no unbounded suffix accumulation across re-saves)"
     - "Rapid note:saved events for DIFFERENT notes within the debounce window all reach the filesystem (per-note debounce, WR-01); repeated saves of the SAME note still coalesce"
     - "NotesDB.save() preserves lastSyncedFileName across re-saves exactly like lastSyncedAt (D-11/D-18 preservation extended)"
