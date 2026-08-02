@@ -284,12 +284,12 @@ Plans:
   4. User sets a backup folder via showDirectoryPicker() (Full App only) — per-save .md files are written with YAML frontmatter, nested categoryPath folders, collision suffixing, and external-change detection
   5. User restores notes from folder — additive upsert previews "Found N notes (X new, Y updated, Z unchanged)" and never deletes local notes not in the folder; v4 migration is idempotent
 
-**Plans**: 3 plans
+**Plans**: 1/3 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 05a-01-PLAN.md — TRACER: Foundation (deps + NoteSchema + Migration v5 + NotesDB v5) → LlmService → NoteTagger end-to-end with EventBus note:saved handler (NOTE-02, NOTE-03)
+- [x] 05a-01-PLAN.md — TRACER: Foundation (deps + NoteSchema + Migration v5 + NotesDB v5) → LlmService → NoteTagger end-to-end with EventBus note:saved handler (NOTE-02, NOTE-03)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -481,7 +481,7 @@ Decimal phases execute after their parent integer phase: 3 → 3a → 4 → 4a �
 | 4a. Page Content Extraction | 6/6 | Completed | 2026-07-31 |
 | 4b. Trust-Aware Context & Receipts | 6/6 | Complete    | 2026-08-01 |
 | 5. Knowledge Base | 3/3 | Complete    | 2026-08-02 |
-| 5a. LLM-Wiki & Filesystem Sync | TBD | Not started | - |
+| 5a. LLM-Wiki & Filesystem Sync | 1/3 | In Progress|  |
 | 5b. Memory Governance & Experience Candidates | TBD | Not started | - |
 | 6. Telemetry & Diagnostics | TBD | Not started | - |
 | 6a. Agent Evaluation | TBD | Not started | - |

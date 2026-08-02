@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 05a
 current_phase_name: llm-wiki-filesystem-sync
 status: executing
-stopped_at: Phase 05a context gathered
-last_updated: "2026-08-02T03:24:20.346Z"
+stopped_at: Completed 05a-01-PLAN.md
+last_updated: "2026-08-02T03:43:15.785Z"
 last_activity: 2026-08-02
 last_activity_desc: Phase 05a execution started
 progress:
   total_phases: 19
   completed_phases: 8
   total_plans: 42
-  completed_plans: 39
+  completed_plans: 40
   percent: 42
 ---
 
@@ -30,11 +30,11 @@ See: .planning/PROJECT.md (updated 2026-08-02)
 ## Current Position
 
 Phase: 05a (llm-wiki-filesystem-sync) — EXECUTING
-Plan: 1 of 3
-Status: Executing Phase 05a
+Plan: 2 of 3
+Status: Ready to execute
 Last activity: 2026-08-02 — Phase 05a execution started
 
-Progress: [████████████████████] 39/39 plans ([██████████] 100%) (8/19 phases complete)
+Progress: [████████████████████] 39/39 plans ([██████████] 95%) (8/19 phases complete)
 
 ## Performance Metrics
 
@@ -76,6 +76,7 @@ Progress: [████████████████████] 39/39 p
 | Phase 05 P01 | 8min | 3 tasks | 14 files |
 | Phase 05-knowledge-base P05-02 | 33min | 3 tasks | 12 files |
 | Phase 05 P05-03 | 12min | 2 tasks | 8 files |
+| Phase 05a P01 | 13min | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -127,6 +128,12 @@ MemoryEngine.write() routes via UserMemoryStore.upsert (plan step 4); non-semant
 ContextItem tokens use tokenBudget.estimateTokens() — canonical Phase 4 estimation service
 UserMemoryStore.getAll() returns all records in the shared store; MemoryEngine filters memoryType==='semantic' before D-09 fact scoring (D-06 store independence)
 
+- [Phase ?]: LlmService delegates to generateWithRepair — error semantics inherited (PipelineError re-thrown, AbortError → ABORTED, unknown → UNKNOWN)
+- [Phase ?]: NoteTagger.analyze() returns null on LLM error instead of throwing — fire-and-forget contract at both analyze() and the EventBus handler
+- [Phase ?]: note:saved payload carries version (D-07); handler falls back to DB-read version when absent
+- [Phase ?]: MiniSearchNoteIndex bumped to NotesDB v5 (VersionError fix from the plan's own v5 directive); resetNoteTagger() unsubscribes to prevent stale-handler leak
+- [Phase ?]: @types/wicg-file-system-access in devDependencies; @testing-library/dom@^10 restored (pruned by initial npm install from drifted lockfile)
+
 ### Pending Todos
 
 None yet.
@@ -145,6 +152,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-02T02:34:13.080Z
-Stopped at: Phase 05a context gathered
-Resume file: .planning/phases/05a-llm-wiki-filesystem-sync/05a-CONTEXT.md
+Last session: 2026-08-02T03:42:19.624Z
+Stopped at: Completed 05a-01-PLAN.md
+Resume file: None
