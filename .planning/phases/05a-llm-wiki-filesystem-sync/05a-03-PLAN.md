@@ -110,7 +110,7 @@ Output: Green regression gate + deferred-items.md updated with the Phase 7 hando
     Each row: status `open`, deferred-at `2026-08-02`, and a `where` pointing at the Phase 7 surface.
   </action>
   <verify>
-    <automated>grep -c "Phase 7" .planning/phases/05a-llm-wiki-filesystem-sync/deferred-items.md</automated>
+    <automated>[ "$(grep -c 'Phase 7' .planning/phases/05a-llm-wiki-filesystem-sync/deferred-items.md)" -ge 6 ]</automated>
   </verify>
   <done>
     - deferred-items.md contains ≥6 new rows referencing Phase 7 (SC1/SC2/SC3, real-browser FSA, backstop ×2, unresolved widget, staleness hint).
