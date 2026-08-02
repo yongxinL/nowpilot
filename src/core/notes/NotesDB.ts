@@ -17,6 +17,13 @@ export interface NoteDeletedEvent {
   noteId: string;
   title: string;
   categoryPath: string;
+  /**
+   * CR-01: the exact .md file name this note last wrote (WR-04). A collided
+   * note's backup lives at a suffixed path (`Title 1.md`) while the
+   * canonical `Title.md` may belong to a DIFFERENT note — cleanup must
+   * target this note's own file, never the canonical one.
+   */
+  lastSyncedFileName?: string;
 }
 
 /**
@@ -28,6 +35,12 @@ export interface NoteRenamedEvent {
   noteId: string;
   oldTitle: string;
   oldCategoryPath: string;
+  /**
+   * CR-01: the exact .md file name the note owned before the rename (WR-04).
+   * Overrides the canonical `{oldTitle}.md` when the note's backup was
+   * collision-suffixed, so cleanup never deletes another note's file.
+   */
+  lastSyncedFileName?: string;
 }
 
 // ── Database connection (WriteJournal pattern: module-level cached promise) ──
@@ -207,6 +220,9 @@ export class NotesDB {
             noteId: parsed.id,
             oldTitle: existing.note.title,
             oldCategoryPath: existing.note.categoryPath,
+            // CR-01: the note's OWN file (possibly collision-suffixed) so
+            // cleanup never removes the canonical file of another note.
+            lastSyncedFileName: existing.note.lastSyncedFileName,
           });
         }
       }
@@ -303,10 +319,14 @@ export class NotesDB {
 
       // WR-02: D-12 cleanup trigger — NoteFileSync deletes the orphaned .md
       // and empty parent folders via this event (never direct invocation).
+      // CR-01: carry the note's OWN file name (possibly collision-suffixed)
+      // so cleanup removes the right file, never the canonical file that
+      // may belong to a different note.
       emit<NoteDeletedEvent>('note:deleted', {
         noteId: id,
         title: found.note.title,
         categoryPath: found.note.categoryPath,
+        lastSyncedFileName: found.note.lastSyncedFileName,
       });
       return { success: true };
     } catch (err) {

@@ -267,11 +267,17 @@ export class NoteFileSync {
       // file — cancel the pending debounce timer first.
       this.cancelPendingSync(e.noteId);
       if (!this._handle) return; // sync disabled — nothing to clean (no-op)
-      void this.handleNoteDelete(e.noteId, buildFilePath(e.categoryPath, e.title));
+      void this.handleNoteDelete(
+        e.noteId,
+        this.resolveCleanupFilePath(e.categoryPath, e.title, e.lastSyncedFileName),
+      );
     });
     const unsubRenamed = on<NoteRenamedEvent>('note:renamed', (e) => {
       if (!this._handle) return; // sync disabled — nothing to clean (no-op)
-      void this.handleNoteRename(e.noteId, buildFilePath(e.oldCategoryPath, e.oldTitle));
+      void this.handleNoteRename(
+        e.noteId,
+        this.resolveCleanupFilePath(e.oldCategoryPath, e.oldTitle, e.lastSyncedFileName),
+      );
     });
     unsub = () => {
       unsubSaved();
@@ -556,7 +562,8 @@ export class NoteFileSync {
    */
   async handleNoteRename(oldNoteId: string, oldFilePath: string): Promise<void> {
     try {
-      await this.removeFileAndEmptyParents(oldFilePath);
+      // CR-01: removal is ownership-guarded by the renamed note's id.
+      await this.removeFileAndEmptyParents(oldFilePath, oldNoteId);
     } catch (err) {
       this.emitCleanupError(oldNoteId, err);
     }
@@ -568,20 +575,52 @@ export class NoteFileSync {
    */
   async handleNoteDelete(noteId: string, filePath: string): Promise<void> {
     try {
-      await this.removeFileAndEmptyParents(filePath);
+      // CR-01: removal is ownership-guarded by the deleted note's id.
+      await this.removeFileAndEmptyParents(filePath, noteId);
     } catch (err) {
       this.emitCleanupError(noteId, err);
     }
   }
 
-  private async removeFileAndEmptyParents(filePath: string): Promise<void> {
+  /**
+   * CR-01: the exact category-relative path of a note's OWN backup file.
+   * `lastSyncedFileName` (WR-04 — the exact .md the note last wrote, which
+   * may be collision-suffixed) overrides the canonical `{title}.md`: for a
+   * collided note the canonical path can belong to a DIFFERENT note and
+   * must never be targeted by cleanup.
+   */
+  private resolveCleanupFilePath(
+    categoryPath: string,
+    title: string,
+    lastSyncedFileName?: string,
+  ): string {
+    if (!lastSyncedFileName) return buildFilePath(categoryPath, title);
+    return categoryPath ? `${categoryPath}/${lastSyncedFileName}` : lastSyncedFileName;
+  }
+
+  private async removeFileAndEmptyParents(
+    filePath: string,
+    expectedOwnerId?: string,
+  ): Promise<void> {
     const segments = filePath.split('/').filter(Boolean);
     const fileName = segments.pop();
     if (!fileName) return;
 
     const dir = await this.resolveDir(filePath, false, true);
     if (!dir) return; // file already gone — nothing to clean
-    await dir.removeEntry(fileName);
+
+    // CR-01 ownership guard: never remove a file whose frontmatter id
+    // belongs to a DIFFERENT note. A collided note owns a suffixed file
+    // while the canonical path may hold another note's backup — cleanup
+    // removes only the note's own file. An unparseable file (ownerId null)
+    // carries no evidence of foreign ownership and is removed (matches
+    // selectTargetFile's D-18 fallback).
+    const target = await this.tryReadFileInDir(dir, fileName);
+    if (target) {
+      const ownerId = await this.readOwnerId(target);
+      if (expectedOwnerId && ownerId !== null && ownerId !== expectedOwnerId) return;
+      await dir.removeEntry(fileName);
+    }
 
     // Ascend: remove empty parent directories only (T-05a-12). The dir-path
     // resolution returns the target directory itself, so the entry must be

@@ -1169,6 +1169,77 @@ describe('NoteFileSync', () => {
       expect(fs.categoryDir.children.has('Inbox')).toBe(false);
     });
 
+    it('CR-01: removing a collided note deletes ITS OWN suffixed file, never another note\'s canonical file', async () => {
+      const fs = makeBackupFs();
+      pickerStub.mockResolvedValue(fs.root);
+      const sync = getNoteFileSync();
+      await sync.setBackupFolder();
+
+      vi.spyOn(sync, 'loadPersistedHandle').mockResolvedValue(
+        fs.root as unknown as FileSystemDirectoryHandle,
+      );
+      sync.initNoteFileSync();
+      await sleep(20);
+
+      // A owns the canonical React.md; B collides to React 1.md.
+      const noteA = makeNote({ title: 'React', categoryPath: 'Inbox' });
+      await getNotesDb().save(noteA);
+      await sleep(DEBOUNCE_MS + 20);
+      const canonical = fs.categoryDir.children.get('React.md') as MockFileHandle;
+      expect(canonical).toBeDefined();
+
+      const noteB = makeNote({ title: 'React', categoryPath: 'Inbox' });
+      await getNotesDb().save(noteB);
+      await sleep(DEBOUNCE_MS + 20);
+      const collided = fs.categoryDir.children.get('React 1.md') as MockFileHandle;
+      expect(collided).toBeDefined();
+      expect(collided.content).toContain(noteB.id);
+
+      // remove(B): cleanup must target B's own file (React 1.md) — the
+      // payload carries B's lastSyncedFileName — leaving A's canonical
+      // React.md untouched.
+      await getNotesDb().remove(noteB.id);
+      await sleep(20);
+
+      expect(fs.categoryDir.children.has('React 1.md')).toBe(false);
+      expect(fs.categoryDir.children.has('React.md')).toBe(true);
+      expect(canonical.content).toContain(noteA.id);
+      expect(fs.root.children.has('Inbox')).toBe(true); // A's file keeps the dir
+    });
+
+    it('CR-01: renaming a collided note removes ITS OWN suffixed file, never another note\'s canonical file', async () => {
+      const fs = makeBackupFs();
+      pickerStub.mockResolvedValue(fs.root);
+      const sync = getNoteFileSync();
+      await sync.setBackupFolder();
+
+      vi.spyOn(sync, 'loadPersistedHandle').mockResolvedValue(
+        fs.root as unknown as FileSystemDirectoryHandle,
+      );
+      sync.initNoteFileSync();
+      await sleep(20);
+
+      const noteA = makeNote({ title: 'React', categoryPath: 'Inbox' });
+      await getNotesDb().save(noteA);
+      await sleep(DEBOUNCE_MS + 20);
+      const canonical = fs.categoryDir.children.get('React.md') as MockFileHandle;
+
+      const noteB = makeNote({ title: 'React', categoryPath: 'Inbox' });
+      await getNotesDb().save(noteB);
+      await sleep(DEBOUNCE_MS + 20);
+      expect(fs.categoryDir.children.has('React 1.md')).toBe(true);
+
+      // rename B (React → ReactX): cleanup removes B's own React 1.md;
+      // A's React.md survives; the re-sync writes ReactX.md.
+      await getNotesDb().save({ ...noteB, title: 'ReactX' });
+      await sleep(DEBOUNCE_MS + 30);
+
+      expect(fs.categoryDir.children.has('React 1.md')).toBe(false);
+      expect(fs.categoryDir.children.has('React.md')).toBe(true);
+      expect(canonical.content).toContain(noteA.id);
+      expect(fs.categoryDir.children.has('ReactX.md')).toBe(true);
+    });
+
     it('NotesDB.remove() emits note:deleted when sync is disabled — handler no-ops without crash or spurious error', async () => {
       const sync = getNoteFileSync();
       sync.initNoteFileSync(); // subscribes, but no backup folder → sync disabled
