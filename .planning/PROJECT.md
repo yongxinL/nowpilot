@@ -10,7 +10,7 @@ Users can acquire knowledge from web pages, store it as interconnected atomic no
 
 ## Current State
 
-Phase 04b complete — Trust-Aware Context & Receipts. Every context source now carries trust/sensitivity/provenance metadata (ContextItem + full D-07 source-type ContextTrustPolicy + exponential-decay ContextFreshnessPolicy), prompt injection is isolated at the data boundary (`<data-source>` delimiters + system-first ordering, 7-test adversarial suite), tool results are shaped before re-entry (ToolResultShaper: redaction-first, 32K cap, immutable), and a provenance manifest explains what was included/omitted/compressed with per-section receipts, totals cross-check, and cache eligibility — plus an FNV-1a stable-prefix hash contract with snapshot guards and progressive skill disclosure (zero-token unloaded-skill receipts). 618+ tests passing, all 7 requirement IDs accounted for, threat register 21/21 closed. Prior: Phase 3a complete — Agent Reliability & Evidence. Every agent turn now records explicit trajectory states via a strict allowlist FSM, returns structured AgentTurnOutcome on every exit path (17 canonical reasons, cap exhaustion = partial, abort never renders success), and requires verified CompletionEvidence before side-effecting completion is claimed — with an evidence-gated RenderingOutcomePolicy and deterministic contradiction fallback, operation-scoped permission sequencing, a one-replan recovery loop with redacted observations, and in-memory idempotency protection for required tools. STRIDE regression suite + non-vacuous verify:phase-3a gate (209 tests) landed; lint clean repo-wide. Prior: Phase 4a complete — Page Content Extraction operational. Layered extraction pipeline (content script → MessageBus → PageContentService → Defuddle→Readability→ApcLite strategies), 2.9KB content bundle with zero forbidden imports, D-02 password/secret redaction at every boundary (clone-based DomSerializer, strategy value guards, 4-term allowlist), per-tab MiniSearch index with SPA-nav invalidation, mode-keyed cache (tabId:mode:url). 263+ extraction/security tests passing, all 25 UAT checks verified including live extension boot.
+Phase 05 complete — Knowledge Base. Atomic notes are fully operational: Zod-validated notes with Obsidian-compatible wikilinks (`[[title]]`, `[[title|alias]]`, `[[title#section]]`), NotesDB with WriteJournal crash-consistency (executor registry + startup replay), persistent MiniSearch BM25 index with `<mark>` snippets (search verified <50ms @ 1,000 notes: avg 0.33ms), and a NoteGraph with dynamic backlinks and 50/20/30 hybrid similarity. The memory subsystem is complete: MemoryRecord schemas, D-08 weighted MemoryScorer, three persistent stores (Conversation with 12-message LLM summarization, User facts with immutable confidence, Preferences), and a MemoryEngine orchestrator with tier-gated retrieval, single-writer enforcement (BroadcastBus primary-surface election, wired into all 3 entrypoints), and journaled writes. Memory context feeds every AI turn (createAgentTurnInputWithMemory, loadPersonaFromMemory). 142/142 phase-5 gate tests, 13/13 threats closed, 10/10 code-review findings fixed. Prior: Phase 04b complete — Trust-Aware Context & Receipts. Layered extraction pipeline (content script → MessageBus → PageContentService → Defuddle→Readability→ApcLite strategies), 2.9KB content bundle with zero forbidden imports, D-02 password/secret redaction at every boundary (clone-based DomSerializer, strategy value guards, 4-term allowlist), per-tab MiniSearch index with SPA-nav invalidation, mode-keyed cache (tabId:mode:url). 263+ extraction/security tests passing, all 25 UAT checks verified including live extension boot.
 
 ## Current Milestone: v0.1 NowPilot Initial Release
 
@@ -63,6 +63,9 @@ Phase 04b complete — Trust-Aware Context & Receipts. Every context source now 
 - [x] **AI-03**: PersonaInjector prepends persona block into all AI system prompts — Phase 3
 - [x] **CTX-01**: ContextOptimizer with dynamic token budgets, degradation pipeline, and minimal mode for tiny models — Phase 4
 - [x] **CTX-02**: PromptCacheManager with per-provider cache-hint transformation (Appendix K) — Phase 4
+- [x] **NOTE-01**: Atomic notes with wikilinks, tags, note graph (MiniSearch + cosine similarity), backlinks — Phase 5
+- [x] **MEM-01**: Conversation memory (summary + recent turns) + User memory (cross-session facts, scored retrieval) + Preference memory (response style, persona) — Phase 5
+- [x] **MEM-02**: Memory writes only from primary surface; secondary surfaces mirror read-only — Phase 5
 
 ### Active
 
@@ -75,10 +78,7 @@ Phase 04b complete — Trust-Aware Context & Receipts. Every context source now 
 - [x] **AI-02**: PlannerService → ExecutorService → RendererService pipeline with tier caps (Appendix I)
 - [x] **AI-03**: PersonaInjector prepends persona block into all AI system prompts (RICH-R-01/02)
 - [ ] **AI-04**: P0 Interaction — Welcome cards, context-aware quick-action chips, clarification chips, follow-up chips (RICH P0)
-- [ ] **MEM-01**: Conversation memory (summary + recent turns) + User memory (cross-session facts, scored retrieval) + Preference memory (response style, persona)
-- [ ] **MEM-02**: Memory writes only from primary surface; secondary surfaces mirror read-only
 - [x] **PAGE-01**: PageContentService with layered extraction (Defuddle → APC-lite → ServiceNow API), ephemeral MiniSearch index, per-tab cache with SPA-nav invalidation — Phase 4a
-- [ ] **NOTE-01**: Atomic notes with wikilinks, tags, note graph (MiniSearch + cosine similarity), backlinks
 - [ ] **NOTE-02**: LLM-Wiki — auto-tag/category/summary via single haiku call, RAG "Ask notes" with citations, chat/page-to-note conversion
 - [ ] **NOTE-03**: One-way filesystem sync (app→FS .md with YAML frontmatter) and restore-from-folder with additive upsert
 - [ ] **DIAG-01**: AITransactionLog with prompt/tool/provider traces, TraceRedactor, DiagnosticsPanel in Full App → Options
@@ -244,4 +244,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-08-01 after Phase 04b completion (Trust-Aware Context & Receipts)*
+*Last updated: 2026-08-02 after Phase 05 completion (Knowledge Base)*
