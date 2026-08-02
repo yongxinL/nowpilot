@@ -284,17 +284,20 @@ Plans:
   4. User sets a backup folder via showDirectoryPicker() (Full App only) — per-save .md files are written with YAML frontmatter, nested categoryPath folders, collision suffixing, and external-change detection
   5. User restores notes from folder — additive upsert previews "Found N notes (X new, Y updated, Z unchanged)" and never deletes local notes not in the folder; v4 migration is idempotent
 
-**Plans**: 3/3 plans executed
+**Plans**: 3/3 executed + 3 gap-closure replan (plans 01-03 replaced by gap-closure plans; original content preserved in git history + SUMMARYs)
 
 Plans:
 **Wave 1**
 
-- [x] 05a-01-PLAN.md — TRACER: Foundation (deps + NoteSchema + Migration v5 + NotesDB v5) → LlmService → NoteTagger end-to-end with EventBus note:saved handler (NOTE-02, NOTE-03)
+- [ ] 05a-01-PLAN.md — Gap closure: NoteFileSync write-path integrity — CR-01 native handle persistence, CR-02 ownership-aware collision + WR-04 owned-file reuse, WR-01 per-note debounce (NOTE-03)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [x] 05a-02-PLAN.md — NoteQA (RAG with citations, search/ask modes, tiny fallback) + NoteChatConverter (haiku draft with MEM-03) + NoteMaintenance (staleness/orphan queries) (NOTE-02)
-- [x] 05a-03-PLAN.md — NoteFileSync: EventBus handler, permission management, debounced .md writes with YAML frontmatter, collision resolution, external-change detection, rename/delete cleanup, folder restore (NOTE-03)
+- [ ] 05a-02-PLAN.md — Gap closure: lifecycle events + staleness + citation trust — WR-02 note:deleted/note:renamed wiring + integration chain, WR-03 staleness timestamp writer, WR-05 NoteQA fallback citation rebuild (NOTE-02, NOTE-03)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 05a-03-PLAN.md — Gap closure: regression gate (verify:phase-5a, 79 baseline + new tests) + Phase 7 deferral record in deferred-items.md (NOTE-02, NOTE-03)
 
 **UI hint**: yes
 
