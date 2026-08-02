@@ -3,7 +3,7 @@ import { resetNotesDb, notesDb } from '../../../src/core/notes/NotesDB';
 import { resetJournalDb } from '../../../src/core/storage/WriteJournal';
 import { resetLlmService, getLlmService } from '../../../src/core/ai/LlmService';
 import { getMemoryEngine, resetMemoryEngine } from '../../../src/core/memory/MemoryEngine';
-import { getNoteQA, resetNoteQA, parseCitations } from '../../../src/core/notes/NoteQA';
+import { getNoteQA, resetNoteQA, parseCitations, type Citation } from '../../../src/core/notes/NoteQA';
 import type { NoteQA } from '../../../src/core/notes/NoteQA';
 import { NoteQAResultSchema } from '../../../src/core/notes/NoteSchema';
 import type { NoteSearchResult } from '../../../src/core/notes/types';
@@ -141,6 +141,89 @@ describe('NoteQA', () => {
           schema: NoteQAResultSchema,
         }),
       );
+    });
+
+    describe('markerless fallback citations (WR-05)', () => {
+      // When the answer carries no inline [N] markers, the LLM's citations
+      // array is validated by referenceNumber only. The fallback MUST
+      // rebuild noteId/title/relevantSnippet from the snippet array — a
+      // hallucinated noteId/title never enters Citation[] (D-13: never cite
+      // non-existent notes).
+
+      async function askWithFallback(
+        llmCitations: Array<{ noteId: string; title: string; relevantSnippet: string; referenceNumber: number }>,
+      ): Promise<{ answer: string; citations: Citation[] } | null> {
+        const noteA = crypto.randomUUID();
+        const noteB = crypto.randomUUID();
+        const snippets = [
+          makeSnippet(noteA, 'Alpha', 'alpha content'),
+          makeSnippet(noteB, 'Beta', 'beta content'),
+        ];
+        await notesDb.save(makeNote({ id: noteA, title: 'Alpha' }));
+        await notesDb.save(makeNote({ id: noteB, title: 'Beta' }));
+        vi.spyOn(noteSearchIndex, 'search').mockReturnValue(snippets);
+        vi.spyOn(getMemoryEngine(), 'retrieve').mockResolvedValue({
+          success: true,
+          items: [],
+        });
+        vi.spyOn(getLlmService(), 'generate').mockResolvedValue({
+          answer: 'No inline markers anywhere.',
+          citations: llmCitations,
+        });
+
+        const result = await qa.query(createMockAdapter(), {
+          mode: 'ask',
+          question: 'q',
+          tier: 'BALANCED',
+        });
+        return result && 'answer' in result ? (result as { answer: string; citations: Citation[] }) : null;
+      }
+
+      it('rebuilds citations from the snippet array — fabricated noteId/title never appear', async () => {
+        const result = await askWithFallback([
+          { noteId: 'fabricated-id', title: 'Fake Title', relevantSnippet: 'hallucinated', referenceNumber: 1 },
+          { noteId: 'fabricated-id-2', title: 'Fake Title 2', relevantSnippet: 'hallucinated 2', referenceNumber: 2 },
+        ]);
+        expect(result).not.toBeNull();
+        expect(result!.citations).toHaveLength(2);
+        // noteId/title/relevantSnippet come from the REAL snippets; the
+        // fabricated values are ignored entirely.
+        expect(result!.citations[0].noteId).not.toBe('fabricated-id');
+        expect(result!.citations[0].title).not.toBe('Fake Title');
+        expect(result!.citations[0].noteId).toMatch(/^[0-9a-f-]{36}$/);
+        expect(result!.citations[0].title).toBe('Alpha');
+        expect(result!.citations[0].relevantSnippet).toBe('alpha content');
+        expect(result!.citations[0].referenceNumber).toBe(1);
+        expect(result!.citations[1].title).toBe('Beta');
+        expect(result!.citations[1].relevantSnippet).toBe('beta content');
+        expect(result!.citations[1].referenceNumber).toBe(2);
+      });
+
+      it('drops out-of-range referenceNumbers (0 or beyond the snippet array)', async () => {
+        const result = await askWithFallback([
+          { noteId: 'zero', title: 'Zero', relevantSnippet: 'z', referenceNumber: 0 },
+          { noteId: 'three', title: 'Three', relevantSnippet: 't', referenceNumber: 3 },
+          { noteId: 'real', title: 'Real', relevantSnippet: 'r', referenceNumber: 2 },
+        ]);
+        expect(result).not.toBeNull();
+        expect(result!.citations).toHaveLength(1);
+        expect(result!.citations[0].referenceNumber).toBe(2);
+        expect(result!.citations[0].noteId).not.toBe('real'); // rebuilt from snippets
+        expect(result!.citations[0].title).toBe('Beta');
+      });
+
+      it('dedupes duplicate referenceNumbers', async () => {
+        const result = await askWithFallback([
+          { noteId: 'dup-a', title: 'Dup A', relevantSnippet: 'd1', referenceNumber: 1 },
+          { noteId: 'dup-b', title: 'Dup B', relevantSnippet: 'd2', referenceNumber: 1 },
+          { noteId: 'dup-c', title: 'Dup C', relevantSnippet: 'd3', referenceNumber: 1 },
+        ]);
+        expect(result).not.toBeNull();
+        expect(result!.citations).toHaveLength(1);
+        expect(result!.citations[0].referenceNumber).toBe(1);
+        expect(result!.citations[0].title).toBe('Alpha'); // rebuilt from snippets
+        expect(result!.citations[0].noteId).not.toBe('dup-a');
+      });
     });
 
     it('retrieves top-5 MiniSearch snippets', async () => {
