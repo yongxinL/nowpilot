@@ -120,8 +120,8 @@ export class MiniSearchNoteIndex {
   }
 
   private async openDb(): Promise<IDBPDatabase> {
-    await migrationRunner.migrate('NotesDB', 4);
-    const db = await openDB('NotesDB', 4);
+    await migrationRunner.migrate('NotesDB', 5);
+    const db = await openDB('NotesDB', 5);
     return db;
   }
 

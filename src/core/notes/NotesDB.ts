@@ -13,8 +13,8 @@ let dbPromise: Promise<IDBPDatabase> | null = null;
 
 async function openNotesDb(): Promise<IDBPDatabase> {
   if (!dbPromise) {
-    await migrationRunner.migrate('NotesDB', 4);
-    dbPromise = openDB('NotesDB', 4);
+    await migrationRunner.migrate('NotesDB', 5);
+    dbPromise = openDB('NotesDB', 5);
   }
   return dbPromise;
 }
@@ -160,6 +160,28 @@ export class NotesDB {
   async findByTitle(title: string): Promise<Note[]> {
     const db = await openNotesDb();
     return (await db.getAllFromIndex('notes', 'by-title', title)) as Note[];
+  }
+
+  /**
+   * Read the lastSyncedAt field for a note — used by NoteFileSync for
+   * external-change detection (D-11). Returns undefined for notes without
+   * the field or notes that do not exist.
+   */
+  async getByLastSyncedAt(id: string): Promise<number | undefined> {
+    const existing = await this.get(id);
+    if (existing.success) {
+      return existing.note.lastSyncedAt;
+    }
+    return undefined;
+  }
+
+  /** Update only the lastSyncedAt field after a successful file write (D-11). */
+  async updateLastSyncedAt(id: string, timestamp: number): Promise<void> {
+    const db = await openNotesDb();
+    const existing = await this.get(id);
+    if (!existing.success) return;
+    const updated: Note = { ...existing.note, lastSyncedAt: timestamp };
+    await db.put('notes', updated);
   }
 
   /** Delete a note. */

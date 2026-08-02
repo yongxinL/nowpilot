@@ -29,6 +29,9 @@ export class MigrationRunner {
         if (oldVersion < 4) {
           await this.migrateV4(transaction);
         }
+        if (oldVersion < 5) {
+          await this.migrateV5(transaction);
+        }
       },
       blocked: () => {
         console.warn(`${dbName} upgrade blocked by another connection`);
@@ -130,6 +133,22 @@ export class MigrationRunner {
 
     if (!db.objectStoreNames.contains('conversation_summaries')) {
       db.createObjectStore('conversation_summaries', { keyPath: 'conversationId' });
+    }
+  }
+
+  /**
+   * Phase 5a (D-09): backup_config store for the persisted
+   * FileSystemDirectoryHandle. Holds exactly one record keyed by `id`
+   * (the `'backup_folder'` handle survives extension restarts via
+   * IndexedDB's structured clone).
+   */
+  private async migrateV5(
+    transaction: VersionChangeTransaction,
+  ): Promise<void> {
+    const db = transaction.db;
+
+    if (!db.objectStoreNames.contains('backup_config')) {
+      db.createObjectStore('backup_config', { keyPath: 'id' });
     }
   }
 }
