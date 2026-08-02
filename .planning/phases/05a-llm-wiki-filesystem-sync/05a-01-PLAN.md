@@ -5,43 +5,55 @@ type: execute
 wave: 1
 depends_on: []
 files_modified:
-  - package.json
   - src/core/notes/NoteSchema.ts
-  - src/core/storage/MigrationRunner.ts
   - src/core/notes/NotesDB.ts
-  - src/core/ai/LlmService.ts
-  - src/core/notes/NoteTagger.ts
-  - tests/core/notes/NoteTagger.test.ts
+  - src/core/notes/NoteFileSync.ts
+  - tests/core/notes/NoteFileSync.test.ts
+  - tests/core/notes/NotesDB.test.ts
 autonomous: true
-requirements: [NOTE-02, NOTE-03]
+gap_closure: true
+requirements: [NOTE-03]
 
 must_haves:
   truths:
-    - "Saving a note generates both enrichment suggestions (tags, category, summary) and memory facts from a single haiku-tier AI call"
-    - "The notes database upgrades from v4 to v5 without data loss — existing notes, graphs, and search indices survive the migration"
-    - "A backup folder configuration store exists after migration so handles can persist across browser sessions"
-    - "AI enrichment runs asynchronously without blocking note saving — the user can continue editing immediately"
-    - "Malformed or invalid AI responses are caught and silently discarded without crashing the application"
-    - "The enrichment pipeline yields two distinct result partitions — one for note display suggestions and one for memory extraction candidates"
-    - "An end-to-end save triggers the complete tracer path: event emission → AI analysis → validated enrichment result with both partitions"
+    - "A native-shaped FileSystemDirectoryHandle persists through IndexedDB and a simulated extension restart resumes syncing without re-selection — writes reach the filesystem, not a phantom in-memory tree (CR-01, D-09)"
+    - "A class-based test-double handle still persists via the plain-data snapshot path and rehydrates functionally (existing behavior preserved)"
+    - "Two notes with the same sanitized title never cross-write: the second note's re-saves reuse its own suffixed file and the first note's canonical .md keeps its content and frontmatter id (CR-02, WR-04)"
+    - "A note whose owned .md file was externally modified writes to a fresh numeric suffix instead of overwriting (D-11 preserved; WR-04 — no unbounded suffix accumulation across re-saves)"
+    - "Rapid note:saved events for DIFFERENT notes within the debounce window all reach the filesystem (per-note debounce, WR-01); repeated saves of the SAME note still coalesce"
+    - "NotesDB.save() preserves lastSyncedFileName across re-saves exactly like lastSyncedAt (D-11/D-18 preservation extended)"
+    - "getSyncStatus() exposes enabled/handleExists/permissionState/lastSyncAt/error so the Phase 7 Backup Tag renders the four states On/Off/Error/Paused (UI-SPEC covered lift, SYNC-08)"
+    - "sync:external-change carries noteId/title/localModified/fileModified; the write never touches a newer external file — it falls through to a suffixed write (UI-SPEC covered lift, D-11)"
   artifacts:
-    - src/core/ai/LlmService.ts
-    - src/core/notes/NoteTagger.ts
+    - src/core/notes/NoteFileSync.ts
+    - src/core/notes/NoteSchema.ts
+    - src/core/notes/NotesDB.ts
+    - tests/core/notes/NoteFileSync.test.ts
+    - tests/core/notes/NotesDB.test.ts
   key_links:
-    - "EventBus note:saved → NoteTagger handler (error boundary — handler failures must not crash event dispatch)"
-    - "LlmService → generateWithRepair → repairJSON (malformed JSON must fail with SCHEMA_INVALID not crash)"
-    - "NoteTagger handler → NotesDB.getNote() → version comparison (D-07 staleness check)"
-prohibitions:
-  - "MUST NOT write tag/summary suggestions without user approval — enrichment responses return suggestions only, never auto-update notes"
-  - "MUST NOT use LLM-reported confidence as system confidence tier — all accepted memoryFacts stored with confidence=0.5 (inferred) per D-03"
-  - "MUST NOT block note save on LLM response — NoteTagger.analyze() fires non-blocking after IndexedDB save completes"
+    - "persistHandle → backup_config store (structured clone of the native handle; snapshot fallback for test doubles)"
+    - "syncNote → existing-file frontmatter id (ownership decision) → collideFileName (owner-skip scan)"
+    - "syncNote → NotesDB.updateSyncState (lastSyncedAt + lastSyncedFileName written together)"
+    - "NotesDB.save() → lastSyncedFileName preservation (mirrors lastSyncedAt preservation L79-84)"
+  prohibitions:
+    - statement: "MUST NOT persist a plain-data snapshot of a native FileSystemDirectoryHandle — native handles structured-clone directly (CR-01)"
+      status: flagged-unverified
+      verification: "asserted by 05a-01 task 1 tests (persist→restart→sync round-trip)"
+    - statement: "MUST NOT overwrite an existing .md whose frontmatter id belongs to a different note — always collide (CR-02)"
+      status: flagged-unverified
+      verification: "asserted by 05a-01 task 2 ownership tests"
+    - statement: "MUST NOT decide overwrite-vs-collide from timestamps alone when the existing file carries a different owner id (CR-02)"
+      status: flagged-unverified
+      verification: "asserted by 05a-01 task 2 cross-note tests"
+  assumptions:
+    - "NOTE-03 edge coverage was unclassified at gap-closure time (no SPEC.md) — service-layer edges beyond CR-01/CR-02/WR-04/WR-01 assumed covered by the existing 35-test NoteFileSync suite; real-browser FSA behavior is deferred to Phase 7 (recorded in 05a-03)"
 ---
 
 <objective>
-Establish the foundation for Phase 5a: install new dependencies (yaml, @types/wicg-file-system-access), extend NoteSchema with Phase 5a fields, add MigrationRunner v5 for the backup_config store, bump NotesDB to v5, create the shared LlmService facade, and build the NoteTagger service with EventBus subscription — all wired as an end-to-end tracer proving the architecture. NoteTagger's two output partitions map to two independent review surfaces (D-02): enrichment suggestions (tags/category/summary/concepts) render as accept/reject inline on the note editor, while memoryFacts render in a separate "New Memory Facts" notification/side-panel flow.
+Close the NoteFileSync write-path blockers from VERIFICATION.md: CR-01 (handle persistence destroys native-handle fidelity — backup silently dies after any restart), CR-02 (collision guard ignores file ownership — one note can overwrite another's canonical .md), WR-04 (collided file ownership never recorded — unbounded suffix accumulation), and WR-01 (single debounce timer drops earlier notes in a burst). These are the root-cause fixes that make SC4 ("durable one-way .md backup that cannot corrupt another note's file") hold at the service layer.
 
-Purpose: Prove the LLM enrichment architecture (LlmService → NoteTagger → EventBus → NotesDB) end-to-end before expanding to the other 4 services. Every subsequent plan builds on this proven slice.
-Output: Working LlmService + NoteTagger with a green end-to-end tracer test.
+Purpose: Restore the D-09 cross-session persistence guarantee and the D-12 collision guarantee in production (not just against test mocks). The class-based mocks carry own-properties that masked both defects; the tests added here must exercise the native-handle branch and the ownership decision directly.
+Output: NoteFileSync write path that (a) persists native handles natively, (b) decides overwrite-vs-collide by frontmatter ownership, (c) reuses the note's own last-written file, (d) debounces per note. NOTE-03 gap items CR-01 + CR-02 + SC4 closed.
 </objective>
 
 <execution_context>
@@ -50,185 +62,173 @@ Output: Working LlmService + NoteTagger with a green end-to-end tracer test.
 </execution_context>
 
 <context>
-@.planning/phases/05a-llm-wiki-filesystem-sync/05a-RESEARCH.md
-@.planning/phases/05a-llm-wiki-filesystem-sync/05a-CONTEXT.md
-@.planning/phases/05a-llm-wiki-filesystem-sync/05a-PATTERNS.md
-@.planning/phases/05-knowledge-base/05-01-SUMMARY.md
-@.planning/phases/05-knowledge-base/05-02-SUMMARY.md
-@.planning/phases/05-knowledge-base/05-03-SUMMARY.md
-@src/core/notes/NoteSchema.ts
+@.planning/PROJECT.md
+@.planning/ROADMAP.md
+@.planning/STATE.md
+
+# Current implementation (source of truth for the defects)
+@src/core/notes/NoteFileSync.ts
 @src/core/notes/NotesDB.ts
-@src/core/storage/MigrationRunner.ts
-@src/core/ai/StructuredOutput.ts
-@src/core/ai/TierResolver.ts
-@src/core/events/EventBus.ts
-@tests/setup.ts
+@src/core/notes/NoteSchema.ts
+@tests/core/notes/NoteFileSync.test.ts
+
+# Gap definitions and review fix directives
+@.planning/phases/05a-llm-wiki-filesystem-sync/05a-VERIFICATION.md
+@.planning/phases/05a-llm-wiki-filesystem-sync/05a-REVIEW.md
+@.planning/phases/05a-llm-wiki-filesystem-sync/05a-03-SUMMARY.md
 </context>
 
 <tasks>
 
 <task type="tracer">
-  <name>Install deps + NoteSchema extension + MigrationRunner v5 + LlmService + NoteTagger (end-to-end tracer)</name>
+  <name>Task 1: End-to-end handle persistence round-trip — native handles persist natively (CR-01)</name>
+  <files>src/core/notes/NoteFileSync.ts, tests/core/notes/NoteFileSync.test.ts</files>
   <read_first>
-@.planning/phases/05a-llm-wiki-filesystem-sync/05a-RESEARCH.md — Standard Stack (yaml 2.9.0, @types/wicg-file-system-access 2023.10.7), Architecture Patterns (Pattern 1–3), Code Examples (LlmService usage, NoteTaggerResultSchema, MigrationRunner v5 template)
-@.planning/phases/05a-llm-wiki-filesystem-sync/05a-PATTERNS.md — Pattern #1 (LlmService), Pattern #2 (NoteTagger), Patterns #7–9 (NoteSchema/NodesDB/MigrationRunner modifications)
-@.planning/phases/05a-llm-wiki-filesystem-sync/05a-CONTEXT.md — D-01 (single haiku call, two partition response), D-03 (LLM confidence display-only), D-04 (confidence < 0.3 filtered, max 3 memoryFacts), D-05 (in-memory suggestions), D-06 (toggle logic), D-07 (version-based staleness), D-08 (LlmService as shared facade), D-17 (EventBus note:saved independent subscription)
-@src/core/notes/NoteSchema.ts — current schema shape (Note, NoteProvenance, Concept); extend with summary, lastSyncedAt, summaryGeneratedAt, tagsGeneratedAt
-@src/core/storage/MigrationRunner.ts — existing migrateV4 pattern (lines 66–134); add migrateV5 following the same structure
-@src/core/notes/NotesDB.ts — openNotesDb() at line ~17: bump version from 4 to 5, add getByLastSyncedAt() and updateLastSyncedAt() query methods
-@src/core/ai/StructuredOutput.ts — generateWithRepair() signature (adapter, tier, prompt, schema, abortSignal) + repairJSON(); LlmService wraps this
-@src/core/ai/TierResolver.ts — resolveTierModel() for FAST tier resolution
-@src/core/events/EventBus.ts — on() subscription signature (event, handler); errors swallowed at line ~33
+    - src/core/notes/NoteFileSync.ts — persistHandle (L206-216), loadPersistedHandle (L222-232), toPlainHandle (L700-721), rehydrateHandle/rehydrateFile (L724-800), restoreSession (L249-270)
+    - src/core/notes/NotesDB.ts — openNotesDb/openDB pattern (L14-20) used by openDb
+    - tests/core/notes/NoteFileSync.test.ts — MockDirHandle/MockFileHandle classes (own enumerable props, prototype methods), makeBackupFs/pickerStub helpers, existing 'loadPersistedHandle rehydrates a functional handle' test (L422)
+    - node_modules/@types/wicg-file-system-access/index.d.ts — native FileSystemDirectoryHandle members (kind/name/queryPermission/requestPermission/getDirectoryHandle/getFileHandle/removeEntry/resolve/values/entries/keys/Symbol.asyncIterator/isSameEntry)
   </read_first>
-  <files>
-    package.json
-    src/core/notes/NoteSchema.ts
-    src/core/storage/MigrationRunner.ts
-    src/core/notes/NotesDB.ts
-    src/core/ai/LlmService.ts
-    src/core/notes/NoteTagger.ts
-    tests/core/notes/NoteTagger.test.ts
-  </files>
   <action>
-Install dependencies: `npm install yaml@^2 @types/wicg-file-system-access@2023.10` — both are pre-verified (RESEARCH § Package Legitimacy Audit, both OK).
+    Per 05a-REVIEW.md CR-01: persist the native FileSystemDirectoryHandle directly — Chrome structured-clones platform objects into IndexedDB. Keep toPlainHandle()/rehydrateHandle() ONLY for non-native/test-double handles.
 
-Extend NoteSchema (src/core/notes/NoteSchema.ts): add `summary: z.string().optional()`, `lastSyncedAt: z.number().optional()`, `summaryGeneratedAt: z.number().optional()`, `tagsGeneratedAt: z.number().optional()` to the existing NoteSchema z.object(). These are all optional — existing Phase 5 tests must continue to pass. Also add the new Zod schemas for Phase 5a types: NoteTaggerResultSchema (enrichment + memoryFacts partitions per D-01), NoteQAResultSchema, NoteDraftSchema. Export corresponding inferred types. Follow the existing Zod pattern: `export const Schema = z.object({...}); export type Type = z.infer<typeof Schema>;`
-
-Add MigrationRunner v5 (src/core/storage/MigrationRunner.ts): in the upgrade() callback, add `if (oldVersion < 5) { await this.migrateV5(transaction); }` after the existing v4 block. Implement migrateV5(transaction): if `!db.objectStoreNames.contains('backup_config')`, create `backup_config` with keyPath `'id'`. Follow the migrateV4 pattern exactly — same method signature, same VersionChangeTransaction type.
-
-Bump NotesDB to v5 (src/core/notes/NotesDB.ts): change `migrationRunner.migrate('NotesDB', 4)` to `migrationRunner.migrate('NotesDB', 5)` and `openDB('NotesDB', 4)` to `openDB('NotesDB', 5)`. Add `getByLastSyncedAt(id: string): Promise<number | undefined>` — reads the note and returns its lastSyncedAt field (for D-11 external-change detection). Add `updateLastSyncedAt(id: string, timestamp: number): Promise<void>` — reads note, spreads, sets lastSyncedAt, puts back. Both follow existing NotesDB method pattern (openNotesDb() + try/finally db.close()).
-
-Create LlmService (src/core/ai/LlmService.ts): a module-level singleton (MemoryEngine pattern: `let _instance; export getLlmService(); export resetLlmService()`). Public method `generate<T>(params: { adapter: ProviderAdapter; tier: ModelTier; systemPrompt: string; userPrompt: string; schema: z.ZodSchema<T>; abortSignal?: AbortSignal }): Promise<T>`. Implementation: join systemPrompt + userPrompt with `'\n\n'`, call generateWithRepair(adapter, tier, prompt, schema, abortSignal) from StructuredOutput.ts. Reuse existing repairJSON for validation. On PipelineError re-throw directly. On AbortError (`err.name === 'AbortError'`), throw PipelineError('ABORTED', ...). On unknown errors, throw PipelineError('UNKNOWN', ...). Imports: generateWithRepair from './StructuredOutput', PipelineError from './PipelineError', resolveTierModel from './TierResolver', plus zod, ai types. No new dependencies.
-
-Create NoteTagger (src/core/notes/NoteTagger.ts): a module-level singleton (MemoryEngine pattern). Constructor takes no params. Methods:
-- `async analyze(adapter: ProviderAdapter, noteId: string, noteContent: string, noteVersion: number, abortSignal?: AbortSignal): Promise<NoteTaggerResult>` — calls `getLlmService().generate({ adapter, tier: 'FAST', systemPrompt: NOTE_TAGGER_SYSTEM_PROMPT, userPrompt: `Note content:\n${noteContent}`, schema: NoteTaggerResultSchema, abortSignal })`. Returns the parsed result. On error: silently discard (no throw — EventBus swallows errors).
-- `initNoteTagger(): void` — subscribes to EventBus `note:saved` with handler signature `on<{ noteId: string }>('note:saved', async ({ noteId }) => { ... })`. Inside the handler: 1) check D-06 toggles — if all off, skip. 2) Load note from NotesDB.get(noteId). 3) Call this.analyze(). 4) On response, re-load note, compare version (D-07): if versions differ, silently discard. 5) Route enrichment to component state (emit event or return via callback — fire-and-forget, suggestions are in-memory D-05). 6) Filter memoryFacts: drop confidence < 0.3 (D-04), cap at 3 (D-04). 7) Emit event for memory suggestion UI.
-- `static NOTE_TAGGER_SYSTEM_PROMPT`: the system prompt instructing the LLM to output JSON with enrichment (tags ≤5, categoryPath, summary ≤200 chars, suggestedConcepts) and memoryFacts (type: 'semantic', content, confidence 0–1, reason). Prompt must NOT instruct the LLM to include markdown fences. Follows the generateWithRepair contract: temperature-0, JSON-only.
-- `isPrimarySurface()` check is NOT at NoteTagger call time — per D-19, NoteTagger fires LLM on both surfaces; MEM-02 write gating happens at MemoryEngine.write() time.
-
-Idempotency guard: if unsub already set, initNoteTagger() is a no-op (prevents double subscription).
-
-Write the tracer test (tests/core/notes/NoteTagger.test.ts): use vitest + fake-indexeddb (from tests/setup.ts). Test "end-to-end tracer: note saved → NoteTagger handler fires → LlmService.generate → NoteTaggerResult returned":
-- Create a note, save via NotesDB, observe that the EventBus note:saved handler fires (mock LlmService.generate to return a valid NoteTaggerResult with enrichment tags + memoryFacts).
-- Assert enrichment.tags is array, memoryFacts is array with confidence 0-1 range.
-- Verify note version comparison: handler re-reads note.version from DB, discards if versions differ.
+    1. In persistHandle(): stop unconditionally calling toPlainHandle(). Add an isNativeHandle-style branch:
+       - A NATIVE FileSystemDirectoryHandle (from showDirectoryPicker) is duck-typed by markers the class-based MockDirHandle lacks — Symbol.asyncIterator and/or isSameEntry as a function. When the duck-type matches: `db.put('backup_config', { id: BACKUP_CONFIG_KEY, handle })` — the handle itself.
+       - Otherwise (test doubles, cross-runtime fallbacks): keep the current `await toPlainHandle(handle)` snapshot.
+       - Update the stale comment at L200-205 and L678-683 to document the branch instead of the unconditional snapshot.
+    2. In loadPersistedHandle(): handle BOTH stored shapes. If the stored value is a plain snapshot (has a `children` array — PlainDirHandle shape) → rehydrateHandle(raw) as today. If it is a live handle-like object (has values/getDirectoryHandle/getFileHandle functions) → return it as-is — never rehydrate a real handle.
+    3. Do NOT modify rehydrateHandle/rehydrateFile semantics for the snapshot path — existing test-double tests must stay green.
+    4. Confirm restoreSession() (L249-270) works unchanged against both shapes: a real handle returns a real queryPermission result; a rehydrated double returns its stored permissionState.
   </action>
   <verify>
-    <automated>npx vitest run tests/core/notes/NoteTagger.test.ts --no-coverage</automated>
+    <automated>npx vitest run tests/core/notes/NoteFileSync.test.ts --no-coverage && npx tsc --noEmit</automated>
   </verify>
   <done>
-The tracer end-to-end test passes: a note save triggers EventBus note:saved, NoteTagger handler calls LlmService.generate() with FAST tier, the LLM returns a valid NoteTaggerResult with both enrichment and memoryFacts partitions, and the result is parsed correctly through Zod. Existing Phase 5 tests (`npx vitest run tests/core/notes/`) all still pass.
+    - A native-shaped handle (duck-typed with Symbol.asyncIterator/isSameEntry) round-trips: persistHandle → resetNoteFileSync() + fresh getNoteFileSync() (simulated restart) → initNoteFileSync()/restoreSession() → syncNote() — and the .md write reaches the underlying filesystem-backed mock (writeCount/content on the real mock, not a phantom tree).
+    - The persisted record for a native-shaped handle is NOT wrapped in snapshot shape (no `children` property on the stored record.handle).
+    - Class-based MockDirHandle still takes the snapshot path and rehydrates functionally ('loadPersistedHandle rehydrates a functional handle' test remains green).
+    - All 35 pre-existing NoteFileSync tests + new tests pass; tsc clean.
   </done>
-  <acceptance_criteria>
-    1. `npm ls yaml` shows 2.x installed; `npm ls @types/wicg-file-system-access` shows 2023.10.x installed.
-    2. NoteSchema exports summary, lastSyncedAt, summaryGeneratedAt, tagsGeneratedAt as optional fields — existing NotesDB tests pass unchanged.
-    3. MigrationRunner v5 creates backup_config store with keyPath 'id' — test verifies db.objectStoreNames.contains('backup_config').
-    4. NotesDB opens at version 5; getByLastSyncedAt() returns undefined for notes without the field.
-    5. LlmService.generate() with a mock adapter returns Zod-validated output of the correct type.
-    6. NoteTagger.analyze() calls LlmService.generate() with FAST tier and NoteTaggerResultSchema.
-    7. initNoteTagger() subscribes to note:saved — idempotent (second call is no-op).
-    8. Tracer test: a saved note triggers LLM call → valid NoteTaggerResult with enrichment.tags (array) + memoryFacts (array, confidence in [0,1]).
-    9. Version staleness: if note.version changes between LLM call and response, suggestions are discarded.
-  </acceptance_criteria>
+</task>
+
+<task type="auto" tdd="true">
+  <name>Task 2: Ownership-aware collision resolution + owned-file reuse (CR-02, WR-04)</name>
+  <files>src/core/notes/NoteSchema.ts, src/core/notes/NotesDB.ts, src/core/notes/NoteFileSync.ts, tests/core/notes/NoteFileSync.test.ts, tests/core/notes/NotesDB.test.ts</files>
+  <read_first>
+    - src/core/notes/NoteFileSync.ts — syncNote (L287-349), tryGetExistingFile (L352-361), collideFileName (L381-398), dead getFileHandleWithCollision (L434-451, delete), removeFileAndEmptyParents (L477-510, dead `current` var L489)
+    - src/core/notes/NoteSchema.ts — NoteSchema fields (L22-42); add lastSyncedFileName near lastSyncedAt
+    - src/core/notes/NotesDB.ts — save() (L54-147, lastSyncedAt preservation L79-84), updateLastSyncedAt (L193-199), getByLastSyncedAt (L184-190)
+    - tests/core/notes/NoteFileSync.test.ts — collision/external-change tests (makeNote with lastSyncedAt, addFile helper, fm() frontmatter builder)
+    - 05a-REVIEW.md CR-02 fix snippet and WR-04 fix snippet (exact target behavior)
+  </read_first>
+  <behavior>
+    - Test 1 (cross-note ownership): notes A and B with the same sanitized title. A syncs → React.md written. B syncs → React 1.md written (suffix), React.md untouched. B re-saves/re-syncs → still writes React 1.md (owned file reused), React.md content AND frontmatter id unchanged (A's file intact).
+    - Test 2 (externally modified owned file): B's React 1.md externally modified (lastModified > B.lastSyncedAt + 2000) → next B sync writes React 2.md; React 1.md content untouched.
+    - Test 3 (same-note overwrite preserved, D-18): A re-syncs → overwrites its own React.md (no suffix, content updated, frontmatter id = A).
+    - Test 4 (third-note occupancy): 'React 1.md' frontmatter id belongs to note C → B's collision scan skips it and picks React 2.md.
+    - Test 5 (updateSyncState): NotesDB.updateSyncState(id, { lastSyncedAt, lastSyncedFileName }) persists both fields; a later save() with an omitted payload preserves both (lastSyncedFileName preservation mirrors lastSyncedAt L79-84).
+  </behavior>
+  <action>
+    Per 05a-REVIEW.md CR-02 + WR-04 — the write path must be ownership-aware, not timestamp-only:
+
+    1. NoteSchema.ts: add `lastSyncedFileName: z.string().optional()` next to lastSyncedAt (L34). Optional field — no v5→v6 migration needed; existing records parse fine.
+    2. NotesDB.ts: add `updateSyncState(id: string, state: { lastSyncedAt?: number; lastSyncedFileName?: string }): Promise<void>` — raw put merging state into the persisted note (mirror updateLastSyncedAt L193-199). Keep updateLastSyncedAt(id, ts) intact (existing callers/tests in NoteTagger.test.ts L408-411 depend on it) — have it delegate to updateSyncState or remain separate.
+    3. NotesDB.ts save(): extend the existing preservation block (L79-84) so lastSyncedFileName is also preserved from the persisted note when the incoming payload omits it (same pattern as lastSyncedAt) — otherwise the next save strips the tracked file name.
+    4. NoteFileSync.ts syncNote(): replace the timestamp-only decision (L310-328) with ownership-aware selection:
+       - Determine the candidate file: if note.lastSyncedFileName is set → that owned file first; else the canonical `{sanitizeFilename(note.title)}.md`.
+       - For the candidate: read existing.lastModified and the existing file's text → parseNoteFile(text).frontmatter.id (L108-113 is exported and reusable):
+         - ownerId present and ownerId !== note.id → DIFFERENT note's file → always collide (never overwrite), regardless of timestamps (CR-02). No sync:external-change modal event for this case — it is a pure D-12 collision.
+         - ownerId === note.id OR frontmatter unparseable → timestamp check as today: existing.lastModified > (note.lastSyncedAt ?? 0) + EXTERNAL_CHANGE_TOLERANCE_MS → emit sync:external-change (L316-321 payload unchanged) and collide; else overwrite the candidate.
+       - Owned-file reuse (WR-04): when note.lastSyncedFileName is set AND that file exists AND is not externally modified → overwrite it directly (reuse — no canonical ping-pong, no new suffix). When the owned file is missing or externally modified → fall through to canonical ownership check + fresh collide scan.
+    5. collideFileName(): extend the suffix scan (L381-398) to SKIP existing candidates whose frontmatter id belongs to a different note (parse each existing candidate's frontmatter; continue the scan when ownerId is set and !== note.id). A candidate that is absent, unparseable, or owned by this note is usable.
+    6. After every successful write, record the actual fileName written: call `getNotesDb().updateSyncState(noteId, { lastSyncedAt: now, lastSyncedFileName: fileName })` replacing the current updateLastSyncedAt call (L334).
+    7. Delete dead getFileHandleWithCollision (L434-451, IN-01 — zero callers, re-encodes the original NotFoundError bug) and the dead `current` variable in removeFileAndEmptyParents (L489, IN-06).
+  </action>
+  <verify>
+    <automated>npx vitest run tests/core/notes/NoteFileSync.test.ts tests/core/notes/NotesDB.test.ts --no-coverage && npx tsc --noEmit</automated>
+  </verify>
+  <done>
+    - Cross-note overwrite is impossible: any write to an existing file whose frontmatter id differs from the note's id lands in a suffixed file (CR-02 scenario from VERIFICATION.md reproduced and fixed — B's re-save no longer clobbers A's React.md).
+    - A collided note reuses its own last-written file on re-sync; suffixes stop accumulating (WR-04 — 'React 1.md, React 2.md, …' unbounded growth test now shows reuse instead).
+    - getFileHandleWithCollision and the dead `current` variable are gone (grep returns zero matches).
+    - updateSyncState + save() preservation covered by tests; all pre-existing NoteFileSync/NotesDB tests still green.
+  </done>
 </task>
 
 <task type="auto">
-  <name>NoteTagger enrichment behaviors + confidence filtering + toggle logic + test suite completion</name>
+  <name>Task 3: Per-note debounce — burst saves never drop notes (WR-01)</name>
+  <files>src/core/notes/NoteFileSync.ts, tests/core/notes/NoteFileSync.test.ts</files>
   <read_first>
-@.planning/phases/05a-llm-wiki-filesystem-sync/05a-CONTEXT.md — D-03 (LLM confidence → inferred mapping), D-04 (confidence < 0.3 filtered, max 3 displayed), D-05 (in-memory only suggestions), D-06 (toggle skip logic), D-07 (version staleness full logic)
-@.planning/phases/05a-llm-wiki-filesystem-sync/05a-RESEARCH.md — Common Pitfalls §2 (LLM response race condition), NoteTaggerResultSchema full shape (lines 467–484)
-@src/core/notes/NoteTagger.ts — existing analyze() and initNoteTagger() from Task 1; add filtering/toggle/staleness behaviors
-@tests/core/notes/NoteTagger.test.ts — extend test file with behavior tests
+    - src/core/notes/NoteFileSync.ts — _debounceTimer field (L147), scheduleSync (L273-281), resetRuntimeState (L657-666), initNoteFileSync (L240-246)
+    - tests/core/notes/NoteFileSync.test.ts — existing 'multiple rapid saves debounce to a single write' test (same-note coalesce must stay green), fake-timer pattern (vi.useFakeTimers after async setup)
+    - 05a-REVIEW.md WR-01 fix snippet (per-note debounce map)
   </read_first>
-  <files>
-    src/core/notes/NoteTagger.ts
-    tests/core/notes/NoteTagger.test.ts
-  </files>
   <action>
-Extend NoteTagger with the full enrichment pipeline behaviors:
+    Per 05a-REVIEW.md WR-01: the single `_debounceTimer` clears and re-arms for the LATEST noteId — any two note:saved events within 50ms for different notes lose the earlier note's sync entirely (restoreFromFolder with an active backup backs up only the last note).
 
-1. **Confidence filtering (D-04):** After parsing LLM response, filter memoryFacts: drop any where `confidence < 0.3`. Cap remaining at max 3 (take first 3 after filtering). Both thresholds are local constants (`MIN_CONFIDENCE = 0.3`, `MAX_MEMORY_FACTS = 3`) defined in NoteTagger.ts.
-
-2. **Toggle logic (D-06):** initNoteTagger() handler accepts toggle state via a config module or EventBus payload. If `autoTag`, `autoCategorize`, and `autoSummary` are all off → skip the LLM call entirely (early return). If some are on but memory extraction is off → still call LLM but discard memoryFacts after parsing. The LLM prompt always requests the full structured output regardless of toggle state (keeps prompt invariant).
-
-3. **Version staleness (D-07):** Before the LLM call, capture `note.version` from the save event payload or DB read. After response arrives, re-read the note via NotesDB.get(noteId). If `currentNote.version !== capturedVersion` → silently discard the suggestions (no error, no UX noise). Add a `version` field to the note:saved event payload so the handler doesn't need to re-read before the call.
-
-4. **In-memory suggestions (D-05):** Enrichment results are emitted as an event (`note:enriched` with `{ noteId, enrichment, memoryFacts }`) on the EventBus. UI layer (Phase 7) subscribes and stores in component state. No IndexedDB persistence. On session restart, suggestions are lost — the "Regenerate" button is the recovery path.
-
-5. **Confidence mapping (D-03):** LLM-reported confidence is preserved as `llmConfidence` metadata on the memoryFact object. When user accepts a memory fact, it is stored via MemoryEngine.write() with `confidence: 0.5` (inferred). The LLM score is NEVER used as the system confidence tier. Add a helper `toMemoryFactInput(fact, llmConfidence)` that maps the LLM result to a MemoryWriteInput with `confidence: 0.5`.
-
-6. **LLM error handling:** All LLM errors (PipelineError, AbortError, SCHEMA_INVALID, network failure) are caught in the EventBus handler. Silently discard — no error toast, no retry. The handler is fire-and-forget. Log to console.debug for development visibility (gated behind `process.env.NODE_ENV !== 'production'`).
-
-7. **Test suite:** Add tests for each behavior:
-   - "filters memoryFacts with confidence < 0.3" — feed result with mixed confidences, assert only ≥ 0.3 survive
-   - "caps memoryFacts at 3" — feed result with 5 memoryFacts, assert only 3 returned
-   - "skips LLM call when all toggles are off" — set all toggles false, assert LlmService.generate is NOT called
-   - "still calls LLM but discards memoryFacts when memory extraction is off" — set memory toggle off, assert LLM called but memoryFacts empty in emitted event
-   - "discards stale suggestions when version changes" — simulate version bump between capture and response, assert enrichment event is NOT emitted
-   - "emits note:enriched event with enrichment partition on success" — mock LLM, assert EventBus received note:enriched with correct payload
-   - "silently discards on PipelineError" — mock LLM to throw PipelineError('SCHEMA_INVALID'), assert no event emitted, no throw propagated
+    1. Replace the single `_debounceTimer` field (L147) with `private _debounceTimers = new Map<string, ReturnType<typeof setTimeout>>()`.
+    2. Rewrite scheduleSync(noteId): clear only that note's pending timer (map.get + clearTimeout), set a new timer stored under noteId; on fire, delete the map entry then `void this.syncNote(noteId)`. Same-note coalescing semantics preserved (repeated saves of ONE note still collapse to one write).
+    3. resetRuntimeState(): clear ALL timers in the map and reset it (not just one).
+    4. Add tests: (a) two DIFFERENT notes saved within 50ms both sync — both .md files exist on the mock FS (this is the restore-burst regression: N restored notes with active backup all get written); (b) repeated saves of the same note still coalesce to a single write (existing test stays green).
   </action>
   <verify>
-    <automated>npx vitest run tests/core/notes/NoteTagger.test.ts --no-coverage</automated>
+    <automated>npx vitest run tests/core/notes/NoteFileSync.test.ts --no-coverage</automated>
   </verify>
   <done>
-All NoteTagger unit tests pass: confidence filtering (< 0.3 dropped, max 3), toggle skip logic (all-off → no call; enrichment-only → memoryFacts discarded), version staleness (changed version → discard), in-memory emission (note:enriched event), error handling (PipelineError/AbortError silently swallowed). The single haiku call returns both partitions per D-01.
+    - Two different notes emitted within DEBOUNCE_MS both produce .md files (burst no longer drops notes).
+    - Same-note rapid saves still collapse to one write (existing debounce test green).
+    - resetRuntimeState clears all pending timers (no leaked timers across tests).
   </done>
-  <acceptance_criteria>
-    1. Confidence < 0.3 memoryFacts are filtered; remaining capped at 3.
-    2. All toggles off → no LlmService.generate() call; log skipped.
-    3. Memory extraction off → LLM called but memoryFacts discarded from emitted event.
-    4. Note version changed between LLM call and response → suggestions silently discarded, no event emitted.
-    5. Successful enrichment emits note:enriched EventBus event with { noteId, enrichment, memoryFacts }.
-    6. PipelineError/AbortError in LLM call → silently discarded (console.debug in dev only).
-    7. LLM confidence preserved as llmConfidence metadata; toMemoryFactInput() maps to confidence: 0.5 (D-03).
-  </acceptance_criteria>
 </task>
 
 </tasks>
+
+## Artifacts this phase produces
+
+- `NoteSchema.lastSyncedFileName?: string` — optional field tracking the exact file name this note last wrote (WR-04).
+- `NotesDB.updateSyncState(id, { lastSyncedAt?, lastSyncedFileName? })` — new method persisting both sync-state fields atomically.
+- `NoteFileSync._debounceTimers: Map<string, Timer>` — per-note debounce map (WR-01); `scheduleSync` per-note semantics.
+- `NoteFileSync` native-handle duck-typing predicate (Symbol.asyncIterator/isSameEntry) + branched persistHandle/loadPersistedHandle (CR-01).
+- `NoteFileSync` ownership-aware target selection (canonical vs owned file) + owner-skip collideFileName scan (CR-02/WR-04).
+- Deleted: `NoteFileSync.getFileHandleWithCollision` (IN-01), dead `current` var in removeFileAndEmptyParents (IN-06).
+
+## Deferred to Phase 7
+
+- Real-browser File System Access verification of CR-01 (native handle structured-clone + restart-resume) — vitest/jsdom cannot exercise real platform handles; the duck-typed native-branch tests are the service-layer proxy. Recorded in deferred-items.md by 05a-03 task 2.
 
 <threat_model>
 ## Trust Boundaries
 
 | Boundary | Description |
 |----------|-------------|
-| LLM API (ProviderAdapter) | Note content crosses to configured LLM provider — untrusted LLM response returns to NoteTagger |
-| EventBus note:saved → NoteTagger handler | Multiple EventBus subscribers, handler errors must not crash event dispatch |
-| NoteTagger → MemoryEngine.write() | MEM-02 memory writes cross the primary-surface trust boundary |
+| app → backup filesystem | untrusted external files (user-edited .md, files created by other tools) live on the same disk the app writes; lastModified/frontmatter can be tampered or stale |
 
 ## STRIDE Threat Register
 
 | Threat ID | Category | Component | Severity | Disposition | Mitigation Plan |
 |-----------|----------|-----------|----------|-------------|-----------------|
-| T-05a-01 | Spoofing | NoteTagger.analyze() | medium | mitigate | Zod validation (NoteTaggerResultSchema) rejects malformed LLM output — only well-formed enrichment/memoryFacts pass. system prompt boundary instructions prevent LLM from inventing facts. D-03 maps LLM self-reported confidence to inferred (0.5). |
-| T-05a-02 | Tampering | NoteTagger (version staleness) | high | mitigate | D-07: captured note version compared against current DB version on response return. Stale suggestions silently discarded. User never sees enrichment for wrong note version. |
-| T-05a-03 | Information Disclosure | LlmService.generate() | medium | mitigate | Note content sent to LLM provider is user-initiated via save action. No secrets in note content per existing TraceRedactor policy. abortSignal propagates for cancellation. |
-| T-05a-04 | Denial of Service | EventBus note:saved handler | low | accept | Handler errors are swallowed by EventBus (try/catch at line 33 of EventBus.ts). Fire-and-forget pattern — no retry loop. LLM failures do not block save or subsequent saves. |
-| T-05a-05 | Elevation | NoteTagger → MemoryEngine | medium | mitigate | D-19: MEM-02 memory writes gated at MemoryEngine.write() via isPrimarySurface(). NoteTagger suggests memoryFacts on both surfaces, but write() fails gracefully on secondary surfaces. |
-| T-05a-SC | Tampering | npm install yaml/@types | high | mitigate | Both packages pre-verified in RESEARCH.md Package Legitimacy Audit (yaml: 184M/wk, 10yr age; @types: 745K/wk, 4yr age). Both OK verdict. No SLOP/SUS packages. |
+| T-05a-01 | Tampering | NoteFileSync.syncNote collision guard (CR-02) | high | mitigate | frontmatter-id ownership check: never overwrite a file whose frontmatter id differs from the note being synced (task 2); cross-note backup corruption becomes impossible |
+| T-05a-02 | Tampering | NoteFileSync.persistHandle/loadPersistedHandle (CR-01) | high | mitigate | persist native handles via structured clone; snapshot branch only for test doubles; load returns native handles as-is so writes reach the real filesystem (task 1) |
+| T-05a-03 | Tampering | syncNote external-change guard (D-11) | medium | mitigate | 2s tolerance + ownership check preserved; a newer external file is never overwritten — write falls through to a suffixed file (task 2) |
+| T-05a-04 | Spoofing | NoteFileSync owned-file tracking (WR-04) | low | mitigate | lastSyncedFileName written via updateSyncState alongside lastSyncedAt; reused only when the owned file is not externally modified (task 2) |
+| T-05a-05 | DoS | scheduleSync debounce (WR-01) | low | mitigate | per-note timer map prevents burst saves from silently dropping backups (task 3) |
+| T-05a-SC | Tampering | npm/pip/cargo installs | low | accept | no new package installs in this plan — all changes are edits to existing source/test files |
+
 </threat_model>
 
 <verification>
-  1. `npx vitest run tests/core/notes/NoteTagger.test.ts --no-coverage` — all NoteTagger tests pass
-  2. `npx vitest run tests/core/notes/ --no-coverage` — existing Phase 5 note tests still pass
-  3. `npx tsc --noEmit` — no type errors from new services
+- `npx vitest run tests/core/notes/NoteFileSync.test.ts tests/core/notes/NotesDB.test.ts --no-coverage` — all pre-existing + new tests green
+- `npx tsc --noEmit` — clean
+- grep checks: `getFileHandleWithCollision` and the dead `current` variable return zero matches in src/
+- Full-suite regression is the explicit 05a-03 task (runs after 05a-02)
 </verification>
 
 <success_criteria>
-[ ] npm install completes — yaml 2.x and @types/wicg-file-system-access installed
-[ ] NoteSchema extended with Phase 5a fields; existing tests pass
-[ ] MigrationRunner v5 creates backup_config store
-[ ] NotesDB opens at v5 with new query methods
-[ ] LlmService.generate() returns Zod-validated output via generateWithRepair
-[ ] NoteTagger.analyze() calls LlmService with FAST tier and correct schema
-[ ] initNoteTagger() subscribes to EventBus note:saved — idempotent guard works
-[ ] Tracer test: save → LLM → NoteTaggerResult with both partitions passes
-[ ] Confidence filtering: < 0.3 dropped, max 3 memoryFacts
-[ ] Toggle logic: all-off skips LLM; memory-off still calls LLM but discards facts
-[ ] Version staleness: version mismatch → suggestions discarded
-[ ] Error handling: PipelineError silently swallowed
-[ ] D-03 confidence mapping: LLM confidence → stored as inferred (0.5)
-[ ] D-05 in-memory: note:enriched event emitted, no IndexedDB persistence
+- CR-01 closed: native handle survives persist → simulated restart → load → sync; writes reach the filesystem (D-09 holds)
+- CR-02 closed: same-title notes never cross-write; collision decided by frontmatter ownership, not timestamps alone
+- WR-04 closed: collided notes reuse their owned file; no unbounded suffix accumulation
+- WR-01 closed: burst saves of different notes all sync
+- SC4 service-layer foundation restored: one-way .md backup is durable across sessions and cannot corrupt another note's file
 </success_criteria>
 
 <output>
