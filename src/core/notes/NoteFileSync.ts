@@ -644,7 +644,16 @@ export class NoteFileSync {
     if (target) {
       const ownerId = await this.readOwnerId(target);
       if (expectedOwnerId && ownerId !== null && ownerId !== expectedOwnerId) return;
-      await dir.removeEntry(fileName);
+      try {
+        await dir.removeEntry(fileName);
+      } catch (err) {
+        // WR-03: platform removeEntry throws NotFoundError when the entry
+        // vanished between the existence check and the removal (TOCTOU).
+        // A note with no .md on disk must never surface a spurious
+        // sync:error — the file is already gone, so fall through to the
+        // empty-parent cleanup below.
+        if (!(err instanceof DOMException && err.name === 'NotFoundError')) throw err;
+      }
     }
 
     // Ascend: remove empty parent directories only (T-05a-12). The dir-path
@@ -952,8 +961,11 @@ function rehydrateHandle(plain: PlainDirHandle): FileSystemDirectoryHandle {
       throw new DOMException('Not found', 'NotFoundError');
     },
     removeEntry: async (entryName: string) => {
+      // Platform fidelity (WR-03): the real handle rejects with
+      // NotFoundError for a missing entry.
       const idx = plain.children.findIndex((c) => c.name === entryName);
-      if (idx >= 0) plain.children.splice(idx, 1);
+      if (idx < 0) throw new DOMException('Not found', 'NotFoundError');
+      plain.children.splice(idx, 1);
     },
     resolve: async () => null,
     values: async function* () {

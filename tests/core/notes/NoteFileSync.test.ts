@@ -113,7 +113,13 @@ class MockDirHandle {
   removeEntry(entryName: string): Promise<void> {
     this.removeEntryCalls.push(entryName);
     const entry = this.children.get(entryName);
-    if (entry?.kind === 'directory') {
+    if (!entry) {
+      // Platform fidelity (WR-03): the real FileSystemDirectoryHandle
+      // rejects with NotFoundError for a missing entry — the mock must too,
+      // or cleanup bugs masked here will surface in production.
+      return Promise.reject(new DOMException('Not found', 'NotFoundError'));
+    }
+    if (entry.kind === 'directory') {
       if ((entry as MockDirHandle).children.size > 0) {
         return Promise.reject(new DOMException('Not empty', 'InvalidModificationError'));
       }
@@ -1344,6 +1350,40 @@ describe('NoteFileSync', () => {
       const currentInbox = fs.root.children.get('Inbox') as MockDirHandle;
       expect(currentInbox).toBeDefined();
       expect(currentInbox.children.has('Order B.md')).toBe(true);
+    });
+
+    it('WR-03: deleting a note with no .md on disk does not emit a spurious sync:error', async () => {
+      const fs = makeBackupFs();
+      pickerStub.mockResolvedValue(fs.root);
+      const sync = getNoteFileSync();
+      await sync.setBackupFolder();
+
+      vi.spyOn(sync, 'loadPersistedHandle').mockResolvedValue(
+        fs.root as unknown as FileSystemDirectoryHandle,
+      );
+      sync.initNoteFileSync();
+      await sleep(20);
+
+      const errors: SyncErrorEvent[] = [];
+      const unsubE = on<SyncErrorEvent>('sync:error', (e) => errors.push(e));
+      try {
+        const note = makeNote({ title: 'Never On Disk', categoryPath: 'Inbox' });
+        await getNotesDb().save(note); // debounce armed but never fires
+        await getNotesDb().remove(note.id); // no .md exists → cleanup no-op
+        await sleep(30); // flush the cleanup promise chain
+
+        expect(errors).toHaveLength(0);
+        expect(fs.categoryDir.children.has('Never On Disk.md')).toBe(false);
+      } finally {
+        unsubE();
+      }
+    });
+
+    it('WR-03: MockDirHandle.removeEntry rejects with NotFoundError for a missing entry (platform fidelity)', async () => {
+      const fs = makeBackupFs();
+      await expect(
+        fs.categoryDir.removeEntry('Missing.md'),
+      ).rejects.toMatchObject({ name: 'NotFoundError' });
     });
 
     it('NotesDB.remove() emits note:deleted when sync is disabled — handler no-ops without crash or spurious error', async () => {
