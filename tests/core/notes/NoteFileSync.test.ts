@@ -1,6 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll, vi } from 'vitest';
 import { openDB } from 'idb';
-import { resetNotesDb, getNotesDb } from '../../../src/core/notes/NotesDB';
+import {
+  resetNotesDb,
+  getNotesDb,
+  type NoteDeletedEvent,
+  type NoteRenamedEvent,
+} from '../../../src/core/notes/NotesDB';
 import { resetJournalDb } from '../../../src/core/storage/WriteJournal';
 import { resetMigrationDb } from '../../../src/core/storage/MigrationRunner';
 import {
@@ -1072,5 +1077,160 @@ describe('NoteFileSync', () => {
     await expect(verifyPermission(granted as unknown as FileSystemDirectoryHandle)).resolves.toBe(true);
     await expect(verifyPermission(denied as unknown as FileSystemDirectoryHandle)).resolves.toBe(false);
     await expect(verifyPermission(promptGranted as unknown as FileSystemDirectoryHandle)).resolves.toBe(true);
+  });
+
+  // ── Lifecycle integration (WR-02): event-driven rename/delete cleanup ─────
+  // These tests drive the FULL chain through EventBus + real NotesDB calls
+  // (save/remove → note:saved/note:deleted/note:renamed → subscriptions set
+  // up by initNoteFileSync) — never direct handleNoteRename/handleNoteDelete
+  // invocations.
+
+  describe('lifecycle integration (WR-02)', () => {
+    it('save→delete→cleanup chain through EventBus: .md + empty parent folders removed after NotesDB.remove()', async () => {
+      const fs = makeBackupFs();
+      pickerStub.mockResolvedValue(fs.root);
+      const sync = getNoteFileSync();
+      await sync.setBackupFolder();
+
+      // fake timers after all async setup; restoreSession must load the LIVE
+      // tree (not a rehydrated snapshot) so assertions see real writes.
+      vi.useFakeTimers();
+      vi.spyOn(sync, 'loadPersistedHandle').mockResolvedValue(
+        fs.root as unknown as FileSystemDirectoryHandle,
+      );
+      sync.initNoteFileSync();
+      await vi.advanceTimersByTimeAsync(0); // let restoreSession settle → enabled
+
+      const note = makeNote({ title: 'Chain Note', categoryPath: 'Inbox' });
+      await getNotesDb().save(note); // note:saved → per-note debounce armed
+      await vi.advanceTimersByTimeAsync(DEBOUNCE_MS + 10); // debounce fires → .md written
+      expect(fs.categoryDir.children.has('Chain Note.md')).toBe(true);
+
+      // deletion drives cleanup via note:deleted → handleNoteDelete (EventBus).
+      await getNotesDb().remove(note.id);
+      await vi.advanceTimersByTimeAsync(0); // flush the cleanup promise chain
+
+      expect(fs.categoryDir.children.has('Chain Note.md')).toBe(false);
+      expect(fs.root.children.has('Inbox')).toBe(false);
+      expect(fs.root.removeEntryCalls).toContain('Inbox');
+    });
+
+    it('save→rename chain through EventBus: old .md removed, new .md written (note:renamed)', async () => {
+      const fs = makeBackupFs();
+      pickerStub.mockResolvedValue(fs.root);
+      const sync = getNoteFileSync();
+      await sync.setBackupFolder();
+
+      vi.useFakeTimers();
+      vi.spyOn(sync, 'loadPersistedHandle').mockResolvedValue(
+        fs.root as unknown as FileSystemDirectoryHandle,
+      );
+      sync.initNoteFileSync();
+      await vi.advanceTimersByTimeAsync(0);
+
+      const note = makeNote({ title: 'Title A', categoryPath: 'Inbox' });
+      await getNotesDb().save(note);
+      await vi.advanceTimersByTimeAsync(DEBOUNCE_MS + 10);
+      expect(fs.categoryDir.children.has('Title A.md')).toBe(true);
+
+      // title change → note:renamed (old-path cleanup) + note:saved (new .md).
+      await getNotesDb().save({ ...note, title: 'Title B' });
+      await vi.advanceTimersByTimeAsync(DEBOUNCE_MS + 10);
+
+      expect(fs.categoryDir.children.has('Title A.md')).toBe(false);
+      expect(fs.categoryDir.children.has('Title B.md')).toBe(true);
+    });
+
+    it('a queued sync for a deleted note is cancelled — the .md is never written after remove()', async () => {
+      const fs = makeBackupFs();
+      pickerStub.mockResolvedValue(fs.root);
+      const sync = getNoteFileSync();
+      await sync.setBackupFolder();
+
+      vi.useFakeTimers();
+      vi.spyOn(sync, 'loadPersistedHandle').mockResolvedValue(
+        fs.root as unknown as FileSystemDirectoryHandle,
+      );
+      sync.initNoteFileSync();
+      await vi.advanceTimersByTimeAsync(0);
+
+      const note = makeNote({ title: 'Queued Note', categoryPath: 'Inbox' });
+      await getNotesDb().save(note); // debounce armed — do NOT advance timers
+      await getNotesDb().remove(note.id); // note:deleted → pending timer cancelled
+      await vi.advanceTimersByTimeAsync(DEBOUNCE_MS + 10); // timer would have fired
+
+      expect(fs.categoryDir.children.has('Queued Note.md')).toBe(false);
+      expect(fs.categoryDir.children.has('Inbox')).toBe(false);
+    });
+
+    it('NotesDB.remove() emits note:deleted when sync is disabled — handler no-ops without crash or spurious error', async () => {
+      const sync = getNoteFileSync();
+      sync.initNoteFileSync(); // subscribes, but no backup folder → sync disabled
+
+      const deleted: NoteDeletedEvent[] = [];
+      const errors: SyncErrorEvent[] = [];
+      const unsubD = on<NoteDeletedEvent>('note:deleted', (e) => deleted.push(e));
+      const unsubE = on<SyncErrorEvent>('sync:error', (e) => errors.push(e));
+      try {
+        const note = makeNote({ title: 'Never Synced', categoryPath: 'Inbox' });
+        await getNotesDb().save(note);
+        const result = await getNotesDb().remove(note.id);
+        expect(result.success).toBe(true);
+        expect(deleted).toHaveLength(1);
+        expect(deleted[0]).toEqual({
+          noteId: note.id,
+          title: 'Never Synced',
+          categoryPath: 'Inbox',
+        });
+        expect(errors).toHaveLength(0);
+      } finally {
+        unsubD();
+        unsubE();
+      }
+    });
+
+    it('note:deleted/note:renamed payloads carry the identity fields needed to compute old paths', async () => {
+      const deleted: NoteDeletedEvent[] = [];
+      const renamed: NoteRenamedEvent[] = [];
+      const unsubD = on<NoteDeletedEvent>('note:deleted', (e) => deleted.push(e));
+      const unsubR = on<NoteRenamedEvent>('note:renamed', (e) => renamed.push(e));
+      try {
+        const note = makeNote({ title: 'Payload Note', categoryPath: 'Inbox' });
+        await getNotesDb().save(note);
+        await getNotesDb().save({ ...note, title: 'Payload Renamed' });
+        await getNotesDb().remove(note.id);
+
+        expect(renamed).toHaveLength(1);
+        expect(renamed[0]).toEqual({
+          noteId: note.id,
+          oldTitle: 'Payload Note',
+          oldCategoryPath: 'Inbox',
+        });
+        // remove() reads the note BEFORE deleting → the current (renamed) title.
+        expect(deleted).toHaveLength(1);
+        expect(deleted[0]).toEqual({
+          noteId: note.id,
+          title: 'Payload Renamed',
+          categoryPath: 'Inbox',
+        });
+      } finally {
+        unsubD();
+        unsubR();
+      }
+    });
+
+    it('no note:renamed is emitted for a save that keeps title and categoryPath', async () => {
+      const renamed: NoteRenamedEvent[] = [];
+      const unsubR = on<NoteRenamedEvent>('note:renamed', (e) => renamed.push(e));
+      try {
+        const note = makeNote({ title: 'Stable', categoryPath: 'Inbox' });
+        await getNotesDb().save(note);
+        await getNotesDb().save({ ...note, content: 'edited content' });
+        await getNotesDb().save({ ...note, tags: ['a', 'b'] });
+        expect(renamed).toHaveLength(0);
+      } finally {
+        unsubR();
+      }
+    });
   });
 });
