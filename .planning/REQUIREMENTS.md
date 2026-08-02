@@ -40,7 +40,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [x] **NOTE-01**: User can create atomic notes with wikilinks, tags, note graph (MiniSearch + cosine similarity), and backlinks
 - [x] **NOTE-02**: User can enrich notes via LLM-Wiki (auto-tag/category/summary in one call), ask notes via RAG with citations, and convert chat/page to notes
-- [ ] **NOTE-03**: User can sync notes one-way to filesystem (.md with YAML frontmatter) and restore from folder with additive upsert
+- [x] **NOTE-03**: User can sync notes one-way to filesystem (.md with YAML frontmatter) and restore from folder with additive upsert
 
 ### Diagnostics
 
@@ -193,7 +193,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PAGE-01 | Phase 4a | Complete |
 | NOTE-01 | Phase 5 | Complete |
 | NOTE-02 | Phase 5a | Complete |
-| NOTE-03 | Phase 5a | Pending |
+| NOTE-03 | Phase 5a | Complete |
 | DIAG-01 | Phase 6 | Pending |
 | STORAGE-01 | Phase 2 | Pending |
 | STORAGE-02 | Phase 2 | Pending |

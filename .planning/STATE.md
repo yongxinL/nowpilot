@@ -4,17 +4,17 @@ milestone: v0.1
 milestone_name: milestone
 current_phase: 05a
 current_phase_name: llm-wiki-filesystem-sync
-status: executing
-stopped_at: Completed 05a-02-PLAN.md
-last_updated: "2026-08-02T04:17:19.873Z"
+status: verifying
+stopped_at: Completed 05a-03-PLAN.md
+last_updated: "2026-08-02T04:47:30.720Z"
 last_activity: 2026-08-02
 last_activity_desc: Phase 05a execution started
 progress:
   total_phases: 19
-  completed_phases: 8
+  completed_phases: 9
   total_plans: 42
-  completed_plans: 41
-  percent: 42
+  completed_plans: 42
+  percent: 47
 ---
 
 # Project State
@@ -31,10 +31,10 @@ See: .planning/PROJECT.md (updated 2026-08-02)
 
 Phase: 05a (llm-wiki-filesystem-sync) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-08-02 — Phase 05a execution started
 
-Progress: [████████████████████] 39/39 plans ([██████████] 98%) (8/19 phases complete)
+Progress: [████████████████████] 39/39 plans ([██████████] 100%) (8/19 phases complete)
 
 ## Performance Metrics
 
@@ -78,6 +78,7 @@ Progress: [████████████████████] 39/39 p
 | Phase 05 P05-03 | 12min | 2 tasks | 8 files |
 | Phase 05a P01 | 13min | 2 tasks | 11 files |
 | Phase 05a P02 | 24min | 2 tasks | 6 files |
+| Phase 05a P03 | 28min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -134,6 +135,10 @@ UserMemoryStore.getAll() returns all records in the shared store; MemoryEngine f
 - [Phase ?]: note:saved payload carries version (D-07); handler falls back to DB-read version when absent
 - [Phase ?]: MiniSearchNoteIndex bumped to NotesDB v5 (VersionError fix from the plan's own v5 directive); resetNoteTagger() unsubscribes to prevent stale-handler leak
 - [Phase ?]: @types/wicg-file-system-access in devDependencies; @testing-library/dom@^10 restored (pruned by initial npm install from drifted lockfile)
+- [Phase 05a]: The 2s-tolerance external-change guard never silently skips: it emits sync:external-change and falls through to a D-12 numeric-suffix collision write so the note stays backed up without touching the user's newer file — The 2s-tolerance external-change guard never silently skips: it emits sync:external-change and falls through to a D-12 numeric-suffix collision write so the note stays backed up without touching the user's newer file
+- [Phase 05a]: NotesDB.save() preserves lastSyncedAt across re-saves (D-11/D-18) — a re-save omitting the timestamp no longer triggers a false external-change skip — NotesDB.save() preserves lastSyncedAt across re-saves (D-11/D-18) — a re-save omitting the timestamp no longer triggers a false external-change skip
+- [Phase 05a]: resolveDir gained an isFilePath flag: directory-path resolution returns the target directory itself, fixing empty-parent cleanup — resolveDir gained an isFilePath flag: directory-path resolution returns the target directory itself, fixing empty-parent cleanup
+- [Phase 05a]: Handle persistence uses a plain-data tree snapshot (structured-clone-safe) rehydrated into a functional FileSystemDirectoryHandle on load — mirrors the real platform object's prototype-method shape — Handle persistence uses a plain-data tree snapshot (structured-clone-safe) rehydrated into a functional FileSystemDirectoryHandle on load — mirrors the real platform object's prototype-method shape
 
 ### Pending Todos
 
@@ -153,6 +158,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-02T04:17:19.863Z
-Stopped at: Completed 05a-02-PLAN.md
+Last session: 2026-08-02T04:47:10.262Z
+Stopped at: Completed 05a-03-PLAN.md
 Resume file: None
