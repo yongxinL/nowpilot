@@ -153,8 +153,8 @@ status: complete
 
 Each task was committed atomically:
 
-1. **Task 1: NoteQA — RAG Q&A with search/ask modes, numbered citations, tiny-tier fallback** - `f0bd21a` (feat)
-2. **Task 2: NoteChatConverter + NoteMaintenance** - `76c39c7` (feat)
+1. **Task 1: NoteQA — RAG Q&A with search/ask modes, numbered citations, tiny-tier fallback** - `af8016d` (feat)
+2. **Task 2: NoteChatConverter + NoteMaintenance** - `7bc3f22` (feat)
 
 **Plan metadata:** pending (docs: complete plan)
 
@@ -184,7 +184,7 @@ Each task was committed atomically:
 - **Fix:** NoteChatConverter calls `retrieve()` and joins item texts into the context block. MEM-03 intent (user facts/preferences context in drafts) preserved.
 - **Files modified:** src/core/notes/NoteChatConverter.ts
 - **Verification:** 'includes MemoryEngine retrieve() context (MEM-03)' test passes
-- **Committed in:** 76c39c7 (Task 2 commit)
+- **Committed in:** 7bc3f22 (Task 2 commit)
 
 **2. [Rule 3 - Blocking] ModelTier has no FLASH or TINY members**
 - **Found during:** Task 1 (NoteQA implementation)
@@ -192,7 +192,7 @@ Each task was committed atomically:
 - **Fix:** Ask mode uses BALANCED (flash-class tier in provider tables); new exported `NoteQaTier = ModelTier | 'TINY'` for the tiny-mode branch. Shared types untouched — zero ripple to providers/TierResolver.
 - **Files modified:** src/core/notes/NoteQA.ts
 - **Verification:** tiny-tier tests assert no LLM call; ask-mode test asserts BALANCED tier
-- **Committed in:** f0bd21a (Task 1 commit)
+- **Committed in:** af8016d (Task 1 commit)
 
 **3. [Rule 3 - Blocking] MemoryEngine.retrieve() signature differs from plan**
 - **Found during:** Task 1 (NoteQA implementation)
@@ -200,7 +200,7 @@ Each task was committed atomically:
 - **Fix:** Call with placeholder conversationId, 'medium' context tier, slice(0, 3) for the D-14 budget.
 - **Files modified:** src/core/notes/NoteQA.ts, src/core/notes/NoteChatConverter.ts
 - **Verification:** context-injection tests pass
-- **Committed in:** f0bd21a, 76c39c7
+- **Committed in:** af8016d, 7bc3f22
 
 **4. [Rule 3 - Missing Critical] NoteSearchResult carries no title**
 - **Found during:** Task 1 (NoteQA implementation)
@@ -208,7 +208,7 @@ Each task was committed atomically:
 - **Fix:** resolveSnippetTitles() reads titles from NotesDB for the top-N results.
 - **Files modified:** src/core/notes/NoteQA.ts
 - **Verification:** citation title assertions pass
-- **Committed in:** f0bd21a
+- **Committed in:** af8016d
 
 **5. [Rule 3 - Blocking] NotesDB.save() clobbers timestamps and re-derives links**
 - **Found during:** Task 2 (NoteMaintenance tests)
@@ -216,7 +216,7 @@ Each task was committed atomically:
 - **Fix:** Tests seed via notesDb.restore() (raw put) for exact field control.
 - **Files modified:** tests/core/notes/NoteMaintenance.test.ts
 - **Verification:** all 10 NoteMaintenance tests pass
-- **Committed in:** 76c39c7
+- **Committed in:** 7bc3f22
 
 **6. [Rule 3 - Blocking] Plan's LLM-failure semantics for reanalyzeAll mismatch NoteTagger**
 - **Found during:** Task 2 (NoteMaintenance implementation)
@@ -224,7 +224,7 @@ Each task was committed atomically:
 - **Fix:** Count null as failed; still satisfies must_have {total, enriched, failed}.
 - **Files modified:** src/core/notes/NoteMaintenance.ts
 - **Verification:** success/fail count test passes
-- **Committed in:** 76c39c7
+- **Committed in:** 7bc3f22
 
 ---
 
