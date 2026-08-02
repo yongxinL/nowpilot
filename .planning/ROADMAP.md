@@ -287,8 +287,12 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
+**Wave 1**
 
 - [ ] 05a-01-PLAN.md — TRACER: Foundation (deps + NoteSchema + Migration v5 + NotesDB v5) → LlmService → NoteTagger end-to-end with EventBus note:saved handler (NOTE-02, NOTE-03)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 05a-02-PLAN.md — NoteQA (RAG with citations, search/ask modes, tiny fallback) + NoteChatConverter (haiku draft with MEM-03) + NoteMaintenance (staleness/orphan queries) (NOTE-02)
 - [ ] 05a-03-PLAN.md — NoteFileSync: EventBus handler, permission management, debounced .md writes with YAML frontmatter, collision resolution, external-change detection, rename/delete cleanup, folder restore (NOTE-03)
 
