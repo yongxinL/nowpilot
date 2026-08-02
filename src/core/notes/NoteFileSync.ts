@@ -375,6 +375,22 @@ export class NoteFileSync {
       const fileName = await this.selectTargetFile(note);
 
       await this.writeNoteFile(note, fileName);
+
+      // WR-01: the note may have been deleted while this sync was in flight.
+      // cancelPendingSync only covers QUEUED timers — an in-flight sync that
+      // already read the note would otherwise resurrect its .md after the
+      // note:deleted cleanup removed it. Re-check existence after the write;
+      // when the note is gone, remove the just-written file (ownership-
+      // guarded) instead of recording sync state.
+      const stillThere = await getNotesDb().get(noteId);
+      if (!stillThere.success) {
+        await this.removeFileAndEmptyParents(
+          this.resolveCleanupFilePath(note.categoryPath, note.title, fileName),
+          note.id,
+        );
+        return;
+      }
+
       const now = Date.now();
       this._lastSyncAt = now;
       this._error = undefined;

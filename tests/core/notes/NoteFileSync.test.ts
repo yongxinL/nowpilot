@@ -1002,6 +1002,53 @@ describe('NoteFileSync', () => {
     await expect(sync.syncNote(uuid())).resolves.toBeUndefined();
   });
 
+  it('WR-01: an in-flight sync cannot resurrect a deleted note — the just-written .md is removed when the note is gone', async () => {
+    const fs = makeBackupFs();
+    pickerStub.mockResolvedValue(fs.root);
+    const sync = getNoteFileSync();
+    await sync.setBackupFolder();
+
+    const note = makeNote({ title: 'Race Note', categoryPath: 'Inbox' });
+    await getNotesDb().restore(note);
+    await sync.syncNote(note.id); // first sync: file written, state recorded
+    const file = fs.categoryDir.children.get('Race Note.md') as MockFileHandle;
+    expect(file).toBeDefined();
+
+    // Gate the write so remove() can interleave AFTER syncNote read the note
+    // but BEFORE the write lands — the exact TOCTOU window the old code left
+    // open (cancelPendingSync only covers queued timers).
+    let releaseWrite!: () => void;
+    let writeStarted!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      releaseWrite = resolve;
+    });
+    const started = new Promise<void>((resolve) => {
+      writeStarted = resolve;
+    });
+    const originalCreateWritable = file.createWritable.bind(file);
+    file.createWritable = async () => {
+      const writable = await originalCreateWritable();
+      return {
+        write: async (chunk: string) => {
+          writeStarted();
+          await gate;
+          return writable.write(chunk);
+        },
+        close: writable.close.bind(writable),
+      };
+    };
+
+    const syncPromise = sync.syncNote(note.id);
+    await started; // the in-flight write is now blocked mid-flight
+
+    await getNotesDb().remove(note.id); // note deleted while sync in flight
+    releaseWrite();
+    await syncPromise;
+
+    expect(fs.categoryDir.children.has('Race Note.md')).toBe(false);
+    expect(fs.root.children.has('Inbox')).toBe(false); // empty parents cleaned
+  });
+
   it('syncNote with null handle returns silently', () => {
     const sync = getNoteFileSync();
     sync.resetRuntimeState();
