@@ -284,7 +284,14 @@ Plans:
   4. User sets a backup folder via showDirectoryPicker() (Full App only) — per-save .md files are written with YAML frontmatter, nested categoryPath folders, collision suffixing, and external-change detection
   5. User restores notes from folder — additive upsert previews "Found N notes (X new, Y updated, Z unchanged)" and never deletes local notes not in the folder; v4 migration is idempotent
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+
+- [ ] 05a-01-PLAN.md — TRACER: Foundation (deps + NoteSchema + Migration v5 + NotesDB v5) → LlmService → NoteTagger end-to-end with EventBus note:saved handler (NOTE-02, NOTE-03)
+- [ ] 05a-02-PLAN.md — NoteQA (RAG with citations, search/ask modes, tiny fallback) + NoteChatConverter (haiku draft with MEM-03) + NoteMaintenance (staleness/orphan queries) (NOTE-02)
+- [ ] 05a-03-PLAN.md — NoteFileSync: EventBus handler, permission management, debounced .md writes with YAML frontmatter, collision resolution, external-change detection, rename/delete cleanup, folder restore (NOTE-03)
+
 **UI hint**: yes
 
 ### Phase 5b: Memory Governance & Experience Candidates

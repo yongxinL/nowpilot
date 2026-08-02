@@ -1,0 +1,1 @@
+No external API integration: Phase 5a uses browser-native File System Access API (not an external service API) and internal LlmService wrapping existing ProviderRouter/TierResolver. No new external API/SDK/REST/gRPC/webhook endpoint integration.
