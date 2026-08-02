@@ -199,16 +199,20 @@ export class NoteFileSync {
 
   /**
    * D-09: persist the handle in the v5 backup_config store (finally-close
-   * pattern). The record is written as a plain-data snapshot because
-   * FileSystemDirectoryHandle's methods live on its prototype — own
-   * enumerable functions would throw DataCloneError in structured clone.
+   * pattern). A NATIVE FileSystemDirectoryHandle (from showDirectoryPicker)
+   * is stored directly — Chrome structured-clones platform handles into
+   * IndexedDB, so the stored value round-trips as a live handle (CR-01).
+   * Only non-native handles (test doubles, cross-runtime fallbacks) are
+   * normalized to a plain-data snapshot, because their own enumerable
+   * function properties would throw DataCloneError in structured clone.
    */
   async persistHandle(handle: FileSystemDirectoryHandle): Promise<void> {
     const db = await this.openDb();
     try {
+      const stored = isNativeHandle(handle) ? handle : await toPlainHandle(handle);
       await db.put('backup_config', {
         id: BACKUP_CONFIG_KEY,
-        handle: await toPlainHandle(handle),
+        handle: stored,
       });
     } finally {
       db.close();
@@ -217,7 +221,11 @@ export class NoteFileSync {
 
   /**
    * D-09: load the persisted handle (null when never configured).
-   * Rehydrates the plain snapshot back into a functional directory handle.
+   * Handles BOTH stored shapes: a plain-data snapshot (PlainDirHandle with
+   * a `children` array) is rehydrated into a functional directory handle;
+   * a live handle-like object (native handle or any other handle with
+   * values/getDirectoryHandle/getFileHandle) is returned as-is — a real
+   * handle must never be rehydrated (CR-01).
    */
   async loadPersistedHandle(): Promise<FileSystemDirectoryHandle | null> {
     const db = await this.openDb();
@@ -225,7 +233,13 @@ export class NoteFileSync {
       const record = await db.get('backup_config', BACKUP_CONFIG_KEY);
       const raw = record?.handle ?? null;
       if (!raw) return null;
-      return rehydrateHandle(raw);
+      if (Array.isArray((raw as PlainDirHandle).children)) {
+        return rehydrateHandle(raw as PlainDirHandle);
+      }
+      if (isLiveHandle(raw)) {
+        return raw as FileSystemDirectoryHandle;
+      }
+      return null;
     } finally {
       db.close();
     }
@@ -262,6 +276,12 @@ export class NoteFileSync {
           error: this._error,
           reason: 'handle_expired',
         });
+      } else {
+        // D-09: a restored handle with live readwrite permission resumes
+        // syncing — the fresh singleton starts disabled, so restoreSession
+        // must re-enable it or backup silently never resumes after restart.
+        this._syncEnabled = true;
+        this._error = undefined;
       }
     } catch (err) {
       this._syncEnabled = false;
@@ -675,12 +695,39 @@ function isUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 }
 
-// ── Handle persistence: plain-data snapshot + rehydration ───────────────────
+// ── Handle persistence: native branch + plain-data snapshot fallback ────────
 // Chrome's native FileSystemDirectoryHandle is a platform object whose
-// methods live on the prototype — it structured-clones natively into
-// IndexedDB. Test doubles and cross-runtime fallbacks must be normalized
-// to plain data before persisting (own enumerable functions would throw
-// DataCloneError), then rebuilt into functional handles on load.
+// methods live on the prototype — the browser structured-clones it natively
+// into IndexedDB and returns a LIVE handle on load, so persistHandle stores
+// it directly (CR-01). Test doubles and cross-runtime fallbacks are
+// duck-typed as non-native and normalized to plain data before persisting
+// (own enumerable functions would throw DataCloneError), then rebuilt into
+// functional handles on load.
+
+/**
+ * Duck-type predicate for a NATIVE FileSystemDirectoryHandle platform
+ * object: it exposes `isSameEntry` and `Symbol.asyncIterator`, which the
+ * class-based test doubles lack. Native handles are persisted directly via
+ * structured clone; everything else takes the plain-data snapshot path.
+ * Exported for tests — the native-branch round-trip test reuses this exact
+ * predicate to emulate the browser's identity-preserving handle clone.
+ */
+export function isNativeHandle(handle: FileSystemDirectoryHandle): boolean {
+  return (
+    typeof handle.isSameEntry === 'function' &&
+    typeof handle[Symbol.asyncIterator] === 'function'
+  );
+}
+
+/** True when a stored value is a live handle-like object (not a snapshot). */
+function isLiveHandle(value: unknown): boolean {
+  const v = value as { values?: unknown; getDirectoryHandle?: unknown; getFileHandle?: unknown };
+  return (
+    typeof v.values === 'function' &&
+    typeof v.getDirectoryHandle === 'function' &&
+    typeof v.getFileHandle === 'function'
+  );
+}
 
 interface PlainFileHandle {
   kind: 'file';

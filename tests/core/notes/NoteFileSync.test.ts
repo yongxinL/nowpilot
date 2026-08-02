@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll, vi } from 'vitest';
+import { openDB } from 'idb';
 import { resetNotesDb, getNotesDb } from '../../../src/core/notes/NotesDB';
 import { resetJournalDb } from '../../../src/core/storage/WriteJournal';
 import { resetMigrationDb } from '../../../src/core/storage/MigrationRunner';
@@ -10,8 +11,10 @@ import {
   buildNoteFile,
   parseNoteFile,
   verifyPermission,
+  isNativeHandle,
   DEBOUNCE_MS,
   EXTERNAL_CHANGE_TOLERANCE_MS,
+  BACKUP_CONFIG_KEY,
   type SyncErrorEvent,
   type ExternalChangeEvent,
 } from '../../../src/core/notes/NoteFileSync';
@@ -130,6 +133,43 @@ function makeBackupFs(permissionState: MockPermissionState = 'granted'): {
   const categoryDir = new MockDirHandle('Inbox', root, permissionState);
   root.children.set('Inbox', categoryDir);
   return { root, categoryDir };
+}
+
+/**
+ * Native-shaped directory handle: duck-types as a real
+ * FileSystemDirectoryHandle (isSameEntry + Symbol.asyncIterator) while
+ * backing writes with the same class-based tree as MockDirHandle. Used to
+ * exercise the CR-01 native branch of persistHandle/loadPersistedHandle.
+ */
+class NativeMockDirHandle extends MockDirHandle {
+  isSameEntry(): Promise<boolean> {
+    return Promise.resolve(false);
+  }
+
+  [Symbol.asyncIterator]() {
+    return this.values();
+  }
+}
+
+/** Backup-folder tree whose handles duck-type as native platform objects. */
+function makeNativeBackupFs(permissionState: MockPermissionState = 'granted'): {
+  root: NativeMockDirHandle;
+  categoryDir: NativeMockDirHandle;
+} {
+  const root = new NativeMockDirHandle('backup', null, permissionState);
+  const categoryDir = new NativeMockDirHandle('Inbox', root, permissionState);
+  root.children.set('Inbox', categoryDir);
+  return { root, categoryDir };
+}
+
+/** Read the raw persisted backup_config record (bypasses rehydration). */
+async function readBackupConfig(): Promise<{ handle: unknown } | null> {
+  const db = await openDB('NotesDB', 5);
+  try {
+    return (await db.get('backup_config', BACKUP_CONFIG_KEY)) as { handle: unknown } | null;
+  } finally {
+    db.close();
+  }
 }
 
 function addFile(
@@ -431,6 +471,89 @@ describe('NoteFileSync', () => {
     // rehydrated handle is usable
     const sub = await (loaded as unknown as MockDirHandle).getDirectoryHandle('sub', { create: true });
     expect(sub.name).toBe('sub');
+  });
+
+  // ── CR-01: native-handle persistence (structured clone, no snapshot) ──────
+
+  it('native-shaped handle persists natively and sync resumes after a simulated restart (CR-01)', async () => {
+    const fs = makeNativeBackupFs();
+    pickerStub.mockResolvedValue(fs.root);
+    const sync = getNoteFileSync();
+
+    // The browser structured-clones a native FileSystemHandle into a LIVE
+    // handle (identity-preserving). fake-indexeddb's structured clone cannot
+    // reproduce platform-object behavior, so emulate it for the duck-typed
+    // native branch only — everything else uses the real clone. The value
+    // being cloned is the `{ id, handle }` record, so unwrap to the handle.
+    const realStructuredClone = globalThis.structuredClone;
+    const identityCloneForNative = (value: unknown): unknown => {
+      const handle = (value as { handle?: unknown })?.handle ?? value;
+      return isNativeHandle(handle as FileSystemDirectoryHandle) ? value : realStructuredClone(value);
+    };
+    (globalThis as unknown as { structuredClone: typeof realStructuredClone }).structuredClone =
+      identityCloneForNative;
+
+    try {
+      await sync.setBackupFolder();
+      expect(sync.getSyncStatus().enabled).toBe(true);
+
+      // The persisted record holds the handle itself — NOT a plain-data
+      // snapshot (no `children` array on the stored record.handle).
+      const record = await readBackupConfig();
+      expect(record).not.toBeNull();
+      expect(Array.isArray((record!.handle as { children?: unknown }).children)).toBe(false);
+      expect(typeof (record!.handle as { getDirectoryHandle?: unknown }).getDirectoryHandle).toBe('function');
+
+      // Simulated extension restart: drop the singleton, start fresh, and
+      // restore the session from the persisted handle — no re-selection.
+      resetNoteFileSync();
+      const restarted = getNoteFileSync();
+      restarted.initNoteFileSync();
+      await vi.waitFor(() => expect(restarted.getSyncStatus().enabled).toBe(true));
+
+      // Writes reach the filesystem-backed mock tree — not a phantom copy.
+      const note = makeNote({ title: 'Native Round Trip', categoryPath: 'Inbox' });
+      await getNotesDb().restore(note);
+      await restarted.syncNote(note.id);
+      const file = fs.categoryDir.children.get('Native Round Trip.md') as MockFileHandle;
+      expect(file).toBeDefined();
+      expect(file.writeCount).toBe(1);
+      expect(file.content).toContain('Plain content without links');
+      expect(file.content).toContain(note.id);
+    } finally {
+      (globalThis as unknown as { structuredClone: typeof realStructuredClone }).structuredClone =
+        realStructuredClone;
+    }
+  });
+
+  it('restoreSession resumes sync with a rehydrated snapshot double (D-10 preserved)', async () => {
+    const fs = makeBackupFs();
+    pickerStub.mockResolvedValue(fs.root);
+    const sync = getNoteFileSync();
+    await sync.setBackupFolder();
+
+    // Simulated restart: the snapshot path rehydrates a functional double
+    // whose queryPermission returns the stored permissionState. Capture the
+    // exact rehydrated tree restoreSession will load (each rehydrateHandle
+    // call builds its own tree) and pin it via a spy so the write and the
+    // read assertions address the same tree.
+    const restarted = getNoteFileSync();
+    const loaded = await restarted.loadPersistedHandle();
+    expect(loaded).not.toBeNull();
+    vi.spyOn(restarted, 'loadPersistedHandle').mockResolvedValue(loaded);
+    restarted.initNoteFileSync();
+    await vi.waitFor(() => expect(restarted.getSyncStatus().enabled).toBe(true));
+
+    const note = makeNote({ title: 'Rehydrated Resume', categoryPath: 'Inbox' });
+    await getNotesDb().restore(note);
+    await restarted.syncNote(note.id);
+
+    // The write landed in the rehydrated tree that restoreSession loaded —
+    // reachable through the handle's own API.
+    const inbox = await loaded!.getDirectoryHandle('Inbox');
+    const fileHandle = await inbox.getFileHandle('Rehydrated Resume.md');
+    const file = await fileHandle.getFile();
+    expect(await file.text()).toContain('Plain content without links');
   });
 
   // ── Restore ────────────────────────────────────────────────────────────────
