@@ -144,7 +144,8 @@ export async function verifyPermission(
 export class NoteFileSync {
   private _handle: FileSystemDirectoryHandle | null = null;
   private _syncEnabled = false;
-  private _debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  /** WR-01: per-note debounce timers — a burst of DIFFERENT notes all sync. */
+  private _debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private _lastSyncAt: number | undefined;
   private _error: string | undefined;
   private _lastPermissionState: PermissionState = 'unknown';
@@ -289,15 +290,24 @@ export class NoteFileSync {
     }
   }
 
-  /** 50ms debounce (SYNC-03): clears the pending timer, then fires once. */
+  /**
+   * 50ms debounce (SYNC-03 / WR-01): one pending timer PER note. Repeated
+   * saves of the SAME note still coalesce to a single write, but saves of
+   * DIFFERENT notes no longer cancel each other — a burst (e.g. a folder
+   * restore with an active backup) backs up every note, not just the last.
+   */
   private scheduleSync(noteId: string): void {
-    if (this._debounceTimer) {
-      clearTimeout(this._debounceTimer);
+    const existing = this._debounceTimers.get(noteId);
+    if (existing) {
+      clearTimeout(existing);
     }
-    this._debounceTimer = setTimeout(() => {
-      this._debounceTimer = null;
-      void this.syncNote(noteId);
-    }, DEBOUNCE_MS);
+    this._debounceTimers.set(
+      noteId,
+      setTimeout(() => {
+        this._debounceTimers.delete(noteId);
+        void this.syncNote(noteId);
+      }, DEBOUNCE_MS),
+    );
   }
 
   /**
@@ -714,10 +724,10 @@ export class NoteFileSync {
 
   /** Reset transient state (recovery + test isolation). */
   resetRuntimeState(): void {
-    if (this._debounceTimer) {
-      clearTimeout(this._debounceTimer);
-      this._debounceTimer = null;
+    for (const timer of this._debounceTimers.values()) {
+      clearTimeout(timer);
     }
+    this._debounceTimers.clear();
     this._syncEnabled = false;
     this._lastPermissionState = 'unknown';
     this._lastSyncAt = undefined;

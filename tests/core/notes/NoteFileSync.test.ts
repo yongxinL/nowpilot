@@ -567,6 +567,41 @@ describe('NoteFileSync', () => {
     spy.mockRestore();
   });
 
+  it('per-note debounce: a burst of DIFFERENT notes all reach the filesystem (WR-01)', async () => {
+    const fs = makeBackupFs();
+    pickerStub.mockResolvedValue(fs.root);
+    const sync = getNoteFileSync();
+    await sync.setBackupFolder();
+
+    const noteA = makeNote({ title: 'Burst A', categoryPath: 'Inbox' });
+    const noteB = makeNote({ title: 'Burst B', categoryPath: 'Inbox' });
+    await getNotesDb().restore(noteA);
+    await getNotesDb().restore(noteB);
+
+    // fake timers only AFTER all async DB/handle setup completes
+    vi.useFakeTimers();
+    // initNoteFileSync fires restoreSession (async, promise-based — the
+    // IndexedDB shim resolves on the real microtask queue, unaffected by
+    // fake timers). Reuse the live handle so writes land on fs.
+    vi.spyOn(sync, 'loadPersistedHandle').mockResolvedValue(fs.root as unknown as FileSystemDirectoryHandle);
+    sync.initNoteFileSync();
+    await vi.advanceTimersByTimeAsync(0); // let restoreSession settle
+
+    // Both notes saved within the debounce window — each keeps its own timer.
+    emit('note:saved', { noteId: noteA.id });
+    emit('note:saved', { noteId: noteB.id });
+    await vi.advanceTimersByTimeAsync(DEBOUNCE_MS + 10);
+
+    const fileA = fs.categoryDir.children.get('Burst A.md') as MockFileHandle;
+    const fileB = fs.categoryDir.children.get('Burst B.md') as MockFileHandle;
+    expect(fileA).toBeDefined();
+    expect(fileA.content).toContain('Plain content without links');
+    expect(fileB).toBeDefined();
+    expect(fileB.content).toContain('Plain content without links');
+    expect(fileA.writeCount).toBe(1);
+    expect(fileB.writeCount).toBe(1);
+  });
+
   // ── EventBus subscription ──────────────────────────────────────────────────
 
   it('initNoteFileSync subscribes to note:saved', () => {
