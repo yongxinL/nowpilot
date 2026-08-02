@@ -18,6 +18,14 @@ must_haves:
     - "WR-02 cleanup is wired (note:deleted/note:renamed events exist and are subscribed) — no dead cleanup code remains"
     - "WR-03 decision recorded: staleness timestamps written at the service layer in NotesDB.save(); Phase 7 needs no additional writer for getStaleNotes() viability"
     - "Phase 7 deferrals recorded in deferred-items.md: SC1/SC2/SC3 UI rendering, real-browser FSA structured-clone verification, UI-SPEC 2 backstop rows + 1 unresolved row — nothing silently dropped"
+    - "NoteTagger keeps making a single haiku-tier, temperature-0 structured-output call via LlmService with the enrichment + memoryFacts partitions (D-01 preserved — 05a touches no LLM path; regression gate keeps the 18-test NoteTagger suite green)"
+    - "Enrichment and memoryFacts stay on two independent review surfaces — inline accept/reject suggestions on the note editor vs the separate 'New Memory Facts' surface (D-02 preserved; SC1 rendering is the Phase 7 deferral, the service-layer event delivery is unchanged)"
+    - "LLM-reported confidence remains display-only metadata; accepted memoryFacts are stored with confidence=0.5 (inferred), never the LLM self-score (D-03 preserved — regression gate keeps the NoteTagger suite green)"
+    - "MemoryFacts with LLM confidence < 0.3 stay filtered out, max 3 displayed per save, both thresholds still local NoteTagger constants (D-04 preserved — 05a changes no NoteTagger constant)"
+    - "NoteTagger toggle logic preserved (D-06): all toggles off → no LLM call at all; some on + MEM-02 memory extraction off → call runs but generated memoryFacts are discarded — regression gate keeps the NoteTagger suite green"
+    - "The shared src/core/ai/LlmService.ts structured-call path for NoteTagger/NoteQA/NoteChatConverter (TierResolver haiku/flash, temperature-0, Zod validation) is unchanged (D-08 preserved — 05a adds no LLM-call changes)"
+    - "MEM-02 primary-surface check stays at MemoryEngine.write() time, not at NoteTagger call time (D-19 preserved — 05a touches neither the NoteTagger call path nor MemoryEngine.write)"
+    - "NoteChatConverter still drafts pre-filled notes via LlmService (haiku + MemoryEngine.assemble()) then routes them through the full save pipeline with provenance chat-conversion (D-20 preserved — regression gate keeps the 5-test NoteChatConverter suite green)"
   artifacts:
     - .planning/phases/05a-llm-wiki-filesystem-sync/deferred-items.md
   key_links:

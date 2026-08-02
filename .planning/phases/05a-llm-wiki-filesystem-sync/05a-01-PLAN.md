@@ -24,6 +24,8 @@ must_haves:
     - "NotesDB.save() preserves lastSyncedFileName across re-saves exactly like lastSyncedAt (D-11/D-18 preservation extended)"
     - "getSyncStatus() exposes enabled/handleExists/permissionState/lastSyncAt/error so the Phase 7 Backup Tag renders the four states On/Off/Error/Paused (UI-SPEC covered lift, SYNC-08)"
     - "sync:external-change carries noteId/title/localModified/fileModified; the write never touches a newer external file — it falls through to a suffixed write (UI-SPEC covered lift, D-11)"
+    - "Every sync attempt re-checks permission on the live handle via handle.queryPermission({mode:'readwrite'}); denied → sync disabled — the per-save permission contract (D-10) is preserved through handle persistence and rehydration (restoreSession must yield a handle whose queryPermission works for both the native shape and the rehydrated double; the red 'Backup: Error' Tag + re-select flow stays Phase 7 UI)"
+    - "NoteTagger and NoteFileSync subscribe to note:saved independently on the EventBus and run in parallel with no ordering dependency (D-17 preserved) — the WR-01 per-note debounce map changes only timer bookkeeping inside NoteFileSync, never the subscription shape or the parallel contract with NoteTagger's non-blocking LLM call"
   artifacts:
     - src/core/notes/NoteFileSync.ts
     - src/core/notes/NoteSchema.ts
@@ -107,6 +109,7 @@ Output: NoteFileSync write path that (a) persists native handles natively, (b) d
     - A native-shaped handle (duck-typed with Symbol.asyncIterator/isSameEntry) round-trips: persistHandle → resetNoteFileSync() + fresh getNoteFileSync() (simulated restart) → initNoteFileSync()/restoreSession() → syncNote() — and the .md write reaches the underlying filesystem-backed mock (writeCount/content on the real mock, not a phantom tree).
     - The persisted record for a native-shaped handle is NOT wrapped in snapshot shape (no `children` property on the stored record.handle).
     - Class-based MockDirHandle still takes the snapshot path and rehydrates functionally ('loadPersistedHandle rehydrates a functional handle' test remains green).
+    - restoreSession() yields a handle whose queryPermission({mode:'readwrite'}) call works on both the native-shaped handle (live platform result) and the rehydrated double (stored permissionState) — the per-sync permission check contract (D-10) is preserved through rehydration.
     - All 35 pre-existing NoteFileSync tests + new tests pass; tsc clean.
   </done>
 </task>
@@ -167,7 +170,7 @@ Output: NoteFileSync write path that (a) persists native handles natively, (b) d
     Per 05a-REVIEW.md WR-01: the single `_debounceTimer` clears and re-arms for the LATEST noteId — any two note:saved events within 50ms for different notes lose the earlier note's sync entirely (restoreFromFolder with an active backup backs up only the last note).
 
     1. Replace the single `_debounceTimer` field (L147) with `private _debounceTimers = new Map<string, ReturnType<typeof setTimeout>>()`.
-    2. Rewrite scheduleSync(noteId): clear only that note's pending timer (map.get + clearTimeout), set a new timer stored under noteId; on fire, delete the map entry then `void this.syncNote(noteId)`. Same-note coalescing semantics preserved (repeated saves of ONE note still collapse to one write).
+    2. Rewrite scheduleSync(noteId): clear only that note's pending timer (map.get + clearTimeout), set a new timer stored under noteId; on fire, delete the map entry then `void this.syncNote(noteId)`. Same-note coalescing semantics preserved (repeated saves of ONE note still collapse to one write). Leave the note:saved subscription registration itself untouched — NoteTagger's independent non-blocking subscriber keeps running in parallel, no ordering dependency between the two subscribers (D-17 preserved).
     3. resetRuntimeState(): clear ALL timers in the map and reset it (not just one).
     4. Add tests: (a) two DIFFERENT notes saved within 50ms both sync — both .md files exist on the mock FS (this is the restore-burst regression: N restored notes with active backup all get written); (b) repeated saves of the same note still coalesce to a single write (existing test stays green).
   </action>

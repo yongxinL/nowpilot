@@ -25,6 +25,11 @@ must_haves:
     - "tagsGeneratedAt/summaryGeneratedAt are written by NotesDB.save() when the incoming tags/summary differ from the persisted note (WR-03 decision: implement now at service layer) — getStaleNotes() can distinguish 'enriched then edited' from 'never enriched'"
     - "getStaleNotes() viability restored: a note enriched then edited returns stale; a note enriched and untouched does not; a never-enriched note is stale only after the 60s grace (LLM-WIKI-08, UI-SPEC staleness hint lift)"
     - "NoteQA markerless fallback citations carry only REAL snippet noteIds/titles rebuilt by referenceNumber index — fabricated LLM noteId/title never enters the Citation[] (WR-05, 'never cite non-existent notes')"
+    - "NoteQA still assembles its own prompt directly — system prompt + numbered snippets + memory facts + user question, no ContextOptimizer (D-14 preserved; WR-05 touches only fallback citation construction, never prompt assembly or the token budget)"
+    - "NoteQA's two-mode dispatch preserved (D-15): search (haiku rerank of top-10, < 3 MiniSearch results or explicit 'AI Search') and ask (flash-tier synthesis with citations), both behind the same entry point mode parameter — WR-05 changes only the markerless-fallback citation rebuild inside the ask path"
+    - "Tiny model tier NoteQA still returns MiniSearch top-5 snippets + MemoryEngine relevant facts as raw results with noteId links and no LLM call (D-16 preserved — the WR-05 fallback runs in the LLM path only and must not alter tiny-tier behavior)"
+    - "NoteMaintenance remains a passive, UI-driven query service — getStaleNotes() (summaryGeneratedAt < updatedAt or tagsGeneratedAt < updatedAt) + getOrphanNotes(), no EventBus subscriptions, no background monitoring (D-21 preserved; the WR-03 writer only feeds the existing query logic)"
+    - "NoteTagger's note.version staleness discard preserved (D-07): the WR-03 timestamp writer stamps only APPLIED (persisted) enrichment changes in NotesDB.save() and never touches the suggestion path, so version-based stale-suggestion discard keeps working silently with no stale-overwrite risk"
   artifacts:
     - src/core/notes/NotesDB.ts
     - src/core/notes/NoteFileSync.ts
@@ -150,8 +155,9 @@ Output: Event-driven rename/delete cleanup (integration-tested end-to-end), stal
        - `tagsChanged = JSON.stringify(existing.note.tags) !== JSON.stringify(parsed.tags)` — or array-equality; if tagsChanged → `tagsGeneratedAt: Date.now()`, else preserve `parsed.tagsGeneratedAt ?? existing.note.tagsGeneratedAt`.
        - `summaryChanged = (existing.note.summary ?? null) !== (parsed.summary ?? null)` → if summaryChanged → `summaryGeneratedAt: Date.now()`, else preserve `parsed.summaryGeneratedAt ?? existing.note.summaryGeneratedAt`.
        - When NOT existing.success (create): keep `parsed.tagsGeneratedAt` / `parsed.summaryGeneratedAt` as-is (undefined unless payload carries them) — a brand-new note is 'never enriched'.
-    2. Do NOT touch NoteMaintenance.getStaleNotes() logic — it already implements the intended comparison (L50-66); only the writer was missing.
-    3. Update any NoteMaintenance.test.ts expectations that encoded the 'no writer' degenerate behavior; add the integration tests from the behavior block.
+    2. Do NOT touch NoteMaintenance.getStaleNotes() logic — it already implements the intended comparison (L50-66); only the writer was missing. NoteMaintenance stays a passive query service with no EventBus subscriptions and no background monitoring (D-21 preserved — the writer is additive, the query contract is unchanged).
+    3. The diff-writer marks APPLIED enrichment only and never runs on the suggestion path — it must not interfere with NoteTagger's note.version-based stale-suggestion discard (D-07 preserved: suggestions stay in-memory state discarded by version check; timestamps reflect only persisted changes).
+    4. Update any NoteMaintenance.test.ts expectations that encoded the 'no writer' degenerate behavior; add the integration tests from the behavior block.
   </action>
   <verify>
     <automated>npx vitest run tests/core/notes/NotesDB.test.ts tests/core/notes/NoteMaintenance.test.ts --no-coverage && npx tsc --noEmit</automated>
@@ -183,6 +189,7 @@ Output: Event-driven rename/delete cleanup (integration-tested end-to-end), stal
        - `const s = snippets[c.referenceNumber - 1];` then `out.push({ noteId: s.noteId, title: s.title, relevantSnippet: s.snippet, referenceNumber: c.referenceNumber })`.
        - Keep the existing guards: skip if referenceNumber < 1 or > snippets.length; skip if already used (dedupe). LLM-supplied noteId/title/relevantSnippet fields are IGNORED entirely.
     2. Update/add NoteQA.test.ts tests per the behavior block; fix any existing test that asserted the old verbatim passthrough.
+    3. Do NOT change NoteQA's prompt assembly (D-14: own prompt — system + numbered snippets + memory facts + question, no ContextOptimizer), the two-mode dispatch (D-15: search haiku rerank of top-10 / ask flash synthesis with citations), or the tiny-tier raw-results path (D-16: MiniSearch top-5 + memory facts, no LLM call) — WR-05 only replaces the markerless-fallback citation construction.
   </action>
   <verify>
     <automated>npx vitest run tests/core/notes/NoteQA.test.ts --no-coverage && npx tsc --noEmit</automated>
