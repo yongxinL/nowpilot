@@ -188,6 +188,54 @@ describe('NotesDB', () => {
     }
   });
 
+  it('updateSyncState reads and writes within ONE transaction — no clobber window for a concurrent save() (WR-04)', async () => {
+    const note = makeNote({ content: 'v1' });
+    await notesDb.save(note);
+
+    // The fix must collapse the old get-then-put (two transactions, with a
+    // save() landing in between) into a single atomic readwrite transaction.
+    // idb's wrapper delegates to the native (fake-indexeddb) database, so
+    // spy on the native prototype.
+    const nativeDb = (globalThis as unknown as {
+      IDBDatabase: { prototype: { transaction: (...args: unknown[]) => unknown } };
+    }).IDBDatabase;
+    const txSpy = vi.spyOn(nativeDb.prototype, 'transaction');
+    try {
+      await notesDb.updateSyncState(note.id, { lastSyncedAt: 1234, lastSyncedFileName: 'Owned.md' });
+      // Assert BEFORE mockRestore — restore clears the call history.
+      expect(txSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      txSpy.mockRestore();
+    }
+
+    const after = await notesDb.get(note.id);
+    expect(after.success).toBe(true);
+    if (after.success) {
+      expect(after.note.lastSyncedAt).toBe(1234);
+      expect(after.note.lastSyncedFileName).toBe('Owned.md');
+    }
+  });
+
+  it('a concurrent save() + updateSyncState() never leaves stale content from the state write (WR-04)', async () => {
+    const note = makeNote({ content: 'v1' });
+    await notesDb.save(note);
+
+    // Fire both concurrently. The state write is a single atomic
+    // transaction, so it can never read the old note, get overtaken by the
+    // save, and then resurrect the stale snapshot — the save's newer
+    // content always wins regardless of the interleaving order.
+    await Promise.all([
+      notesDb.save({ ...note, content: 'v2 concurrent edit' }),
+      notesDb.updateSyncState(note.id, { lastSyncedAt: 4321, lastSyncedFileName: 'Concurrent.md' }),
+    ]);
+
+    const after = await notesDb.get(note.id);
+    expect(after.success).toBe(true);
+    if (after.success) {
+      expect(after.note.content).toBe('v2 concurrent edit');
+    }
+  });
+
   describe('staleness timestamp diff-writer (WR-03)', () => {
     it('save with changed tags stamps tagsGeneratedAt; unchanged tags preserve it', async () => {
       const note = makeNote({ tags: ['work'] });
@@ -265,3 +313,4 @@ describe('NotesDB', () => {
     });
   });
 });
+

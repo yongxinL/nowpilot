@@ -281,20 +281,26 @@ export class NotesDB {
 
   /**
    * Update sync-state fields after a successful file write (D-11 / WR-04):
-   * a raw put merging state into the persisted note, mirroring the
-   * updateLastSyncedAt pattern. `lastSyncedAt` and `lastSyncedFileName`
-   * are persisted atomically so owned-file reuse (WR-04) never sees a
-   * stripped tracking field.
+   * read + merge + write inside ONE readwrite transaction. WR-04: the old
+   * pattern (separate get() then put()) left a window in which a concurrent
+   * save() committing between the two awaits was clobbered — the state write
+   * overwrote the newer content/links/version with the stale snapshot. A
+   * single transaction serializes against every other write to the store.
+   * `lastSyncedAt` and `lastSyncedFileName` are persisted atomically so
+   * owned-file reuse (WR-04) never sees a stripped tracking field.
    */
   async updateSyncState(
     id: string,
     state: { lastSyncedAt?: number; lastSyncedFileName?: string },
   ): Promise<void> {
     const db = await openNotesDb();
-    const existing = await this.get(id);
-    if (!existing.success) return;
-    const updated: Note = { ...existing.note, ...state };
-    await db.put('notes', updated);
+    const tx = db.transaction('notes', 'readwrite');
+    const store = tx.store;
+    const existing = await store.get(id);
+    if (!existing) return; // note gone — nothing to patch
+    const updated: Note = { ...(existing as Note), ...state };
+    await store.put(updated);
+    await tx.done;
   }
 
   /** Update only the lastSyncedAt field after a successful file write (D-11). */
