@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { resetNotesDb, notesDb } from '../../../src/core/notes/NotesDB';
 import { resetJournalDb } from '../../../src/core/storage/WriteJournal';
 import { resetLlmService, getLlmService } from '../../../src/core/ai/LlmService';

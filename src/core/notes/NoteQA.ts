@@ -6,7 +6,7 @@ import { getMemoryEngine } from '../memory/MemoryEngine';
 import type { ContextItem } from '../context/ContextItem';
 import { noteSearchIndex } from './MiniSearchNoteIndex';
 import { getNotesDb } from './NotesDB';
-import { NoteQAResultSchema } from './NoteSchema';
+import { NoteQAResultSchema, type NoteQAResult } from './NoteSchema';
 import type { NoteSearchResult } from './types';
 
 /**
@@ -105,10 +105,6 @@ export function parseCitations(rawText: string, snippets: SnippetInfo[]): Citati
   return citations;
 }
 
-function toSnippetInfo(result: NoteSearchResult): SnippetInfo {
-  return { noteId: result.noteId, title: result.title ?? '', snippet: result.snippet };
-}
-
 /**
  * Build SnippetInfo[] with real titles for the top-N search results —
  * NoteSearchResult carries no title, so titles are resolved from NotesDB.
@@ -165,7 +161,7 @@ export class NoteQA {
     llmResult: { answer: string; citations: Citation[] },
     snippets: SnippetInfo[],
   ): Citation[] {
-    const fromMarkers = parseCitations(llmResult.answer, snippets.map(toSnippetInfo));
+    const fromMarkers = parseCitations(llmResult.answer, snippets);
     if (fromMarkers.length > 0) return fromMarkers;
 
     const used = new Set<number>();
