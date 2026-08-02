@@ -3,6 +3,7 @@ import { generateText } from 'ai';
 import {
   ConversationMemoryStore,
   resetConversationMemoryDb,
+  type MemoryMessageInput,
 } from '../../src/core/memory/ConversationMemoryStore';
 import type { ProviderAdapter } from '../../src/core/ai/providers/ProviderAdapter';
 
@@ -25,7 +26,7 @@ function makeAdapter(): { adapter: ProviderAdapter; requestedModels: string[] } 
   return { adapter, requestedModels };
 }
 
-const message = (n: number) => ({ role: 'user', content: `message ${n} content`, timestamp: 1_000_000_000_000 + n });
+const message = (n: number): MemoryMessageInput => ({ role: 'user', content: `message ${n} content`, timestamp: 1_000_000_000_000 + n });
 
 describe('UAT check: full summarization loop (simulated production call sequence)', () => {
   it('12 appends → shouldCompact=true → compactConversation stores ≤500-char summary, all messages preserved', async () => {

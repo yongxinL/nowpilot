@@ -2,18 +2,23 @@ import { describe, it, expect } from 'vitest';
 import { MiniSearchNoteIndex } from '../../src/core/notes/MiniSearchNoteIndex';
 import type { Note } from '../../src/core/notes/NoteSchema';
 
+const TOPICS = ['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta', 'iota', 'kappa'];
+
 function makeNote(i: number): Note {
-  const title = `Note about ${['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta', 'iota', 'kappa'][i % 10]} topic ${i}`;
+  const title = `Note about ${TOPICS[i % TOPICS.length]} topic ${i}`;
   return {
-    id: `note-${i}`,
+    id: crypto.randomUUID(),
     title,
-    body: `Content for ${title}. Discusses wikilinks, memory persistence, note graph, backlinks, search indexing, and ${['alpha', 'beta', 'gamma'][i % 3]} concepts.`.repeat(3),
+    content: `Content for ${title}. Discusses wikilinks, memory persistence, note graph, backlinks, search indexing, and ${['alpha', 'beta', 'gamma'][i % 3]} concepts.`.repeat(3),
     tags: [`tag-${i % 5}`],
+    categoryPath: '',
     createdAt: Date.now() - i * 1000,
     updatedAt: Date.now() - i * 500,
     version: 1,
-    schemaVersion: 1,
-  } as Note;
+    provenance: { source: 'user-created' },
+    links: [],
+    unresolvedLinks: [],
+  };
 }
 
 describe('UAT benchmark: search latency at scale', () => {
