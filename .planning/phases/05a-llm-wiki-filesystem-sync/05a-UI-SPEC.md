@@ -139,30 +139,76 @@ Phase 5a ships the services; this section is the binding contract between each s
 
 ## UI Considerations
 
-Applicable state considerations resolved: **12 covered, 1 backstop, 1 unresolved — or "none applicable"** (state axis only; this phase ships no components — rows bind Phase 7 rendering of 5a service surfaces).
+Applicable state considerations resolved by probe (state axis; rows bind Phase 7 rendering of 5a service surfaces): **53 covered, 2 backstop, 1 unresolved, 19 dismissed** (kind-confirmed not applicable — every raised row explicitly resolved, none silently dropped).
 
 | Category | Element(s) | Status | Resolution / Reason |
 |----------|------------|--------|---------------------|
-| empty | RAG "Ask notes" result Bubble (list-collection) | ✅ covered | Zero MiniSearch hits renders "No relevant notes found. Try rephrasing." — no LLM call (§19.19, RAG_NO_RESULTS). |
-| empty | Backup status Tag (static-content) | ✅ covered | No handle → gray "Backup: Off" + "Backup: off [Configure]" toolbar indicator (SYNC-07/08). |
-| empty | Memory facts surface (list-collection) | ✅ covered | 0 qualifying facts (all <0.3 confidence filtered, D-04) → no "New Memory Facts" surface appears; silent. |
-| empty | Restore preview modal (list-collection) | ✅ covered | Empty/`.md`-free folder → "Found 0 notes (0 new, 0 updated, 0 unchanged)" with `[Import] [Cancel]` (SYNC-10); malformed files count toward `skippedCount`. |
-| loading | RAG synthesis Bubble (static-content) | 🧪 backstop | Flash synthesis takes seconds; in-flight indicator unspecified by spec. Contract: ephemeral Bubble shows a brief "Analyzing your notes…" while `NoteQA.ask()` is in flight. Lifts as `{ statement, verification: backstop }` — requires a held-out visual test at Phase 7, never a silent pass. |
-| loading | "Re-analyze all notes" progress (list-collection) | ⚠ unresolved | Spec says "updates stats in real time" (LLM-WIKI-10); exact widget (per-note ticker vs progress bar vs message sequence) not pinned. Planner treats as assumption: sequential per-note updates via antd message/progress within the Options → Notes panel. |
-| error | NoteTagger failure hint (form) | ✅ covered | Save always succeeds; subtle "Couldn't analyze — [Retry]" hint, never blocks save or sync (§19.18, NOTE_TAGGER_FAILED). |
-| error | Backup permission revoked (nav/status) | ✅ covered | Red "Backup: Error" Tag + "[Re-select folder] [Dismiss]" banner on NotesPage mount; tooltip shows last error (SYNC-02, §19.16, NOTE_SYNC_PERMISSION_REVOKED). |
-| error | Restore preview parse failures (list-collection) | ✅ covered | Skipped `.md` files (invalid/duplicate id) excluded from counts, surfaced via `skippedCount` tooltip (05a-03-PLAN restore contract). |
-| populated | Note editor enrichment suggestions (form) | ✅ covered | ≤5 tag Tags + category input + summary field render as accept/reject on the editor (LLM-WIKI-01); accepted values persist via re-save → `note:saved` re-syncs `.md` frontmatter (D-18). |
-| zero-one-many | Memory facts (list-collection) | ✅ covered | 0, 1, 2, 3 facts (cap 3, D-04) — singular/plural handled by max-3 cap; no count copy needed beyond the "New Memory Facts" surface title. |
-| zero-one-many | Citation Tags in RAG Bubble (static-content) | ✅ covered | 0 citations (tiny tier) → plain answer/raw links; 1..N → numbered clickable Tags after referenced statements (Flow 13, D-13). |
-| long-text | RAG answer + summary in NoteList (static-content) | ✅ covered | Answer Bubble scrolls within its ephemeral container; NoteList summary truncates to 2 lines with ellipsis (LLM-WIKI-03 secondary text). |
-| overflow | Restore preview with many notes (list-collection) | ✅ covered | Preview modal list scrolls (max-height container); counts summarize; no pagination required at v0.1 volumes. |
+| empty | RAG answer Bubble | ✅ covered | Zero MiniSearch hits renders "No relevant notes found. Try rephrasing." — no LLM call fires (§19.19, RAG_NO_RESULTS). |
+| loading | RAG synthesis Bubble | 🧪 backstop | `{ statement: "While NoteQA.ask() is in flight, the ephemeral RAG Bubble shows a brief 'Analyzing your notes…' in-flight indicator before the answer renders.", verification: backstop }` — held-out visual test at Phase 7. |
+| error | RAG answer failure | ✅ covered | Query failure surfaces a retry affordance in the Ask bar; the Ask bar itself never blocks (flash-tier timeout path). |
+| populated | RAG answer with citations | ✅ covered | Numbered citation markers render as clickable Tags navigating to source notes (Flow 13, D-13). |
+| partial | Tiny-tier raw results | ✅ covered | `TINY` tier renders raw snippet list with noteId links, no LLM synthesis (D-16). |
+| overflow | RAG answer length | ✅ covered | Answer Bubble scrolls within its ephemeral container. |
+| zero-one-many | Citation count | ✅ covered | 0 citations (tiny tier) → plain answer/raw links; 1..N → numbered clickable Tags after referenced statements (Flow 13, D-13). |
+| long-text | RAG answer body | ✅ covered | Long answers wrap and scroll within the Bubble; no truncation of answer text. |
+| populated | Backup status Tag | ✅ covered | Tag mapping: enabled+granted → green "Backup: On"; no handle → gray "Backup: Off" (+[Configure]); denied → red "Backup: Error"; prompt/unknown with handle → "Backup: Paused" (SYNC-08, `getSyncStatus()` contract). |
+| error | Backup status Tag — error state | ✅ covered | Red "Backup: Error" Tag with tooltip carrying last `error` from `sync:error` (SYNC-02, §19.16). |
+| empty | Memory facts surface | ✅ covered | 0 qualifying facts (all <0.3 confidence filtered, D-04) → no "New Memory Facts" surface appears; silent. |
+| loading | Memory facts in flight | ✅ covered | No separate loading affordance — facts arrive with `note:enriched`; surface absent until analysis completes. |
+| error | Memory facts failure | ✅ covered | Facts dropped on failure; covered by NoteTagger "Couldn't analyze — [Retry]" hint (D-07, save unaffected). |
+| populated | Memory facts list | ✅ covered | ≤3 facts (confidence ≥0.3) rendered in the "New Memory Facts" side-panel flow (D-04). |
+| partial | Memory facts subset | ✅ covered | Fewer than 3 accepted → panel renders only accepted facts; no count copy beyond the surface title. |
+| overflow | Memory facts panel | ✅ covered | Panel scrolls within max-height container. |
+| zero-one-many | Memory facts count | ✅ covered | 0/1/2/3 facts — singular/plural handled by max-3 cap (D-04); no count copy needed. |
+| empty | Restore preview modal | ✅ covered | Empty/`.md`-free folder → "Found 0 notes (0 new, 0 updated, 0 unchanged)" with [Import] [Cancel] (SYNC-10). |
+| loading | Restore import in flight | ✅ covered | Import button disabled while `restoreFromFolder()` import runs; no dedicated loading spec — button-disabled is the contract. |
+| error | Restore parse failures | ✅ covered | Skipped `.md` files (malformed/duplicate id) excluded from counts, surfaced via `skippedCount` tooltip. |
+| populated | Restore preview counts | ✅ covered | "Found {N} notes ({X} new, {Y} updated, {Z} unchanged). Proceed? [Import] [Cancel]" (SYNC-10). |
+| partial | Restore skipped files | ✅ covered | `skippedCount` in result → excluded from new/updated counts, tooltip explains (malformed/duplicate id). |
+| overflow | Restore preview many notes | ✅ covered | Preview list scrolls (max-height container); counts summarize; no pagination required at v0.1 volumes. |
+| zero-one-many | Restore counts copy | ✅ covered | Parameterized {N}/{X}/{Y}/{Z} copy handles 0/1/many uniformly (SYNC-10). |
+| loading | Re-analyze progress | ✅ covered | Sequential per-note progress ({enriched}/{total}) surfaced in the Options → Notes panel (LLM-WIKI-10 "updates stats in real time"). |
+| populated | Re-analyze final totals | ✅ covered | Final `ReanalyzeResult { total, enriched, failed }` displayed on completion. |
+| error | Re-analyze failed notes | ✅ covered | `failed` count surfaced in final result. |
+| partial | Re-analyze mixed outcome | ✅ covered | enriched/failed split — both counts shown; failed notes retryable individually via [Retry]. |
+| loading | Re-analyze progress widget shape | ⚠ unresolved | Exact widget (per-note ticker vs progress bar vs message sequence) not pinned by spec. Planner assumption: sequential per-note updates via antd message/Progress within the Options → Notes panel. |
+| error | NoteTagger failure hint | ✅ covered | "Couldn't analyze — [Retry]" subtle hint; save always succeeds, never blocks save or sync (§19.18, NOTE_TAGGER_FAILED). |
+| loading | NoteTagger analyzing affordance | ✅ covered | "Analyzing…" affordance renders only when ≥1 enrichment toggle on; all-off → no affordance, no LLM call (D-06). |
+| empty | NoteTagger silent success | ✅ covered | No hint rendered when enrichment succeeds silently. |
+| error | Backup permission banner | ✅ covered | "[Re-select folder] [Dismiss]" banner on NotesPage mount when permission denied (D-10, SYNC-02, §19.16). |
+| empty | Backup permission banner absent | ✅ covered | No banner when permission granted or handle absent (Off state handled by Tag only). |
+| populated | Backup permission banner actions | ✅ covered | Re-select re-invokes `setBackupFolder()`; Dismiss hides banner for session. |
+| empty | Enrichment suggestions — none | ✅ covered | No suggestion rows when analysis yields none; in-memory suggestions lost on restart — "Regenerate tags/summary" is the recovery path (D-05). |
+| loading | Enrichment suggestions in flight | ✅ covered | "Analyzing…" affordance while haiku call runs; save never waits on LLM (D-07). |
+| error | Enrichment failure | ✅ covered | "Couldn't analyze — [Retry]" hint; save unaffected (§19.18). |
+| partial | Enrichment accept subset | ✅ covered | Accept/reject per suggestion — user may accept tags, reject summary etc.; accepted values persist via re-save → `note:saved` re-syncs `.md` frontmatter (D-18). |
+| long-text | Enrichment suggestion content | ✅ covered | Tag Tags wrap; summary field multiline; concept chips wrap within editor width (≤5 tags, LLM-WIKI-01). |
+| error | External-change confirm modal | ✅ covered | "This file was modified externally. Overwrite with app version? [Overwrite] [Skip]" — default Skip (SYNC-06, §19.17). |
+| populated | External-change overwrite action | ✅ covered | Overwrite is danger-styled (colorError) and non-default; Skip writes to collision-suffixed file so the user's newer file is never touched. |
+| empty | External-change modal absent | ✅ covered | No modal when `file.lastModified <= lastSyncedAt + 2s` — no conflict detected. |
+| overflow | SaveToNoteDialog layout | ✅ covered | NoteEditor + NotePreview scroll independently in max-height dialog layout. |
+| long-text | Save dialog draft content | ✅ covered | Draft title truncates with ellipsis; content wraps in editor; wikilinks in draft remain proposals until accepted (KNW-01 deferral). |
+| long-text | Options → Notes toggles | ✅ covered | Switch labels wrap; all-off state renders no analyzing affordance since no LLM call fires (D-06, `np_notes_llm_features`). |
+| long-text | Staleness hint | ✅ covered | "Content has changed — [Regenerate tags/summary]" hint wraps; renders on stale notes (LLM-WIKI-08). |
+| zero-one-many | Orphan badge | ✅ covered | "Orphan" badge + "Find context" button renders per-note one-of-N (orphan vs not) (LLM-WIKI-09). |
+| overflow | NoteList summary | ✅ covered | Summary clamps to 2 lines with ellipsis (LLM-WIKI-03 secondary text). |
+| long-text | NoteList summary text | ✅ covered | Secondary text 14px/400/1.5 `colorTextSecondary`, truncation via 2-line clamp. |
+| empty | Ask notes bar | ✅ covered | Placeholder copy renders in empty input (LLM-WIKI-06 / Flow 13). |
+| loading | Ask bar in-flight | 🧪 backstop | `{ statement: "While NoteQA.ask() is in flight, the 'Ask notes' bar region shows an in-flight indicator (Bubble 'Analyzing your notes…'); the input itself stays enabled.", verification: backstop }` — held-out visual test at Phase 7. |
+| error | Ask notes no results | ✅ covered | Zero hits → "No relevant notes found. Try rephrasing." — no LLM call wasted (§19.19, RAG_NO_RESULTS). |
+| partial | Ask notes tiny tier | ✅ covered | `TINY` tier → raw result list with note links, no synthesis (D-16). |
+| overflow | Ask bar long query | ✅ covered | Long query text scrolls horizontally in the input; placeholder never truncated. |
+| long-text | Ask bar query text | ✅ covered | Query text wraps/scrolls in the input without loss. |
 
 <!-- Status vocabulary (locked by probe-core projectTruths):
      ✅ covered   → a plain truth string lifted into must_haves.truths
      🧪 backstop  → a flat scalar { statement, verification: backstop }; at verify time, no explicit
                     evidence → insufficient_spec → human_needed (never a silent pass, #1154)
      ⚠ unresolved → an explicit planner assumption (surfaced, never silently dropped)
+     Dismissed rows (19) = raised by probe but kind-confirmed not applicable by the developer at
+     kind-confirmation: E2 empty/loading/partial/overflow/zero-one-many; E5 empty/overflow/
+     zero-one-many/long-text; E6 partial/long-text; E7 loading/partial/overflow/zero-one-many;
+     E9 loading/partial/overflow/zero-one-many.
      Rows are REPLACED (not appended) on a probe re-run — idempotent. -->
 
 ---
@@ -186,4 +232,4 @@ Component additions for Phase 7 consumers come from antd official exports only (
 - [ ] Dimension 5 Spacing: PASS
 - [ ] Dimension 6 Registry Safety: PASS
 
-**Approval:** {pending / approved YYYY-MM-DD}
+**Approval:** approved 2026-08-02
