@@ -187,4 +187,81 @@ describe('NotesDB', () => {
       expect(persisted.note.lastSyncedFileName).toBe('React 1.md');
     }
   });
+
+  describe('staleness timestamp diff-writer (WR-03)', () => {
+    it('save with changed tags stamps tagsGeneratedAt; unchanged tags preserve it', async () => {
+      const note = makeNote({ tags: ['work'] });
+      await notesDb.save(note);
+      const first = await notesDb.get(note.id);
+      const t0 = first.success ? first.note.tagsGeneratedAt : undefined;
+      expect(typeof t0).toBe('number');
+
+      // tags changed → re-stamped with a timestamp ≥ the prior value
+      await notesDb.save({ ...note, tags: ['work', 'ai'] });
+      const second = await notesDb.get(note.id);
+      const t1 = second.success ? second.note.tagsGeneratedAt : undefined;
+      expect(typeof t1).toBe('number');
+      expect(t1!).toBeGreaterThanOrEqual(t0!);
+
+      // same tags on a content edit → preserved, not re-stamped
+      await notesDb.save({ ...note, tags: ['work', 'ai'], content: 'edited' });
+      const third = await notesDb.get(note.id);
+      expect(third.success).toBe(true);
+      if (third.success) {
+        expect(third.note.tagsGeneratedAt).toBe(t1);
+      }
+    });
+
+    it('save with changed summary stamps summaryGeneratedAt; unchanged summary preserves it', async () => {
+      const note = makeNote({ summary: 'S1' });
+      await notesDb.save(note);
+      const first = await notesDb.get(note.id);
+      const t0 = first.success ? first.note.summaryGeneratedAt : undefined;
+      expect(typeof t0).toBe('number');
+
+      // summary changed → re-stamped
+      await notesDb.save({ ...note, summary: 'S2' });
+      const second = await notesDb.get(note.id);
+      const t1 = second.success ? second.note.summaryGeneratedAt : undefined;
+      expect(typeof t1).toBe('number');
+      expect(t1!).toBeGreaterThanOrEqual(t0!);
+
+      // same summary on a content edit → preserved
+      await notesDb.save({ ...note, summary: 'S2', content: 'edited' });
+      const third = await notesDb.get(note.id);
+      expect(third.success).toBe(true);
+      if (third.success) {
+        expect(third.note.summaryGeneratedAt).toBe(t1);
+      }
+
+      // summary removed (undefined) is a change → re-stamped
+      await notesDb.save({ ...note, summary: undefined });
+      const fourth = await notesDb.get(note.id);
+      expect(fourth.success).toBe(true);
+      if (fourth.success) {
+        expect(typeof fourth.note.summaryGeneratedAt).toBe('number');
+        expect(fourth.note.summaryGeneratedAt!).toBeGreaterThanOrEqual(t1!);
+      }
+    });
+
+    it('create leaves both timestamps unset unless the payload explicitly carries them (never-enriched preserved)', async () => {
+      const note = makeNote();
+      await notesDb.save(note);
+      const after = await notesDb.get(note.id);
+      expect(after.success).toBe(true);
+      if (after.success) {
+        expect(after.note.tagsGeneratedAt).toBeUndefined();
+        expect(after.note.summaryGeneratedAt).toBeUndefined();
+      }
+
+      const explicit = makeNote({ tagsGeneratedAt: 111, summaryGeneratedAt: 222 });
+      await notesDb.save(explicit);
+      const explicitAfter = await notesDb.get(explicit.id);
+      expect(explicitAfter.success).toBe(true);
+      if (explicitAfter.success) {
+        expect(explicitAfter.note.tagsGeneratedAt).toBe(111);
+        expect(explicitAfter.note.summaryGeneratedAt).toBe(222);
+      }
+    });
+  });
 });

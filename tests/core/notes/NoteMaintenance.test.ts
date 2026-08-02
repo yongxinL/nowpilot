@@ -119,6 +119,47 @@ describe('NoteMaintenance', () => {
       const result = await getNoteMaintenance().getStaleNotes();
       expect(result.map((n) => n.id)).not.toContain(fresh.id);
     });
+
+    it('via the save() diff-writer: enriched-then-edited is stale, untouched is not, never-enriched follows the grace rule (WR-03)', async () => {
+      const t0 = 1_000_000;
+      // Fake ONLY Date — fake-indexeddb schedules IDB transactions via
+      // setImmediate, so faking timers too would deadlock awaited saves.
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(t0);
+      try {
+        // Enriched: save() stamps tagsGeneratedAt/summaryGeneratedAt === t0.
+        const enriched = makeNote({ tags: ['ai'], summary: 'S', createdAt: t0 - 2000 });
+        await notesDb.save(enriched);
+
+        // Untouched enriched note → timestamps === updatedAt → NOT stale.
+        let result = await getNoteMaintenance().getStaleNotes();
+        expect(result.map((n) => n.id)).not.toContain(enriched.id);
+
+        // Content-only edit 10s later, still INSIDE the 60s fresh grace —
+        // only the timestamp diff-writer makes this stale (timestamps
+        // preserved at t0 < updatedAt); the never-enriched branch would
+        // not flag it (grace not exceeded). Discriminating assertion.
+        vi.setSystemTime(t0 + 10_000);
+        await notesDb.save({ ...enriched, content: 'edited after enrichment' });
+        result = await getNoteMaintenance().getStaleNotes();
+        expect(result.map((n) => n.id)).toContain(enriched.id);
+
+        // Never-enriched note edited within the grace period → NOT stale.
+        vi.setSystemTime(t0);
+        const fresh = makeNote({ createdAt: t0 - 1000 });
+        await notesDb.save(fresh);
+        result = await getNoteMaintenance().getStaleNotes();
+        expect(result.map((n) => n.id)).not.toContain(fresh.id);
+
+        // …and the same note beyond the grace period → stale.
+        vi.setSystemTime(t0 + 120_000);
+        await notesDb.save({ ...fresh, content: 'edited later' });
+        result = await getNoteMaintenance().getStaleNotes();
+        expect(result.map((n) => n.id)).toContain(fresh.id);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
   });
 
   describe('getOrphanNotes', () => {
