@@ -5,16 +5,16 @@ milestone_name: milestone
 current_phase: 05a
 current_phase_name: llm-wiki-filesystem-sync
 status: executing
-stopped_at: Phase 5a UI-SPEC approved
-last_updated: "2026-08-02T06:06:58.334Z"
+stopped_at: Completed 05a-01-PLAN.md
+last_updated: "2026-08-02T06:28:53.217Z"
 last_activity: 2026-08-02
 last_activity_desc: Phase 05a execution started
 progress:
   total_phases: 19
-  completed_phases: 9
+  completed_phases: 8
   total_plans: 42
-  completed_plans: 42
-  percent: 47
+  completed_plans: 40
+  percent: 42
 ---
 
 # Project State
@@ -30,11 +30,11 @@ See: .planning/PROJECT.md (updated 2026-08-02)
 ## Current Position
 
 Phase: 05a (llm-wiki-filesystem-sync) — EXECUTING
-Plan: 3 of 3
+Plan: 2 of 3
 Status: Ready to execute
 Last activity: 2026-08-02 — Phase 05a execution started
 
-Progress: [████████████████████] 39/39 plans ([██████████] 100%) (8/19 phases complete)
+Progress: [████████████████████] 39/39 plans ([██████████] 95%) (8/19 phases complete)
 
 ## Performance Metrics
 
@@ -79,6 +79,7 @@ Progress: [████████████████████] 39/39 p
 | Phase 05a P01 | 13min | 2 tasks | 11 files |
 | Phase 05a P02 | 24min | 2 tasks | 6 files |
 | Phase 05a P03 | 28min | 2 tasks | 3 files |
+| Phase 05a P01 | 9min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -139,6 +140,10 @@ UserMemoryStore.getAll() returns all records in the shared store; MemoryEngine f
 - [Phase 05a]: NotesDB.save() preserves lastSyncedAt across re-saves (D-11/D-18) — a re-save omitting the timestamp no longer triggers a false external-change skip — NotesDB.save() preserves lastSyncedAt across re-saves (D-11/D-18) — a re-save omitting the timestamp no longer triggers a false external-change skip
 - [Phase 05a]: resolveDir gained an isFilePath flag: directory-path resolution returns the target directory itself, fixing empty-parent cleanup — resolveDir gained an isFilePath flag: directory-path resolution returns the target directory itself, fixing empty-parent cleanup
 - [Phase 05a]: Handle persistence uses a plain-data tree snapshot (structured-clone-safe) rehydrated into a functional FileSystemDirectoryHandle on load — mirrors the real platform object's prototype-method shape — Handle persistence uses a plain-data tree snapshot (structured-clone-safe) rehydrated into a functional FileSystemDirectoryHandle on load — mirrors the real platform object's prototype-method shape
+- [Phase 05a]: Native FileSystemDirectoryHandles are persisted directly (browser structured-clones them to a live handle); toPlainHandle/rehydrateHandle remain ONLY for non-native/test-double handles (CR-01)
+- [Phase 05a]: Overwrite-vs-collide is decided by frontmatter ownership first, timestamps second; a file with a different note's id is never overwritten regardless of lastModified (CR-02)
+- [Phase 05a]: lastSyncedFileName tracks the exact file a note last wrote; updateSyncState persists it with lastSyncedAt atomically; save() preserves both on re-save (WR-04)
+- [Phase 05a]: restoreSession sets _syncEnabled=true when the restored handle passes the readwrite permission check — a fresh singleton previously stayed disabled forever after restart
 
 ### Pending Todos
 
@@ -158,6 +163,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-02T05:29:54.906Z
-Stopped at: Phase 5a UI-SPEC approved
-Resume file: /Users/george.li/Documents/workspaces/nowpilot/.planning/phases/05a-llm-wiki-filesystem-sync/05a-UI-SPEC.md
+Last session: 2026-08-02T06:28:22.784Z
+Stopped at: Completed 05a-01-PLAN.md
+Resume file: None

@@ -284,12 +284,12 @@ Plans:
   4. User sets a backup folder via showDirectoryPicker() (Full App only) — per-save .md files are written with YAML frontmatter, nested categoryPath folders, collision suffixing, and external-change detection
   5. User restores notes from folder — additive upsert previews "Found N notes (X new, Y updated, Z unchanged)" and never deletes local notes not in the folder; v4 migration is idempotent
 
-**Plans**: 3/3 executed + 3 gap-closure replan (plans 01-03 replaced by gap-closure plans; original content preserved in git history + SUMMARYs)
+**Plans**: 1/3 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 05a-01-PLAN.md — Gap closure: NoteFileSync write-path integrity — CR-01 native handle persistence, CR-02 ownership-aware collision + WR-04 owned-file reuse, WR-01 per-note debounce (NOTE-03)
+- [x] 05a-01-PLAN.md — Gap closure: NoteFileSync write-path integrity — CR-01 native handle persistence, CR-02 ownership-aware collision + WR-04 owned-file reuse, WR-01 per-note debounce (NOTE-03)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -484,7 +484,7 @@ Decimal phases execute after their parent integer phase: 3 → 3a → 4 → 4a �
 | 4a. Page Content Extraction | 6/6 | Completed | 2026-07-31 |
 | 4b. Trust-Aware Context & Receipts | 6/6 | Complete    | 2026-08-01 |
 | 5. Knowledge Base | 3/3 | Complete    | 2026-08-02 |
-| 5a. LLM-Wiki & Filesystem Sync | 3/3 | In Progress|  |
+| 5a. LLM-Wiki & Filesystem Sync | 1/3 | In Progress|  |
 | 5b. Memory Governance & Experience Candidates | TBD | Not started | - |
 | 6. Telemetry & Diagnostics | TBD | Not started | - |
 | 6a. Agent Evaluation | TBD | Not started | - |
