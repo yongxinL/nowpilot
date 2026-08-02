@@ -164,4 +164,27 @@ describe('NotesDB', () => {
     await fresh.load();
     expect(fresh.search('delete').some((r) => r.noteId === note.id)).toBe(false);
   });
+
+  it('updateSyncState persists lastSyncedAt + lastSyncedFileName; save() preserves both when omitted (WR-04)', async () => {
+    const note = makeNote();
+    await notesDb.save(note);
+
+    await notesDb.updateSyncState(note.id, { lastSyncedAt: 1111, lastSyncedFileName: 'React 1.md' });
+    const after = await notesDb.get(note.id);
+    expect(after.success).toBe(true);
+    if (after.success) {
+      expect(after.note.lastSyncedAt).toBe(1111);
+      expect(after.note.lastSyncedFileName).toBe('React 1.md');
+    }
+
+    // A later save() whose payload omits both fields preserves them — the
+    // next sync must not see a stripped lastSyncedFileName (WR-04).
+    await notesDb.save({ ...note, content: 'new content' });
+    const persisted = await notesDb.get(note.id);
+    expect(persisted.success).toBe(true);
+    if (persisted.success) {
+      expect(persisted.note.lastSyncedAt).toBe(1111);
+      expect(persisted.note.lastSyncedFileName).toBe('React 1.md');
+    }
+  });
 });

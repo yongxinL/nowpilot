@@ -329,6 +329,115 @@ describe('NoteFileSync', () => {
     expect(collided.content).toContain(second.id); // second note's frontmatter
   });
 
+  // ── Ownership-aware collision (CR-02) + owned-file reuse (WR-04) ──────────
+
+  it('CR-02: a different note never overwrites the canonical file; re-saves reuse its own suffixed file', async () => {
+    const fs = makeBackupFs();
+    pickerStub.mockResolvedValue(fs.root);
+    const sync = getNoteFileSync();
+    await sync.setBackupFolder();
+
+    const now = Date.now();
+    const noteA = makeNote({ title: 'React', categoryPath: 'Inbox', lastSyncedAt: now });
+    await getNotesDb().restore(noteA);
+    await sync.syncNote(noteA.id);
+    const canonical = fs.categoryDir.children.get('React.md') as MockFileHandle;
+    expect(canonical).toBeDefined();
+    const canonicalContentA = canonical.content;
+
+    // B collides to React 1.md — A's canonical file untouched.
+    const noteB = makeNote({ title: 'React', categoryPath: 'Inbox' });
+    await getNotesDb().restore(noteB);
+    await sync.syncNote(noteB.id);
+    const collided = fs.categoryDir.children.get('React 1.md') as MockFileHandle;
+    expect(collided).toBeDefined();
+    expect(collided.content).toContain(noteB.id);
+    expect(canonical.content).toBe(canonicalContentA);
+    expect(canonical.content).toContain(noteA.id);
+
+    // B re-saves → reuses its own React 1.md (no new suffix, no canonical
+    // ping-pong); React.md keeps A's content AND frontmatter id.
+    const updatedB = { ...noteB, content: 'B content v2' };
+    await getNotesDb().restore(updatedB);
+    await sync.syncNote(noteB.id);
+    expect(collided.content).toContain('B content v2');
+    expect(collided.content).toContain(noteB.id);
+    expect(fs.categoryDir.children.has('React 2.md')).toBe(false);
+    expect(canonical.content).toBe(canonicalContentA);
+    expect(canonical.content).toContain(noteA.id);
+  });
+
+  it('WR-04: an externally modified owned file gets a fresh suffix; its content is untouched', async () => {
+    const fs = makeBackupFs();
+    pickerStub.mockResolvedValue(fs.root);
+    const sync = getNoteFileSync();
+    await sync.setBackupFolder();
+
+    const now = Date.now();
+    const noteA = makeNote({ title: 'React', categoryPath: 'Inbox', lastSyncedAt: now });
+    await getNotesDb().restore(noteA);
+    await sync.syncNote(noteA.id);
+
+    const noteB = makeNote({ title: 'React', categoryPath: 'Inbox' });
+    await getNotesDb().restore(noteB);
+    await sync.syncNote(noteB.id);
+    const owned = fs.categoryDir.children.get('React 1.md') as MockFileHandle;
+    expect(owned).toBeDefined();
+
+    // User edits B's owned file externally (newer than B.lastSyncedAt + 2s).
+    owned.lastModified = Date.now() + 5000;
+    owned.content = 'externally edited by user';
+    owned.writeCount = 0;
+
+    await sync.syncNote(noteB.id);
+
+    const fresh = fs.categoryDir.children.get('React 2.md') as MockFileHandle;
+    expect(fresh).toBeDefined();
+    expect(fresh.content).toContain(noteB.id);
+    expect(owned.content).toBe('externally edited by user'); // untouched
+    expect(owned.writeCount).toBe(0);
+  });
+
+  it('D-18: the same note re-sync overwrites its own canonical file without a suffix', async () => {
+    const fs = makeBackupFs();
+    pickerStub.mockResolvedValue(fs.root);
+    const sync = getNoteFileSync();
+    await sync.setBackupFolder();
+
+    const noteA = makeNote({ title: 'React', categoryPath: 'Inbox', content: 'v1' });
+    await getNotesDb().restore(noteA);
+    await sync.syncNote(noteA.id);
+    const canonical = fs.categoryDir.children.get('React.md') as MockFileHandle;
+    expect(canonical).toBeDefined();
+
+    await getNotesDb().restore({ ...noteA, content: 'v2' });
+    await sync.syncNote(noteA.id);
+    expect(fs.categoryDir.children.has('React 1.md')).toBe(false);
+    expect(canonical.content).toContain('v2');
+    expect(canonical.content).toContain(noteA.id);
+  });
+
+  it('CR-02: the collision scan skips a suffixed file owned by a third note', async () => {
+    const fs = makeBackupFs();
+    pickerStub.mockResolvedValue(fs.root);
+    const sync = getNoteFileSync();
+    await sync.setBackupFolder();
+
+    // React 1.md already belongs to note C (its frontmatter id).
+    const noteC = makeNote({ title: 'React', categoryPath: 'Inbox' });
+    await getNotesDb().restore(noteC);
+    addFile(fs.categoryDir, 'React 1.md', fm({ id: noteC.id, title: 'React' }), Date.now() + 10000);
+
+    const noteB = makeNote({ title: 'React', categoryPath: 'Inbox' });
+    await getNotesDb().restore(noteB);
+    await sync.syncNote(noteB.id);
+
+    const second = fs.categoryDir.children.get('React 2.md') as MockFileHandle;
+    expect(second).toBeDefined();
+    expect(second.content).toContain(noteB.id);
+    expect(fs.categoryDir.children.get('React 1.md')!.content).toContain(noteC.id);
+  });
+
   // ── Permission ─────────────────────────────────────────────────────────────
 
   it('syncNote skips write when permission is denied', async () => {
