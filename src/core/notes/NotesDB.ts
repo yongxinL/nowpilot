@@ -120,8 +120,10 @@ export class NotesDB {
         };
       }
 
-      // D-12: canonical trigger for downstream index sync / graph recompute
-      emit('note:saved', { noteId: parsed.id });
+      // D-12: canonical trigger for downstream index sync / graph recompute.
+      // version rides the payload (D-07) so NoteTagger can run the staleness
+      // check without a pre-call DB read.
+      emit('note:saved', { noteId: parsed.id, version: finalNote.version });
       return { success: true, noteId: parsed.id };
     } catch (err) {
       return {

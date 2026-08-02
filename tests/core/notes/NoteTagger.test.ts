@@ -13,6 +13,11 @@ import {
 import { on } from '../../../src/core/events/EventBus';
 import type { ProviderAdapter } from '../../../src/core/ai/providers/ProviderAdapter';
 import { PipelineError } from '../../../src/core/ai/PipelineError';
+import { CONFIDENCE_MAP } from '../../../src/core/memory/MemoryRecord';
+import {
+  MIN_CONFIDENCE,
+  MAX_MEMORY_FACTS,
+} from '../../../src/core/notes/NoteTagger';
 
 function makeNote(overrides: Partial<Note> = {}): Note {
   return {
@@ -197,6 +202,175 @@ describe('NoteTagger', () => {
       await flushAsync();
 
       expect(generateSpy).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('enrichment behaviors (D-04 / D-06 / D-03 / error handling)', () => {
+    it('filters memoryFacts with confidence < 0.3', () => {
+      const result = validTaggerResult({
+        memoryFacts: [
+          { type: 'semantic', content: 'low', confidence: 0.1, reason: 'uncertain' },
+          { type: 'semantic', content: 'mid', confidence: 0.45, reason: 'ok' },
+          { type: 'semantic', content: 'edge', confidence: 0.3, reason: 'exactly at threshold' },
+          { type: 'semantic', content: 'high', confidence: 0.9, reason: 'confident' },
+        ],
+      });
+
+      const filtered = getNoteTagger().filterMemoryFacts(result.memoryFacts);
+
+      expect(filtered.map((f) => f.content)).toEqual(['mid', 'edge', 'high']);
+      expect(filtered.every((f) => f.confidence >= MIN_CONFIDENCE)).toBe(true);
+    });
+
+    it('caps memoryFacts at 3 after filtering', () => {
+      const facts = Array.from({ length: 5 }, (_, i) => ({
+        type: 'semantic' as const,
+        content: `fact ${i}`,
+        confidence: 0.9,
+        reason: 'confident',
+      }));
+
+      const filtered = getNoteTagger().filterMemoryFacts(facts);
+
+      expect(filtered).toHaveLength(MAX_MEMORY_FACTS);
+      expect(filtered.map((f) => f.content)).toEqual(['fact 0', 'fact 1', 'fact 2']);
+    });
+
+    it('skips the LLM call entirely when all enrichment toggles are off (D-06)', async () => {
+      const generateSpy = vi.spyOn(getLlmService(), 'generate').mockResolvedValue(validTaggerResult());
+      getNoteTagger().setAdapter(createMockAdapter());
+      getNoteTagger().setToggles({ autoTag: false, autoCategorize: false, autoSummary: false });
+      getNoteTagger().initNoteTagger();
+
+      const enrichedListener = vi.fn();
+      const unsubscribe = on('note:enriched', enrichedListener);
+      try {
+        await notesDb.save(makeNote());
+        await flushAsync();
+
+        expect(generateSpy).not.toHaveBeenCalled();
+        expect(enrichedListener).not.toHaveBeenCalled();
+      } finally {
+        unsubscribe();
+      }
+    });
+
+    it('still calls the LLM but discards memoryFacts when memory extraction is off (D-06)', async () => {
+      const generateSpy = vi
+        .spyOn(getLlmService(), 'generate')
+        .mockResolvedValue(validTaggerResult({ memoryFacts: [{ type: 'semantic', content: 'x', confidence: 0.9, reason: 'r' }] }));
+      getNoteTagger().setAdapter(createMockAdapter());
+      getNoteTagger().setToggles({ memoryExtraction: false });
+      getNoteTagger().initNoteTagger();
+
+      const enrichedListener = vi.fn();
+      const unsubscribe = on('note:enriched', enrichedListener);
+      try {
+        await notesDb.save(makeNote());
+        await flushAsync();
+
+        expect(generateSpy).toHaveBeenCalledTimes(1);
+        expect(enrichedListener).toHaveBeenCalledTimes(1);
+        const payload = enrichedListener.mock.calls[0][0] as { memoryFacts: unknown[] };
+        expect(payload.memoryFacts).toEqual([]);
+      } finally {
+        unsubscribe();
+      }
+    });
+
+    it('emits note:enriched with both partitions on success (D-05 in-memory suggestions)', async () => {
+      const generated = validTaggerResult({
+        memoryFacts: [
+          { type: 'semantic', content: 'a', confidence: 0.8, reason: 'r1' },
+          { type: 'semantic', content: 'b', confidence: 0.95, reason: 'r2' },
+        ],
+      });
+      vi.spyOn(getLlmService(), 'generate').mockResolvedValue(generated);
+      getNoteTagger().setAdapter(createMockAdapter());
+      getNoteTagger().initNoteTagger();
+
+      const enrichedListener = vi.fn();
+      const unsubscribe = on('note:enriched', enrichedListener);
+      try {
+        const note = makeNote();
+        await notesDb.save(note);
+        await flushAsync();
+
+        expect(enrichedListener).toHaveBeenCalledTimes(1);
+        const payload = enrichedListener.mock.calls[0][0] as {
+          noteId: string;
+          enrichment: NoteTaggerResult['enrichment'];
+          memoryFacts: NoteTaggerResult['memoryFacts'];
+        };
+        expect(payload.noteId).toBe(note.id);
+        expect(payload.enrichment.tags).toEqual(generated.enrichment.tags);
+        expect(payload.enrichment.categoryPath).toBe(generated.enrichment.categoryPath);
+        expect(payload.enrichment.summary).toBe(generated.enrichment.summary);
+        expect(payload.memoryFacts).toEqual(generated.memoryFacts);
+      } finally {
+        unsubscribe();
+      }
+    });
+
+    it('silently discards on PipelineError — no event emitted, no throw propagated', async () => {
+      vi.spyOn(getLlmService(), 'generate').mockRejectedValue(
+        new PipelineError('SCHEMA_INVALID', 'AI response did not match expected schema.'),
+      );
+      getNoteTagger().setAdapter(createMockAdapter());
+      getNoteTagger().initNoteTagger();
+
+      const enrichedListener = vi.fn();
+      const unsubscribe = on('note:enriched', enrichedListener);
+      try {
+        const result = await notesDb.save(makeNote());
+        expect(result.success).toBe(true);
+        await flushAsync();
+
+        expect(enrichedListener).not.toHaveBeenCalled();
+      } finally {
+        unsubscribe();
+      }
+    });
+
+    it('maps accepted memory facts to inferred confidence 0.5 via toMemoryFactInput (D-03)', () => {
+      const fact = { type: 'semantic' as const, content: 'User prefers hiking.', confidence: 0.9, reason: 'stated' };
+
+      const input = getNoteTagger().toMemoryFactInput(fact, fact.confidence);
+
+      expect(input.memoryType).toBe('semantic');
+      expect(input.content).toBe('User prefers hiking.');
+      // D-03: the LLM self-score is NEVER the system tier — the store derives
+      // confidence from `source` via the immutable CONFIDENCE_MAP.
+      expect(input.source).toBe('inferred');
+      expect(CONFIDENCE_MAP[input.source]).toBe(0.5);
+      expect(input).not.toHaveProperty('confidence');
+    });
+
+    it('uses the payload version from note:saved when present (D-07)', async () => {
+      let resolveGenerate: ((value: NoteTaggerResult) => void) | null = null;
+      vi.spyOn(getLlmService(), 'generate').mockReturnValue(
+        new Promise<NoteTaggerResult>((resolve) => {
+          resolveGenerate = resolve;
+        }),
+      );
+      getNoteTagger().setAdapter(createMockAdapter());
+      getNoteTagger().initNoteTagger();
+
+      const enrichedListener = vi.fn();
+      const unsubscribe = on('note:enriched', enrichedListener);
+      try {
+        const note = makeNote();
+        await notesDb.save(note); // payload carries version: 1
+        // Version bumped while LLM in flight (raw put, no re-emit)
+        await notesDb.restore({ ...note, version: 2 });
+
+        resolveGenerate!(validTaggerResult());
+        await flushAsync();
+
+        expect(enrichedListener).not.toHaveBeenCalled();
+      } finally {
+        unsubscribe();
+      }
     });
   });
 

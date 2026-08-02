@@ -79,7 +79,7 @@ describe('NotesDB', () => {
       const note = makeNote();
       await notesDb.save(note);
       expect(listener).toHaveBeenCalledTimes(1);
-      expect(listener).toHaveBeenCalledWith({ noteId: note.id });
+      expect(listener).toHaveBeenCalledWith({ noteId: note.id, version: 1 });
     } finally {
       unsubscribe();
     }

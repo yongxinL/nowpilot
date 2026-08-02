@@ -50,6 +50,7 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
+    "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.0.0",
     "@types/chrome": "^0.2.2",
     "@types/jsdom": "21.1.7",
