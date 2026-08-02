@@ -1086,29 +1086,33 @@ describe('NoteFileSync', () => {
   // invocations.
 
   describe('lifecycle integration (WR-02)', () => {
+    // Real-timer waits instead of fake timers: fake-indexeddb schedules IDB
+    // transactions via setImmediate, which fake timers also fake — an
+    // awaited NotesDB.save() would deadlock until the clock is pumped.
+    const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
+
     it('save→delete→cleanup chain through EventBus: .md + empty parent folders removed after NotesDB.remove()', async () => {
       const fs = makeBackupFs();
       pickerStub.mockResolvedValue(fs.root);
       const sync = getNoteFileSync();
       await sync.setBackupFolder();
 
-      // fake timers after all async setup; restoreSession must load the LIVE
-      // tree (not a rehydrated snapshot) so assertions see real writes.
-      vi.useFakeTimers();
+      // restoreSession must load the LIVE tree (not a rehydrated snapshot)
+      // so assertions see real writes.
       vi.spyOn(sync, 'loadPersistedHandle').mockResolvedValue(
         fs.root as unknown as FileSystemDirectoryHandle,
       );
       sync.initNoteFileSync();
-      await vi.advanceTimersByTimeAsync(0); // let restoreSession settle → enabled
+      await sleep(20); // let restoreSession settle → enabled
 
       const note = makeNote({ title: 'Chain Note', categoryPath: 'Inbox' });
       await getNotesDb().save(note); // note:saved → per-note debounce armed
-      await vi.advanceTimersByTimeAsync(DEBOUNCE_MS + 10); // debounce fires → .md written
+      await sleep(DEBOUNCE_MS + 20); // debounce fires → .md written
       expect(fs.categoryDir.children.has('Chain Note.md')).toBe(true);
 
       // deletion drives cleanup via note:deleted → handleNoteDelete (EventBus).
       await getNotesDb().remove(note.id);
-      await vi.advanceTimersByTimeAsync(0); // flush the cleanup promise chain
+      await sleep(20); // flush the cleanup promise chain
 
       expect(fs.categoryDir.children.has('Chain Note.md')).toBe(false);
       expect(fs.root.children.has('Inbox')).toBe(false);
@@ -1121,24 +1125,27 @@ describe('NoteFileSync', () => {
       const sync = getNoteFileSync();
       await sync.setBackupFolder();
 
-      vi.useFakeTimers();
       vi.spyOn(sync, 'loadPersistedHandle').mockResolvedValue(
         fs.root as unknown as FileSystemDirectoryHandle,
       );
       sync.initNoteFileSync();
-      await vi.advanceTimersByTimeAsync(0);
+      await sleep(20);
 
       const note = makeNote({ title: 'Title A', categoryPath: 'Inbox' });
       await getNotesDb().save(note);
-      await vi.advanceTimersByTimeAsync(DEBOUNCE_MS + 10);
+      await sleep(DEBOUNCE_MS + 20);
       expect(fs.categoryDir.children.has('Title A.md')).toBe(true);
 
       // title change → note:renamed (old-path cleanup) + note:saved (new .md).
       await getNotesDb().save({ ...note, title: 'Title B' });
-      await vi.advanceTimersByTimeAsync(DEBOUNCE_MS + 10);
+      await sleep(DEBOUNCE_MS + 20);
 
       expect(fs.categoryDir.children.has('Title A.md')).toBe(false);
-      expect(fs.categoryDir.children.has('Title B.md')).toBe(true);
+      // The empty-parent cleanup removed the old Inbox instance from root and
+      // the re-sync recreated it — inspect the CURRENT Inbox from root.
+      const currentInbox = fs.root.children.get('Inbox') as MockDirHandle;
+      expect(currentInbox).toBeDefined();
+      expect(currentInbox.children.has('Title B.md')).toBe(true);
     });
 
     it('a queued sync for a deleted note is cancelled — the .md is never written after remove()', async () => {
@@ -1147,17 +1154,16 @@ describe('NoteFileSync', () => {
       const sync = getNoteFileSync();
       await sync.setBackupFolder();
 
-      vi.useFakeTimers();
       vi.spyOn(sync, 'loadPersistedHandle').mockResolvedValue(
         fs.root as unknown as FileSystemDirectoryHandle,
       );
       sync.initNoteFileSync();
-      await vi.advanceTimersByTimeAsync(0);
+      await sleep(20);
 
       const note = makeNote({ title: 'Queued Note', categoryPath: 'Inbox' });
-      await getNotesDb().save(note); // debounce armed — do NOT advance timers
+      await getNotesDb().save(note); // debounce armed — do NOT wait for it
       await getNotesDb().remove(note.id); // note:deleted → pending timer cancelled
-      await vi.advanceTimersByTimeAsync(DEBOUNCE_MS + 10); // timer would have fired
+      await sleep(DEBOUNCE_MS + 30); // timer would have fired
 
       expect(fs.categoryDir.children.has('Queued Note.md')).toBe(false);
       expect(fs.categoryDir.children.has('Inbox')).toBe(false);

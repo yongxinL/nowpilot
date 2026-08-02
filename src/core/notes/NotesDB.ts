@@ -7,6 +7,29 @@ import { parseWikilinks, resolveLinks } from './LinkParser';
 import { toIndexDoc, noteSearchIndex } from './MiniSearchNoteIndex';
 import type { NoteFindResult, NoteSaveResult } from './types';
 
+/**
+ * WR-02: payload of the `note:deleted` event emitted by NotesDB.remove().
+ * Carries the note identity read BEFORE deletion so NoteFileSync can compute
+ * the exact old file path (T-05a-06: identity fields only, never a
+ * fabricated path).
+ */
+export interface NoteDeletedEvent {
+  noteId: string;
+  title: string;
+  categoryPath: string;
+}
+
+/**
+ * WR-02: payload of the `note:renamed` event emitted by NotesDB.save() when
+ * the persisted note's title or categoryPath changed. Carries the OLD values
+ * so NoteFileSync can remove the orphaned .md at the previous path.
+ */
+export interface NoteRenamedEvent {
+  noteId: string;
+  oldTitle: string;
+  oldCategoryPath: string;
+}
+
 // ── Database connection (WriteJournal pattern: module-level cached promise) ──
 
 let dbPromise: Promise<IDBPDatabase> | null = null;
@@ -144,6 +167,24 @@ export class NotesDB {
       // version rides the payload (D-07) so NoteTagger can run the staleness
       // check without a pre-call DB read.
       emit('note:saved', { noteId: parsed.id, version: finalNote.version });
+
+      // WR-02: when the persisted note's title or categoryPath changed, emit
+      // note:renamed with the OLD values so NoteFileSync can clean up the
+      // orphaned .md at the previous path. Diff is computed against the
+      // persisted note inside this single write path — no duplicate/missing
+      // events (T-05a-07); nothing emitted when unchanged.
+      if (existing.success) {
+        const renamed =
+          existing.note.title !== parsed.title ||
+          existing.note.categoryPath !== parsed.categoryPath;
+        if (renamed) {
+          emit<NoteRenamedEvent>('note:renamed', {
+            noteId: parsed.id,
+            oldTitle: existing.note.title,
+            oldCategoryPath: existing.note.categoryPath,
+          });
+        }
+      }
       return { success: true, noteId: parsed.id };
     } catch (err) {
       return {
@@ -223,11 +264,25 @@ export class NotesDB {
   /** Delete a note. */
   async remove(id: string): Promise<{ success: boolean; error?: string }> {
     try {
+      // WR-02 / T-05a-06: read the note BEFORE deleting — its identity
+      // fields (title/categoryPath) drive the event payload used to compute
+      // the exact old file path for cleanup.
+      const found = await this.get(id);
+      if (!found.success) return { success: false, error: found.error };
+
       const db = await openNotesDb();
       await db.delete('notes', id);
       noteSearchIndex.remove(id);
       // WR-01: keep the persisted index in sync with deletions too.
       await noteSearchIndex.persist();
+
+      // WR-02: D-12 cleanup trigger — NoteFileSync deletes the orphaned .md
+      // and empty parent folders via this event (never direct invocation).
+      emit<NoteDeletedEvent>('note:deleted', {
+        noteId: id,
+        title: found.note.title,
+        categoryPath: found.note.categoryPath,
+      });
       return { success: true };
     } catch (err) {
       return {

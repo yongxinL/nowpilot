@@ -3,7 +3,7 @@ import { openDB, type IDBPDatabase } from 'idb';
 import { stringify, parse } from 'yaml';
 import { on, emit } from '../events/EventBus';
 import { migrationRunner } from '../storage/MigrationRunner';
-import { getNotesDb } from './NotesDB';
+import { getNotesDb, type NoteDeletedEvent, type NoteRenamedEvent } from './NotesDB';
 import type { Note } from './NoteSchema';
 
 // ── Module-level constants ───────────────────────────────────────────────────
@@ -247,17 +247,46 @@ export class NoteFileSync {
   }
 
   /**
-   * Subscribe to `note:saved` (D-17). Idempotent. On init, a persisted
-   * handle is loaded and permission verified — an expired handle
-   * (Pitfall 1) disables sync and emits `sync:error` with
-   * reason 'handle_expired' so the UI can prompt "Re-select backup folder".
+   * Subscribe to `note:saved` (D-17), `note:deleted` and `note:renamed`
+   * (WR-02 — event-driven D-12 cleanup). Idempotent: the combined
+   * unsubscribe is stored so a second init is a no-op and resetNoteFileSync
+   * tears down ALL subscriptions. On init, a persisted handle is loaded and
+   * permission verified — an expired handle (Pitfall 1) disables sync and
+   * emits `sync:error` with reason 'handle_expired' so the UI can prompt
+   * "Re-select backup folder".
    */
   initNoteFileSync(): void {
     if (unsub) return;
     void this.restoreSession();
-    unsub = on<{ noteId: string; version?: number }>('note:saved', ({ noteId }) => {
+
+    const unsubSaved = on<{ noteId: string; version?: number }>('note:saved', ({ noteId }) => {
       this.scheduleSync(noteId);
     });
+    const unsubDeleted = on<NoteDeletedEvent>('note:deleted', (e) => {
+      // T-05a-06: a queued sync for a deleted note must not resurrect the
+      // file — cancel the pending debounce timer first.
+      this.cancelPendingSync(e.noteId);
+      if (!this._handle) return; // sync disabled — nothing to clean (no-op)
+      void this.handleNoteDelete(e.noteId, buildFilePath(e.categoryPath, e.title));
+    });
+    const unsubRenamed = on<NoteRenamedEvent>('note:renamed', (e) => {
+      if (!this._handle) return; // sync disabled — nothing to clean (no-op)
+      void this.handleNoteRename(e.noteId, buildFilePath(e.oldCategoryPath, e.oldTitle));
+    });
+    unsub = () => {
+      unsubSaved();
+      unsubDeleted();
+      unsubRenamed();
+    };
+  }
+
+  /** WR-02: cancel a pending per-note debounce timer (delete path only). */
+  private cancelPendingSync(noteId: string): void {
+    const timer = this._debounceTimers.get(noteId);
+    if (timer !== undefined) {
+      clearTimeout(timer);
+      this._debounceTimers.delete(noteId);
+    }
   }
 
   /** Load the persisted handle + verify permission (init + recovery path). */
