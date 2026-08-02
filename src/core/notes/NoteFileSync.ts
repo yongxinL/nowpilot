@@ -272,12 +272,21 @@ export class NoteFileSync {
         this.resolveCleanupFilePath(e.categoryPath, e.title, e.lastSyncedFileName),
       );
     });
-    const unsubRenamed = on<NoteRenamedEvent>('note:renamed', (e) => {
+    const unsubRenamed = on<NoteRenamedEvent>('note:renamed', async (e) => {
+      // WR-02: cleanup must strictly precede the re-sync write. save() emits
+      // note:saved (arming the 50ms debounce) before note:renamed; a
+      // fire-and-forget cleanup that lags behind the debounced syncNote lets
+      // selectTargetFile reuse the still-present OLD file (owned + fresh) and
+      // write the NEW content under the OLD name — which the cleanup then
+      // deletes, leaving the note with no backup until its next edit. Cancel
+      // the pending timer, remove the old file, THEN schedule the new write.
+      this.cancelPendingSync(e.noteId);
       if (!this._handle) return; // sync disabled — nothing to clean (no-op)
-      void this.handleNoteRename(
+      await this.handleNoteRename(
         e.noteId,
         this.resolveCleanupFilePath(e.oldCategoryPath, e.oldTitle, e.lastSyncedFileName),
       );
+      this.scheduleSync(e.noteId); // write the new file after the old one is gone
     });
     unsub = () => {
       unsubSaved();

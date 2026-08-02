@@ -1287,6 +1287,65 @@ describe('NoteFileSync', () => {
       expect(fs.categoryDir.children.has('ReactX.md')).toBe(true);
     });
 
+    it('WR-02: rename cleanup strictly precedes the re-sync write — no race window where new content lands under the old file name', async () => {
+      const fs = makeBackupFs();
+      pickerStub.mockResolvedValue(fs.root);
+      const sync = getNoteFileSync();
+      await sync.setBackupFolder();
+
+      vi.spyOn(sync, 'loadPersistedHandle').mockResolvedValue(
+        fs.root as unknown as FileSystemDirectoryHandle,
+      );
+      sync.initNoteFileSync();
+      await sleep(20);
+
+      const note = makeNote({ title: 'Order A', categoryPath: 'Inbox' });
+      await getNotesDb().save(note);
+      await sleep(DEBOUNCE_MS + 20);
+      expect(fs.categoryDir.children.has('Order A.md')).toBe(true);
+
+      // Gate the cleanup's removeEntry so any re-sync write would be
+      // observable BEFORE the old file is actually gone.
+      let releaseCleanup!: () => void;
+      let cleanupStarted!: () => void;
+      const gate = new Promise<void>((resolve) => {
+        releaseCleanup = resolve;
+      });
+      const started = new Promise<void>((resolve) => {
+        cleanupStarted = resolve;
+      });
+      const originalRemoveEntry = fs.categoryDir.removeEntry.bind(fs.categoryDir);
+      fs.categoryDir.removeEntry = (name: string) => {
+        if (name === 'Order A.md') {
+          cleanupStarted();
+          return gate.then(() => originalRemoveEntry(name));
+        }
+        return originalRemoveEntry(name);
+      };
+
+      // rename → note:renamed handler cancels the debounce, then blocks in
+      // cleanup at removeEntry.
+      await getNotesDb().save({ ...note, title: 'Order B' });
+      await started; // cleanup is now blocked mid-flight
+
+      // The debounce window elapses — the re-sync must NOT have run: it is
+      // scheduled only AFTER the cleanup completes. The new file cannot
+      // exist yet, and the old file is still present (removal blocked).
+      await sleep(DEBOUNCE_MS + 30);
+      expect(fs.categoryDir.children.has('Order B.md')).toBe(false);
+      expect(fs.categoryDir.children.has('Order A.md')).toBe(true);
+
+      releaseCleanup();
+      await sleep(DEBOUNCE_MS + 30);
+
+      // After the removal: re-sync writes the NEW file at the new name; the
+      // old name is gone (empty-parent cleanup recreated the Inbox dir).
+      expect(fs.categoryDir.children.has('Order A.md')).toBe(false);
+      const currentInbox = fs.root.children.get('Inbox') as MockDirHandle;
+      expect(currentInbox).toBeDefined();
+      expect(currentInbox.children.has('Order B.md')).toBe(true);
+    });
+
     it('NotesDB.remove() emits note:deleted when sync is disabled — handler no-ops without crash or spurious error', async () => {
       const sync = getNoteFileSync();
       sync.initNoteFileSync(); // subscribes, but no backup folder → sync disabled
