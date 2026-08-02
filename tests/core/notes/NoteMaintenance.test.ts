@@ -127,13 +127,19 @@ describe('NoteMaintenance', () => {
       vi.useFakeTimers({ toFake: ['Date'] });
       vi.setSystemTime(t0);
       try {
-        // Enriched: save() stamps tagsGeneratedAt/summaryGeneratedAt === t0.
-        const enriched = makeNote({ tags: ['ai'], summary: 'S', createdAt: t0 - 2000 });
+        // Seed: create leaves timestamps unset (never-enriched).
+        const note = makeNote({ tags: ['seed'], createdAt: t0 - 2000 });
+        await notesDb.save(note);
+
+        // Enrich via the writer: a tags change stamps tagsGeneratedAt === t0.
+        const enriched = { ...note, tags: ['ai'], summary: 'S' };
         await notesDb.save(enriched);
+        const seeded = await notesDb.get(note.id);
+        expect(seeded.success && seeded.note.tagsGeneratedAt).toBe(t0);
 
         // Untouched enriched note → timestamps === updatedAt → NOT stale.
         let result = await getNoteMaintenance().getStaleNotes();
-        expect(result.map((n) => n.id)).not.toContain(enriched.id);
+        expect(result.map((n) => n.id)).not.toContain(note.id);
 
         // Content-only edit 10s later, still INSIDE the 60s fresh grace —
         // only the timestamp diff-writer makes this stale (timestamps
@@ -142,7 +148,7 @@ describe('NoteMaintenance', () => {
         vi.setSystemTime(t0 + 10_000);
         await notesDb.save({ ...enriched, content: 'edited after enrichment' });
         result = await getNoteMaintenance().getStaleNotes();
-        expect(result.map((n) => n.id)).toContain(enriched.id);
+        expect(result.map((n) => n.id)).toContain(note.id);
 
         // Never-enriched note edited within the grace period → NOT stale.
         vi.setSystemTime(t0);

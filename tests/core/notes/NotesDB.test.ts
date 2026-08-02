@@ -191,17 +191,17 @@ describe('NotesDB', () => {
   describe('staleness timestamp diff-writer (WR-03)', () => {
     it('save with changed tags stamps tagsGeneratedAt; unchanged tags preserve it', async () => {
       const note = makeNote({ tags: ['work'] });
-      await notesDb.save(note);
-      const first = await notesDb.get(note.id);
-      const t0 = first.success ? first.note.tagsGeneratedAt : undefined;
-      expect(typeof t0).toBe('number');
+      await notesDb.save(note); // create → never-enriched, no stamp
+      const seeded = await notesDb.get(note.id);
+      const t0 = seeded.success ? seeded.note.tagsGeneratedAt : undefined;
+      expect(t0).toBeUndefined();
 
-      // tags changed → re-stamped with a timestamp ≥ the prior value
+      // tags changed vs persisted → stamped
       await notesDb.save({ ...note, tags: ['work', 'ai'] });
       const second = await notesDb.get(note.id);
       const t1 = second.success ? second.note.tagsGeneratedAt : undefined;
       expect(typeof t1).toBe('number');
-      expect(t1!).toBeGreaterThanOrEqual(t0!);
+      expect(t1!).toBeGreaterThanOrEqual(t0 ?? 0);
 
       // same tags on a content edit → preserved, not re-stamped
       await notesDb.save({ ...note, tags: ['work', 'ai'], content: 'edited' });
@@ -214,17 +214,17 @@ describe('NotesDB', () => {
 
     it('save with changed summary stamps summaryGeneratedAt; unchanged summary preserves it', async () => {
       const note = makeNote({ summary: 'S1' });
-      await notesDb.save(note);
-      const first = await notesDb.get(note.id);
-      const t0 = first.success ? first.note.summaryGeneratedAt : undefined;
-      expect(typeof t0).toBe('number');
+      await notesDb.save(note); // create → never-enriched, no stamp
+      const seeded = await notesDb.get(note.id);
+      const t0 = seeded.success ? seeded.note.summaryGeneratedAt : undefined;
+      expect(t0).toBeUndefined();
 
-      // summary changed → re-stamped
+      // summary changed vs persisted → stamped
       await notesDb.save({ ...note, summary: 'S2' });
       const second = await notesDb.get(note.id);
       const t1 = second.success ? second.note.summaryGeneratedAt : undefined;
       expect(typeof t1).toBe('number');
-      expect(t1!).toBeGreaterThanOrEqual(t0!);
+      expect(t1!).toBeGreaterThanOrEqual(t0 ?? 0);
 
       // same summary on a content edit → preserved
       await notesDb.save({ ...note, summary: 'S2', content: 'edited' });

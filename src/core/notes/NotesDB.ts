@@ -113,10 +113,35 @@ export class NotesDB {
             ? existing.note.lastSyncedFileName
             : undefined;
 
+      // WR-03: staleness timestamp diff-writer — stamp
+      // tagsGeneratedAt/summaryGeneratedAt ONLY when the incoming payload
+      // changes the enrichment fields vs the persisted note. Timestamps
+      // mark APPLIED (persisted) enrichment changes (D-05): the NoteTagger
+      // suggestion path never reaches save(), so version-based stale-
+      // suggestion discard (D-07) is unaffected. Preserve the parsed/
+      // persisted timestamps otherwise so a plain edit does not reset the
+      // 'enriched' marker (LLM-WIKI-08: getStaleNotes() distinguishes
+      // 'enriched then edited' from 'never enriched' — a brand-new note
+      // stays never-enriched because create leaves the fields unset).
+      const tagsChanged =
+        existing.success && JSON.stringify(existing.note.tags) !== JSON.stringify(parsed.tags);
+      const summaryChanged =
+        existing.success && (existing.note.summary ?? null) !== (parsed.summary ?? null);
+      const tagsGeneratedAt = tagsChanged
+        ? Date.now()
+        : parsed.tagsGeneratedAt ??
+          (existing.success ? existing.note.tagsGeneratedAt : undefined);
+      const summaryGeneratedAt = summaryChanged
+        ? Date.now()
+        : parsed.summaryGeneratedAt ??
+          (existing.success ? existing.note.summaryGeneratedAt : undefined);
+
       const finalNote: Note = {
         ...parsed,
         lastSyncedAt,
         lastSyncedFileName,
+        tagsGeneratedAt,
+        summaryGeneratedAt,
         links,
         unresolvedLinks,
         version,
