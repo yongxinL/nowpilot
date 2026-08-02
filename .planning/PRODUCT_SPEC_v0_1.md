@@ -1,23 +1,15 @@
-# NowPilot — Product Specification v0.1 (Standalone)
+# NowPilot — Product Specification v0.1
 
 **Document ID:** PRODUCT_SPEC_v0_1.md
 **Status:** Canonical, standalone implementation reference
-**Date:** 2026-07-27 (Rev. B — Knowledge-first reorganization + LLM-Wiki + RICH Design; content-complete for cost-effective coding agents)
+**Date:** 2026-08-02
 **Version:** v0.1
-**Scope:** NowPilot v0.1 — Chrome MV3 AI Assistant using Side Panel + Full App Tab. Add-on architecture preserved. Page injection deferred to v0.2+.
-
-**Revision note (Rev. B — 2026-07-27):** This revision folds three previously separate documents into this canonical spec while **keeping the version at v0.1**, and preserves the full verbatim depth (all appendix code) required by cost-effective coding agents (Claude Haiku, DeepSeek Flash, Gemini Flash):
-
-1. **LLM-Wiki & Filesystem Sync** — merged as **§27**, with the `Note` type extension (§21.2), the `notes_backup_config` IndexedDB store + v4 migration (§15.1, §20.4), the `yaml` + `@types/wicg-file-system-access` dependencies (§7.5, §7.8), and Phase 5a (§18).
-2. **RICH Design Requirements** — Role / Intention / Conversation / Hybrid-UI best practices from the [Ant Design X RICH paradigm](https://x.ant.design/docs/spec/introduce). Merged as **§17.7**, with persona runtime seeds in Phase 3, RICH waves 7.3/7.4/7.5 in Phase 7, and the two reconciliations (R1 clipboard-only host-page actions; R2 persona → PreferenceMemoryStore).
-3. **Knowledge-first phase reorganization** — §18 re-sequenced to follow the product data-flow (*acquire → store → understand → display → extend → harden*). PageContentService → Phase 4a; Notes/Memory/MiniSearch consolidate into Phase 5 (Knowledge Base); LLM-Wiki → Phase 5a; Phase 7 becomes the pure Workspace Experience (UI/UX) phase hosting the RICH sub-waves.
-
-**Revision note (Rev. A):** v0.1 targets **Ant Design v6** and **Ant Design X 2.x** (component library + x-markdown) instead of AntD v5 with a hand-assembled markdown stack. @ant-design/x-sdk's chat-data-flow layer (useXChat, ChatProvider) and @ant-design/x-card (A2UI) are explicitly **not** adopted in v0.1 — see §0.2 and §25.6 for rationale.
+**Scope:** NowPilot v0.1 — Chrome MV3 AI Assistant using Side Panel + Standalone view. Add-on architecture preserved. Page injection deferred to v0.2+.
 
 **Purpose:** This document is the single, self-contained product specification for NowPilot v0.1. It does not reference any prior document. Any AI coding agent implementing this spec must treat this file as authoritative and complete.
 
 **Target implementation agents:** Anthropic Claude Haiku, Google Gemini Flash, DeepSeek Flash, or equivalent cost-effective coding models.
-**Target runtime providers:** Claude Haiku, Gemini Flash, DeepSeek Flash, Ollama, LM Studio, OpenAI-compatible endpoints, OpenAI, Anthropic, Gemini.
+**Target runtime providers:** OpenAI, Anthropic, Gemini, Ollama
 **Primary application:** Chrome MV3 extension using WXT + React + TypeScript + Ant Design v6 + Ant Design X 2.x.
 
 ### How to Read This Specification
@@ -42,7 +34,7 @@ Read in this exact order:
 - §15 — Storage Architecture
 - §16 — Security
 - §17 — UI/UX Requirements (incl. §17.7 RICH Design)
-- §18 — Master Implementation Phases (reorganized in Rev. B)
+- §18 — Master Implementation Phases
 - §19 — Runtime Edge Cases
 - §20 — Runtime State Models & Cross-Context Coordination
 - §21 — Data Models
@@ -52,6 +44,11 @@ Read in this exact order:
 - §25 — Future Page Injection Architecture & Deferred UI Features
 - §26 — PageContentService (Layered Page Extraction)
 - §27 — LLM-Wiki & Filesystem Sync
+- §28 — Verified Agent Harness Requirements
+- §29 — Multimodal Input & Real-Time Interaction Foundation
+- §30 — Revised Master Implementation Order
+- §31 Verification, Security, and Acceptance Gates
+- §32 — Bounded Multi-Agent Collaboration
 - Appendices A–M — canonical constants, type registry, and reference implementations
 
 Appendices C, E, F, G, I, J, K, L, and M are **mandatory** reading for any AI coding agent.
@@ -74,7 +71,7 @@ These rules apply to every phase, every module, and every AI coding agent.
 - **DO NOT** invent file paths. Use only paths in §8 and §18.
 - **DO NOT** invent type names. Use Appendix C for every shape.
 - **DO NOT** invent tool names. Planner may only select tools from the enum passed by ExecutorService.
-- **DO NOT** invent provider IDs. The five valid IDs are `'openai' | 'anthropic' | 'gemini' | 'ollama' | 'openai-compatible'`.
+- **DO NOT** invent provider IDs. The four valid IDs are `'openai' | 'anthropic' | 'gemini' | 'ollama'` (use `openai` with a custom `baseURL` for OpenAI-compatible providers).
 - **DO NOT** invent runtime model names. Resolve tier: `'haiku' | 'flash'` through Appendix D.
 
 **MV3 / Chrome:**
@@ -98,21 +95,21 @@ These rules apply to every phase, every module, and every AI coding agent.
 - **DO NOT** manipulate host page DOM for UI purposes. Content scripts may only read.
 - **DO NOT** write back into host-page fields, editors, or textareas in v0.1. RICH-H-04 ("Insert into page") and RICH-H-07 ("Fill this field") degrade to **clipboard-only** in v0.1 (reconciliation R1, §17.7.5). Host-page write-back is deferred to v0.2+ page injection (§25). Retained: "Copy code", "Save as macro", "Save to note".
 - **DO NOT** import antd components into content scripts or the background service worker.
-- **DO NOT** put heavy admin/configuration screens in the Side Panel. Those belong in the Full App Tab under Options.
+- **DO NOT** put heavy admin/configuration screens in the Side Panel. Those belong in the Standalone view under Options.
 - **DO NOT** use innerHTML, dangerouslySetInnerHTML, or document.write.
 - **DO NOT** use setTimeout/setInterval for DOM polling in content scripts. Use MutationObserver.
 - **DO NOT** install tailwindcss, @tailwindcss/vite, shadcn/ui, @radix-ui/react-*, class-variance-authority, clsx, or tailwind-merge. Removed in v0.1.
 
-**Filesystem (Rev. B — LLM-Wiki, §27):**
+**Filesystem:**
 
-- **DO NOT** call `showDirectoryPicker()` or persist a `FileSystemDirectoryHandle` from a content script or the background service worker. The File System Access API is used **only in the Full App page** (NotesPage / Options).
+- **DO NOT** call `showDirectoryPicker()` or persist a `FileSystemDirectoryHandle` from a content script or the background service worker. The File System Access API is used **only in the Standalone page** (NotesPage / Options).
 - **DO NOT** store a `FileSystemDirectoryHandle` in chrome.storage.local (non-JSON-serializable). Use the dedicated `notes_backup_config` IndexedDB store.
 - **DO NOT** capture password field values during extraction or note conversion (`isPassword ⇒ value omitted`).
 
 **Cross-surface layering:**
 
-- **DO NOT** import from src/entrypoints/app/** inside src/entrypoints/sidepanel/** or vice versa. Each surface is independently mountable.
-- **DO NOT** call chrome.tabs.create for the Full App from a content script. Only the side panel, popup, background SW (in response to user gesture), and command palette may open the Full App.
+- **DO NOT** import from src/entrypoints/standalone/** inside src/entrypoints/sidepanel/** or vice versa. Each surface is independently mountable.
+- **DO NOT** call chrome.tabs.create for the Standalone view from a content script. Only the side panel, popup, background SW (in response to user gesture), and command palette may open the Standalone view.
 
 **AI orchestration:**
 
@@ -121,7 +118,7 @@ These rules apply to every phase, every module, and every AI coding agent.
 - **DO NOT** use raw full history in prompts. All prompts pass through ContextOptimizer.
 - **DO NOT** assemble any system prompt without the persona block once `PersonaInjector` (RICH-R-02) exists. Every AI call (Planner, Executor, Renderer, MemoryExtractor) routes its system string through `PersonaInjector.inject()` (§17.7, Appendix A note).
 
-**Storage / persona (Rev. B — reconciliation R2):**
+**Storage / persona:**
 
 - **DO NOT** store persona configuration in `UserMemoryStore` (the fact store). Persona is user configuration, not an inferred fact. It lives in `PreferenceMemoryStore` (`np_persona`) and `UserPreferences.personaId` / `personaOverrides` (§3.5).
 
@@ -164,32 +161,32 @@ These rules apply to every phase, every module, and every AI coding agent.
 | PromptCacheAdapter | src/core/ai/PromptCacheAdapter.ts | Per-provider cache-hint transformation (Appendix K) |
 | StructuredOutput | src/core/ai/StructuredOutput.ts | JSON mode + schema validation + one-shot repair (Appendix L) |
 | ChunkBuffer | src/core/ai/ChunkBuffer.ts | rAF-batched streaming UI buffer (Appendix J) |
-| PersonaProfile (Rev. B) | src/core/ai/persona/PersonaProfile.ts | AI identity/personality/tone config (RICH-R-01) |
-| PersonaInjector (Rev. B) | src/core/ai/persona/PersonaInjector.ts | Injects persona into system prompts (RICH-R-02) |
-| IntentClassifier (Rev. B) | src/core/intent/IntentClassifier.ts | URL/hostname heuristic for quick-actions (RICH-I-08, no LLM) |
+| PersonaProfile | src/core/ai/persona/PersonaProfile.ts | AI identity/personality/tone config (RICH-R-01) |
+| PersonaInjector | src/core/ai/persona/PersonaInjector.ts | Injects persona into system prompts (RICH-R-02) |
+| IntentClassifier | src/core/intent/IntentClassifier.ts | URL/hostname heuristic for quick-actions (RICH-I-08, no LLM) |
 | ModelContextTier | src/core/context/ModelContextTier.ts | tiny/small/medium/large classification |
 | ContextOptimizer | src/core/context/ContextOptimizer.ts | Dynamic token budget, compression, degradation |
 | ContextCompressor | src/core/context/ContextCompressor.ts | Structured text/page/case/history compression |
 | MemoryEngine | src/core/memory/MemoryEngine.ts | System-owned memory orchestration |
 | ConversationMemoryStore | src/core/memory/ConversationMemoryStore.ts | Per-conversation summary + recent turns |
 | UserMemoryStore | src/core/memory/UserMemoryStore.ts | Cross-session fact/preference/pattern memory |
-| PreferenceMemoryStore | src/core/memory/PreferenceMemoryStore.ts | User behavioural preferences (persona config lives here — Rev. B) |
+| PreferenceMemoryStore | src/core/memory/PreferenceMemoryStore.ts | User behavioural preferences (persona config lives here) |
 | AITransactionLog | src/core/telemetry/AITransactionLog.ts | AI/MCP/tool/provider operation trace |
 | AITransactionLogDB | src/core/telemetry/AITransactionLogDB.ts | IndexedDB trace persistence |
 | TraceRedactor | src/core/telemetry/TraceRedactor.ts | Redaction before logs/UI/export |
 | WriteJournal | src/core/storage/WriteJournal.ts | Multi-store consistency (metadata + IndexedDB body) |
 | IndexedDBMigrator | src/core/storage/IndexedDBMigrator.ts | Versioned migrations |
-| WorkspaceStore (NEW) | src/core/workspace/WorkspaceStore.ts | Shared workspace across Side Panel and Full App Tab (Appendix M) |
+| WorkspaceStore (NEW) | src/core/workspace/WorkspaceStore.ts | Shared workspace across Side Panel and Standalone view (Appendix M) |
 | WorkspaceRouter (NEW) | src/core/workspace/WorkspaceRouter.ts | Handoff URL parse/build + cross-surface sync |
 | SidePanelPageRegistry | src/core/registry/SidePanelPageRegistry.ts | Add-on registration of Side Panel pages |
-| FullAppPageRegistry (NEW) | src/core/registry/FullAppPageRegistry.ts | Add-on registration of Full App pages |
+| StandalonePageRegistry (NEW) | src/core/registry/StandalonePageRegistry.ts | Add-on registration of Standalone pages |
 | PageContentService | src/core/extraction/PageContentService.ts | Core layered page extraction (§26) |
-| NoteTagger (Rev. B) | src/core/notes/NoteTagger.ts | LLM: tags + category + summary + memory facts (§27) |
-| NoteQA (Rev. B) | src/core/notes/NoteQA.ts | RAG Q&A over notes + memory (§27) |
-| NoteChatConverter (Rev. B) | src/core/notes/NoteChatConverter.ts | Chat/page → structured note draft (§27) |
-| NoteFileSync (Rev. B) | src/core/notes/NoteFileSync.ts | One-way app→filesystem .md sync (§27) |
-| NoteMaintenance (Rev. B) | src/core/notes/NoteMaintenance.ts | Staleness/orphan detection, bulk analysis (§27) |
-| DiagnosticsPanel | src/components/options/DiagnosticsSection.tsx | Full App → Options → Diagnostics UI |
+| NoteTagger | src/core/notes/NoteTagger.ts | LLM: tags + category + summary + memory facts (§27) |
+| NoteQA | src/core/notes/NoteQA.ts | RAG Q&A over notes + memory (§27) |
+| NoteChatConverter | src/core/notes/NoteChatConverter.ts | Chat/page → structured note draft (§27) |
+| NoteFileSync | src/core/notes/NoteFileSync.ts | One-way app→filesystem .md sync (§27) |
+| NoteMaintenance | src/core/notes/NoteMaintenance.ts | Staleness/orphan detection, bulk analysis (§27) |
+| DiagnosticsPanel | src/components/options/DiagnosticsSection.tsx | Standalone view → Options → Diagnostics UI |
 
 ## §1 — Cost-Effective Runtime AI Architecture
 
@@ -203,7 +200,7 @@ Runtime AI uses: `PlannerService → ExecutorService → RendererService` with a
 
 ```
 flowchart TD
-User[User input from Side Panel or Full App] --> TxStart[AITransactionLog.start]
+User[User input from Side Panel or Standalone view] --> TxStart[AITransactionLog.start]
 TxStart --> Workspace[WorkspaceStore.load]
 Workspace --> Memory[MemoryEngine]
 Memory --> Context[ContextOptimizer]
@@ -232,7 +229,11 @@ export const PlannerDecisionSchema = z.discriminatedUnion('action', [
     toolName: z.string().max(64),   // ExecutorService supplies a closed z.enum at request time
     input: z.unknown(),
   }),
-  z.object({ action: z.literal('ask_clarification'), question: z.string().max(200) }),
+  z.object({
+    action: z.literal('ask_clarification'),
+    question: z.string().max(200),
+    options: z.array(z.string().max(60)).max(4).default([]),   // RICH-C-04 option chips
+  }),
 ]);
 ```
 
@@ -245,7 +246,7 @@ Rules:
 - If planner fails twice: fallback to `{ action: 'answer', reasonCode: 'planner_failed' }`.
 - ExecutorService **must** narrow toolName to a closed z.enum derived from the currently registered tools before passing the schema to the model.
 
-> **Rev. B note:** the `ask_clarification` branch is the runtime substrate for RICH-C-01 (AI-initiated clarification chips, §17.7). No schema change is required — RICH adds the chip UI + detection heuristics on top of this existing branch.
+> **Note:** the `ask_clarification` branch is the runtime substrate for RICH-C-01 (AI-initiated clarification chips, §17.7). The `options` array (0–4 short strings) carries the clarification chips directly, so a single planner call yields both the focused question and the tappable options — no second LLM call is required. Tapping a chip injects its text into the `Sender`.
 
 #### ExecutorService
 
@@ -273,16 +274,16 @@ Rules:
 - Timeout: 5 seconds for normal answers.
 - Max normal output: 512 tokens unless the feature overrides.
 
-> **Rev. B note:** RendererService's structured card/table/checklist path is the substrate for RICH-C-05 follow-up chips and RICH-H-19 step-cards (§17.7).
+> **Note:** RendererService's structured card/table/checklist path is the substrate for RICH-C-05 follow-up chips and RICH-H-19 step-cards (§17.7).
 
 ### §1.3 Prompt Shape and Prompt Caching
 
 Every AI call uses this canonical section order:
 
 ```
-[SYSTEM: cached, canonical]            ← PersonaInjector prepends persona block here (Rev. B)
+[SYSTEM: cached, canonical]            ← PersonaInjector prepends persona block here
 [TOOL SCHEMAS: cached, canonical]
-[USER PREFERENCES: compact]            ← includes persona overrides (Rev. B)
+[USER PREFERENCES: compact]            ← includes persona overrides
 [MEMORY: compact top-k]
 [CONTEXT: optimized]
 [TASK: small]
@@ -389,7 +390,7 @@ export interface ContextOptimizerInput {
   userInput: string;
   conversationId: string;
   workspaceId: string;                     // NEW in v0.1
-  activeSurface: 'sidepanel' | 'full-app'; // NEW in v0.1
+  activeSurface: 'sidepanel' | 'standalone'; // NEW in v0.1
   pageContext?: PageContext;
   selectedToolSchemas: ToolSchemaRef[];
   memoryHints: RetrievedMemory[];
@@ -458,7 +459,7 @@ export interface ContextProvenanceManifest {
   totalTokens: number;
   minimalMode: boolean;
   workspaceId: string;         // NEW in v0.1
-  activeSurface: 'sidepanel' | 'full-app'; // NEW in v0.1
+  activeSurface: 'sidepanel' | 'standalone'; // NEW in v0.1
 }
 ```
 
@@ -474,7 +475,7 @@ User memory          → durable cross-session facts / preferences / patterns
 Preference memory    → behavioural settings and response style
 ```
 
-Memory is shared across surfaces — the Side Panel and Full App Tab read the same memory stores through MemoryEngine.
+Memory is shared across surfaces — the Side Panel and Standalone view read the same memory stores through MemoryEngine.
 
 ### §3.2 Recommended Framework Choice
 
@@ -551,7 +552,7 @@ Injection rules:
 - total memory injection ≤ 1000 tokens,
 - never inject secrets or raw customer data.
 
-> **Rev. B — MEM-02 note (§27):** LLM-Wiki extracts memory-worthy facts from saved notes into this store via the existing MemoryExtractor schema. This is the **only** notes→memory direction (D-05); memory never auto-writes notes. The extraction runs on the primary surface only (§13).
+> **Note:** LLM-Wiki extracts memory-worthy facts from saved notes into this store via the existing MemoryExtractor schema. This is the **only** notes→memory direction (D-05); memory never auto-writes notes. The extraction runs on the primary surface only (§13).
 
 ### §3.5 Preference Memory
 
@@ -563,9 +564,12 @@ export interface UserPreferences {
   allowCloudFallbackFromLocal: boolean;
   defaultProviderId?: ProviderId;
   toolAutonomy: 'ask_every_time' | 'allow_safe_tools' | 'manual_only';
-  defaultSurface: 'sidepanel' | 'full-app';  // NEW in v0.1
-  themeMode: 'light' | 'dark' | 'auto';      // NEW in v0.1 (moved from chrome.storage.sync)
-  // --- Rev. B — RICH persona (reconciliation R2: user config, NOT a fact) ---
+  defaultSurface: 'sidepanel' | 'standalone';  // NEW in v0.1
+  // NOTE: theme is NOT a preference field. Display mode (np_theme) and theme pack
+  // (np_theme_pack) are the single source of truth in chrome.storage.sync,
+  // surfaced via ThemeStore + getAntdConfig() and synced across surfaces by
+  // chrome.storage.onChanged (§17.1a APPR-03/04/06, §15.1, Appendix F).
+  // --- RICH persona (reconciliation R2: user config, NOT a fact) ---
   personaId?: string;
   personaOverrides?: {
     name?: string;
@@ -583,7 +587,7 @@ Preferences are injected as compact JSON, not verbose prose. **Persona configura
 
 Every AI, MCP, skill, tool, context, cache, fallback, and provider operation must be traceable for troubleshooting.
 
-AITransactionLog tracks: operation ID, provider/model, prompt token breakdown, context tier, truncation/compression decisions, prompt-cache hit/miss/write, MCP/tool calls, permission decisions, retries/fallbacks, errors, first-token timing, total duration, **workspaceId** (NEW), **activeSurface** — sidepanel | full-app (NEW).
+AITransactionLog tracks: operation ID, provider/model, prompt token breakdown, context tier, truncation/compression decisions, prompt-cache hit/miss/write, MCP/tool calls, permission decisions, retries/fallbacks, errors, first-token timing, total duration, **workspaceId** (NEW), **activeSurface** — sidepanel | standalone (NEW).
 
 ### §4.2 Storage and Retention
 
@@ -600,7 +604,7 @@ export interface AITransaction {
   sessionId?: string;
   conversationId?: string;
   workspaceId?: string;                    // NEW in v0.1
-  activeSurface?: 'sidepanel' | 'full-app'; // NEW in v0.1
+  activeSurface?: 'sidepanel' | 'standalone'; // NEW in v0.1
   userTurnId?: string;
   type: 'chat' | 'planner' | 'renderer' | 'structured_output'
       | 'mcp_tool' | 'builtin_tool' | 'skill' | 'proxy_fetch';
@@ -705,13 +709,13 @@ const REDACTION_PATTERNS = [
 ];
 ```
 
-> **Rev. B note:** LLM-Wiki extracted note content and filesystem paths are redacted before indexing/logging (§27.6). RICH feedback (👍/👎, RICH-C-10) is logged anonymously with no user-identifiable data.
+> **Note:** LLM-Wiki extracted note content and filesystem paths are redacted before indexing/logging (§27.6). RICH feedback (👍/👎, RICH-C-10) is logged anonymously with no user-identifiable data.
 
 ### §4.5 Diagnostics UI
 
-Diagnostics live in **Full App → Options → Diagnostics** (src/components/options/DiagnosticsSection.tsx).
+Diagnostics live in **Standalone view → Options → Diagnostics** (src/components/options/DiagnosticsSection.tsx).
 
-The Side Panel does NOT contain the Diagnostics UI. It may show error toasts with a "Open Diagnostics" button that opens the Full App Tab to the Diagnostics section, preserving operationId in the query string.
+The Side Panel does NOT contain the Diagnostics UI. It may show error toasts with a "Open Diagnostics" button that opens the Standalone view to the Diagnostics section, preserving operationId in the query string.
 
 Diagnostics surfaces:
 
@@ -734,9 +738,10 @@ Diagnostics surfaces:
 src/entrypoints/background.ts
 src/entrypoints/sidepanel/index.html
 src/entrypoints/sidepanel/main.tsx
-src/entrypoints/app/index.html            # NEW in v0.1 — Full App Tab
-src/entrypoints/app/main.tsx              # NEW in v0.1
-src/entrypoints/content/core.content.ts   # extraction-only in v0.1
+src/entrypoints/standalone/index.html            # Standalone view
+src/entrypoints/standalone/main.tsx
+src/entrypoints/content/core.content.ts            # extraction-only, ISOLATED world
+src/entrypoints/content/servicenow-main.content.ts # MAIN world — ServiceNow g_ck only
 src/entrypoints/popup/App.tsx
 ```
 
@@ -744,7 +749,7 @@ Background owns: chrome.sidePanel.setPanelBehavior, context menus, PROXY_FETCH, 
 
 Side Panel owns: AI streaming, MCP runtime, ProviderRouter, PromptCacheManager, ContextOptimizer, MemoryEngine, AITransactionLog, IndexedDB, WorkspaceStore (side-panel instance).
 
-Full App Tab owns: All Options screens, full-page Chat/Agent/Notes workspaces, TeamGQM full workspace, **LLM-Wiki + Filesystem Sync (§27)**, WorkspaceStore (full-app instance).
+Standalone view owns: All Options screens, full-page Chat/Agent/Notes workspaces, TeamGQM full workspace, **LLM-Wiki + Filesystem Sync (§27)**, WorkspaceStore (standalone instance).
 
 Content Scripts own: Page context extraction, SPA navigation detection, ServiceNow token/case extraction. **No UI rendering** in v0.1.
 
@@ -780,16 +785,16 @@ export default defineContentScript({
 });
 ```
 
-Canonical Full App entry point:
+Canonical Standalone view entry point:
 
 ```ts
-// src/entrypoints/app/main.tsx
+// src/entrypoints/standalone/main.tsx
 import { createRoot } from 'react-dom/client';
 import { ConfigProvider, App as AntdApp, theme } from 'antd';
-import { AppShell } from '@/components/app/AppShell';
+import { StandaloneShell } from '@/components/standalone/StandaloneShell';
 import { getThemeStore } from '@/core/theme/ThemeStore';
 const root = createRoot(document.getElementById('root')!);
-root.render(<AppShell />);
+root.render(<StandaloneShell />);
 ```
 
 Complete wxt.config.ts — see **Appendix G**.
@@ -801,7 +806,7 @@ Complete wxt.config.ts — see **Appendix G**.
 - Never run LLM or MCP streams in the SW.
 - Use Promise.race plus AbortController for every async fetch.
 - PROXY_FETCH timeout is 25 seconds unless a feature-specific timeout is lower.
-- Side-panel/Full-App LLM streams continue independent of SW restart.
+- Side-panel/Standalone LLM streams continue independent of SW restart.
 
 ### §5.3 Side Panel Opening
 
@@ -809,59 +814,65 @@ Complete wxt.config.ts — see **Appendix G**.
 - Use `chrome.sidePanel.open({ tabId })` **only inside a user gesture** — action click or contextMenus.onClicked.
 - The Side Panel is global per browser window; URL-specific navigation is filtered by SidePanelPageRegistry.
 
-### §5.4 Full App Tab Opening (NEW in v0.1)
+### §5.4 Standalone view Opening
 
-The Full App is opened as an extension page: `chrome-extension://<extension-id>/app.html`
+The Standalone view is opened as an extension page: `chrome-extension://<extension-id>/standalone.html`
 
 Opening rules:
 
-- The Side Panel opens the Full App via `chrome.tabs.create({ url: chrome.runtime.getURL('app.html?workspaceId=' + wsId + '&conversationId=' + convId) })`.
-- The command palette (Cmd+K) can open the Full App.
-- Add-ons register fullAppPages and users navigate to `app.html?page=<pageId>` — no add-on may call chrome.tabs.create directly.
-- The Full App reads workspaceId/conversationId/page from the URL search params on mount and hands off to WorkspaceRouter.hydrateFromURL().
-- Only one Full App tab per browser window at a time — WorkspaceRouter.openFullApp() deduplicates by scanning existing tabs matching chrome.runtime.getURL('app.html') before creating a new one.
+- The Side Panel opens the Standalone view via `chrome.tabs.create({ url: chrome.runtime.getURL('standalone.html?workspaceId=' + wsId + '&conversationId=' + convId) })`.
+- The command palette (Cmd+K) can open the Standalone view.
+- Add-ons register standalonePages and users navigate to `standalone.html?page=<pageId>` — no add-on may call chrome.tabs.create directly.
+- The Standalone view reads workspaceId/conversationId/page from the URL search params on mount and hands off to WorkspaceRouter.hydrateFromURL().
+- Only one Standalone view per browser window at a time — WorkspaceRouter.openStandalone() deduplicates by scanning existing tabs matching chrome.runtime.getURL('standalone.html') before creating a new one.
 
 ### §5.5 Ant Design Setup
 
-NowPilot uses Ant Design v6 as its primary design system, with Ant Design X 2.x presentation components (Bubble, Sender, Conversations, ThoughtChain, etc. — §7.2, §9) for Chat/Agent surfaces. Both surfaces mount an AntdApp provider inside a ConfigProvider, and any screen using Ant Design X components additionally wraps them in XProvider (from @ant-design/x) so chat components share the same theme tokens, locale, and density as the rest of the surface.
+NowPilot uses Ant Design v6 as its primary design system, with Ant Design X 2.x presentation components (Bubble, Sender, Conversations, ThoughtChain, etc. — §7.2, §9) for Chat/Agent surfaces. `XProvider` (from `@ant-design/x`) **extends** antd's `ConfigProvider`, so each surface mounts **exactly one** provider — `XProvider` — and wraps `AntdApp` inside it. Never nest `ConfigProvider` inside `XProvider` (or vice-versa): that double-wraps theme/locale/icon context. Plain-AntD-only trees that render no X components may use `ConfigProvider` directly.
 
 Side Panel:
 
 ```ts
 // src/entrypoints/sidepanel/main.tsx
 import { createRoot } from 'react-dom/client';
-import { ConfigProvider, App as AntdApp } from 'antd';
+import { App as AntdApp } from 'antd';
+import { XProvider } from '@ant-design/x';
 import { getAntdConfig } from '@/core/theme/antdConfig';
+import { useThemeStore } from '@/core/theme/ThemeStore';
 import { SidePanelShell } from '@/components/sidepanel/SidePanelShell';
 function Root() {
-  const cfg = useThemeStore();
+  const { mode, pack } = useThemeStore(s => ({ mode: s.mode, pack: s.pack }));
+  const cfg = getAntdConfig({ mode, pack, compact: true });         // ConfigProviderProps (theme + locale)
   return (
-    <ConfigProvider {...getAntdConfig({ mode: cfg.mode, compact: true })}>
+    <XProvider {...cfg}>                                       {/* XProvider ⊃ ConfigProvider — one provider */}
       <AntdApp>
         <SidePanelShell />
       </AntdApp>
-    </ConfigProvider>
+    </XProvider>
   );
 }
 createRoot(document.getElementById('root')!).render(<Root />);
 ```
 
-Full App:
+Standalone view:
 
 ```ts
-// src/entrypoints/app/main.tsx
+// src/entrypoints/standalone/main.tsx
 import { createRoot } from 'react-dom/client';
-import { ConfigProvider, App as AntdApp } from 'antd';
+import { App as AntdApp } from 'antd';
+import { XProvider } from '@ant-design/x';
 import { getAntdConfig } from '@/core/theme/antdConfig';
-import { AppShell } from '@/components/app/AppShell';
+import { useThemeStore } from '@/core/theme/ThemeStore';
+import { StandaloneShell } from '@/components/standalone/StandaloneShell';
 function Root() {
-  const cfg = useThemeStore();
+  const { mode, pack } = useThemeStore(s => ({ mode: s.mode, pack: s.pack }));
+  const cfg = getAntdConfig({ mode, pack, compact: false });        // ConfigProviderProps (theme + locale)
   return (
-    <ConfigProvider {...getAntdConfig({ mode: cfg.mode, compact: false })}>
+    <XProvider {...cfg}>                                       {/* XProvider ⊃ ConfigProvider — one provider */}
       <AntdApp>
-        <AppShell />
+        <StandaloneShell />
       </AntdApp>
-    </ConfigProvider>
+    </XProvider>
   );
 }
 createRoot(document.getElementById('root')!).render(<Root />);
@@ -869,10 +880,11 @@ createRoot(document.getElementById('root')!).render(<Root />);
 
 Rules:
 
-- All imperative UI APIs (message, notification, Modal) MUST be accessed via App.useApp() — not the static message.* imports. This ensures theme + ConfigProvider context is respected.
+- Mount exactly **one** provider per surface (`XProvider`). Do not also wrap in `ConfigProvider`.
+- All imperative UI APIs (message, notification, Modal) MUST be accessed via App.useApp() — not the static message.* imports. This ensures theme + provider context is respected.
 - The Side Panel uses theme.compactAlgorithm combined with the theme mode algorithm.
-- The Full App does NOT use theme.compactAlgorithm — full density.
-- Dark mode is switched by re-rendering ConfigProvider with theme.darkAlgorithm. Do not manipulate CSS classes directly for AntD components.
+- The Standalone view does NOT use theme.compactAlgorithm — full density.
+- Dark mode is switched via theme.darkAlgorithm (antd v6 pure CSS-variable mode — real-time switch, no `.dark` class, no full remount). Do not manipulate CSS classes directly for AntD components.
 - Full details in Appendix F.
 
 ### §5.6 Content Script Rules (extraction-only)
@@ -880,10 +892,10 @@ Rules:
 Content scripts in v0.1:
 
 - MAY extract page context, DOM text, selected text, ServiceNow session cookies, and SPA navigation events.
-- MAY communicate with the Side Panel, Full App, or Background via RuntimeEnvelope<T>.
+- MAY communicate with the Side Panel, Standalone view, or Background via RuntimeEnvelope<T>.
 - MUST NOT render React or any UI.
 - MUST NOT create Shadow DOM roots for UI.
-- MUST NOT inject CSS or <style> tags.
+- MUST NOT inject CSS or `<style>` tags.
 - MUST NOT modify host page DOM except non-visible read operations (e.g., cloning a node into memory for parsing).
 - MUST NOT write back into host-page fields/editors (reconciliation R1 — RICH-H-04/H-07 are clipboard-only/deferred).
 - MUST use MutationObserver for SPA navigation detection, never polling.
@@ -914,25 +926,24 @@ NowPilot v0.1 exposes **two extension-owned UI surfaces**. There is no page-inje
 
 The Chrome Side Panel is narrow (~400 px), always available beside the active tab, and optimized for **quick, context-adjacent workflows** while the user is working in ServiceNow or another page.
 
-The side panel contains only:
+The side panel contains **only Chat** (Ask-Gemini style, §17.1) — there is no nav rail and no surface switcher:
 
-- Chat
-- Agent
-- Write (add-on)
-- TeamGQM (add-on)
-- Open Full App
+- Chat (the only Side Panel surface)
+- Switch to Full chat (workspace handoff to the Standalone view, Flow 11)
 
-Plus RICH welcome/quick-action/clarification/follow-up surfaces (§17.7) and quick "Save to note".
+Plus RICH welcome/quick-action/clarification/follow-up surfaces (§17.7), the composer toolbar (model selector · screenshot · attach · chat history · new chat), the status bar (provider · help · feedback), and quick "Save to note".
 
-Do NOT put heavy admin, diagnostics, provider management, prompt management, note-graph workflows, **LLM-Wiki management, or Filesystem Sync config** in the side panel.
+Agent, Note, Write, Tools, and TeamGQM are **not** in the Side Panel — they live in the Standalone Sider (§8.3, §17.2). Do NOT put heavy admin, diagnostics, provider management, prompt management, note-graph workflows, **LLM-Wiki management, or Filesystem Sync config** in the side panel.
 
-#### Full App Tab — Deep Work Workspace
+#### Standalone view — Deep Work Workspace
 
-The Full App is an extension page opened in a normal browser tab at: `chrome-extension://<extension-id>/app.html`
+> **Glossary — "Standalone view":** NowPilot's full-page surface, opened in its own browser tab (`standalone.html`). Code symbols use the `standalone` stem: the surface union value `'standalone'` (`activeSurface`/`defaultSurface`), `WorkspaceRouter.openStandalone`, `openedStandaloneTabId`, `StandalonePageRegistry`/`StandalonePageRegistration`, entrypoint `src/entrypoints/standalone/`, and message type `OPEN_STANDALONE`. The Side Panel's handoff button keeps its distinct label **"Switch to Full chat"** (it describes the action of continuing the current chat in the larger surface).
+
+The Standalone view is an extension page opened in a normal browser tab at: `chrome-extension://<extension-id>/standalone.html`
 
 It is optimized for **deep work, configuration, diagnostics, and large workspace screens**. It uses AntD Layout with a Sider navigation.
 
-The Full App contains:
+The Standalone view contains:
 
 - Chat (full-screen)
 - Agent (full-screen, shares workspace with Chat)
@@ -943,33 +954,33 @@ The Full App contains:
 ### §6.3 Architecture Separation
 
 - **Core layer** — AI providers, storage, messaging, context pipeline, agent orchestration, MCP client, memory, transaction logging, workspace store, **page-content extraction (PageContentService)**, **LLM-Wiki services (NoteTagger/NoteQA/NoteChatConverter/NoteFileSync/NoteMaintenance)**, and **persona (PersonaProfile/PersonaInjector)**.
-- **Add-on layer** — site-specific context extraction, skills, side-panel pages, full-app pages. ServiceNow ships as first-party add-on. Write and TeamGQM are first-party add-ons.
+- **Add-on layer** — site-specific context extraction, skills, side-panel pages, standalone pages. ServiceNow ships as first-party add-on. Write and TeamGQM are first-party add-ons.
 
 Core never knows about specific websites. Add-ons never bypass core APIs.
 
 ### §6.4 Design Principles
 
 - **Privacy by default:** local providers (Ollama, LM Studio) are first-class.
-- **Two surfaces, one workspace:** side panel and full app share a WorkspaceStore.
+- **Two surfaces, one workspace:** side panel and standalone view share a WorkspaceStore.
 - **Extensible via add-ons:** add-ons register pages on either surface (never inject into host pages in v0.1).
 - **Cost-effective by design:** every prompt goes through ContextOptimizer and the Planner → Executor → Renderer pipeline.
 - **Offline-capable:** the extension works with local models only.
-- **Knowledge-first (Rev. B):** the product data-flow is acquire → store → understand → display → extend; PageContentService, Notes, and LLM-Wiki are the core, not late add-ons.
-- **RICH conversational UX (Rev. B):** persona-driven, intention-aware, clarifying, hybrid-UI experience on Ant Design X.
+- **Knowledge-first:** the product data-flow is acquire → store → understand → display → extend; PageContentService, Notes, and LLM-Wiki are the core, not late add-ons.
+- **RICH conversational UX:** persona-driven, intention-aware, clarifying, hybrid-UI experience on Ant Design X.
 
 ### §6.5 Scope Fences
 
 **In scope for v0.1:**
 
-- Side panel shell (Chat, Agent, Write, TeamGQM, Open Full App)
+- Side panel shell (Chat, Agent, Write, TeamGQM, Open Standalone view)
 - Full app shell (Chat, Agent, Notes, TeamGQM, Options)
 - Shared WorkspaceStore across both surfaces
-- 5 provider adapters
+- 4 provider adapters (OpenAI, Anthropic, Gemini, Ollama)
 - PageContentService (core) — layered page extraction (Defuddle → APC-lite DOM walk), feeding ContextOptimizerInput.pageContext, indexed by MiniSearch.
 - Persistent memory (conversation + user + preference)
 - 12 built-in MCP tools + external MCP client
-- ServiceNow add-on (data extraction + side-panel/full-app UI only)
-- Write add-on (side-panel primary; optional full-app page)
+- ServiceNow add-on (data extraction + side-panel/standalone UI only)
+- Write add-on (side-panel primary; optional standalone page)
 - TeamGQM add-on (both surfaces)
 - Data export/import
 - Prompt inspector and diagnostics (in Options)
@@ -1027,7 +1038,7 @@ See §25 for the future page-injection reintroduction plan.
 | Package | Version | Purpose |
 |---|---|---|
 | ai | ^4 | Vercel AI SDK: streamText, tool calling, abort |
-| @ai-sdk/openai | ^1 | OpenAI + Ollama + OpenAI-compatible endpoints |
+| @ai-sdk/openai | ^1 | OpenAI + Ollama (custom baseURL for OpenAI-compatible providers) |
 | @ai-sdk/anthropic | ^1 | Anthropic Claude |
 | @ai-sdk/google | ^1 | Google Gemini |
 | @modelcontextprotocol/sdk | ^1 | MCP client — StreamableHTTP transport |
@@ -1039,7 +1050,7 @@ See §25 for the future page-injection reintroduction plan.
 | Package | Version | Purpose |
 |---|---|---|
 | idb | ^8 | Typed IndexedDB wrapper |
-| **yaml** (Rev. B) | ^2 | YAML frontmatter parse/serialize for LLM-Wiki .md files (§27) |
+| **yaml** | ^2 | YAML frontmatter parse/serialize for LLM-Wiki .md files (§27) |
 
 ### §7.6 Extraction & Text
 
@@ -1057,7 +1068,7 @@ See §25 for the future page-injection reintroduction plan.
 | Package | Version | Purpose |
 |---|---|---|
 | minisearch | ^7 | Local full-text search (notes index + ephemeral page index) |
-| d3-force | ^3 | Note graph layout (Full App) |
+| d3-force | ^3 | Note graph layout (Standalone view) |
 | fflate | ^0.8 | ZIP export |
 | papaparse | ^5 | CSV parsing |
 
@@ -1070,7 +1081,7 @@ See §25 for the future page-injection reintroduction plan.
 | vitest, @testing-library/react, jsdom, msw | Testing |
 | typescript ≥5.5, strict: true | Type safety |
 | eslint, prettier | Linting / formatting |
-| **@types/wicg-file-system-access** (Rev. B, dev) | TypeScript types for File System Access API (§27) |
+| **@types/wicg-file-system-access** | TypeScript types for File System Access API (§27) |
 
 ## §8 — Architecture Design
 
@@ -1085,7 +1096,7 @@ Chrome Browser
 │   ├── ContextMenuHost           chrome.contextMenus registration
 │   ├── CookieSessionStore        generic chrome.cookies + storage.session
 │   ├── CORSProxy                 PROXY_FETCH (§10.7)
-│   └── WorkspaceRouter           opens Full App tab, dedupes existing tabs
+│   └── WorkspaceRouter           opens Standalone view, dedupes existing tabs
 │
 ├── Side Panel (sidepanel/main.tsx)                           [persistent while open]
 │   ├── AntD ConfigProvider (compact) + AntdApp
@@ -1099,11 +1110,11 @@ Chrome Browser
 │   ├── StorageLayer (ChatHistoryDB, NotesDB, MemoryDB, ErrorStore, WriteJournal)
 │   ├── WorkspaceStore (Zustand) + WorkspaceSync (BroadcastBus)
 │   ├── MessageBus (cross-context), EventBus (in-panel), BroadcastBus (cross-surface)
-│   └── UI: Chat / Agent / Write (add-on) / TeamGQM (add-on) / Open Full App + RICH surfaces
+│   └── UI: Chat / Agent / Write (add-on) / TeamGQM (add-on) / Open Standalone view + RICH surfaces
 │
-├── Full App Tab (app/main.tsx)                               [persistent tab]
+├── Standalone view (app/main.tsx)                               [persistent tab]
 │   ├── AntD ConfigProvider (default density) + AntdApp
-│   ├── AppShell + FullAppRouter (AntD Layout w/ Sider)
+│   ├── StandaloneShell + StandaloneRouter (AntD Layout w/ Sider)
 │   ├── Same core services as Side Panel (single-writer coordination via WorkspaceStore)
 │   ├── LLM-Wiki services (NoteTagger/NoteQA/NoteChatConverter/NoteFileSync/NoteMaintenance)
 │   └── UI: Chat / Agent / Notes (+LLM-Wiki) / TeamGQM / Options
@@ -1111,7 +1122,7 @@ Chrome Browser
 ├── Content Scripts (extraction-only)
 │   ├── ContentScriptHost         message bridge only, no UI mount
 │   ├── SPANavigationWatcher      MutationObserver
-│   ├── PageContextBridge         extracted context → side panel / full app
+│   ├── PageContextBridge         extracted context → side panel / standalone view
 │   ├── ISOLATED world by default
 │   └── MAIN world only for domain-specific globals (e.g. window.g_ck)
 │
@@ -1130,7 +1141,7 @@ Core owns:
 - Shared UI (ErrorBoundary, PortableMarkdown)
 - Prompt/template/slash engines
 - Telemetry, redaction
-- Registries (AddonRegistry, EndpointRegistry, KeymapRegistry, SidePanelPageRegistry, FullAppPageRegistry)
+- Registries (AddonRegistry, EndpointRegistry, KeymapRegistry, SidePanelPageRegistry, StandalonePageRegistry)
 - **WorkspaceStore** and cross-surface coordination
 - Content-script message bridge (extraction-only)
 - PageContentService + extraction strategies (DefuddleStrategy, ApcLiteStrategy) + PageIndexBuilder (MiniSearch over extracted content)
@@ -1155,14 +1166,14 @@ Rules:
 
 ### §8.3 Two UI Surfaces — Comparison
 
-| Aspect | Side Panel | Full App Tab |
+| Aspect | Side Panel | Standalone view |
 |---|---|---|
 | Width | ~400 px (Chrome default) | Full browser viewport |
 | Density | AntD **compact** algorithm | AntD default density |
 | Purpose | Fast, context-adjacent workflows | Deep work, config, diagnostics |
-| Pages | Chat, Agent, Write, TeamGQM, Open Full App | Chat, Agent, Notes (+LLM-Wiki), TeamGQM, Options |
+| Pages | Chat, Agent, Write, TeamGQM, Open Standalone view | Chat, Agent, Notes (+LLM-Wiki), TeamGQM, Options |
 | Persistence | Persistent while open | Persistent tab |
-| Opened by | Chrome action button, keyboard shortcut, context menu | "Open Full App" action, command palette, options link |
+| Opened by | Chrome action button, keyboard shortcut, context menu | "Open Standalone view" action, command palette, options link |
 | Notes management | ❌ (view/quick-save only) | ✅ full workspace + LLM-Wiki + Filesystem Sync |
 | Options | ❌ | ✅ |
 | Diagnostics | Toast + "Open Diagnostics" link only | ✅ full DiagnosticsPanel |
@@ -1182,8 +1193,8 @@ Both surfaces read/write a shared WorkspaceStore (Zustand) that tracks:
 - selectedNotes
 - activeAddonContext
 - activeSkillRun
-- activeSurface: 'sidepanel' | 'full-app'
-- openedFullAppTabId?: number
+- activeSurface: 'sidepanel' | 'standalone'
+- openedStandaloneTabId?: number
 
 Persistence:
 
@@ -1191,7 +1202,7 @@ Persistence:
 - Cross-surface sync → BroadcastBus (see §13, §20)
 - Only one surface may be the **primary writer** at a time; election via BroadcastBus
 
-Handoff URL format for Open Full App: `chrome-extension://<id>/app.html?workspaceId=<uuid>&conversationId=<uuid>&page=<pageId>`
+Handoff URL format for Open Standalone view: `chrome-extension://<id>/standalone.html?workspaceId=<uuid>&conversationId=<uuid>&page=<pageId>`
 
 Full details in Appendix M.
 
@@ -1204,37 +1215,37 @@ nowpilot/
 │   ├── entrypoints/
 │   │   ├── background.ts
 │   │   ├── sidepanel/{index.html, main.tsx}
-│   │   ├── app/{index.html, main.tsx}                # Full App Tab
+│   │   ├── app/{index.html, main.tsx}                # Standalone view
 │   │   ├── content/core.content.ts                    # extraction-only
 │   │   └── popup/App.tsx
 │   │
 │   ├── core/
-│   │   ├── ai/**  (as v0.1c)
-│   │   │   └── persona/{PersonaProfile, PersonaInjector}.ts     # NEW (Rev. B, RICH-R)
+│   │   ├── ai/**
+│   │   │   └── persona/{PersonaProfile, PersonaInjector}.ts
 │   │   ├── mcp/{MCPClient, MCPRegistry, mcpToVercelAI, NowPilotMainServer}.ts
 │   │   ├── context/**
 │   │   ├── memory/**
 │   │   ├── telemetry/**
-│   │   ├── storage/**  (+ migrations/ … v4: notes_backup_config)   # UPDATED (Rev. B)
+│   │   ├── storage/**  (+ migrations/ … v4: notes_backup_config)
 │   │   ├── security/{KeyVault, redactSensitive}.ts
 │   │   ├── runtime/{RuntimeEnvelope, OperationId, BroadcastBus, PortReader, workerState}.ts
 │   │   ├── messaging/MessageBus.ts
 │   │   ├── events/EventBus.ts
-│   │   ├── workspace/{WorkspaceStore, WorkspaceRouter, WorkspaceSync}.ts     # NEW
-│   │   ├── theme/{ThemeStore, antdConfig}.ts                                  # NEW
+│   │   ├── workspace/{WorkspaceStore, WorkspaceRouter, WorkspaceSync}.ts
+│   │   ├── theme/{ThemeStore, antdConfig}.ts
 │   │   ├── content/{ContentScriptHost, SPANavigationWatcher, PageContextBridge, AxDomWalker}.ts
 │   │   ├── chrome/{CookieSessionStore, CORSProxy, ContextMenuHost, TabManager, NotificationsManager, ClipboardHelper, Scheduler}.ts
 │   │   ├── prompts/**
 │   │   ├── slash/SlashCommandRegistry.ts
 │   │   ├── search/MiniSearchIndex.ts
-│   │   ├── intent/IntentClassifier.ts                                         # NEW (Rev. B, RICH-I-08)
+│   │   ├── intent/IntentClassifier.ts
 │   │   ├── notes/
 │   │   │   ├── LinkParser.ts, NoteGraph.ts                                    # Phase 5 (atomic notes + wikilinks)
-│   │   │   ├── NoteTagger.ts                                                  # NEW (§27)
-│   │   │   ├── NoteQA.ts                                                      # NEW (§27)
-│   │   │   ├── NoteChatConverter.ts                                           # NEW (§27)
-│   │   │   ├── NoteFileSync.ts                                                # NEW (§27)
-│   │   │   └── NoteMaintenance.ts                                             # NEW (§27)
+│   │   │   ├── NoteTagger.ts (§27)
+│   │   │   ├── NoteQA.ts (§27)
+│   │   │   ├── NoteChatConverter.ts (§27)
+│   │   │   ├── NoteFileSync.ts (§27)
+│   │   │   └── NoteMaintenance.ts (§27)
 │   │   ├── extraction/
 │   │   │   ├── PageContentService.ts
 │   │   │   ├── apcLite.types.ts
@@ -1247,7 +1258,7 @@ nowpilot/
 │   │   ├── data/DataPortability.ts
 │   │   ├── insights/InsightEngine.ts
 │   │   ├── http/Requester.ts
-│   │   ├── registry/{AddonRegistry, Registry, AddonSettingsStore, SidePanelPageRegistry, FullAppPageRegistry}.ts
+│   │   ├── registry/{AddonRegistry, Registry, AddonSettingsStore, SidePanelPageRegistry, StandalonePageRegistry}.ts
 │   │   ├── input/KeymapRegistry.ts
 │   │   ├── speech/SpeechSynthesisService.ts
 │   │   ├── utils/RateLimiter.ts
@@ -1264,16 +1275,16 @@ nowpilot/
 │   │
 │   ├── components/
 │   │   ├── sidepanel/{SidePanelShell, SidePanelRouter}.tsx
-│   │   ├── app/{AppShell, FullAppRouter}.tsx
+│   │   ├── app/{StandaloneShell, StandaloneRouter}.tsx
 │   │   ├── pages/{ChatPage, AgentPage, NotesPage, OptionsPage}.tsx
-│   │   ├── options/{Providers, Models, MCP, Prompts, Slash, Diagnostics, Memory, ImportExport, FeatureFlags, AddonSettings, Persona, Notes}Section.tsx   # +Persona +Notes (Rev. B)
-│   │   ├── notes/{BacklinksPanel, WikilinkAutocomplete, NoteGraphView, NotePreview, SaveToNoteDialog}.tsx    # +SaveToNoteDialog (Rev. B)
-│   │   ├── rich/{WelcomeCards, QuickActionChips, ClarificationChips, FollowUpChips, PersonaHeader, StageIndicator, ClosureZone, ContextPane, TemplateCatalog, CodeBlockActions, StepCards}.tsx   # NEW (Rev. B, §17.7)
+│   │   ├── options/{Providers, Models, MCP, Prompts, Slash, Diagnostics, Memory, ImportExport, FeatureFlags, AddonSettings, Persona, Notes}Section.tsx   # +Persona +Notes
+│   │   ├── notes/{BacklinksPanel, WikilinkAutocomplete, NoteGraphView, NotePreview, SaveToNoteDialog}.tsx    # +SaveToNoteDialog
+│   │   ├── rich/{WelcomeCards, QuickActionChips, ClarificationChips, FollowUpChips, PersonaHeader, StageIndicator, ClosureZone, ContextPane, TemplateCatalog, CodeBlockActions, StepCards}.tsx
 │   │   ├── patterns/{ChatMessage, HistoryListItem, ToolCard, SkillMessageRenderer, SourceCard}.tsx
 │   │   └── OnboardingModal.tsx
 │   │
-│   ├── hooks/{useChat, useStreamingLLM, useProviderRouter, useMemory, useDiagnostics, useConversations, useAddonContext, useWorkspace, useTheme, usePersona, useRichSuggestions}.ts   # +usePersona +useRichSuggestions (Rev. B)
-│   └── types/{messages, storage, errors, addon, workspace, notes, persona}.ts   # +notes +persona (Rev. B)
+│   ├── hooks/{useChat, useStreamingLLM, useProviderRouter, useMemory, useDiagnostics, useConversations, useAddonContext, useWorkspace, useTheme, usePersona, useRichSuggestions}.ts   # +usePersona +useRichSuggestions
+│   └── types/{messages, storage, errors, addon, workspace, notes, persona}.ts   # +notes +persona
 │
 └── tests/  (see §24)
 ```
@@ -1288,21 +1299,21 @@ nowpilot/
 | Agent | P0 | AgentOrchestrator with tier caps + permission prompts |
 | Write add-on page | P0 | Draft/rewrite/summarize/customer-update workflows |
 | TeamGQM add-on page | P0 | Quick TeamGQM summary/actions |
-| Open Full App action | P0 | Opens app.html with workspace handoff (Flow 11) |
+| Open Standalone view action | P0 | Opens standalone.html with workspace handoff (Flow 11) |
 | Provider/model selector | P0 | Read-only in side panel — edit lives in Options |
 | Quick save to note | P1 | "Save this response as note" quick action (lightweight, non-LLM) |
 | Slash commands | P1 | /write, /ask, /research, etc. |
 | Tab pinning | P1 | Max 10 pinned |
 | Selection → Ask AI | P1 | Right-click context menu → opens side panel with selection prefilled |
 | Theme toggle | P1 | light/dark/auto |
-| Cmd+K palette | P1 | Includes "Open Full App" |
-| Error toast + "Open Diagnostics" link | P1 | Diagnostics lives in Full App → Options |
+| Cmd+K palette | P1 | Includes "Open Standalone view" |
+| Error toast + "Open Diagnostics" link | P1 | Diagnostics lives in Standalone view → Options |
 
-**RICH additions (Rev. B, §17.7):** Persona header (RICH-H-01), Welcome cards (RICH-I-01), Context-aware quick-action chips (RICH-I-05/06), Clarification chips (RICH-C-01), Follow-up chips (RICH-C-05), Streaming stage indicators (RICH-H-08).
+**RICH additions:** Persona header (RICH-H-01), Welcome cards (RICH-I-01), Context-aware quick-action chips (RICH-I-05/06), Clarification chips (RICH-C-01), Follow-up chips (RICH-C-05), Streaming stage indicators (RICH-H-08).
 
 The side panel intentionally does NOT include: Notes editor, DiagnosticsPanel, PromptManager, ProvidersEditor, MCP servers editor, Feature flag editor, Import/Export, **LLM-Wiki management, Filesystem Sync config**.
 
-### §9.2 Full App Features
+### §9.2 Standalone view Features
 
 | Feature | Priority | Notes |
 |---|---|---|
@@ -1311,16 +1322,17 @@ The side panel intentionally does NOT include: Notes editor, DiagnosticsPanel, P
 | Notes | P0 | List, editor, wikilinks, backlinks, graph, search, **+ LLM-Wiki + Filesystem Sync (§27)** |
 | TeamGQM add-on (full-page) | P0 | Full workspace for TeamGQM add-on |
 | Options | P0 | See §9.3 |
-| First-run onboarding entry point | P0 | If user opens Full App without provider configured (+ RICH-R-03 persona card) |
-| Cmd+K palette | P1 | Same command set as side panel + Full-App-only commands |
+| First-run onboarding entry point | P0 | If user opens Standalone view without provider configured (+ RICH-R-03 persona card) |
+| Cmd+K palette | P1 | Same command set as side panel + Standalone-only commands |
 | Command "Focus Side Panel" | P1 | Programmatically opens side panel for current tab |
 
 ### §9.3 Options Page
 
-Options is a Full App page with the following sections, each accessible via a left-side Menu inside a Layout:
+Options is a Standalone page with the following sections, each accessible via a left-side Menu inside a Layout:
 
 | Section | Purpose |
 |---|---|
+| **General** | **Account (name/email/log-out); AI access (Service provider select + provider grid → Set-up dialog §17.2d); Appearance (Display mode Light/Dark/Auto + Theme pack Default/Liquid Glass/Claude Warm), display language, font size, side-panel position — see §17.1a** |
 | Providers | Add/edit/delete provider configs, test connections, priority order |
 | Models | Per-provider model list + context window override |
 | MCP Servers | Add/enable/disable external MCP servers, view permissions |
@@ -1331,13 +1343,13 @@ Options is a Full App page with the following sections, each accessible via a le
 | Import / Export | Sanitised JSON/ZIP export; import merge; **Restore from folder (§27)** |
 | Feature Flags | Toggle P2 features (webhooks, insights, TTS) |
 | Add-on Settings | Namespaced settings per registered add-on |
-| **Persona** (Rev. B) | Edit AI name, tone, brevity (RICH-R-04) |
-| **Notes** (Rev. B) | LLM feature toggles, backup folder config, bulk maintenance (§27) |
+| **Persona** | Edit AI name, tone, brevity (RICH-R-04) |
+| **Notes** | LLM feature toggles, backup folder config, bulk maintenance (§27) |
 | About | Version, license, links |
 
 ### §9.4 Add-on Contract
 
-Add-ons register with the AddonRegistry at side-panel or full-app startup. They may declare:
+Add-ons register with the AddonRegistry at side-panel or standalone startup. They may declare:
 
 ```ts
 export interface Addon {
@@ -1349,18 +1361,18 @@ export interface Addon {
   skills?: ISkill[];
   prompts?: PromptTemplate[];
   sidePanelPages?: SidePanelPageRegistration[];
-  fullAppPages?: FullAppPageRegistration[];
+  standalonePages?: StandalonePageRegistration[];
   addonSettings?: z.ZodSchema<unknown>;
   keymap?: KeymapRegistration[];
 }
 ```
 
-**Key change from v0.1c:** the contentScript UI mount interface (IContentAddon) is removed. Add-ons no longer render UI into host pages. Content-script logic for **extraction** still exists via contextExtractor and generic PageContextBridge.
+**Note:** the contentScript UI mount interface (IContentAddon) is removed. Add-ons no longer render UI into host pages. Content-script logic for **extraction** still exists via contextExtractor and generic PageContextBridge.
 
 Rules:
 
 - Each add-on MUST declare a Zod addonSettings schema (may be z.object({})).
-- Full-App pages MUST live under src/addons/<id>/pages/FullApp*.tsx.
+- Standalone pages MUST live under src/addons/<id>/pages/Standalone*.tsx.
 - Side-Panel pages MUST live under src/addons/<id>/pages/SidePanel*.tsx.
 - Add-ons MUST NOT import from src/components/pages/** or from other add-ons.
 
@@ -1372,7 +1384,7 @@ Rules:
 
 **Skills:** DraftSkill, RewriteSkill, SummarizeSkill, CustomerUpdateSkill.
 
-**Full App Page:** Not required in v0.1 (side-panel-only). If added later, it must live in src/addons/write/pages/FullAppWritePage.tsx.
+**Standalone view Page:** Not required in v0.1 (side-panel-only). If added later, it must live in src/addons/write/pages/StandaloneWritePage.tsx.
 
 **Input source:** current clipboard, selected text (via SelectionContextMenu), pinned tab context, or free-form text area.
 
@@ -1384,7 +1396,7 @@ Rules:
 
 **Side Panel Page:** SidePanelTeamGQMPage — compact quick view: Latest TeamGQM digest · Quick action buttons · Link to full page.
 
-**Full App Page:** FullAppTeamGQMPage — full workspace: History · Reports · Detailed views · Shared workspace context (same conversationId as Chat/Agent).
+**Standalone view Page:** StandaloneTeamGQMPage — full workspace: History · Reports · Detailed views · Shared workspace context (same conversationId as Chat/Agent).
 
 **Skills:** TeamGQMSummarySkill — implementation-specific; this spec defines only the integration shell.
 
@@ -1407,7 +1419,7 @@ Rules:
 | Side-panel page | P0 | Quick case-context view + skill launcher |
 | Full-app page | P1 | Detailed case workspace (case table, comments, work notes, skill results) |
 
-**Removed from v0.1c → v0.1:** CaseInsightBox (page-injected UI), serviceNowInjection.ts (Shadow DOM mount), scoped page UI enhancements. ServiceNow value is delivered inside the side panel and Full App only.
+**Out of scope (v0.1):** CaseInsightBox (page-injected UI), serviceNowInjection.ts (Shadow DOM mount), scoped page UI enhancements. ServiceNow value is delivered inside the side panel and Standalone view only.
 
 ### §9.8 Research Global Tool
 
@@ -1425,7 +1437,7 @@ Rules:
 ```ts
 // src/core/ai/ILLMProvider.ts
 import type { LanguageModel } from 'ai';
-export type ProviderId = 'openai' | 'anthropic' | 'gemini' | 'ollama' | 'openai-compatible';
+export type ProviderId = 'openai' | 'anthropic' | 'gemini' | 'ollama';
 export interface ILLMProvider {
   id: ProviderId;
   name: string;
@@ -1438,7 +1450,7 @@ export interface ILLMProvider {
 
 Types LLMMessage, LLMOptions, LLMStreamChunk, ModelInfo, ProviderConfig are defined in Appendix C.
 
-### §10.2 Five Provider Implementations
+### §10.2 Four Provider Implementations
 
 | Provider ID | Adapter | Default baseURL | Supports tools |
 |---|---|---|---|
@@ -1446,15 +1458,14 @@ Types LLMMessage, LLMOptions, LLMStreamChunk, ModelInfo, ProviderConfig are defi
 | anthropic | @ai-sdk/anthropic createAnthropic | https://api.anthropic.com | Yes |
 | gemini | @ai-sdk/google createGoogleGenerativeAI | Google Cloud | Yes |
 | ollama | @ai-sdk/openai createOpenAI | http://localhost:11434/v1 | Model-dependent |
-| openai-compatible | @ai-sdk/openai createOpenAI | user-supplied | Model-dependent |
 
-Ollama: pass apiKey: 'ollama'. Default context is 2048 tokens — warn the user (Flow 5). ProviderRegistry computes resolvedBaseURL = customBaseURL ?? baseURL once at construction.
+Ollama: pass apiKey: 'ollama'. Default context is 2048 tokens — warn the user (Flow 5). ProviderRegistry computes resolvedBaseURL = customBaseURL ?? baseURL once at construction. For OpenAI-compatible providers (e.g. DeepSeek, Together AI), use `openai` with a custom `baseURL`.
 
 ### §10.3 Provider Config Schema
 
 ```ts
 export const ProviderConfigSchema = z.object({
-  id: z.enum(['openai','anthropic','gemini','ollama','openai-compatible']),
+  id: z.enum(['openai','anthropic','gemini','ollama']),
   label: z.string().trim().min(1).max(50),
   apiKey: z.string().optional(),
   baseURL: z.string().url(),
@@ -1471,7 +1482,7 @@ export const ProviderConfigSchema = z.object({
 
 ### §10.4 MCP Client
 
-- Lives in the side panel and Full App. Never in the background service worker.
+- Lives in the side panel and Standalone view. Never in the background service worker.
 - Uses @modelcontextprotocol/sdk Client + StreamableHTTPClientTransport.
 - Never hand-roll SSE parsing.
 - First-time tool call triggers a permission dialog (Flow 2). Allow/deny persisted in np_mcp_permissions.
@@ -1482,8 +1493,8 @@ export const ProviderConfigSchema = z.object({
 | # | Tool name | Input | dangerous | Effect |
 |---|---|---|---|---|
 | 1 | get-page-content | { tabId?: number } | no | Active/pinned tab context via PageContentService (core, layered: Defuddle → APC-lite → ServiceNow API) |
-| 2 | search-notes | { query: string; limit?: number } | no | MiniSearch over notes (title + content + tags + summary — Rev. B) |
-| 3 | create-note | { title: string; content: string; tags?: string[] } | yes | Writes to NotesDB (triggers NoteTagger + NoteFileSync save pipeline — Rev. B) |
+| 2 | search-notes | { query: string; limit?: number } | no | MiniSearch over notes (title + content + tags + summary) |
+| 3 | create-note | { title: string; content: string; tags?: string[] } | yes | Writes to NotesDB (triggers NoteTagger + NoteFileSync save pipeline) |
 | 4 | get-chat-history | { sessionId?: string; limit?: number } | no | Recent messages |
 | 5 | pin-tab | { tabId: number } | no | Pins as context (max 10) |
 | 6 | read-clipboard | {} | no | Reads clipboard |
@@ -1539,7 +1550,7 @@ Rules:
 
 ### Flow 1 — Send a Chat Message
 
-Applies to Side Panel Chat and Full App Chat.
+Applies to Side Panel Chat and Standalone view Chat.
 
 - useChat runs slash-check.
 - Assemble context via ContextOptimizer (sourced from WorkspaceStore).
@@ -1556,9 +1567,9 @@ PROMPTS.titleGen, temperature: 0, maxTokens: 16, 3 s timeout. Never blocks save 
 
 AntD Modal.confirm with Allow once / Allow always. Dangerous tools always prompt regardless.
 
-### Flow 3 — Save a Note (Full App Notes only)
+### Flow 3 — Save a Note (Standalone view Notes only)
 
-LinkParser.parseLinks → resolveLinks → NotesDB.put → EventBus.emit('note:saved'). **Rev. B:** the save pipeline additionally runs NoteTagger.analyze() (non-blocking), MEM-02 memory upsert (primary surface only), and NoteFileSync.sync() (see §27, Flow 12).
+LinkParser.parseLinks → resolveLinks → NotesDB.put → EventBus.emit('note:saved'). **Note:** the save pipeline additionally runs NoteTagger.analyze() (non-blocking), NMEM-02 memory upsert (primary surface only), and NoteFileSync.sync() (see §27, Flow 12).
 
 ### Flow 4 — Tab Pinning
 
@@ -1586,49 +1597,62 @@ OnboardingModal over disabled surface. 4 steps: **Step 1 "Meet NowPilot" persona
 
 ### Flow 10 — Command Palette (Cmd+K)
 
-AntD Modal with Input + filtered list. Commands include Open Full App, Focus Side Panel, Open Options, etc.
+AntD Modal with Input + filtered list. Commands include Open Standalone view, Focus Side Panel, Open Options, etc.
 
-### Flow 11 — Open Full App (Workspace Handoff)
+### Flow 11 — Open Standalone view (Workspace Handoff)
 
 - Read current WorkspaceState.
-- WorkspaceRouter.openFullApp: persist workspace via BroadcastBus flush; query existing app tabs; update or create.
-- Full App boots → WorkspaceStore.hydrateFromURL().
-- Full App fires WORKSPACE_HANDOFF via BroadcastBus.
+- WorkspaceRouter.openStandalone: persist workspace via BroadcastBus flush; query existing app tabs; update or create.
+- Standalone view boots → WorkspaceStore.hydrateFromURL().
+- Standalone view fires WORKSPACE_HANDOFF via BroadcastBus.
 - Side panel demotes to read-only mirror until refocused.
 
-### Flow 12 — Save to Note (LLM-Wiki) — NEW (Rev. B)
+### Flow 12 — Save to Note (LLM-Wiki)
 
 - User clicks "Save to note" on an assistant message (ChatMessage three-dot menu or first-class button, RICH-H-06).
 - SaveToNoteDialog opens.
-- NoteChatConverter.convert(messages, memoryContext) drafts title, content (markdown), tags, wikilinks, categoryPath (haiku tier + MemoryEngine.assemble(), MEM-03).
+- NoteChatConverter.convert(messages, memoryContext) drafts title, content (markdown), tags, wikilinks, categoryPath (haiku tier + MemoryEngine.assemble(), NMEM-03).
 - Dialog shows a pre-filled NoteEditor + NotePreview. **User is always the gatekeeper.**
-- User edits → save → NotesDB.createNote() → save pipeline: NoteTagger merge + MEM-02 upsert (primary surface) + NoteFileSync.sync().
+- User edits → save → NotesDB.createNote() → save pipeline: NoteTagger merge + NMEM-02 upsert (primary surface) + NoteFileSync.sync().
 
-### Flow 13 — Ask Your Notes (RAG) — NEW (Rev. B)
+### Flow 13 — Ask Your Notes (RAG)
 
 - User types a question in the Notes "Ask notes" bar (LLM-WIKI-06).
-- NoteQA.ask(query): MiniSearch top-5 snippets + MemoryEngine relevant facts (MEM-01).
+- NoteQA.ask(query): MiniSearch top-5 snippets + MemoryEngine relevant facts (NMEM-01).
 - Flash-tier synthesis with per-statement citations.
 - Rendered as an ephemeral @ant-design/x Bubble with clickable citation Tags that navigate to the source note.
 - Tiny mode: falls back to plain MiniSearch results, no LLM synthesis (§2.5).
 
-### Flow 14 — Set/Change Backup Folder — NEW (Rev. B)
+### Flow 14 — Set/Change Backup Folder
 
 - Options → Notes → "Set backup folder" (SYNC-01).
-- showDirectoryPicker() (**Full App only**) → FileSystemDirectoryHandle persisted in notes_backup_config IndexedDB store.
+- showDirectoryPicker() (**Standalone view only**) → FileSystemDirectoryHandle persisted in notes_backup_config IndexedDB store.
 - Status Tag turns green "Backup: On".
 
-### Flow 15 — Restore from Folder — NEW (Rev. B)
+### Flow 15 — Restore from Folder
 
 - Options → Import/Export → "Restore from folder" (SYNC-09).
 - showDirectoryPicker() → walk tree → parse .md YAML frontmatter.
 - Preview modal: "Found N notes (X new, Y updated, Z unchanged)" (SYNC-10).
 - User confirms → additive upsert into IndexedDB (never deletes local notes not in folder).
 
-### Flow 16 — RICH Clarification & Follow-up — NEW (Rev. B)
+### Flow 16 — RICH Clarification & Follow-up
 
 - Ambiguous intent → Planner returns ask_clarification → focused question + 2–4 option chips in the Bubble (RICH-C-01/04); chips inject into Sender; max 2 rounds then best-effort with caveat (RICH-C-03).
 - After a response, 1–3 follow-up chips are generated by a non-blocking haiku suggestion call (RICH-C-05/08); tapping sends as the next message; degrades to none on timeout.
+
+### Flow 17 — Open Chat History
+- **Side Panel:** composer 🕘 → **bottom sheet** slides up over a dimmed conversation (§17.1b).
+- **Standalone view:** 🕘 → **right drawer** slides in over the dimmed content area, Sider stays visible (§17.2b).
+- Shared: **All / Starred** tabs, search, day-grouped items; item `…` overflow = rename/delete/star; tap loads the conversation. `useChatHistory` backs both surfaces.
+
+### Flow 18 — Configure a Provider
+- Options → General → AI access → provider card **Set up** → provider `Modal` (§17.2d).
+- Enter API key (eye toggle) → optional proxy `Switch` + URL → **Check** (`validateConfig`) → edit model list (per-model enable `Switch`, **Update list** via `getModels`, **+** add custom) → **Save** persists `ProviderConfigSchema`. Enabled models populate the composer model selector.
+
+### Flow 19 — Change Appearance (Display Mode + Theme Pack)
+- Options → General → Appearance → **Display mode** (Auto/Light/Dark → `np_theme`) and **Theme pack** (Default/Liquid Glass/Claude Warm → `np_theme_pack`).
+- Both write only to `chrome.storage.sync`; `chrome.storage.onChanged` applies them to **both** surfaces in real time via `getAntdConfig({ mode, pack, compact })` (§17.1a).
 
 ## §12 — Component State Matrix
 
@@ -1636,27 +1660,27 @@ Every page must render these states with these exact strings (from STR in Append
 
 | Component | Surface | Loading | Empty | Error | Success |
 |---|---|---|---|---|---|
-| ChatPage | Side Panel + Full App | "Connecting to provider..." | "Start a conversation" | "Provider error. [Retry] [Switch Provider]" | Message stream visible |
-| AgentPage | Side Panel + Full App | "Preparing agent..." | "Describe a task and the agent will plan steps" | "Agent error: [message]. [Retry]" | Step progress visible |
+| ChatPage | Side Panel + Standalone view | "Connecting to provider..." | "Start a conversation" | "Provider error. [Retry] [Switch Provider]" | Message stream visible |
+| AgentPage | Side Panel + Standalone view | "Preparing agent..." | "Describe a task and the agent will plan steps" | "Agent error: [message]. [Retry]" | Step progress visible |
 | WritePage | Side Panel | "Preparing..." | "Choose an action or paste text" | "Write skill failed: [message]. [Retry]" | Streamed output visible |
 | TeamGQMPage (side panel) | Side Panel | "Loading..." | "No TeamGQM context available" | "Failed to load. [Retry]" | Summary + actions |
-| NotesPage | Full App | "Loading notes..." | "No notes yet. Press + to create one." | "Failed to load notes. [Retry]" | Note list |
-| NoteEditor | Full App | "Loading note..." | — | "Failed to save note. [Retry]" | Editor visible |
-| NoteGraph | Full App | "Building graph..." | "Create at least 3 notes to see the graph" | "Failed to render graph. [Retry]" | Graph visible |
-| OptionsPage | Full App | "Loading settings..." | — | "Failed to load settings" | Section content visible |
-| DiagnosticsPanel | Full App → Options | "Loading diagnostics..." | "No AI transactions yet." | "Failed to load traces" | Transaction list |
+| NotesPage | Standalone view | "Loading notes..." | "No notes yet. Press + to create one." | "Failed to load notes. [Retry]" | Note list |
+| NoteEditor | Standalone view | "Loading note..." | — | "Failed to save note. [Retry]" | Editor visible |
+| NoteGraph | Standalone view | "Building graph..." | "Create at least 3 notes to see the graph" | "Failed to render graph. [Retry]" | Graph visible |
+| OptionsPage | Standalone view | "Loading settings..." | — | "Failed to load settings" | Section content visible |
+| DiagnosticsPanel | Standalone view → Options | "Loading diagnostics..." | "No AI transactions yet." | "Failed to load traces" | Transaction list |
 | Research | Both | "Researching..." | "Enter a research question" | "Research failed: no web-search tool connected. [Open Settings]" | Answer + SourceCards |
 | ChatHistoryDB load | Both | Skeleton shimmer | "No conversations yet" | "Failed to load history" | Conversation list |
 | MCP tool call | Both | "Calling [toolName]..." | — | "Tool failed: [error]. [Retry tool]" | Tool result card |
 | Tab pin | Side Panel | "Extracting page content..." | — | "Cannot pin this page. Try a regular web page." | Page title + remove |
-| Provider validation | Full App → Options | "Testing connection..." | — | "Connection failed: [error]" | "Connected" |
+| Provider validation | Standalone view → Options | "Testing connection..." | — | "Connection failed: [error]" | "Connected" |
 | Onboarding | Both | "Testing connection..." | — | "Connection failed: [error]" | "Connected" → focus composer |
-| Open Full App | Side Panel button | "Opening full app..." | — | "Failed to open Full App tab" | New tab focused |
-| **Ask Notes (RAG)** (Rev. B) | Full App | "Searching your notes..." | "Ask a question about your notes" | "Couldn't answer from notes. [Retry]" | Bubble answer + citations |
-| **Backup status** (Rev. B) | Full App | "Checking backup folder..." | "Backup: Off [Configure]" | "Backup: Error (tooltip)" | "Backup: On" (green) |
-| **Restore from folder** (Rev. B) | Full App | "Reading backup folder..." | "No .md notes found" | "Failed to read folder. [Retry]" | Preview modal |
-| **Welcome cards** (Rev. B) | Both | — | 4–6 capability cards | — | Card populates Sender |
-| **Clarification chips** (Rev. B) | Both | — | — | — | Question + option chips |
+| Open Standalone view | Side Panel button | "Opening standalone view..." | — | "Failed to open Standalone view" | New tab focused |
+| **Ask Notes (RAG)** | Standalone view | "Searching your notes..." | "Ask a question about your notes" | "Couldn't answer from notes. [Retry]" | Bubble answer + citations |
+| **Backup status** | Standalone view | "Checking backup folder..." | "Backup: Off [Configure]" | "Backup: Error (tooltip)" | "Backup: On" (green) |
+| **Restore from folder** | Standalone view | "Reading backup folder..." | "No .md notes found" | "Failed to read folder. [Retry]" | Preview modal |
+| **Welcome cards** | Both | — | 4–6 capability cards | — | Card populates Sender |
+| **Clarification chips** | Both | — | — | — | Question + option chips |
 
 ## §13 — Concurrency and Race-Condition Rules
 
@@ -1670,12 +1694,12 @@ Every page must render these states with these exact strings (from STR in Append
 - **EventBus handlers are synchronous.** Handlers may spawn internal Promises but must never let errors escape.
 - **RateLimiter is per-instance.** Each add-on owns its limiter; never shared.
 - **hasStreamedFirstToken per operation.** Once true, ProviderRouter must never switch provider.
-- **Cross-surface workspace coordination.** Both side panel and Full App may load simultaneously. BroadcastBus elects a primary writer: election key np_workspace_primary in chrome.storage.session; on startup each surface writes { tabId, surface, electedAt } with compare-and-set; only the primary writes memory/notes/chat-history bodies; secondary surfaces mirror; if primary tab closes → next surface auto-promotes on next heartbeat (max 3 s latency).
+- **Cross-surface workspace coordination.** Both side panel and Standalone view may load simultaneously. BroadcastBus elects a primary writer: election key np_workspace_primary in chrome.storage.session; on startup each surface writes { tabId, surface, electedAt } with compare-and-set; only the primary writes memory/notes/chat-history bodies; secondary surfaces mirror; if primary tab closes → next surface auto-promotes on next heartbeat (max 3 s latency).
 
-**New in Rev. B:**
+**Additional concurrency rules:**
 
 - **NoteFileSync is fire-and-forget with a 50 ms debounce** after the IndexedDB write; never blocks the save UI (§27 SYNC-03).
-- **MEM-02 memory upsert from notes runs only on the primary surface** (same single-writer rule as all memory writes).
+- **NMEM-02 memory upsert from notes runs only on the primary surface** (same single-writer rule as all memory writes).
 - **NoteTagger LLM call is non-blocking**; the note is saved to IndexedDB first, suggestions arrive after.
 - **RICH follow-up/clarification suggestion calls are non-blocking** and degrade gracefully to no chips on timeout (RICH-C-08).
 
@@ -1768,28 +1792,29 @@ chrome.storage.local  (10 MB limit)
   np_debug_mode         boolean
   np_endpoint_overrides Record<string,string>
   np_keymap             KeymapRegistration[]
-  np_workspace          WorkspaceState                       [NEW]
+  np_workspace          WorkspaceState
   np_addon_<addonId>    unknown                              (AddonSettingsStore)
-  np_persona            PersonaProfile + overrides           [NEW Rev. B — PreferenceMemoryStore; reconciliation R2]
-  np_notes_llm_features { autoTag, autoCategorize, autoSummary, aiSearch }   [NEW Rev. B — §27 LLM-WIKI-02]
+  np_persona            PersonaProfile + overrides
+  np_notes_llm_features { autoTag, autoCategorize, autoSummary, aiSearch }
 chrome.storage.session  (cleared on browser close)
   np_jsessionid         string
   np_sysparm_ck         string
   np_token_ttl          number
   np_active_stream      { conversationId, operationId, startedAt }
-  np_workspace_primary  { tabId, surface, electedAt }        [NEW]
+  np_workspace_primary  { tabId, surface, electedAt }
 chrome.storage.sync  (≤ 8 KB per key)
-  np_theme              'light'|'dark'|'auto'
+  np_theme              'light'|'dark'|'auto'          (display mode, §17.1a)
+  np_theme_pack         'default'|'liquid-glass'|'claude-warm'   (theme pack, §17.1a APPR-06)
   np_language           string
-IndexedDB  (side panel + full app)
+IndexedDB  (side panel + standalone view)
   ChatHistoryDB
     sessions  { id, title, created, updated, starred, preview }
     messages  { sessionId, role, content, timestamp, metadata }
   NotesDB
     notes     { id, title, content, created, updated, tags[], links[], source, aiMeta, version,
-                summary?, categoryPath?, summaryGeneratedAt?, tagsGeneratedAt? }   [Rev. B fields]
+                summary?, categoryPath?, summaryGeneratedAt?, tagsGeneratedAt? }
     concepts  { slug, label, summary, noteIds[], aliases[], updatedAt }
-    // getNoteByTitle() added in Rev. B
+    // getNoteByTitle()
   MemoryDB
     messages  { conversationId, seq, role, content, timestamp }   keyPath [conversationId, seq]
     userFacts UserMemoryFact[]
@@ -1802,7 +1827,7 @@ IndexedDB  (side panel + full app)
     promptTraces  PromptTrace[]
     toolTraces    ToolTrace[]
     providerTraces ProviderTrace[]
-  notes_backup_config   { dirHandle }   [NEW Rev. B — v4 migration; FileSystemDirectoryHandle, non-JSON-serializable; §27 SYNC-01/D-08]
+  notes_backup_config   { dirHandle }
 ```
 
 Message bodies never live in chrome.storage.local.
@@ -1856,46 +1881,73 @@ if (!MessageTypeValues.includes(message.type)) return false;
 ```
 permissions: [
   'sidePanel','storage','cookies','alarms','tabs',
-  'scripting','contextMenus','notifications','declarativeNetRequest'
+  'scripting','contextMenus','notifications'
 ],
+optional_permissions: ['webNavigation'],
 host_permissions: [
   '*://*.service-now.com/*',
   '*://support.servicenow.com/*'
+],
+optional_host_permissions: [
+  '*://*/*'                       // requested on demand for webhooks + user-configured MCP hosts
 ]
 ```
 
-> **Rev. B note:** the File System Access API (§27) requires **no new manifest permission** — the user-gesture `showDirectoryPicker()` grants the handle. LLM-Wiki note content passes through TraceRedactor before indexing/logging/backup. Password field values are never written to .md files.
+Rules:
+
+- `declarativeNetRequest` is **not** declared: v0.1 ships no DNR ruleset, so requesting the permission would be flagged in review. Add it back only alongside a concrete header-strip ruleset.
+- The File System Access API (§27) requires **no new manifest permission** — the user-gesture `showDirectoryPicker()` grants the handle.
+- Webhook targets (§ WebhookManager) and user-configured MCP/proxy hosts are **not** in the static `host_permissions`. Because they are reached through the background `PROXY_FETCH`, the target host must be granted at configure time via `chrome.permissions.request({ origins: [host] })` against `optional_host_permissions`; an ungranted host returns `HOST_NOT_PERMITTED` with a "Grant access" action. This prevents silent webhook/MCP failures while keeping the default install least-privilege.
+- LLM-Wiki note content passes through TraceRedactor before indexing/logging/backup. Password field values are never written to .md files.
 
 ### §16.5 Secret Redaction
 
-TraceRedactor.redact(value) MUST run before: writing to AITransactionLogDB; writing to ErrorStore; writing to debugLog; rendering in DiagnosticsPanel; exporting a debug bundle; **indexing note content or writing .md files (Rev. B, §27.6)**. See §4.4 for the mandatory patterns.
+TraceRedactor.redact(value) MUST run before: writing to AITransactionLogDB; writing to ErrorStore; writing to debugLog; rendering in DiagnosticsPanel; exporting a debug bundle; **indexing note content or writing .md files**. See §4.4 for the mandatory patterns.
 
 ## §17 — UI/UX Requirements
 
-### §17.1 Side Panel Layout
+### §17.1 Side Panel Layout — Chat Only (Ask-Gemini style)
 
-Side panel is 400 px wide (Chrome default). All UI must work at this width.
+Side panel is 400 px wide (Chrome default). All UI must work at this width. **The Side Panel is a single, uninterrupted Chat surface — there is NO side navigation rail.** Agent/Note/Write/Tools/TeamGQM do not appear here; deeper work opens the Standalone view via **Switch to Full chat**. Three stacked zones: header, conversation, composer block (toolbar → input → status bar).
 
 **Structure (using AntD compact algorithm):**
 
-- **Header** — 44 px, contains conversation title, provider chip, "Open Full App" button.
-- **Nav rail** — 48 px vertical, icon-only, tooltips (AntD Menu mode="inline" collapsed): Chat, Agent, Write (add-on), TeamGQM (add-on).
-- **Main area** — page content.
-- **Footer / composer** — chat input, slash suggestion overlay, send button.
-- **Global overlays** — provider selector (AntD Popover), Cmd+K palette (AntD Modal), toasts via App.useApp().message, permission dialogs via App.useApp().modal.confirm.
+- **Header (~52 px)** — left: app mark ("N" avatar) + "NowPilot" wordmark. Right: **exactly two** icon buttons — **Options** (`SettingOutlined`, opens Standalone view → Options) and **Switch to Full chat** (`ExpandAltOutlined`, workspace handoff, Flow 11). **No provider chip** (provider moved to the status bar), **no nav rail**.
+- **Conversation area** — fills/scrolls; user bubbles right (`colorPrimaryBg`), assistant bubbles left prefixed by a small ⚡ model-id label, body via `PortableMarkdown`. Per-message action toolbar (Copy · Expand · Regenerate · Quote/save-note · Share · Read-aloud). Follow-up chips below (RICH-C-05). Empty state = mascot + Welcome cards (RICH-I-01).
+- **Composer toolbar (above the input, space-between)** — left: **model selector** (`⚡ model-id ▾`, the only model control in the Side Panel). Right: **Screenshot/snip** (`ScissorOutlined`) · **Attach** (`PaperClipOutlined`) · **Chat history** (`HistoryOutlined`, opens the bottom sheet, §17.1b) · **New chat** (`FormOutlined`).
+- **Input** — rounded (radius 12), placeholder "Ask anything, @ models, / prompts", **send button inside** bottom-right; slash suggestion overlay.
+- **Status bar (below the input)** — left: active **provider name** (e.g. "OpenAI"; turns `colorError` on provider failure). Right: **Help** (`QuestionCircleOutlined`) + **Feedback** (`MailOutlined`) icons.
+- **Global overlays** — Cmd+K palette (AntD Modal), toasts via App.useApp().message, permission dialogs via App.useApp().modal.confirm, chat-history bottom sheet (§17.1b).
 
 Rules:
 
 - Use AntD compact theme.compactAlgorithm throughout.
 - Do NOT render heavy AntD Table, multi-column Descriptions, or wide forms in the side panel.
+- Do NOT render a nav rail or any surface switcher — **Chat is the only Side Panel surface** (§6.2, §8.3).
 - Container queries below 380 px collapse to a single column.
 - Use overflow-anchor: none for the streaming tail.
 - CLS target <= 0.05.
-- The "Open Full App" button lives in the header and is always visible.
+- The "Switch to Full chat" button lives in the header and is always visible.
+- Every icon-only control carries an `aria-label` + tooltip (Options, Switch to Full chat, Snip, Attach, History, New chat, Help, Feedback).
 
-### §17.2 Full App Layout
+#### §17.1b Chat History — Bottom Sheet (Side Panel)
 
-Full App is served from app.html in a normal browser tab. Uses AntD Layout:
+The composer's **Chat history** (🕘) icon opens a **bottom sheet** that slides up over a dimmed conversation (rounded top corners, `E3` elevation; dismiss via drag-down, ✕, or scrim tap). Content: title "Chat history" + count; **All / Starred** underline tabs + clear/delete (trash) icon; a Search field; day-grouped items ("Today"/"Yesterday"/dates), each item = title + `…` overflow (rename/delete/star) + star toggle. Tapping an item loads that conversation. Backed by `useChatHistory`; states per §12. The Standalone view presents the same content as a **right drawer** (§17.2b).
+
+### §17.1a Appearance Settings (Options → General)
+
+The theme *engine* is specified in §5.5 and Appendix F; this section defines the **settings surface** that drives it.
+
+- **APPR-01 — Location.** Theme controls live in **Options → General → Appearance** (Standalone view only). The Side Panel has no theme UI; it follows the shared setting live.
+- **APPR-02 — Control.** A single `Segmented` (or `Radio.Group`) with three options — **Light · Dark · Auto** — bound to `ThemeMode`. "Auto" follows `prefers-color-scheme`. Default is **Auto**.
+- **APPR-03 — Single source of truth.** The selection writes **only** to `chrome.storage.sync.np_theme` (§15.1). A thin `chrome.storage`-backed Zustand `ThemeStore` (Appendix F) mirrors it, and `chrome.storage.onChanged` propagates the change to **both** surfaces immediately (no reload, no per-surface copy). There is **no** `themeMode` field on `UserPreferences` — that would create a second source of truth.
+- **APPR-04 — Application.** On change, each surface re-derives its AntD config via `getAntdConfig({ mode, pack, compact })` and switches `theme.darkAlgorithm`/`defaultAlgorithm` plus the selected pack's token overlay. Because antd v6 uses pure CSS variables, the switch is real-time — no component remount, no `.dark` class manipulation.
+- **APPR-05 — Density is not user-configurable in v0.1.** Compact vs default density is fixed per surface (Side Panel = compact, Standalone view = default). Appearance controls colour scheme only; a density toggle is out of scope.
+- **APPR-06 — Theme pack (user-facing in v0.1).** In addition to the Light/Dark/Auto **display mode**, a **Theme pack** selector ships in v0.1: a `Select` with **Default · Liquid Glass · Claude Warm**, bound to `chrome.storage.sync.np_theme_pack` (§15.1). Display mode and theme pack are **orthogonal** (3 modes × 3 packs = 9 valid appearances). Both write only to `chrome.storage.sync` and propagate to both surfaces via `chrome.storage.onChanged`; each surface re-derives config via `getAntdConfig({ mode, pack, compact })` (Appendix F). A pack is a token overlay merged on the seed tokens; every pack must pass WCAG AA (§17.6) in **both** light and dark before shipping. Liquid Glass keeps message text on a solid surface for legibility and provides a non-glass fallback when `backdrop-filter` is unsupported. Visual definitions of each pack live in the companion `DESIGN_SYSTEM.md` (§6.4); this spec owns only the wiring.
+
+### §17.2 Standalone view Layout
+
+Standalone view is served from standalone.html in a normal browser tab. Uses AntD Layout:
 
 ```
 +------------------------------------------------------------+
@@ -1923,6 +1975,56 @@ Rules:
 - The Options page uses AntD Menu (secondary vertical) inside the Content Area to switch between sub-sections.
 - Minimum supported viewport width: 1024 px. Below → show AntD Alert "This view is optimized for wider screens; open the side panel for narrow layouts."
 
+The Standalone Sider is the surface switcher: **Chat · Note · Write · Tools · [TeamGQM optional] · Options**. Active item = `colorPrimaryBg` pill + `colorPrimary`. Footer holds profile avatar, settings gear, and a `⌘K` hint. The Standalone view **Chat** page reuses the Side Panel composer/bubble recipes at default density.
+
+#### §17.2b Chat History — Right Drawer (Standalone view)
+
+In the Standalone view, the **Chat history** control opens a **right-side drawer** (~360–400 px) that slides in over a dimmed content area (the Sider stays visible; `E3` elevation; scrim over content only). Identical content model to the Side Panel bottom sheet (§17.1b): title + count, **All / Starred** tabs, clear/delete, search, day-grouped items with `…` overflow + star. `useChatHistory` backs both surfaces; only the entry animation differs (bottom-sheet vs right-drawer).
+
+#### §17.2c Notes Page — 4-Column Workspace (Standalone view only)
+
+The Notes page is a **four-column workspace** with a top header. Each side column is independently collapsible; the centre column is persistent.
+
+```
+┌───────────────────────────────────────────────────────────────────────────────┐
+│ 🔎 Search notes, tags, content…  ⌘K   [▢ Directory][≣ Notes][ⓘ Inspector]      │  HEADER
+│                                                        + New Note  Import  Backup │
+├───────────────┬───────────────────┬───────────────────────────┬───────────────┤
+│ DIRECTORY   « │ ServiceNow/Inc. ▾ │ INC Lifecycle Flow …      │ INSPECTOR   » │
+│ (col 1: tree) │ (col 2: note list)│  Edit  Share  ⋮           │ (col 4)       │
+│ All Notes 128 │ ┌───────────────┐ │  meta · tags (+add)       │ ✨ AI Summary │
+│ Recently Upd  │ │ Note card ★   │ │  ┌ format toolbar ─────┐ │   [Regenerate]│
+│ Favorites   8 │ │ snippet…      │ │  │ Body▾ ↶↷ B I <> ≣ ▦ │ │──────────────│
+│ Uncategorized │ │ tags  10m ago │ │  └─────────────────────┘ │ ⓘ Note Details│
+│ ▾ Work KB   3 │ └───────────────┘ │  # heading                │  Word/Read/… │
+│   ▸ ServiceN24│ Total 5 notes     │  <body: text/diagrams/    │  Links/Backln│
+│ … TAGS …      │                   │   callouts/tables>        │ Quick Actions│
+│ #Incident  22 │  (col 2)          │  (col 3: editor/viewer)   │  Copy/Export │
+└───────────────┴───────────────────┴───────────────────────────┴───────────────┘
+```
+
+- **Col 1 — Directory:** folder tree (All Notes + count, Recently Updated, Favorites, Uncategorized, category hierarchy e.g. Work Knowledge Base ▸ ServiceNow ▸ Incident/Problem/Change) + a **TAGS** list with counts and "More tags…". Header label + collapse `«`.
+- **Col 2 — Notes:** the note **list** for the current scope; breadcrumb + `▾` scope selector, filter/sort/grid icons, collapse `«`; cards = title + star, 2-line snippet clamp, tag chips, relative timestamp; footer "Total N notes".
+- **Col 3 — Note content (persistent, cannot hide):** editor/viewer; title + star, **Edit / Share / ⋮**; created/updated + tag chips (+add); formatting toolbar (`Body▾`, undo/redo, **B** *I* `<>`, bullet/number lists, table, checkbox, link, image); body via `PortableMarkdown`; wikilinks + unresolved-link styling (§27.7a).
+- **Col 4 — Inspector:** **AI Summary** card (with **Regenerate**, LLM-WIKI-03/04) → **Note Details** (Word Count, Est. Read Time, Created, Last Modified, Links Count, Backlinks) → **Quick Actions** (Copy Link, Export as Markdown, Export as PDF, Move to…). Header label + collapse `»`.
+
+Column show/hide behaviour:
+
+- **NOTES-COL-01** The header has three segmented **toggle buttons — Directory · Notes · Inspector** (`colorPrimary` when active) that show/hide columns 1, 2, and 4. Column 3 is the persistent centre and cannot be hidden.
+- **NOTES-COL-02** Each collapsible column also has an inline collapse chevron in its own header (`«` left columns, `»` Inspector), kept in sync with the header toggles.
+- **NOTES-COL-03** Collapsed columns animate width→0 (150–200 ms) and the centre editor reflows to fill. State persists per surface. At narrow Standalone widths, auto-collapse Directory first, then Inspector, keeping Notes + content.
+
+#### §17.2d Provider Configuration Dialog (Options → AI access → Set up)
+
+Each provider card's **Set up** opens a centred AntD `Modal` (`E3`, radius 16):
+
+- **Title** = provider name (e.g. "OpenAI") + ✕ close.
+- **API key:** password `Input.Password` with eye toggle; AES-encrypted per §15.2; the stored key is never rendered in plaintext on reload.
+- **API proxy URL (optional):** a `Switch`; when on, reveals a URL input mapped to `ProviderConfig.customBaseURL` (§10.3).
+- **Check connection:** helper text "Check if your API key and proxy (if used) are valid." + **Check** button → `validateConfig()`; inline success/error (`colorSuccess`/`colorError`; error code `PROVIDER_CHECK_FAILED`).
+- **Model list:** count label + **↻ Update list** (`getModels()`) + **+** to add a custom model id; each row = model id + **enable/disable `Switch`**. Enabled models populate the composer model selector.
+- **Footer:** **Cancel** (ghost) / **Save** (primary → persists `ProviderConfigSchema`, §10.3).
+
 ### §17.3 AntD Theme System
 
 NowPilot uses a single centralized ThemeStore (Zustand) that both surfaces consume via ConfigProvider. getAntdConfig (Appendix F) returns a full ConfigProviderProps including theme.algorithm, theme.token, and per-component overrides.
@@ -1930,7 +2032,7 @@ NowPilot uses a single centralized ThemeStore (Zustand) that both surfaces consu
 Rules:
 
 - Use theme.darkAlgorithm for dark mode. Do not manipulate CSS classes for AntD components.
-- Side Panel adds theme.compactAlgorithm; Full App does not.
+- Side Panel adds theme.compactAlgorithm; Standalone view does not.
 - Any surface rendering @ant-design/x components wraps them in XProvider, fed the same theme/token object returned by getAntdConfig.
 - All imperative APIs (message, notification, Modal.confirm) MUST be accessed through App.useApp(); static imports are forbidden.
 - Icons from @ant-design/icons only (or motion for animated icons).
@@ -1951,8 +2053,8 @@ Full theme details in Appendix F.
 
 - Same theme mode (light/dark) applies to both surfaces immediately via ThemeStore subscription.
 - **Same persona applies to both surfaces (RICH-R-11).**
-- Same conversation is visible in Side Panel Chat and Full App Chat when workspaceId matches.
-- User can hand off from Side Panel → Full App via Flow 11 without losing scroll position or in-flight streaming.
+- Same conversation is visible in Side Panel Chat and Standalone view Chat when workspaceId matches.
+- User can hand off from Side Panel → Standalone view via Flow 11 without losing scroll position or in-flight streaming.
 - Same notification.error messages appear only on the surface that initiated the failing operation; secondary surfaces receive a compact "Error in other surface. Focus to see." indicator.
 
 ### §17.6 Accessibility
@@ -1963,7 +2065,7 @@ Full theme details in Appendix F.
 - All Menu items reachable by arrow keys.
 - All streaming content in Chat has aria-live="polite" on the message list.
 
-### §17.7 RICH Design Requirements (NEW in Rev. B)
+### §17.7 RICH Design Requirements
 
 **Source:** [Ant Design X RICH Design Paradigm](https://x.ant.design/docs/spec/introduce).
 **Scope:** four pillars — **R**ole (角色), **I**ntention (意图), **C**onversation (会话), **H**ybrid UI (混合界面). 60 requirements total (17 P0 / 22 P1 / 21 P2).
@@ -2083,7 +2185,7 @@ Full theme details in Appendix F.
 
 **[H-04] Parallel Chat + GUI — Do+Chat 均衡布局**
 
-- **RICH-H-11 (P1, L)** — Full App split-pane: left 60% chat, right 40% Context panel; toggle.
+- **RICH-H-11 (P1, L)** — Standalone view split-pane: left 60% chat, right 40% Context panel; toggle.
 - **RICH-H-12 (P1, L)** — Right-pane tabs: Context / Notes / Tools. Depends on H-11.
 - **RICH-H-13 (P2, S)** — Split-pane layout persistent. Depends on H-11.
 - **RICH-H-14 (P2, M)** — Inline notes Q&A layout. Depends on notes CRUD (Phase 5).
@@ -2121,11 +2223,13 @@ Role 11 · Intention 14 · Conversation 15 · Hybrid UI 20 = **60**. P0 17 · P1
 | Cross-session conversation resumption w/ full replay | Deferred; v0.1 stateless between sessions |
 | Shadow DOM injection / host-page write-back | Deferred per §0.2 (R1) |
 
-## §18 — Master Implementation Phases (REORGANIZED in Rev. B)
+## §18 — Master Implementation Phases
+
+> **Canonical order.** §18 defines the v0.1 GA phase plan (1 → 9). When the flag-gated hardening tracks (§§28, 29, 32) are enabled, the single combined build order — including sub-phases 3a/4b/5b/6a/6b/6c/7a/8a — is given in §30.1 and supersedes this list without changing any Phase 1–9 requirement.
 
 This is the single canonical phase plan. Do not implement more than one phase per response unless explicitly requested.
 
-**Reorganization principle (Rev. B):** phases follow the product data-flow — *acquire → store → understand → display → extend → harden* — instead of pure implementation dependency order. Key moves: **PageContentService → Phase 4a** (core infrastructure, §26); **Notes + Memory + MiniSearch consolidate into Phase 5 (Knowledge Base)**; **LLM-Wiki + Filesystem Sync → Phase 5a**; **Phase 7 becomes the pure Workspace Experience (UI/UX) phase** hosting the RICH sub-waves; **Hardening & Release stays last (Phase 9)**. Persona runtime seeds are added to Phase 3.
+**Reorganization principle:** phases follow the product data-flow — *acquire → store → understand → display → extend → harden* — instead of pure implementation dependency order. Key moves: **PageContentService → Phase 4a** (core infrastructure, §26); **Notes + Memory + MiniSearch consolidate into Phase 5 (Knowledge Base)**; **LLM-Wiki + Filesystem Sync → Phase 5a**; **Phase 7 becomes the pure Workspace Experience (UI/UX) phase** hosting the RICH sub-waves; **Hardening & Release stays last (Phase 9)**. Persona runtime seeds are added to Phase 3.
 
 ```
 Data-flow view:
@@ -2146,10 +2250,10 @@ Data-flow view:
 wxt.config.ts                                       # Appendix G
 src/entrypoints/background.ts
 src/entrypoints/sidepanel/{index.html, main.tsx}
-src/entrypoints/app/{index.html, main.tsx}                          [NEW]
+src/entrypoints/standalone/{index.html, main.tsx}
 src/entrypoints/content/core.content.ts                             # extraction-only
-src/core/theme/{ThemeStore.ts, antdConfig.ts}                       [NEW]
-src/core/workspace/{WorkspaceStore.ts, WorkspaceRouter.ts, WorkspaceSync.ts}   [NEW]
+src/core/theme/{ThemeStore.ts, antdConfig.ts}
+src/core/workspace/{WorkspaceStore.ts, WorkspaceRouter.ts, WorkspaceSync.ts}
 src/core/runtime/RuntimeEnvelope.ts                 # Appendix C + E
 src/core/runtime/OperationId.ts
 src/core/runtime/BroadcastBus.ts
@@ -2160,11 +2264,11 @@ src/core/events/EventBus.ts
 src/core/log/debugLog.ts
 src/core/i18n/strings.ts                            # Appendix B
 src/core/prompts/index.ts                           # Appendix A
-src/core/registry/{AddonRegistry, Registry, AddonSettingsStore, SidePanelPageRegistry, FullAppPageRegistry}.ts
+src/core/registry/{AddonRegistry, Registry, AddonSettingsStore, SidePanelPageRegistry, StandalonePageRegistry}.ts
 src/core/input/KeymapRegistry.ts
 src/core/components/{ErrorBoundary, PortableMarkdown}.tsx
-src/components/sidepanel/{SidePanelShell, SidePanelRouter}.tsx      [NEW]
-src/components/app/{AppShell, FullAppRouter}.tsx                    [NEW]
+src/components/sidepanel/{SidePanelShell, SidePanelRouter}.tsx
+src/components/standalone/{StandaloneShell, StandaloneRouter}.tsx
 src/components/OnboardingModal.tsx                  # Flow 9
 src/components/pages/{ChatPage, AgentPage, NotesPage, OptionsPage}.tsx   # skeletons only
 ```
@@ -2183,8 +2287,8 @@ tests/core/theme/ThemeStore.test.ts
 **DONE when:**
 
 - Side panel opens; onboarding appears on fresh install.
-- Full App tab opens from side panel; workspace state hands off correctly.
-- Full App can be re-opened without duplicating tabs (dedupe logic).
+- Standalone view opens from side panel; workspace state hands off correctly.
+- Standalone view can be re-opened without duplicating tabs (dedupe logic).
 - Background router registers listeners synchronously.
 - RuntimeEnvelope fixtures parse.
 - Cmd+K palette opens with the Flow 10 command set on both surfaces.
@@ -2252,8 +2356,8 @@ src/core/ai/StructuredOutput.ts                     # Appendix L
 src/core/ai/toolSchemas.ts
 src/core/ai/StreamAdapter.ts
 src/core/ai/ChunkBuffer.ts                          # Appendix J
-src/core/ai/persona/PersonaProfile.ts               [NEW Rev. B — RICH-R-01]
-src/core/ai/persona/PersonaInjector.ts              [NEW Rev. B — RICH-R-02, R-10]
+src/core/ai/persona/PersonaProfile.ts
+src/core/ai/persona/PersonaInjector.ts
 ```
 
 **Required tests:**
@@ -2265,8 +2369,8 @@ tests/core/ai/RendererService.test.ts
 tests/core/ai/AgentOrchestrator.test.ts
 tests/core/ai/ProviderRouter.test.ts
 tests/core/ai/StructuredOutput.test.ts
-tests/core/ai/persona/PersonaProfile.test.ts        [NEW Rev. B]
-tests/core/ai/persona/PersonaInjector.test.ts       [NEW Rev. B]
+tests/core/ai/persona/PersonaProfile.test.ts
+tests/core/ai/persona/PersonaInjector.test.ts
 ```
 
 **DONE when:**
@@ -2307,7 +2411,7 @@ tests/core/context/TokenBudget.test.ts
 - Minimal mode blocks MCP chaining (and LLM-Wiki RAG synthesis).
 - ContextProvenanceManifest is attached to every OptimizedContext.
 
-### Phase 4a — PageContentService (Knowledge Acquisition) — MOVED EARLIER (was Phase 8)
+### Phase 4a — PageContentService (Knowledge Acquisition)
 
 **Create:**
 
@@ -2337,7 +2441,7 @@ tests/isolation/no-content-script-ui.test.ts        # verifies no React/AntD/def
 
 **DONE when:**
 
-- Defuddle runs in the side panel / full app (not the content bundle); content script only serializes HTML.
+- Defuddle runs in the side panel / standalone view (not the content bundle); content script only serializes HTML.
 - Content-script bundle contains no React, AntD, defuddle, or yaml, and stays < 50 KB.
 - Layered fallback (Defuddle→Readability, AX→DOM) records the source used.
 - PageIndexBuilder builds an ephemeral per-tab MiniSearch index (never persisted).
@@ -2353,7 +2457,7 @@ tests/isolation/no-content-script-ui.test.ts        # verifies no React/AntD/def
 src/core/memory/MemoryEngine.ts
 src/core/memory/ConversationMemoryStore.ts
 src/core/memory/UserMemoryStore.ts
-src/core/memory/PreferenceMemoryStore.ts             # persona config (np_persona) lives here — Rev. B
+src/core/memory/PreferenceMemoryStore.ts             # persona config (np_persona) lives here
 src/core/memory/MemoryScorer.ts
 src/core/memory/MemoryExtractor.ts
 src/core/search/MiniSearchIndex.ts
@@ -2385,7 +2489,7 @@ tests/core/notes/LinkParser.test.ts
 - End-to-end `Page → PageContentService → Note → MiniSearch` path works.
 - pnpm run verify:phase-5 passes.
 
-### Phase 5a — LLM-Wiki & Filesystem Sync — NEW
+### Phase 5a — LLM-Wiki & Filesystem Sync
 
 **Create:**
 
@@ -2401,7 +2505,7 @@ src/components/options/ImportExportSection.tsx       # + "Restore from folder"
 src/core/storage/migrations/v4_notes_backup_config.ts  # add notes_backup_config store + Note fields
 ```
 
-Implements the full §27 requirement set: CAT-01…05, LLM-WIKI-01…10, SYNC-01…11, MEM-01…03.
+Implements the full §27 requirement set: CAT-01…05, LLM-WIKI-01…10, SYNC-01…11, NMEM-01…03.
 
 **Required tests:**
 
@@ -2420,8 +2524,8 @@ tests/core/storage/migrations/v4.test.ts
 - Auto-tag/category/summary suggestions render with accept/reject.
 - "Ask notes" RAG (flash) returns cited answers; tiny mode falls back to plain MiniSearch.
 - Chat/page → note conversion opens a pre-filled editor (user is the gatekeeper).
-- MEM-02 upserts facts only on the primary surface.
-- showDirectoryPicker() + handle persist in notes_backup_config (Full App only).
+- NMEM-02 upserts facts only on the primary surface.
+- showDirectoryPicker() + handle persist in notes_backup_config (Standalone view only).
 - Per-save .md sync with YAML frontmatter + nested folders + collision suffixing + external-change guard.
 - Delete-on-sync + empty-folder cleanup.
 - Restore preview + additive upsert (never deletes local notes not in the folder).
@@ -2454,32 +2558,32 @@ tests/components/DiagnosticsSection.test.tsx
 
 - Every provider call creates transaction / prompt / provider traces.
 - Every tool call creates a tool trace.
-- Redaction test proves secrets (+ note content + filesystem paths, Rev. B) are not persisted.
+- Redaction test proves secrets (+ note content + filesystem paths) are not persisted.
 - Diagnostics panel in Options can copy operation ID.
 
-### Phase 7 — Workspace Experience (UI/UX) + RICH — RENAMED/REFOCUSED
+### Phase 7 — Workspace Experience (UI/UX) + RICH
 
 **Create:**
 
 ```
-src/components/pages/ChatPage.tsx                   # full — reused by Side Panel + Full App
+src/components/pages/ChatPage.tsx                   # full — reused by Side Panel + Standalone view
 src/components/pages/AgentPage.tsx
-src/components/pages/NotesPage.tsx                  # Full App only, incl. LLM-Wiki panels
-src/components/pages/OptionsPage.tsx                # Full App only
+src/components/pages/NotesPage.tsx                  # Standalone view only, incl. LLM-Wiki panels
+src/components/pages/OptionsPage.tsx                # Standalone view only
 src/components/options/{ProvidersSection, ModelsSection, MCPSection, PromptsSection, SlashSection, MemorySection, ImportExportSection, FeatureFlagsSection, AddonSettingsSection, PersonaSection, NotesSection}.tsx
 src/components/notes/{BacklinksPanel, WikilinkAutocomplete, NoteGraphView, NotePreview, SaveToNoteDialog}.tsx
 src/components/patterns/{ChatMessage, HistoryListItem, ToolCard, SkillMessageRenderer, SourceCard}.tsx
-src/components/rich/{WelcomeCards, QuickActionChips, ClarificationChips, FollowUpChips, PersonaHeader, StageIndicator, ClosureZone, ContextPane, TemplateCatalog, CodeBlockActions, StepCards}.tsx   [NEW Rev. B]
-src/core/intent/IntentClassifier.ts                                                             [NEW Rev. B — RICH-I-08]
+src/components/rich/{WelcomeCards, QuickActionChips, ClarificationChips, FollowUpChips, PersonaHeader, StageIndicator, ClosureZone, ContextPane, TemplateCatalog, CodeBlockActions, StepCards}.tsx
+src/core/intent/IntentClassifier.ts
 src/hooks/useChat.ts
 src/hooks/useStreamingLLM.ts                        # Appendix J
 src/hooks/useProviderRouter.ts
 src/hooks/useMemory.ts
 src/hooks/useDiagnostics.ts
-src/hooks/useWorkspace.ts                                                [NEW]
-src/hooks/useTheme.ts                                                    [NEW]
-src/hooks/usePersona.ts                                                  [NEW Rev. B]
-src/hooks/useRichSuggestions.ts                                         [NEW Rev. B — RICH-C-05/08]
+src/hooks/useWorkspace.ts
+src/hooks/useTheme.ts
+src/hooks/usePersona.ts
+src/hooks/useRichSuggestions.ts
 src/core/prompts/{PromptManager, TemplateEngine, builtinTemplates}.ts
 src/core/slash/SlashCommandRegistry.ts
 ```
@@ -2489,13 +2593,13 @@ src/core/slash/SlashCommandRegistry.ts
 ```
 tests/hooks/useStreamingLLM.test.ts
 tests/hooks/useWorkspace.test.ts
-tests/hooks/usePersona.test.ts                       [NEW Rev. B]
+tests/hooks/usePersona.test.ts
 tests/components/ChatPage.test.tsx
 tests/components/OptionsPage.test.tsx
-tests/components/rich/ClarificationChips.test.tsx    [NEW Rev. B]
-tests/components/rich/FollowUpChips.test.tsx         [NEW Rev. B]
-tests/components/rich/WelcomeCards.test.tsx          [NEW Rev. B]
-tests/core/intent/IntentClassifier.test.ts           [NEW Rev. B]
+tests/components/rich/ClarificationChips.test.tsx
+tests/components/rich/FollowUpChips.test.tsx
+tests/components/rich/WelcomeCards.test.tsx
+tests/core/intent/IntentClassifier.test.ts
 tests/core/notes/LinkParser.test.ts
 ```
 
@@ -2511,9 +2615,9 @@ This phase exposes capabilities built in Phases 3–5a as polished surfaces, the
 
 - Both surfaces use Planner→Executor→Renderer; ChunkBuffer streaming.
 - /write and /ask presets work.
-- Note wikilinks resolve with tie-break rule (Full App Notes page).
+- Note wikilinks resolve with tie-break rule (Standalone view Notes page).
 - Options page shows all sub-sections (incl. Persona + Notes) with functional forms.
-- DiagnosticsPanel renders in Full App → Options → Diagnostics.
+- DiagnosticsPanel renders in Standalone view → Options → Diagnostics.
 - LLM-Wiki UI functional (Ask notes, category tree, backup status, SaveToNoteDialog).
 - RICH P0 (7.3) complete: persona header, welcome cards, quick-action chips, clarification + follow-up chips (max 2 rounds; graceful timeout), code-block Copy/Save-as-macro (Insert=clipboard-only), streaming stage indicators.
 - pnpm run verify:phase-7 passes.
@@ -2553,7 +2657,7 @@ tests/isolation/no-content-script-ui.test.ts
 - Right-click selection → "Ask AI" opens Side Panel with selection prefilled.
 - /research runs via ResearchSkill.
 - Write add-on renders in Side Panel with all quick actions.
-- TeamGQM add-on renders in Side Panel and Full App.
+- TeamGQM add-on renders in Side Panel and Standalone view.
 - Add-ons can consume PageContentService + Memory + Notes + LLM-Wiki.
 
 ### Phase 9 — Hardening and Release
@@ -2564,11 +2668,11 @@ tests/isolation/no-content-script-ui.test.ts
 tests/core/ai/**
 tests/core/context/**
 tests/core/memory/**
-tests/core/notes/**            # LLM-Wiki + filesystem sync (Rev. B)
+tests/core/notes/**            # LLM-Wiki + filesystem sync
 tests/core/telemetry/**
 tests/core/storage/**
 tests/core/workspace/**
-tests/components/rich/**        # RICH interaction (Rev. B)
+tests/components/rich/**        # RICH interaction
 tests/isolation/no-content-script-ui.test.ts
 tests/perf/**
 ```
@@ -2580,10 +2684,10 @@ tests/perf/**
 - pnpm run test:isolation passes.
 - Content script bundle < 50 KB (extraction-only).
 - Side panel initial paint < 300 ms.
-- Full App initial paint < 500 ms.
+- Standalone view initial paint < 500 ms.
 - First token < 2 s local / < 3 s cloud.
-- Filesystem restore round-trips a full vault (Rev. B).
-- RAG returns correct citations on a fixture note set (Rev. B).
+- Filesystem restore round-trips a full vault.
+- RAG returns correct citations on a fixture note set.
 
 ## §19 — Runtime Edge Cases and Mitigations
 
@@ -2591,7 +2695,7 @@ tests/perf/**
 
 - ProviderRouter must not assume fallback exists.
 - Retry once only for retryable failures before first token.
-- On persistent failure: show retry / configure-provider UI (opens Full App → Options → Providers).
+- On persistent failure: show retry / configure-provider UI (opens Standalone view → Options → Providers).
 - Memory, notes, and local search remain available offline.
 
 ### §19.2 Local Model Small Context
@@ -2622,7 +2726,7 @@ tests/perf/**
 
 ### §19.6 Background SW Termination
 
-- LLM stream continues in side panel or Full App.
+- LLM stream continues in side panel or Standalone view.
 - PROXY_FETCH calls fail / retry only if marked safe by caller.
 - Startup recreates alarms, context menus, router.
 - Diagnostics records background restart.
@@ -2634,18 +2738,18 @@ tests/perf/**
 - overflow-anchor: none for streaming tail.
 - CLS target ≤ 0.05.
 
-### §19.8 Multi-Window Side Panels + Full App Tabs
+### §19.8 Multi-Window Side Panels + Standalone views
 
 - BroadcastBus primary election across all surfaces.
 - Only the primary surface writes memory stores.
 - Secondary surfaces mirror read-only.
 - WriteJournal maintains idempotency.
-- If two Full App tabs are open in different windows, both display but only one holds write primacy.
+- If two Standalone views are open in different windows, both display but only one holds write primacy.
 
 ### §19.9 Provider Deleted While Active
 
 - Fall back to lowest-priority enabled provider.
-- If none: show Flow 1 no-provider modal (with "Open Options" button leading to Full App).
+- If none: show Flow 1 no-provider modal (with "Open Options" button leading to Standalone view).
 
 ### §19.10 IndexedDB Blocked
 
@@ -2656,7 +2760,7 @@ tests/perf/**
 
 - Dismiss → inject PERMISSION_DENIED tool result → end stream cleanly.
 
-### §19.12 Two Side Panels + Two Full App Tabs
+### §19.12 Two Side Panels + Two Standalone views
 
 - Enforce single-writer rule via BroadcastBus.
 - Last-write-wins with version check on all memory writes.
@@ -2665,7 +2769,7 @@ tests/perf/**
 
 - If provider reports zero cache hit for 5 consecutive requests, PromptCacheManager disables cache hints for 60 s to avoid overhead.
 
-### §19.14 Full App Tab Closed Mid-Stream
+### §19.14 Standalone view Closed Mid-Stream
 
 - Stream continues in memory until finished, then is discarded (no destination).
 - AITransactionLog.markAborted(operationId) fires on close via beforeunload.
@@ -2673,26 +2777,26 @@ tests/perf/**
 
 ### §19.15 Handoff Race Condition
 
-- WorkspaceRouter.openFullApp() is idempotent by workspaceId.
-- Second click focuses the existing Full App tab instead of opening a new one.
+- WorkspaceRouter.openStandalone() is idempotent by workspaceId.
+- Second click focuses the existing Standalone view instead of opening a new one.
 
-### §19.16 Backup Folder Permission Revoked (NEW Rev. B)
+### §19.16 Backup Folder Permission Revoked
 
 - On NotesPage mount, handle.queryPermission() fails → sync disabled → red "Backup: Error" Tag + banner "[Re-select folder] [Dismiss]". No data loss (IndexedDB remains primary). Error code NOTE_SYNC_PERMISSION_REVOKED.
 
-### §19.17 External .md Change (NEW Rev. B)
+### §19.17 External .md Change
 
 - On save, if file lastModified is newer than the last sync timestamp (2 s tolerance) → confirm "This file was modified externally. Overwrite with app version? [Overwrite] [Skip]", default Skip (SYNC-06).
 
-### §19.18 NoteTagger LLM Failure (NEW Rev. B)
+### §19.18 NoteTagger LLM Failure
 
 - Save always succeeds (IndexedDB first); tagging failure shows a subtle "Couldn't analyze — [Retry]" hint; never blocks save or sync. Error code NOTE_TAGGER_FAILED.
 
-### §19.19 RAG No Results (NEW Rev. B)
+### §19.19 RAG No Results
 
 - "Ask notes" with zero MiniSearch hits → "No relevant notes found. Try rephrasing." (no LLM call wasted). Error code RAG_NO_RESULTS.
 
-### §19.20 RICH Suggestion Timeout (NEW Rev. B)
+### §19.20 RICH Suggestion Timeout
 
 - Clarification/follow-up haiku call times out → render the response with no chips (graceful, RICH-C-08). Error code RICH_SUGGESTION_TIMEOUT (logged, non-fatal).
 
@@ -2710,12 +2814,12 @@ All cross-context messages carry a RuntimeEnvelope<T> (Appendix C). All response
 | Save memory body | conversationId + seq |
 | Evict conversation | conversationId + evictionVersion |
 | Save note | note.id + note.version |
-| **Sync note file (Rev. B)** | note.id + note.version + filePath |
-| **Delete note file (Rev. B)** | note.id + filePath |
-| **Restore notes batch (Rev. B)** | folderHash + fileName |
+| **Sync note file** | note.id + note.version + filePath |
+| **Delete note file** | note.id + filePath |
+| **Restore notes batch** | folderHash + fileName |
 | Webhook retry | eventId |
 | Workspace update | workspaceId + version |
-| Open Full App | workspaceId |
+| Open Standalone view | workspaceId |
 | PROXY_FETCH | Never retried unless caller marks request retry-safe. |
 
 ### §20.3 WriteJournal Operations
@@ -2730,9 +2834,9 @@ type WriteJournalOperation =
   | 'update-user-memory'
   | 'export-data'
   | 'update-workspace'
-  | 'sync-note-file'         // NEW Rev. B
-  | 'delete-note-file'       // NEW Rev. B
-  | 'restore-notes-batch';   // NEW Rev. B
+  | 'sync-note-file'
+  | 'delete-note-file'
+  | 'restore-notes-batch';
 ```
 
 update-workspace order:
@@ -2759,7 +2863,7 @@ export interface IndexedDBMigration {
 - Every version bump includes a migration function.
 - Migrations are deterministic and idempotent where practical.
 - Migration failures record IDB_MIGRATION_FAILED in ErrorStore and enter degraded mode.
-- **v4 migration (Rev. B):** add the `notes_backup_config` object store; add optional Note fields `summary`, `categoryPath`, `summaryGeneratedAt`, `tagsGeneratedAt`; add `tags` and `summary` to the MiniSearch notes index fields. Idempotent: skip if store/fields already present.
+- **v4 migration:** add the `notes_backup_config` object store; add optional Note fields `summary`, `categoryPath`, `summaryGeneratedAt`, `tagsGeneratedAt`; add `tags` and `summary` to the MiniSearch notes index fields. Idempotent: skip if store/fields already present.
 
 ### §20.5 Background Worker State
 
@@ -2844,9 +2948,9 @@ export type WorkspaceCoordinationState =
   | { state: 'error'; code: 'ELECTION_TIMEOUT' | 'STORAGE_UNAVAILABLE'; message: string };
 ```
 
-Election rules: startup compare-and-set to np_workspace_primary; heartbeat every 3 s; missed 2 heartbeats → re-election; Full App has tie-break priority.
+Election rules: startup compare-and-set to np_workspace_primary; heartbeat every 3 s; missed 2 heartbeats → re-election; Standalone view has tie-break priority.
 
-### §20.12 Note Sync State (NEW Rev. B)
+### §20.12 Note Sync State
 
 ```ts
 export type NoteSyncState =
@@ -2890,7 +2994,7 @@ export interface ChatMessage {
 }
 ```
 
-### §21.2 Note (EXTENDED in Rev. B)
+### §21.2 Note
 
 ```ts
 export interface Note {
@@ -2900,9 +3004,10 @@ export interface Note {
   created: number;
   updated: number;
   tags: string[];
-  links: string[];                 // wikilinks (atomic-note graph)
+  links: string[];                 // resolved wikilinks — target note IDs (atomic-note graph)
+  unresolvedLinks: string[];       // wikilink targets with no matching note yet (rendered distinctly)
   source: {
-    kind: 'manual'|'voice'|'chat-export'|'template'|'page-export';   // +page-export (Rev. B)
+    kind: 'manual'|'voice'|'chat-export'|'template'|'page-export';   // +page-export
     conversationId?: string;
     templateId?: string;
   };
@@ -2911,7 +3016,7 @@ export interface Note {
     concepts: string[];
     lastWikiRunAt?: number;
   };
-  // --- Rev. B — LLM-Wiki fields (§27) ---
+  // --- LLM-Wiki fields (§27) ---
   summary?: string;                // LLM-generated (LLM-WIKI-03)
   categoryPath?: string;           // e.g. "InfoTech/Database/MySQL" (CAT-01) → filesystem folder
   summaryGeneratedAt?: number;     // staleness detection (LLM-WIKI-08)
@@ -2973,7 +3078,7 @@ export interface BuiltinTool {
 ### §21.5 Workspace Model
 
 ```ts
-export type ActiveSurface = 'sidepanel' | 'full-app';
+export type ActiveSurface = 'sidepanel' | 'standalone';
 export interface WorkspaceState {
   workspaceId: string;
   conversationId: string;
@@ -2994,13 +3099,13 @@ export interface WorkspaceState {
     status: 'running' | 'completed' | 'failed' | 'aborted';
   };
   activeSurface: ActiveSurface;
-  openedFullAppTabId?: number;
+  openedStandaloneTabId?: number;
   version: number;
   updatedAt: number;
 }
 ```
 
-### §21.6 NowPilot Error + Persona (Rev. B)
+### §21.6 NowPilot Error + Persona
 
 ```ts
 export interface NowPilotError {
@@ -3009,7 +3114,7 @@ export interface NowPilotError {
   context?: Record<string, unknown>;
   timestamp: number;
 }
-// Rev. B — Persona (RICH-R). Config lives in PreferenceMemoryStore (reconciliation R2).
+// Persona (RICH-R). Config lives in PreferenceMemoryStore (reconciliation R2).
 export interface PersonaProfile {
   id: string;
   identity: { name: string; tagline: string; domain: string };
@@ -3059,14 +3164,14 @@ BACKGROUND_STATE_DEGRADED
 WORKSPACE_ELECTION_TIMEOUT
 WORKSPACE_STORAGE_UNAVAILABLE
 WORKSPACE_HANDOFF_FAILED
-FULL_APP_OPEN_FAILED
-NOTE_SYNC_PERMISSION_REVOKED       # NEW Rev. B
-NOTE_SYNC_WRITE_FAILED             # NEW Rev. B
-NOTE_RESTORE_PARSE_FAILED          # NEW Rev. B
-NOTE_TAGGER_FAILED                 # NEW Rev. B
-RAG_NO_RESULTS                     # NEW Rev. B
-PERSONA_LOAD_FAILED                # NEW Rev. B
-RICH_SUGGESTION_TIMEOUT            # NEW Rev. B
+STANDALONE_OPEN_FAILED
+NOTE_SYNC_PERMISSION_REVOKED
+NOTE_SYNC_WRITE_FAILED
+NOTE_RESTORE_PARSE_FAILED
+NOTE_TAGGER_FAILED
+RAG_NO_RESULTS
+PERSONA_LOAD_FAILED
+RICH_SUGGESTION_TIMEOUT
 ```
 
 ## §22 — Performance Targets & Algorithms
@@ -3076,7 +3181,7 @@ RICH_SUGGESTION_TIMEOUT            # NEW Rev. B
 | Metric | Target |
 |---|---|
 | Side panel initial paint | < 300 ms |
-| Full App initial paint | < 500 ms |
+| Standalone view initial paint | < 500 ms |
 | First AI token (local Ollama) | < 2 s |
 | First AI token (cloud) | < 3 s |
 | MiniSearch over 1,000 notes | < 50 ms |
@@ -3090,10 +3195,10 @@ RICH_SUGGESTION_TIMEOUT            # NEW Rev. B
 | BroadcastBus round-trip (cross-surface) | < 100 ms p95 |
 | Workspace handoff | < 1 s |
 | ChunkBuffer flush rate | max every 16 ms (upgrade to 33 ms if enqueue > 8 kB/s) |
-| **NoteTagger analyze (haiku)** (Rev. B) | non-blocking; save never waits |
-| **Ask-notes RAG synthesis (flash)** (Rev. B) | < 4 s p95 |
-| **Per-save .md file write** (Rev. B) | < 200 ms; 50 ms debounce; fire-and-forget |
-| **Restore parse (100 notes)** (Rev. B) | < 3 s |
+| **NoteTagger analyze (haiku)** | non-blocking; save never waits |
+| **Ask-notes RAG synthesis (flash)** | < 4 s p95 |
+| **Per-save .md file write** | < 200 ms; 50 ms debounce; fire-and-forget |
+| **Restore parse (100 notes)** | < 3 s |
 
 ### §22.2 Context Overflow Rules
 
@@ -3130,24 +3235,24 @@ Runs nightly via Scheduler. v0.1 produces exactly three Insight values: tag-tren
 | **AI chat data flow** | **NOT @ant-design/x-sdk** — kept AgentOrchestrator/ProviderRouter/ContextOptimizer | x-sdk's useXChat/ChatProvider calls providers directly from the UI, bypassing Planner→Executor→Renderer, ContextOptimizer, MemoryEngine, AITransactionLog |
 | **Dynamic agent-generated UI (A2UI)** | **Deferred to v0.2+** — not @ant-design/x-card in v0.1 | A2UI's createSurface/updateComponents command stream is a harder JSON target than the 3-action PlannerDecisionSchema; unsafe for Haiku/Flash today (§25.6) |
 | **Theming** | AntD ConfigProvider + XProvider + Zustand ThemeStore | Centralized token system, dark mode via darkAlgorithm, per-surface compact toggle |
-| **Two UI surfaces** | Side Panel + Full App Tab | Side Panel = daily workflow, Full App = deep work / config / diagnostics |
+| **Two UI surfaces** | Side Panel + Standalone view | Side Panel = daily workflow, Standalone view = deep work / config / diagnostics |
 | **Shared workspace** | WorkspaceStore (Zustand) + BroadcastBus | Single source of truth across surfaces; cross-surface handoff |
 | **Content scripts** | Extraction-only in v0.1 | No UI in host pages; simpler bundle; page injection deferred |
 | **Page injection** | **Deferred to v0.2+** | Reduces v0.1 complexity; add-on architecture preserved |
 | **Page-content extraction placement** | **Core PageContentService**, not a tool | Shared infra for Chat/Agent/Summarize/research/add-ons; central cache, concurrency, redaction |
-| **Main-content extraction** | **Defuddle** | Purpose-built Readability successor; preserves footnotes/math/code; clean Markdown; MIT; runs in side panel/full app |
+| **Main-content extraction** | **Defuddle** | Purpose-built Readability successor; preserves footnotes/math/code; clean Markdown; MIT; runs in side panel/standalone view |
 | **Extraction model** | **Layered strategy** (Defuddle → APC-lite → ServiceNow API) | Right tool per page type |
 | **Page-content retrieval** | **MiniSearch over extracted content** (ephemeral, per-tab) | Keeps large pages within the 2,000-token budget; reuses core engine; never persisted |
 | **Browser automation** | **Deferred to v2** (chrome.debugger + CDP Input) | Trusted-event automation needs the debugger; out of scope for read-only v0.1 |
 | State | Zustand | 1 KB, no boilerplate, works outside React |
 | AI SDK | Vercel AI SDK + custom orchestrator | Streaming/abort/tools; lighter than LangChain |
-| AI providers | @ai-sdk/* only | Single codepath for 5 providers |
+| AI providers | @ai-sdk/* only | Single codepath for 4 providers (OpenAI uses custom baseURL for compatible endpoints) |
 | Runtime orchestration | Planner → Executor → Renderer | Cheap models cannot drive maxSteps=15 loops safely |
 | Tier resolution | TierResolver (Appendix D) | Prevents hallucinated model names |
 | Animation | motion | Do not install framer-motion — v12 is published under motion |
-| MCP transport | StreamableHTTP from side panel and Full App | EventSource unavailable in SW |
+| MCP transport | StreamableHTTP from side panel and Standalone view | EventSource unavailable in SW |
 | Built-in tools | NowPilotMainServer (12) in each surface | Available without external server |
-| AI calls location | Side panel or Full App only | SW ~30 s timeout kills streaming |
+| AI calls location | Side panel or Standalone view only | SW ~30 s timeout kills streaming |
 | Chat storage | IndexedDB via idb | 10 MB chrome.storage.local insufficient |
 | Memory storage | Metadata in chrome.storage.local; bodies in MemoryDB | Split prevents 10 MB overflow |
 | API key storage | chrome.storage.local + AES-GCM | Encrypted at rest |
@@ -3163,26 +3268,26 @@ Runs nightly via Scheduler. v0.1 produces exactly three Insight values: tag-tren
 | Add-on settings isolation | AddonSettingsStore namespaced | Prevents key collisions |
 | Keyboard shortcuts | KeymapRegistry | Conflict detection |
 | Icons | @ant-design/icons v6 + motion | Consistent AntD ecosystem; v6 icon set includes provider marks |
-| Options placement | Full App only | Side panel stays lightweight |
-| Diagnostics placement | Full App → Options | Deep work surface |
-| Notes placement | Full App only | Rich workspace needs full viewport |
+| Options placement | Standalone view only | Side panel stays lightweight |
+| Diagnostics placement | Standalone view → Options | Deep work surface |
+| Notes placement | Standalone view only | Rich workspace needs full viewport |
 | Cross-surface consistency | Same ThemeStore and WorkspaceStore | One product across two surfaces |
-| **Phase ordering (Rev. B)** | **Knowledge-first data-flow** (acquire→store→understand→display→extend→harden) | Matches product value (Copilot + Obsidian + NotebookLM); PageContentService/Notes/LLM-Wiki are the core, not late add-ons |
-| **PageContentService placement (Rev. B)** | **Phase 4a** (was Phase 8) | Core infrastructure (§26); consumers in every later phase |
-| **Knowledge Base consolidation (Rev. B)** | Memory + MiniSearch + Notes + Wikilinks in **Phase 5** | One coherent knowledge layer before enrichment |
-| **LLM-Wiki phase (Rev. B)** | **Phase 5a** (LLM enrichment + RAG + filesystem sync together) | Single shared save pipeline; depends on Phases 4a/5 |
-| **Note enrichment (Rev. B)** | **Single haiku call** (tags+category+summary+memory facts) | Cheaper/faster than separate calls (D-01) |
-| **Notes dual-friendly (Rev. B)** | **Markdown body + YAML frontmatter** | Human reads body; LLM/machine reads frontmatter (D-02) |
-| **Category model (Rev. B)** | **Path-based `categoryPath` → folders**, separate from tags | 1:1 filesystem mapping; tags stay many-to-many (D-03) |
-| **Notes↔Memory direction (Rev. B)** | **Notes → Memory only** | Notes are user-owned; memory is system-owned (D-05) |
-| **Semantic search (Rev. B)** | **LLM-routed reranking over MiniSearch** (no embeddings) | No model download; sufficient for v0.1 |
-| **Filesystem sync (Rev. B)** | **One-way app→FS + import-for-restore** | Backup use case; bidirectional deferred |
-| **Backup handle storage (Rev. B)** | **`notes_backup_config` IndexedDB store** | FileSystemDirectoryHandle non-serializable (D-08) |
-| **Persona (Rev. B)** | **PersonaProfile + PersonaInjector in Phase 3; config in PreferenceMemoryStore** | Persona-aware prompts from day one; user config ≠ inferred fact (R2) |
-| **RICH implementation (Rev. B)** | **On Ant Design X presentation components, phased 7.3/7.4/7.5** | Reuses adopted stack; no new UI framework |
-| **Host-page write-back (Rev. B)** | **Deferred (clipboard-only in v0.1)** | Extraction-only rule (§0.2); write-back needs v0.2+ injection (R1) |
+| **Phase ordering** | **Knowledge-first data-flow** (acquire→store→understand→display→extend→harden) | Matches product value (Copilot + Obsidian + NotebookLM); PageContentService/Notes/LLM-Wiki are the core, not late add-ons |
+| **PageContentService placement** | **Phase 4a** (was Phase 8) | Core infrastructure (§26); consumers in every later phase |
+| **Knowledge Base consolidation** | Memory + MiniSearch + Notes + Wikilinks in **Phase 5** | One coherent knowledge layer before enrichment |
+| **LLM-Wiki phase** | **Phase 5a** (LLM enrichment + RAG + filesystem sync together) | Single shared save pipeline; depends on Phases 4a/5 |
+| **Note enrichment** | **Single haiku call** (tags+category+summary+memory facts) | Cheaper/faster than separate calls (D-01) |
+| **Notes dual-friendly** | **Markdown body + YAML frontmatter** | Human reads body; LLM/machine reads frontmatter (D-02) |
+| **Category model** | **Path-based `categoryPath` → folders**, separate from tags | 1:1 filesystem mapping; tags stay many-to-many (D-03) |
+| **Notes↔Memory direction** | **Notes → Memory only** | Notes are user-owned; memory is system-owned (D-05) |
+| **Semantic search** | **LLM-routed reranking over MiniSearch** (no embeddings) | No model download; sufficient for v0.1 |
+| **Filesystem sync** | **One-way app→FS + import-for-restore** | Backup use case; bidirectional deferred |
+| **Backup handle storage** | **`notes_backup_config` IndexedDB store** | FileSystemDirectoryHandle non-serializable (D-08) |
+| **Persona** | **PersonaProfile + PersonaInjector in Phase 3; config in PreferenceMemoryStore** | Persona-aware prompts from day one; user config ≠ inferred fact (R2) |
+| **RICH implementation** | **On Ant Design X presentation components, phased 7.3/7.4/7.5** | Reuses adopted stack; no new UI framework |
+| **Host-page write-back** | **Deferred (clipboard-only in v0.1)** | Extraction-only rule (§0.2); write-back needs v0.2+ injection (R1) |
 
-**Removed ADRs from v0.1c (obsolete):** Tailwind v4 + np-* tokens; shadcn/ui; @radix-ui/react-*; Tweakcn HSL mapping; Shadow DOM injection via ContentScriptHost UI mount; split preflight CSS; portal isolation via ui-shadow/ wrappers; dark mode via .dark class. See §25.
+**Explicitly out of scope (do not implement):** Tailwind v4 + np-* tokens; shadcn/ui; @radix-ui/react-*; Tweakcn HSL mapping; Shadow DOM injection via ContentScriptHost UI mount; split preflight CSS; portal isolation via ui-shadow/ wrappers; dark mode via .dark class. See §25.
 
 ## §24 — Verification Commands
 
@@ -3209,7 +3314,7 @@ Each phase must define a real script. Minimum expected commands in package.json:
 }
 ```
 
-`tests/isolation/no-content-script-ui.test.ts` greps the content-script bundle and rejects if it finds `antd`, `React`, `react-dom` — **and (Rev. B) `defuddle` or `yaml`, or any File System Access API usage.**
+`tests/isolation/no-content-script-ui.test.ts` greps the content-script bundle and rejects if it finds `antd`, `React`, `react-dom` — **and `defuddle` or `yaml`, or any File System Access API usage.**
 
 ## §25 — Future Page Injection Architecture & Deferred UI Features
 
@@ -3240,7 +3345,7 @@ v0.2.0 planning (Shadow DOM addendum spec); Phase 10 (dual-bundle config, Tailwi
 
 ### §25.5 Hybrid Rule for Future
 
-Side Panel + Full App continue to use AntD. Injected UI uses Tailwind + Radix, never AntD. ESLint rule: no-restricted-imports patterns ['antd','@ant-design/*'] for src/addons/** and src/components/ui-shadow/**.
+Side Panel + Standalone view continue to use AntD. Injected UI uses Tailwind + Radix, never AntD. ESLint rule: no-restricted-imports patterns ['antd','@ant-design/*'] for src/addons/** and src/components/ui-shadow/**.
 
 ### §25.6 @ant-design/x-card / A2UI — Deferred to v0.2+
 
@@ -3290,11 +3395,11 @@ export interface IExtractionStrategy {
 Defuddle is **not** bundled into the content script (would break the < 50 KB extraction-only bundle, §22.1, §5.6). Instead:
 
 ```
-Content script (tiny):  outerHTML (or targeted subtree)  ──RuntimeEnvelope──▶ Side Panel / Full App
-Side Panel / Full App:  DOMParser → new Defuddle(doc).parse()  → markdown → PageContext
+Content script (tiny):  outerHTML (or targeted subtree)  ──RuntimeEnvelope──▶ Side Panel / Standalone view
+Side Panel / Standalone view:  DOMParser → new Defuddle(doc).parse()  → markdown → PageContext
 ```
 
-The content script only reads/serializes HTML; **Defuddle parsing runs in the side panel / full app**. Preserves the isolation rule (§5.6) and the 50 KB cap (§22.1).
+The content script only reads/serializes HTML; **Defuddle parsing runs in the side panel / standalone view**. Preserves the isolation rule (§5.6) and the 50 KB cap (§22.1).
 
 ### §26.5 MiniSearch integration (retrieval-augmented context)
 
@@ -3303,7 +3408,7 @@ The content script only reads/serializes HTML; **Defuddle parsing runs in the si
 - Minimal mode (§2.5) always routes through selectRelevant.
 - Page indexes are ephemeral — **never persisted** to IndexedDB.
 
-> **Rev. B link to §27:** the same core MiniSearch engine powers *two distinct index instances* — the **ephemeral page index** (§26) and the **persistent notes index** (§27). They never share storage. A page can be captured → converted to a note (Flow 12) → indexed into the persistent notes index for future RAG (Flow 13).
+> **Note:** the same core MiniSearch engine powers *two distinct index instances* — the **ephemeral page index** (§26) and the **persistent notes index** (§27). They never share storage. A page can be captured → converted to a note (Flow 12) → indexed into the persistent notes index for future RAG (Flow 13).
 
 ### §26.6 Reliability & privacy
 
@@ -3323,11 +3428,11 @@ NowPilot v0.1 is **read-only**: content scripts are extraction-only (§5.6); the
 - **Defuddle** (kepano, MIT) — adopted as the DefuddleStrategy engine.
 - **google/llm-sidebar-with-context** (Apache-2.0) — pattern reference only (not forked). Borrow tab-pinning UX (our cap 10 vs their 6) and site-specific extraction strategies as a model for our add-on IContextExtractor pattern.
 
-## §27 — LLM-Wiki & Filesystem Sync (NEW in Rev. B)
+## §27 — LLM-Wiki & Filesystem Sync
 
 **Built in Phase 5a.** Requires Phase 5 (Notes + Memory + MiniSearch), Phase 4a (PageContentService), Phase 3 (AI runtime). Extends the atomic-note-with-wikilinks system with LLM enrichment, a hierarchical category system that maps to filesystem folders, RAG Q&A, chat/page-to-note capture, Memory↔Notes integration, and one-way app→filesystem backup with import-for-restore.
 
-**Surfaces affected:** Full App (all features + Options); Side Panel (`ChatMessage` "Save to note" only). **Not touched:** BacklinksPanel, NoteGraphView, WikilinkAutocomplete, NotePreview — the atomic-note + wikilink core is preserved unchanged.
+**Surfaces affected:** Standalone view (all features + Options); Side Panel (`ChatMessage` "Save to note" only). **Not touched:** BacklinksPanel, NoteGraphView, WikilinkAutocomplete, NotePreview — the atomic-note + wikilink core is preserved unchanged.
 
 ### §27.1 Category System (CAT-01…05)
 
@@ -3339,20 +3444,21 @@ NowPilot v0.1 is **read-only**: content scripts are extraction-only (§5.6); the
 
 ### §27.2 LLM Features (LLM-WIKI-01…10)
 
-- **LLM-WIKI-01** On save, one **haiku-tier, temperature-0** call returns ≤5 tags + 1 categoryPath (or null) + a 1–2 sentence summary (+ memory facts, MEM-02). Rendered as accept/reject Tags + inline category input.
+- **LLM-WIKI-01** On save, one **haiku-tier, temperature-0** call returns ≤5 tags + 1 categoryPath (or null) + a 1–2 sentence summary (+ memory facts, NMEM-02). Rendered as accept/reject Tags + inline category input.
 - **LLM-WIKI-02** Independent toggles in Options → Notes (`np_notes_llm_features`: autoTag, autoCategorize, autoSummary, aiSearch). When off, no LLM call on save.
 - **LLM-WIKI-03** Optional `summary` field; displayed as secondary text in NoteList.
 - **LLM-WIKI-04** "Regenerate tags/summary" toolbar button; re-runs the combined call in place.
 - **LLM-WIKI-05** Natural-language search: MiniSearch fuzzy → if <3 results or "AI Search", a haiku call reranks top-10 by semantic relevance ("AI-enhanced" indicator). No embeddings/vector store.
-- **LLM-WIKI-06** "Ask your notes" RAG: MiniSearch top-5 + memory facts (MEM-01) → **flash-tier** synthesis with per-statement citations → ephemeral @ant-design/x Bubble with clickable citation Tags (Flow 13).
+- **LLM-WIKI-06** "Ask your notes" RAG: MiniSearch top-5 + memory facts (NMEM-01) → **flash-tier** synthesis with per-statement citations → ephemeral @ant-design/x Bubble with clickable citation Tags (Flow 13).
 - **LLM-WIKI-07** "Save to note" on any assistant message → `NoteChatConverter` drafts title/content/tags/wikilinks/categoryPath → pre-filled NoteEditor for review (user is gatekeeper).
 - **LLM-WIKI-08** Staleness: `summaryGeneratedAt`/`tagsGeneratedAt` vs `updated` → subtle "Content has changed — [Regenerate tags/summary]" hint.
 - **LLM-WIKI-09** Orphan detection (algorithmic, no LLM): 0 wikilinks + 0 backlinks → "Orphan" badge + "Find context" (triggers RAG).
 - **LLM-WIKI-10** "Re-analyze all notes" (Options → Notes), user-initiated only, sequential; updates stats in real time.
+- **LLM-WIKI-11** Suggestion confidence gating. Every enrichment item the model returns (`memoryFacts[]`, suggested `tags[]`, suggested wikilinks) carries a self-reported `confidence` in `[0,1]`. Items below `NOTE_SUGGESTION_DISPLAY_THRESHOLD = 0.60` are **never surfaced** to the user (silently discarded, not stored). Of the items at or above the threshold, at most `NOTE_SUGGESTION_MAX_PER_SAVE = 3` `memoryFacts` and `5` `tags` are shown per save, ordered by descending confidence; overflow is dropped. Accepted items persist at their reported confidence; rejected items are discarded and never re-suggested for the same `{noteId, version}`. When the note is edited before the (non-blocking) suggestions return, stale suggestions for the prior `version` are discarded (never applied to newer content).
 
 ### §27.3 One-Way Filesystem Sync (SYNC-01…11)
 
-- **SYNC-01** "Set backup folder" via `showDirectoryPicker()` (**Full App only**); FileSystemDirectoryHandle persisted in `notes_backup_config` IndexedDB store (cannot use chrome.storage.local — handles are non-serializable).
+- **SYNC-01** "Set backup folder" via `showDirectoryPicker()` (**Standalone view only**); FileSystemDirectoryHandle persisted in `notes_backup_config` IndexedDB store (cannot use chrome.storage.local — handles are non-serializable).
 - **SYNC-02** On NotesPage mount, verify `handle.queryPermission()`; if denied/missing → sync disabled + banner "Backup folder not accessible. [Re-select folder] [Dismiss]".
 - **SYNC-03** Per-save write/update/delete of the `.md` file; fire-and-forget (no loading state); 50 ms debounce prevents rapid-save bursts.
 - **SYNC-04** File format: `{categoryPath}/{title}.md` with YAML frontmatter (`id, created, updated, tags, categoryPath, summary`) + markdown body. Empty categoryPath → root folder. Filename sanitized: `/ \ : * ? " < > |` → `_`.
@@ -3364,11 +3470,11 @@ NowPilot v0.1 is **read-only**: content scripts are extraction-only (§5.6); the
 - **SYNC-10** Restore preview modal: "Found 24 notes (12 new, 3 updated, 9 unchanged). Proceed? [Import] [Cancel]".
 - **SYNC-11** Delete-on-sync: deleting a note removes its `.md`; if the nested category folder becomes empty it is removed (clean backup).
 
-### §27.4 Memory ↔ Notes Integration (MEM-01…03)
+### §27.4 Memory ↔ Notes Integration (NMEM-01…03)
 
-- **MEM-01** Memory-aware RAG: "Ask notes" retrieval also queries MemoryEngine for relevant user facts/preferences; highly relevant facts are included as context alongside note snippets.
-- **MEM-02** On save, the same LLM call extracts memory-worthy facts (MemoryExtractor schema) → routed through MemoryEngine for conflict resolution + storage. **Notes → Memory only** (D-05). Runs on the primary surface only (§13).
-- **MEM-03** "Save from chat" (LLM-WIKI-07) uses conversation messages AND `MemoryEngine.assemble()` facts to produce a richer draft.
+- **NMEM-01** Memory-aware RAG: "Ask notes" retrieval also queries MemoryEngine for relevant user facts/preferences; highly relevant facts are included as context alongside note snippets.
+- **NMEM-02** On save, the same LLM call extracts memory-worthy facts (MemoryExtractor schema) → routed through MemoryEngine for conflict resolution + storage. **Notes → Memory only** (D-05). Runs on the primary surface only (§13).
+- **NMEM-03** "Save from chat" (LLM-WIKI-07) uses conversation messages AND `MemoryEngine.assemble()` facts to produce a richer draft.
 
 ### §27.5 New Core Services
 
@@ -3387,6 +3493,13 @@ TraceRedactor-style redaction runs **before** indexing, logging, or writing to d
 ### §27.7 Note-Taking Method (clarification)
 
 The method is **atomic notes + wikilinks** (the Phase 5 core), *extended* by LLM-Wiki with: `categoryPath` (single hierarchy → folder), `tags` (many-to-many labels), and an LLM `summary` (glanceable context). Wikilinks remain the primary linking mechanism and live inside the markdown body, so the atomic-note graph is fully reconstructable on restore. LLM wikilink *autocomplete* suggestions are **not** in v0.1 (D-04; MiniSearch title matching is sufficient) — but chat/page-to-note conversion (LLM-WIKI-07) still *suggests* wikilinks for the drafted note.
+
+### §27.7a Note Identity, Rename & Unresolved Links (WIKI-ID-01…04)
+
+- **WIKI-ID-01 — Immutable identity.** A note's `id` is a `crypto.randomUUID()` assigned at creation and **never changes** — not on rename, move (category change), or filesystem restore. The `title` is mutable display text; the `id` is the stable referent. All graph edges (`links[]`, backlinks) are stored as **note IDs**, never titles, so renaming a note can never break an existing edge.
+- **WIKI-ID-02 — Wikilink syntax vs storage.** Authors type human-readable `[[Title]]` in the markdown body. On save, `LinkParser.parseLinks()` extracts the raw targets and `resolveLinks()` maps each to a note ID via the resolution order (exact title match → `updated` desc → `id` asc, per §26). Resolved targets go to `links[]` (IDs); the original display text is preserved inline for rendering. Renaming a *target* note updates only that note's `title`; because edges are ID-based, no source note needs rewriting, and the link label re-renders from the target's current title on next paint.
+- **WIKI-ID-03 — Unresolved links.** A `[[Title]]` with no matching note resolves to no ID and is recorded in the source note's `unresolvedLinks[]` (raw target strings). The editor renders unresolved links **distinctly** (muted/dashed style + "create note" affordance) so they are visually separable from resolved links. When a note whose title matches a pending unresolved target is later created, a save-time reconciliation pass promotes the matching `unresolvedLinks[]` entries on referencing notes into `links[]` (by the new note's ID) and clears them from `unresolvedLinks[]`. This pass is bounded (MiniSearch title lookup, primary surface only) and never blocks the save.
+- **WIKI-ID-04 — Deletion.** Deleting a note does **not** rewrite source bodies; the referencing edges become dangling and are moved from `links[]` back into `unresolvedLinks[]` on those notes at the next save/graph rebuild, so the `[[Title]]` renders as an unresolved link the user can recreate. Filesystem restore (§27.3) reconstructs IDs from YAML frontmatter, so round-tripping a vault preserves every edge.
 
 ### §27.8 Decisions
 
@@ -3412,6 +3525,369 @@ Bidirectional filesystem sync (requires polling/Native Messaging) · embedding-b
 - **Chat-to-note:** assistant gives instructions → "…" → "Save to note" → LLM drafts title/tags/wikilinks with conversation + memory context → NoteEditor pre-filled → review → save.
 - **Restore:** new device/cleared IndexedDB → Options → Import/Export → Restore from folder → preview → import (category structure preserved).
 - **Backup (normal):** set folder once → every save auto-writes → green "Backup: On" → permission lost → red → re-select.
+
+## §28 — Verified Agent Harness Requirements
+
+### §28.1 Purpose
+
+This section adds evidence-backed completion, trust-aware context, governed memory, capability-based tools, trajectory evaluation, and verified evolution. It does not replace the bounded Planner → Executor → Renderer architecture.
+
+### §28.2 Agent reliability requirements
+
+- **AGT-01 (P0):** Add explicit trajectory states: assembling-context, planning, waiting-for-permission, executing, verifying, replanning, rendering, completed, failed, aborted.
+- **AGT-02 (P0):** Side-effecting success requires `CompletionEvidence`. Renderer must not claim execution without matching evidence.
+- **AGT-03 (P0):** Every turn produces a structured `AgentTurnOutcome`; cap exhaustion is partial, not successful.
+- **AGT-04 (P0):** Replanning follows the deterministic retry/terminal policy in `NOWPILOT_ADDITIONAL_REQUIREMENTS_AGENT_HARNESS.md`.
+
+### §28.3 Trust-aware context requirements
+
+- **CTX-01 (P0):** Context sources carry relevance, freshness, trust, sensitivity, and instruction-authority metadata.
+- **CTX-02 (P0):** Page, note, memory, upload, and tool output are untrusted data and cannot redefine system/tool/permission policy.
+- **CTX-03 (P0):** `ContextProvenanceManifest` becomes a context receipt with inclusion, omission, original/final tokens, compression, and cache eligibility.
+- **CTX-04 (P0):** Stable prefix snapshot tests are mandatory.
+- **CTX-05 (P1):** Skills use progressive disclosure; irrelevant full instructions consume zero prompt tokens.
+- **CTX-06 (P1):** Diagnostics track context quality without persisting raw sensitive text.
+
+### §28.4 Memory and knowledge governance
+
+> These `MEM-*` IDs are the harness-track memory-governance taxonomy and are **distinct** from the Notes↔Memory `NMEM-01…03` requirements in §27.4.
+
+
+- **MEM-01 (P0):** Memory taxonomy includes working, episodic, semantic, preference, and procedural records.
+- **MEM-02 (P0):** Durable memories require source, confidence, lifecycle, sensitivity, and verification timestamps.
+- **MEM-03 (P0):** Conflict precedence is explicit correction > verified current state > prior explicit memory > inference.
+- **MEM-04 (P0):** User controls include view, source, confidence, edit, pin, forget, type disable, export, and cloud exclusion.
+- **MEM-05 (P1):** Procedural experience is stored separately and activated only after verification and approval.
+- **KNW-01 (P1):** Graph edges record explicit, imported, suggested, or accepted provenance.
+
+### §28.5 Tool governance
+
+- **TOL-01 (P0):** Every tool has a `ToolCapabilityManifest` with category, risk, side effect, permissions, scopes, timeout, cost, idempotency, verifier, and schema hashes.
+- **TOL-02 (P0):** Permission policy is risk- and side-effect based.
+- **TOL-03 (P0):** Side-effecting tools define postcondition verification.
+- **TOL-04 (P0):** Tool results are validated, redacted, size-limited, shaped, and attributed before context injection.
+- **TOL-05 (P0):** Every write tool is replay-safe through idempotency.
+- **TOL-06 (P1):** Tool registries use active discovery when schemas exceed the tools budget.
+- **TOL-07 (P2):** Long-running operations use a resumable async contract in a future phase.
+
+### §28.6 Evaluation requirements
+
+- **EVAL-01 (P0):** Maintain versioned golden suites for planner, context, tools, permissions, providers, memory, RAG, completion evidence, and multimodal routing.
+- **EVAL-02 (P0):** Use a trajectory rubric with separate outcome, process, safety, grounding, memory, quality, latency, and cost dimensions.
+- **EVAL-03 (P0):** Prefer deterministic environment/process validators; use calibrated LLM judges only for qualitative dimensions.
+- **EVAL-04 (P0):** Diagnostics assign the first failing layer.
+- **EVAL-05 (P0):** Safety, leakage, injection, false-completion, citation, and isolation regressions block release.
+- **EVAL-06 (P1):** Report cost/latency/quality Pareto comparisons.
+- **EVAL-07 (P1):** Calibrate and version LLM judges.
+
+### §28.7 Verified evolution requirements
+
+- **EVO-01 (P1):** Verified trajectories create candidates, never direct production changes.
+- **EVO-02 (P1):** Each candidate targets one layer: knowledge, retrieval, instruction, experience, tool, workflow, or model tier.
+- **EVO-03 (P1):** `EvolutionCandidate` stores evidence, baseline, candidate, security, version, status, and rollback.
+- **EVO-04 (P0):** Untrusted/raw content cannot directly update active prompts, tools, permissions, code, or procedural memory.
+- **EVO-05 (P1):** Candidate activation requires sandbox evaluation, approval, scoped rollout, monitoring, and rollback.
+- **EVO-06 (P2):** Agent-generated tools remain sandbox proposals and cannot self-publish.
+
+## §29 — Multimodal Input and Real-Time Interaction Foundation
+
+### §29.1 Scope
+
+v0.1 adds a bounded multimodal input foundation, not a second agent architecture. Image, audio, and document inputs become normalised observations consumed by the existing ContextOptimizer and agent pipeline.
+
+### §29.2 Requirements
+
+- **MM-01 (P1):** Define `ModalityInput` for text, image, audio, and document references. Binary payloads never enter prompt sections directly.
+- **MM-02 (P1):** `ModalityObservation` carries source ID, modality, extracted text/structure, confidence, sensitivity, and timestamps.
+- **MM-03 (P1):** Image paste/upload supports screenshot, diagram, table, UI-state, and note-draft use cases through a configured vision-capable model.
+- **MM-04 (P1):** Voice input is transcribed into an editable Sender; tool execution requires explicit send/confirmation.
+- **MM-05 (P2):** A later fast/slow architecture separates low-latency interaction from deep reasoning/tool work.
+- **MM-06 (P1):** Interruption propagates the existing AbortSignal across transcription, planning, tools, and rendering.
+- **MM-07 (P0 boundary):** APC-lite does not authorise computer use. Browser automation remains deferred to a separate addendum.
+
+### §29.3 Privacy and provider routing
+
+- Modality blobs are operation-scoped unless explicitly saved.
+- No raw image/audio persistence in traces.
+- TraceRedactor applies to extracted/transcribed observations.
+- Never switch local to cloud for multimodal processing unless `allowCloudFallbackFromLocal` permits it.
+- If no compatible model is configured, return `MULTIMODAL_MODEL_UNAVAILABLE` with a settings action.
+
+## §30 — Revised Master Implementation Order
+
+### §30.1 Canonical order
+
+```text
+1 → 2 → 3 → 3a → 4 → 4a → 4b → 5 → 5a → 5b
+  → 6 → 6a → 6b → 6c → 7 → 7a → 8 → 8a → 9
+```
+
+The original Phase 1–9 requirements remain intact. The following sub-phases insert new work without deleting or renumbering existing features.
+
+### Phase 3a — Agent Reliability and Evidence
+
+**Depends on:** Phase 3  
+**Create/modify:** `AgentTrajectoryState`, `OutcomeVerifier`, `CompletionEvidence`, `AgentTurnOutcome`, AgentOrchestrator integration, Renderer completion guard.  
+**DONE when:** transitions, evidence, partial/cap behaviour, abort, and false-completion tests pass.
+
+### Phase 4b — Trust-Aware Context and Receipts
+
+**Depends on:** Phases 4 and 4a  
+**Create/modify:** `ContextItem`, trust policy, context receipt, injection defences, stable-prefix snapshots, progressive skill disclosure.  
+**DONE when:** malicious page/note/tool fixtures cannot alter policy and Prompt Inspector reconstructs packing decisions.
+
+### Phase 5b — Memory Governance and Experience Candidates
+
+**Depends on:** Phases 5 and 5a  
+**Create/modify:** `MemoryRecord`, conflict resolver, lifecycle controls, procedural experience candidate store, edge provenance.  
+**DONE when:** conflicts, forget, expiry, sensitivity, provenance, and Notes/Memory boundaries pass.
+
+### Phase 6a — Agent Evaluation
+
+**Depends on:** Phase 6 and available core capabilities  
+**Create:** `src/core/evaluation/**`, `tests/evals/**`, evaluation reports in Diagnostics.  
+**DONE when:** golden suites produce per-dimension evidence and failure-layer categorisation.
+
+### Phase 6b — Verified Continual Evolution
+
+**Depends on:** Phases 5b and 6a  
+**Create:** `src/core/evolution/**`, candidate store, sandbox runner, approval/version/rollback contracts.  
+**DONE when:** raw traces cannot self-activate; a candidate can be proposed, tested, approved, scoped, and rolled back.
+
+### Phase 6c — Bounded Multi-Role Collaboration
+
+**Depends on:** Phases 3a, 4b, 6a, and 6b  
+**Create:** `src/core/collaboration/**`, typed role policies and handoffs, collaboration coordinator, trace integration, and baseline evaluation fixtures.  
+**DONE when:** roles, tools, contexts, budgets, permissions, handoffs, independent review, failure fallback, and single-agent baseline gates pass. Full requirements are in §32.
+
+### Phase 7a — Multimodal Input Foundation
+
+**Depends on:** Phase 7 and Phase 4b  
+**Create:** `src/core/multimodal/**`, image input UI, voice transcription input, provider capability gates, modality fixtures.  
+**DONE when:** image/audio inputs become redacted ContextItems, unsupported providers fail safely, and abort works.
+
+### Phase 8a — Tool Governance and Active Discovery
+
+**Depends on:** Phase 8 and Phase 3a  
+**Create/modify:** `ToolCapabilityManifest`, risk matrix, verifier registry, result shaping, idempotency, active tool discovery.  
+**DONE when:** manifests are complete, risky writes require confirmation, duplicate writes are prevented, and discovery stays within token budget.
+
+### Phase 9 — Hardening and Release (expanded)
+
+In addition to all existing Phase 9 gates:
+
+- run every new sub-phase verification command;
+- block prompt-injection, secret-leakage, false-completion, permission, and memory-isolation regressions;
+- run multimodal privacy/provider fixtures;
+- run candidate activation/rollback drills;
+- include evaluation-suite and rubric versions in release records.
+
+## §31 — Additional Types, Error Codes, Verification & Security (Harness Tracks)
+
+### §31.1 New canonical types
+
+The full shapes are defined in `NOWPILOT_ADDITIONAL_REQUIREMENTS_AGENT_HARNESS.md`. Add them to Appendix C when implementing their target sub-phase:
+
+- `AgentTrajectoryState`
+- `CompletionEvidence`
+- `AgentTurnOutcome`
+- `ContextItem`
+- `ContextReceiptEntry`
+- `MemoryRecord`
+- `ProceduralExperience`
+- `KnowledgeEdgeSource`
+- `ToolCapabilityManifest`
+- `FailureLayer`
+- `EvolutionCandidate`
+- `ModalityInput`
+- `ModalityObservation`
+- `CollaborationRole`
+- `RolePolicy`
+- `CollaborationPlan`
+- `AgentHandoffArtifact`
+- `CollaborationOutcome`
+
+### §31.2 New error codes
+
+```text
+AGENT_STATE_INVALID
+TOOL_POSTCONDITION_FAILED
+COMPLETION_EVIDENCE_MISSING
+CONTEXT_INSTRUCTION_INJECTION_BLOCKED
+MEMORY_CONFLICT
+MEMORY_EXPIRED
+TOOL_MANIFEST_INVALID
+TOOL_IDEMPOTENCY_CONFLICT
+EVALUATION_FAILED
+EVOLUTION_CANDIDATE_REJECTED
+MULTIMODAL_MODEL_UNAVAILABLE
+MULTIMODAL_INPUT_INVALID
+MULTIMODAL_TRANSCRIPTION_FAILED
+COLLAB_DISABLED
+COLLAB_PLAN_INVALID
+COLLAB_ROLE_UNKNOWN
+COLLAB_ROLE_BUDGET_EXCEEDED
+COLLAB_TOTAL_BUDGET_EXCEEDED
+COLLAB_HANDOFF_INVALID
+COLLAB_TOOL_SCOPE_VIOLATION
+COLLAB_PERMISSION_VIOLATION
+COLLAB_REVIEW_REJECTED
+COLLAB_BASELINE_NOT_MET
+COLLAB_DEADLINE_EXCEEDED
+```
+
+### §31.3 New verification scripts
+
+```json
+{
+  "verify:phase-3a": "tsc --noEmit && vitest run tests/core/ai/trajectory tests/core/ai/OutcomeVerifier.test.ts",
+  "verify:phase-4b": "tsc --noEmit && vitest run tests/core/context/trust tests/security/prompt-injection",
+  "verify:phase-5b": "tsc --noEmit && vitest run tests/core/memory/governance tests/core/knowledge/provenance",
+  "verify:phase-6a": "tsc --noEmit && vitest run tests/evals",
+  "verify:phase-6b": "tsc --noEmit && vitest run tests/core/evolution",
+  "verify:phase-6c": "tsc --noEmit && vitest run tests/core/collaboration tests/evals/collaboration tests/security/collaboration-permissions.test.ts",
+  "verify:phase-7a": "tsc --noEmit && vitest run tests/core/multimodal tests/components/multimodal",
+  "verify:phase-8a": "tsc --noEmit && vitest run tests/core/tools/governance tests/core/tools/discovery"
+}
+```
+
+`verify:all` must include every existing and new suite.
+
+### §31.4 New hard rules
+
+- **DO NOT** claim a side effect completed without `CompletionEvidence`.
+- **DO NOT** treat retrieved data as instructions.
+- **DO NOT** write raw traces directly into procedural memory.
+- **DO NOT** activate an evolution candidate without evaluation and approval.
+- **DO NOT** persist raw image/audio data in diagnostics.
+- **DO NOT** execute tools from partial voice transcription.
+- **DO NOT** infer that APC-lite enables browser automation.
+- **DO NOT** allow open-ended agent-to-agent conversations or dynamic unbounded spawning.
+- **DO NOT** let worker roles grant permissions, execute side effects, or write durable memory directly.
+- **DO NOT** treat agreement among agents as evidence or verification.
+
+### §31.5 Source study
+
+- [AI Agent Fundamentals](https://bojieli.github.io/ai-agent-book/book-en/chapter1/)
+- [Context Engineering](https://bojieli.github.io/ai-agent-book/book-en/chapter2/)
+- [User Memory and Knowledge](https://bojieli.github.io/ai-agent-book/book-en/chapter3/)
+- [Tools](https://bojieli.github.io/ai-agent-book/book-en/chapter4/)
+- [Evaluating Agents](https://bojieli.github.io/ai-agent-book/book-en/chapter6/)
+- [Continual Evolution of Agent](https://bojieli.github.io/ai-agent-book/book-en/chapter8/)
+- [Multimodality and Real-Time Interaction](https://bojieli.github.io/ai-agent-book/book-en/chapter9/)
+- [Multi-Agent Collaboration](https://bojieli.github.io/ai-agent-book/book-en/chapter10/)
+
+## §32 — Bounded Multi-Agent Collaboration
+
+### §32.1 Product decision
+
+NowPilot may use specialised multi-agent collaboration for selected complex workflows, but v0.1 does not become an open-ended multi-agent platform. The initial architecture is one `CollaborationCoordinator` running bounded staged roles with shared verified task state and typed handoffs. Isolated parallel workers are deferred.
+
+Routine chat, summarisation, rewriting, and simple retrieval remain on the existing single-agent path.
+
+### §32.2 Requirements
+
+- **COLLAB-01 (P1):** Collaboration requires explicit user/workflow activation or an allowed deterministic complexity policy. Planner recommendation alone cannot silently enable it.
+- **COLLAB-02 (P1):** Roles come from a closed `CollaborationRoleRegistry`; each has a role-specific prompt, tool allowlist, context projection, budget, and timeout.
+- **COLLAB-03 (P1):** `CollaborationPlan` defines stages, dependencies, roles, total planner/tool/token caps, and deadline.
+- **COLLAB-04 (P1):** Roles exchange `AgentHandoffArtifact` values containing summaries, sourced facts, open questions, output references, and completion status. Hidden reasoning is never exchanged or logged.
+- **COLLAB-05 (P0 boundary):** One coordinator owns sequencing, permission requests, side-effect commits, and termination.
+- **COLLAB-06 (P0 boundary):** Workers cannot directly write memory/notes, execute side effects, export data, or activate evolution candidates.
+- **COLLAB-07 (P1):** High-impact output requires an independent reviewer that did not create the candidate result.
+- **COLLAB-08 (P1):** Role failures are contained and may trigger one safe retry, substitution, reduced-confidence continuation, single-agent fallback, or termination.
+- **COLLAB-09 (P1):** Initial staged roles share one OptimizedContext through role-specific projections and typed artefacts; full trajectories are not duplicated across roles.
+- **COLLAB-10 (P1):** Collaboration traces record roles, policies, supplied sources, handoffs, tools, permissions, budgets, reviewer decision, evidence, and termination without raw prompts or hidden reasoning.
+- **COLLAB-11 (P1):** A collaborative workflow ships only after evaluation against the single-agent baseline and configured quality/cost/latency/safety gates.
+- **COLLAB-12 (P2):** Future isolated parallel workers are allowed only for independent sub-tasks and communicate through validated artefacts or referenced files.
+- **COLLAB-13 (P0 boundary):** Open-ended agent chat, dynamic unbounded spawning, peer-granted permissions, shared mutable worker memory, and agreement-as-verification are forbidden.
+
+### §32.3 Initial workflow candidates
+
+1. Complex ServiceNow case investigation.
+2. Deep multi-source research.
+3. High-value LLM-Wiki knowledge review.
+4. Verified evolution review.
+5. Specification → implementation → test → architecture review.
+
+### §32.4 Required types
+
+Add canonical Zod-validated types to Appendix C during Phase 6c:
+
+- `CollaborationRole`
+- `RolePolicy`
+- `CollaborationPlan`
+- `AgentHandoffArtifact`
+- `CollaborationOutcome`
+
+### §32.5 Phase 6c — Bounded Multi-Role Collaboration
+
+**Depends on:** Phases 3a, 4b, 6a, and 6b.  
+**Create:**
+
+```text
+src/core/collaboration/CollaborationRoleRegistry.ts
+src/core/collaboration/CollaborationPlan.ts
+src/core/collaboration/CollaborationCoordinator.ts
+src/core/collaboration/AgentHandoffArtifact.ts
+src/core/collaboration/CollaborationPolicy.ts
+src/core/collaboration/CollaborationTrace.ts
+```
+
+**Required tests:**
+
+```text
+tests/core/collaboration/CollaborationCoordinator.test.ts
+tests/core/collaboration/CollaborationPolicy.test.ts
+tests/core/collaboration/AgentHandoffArtifact.test.ts
+tests/evals/collaboration/SingleAgentBaseline.test.ts
+tests/security/collaboration-permissions.test.ts
+```
+
+**DONE when:**
+
+- only registered roles can run;
+- per-role and total budgets are enforced;
+- workers receive only allowed tools/context;
+- all handoffs validate and preserve source provenance;
+- one coordinator owns permissions and commits;
+- reviewer cannot approve unsupported claims;
+- failure/fallback paths are deterministic;
+- the first workflow passes its single-agent baseline gate;
+- `pnpm run verify:phase-6c` passes.
+
+### §32.6 Future Phase 8b — Isolated Parallel Workers
+
+Parallel worker execution is deferred until Phase 6c is stable and evaluated. It requires isolated contexts, bounded concurrency, cancellation, referenced artefacts, deterministic merge/review, and no shared mutable state. Agent-generated tool proposals remain a separate later capability and must not be combined with initial parallel-worker work.
+
+### §32.7 New error codes
+
+```text
+COLLAB_DISABLED
+COLLAB_PLAN_INVALID
+COLLAB_ROLE_UNKNOWN
+COLLAB_ROLE_BUDGET_EXCEEDED
+COLLAB_TOTAL_BUDGET_EXCEEDED
+COLLAB_HANDOFF_INVALID
+COLLAB_TOOL_SCOPE_VIOLATION
+COLLAB_PERMISSION_VIOLATION
+COLLAB_REVIEW_REJECTED
+COLLAB_BASELINE_NOT_MET
+COLLAB_DEADLINE_EXCEEDED
+```
+
+### §32.8 New verification command
+
+```json
+{
+  "verify:phase-6c": "tsc --noEmit && vitest run tests/core/collaboration tests/evals/collaboration tests/security/collaboration-permissions.test.ts"
+}
+```
+
+### §32.9 Source study
+
+- [Multi-Agent Collaboration](https://bojieli.github.io/ai-agent-book/book-en/chapter10/)
+
+---
 
 ## Appendix A — Canonical Prompt Constants
 
@@ -3448,9 +3924,9 @@ export const PROMPTS = {
     cacheable: false,
     tier: 'haiku',
   },
-  // --- Rev. B — LLM-Wiki (§27) ---
+  // --- LLM-Wiki (§27) ---
   noteTagger: {
-    system: 'Analyze the note title and content. Return JSON only: {tags:string[<=5], categoryPath:string|null, summary:string, memoryFacts:string[]}. categoryPath uses "/" separators and should reuse an existing path when suitable. Do not invent facts. Do not include secrets.',
+    system: 'Analyze the note title and content. Return JSON only: {tags:[{value:string,confidence:number}], categoryPath:string|null, summary:string, memoryFacts:[{content:string,confidence:number}]}. Each confidence is your own 0..1 estimate; the client discards items below its display threshold (LLM-WIKI-11). categoryPath uses "/" separators and should reuse an existing path when suitable. Do not invent facts. Do not include secrets.',
     cacheable: true,
     tier: 'haiku',
   },
@@ -3464,7 +3940,7 @@ export const PROMPTS = {
     cacheable: true,
     tier: 'haiku',
   },
-  // --- Rev. B — RICH (§17.7) ---
+  // --- RICH (§17.7) ---
   clarify: {
     system: 'The user request is ambiguous. Ask ONE focused clarifying question, then list 2-4 concrete options. Return JSON only: {question:string, options:string[]}. Do not answer the request yet.',
     cacheable: true,
@@ -3478,7 +3954,7 @@ export const PROMPTS = {
 } as const;
 ```
 
-> **Rev. B note:** the persona block (RICH-R-02) is prepended to the `planner`, `renderer`, `memoryExtractor`, `noteTagger`, `noteQA`, and `noteChatConvert` system strings by `PersonaInjector.inject()` at request time. Do **not** hard-code persona text into these constants — keep them byte-stable for prompt caching (§1.3).
+> **Note:** the persona block (RICH-R-02) is prepended to the `planner`, `renderer`, `memoryExtractor`, `noteTagger`, `noteQA`, and `noteChatConvert` system strings by `PersonaInjector.inject()` at request time. Do **not** hard-code persona text into these constants — keep them byte-stable for prompt caching (§1.3).
 
 ## Appendix B — Canonical User Strings
 
@@ -3521,7 +3997,7 @@ export const STR = {
     loading: 'Loading notes...',
     empty: 'No notes yet. Press + to create one.',
     loadFailed: 'Failed to load notes. [Retry]',
-    // --- Rev. B — LLM-Wiki (§27) ---
+    // --- LLM-Wiki (§27) ---
     askPlaceholder: 'Ask a question about your notes',
     askLoading: 'Searching your notes...',
     askEmpty: 'No relevant notes found. Try rephrasing.',
@@ -3542,18 +4018,18 @@ export const STR = {
     loading: 'Preparing agent...',
     empty: 'Describe a task and the agent will plan steps',
     error: 'Agent error: [message]. [Retry]',
-    working: 'NowPilot is working...',           // Rev. B — RICH-H-03
+    working: 'NowPilot is working...',           // RICH-H-03
   },
-  fullApp: {
-    openTitle: 'Open Full App',
-    opening: 'Opening full app...',
-    openFailed: 'Failed to open Full App tab',
+  standalone: {
+    openTitle: 'Open Standalone view',
+    opening: 'Opening standalone view...',
+    openFailed: 'Failed to open Standalone view',
     minWidth: 'This view is optimized for wider screens; open the side panel for narrow layouts.',
   },
   workspace: {
-    handoffPending: 'Opening workspace in full app...',
-    handoffComplete: 'Workspace opened in full app.',
-    mirroringNotice: 'Full App is now the primary surface for this workspace.',
+    handoffPending: 'Opening workspace in standalone view...',
+    handoffComplete: 'Workspace opened in standalone view.',
+    mirroringNotice: 'Standalone view is now the primary surface for this workspace.',
     electionFailed: 'Could not coordinate between surfaces. Reload to retry.',
   },
   options: {
@@ -3567,11 +4043,11 @@ export const STR = {
     importExport: 'Import / Export',
     featureFlags: 'Feature Flags',
     addonSettings: 'Add-on Settings',
-    persona: 'Persona',           // Rev. B
-    notes: 'Notes',               // Rev. B
+    persona: 'Persona',           //
+    notes: 'Notes',               //
     about: 'About',
   },
-  // --- Rev. B — RICH (§17.7) ---
+  // --- RICH (§17.7) ---
   rich: {
     personaTagline: 'NowPilot — Your ServiceNow support co-pilot',
     welcomeTitle: 'What can I help you with?',
@@ -3598,8 +4074,8 @@ export interface RuntimeEnvelope<T = unknown> {
   id: string;
   type: MessageTypeValue;
   createdAt: number;
-  source: 'sidepanel' | 'background' | 'content' | 'addon' | 'full-app';
-  target?: 'sidepanel' | 'background' | 'content' | 'addon' | 'full-app';
+  source: 'sidepanel' | 'background' | 'content' | 'addon' | 'standalone';
+  target?: 'sidepanel' | 'background' | 'content' | 'addon' | 'standalone';
   payload: T;
 }
 export type ResponseEnvelope<T = unknown> =
@@ -3609,7 +4085,7 @@ export type ResponseEnvelope<T = unknown> =
 
 ```ts
 // src/core/ai/types.ts
-export type ProviderId = 'openai' | 'anthropic' | 'gemini' | 'ollama' | 'openai-compatible';
+export type ProviderId = 'openai' | 'anthropic' | 'gemini' | 'ollama';
 export interface ContentBlock {
   type: 'text' | 'image' | 'tool_use' | 'tool_result';
   text?: string;
@@ -3797,7 +4273,7 @@ export interface Macro {
 // src/core/input/KeymapRegistry.ts
 export interface KeymapRegistration {
   id: string;
-  when?: 'always' | 'in-composer' | 'in-note' | 'in-side-panel' | 'in-full-app';
+  when?: 'always' | 'in-composer' | 'in-note' | 'in-side-panel' | 'in-standalone';
   combo: string;
   description: string;
   handlerId: string;
@@ -3814,8 +4290,8 @@ export interface SidePanelPageRegistration {
   component: React.ComponentType;
   order: number;
 }
-// src/core/registry/FullAppPageRegistry.ts   [NEW]
-export interface FullAppPageRegistration {
+// src/core/registry/StandalonePageRegistry.ts
+export interface StandalonePageRegistration {
   id: string;
   label: string;
   icon: string;
@@ -3828,8 +4304,8 @@ export interface FullAppPageRegistration {
 ```
 
 ```ts
-// src/core/workspace/WorkspaceStore.ts   [NEW]
-export type ActiveSurface = 'sidepanel' | 'full-app';
+// src/core/workspace/WorkspaceStore.ts
+export type ActiveSurface = 'sidepanel' | 'standalone';
 export interface WorkspaceState {
   workspaceId: string;
   conversationId: string;
@@ -3850,7 +4326,7 @@ export interface WorkspaceState {
     status: 'running' | 'completed' | 'failed' | 'aborted';
   };
   activeSurface: ActiveSurface;
-  openedFullAppTabId?: number;
+  openedStandaloneTabId?: number;
   version: number;
   updatedAt: number;
 }
@@ -3866,8 +4342,8 @@ export interface FeatureFlags {
   serviceNowAddon: boolean;
   writeAddon: boolean;
   teamGqmAddon: boolean;
-  llmWiki: boolean;          // NEW Rev. B — master toggle for §27 LLM features
-  filesystemSync: boolean;   // NEW Rev. B — master toggle for §27 backup/restore
+  llmWiki: boolean; — master toggle for §27 LLM features
+  filesystemSync: boolean; — master toggle for §27 backup/restore
 }
 ```
 
@@ -3900,9 +4376,10 @@ export interface UserPreferences {
   allowCloudFallbackFromLocal: boolean;
   defaultProviderId?: ProviderId;
   toolAutonomy: 'ask_every_time' | 'allow_safe_tools' | 'manual_only';
-  defaultSurface: 'sidepanel' | 'full-app';
-  themeMode: 'light' | 'dark' | 'auto';
-  // --- Rev. B — RICH persona (reconciliation R2: user config, NOT a fact) ---
+  defaultSurface: 'sidepanel' | 'standalone';
+  // theme is NOT here — display mode (np_theme) + theme pack (np_theme_pack) are the
+  // single source of truth in chrome.storage.sync (§17.1a, §15.1, Appendix F).
+  // --- RICH persona (reconciliation R2: user config, NOT a fact) ---
   personaId?: string;
   personaOverrides?: {
     name?: string;
@@ -4004,7 +4481,7 @@ export interface IExtractionStrategy {
 ```
 
 ```ts
-// src/types/addon.ts   [UPDATED — replaces v0.1c IContentAddon]
+// src/types/addon.ts
 export interface Addon {
   id: string;
   name: string;
@@ -4013,15 +4490,15 @@ export interface Addon {
   contextExtractor?: IContextExtractor;
   skills?: ISkill[];
   prompts?: PromptTemplate[];
-  sidePanelPages?: SidePanelPageRegistration[];   // [UPDATED]
-  fullAppPages?: FullAppPageRegistration[];       // [NEW]
+  sidePanelPages?: SidePanelPageRegistration[];   //
+  standalonePages?: StandalonePageRegistration[];       //
   addonSettings?: z.ZodSchema<unknown>;
   keymap?: KeymapRegistration[];
 }
 ```
 
 ```ts
-// src/types/notes.ts   [NEW Rev. B — §27 / §21.2]
+// src/types/notes.ts
 export interface Note {
   id: string;
   title: string;
@@ -4042,13 +4519,35 @@ export interface Note {
   tagsGeneratedAt?: number;
   version: number;
 }
+// Suggestion-gating constants (LLM-WIKI-11). Items below the threshold are never
+// surfaced; the caps bound how many gated items are shown per save.
+export const NOTE_SUGGESTION_DISPLAY_THRESHOLD = 0.60;   // confidence floor for surfacing
+export const NOTE_SUGGESTION_MAX_FACTS_PER_SAVE = 3;     // max memoryFacts shown per save
+export const NOTE_SUGGESTION_MAX_TAGS_PER_SAVE  = 5;     // max suggested tags shown per save
+
+const ConfidentTag  = z.object({ value: z.string(), confidence: z.number().min(0).max(1) });
+const ConfidentFact = z.object({ content: z.string(), confidence: z.number().min(0).max(1) });
+
 export const NoteTagResultSchema = z.object({
-  tags: z.array(z.string()).max(5),
+  // Each suggested tag/fact carries a self-reported confidence so LLM-WIKI-11 can gate it.
+  tags: z.array(ConfidentTag).max(10),          // pre-gating; UI applies threshold + max-5 cap
   categoryPath: z.string().nullable(),
   summary: z.string(),
-  memoryFacts: z.array(z.string()).default([]),
+  memoryFacts: z.array(ConfidentFact).max(10).default([]), // pre-gating; UI applies threshold + max-3 cap
 });
 export type NoteTagResult = z.infer<typeof NoteTagResultSchema>;
+
+/** Apply LLM-WIKI-11 gating: drop below-threshold items, cap, sort by confidence desc. */
+export function gateSuggestions(r: NoteTagResult): { tags: string[]; memoryFacts: string[] } {
+  const pick = <T extends { confidence: number }>(arr: T[], cap: number) =>
+    arr.filter(x => x.confidence >= NOTE_SUGGESTION_DISPLAY_THRESHOLD)
+       .sort((a, b) => b.confidence - a.confidence)
+       .slice(0, cap);
+  return {
+    tags: pick(r.tags, NOTE_SUGGESTION_MAX_TAGS_PER_SAVE).map(t => t.value),
+    memoryFacts: pick(r.memoryFacts, NOTE_SUGGESTION_MAX_FACTS_PER_SAVE).map(f => f.content),
+  };
+}
 export const NoteQAResultSchema = z.object({
   answer: z.string(),
   citations: z.array(z.object({ noteId: z.string(), title: z.string(), snippet: z.string() })),
@@ -4070,7 +4569,7 @@ export type NoteSyncState =
 ```
 
 ```ts
-// src/types/persona.ts   [NEW Rev. B — §17.7 / §21.6]
+// src/types/persona.ts
 import { z } from 'zod';
 export const PersonaProfileSchema = z.object({
   id: z.string().min(1),
@@ -4104,13 +4603,13 @@ export interface TierCandidate {
 export const TIER_TO_MODEL_CANDIDATES: Record<ModelTier, TierCandidate[]> = {
   haiku: [
     { providerId: 'anthropic',         model: 'claude-haiku-4-latest' },
-    { providerId: 'openai-compatible', model: 'deepseek-chat' },
+    { providerId: 'openai',            model: 'deepseek-chat' },
     { providerId: 'ollama',            model: 'llama3.2:3b' },
   ],
   flash: [
     { providerId: 'gemini',            model: 'gemini-2.5-flash' },
     { providerId: 'anthropic',         model: 'claude-haiku-4-latest' },
-    { providerId: 'openai-compatible', model: 'deepseek-chat' },
+    { providerId: 'openai',            model: 'deepseek-chat' },
     { providerId: 'ollama',            model: 'qwen2.5:7b' },
   ],
 } as const;
@@ -4126,7 +4625,7 @@ export interface TierResolveResult {
 }
 export function resolveTier(input: TierResolveInput): TierResolveResult | null {
   const candidates = TIER_TO_MODEL_CANDIDATES[input.tier].filter(c => {
-    if (input.privacyMode === 'local-only') return c.providerId === 'ollama' || c.providerId === 'openai-compatible';
+    if (input.privacyMode === 'local-only') return c.providerId === 'ollama';
     return true;
   });
   const enabled = input.configuredProviders.filter(p => p.enabled).sort((a, b) => a.priority - b.priority);
@@ -4145,7 +4644,7 @@ Rules:
 - The resolver never invents a model name.
 - If no candidate matches, callers must handle null.
 - Planner/Renderer must call resolveTier at request time.
-- **Rev. B:** NoteTagger and NoteChatConverter resolve the `haiku` tier; NoteQA resolves the `flash` tier (§27, D-07).
+- **Note:** NoteTagger and NoteChatConverter resolve the `haiku` tier; NoteQA resolves the `flash` tier (§27, D-07).
 
 ## Appendix E — MessageType Registry and Port Protocol
 
@@ -4155,7 +4654,7 @@ export const MessageType = {
   PROXY_FETCH:          'PROXY_FETCH',
   EXTRACT_PAGE_CONTENT: 'EXTRACT_PAGE_CONTENT',
   OPEN_SIDE_PANEL:      'OPEN_SIDE_PANEL',
-  OPEN_FULL_APP:        'OPEN_FULL_APP',           // [NEW]
+  OPEN_STANDALONE:        'OPEN_STANDALONE',           //
   SESSION_TOKEN_UPDATE: 'SESSION_TOKEN_UPDATE',
   BACKGROUND_STATE:     'BACKGROUND_STATE',
   KEEPALIVE_PING:       'KEEPALIVE_PING',
@@ -4164,15 +4663,15 @@ export const MessageType = {
   PORT_STREAM_END:      'PORT_STREAM_END',
   PORT_STREAM_ABORT:    'PORT_STREAM_ABORT',
   ADDON_EVENT:          'ADDON_EVENT',
-  WORKSPACE_HANDOFF:    'WORKSPACE_HANDOFF',       // [NEW]
-  WORKSPACE_UPDATED:    'WORKSPACE_UPDATED',       // [NEW]
-  WORKSPACE_HEARTBEAT:  'WORKSPACE_HEARTBEAT',     // [NEW]
+  WORKSPACE_HANDOFF:    'WORKSPACE_HANDOFF',       //
+  WORKSPACE_UPDATED:    'WORKSPACE_UPDATED',       //
+  WORKSPACE_HEARTBEAT:  'WORKSPACE_HEARTBEAT',     //
 } as const;
 export type MessageTypeValue = typeof MessageType[keyof typeof MessageType];
 export const MessageTypeValues = Object.values(MessageType) as MessageTypeValue[];
 ```
 
-> **Rev. B note:** LLM-Wiki filesystem sync (§27) is **Full-App-local** — it does not add any new cross-context message type. Note capture reuses `EXTRACT_PAGE_CONTENT`. Persona is read locally from PreferenceMemoryStore; no new message type.
+> **Note:** LLM-Wiki filesystem sync (§27) is **Standalone-local** — it does not add any new cross-context message type. Note capture reuses `EXTRACT_PAGE_CONTENT`. Persona is read locally from PreferenceMemoryStore; no new message type.
 
 ### Response Envelope
 
@@ -4242,10 +4741,13 @@ This appendix uses Ant Design v6 tokens exclusively (consumed by both ConfigProv
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 export type ThemeMode = 'light' | 'dark' | 'auto';
+export type ThemePack = 'default' | 'liquid-glass' | 'claude-warm';   // §17.1a APPR-06
 export interface ThemeState {
   mode: ThemeMode;
+  pack: ThemePack;                 // theme pack (np_theme_pack)
   effectiveDark: boolean;
   setMode(mode: ThemeMode): void;
+  setPack(pack: ThemePack): void;
   recomputeAuto(): void;
 }
 function resolveDark(mode: ThemeMode): boolean {
@@ -4254,16 +4756,20 @@ function resolveDark(mode: ThemeMode): boolean {
   return typeof window !== 'undefined'
     && window.matchMedia('(prefers-color-scheme: dark)').matches;
 }
+// Persisted to chrome.storage.sync (np_theme + np_theme_pack) via a chrome.storage
+// adapter so BOTH surfaces stay in sync through chrome.storage.onChanged (§17.1a APPR).
 export const useThemeStore = create<ThemeState>()(persist(
   (set, get) => ({
     mode: 'auto',
+    pack: 'default',
     effectiveDark: resolveDark('auto'),
     setMode: (mode) => set({ mode, effectiveDark: resolveDark(mode) }),
+    setPack: (pack) => set({ pack }),
     recomputeAuto: () => {
       if (get().mode === 'auto') set({ effectiveDark: resolveDark('auto') });
     },
   }),
-  { name: 'np_theme' }
+  { name: 'np_theme' }   // key group; mode → np_theme, pack → np_theme_pack
 ));
 if (typeof window !== 'undefined' && window.matchMedia) {
   window.matchMedia('(prefers-color-scheme: dark)')
@@ -4277,10 +4783,19 @@ if (typeof window !== 'undefined' && window.matchMedia) {
 // src/core/theme/antdConfig.ts
 import { theme, type ConfigProviderProps } from 'antd';
 import enUS from 'antd/locale/en_US';
+export type ThemePack = 'default' | 'liquid-glass' | 'claude-warm';
 export interface AntdConfigOptions {
   mode: 'light' | 'dark' | 'auto';
+  pack: ThemePack;              // §17.1a APPR-06 — user-facing theme pack (np_theme_pack)
   compact: boolean;
 }
+// Pack token overlays merged on top of the seed tokens. Visual definitions live
+// in DESIGN_SYSTEM.md §6.4; the spec owns only the token wiring.
+const PACK_TOKEN_OVERLAY: Record<ThemePack, Record<string, unknown>> = {
+  'default':      {},
+  'liquid-glass': { colorBgContainer: 'rgba(255,255,255,0.68)' }, // + backdrop-filter via CSS layer; solid fallback required
+  'claude-warm':  { colorBgBase: '#FAF7F2' },
+};
 export function getAntdConfig(opts: AntdConfigOptions): ConfigProviderProps {
   const isDark = opts.mode === 'dark'
     || (opts.mode === 'auto' && typeof window !== 'undefined'
@@ -4289,6 +4804,7 @@ export function getAntdConfig(opts: AntdConfigOptions): ConfigProviderProps {
     isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
     ...(opts.compact ? [theme.compactAlgorithm] : []),
   ];
+  const packToken = PACK_TOKEN_OVERLAY[opts.pack] ?? {};
   return {
     locale: enUS,
     theme: {
@@ -4303,6 +4819,7 @@ export function getAntdConfig(opts: AntdConfigOptions): ConfigProviderProps {
         fontFamily: `-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`,
         fontSize: opts.compact ? 13 : 14,
         controlHeight: opts.compact ? 30 : 32,
+        ...packToken,                         // §17.1a APPR-06 pack overlay (last-wins)
       },
       components: {
         Layout: {
@@ -4346,38 +4863,42 @@ export function getAntdConfig(opts: AntdConfigOptions): ConfigProviderProps {
 ```ts
 // src/entrypoints/sidepanel/main.tsx
 import { createRoot } from 'react-dom/client';
-import { ConfigProvider, App as AntdApp } from 'antd';
+import { App as AntdApp } from 'antd';
+import { XProvider } from '@ant-design/x';
 import { getAntdConfig } from '@/core/theme/antdConfig';
 import { useThemeStore } from '@/core/theme/ThemeStore';
 import { SidePanelShell } from '@/components/sidepanel/SidePanelShell';
 function Root() {
-  const mode = useThemeStore(s => s.mode);
+  const { mode, pack } = useThemeStore(s => ({ mode: s.mode, pack: s.pack }));
+  const cfg = getAntdConfig({ mode, pack, compact: true });   // returns ConfigProviderProps (theme + locale)
   return (
-    <ConfigProvider {...getAntdConfig({ mode, compact: true })}>
+    <XProvider {...cfg}>                                 {/* XProvider ⊃ ConfigProvider — mount ONE provider */}
       <AntdApp>
         <SidePanelShell />
       </AntdApp>
-    </ConfigProvider>
+    </XProvider>
   );
 }
 createRoot(document.getElementById('root')!).render(<Root />);
 ```
 
 ```ts
-// src/entrypoints/app/main.tsx
+// src/entrypoints/standalone/main.tsx
 import { createRoot } from 'react-dom/client';
-import { ConfigProvider, App as AntdApp } from 'antd';
+import { App as AntdApp } from 'antd';
+import { XProvider } from '@ant-design/x';
 import { getAntdConfig } from '@/core/theme/antdConfig';
 import { useThemeStore } from '@/core/theme/ThemeStore';
-import { AppShell } from '@/components/app/AppShell';
+import { StandaloneShell } from '@/components/standalone/StandaloneShell';
 function Root() {
-  const mode = useThemeStore(s => s.mode);
+  const { mode, pack } = useThemeStore(s => ({ mode: s.mode, pack: s.pack }));
+  const cfg = getAntdConfig({ mode, pack, compact: false });  // returns ConfigProviderProps (theme + locale)
   return (
-    <ConfigProvider {...getAntdConfig({ mode, compact: false })}>
+    <XProvider {...cfg}>                                 {/* XProvider ⊃ ConfigProvider — mount ONE provider */}
       <AntdApp>
-        <AppShell />
+        <StandaloneShell />
       </AntdApp>
-    </ConfigProvider>
+    </XProvider>
   );
 }
 createRoot(document.getElementById('root')!).render(<Root />);
@@ -4418,15 +4939,17 @@ export default defineConfig({
   modules: ['@wxt-dev/module-react'],
   manifest: {
     name: 'NowPilot',
-    description: 'AI-native Chrome Side Panel + Full App assistant',
+    description: 'AI-native Chrome Side Panel + Standalone view assistant',
     permissions: [
       'sidePanel','storage','cookies','alarms','tabs',
-      'scripting','contextMenus','notifications','declarativeNetRequest',
+      'scripting','contextMenus','notifications',
     ],
+    optional_permissions: ['webNavigation'],
     host_permissions: [
       '*://*.service-now.com/*',
       '*://support.servicenow.com/*',
     ],
+    optional_host_permissions: ['*://*/*'],   // webhooks + user MCP hosts, granted on demand
     side_panel: { default_path: 'sidepanel.html' },
     action:     { default_title: 'Open NowPilot' },
     content_security_policy: {
@@ -4447,8 +4970,8 @@ export default defineConfig({
             if (id.includes('node_modules/@ant-design/x-markdown')) return 'antd-x-markdown';
             if (id.includes('node_modules/@ant-design/x')) return 'antd-x';
             if (id.includes('node_modules/@ant-design')) return 'ant-icons';
-            if (id.includes('node_modules/defuddle')) return 'defuddle';   // NEW Rev. B — keep out of content bundle
-            if (id.includes('node_modules/yaml')) return 'yaml';           // NEW Rev. B — keep out of content bundle
+            if (id.includes('node_modules/defuddle')) return 'defuddle'; — keep out of content bundle
+            if (id.includes('node_modules/yaml')) return 'yaml'; — keep out of content bundle
             if (id.includes('node_modules/react')) return 'react';
           },
         },
@@ -4462,7 +4985,7 @@ Rules:
 
 - target: 'chrome120' matches the minimum supported Chrome for chrome.sidePanel.open. AntD v6 requires React ≥18 (this project uses React 19) and uses CSS-variable theming by default.
 - No @tailwindcss/vite plugin.
-- The content-script bundle MUST NOT include antd, @ant-design/x, @ant-design/x-markdown, react, react-dom, **defuddle, or yaml (Rev. B)**. Enforced by tests/isolation/no-content-script-ui.test.ts.
+- The content-script bundle MUST NOT include antd, @ant-design/x, @ant-design/x-markdown, react, react-dom, **defuddle, or yaml**. Enforced by tests/isolation/no-content-script-ui.test.ts.
 
 ## Appendix H — Reserved
 
@@ -4551,7 +5074,7 @@ Rules:
 - AgentOrchestrator is the only module allowed to enforce tier caps in §1.4.
 - No component or hook may call PlannerService directly.
 - The AbortSignal is passed through unchanged to every downstream service.
-- **Rev. B:** when the reasonCode is `ask_clarification`, the UI layer renders RICH-C-01 clarification chips (§17.7); the follow-up chips (RICH-C-05) are produced by a separate non-blocking suggestion call, never inside this loop.
+- **Note:** when the reasonCode is `ask_clarification`, the UI layer renders RICH-C-01 clarification chips (§17.7); the follow-up chips (RICH-C-05) are produced by a separate non-blocking suggestion call, never inside this loop.
 
 ## Appendix J — Streaming Kit
 
@@ -4726,7 +5249,6 @@ export function applyCacheHints(providerId: ProviderId, sections: PromptSection[
       };
     }
     case 'openai':
-    case 'openai-compatible':
     case 'ollama':
     default: {
       const ordered = [...sections].sort(stableFirst);
@@ -4758,7 +5280,7 @@ Rules:
 - Only stable sections are eligible for cache hints.
 - cacheKeyHash is recorded in PromptTrace.promptCache.cacheKey (§4.3).
 - Below the Gemini 32,768-token minimum, fall back to prefix-only.
-- **Rev. B:** the persona block sits in the stable `[SYSTEM]` section and is therefore cache-eligible; keep it byte-stable per persona (§1.3).
+- **Note:** the persona block sits in the stable `[SYSTEM]` section and is therefore cache-eligible; keep it byte-stable per persona (§1.3).
 
 ## Appendix L — Structured Output Repair Loop
 
@@ -4832,7 +5354,7 @@ Rules:
 - Exactly one repair attempt. Further failures throw STRUCTURED_OUTPUT_FAILED.
 - PROMPTS.repairJson.system (Appendix A) is canonical. Do not paraphrase.
 - The provider adapter must set the provider's JSON mode flag natively.
-- **Rev. B:** NoteTagResultSchema, NoteQAResultSchema, NoteDraftSchema (Appendix C) and the RICH `clarify`/`followUpSuggest` outputs all use this loop.
+- **Note:** NoteTagResultSchema, NoteQAResultSchema, NoteDraftSchema (Appendix C) and the RICH `clarify`/`followUpSuggest` outputs all use this loop.
 
 ## Appendix M — WorkspaceStore Reference
 
@@ -4894,29 +5416,29 @@ export const useWorkspaceStore = create<WorkspaceStoreShape>()(
 );
 ```
 
-### M.2 WorkspaceRouter — Open Full App
+### M.2 WorkspaceRouter — Open Standalone view
 
 ```ts
 // src/core/workspace/WorkspaceRouter.ts
 import { useWorkspaceStore } from './WorkspaceStore';
 export const WorkspaceRouter = {
-  async openFullApp(opts?: { page?: string }): Promise<void> {
+  async openStandalone(opts?: { page?: string }): Promise<void> {
     const store = useWorkspaceStore.getState();
     await store.persist();
     const state = store.state;
-    const url = new URL(chrome.runtime.getURL('app.html'));
+    const url = new URL(chrome.runtime.getURL('standalone.html'));
     url.searchParams.set('workspaceId', state.workspaceId);
     url.searchParams.set('conversationId', state.conversationId);
     if (opts?.page) url.searchParams.set('page', opts.page);
-    const existing = await chrome.tabs.query({ url: chrome.runtime.getURL('app.html') + '*' });
+    const existing = await chrome.tabs.query({ url: chrome.runtime.getURL('standalone.html') + '*' });
     const currentWindow = await chrome.windows.getCurrent();
     const inCurrent = existing.find(t => t.windowId === currentWindow.id);
     if (inCurrent && inCurrent.id !== undefined) {
       await chrome.tabs.update(inCurrent.id, { active: true, url: url.toString() });
-      store.setState({ openedFullAppTabId: inCurrent.id });
+      store.setState({ openedStandaloneTabId: inCurrent.id });
     } else {
       const created = await chrome.tabs.create({ url: url.toString() });
-      if (created.id !== undefined) store.setState({ openedFullAppTabId: created.id });
+      if (created.id !== undefined) store.setState({ openedStandaloneTabId: created.id });
     }
   },
   async focusSidePanel(): Promise<void> {
@@ -4937,7 +5459,7 @@ import { useWorkspaceStore } from './WorkspaceStore';
 import { BroadcastBus } from '@/core/runtime/BroadcastBus';
 import { MessageType } from '@/core/runtime/MessageType';
 const HEARTBEAT_MS = 3000;
-export function startWorkspaceSync(surface: 'sidepanel' | 'full-app') {
+export function startWorkspaceSync(surface: 'sidepanel' | 'standalone') {
   useWorkspaceStore.setState((s) => ({ state: { ...s.state, activeSurface: surface } }));
   BroadcastBus.on(MessageType.WORKSPACE_UPDATED, (payload) => {
     const remote = payload as { state: any; from: string };
@@ -4984,10 +5506,10 @@ Rules:
 - All mutations go through setState — do not set state directly on the store.
 - persist() is called automatically on every setState.
 - WORKSPACE_UPDATED messages carry the whole state; consumers apply last-write-wins by version.
-- WorkspaceRouter.openFullApp is idempotent by tab dedupe.
-- On Full App mount, always call hydrateFromURL() before rendering routes.
+- WorkspaceRouter.openStandalone is idempotent by tab dedupe.
+- On Standalone view mount, always call hydrateFromURL() before rendering routes.
 
-## Appendix N — Persona & Intent Reference Implementations (NEW in Rev. B)
+## Appendix N — Persona & Intent Reference Implementations
 
 ### N.1 PersonaProfile (RICH-R-01)
 
@@ -5109,4 +5631,6 @@ export function classifyIntent(rawUrl: string): QuickAction[] {
 }
 ```
 
-**End of NowPilot Product Specification v0.1 (Rev. B) — content-complete for cost-effective coding agents.**
+---
+
+**End of NowPilot Product Specification v0.1.**
