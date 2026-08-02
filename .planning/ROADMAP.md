@@ -18,7 +18,7 @@ NowPilot v0.1 is built in 19 phases following a knowledge-first data-flow: acqui
 - [x] **Phase 4: Context Optimization Pipeline** — ContextOptimizer, ContextCompressor, PromptCacheManager (completed 2026-07-31)
 - [x] **Phase 4a: Page Content Extraction** — PageContentService, Defuddle, APC-lite, MiniSearch page index (completed 2026-07-31)
 - [x] **Phase 4b: Trust-Aware Context & Receipts** — ContextItem contracts, prompt-injection isolation, context receipts, stable-prefix, progressive skill disclosure (Rev. C) (completed 2026-08-01)
-- [ ] **Phase 5: Knowledge Base** — Notes CRUD, wikilinks, note graph, Conversation/User/Preference memory, MiniSearch
+- [x] **Phase 5: Knowledge Base** — Notes CRUD, wikilinks, note graph, Conversation/User/Preference memory, MiniSearch (completed 2026-08-02)
 - [ ] **Phase 5a: LLM-Wiki & Filesystem Sync** — NoteTagger, NoteQA, NoteChatConverter, NoteFileSync, NoteMaintenance
 - [ ] **Phase 5b: Memory Governance & Experience Candidates** — Memory taxonomy, lifecycle, conflict resolution, user controls, procedural experience store (Rev. C)
 - [ ] **Phase 6: Telemetry & Diagnostics** — AITransactionLog, TraceRedactor, DiagnosticsPanel
@@ -469,7 +469,7 @@ Decimal phases execute after their parent integer phase: 3 → 3a → 4 → 4a �
 | 4. Context Optimization Pipeline | 3/3 | Completed | 2026-07-31 |
 | 4a. Page Content Extraction | 6/6 | Completed | 2026-07-31 |
 | 4b. Trust-Aware Context & Receipts | 6/6 | Complete    | 2026-08-01 |
-| 5. Knowledge Base | 3/3 | In Progress|  |
+| 5. Knowledge Base | 3/3 | Complete    | 2026-08-02 |
 | 5a. LLM-Wiki & Filesystem Sync | TBD | Not started | - |
 | 5b. Memory Governance & Experience Candidates | TBD | Not started | - |
 | 6. Telemetry & Diagnostics | TBD | Not started | - |
