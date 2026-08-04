@@ -1,0 +1,208 @@
+# Requirements: NowPilot v0.1
+
+**Defined:** 2026-08-04
+**Core Value:** A privacy-first, local-first AI assistant where chat, extracted page content, and a linked notes/knowledge layer combine into a persistent personal workspace — no data leaves the machine unless the user deliberately configures a cloud provider.
+
+> Derived from the canonical `.planning/PRODUCT_SPEC_v0_1.md`. The spec is the single authoritative reference; requirement namespaces follow spec sections (§9 features, §27 LLM-Wiki/CAT/LLM-WIKI/SYNC, §28 AGT/CTX/MEM/KNW/TOL/EVAL/EVO/PROP/MM/COLLAB). Each requirement maps to exactly one §18 phase.
+
+## v1 Requirements
+
+### Runtime & Shells (Phase 1)
+
+- [ ] **RUNTIME-01**: WXT MV3 extension builds with side panel, standalone view, background SW, and extraction-only content script entrypoints
+- [ ] **RUNTIME-02**: Side panel opens; first-run onboarding appears on fresh install
+- [ ] **RUNTIME-03**: Standalone view opens from side panel; workspace state hands off correctly (no duplicate tabs)
+- [ ] **RUNTIME-04**: AntD theme/design tokens applied via ThemeStore + antdConfig (compact for side panel, default for standalone)
+- [ ] **RUNTIME-05**: Chat, Agent, Notes, Options page skeletons render in both surfaces
+
+### Workspace (Phase 1)
+
+- [ ] **WSPC-01**: WorkspaceStore (Zustand) persists theme, conversation, and add-on state
+- [ ] **WSPC-02**: WorkspaceSync keeps side panel and standalone surfaces in sync via BroadcastBus
+- [ ] **WSPC-03**: MessageBus, EventBus, and BroadcastBus provide cross-context / in-panel / cross-surface communication
+- [ ] **WSPC-04**: AddonRegistry, Registry, AddonSettingsStore, and page registries register add-ons at startup
+- [ ] **WSPC-05**: ErrorBoundary, PortableMarkdown, and debugLog (canonical §C.2 codes) exist
+
+### Persistence & Storage (Phase 2)
+
+- [ ] **STORAGE-01**: IndexedDB stores (ChatHistoryDB, NotesDB, MemoryDB, ErrorStore) work via idb with strict typing
+- [ ] **STORAGE-02**: StorageLayer, StorageSession, and per-key permissions implemented
+- [ ] **STORAGE-03**: Encrypted vault (AES-GCM crypto.subtle) protects secrets/sensitive values
+- [ ] **STORAGE-04**: WriteJournal + WriteTransaction enable crash-safe, conflict-safe writes
+- [ ] **STORAGE-05**: Import/export (sanitized JSON/ZIP) and backup/restore function
+
+### AI Runtime & Cost (Phase 3)
+
+- [ ] **AI-01**: ProviderRegistry, ProviderRouter, and TierResolver support 'openai' | 'anthropic' | 'gemini' | 'ollama' with custom baseURL (OpenAI-compatible local)
+- [ ] **AI-02**: Planner→Executor→Renderer loop runs with Zod-validated PlannerDecision; Planner requests, Executor validates+runs tools
+- [ ] **AI-03**: Streaming works end-to-end (SSE + text via ChunkBuffer + React UI)
+- [ ] **AI-04**: Tier caps and monthly budget enforce cost guardrails (cheapest-capable routing)
+- [ ] **AI-05**: PersonaInjector and prompt pipeline ensure all AI calls consume an OptimizedContext
+- [ ] **AI-06**: RICH chat surfaces (Bubble, Sender, Prompts, Welcome, etc.) render streamed AI output
+- [ ] **AI-07**: MCP client (StreamableHTTP) + NowPilotMainServer (12 tools) + MCPRegistry work
+
+### Agent Reliability & Evidence (Phase 3a)
+
+- [ ] **AGT-01**: Agent-level token budget bounds a single agent run
+- [ ] **AGT-02**: CheckpointRecorder enables one-step rollback on failure
+- [ ] **AGT-03**: Side-effecting tools require CompletionEvidence (probe + path); cap exhaustion = `partial`, never `completed`
+- [ ] **AGT-04**: Replan path is bounded by tier caps and never nested
+- [ ] **AGT-05**: Commit-confirm barrier requires user confirmation before irreversible actions
+
+### Context-Adaptive Execution (Phase 4)
+
+- [ ] **CTX-01**: Context windows (small/medium/large) selectable with budget enforcement
+- [ ] **CTX-02**: ContextUpdate events trigger context-aware selection on rapid page/state change
+- [ ] **CTX-03**: Phase-aware prompting applies per-context-role guidance
+- [ ] **CTX-04**: OptimizedContext degrades gracefully per §2.4 without mid-structure truncation
+
+### PageContentService (Phase 4a)
+
+- [ ] **CAT-01**: Content scripts extract `{title, url, text, metadata}` via defuddle (readability fallback, turndown APC-lite)
+- [ ] **CAT-02**: SPANavigationWatcher + PageContextBridge deliver page context to side panel/standalone
+- [ ] **CAT-03**: TraceRedactor applied to DOM-embedded sensitive values
+- [ ] **CAT-04**: ISOLATED world by default; MAIN world only for domain-specific globals
+- [ ] **CAT-05**: Content bundle under 50KB; extraction is non-blocking
+
+### Trust-Aware Context (Phase 4b)
+
+- [ ] **TRUST-01**: Content classification labels page/note/memory/tool output as retrieved/untrusted with `instructionAuthority: false`
+- [ ] **TRUST-02**: XSS risk screening + prompt-injection quarantine before AI context use
+- [ ] **TRUST-03**: Content trust controls let the user decide which sources feed the model
+
+### Knowledge & Notes (Phase 5)
+
+- [ ] **KNW-01**: Atomic note-taking: create, edit, save, delete notes with wikilinks ([[…]])
+- [ ] **KNW-02**: Note graph (d3-force) + backlinks in Standalone Notes view
+- [ ] **KNW-03**: MiniSearch indexes notes for full-text search
+- [ ] **KNW-04**: MemoryEngine stores conversation, user, and preference memory with budget enforcement
+- [ ] **KNW-05**: Memory injection ≤ 1000 tokens / top-5; working memory ≤ 300 tokens
+
+### LLM-Wiki & Filesystem Sync (Phase 5a)
+
+- [ ] **LLM-WIKI-01**: Auto-tagging adds suggested tags to notes
+- [ ] **LLM-WIKI-02**: "Ask notes" RAG answers from note index (MiniSearch)
+- [ ] **LLM-WIKI-03**: NoteChatConverter converts chat into notes; title→LLM integration
+- [ ] **SYNC-01**: Local-FS sync exports notes as .md (YAML frontmatter) to a user-chosen folder
+- [ ] **SYNC-02**: Baseline diff + restore-from-folder work one-way (export-first)
+
+### Memory Governance (Phase 5b)
+
+- [ ] **MEM-01**: Memory cap prevents unbounded growth
+- [ ] **MEM-02**: Memory decay and privacy-preserving compression reduce stale/old facts
+- [ ] **MEM-03**: User can view/edit/disable memory facts in Options
+
+### Diagnostics (Phase 6)
+
+- [ ] **DIAG-01**: AITransactionLog records chat/agent transactions with operation IDs
+- [ ] **DIAG-02**: DiagnosticsPanel shows transaction traces, execution paths, and error codes
+- [ ] **DIAG-03**: Export debug bundle (sanitized) works
+
+### Agent Evaluation (Phase 6a)
+
+- [ ] **EVAL-01**: Agent evaluation rubrics (checklist + recall + relevance) run against executed transactions
+- [ ] **EVAL-02**: Evals UI surfaces pass/fail and per-rubric scores
+
+### Verified Evolution (Phase 6b)
+
+- [ ] **EVO-01**: CandidateProposer proposes evolution candidates only; activation is human-gated
+- [ ] **EVO-02**: PROPOSED/DEFERRED candidates never activate automatically
+- [ ] **PROP-01**: Properties/capability registry reflects only activated evolution
+
+### Bounded Collaboration (Phase 6c)
+
+- [ ] **COLLAB-01**: Single-agent default = one-role CollaborationPlan (the single-agent path)
+- [ ] **COLLAB-02**: Multi-role plans (User/Planner/Executor/Evidence) opt-in via Coordinator, sharing one runtime/security/tool/memory model
+- [ ] **COLLAB-03**: Collaboration manifest + coordination modes work
+
+### Workspace UX + RICH (Phase 7)
+
+- [ ] **RICH-01**: RICH design requirements met (persona header, welcome, quick-action chips, clarification/follow-up chips, stage indicators)
+- [ ] **RICH-02**: Persona config (name, tone, brevity) editable in Options, stored in PreferenceMemoryStore
+- [ ] **RICH-03**: One-phase-per-response; streaming stage indicators
+- [ ] **RICH-04**: Cmd+K palette, tab pinning (max 10), theme toggle (light/dark/auto)
+
+### Multimodal Input (Phase 7a)
+
+- [ ] **MM-01**: Image input (paste/attach) accepted in chat
+- [ ] **MM-02**: Ollama vision / VLM integration renders image understanding
+- [ ] **MM-03**: Attachments/FileCard surfaces render in RICH chat
+
+### Add-ons (Phase 8)
+
+- [ ] **ADDON-01**: Addon contract (id/name/scope/urlPatterns/contextExtractor/skills/prompts/pages/settings/keymap) enforced with Zod settings
+- [ ] **ADDON-02**: ServiceNow add-on extracts JSESSIONID (P0) via CookieSessionStore
+- [ ] **ADDON-03**: Write add-on quick actions (rewrite/summarize/draft) work with streamed output
+- [ ] **ADDON-04**: TeamGQM side-panel quick view + standalone workspace render
+
+### Tool Governance (Phase 8a)
+
+- [ ] **TOL-01**: Tool-calling registry + allowlist control which tools run
+- [ ] **TOL-02**: AI-chosen tools validated by ExecutorService; JSONSchema tools via zod-to-json-schema
+- [ ] **TOL-03**: Permission prompts gate sensitive tool actions
+
+### Hardening & Release (Phase 9)
+
+- [ ] **HARD-01**: TraceRedactor applied to every sensitive flow (no raw prompts/tool bodies/secrets in logs/UI/export)
+- [ ] **HARD-02**: XSS sanitization (DOMPurify) on all AI/tool output; content scripts extraction-only
+- [ ] **HARD-03**: Performance budgets met (content < 50KB, side panel paint < 300ms, first token < 2s local)
+- [ ] **HARD-04**: `verify:phase-1…9` scripts green; release build packaged for Chrome
+
+## v2 Requirements
+
+Deferred to a future release. Tracked but not in the current roadmap.
+
+- **PGINJ-01**: Page injection / host-page automation (page writes, click automation, UI overlays)
+- **PDF-01**: PDF chat / extraction
+- **EMB-01**: Embedding-based semantic search (MiniSearch remains v1 retrieval)
+- **SYNC-03**: Bidirectional filesystem sync / live folder watch
+- **TTS-01**: Voice/TTS audio output
+- **A2UI-01**: Computer-use / autonomous UI interaction
+
+## Out of Scope
+
+| Feature | Reason |
+|---------|--------|
+| Page injection / host-page automation | Privacy + MV3 constraints; extraction-only in v0.1 (spec §0.2 R1, §6.5) |
+| PDF chat / extraction | Parser complexity + cost (spec §6.5) |
+| Embedding-based search | Cost model; MiniSearch sufficient (spec §7.7, ADR) |
+| Bidirectional FS sync / live watch | Correctness risk; one-way export-first in v0.1 (spec §27) |
+| TTS audio output | Not in v0.1 scope (spec §6.5) |
+| A2UI / computer-use autonomy | Not in v0.1 scope (spec §6.5) |
+| @ant-design/x-sdk, @ant-design/x-card | Explicitly not adopted (spec §7.2, §23, §25.6) |
+| Shadcn/ui, Tailwind, Radix, react-markdown chain | Banned; superseded by AntD + @ant-design/x-markdown (spec §7.2) |
+| Page UI overlays / in-page add-on UI | Content-script UI mount removed from add-on contract (spec §9.4) |
+
+## Traceability
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| RUNTIME-01…05 | Phase 1 | Pending |
+| WSPC-01…05 | Phase 1 | Pending |
+| STORAGE-01…05 | Phase 2 | Pending |
+| AI-01…07 | Phase 3 | Pending |
+| AGT-01…05 | Phase 3a | Pending |
+| CTX-01…04 | Phase 4 | Pending |
+| CAT-01…05 | Phase 4a | Pending |
+| TRUST-01…03 | Phase 4b | Pending |
+| KNW-01…05 | Phase 5 | Pending |
+| LLM-WIKI-01…03, SYNC-01…02 | Phase 5a | Pending |
+| MEM-01…03 | Phase 5b | Pending |
+| DIAG-01…03 | Phase 6 | Pending |
+| EVAL-01…02 | Phase 6a | Pending |
+| EVO-01…02, PROP-01 | Phase 6b | Pending |
+| COLLAB-01…03 | Phase 6c | Pending |
+| RICH-01…04 | Phase 7 | Pending |
+| MM-01…03 | Phase 7a | Pending |
+| ADDON-01…04 | Phase 8 | Pending |
+| TOL-01…03 | Phase 8a | Pending |
+| HARD-01…04 | Phase 9 | Pending |
+
+**Coverage:**
+- v1 requirements: 80 total
+- Mapped to phases: 80
+- Unmapped: 0 ✓
+
+---
+*Requirements defined: 2026-08-04*
+*Last updated: 2026-08-04 after project initialization (/gsd-new-project --auto)*
