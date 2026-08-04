@@ -38,7 +38,18 @@ NowPilot v0.1 is a privacy-first, local-first AI assistant and personal knowledg
   3. User toggles light/dark theme and both surfaces update immediately.
   4. User opens the Cmd+K palette with the command set on both surfaces.
   5. Chat, Agent, Notes, and Options page skeletons render in both surfaces with the AntD theme applied; no `innerHTML`/`dangerouslySetInnerHTML` anywhere in src and no banned packages installed.
-**Plans**: TBD
+**Plans**: 9 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — pnpm + WXT scaffold, pinned stack, wxt.config.ts (Appendix G), vitest toolchain, verify:phase-1 gate (wave 1)
+- [ ] 01-02-PLAN.md — canonical types: RuntimeEnvelope, MessageType (Appendix E + D-17), WorkspaceState (D-18), STR/PROMPTS constants (wave 2)
+- [ ] 01-03-PLAN.md — MessageBus + MessageBusBridge + EventBus/EventBusManager (Pitfall 5 whitelist) (wave 2)
+- [ ] 01-04-PLAN.md — errorCodes + debugLog (Golden Rule 9, R-10), i18n, keymap, core components (ErrorBoundary, PortableMarkdown, MinimalMode, FocusTrap) (wave 2)
+- [ ] 01-05-PLAN.md — ThemeStore (chrome.storage.local, D-13), ThemePackRegistry (WSPC-04), antdConfig (wave 3)
+- [ ] 01-06-PLAN.md — WorkspaceStore (D-18), WorkspaceRouter (Pitfall 1 gesture-safe), WorkspaceSync (PING/PONG handoff) (wave 3)
+- [ ] 01-07-PLAN.md — AddonRegistry/AddonSettingsStore/PageRegistry, ContentScriptHost + PageContextBridge (D-16), content bundle isolation (Pitfall 4) (wave 4)
+- [ ] 01-08-PLAN.md — SidePanel/Standalone shells + routers, Onboarding (Flow 9/D-06), CmdKPicker (Flow 10), page skeletons (wave 5)
+- [ ] 01-09-PLAN.md — entrypoint mounts (Appendix F one provider per surface), mount smoke tests, full verify:phase-1 + DONE-when hygiene gates (wave 5)
 **UI hint**: yes
 
 ### Phase 2: Storage, Security, WriteJournal, Workspace Persistence
