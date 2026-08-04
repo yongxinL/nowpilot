@@ -199,10 +199,12 @@ Deferred to a future release. Tracked but not in the current roadmap.
 | HARD-01…04 | Phase 9 | Pending |
 
 **Coverage:**
-- v1 requirements: 80 total
-- Mapped to phases: 80
+- v1 requirements: 81 total
+- Mapped to phases: 81
 - Unmapped: 0 ✓
+
+> Coverage correction: the count was previously stated as 80; the verified count of v1 requirement bullets is 81 (LLM-WIKI-01…03 were omitted from the earlier tally). The traceability table above always mapped 81 requirements across the 19 §18 phases; ROADMAP.md reflects the same mapping.
 
 ---
 *Requirements defined: 2026-08-04*
-*Last updated: 2026-08-04 after project initialization (/gsd-new-project --auto)*
+*Last updated: 2026-08-04 after roadmap creation (preserved spec §18 canonical phase order; coverage corrected to 81)*
