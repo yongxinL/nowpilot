@@ -5,8 +5,8 @@ milestone_name: milestone
 current_phase: 1
 current_phase_name: MV3/WXT Runtime + AntD Shells + Workspace
 status: planning
-stopped_at: Phase 1 context gathered
-last_updated: "2026-08-04T05:31:15.410Z"
+stopped_at: Phase 1 UI-SPEC approved
+last_updated: "2026-08-04T08:55:22.406Z"
 last_activity: 2026-08-04
 last_activity_desc: ROADMAP.md created from the canonical spec §18 phase order (19 phases); STATE.md initialized
 progress:
@@ -96,6 +96,6 @@ Items acknowledged and carried forward (v2 scope, tracked in REQUIREMENTS.md):
 
 ## Session Continuity
 
-Last session: 2026-08-04T05:31:15.397Z
-Stopped at: Phase 1 context gathered
-Resume file: .planning/phases/01-mv3-wxt-runtime-antd-shells-workspace/01-CONTEXT.md
+Last session: 2026-08-04T08:55:22.381Z
+Stopped at: Phase 1 UI-SPEC approved
+Resume file: /home/yongxin.Li/workspaces/nowpilot/.planning/phases/01-mv3-wxt-runtime-antd-shells-workspace/01-UI-SPEC.md
