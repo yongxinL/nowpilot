@@ -4,15 +4,15 @@ milestone: v0.1
 milestone_name: milestone
 current_phase: 1
 current_phase_name: MV3/WXT Runtime + AntD Shells + Workspace
-status: planning
-stopped_at: Phase 1 UI-SPEC approved
-last_updated: "2026-08-04T08:55:22.406Z"
+status: ready-to-execute
+stopped_at: Phase 1 plans ready to execute (9 plans)
+last_updated: "2026-08-04T11:30:00.000Z"
 last_activity: 2026-08-04
-last_activity_desc: ROADMAP.md created from the canonical spec §18 phase order (19 phases); STATE.md initialized
+last_activity_desc: Phase 1 planned and revised (9 plans, checker feedback applied); ready to execute wave 1
 progress:
   total_phases: 1
   completed_phases: 0
-  total_plans: 0
+  total_plans: 9
   completed_plans: 0
 ---
 
@@ -29,9 +29,9 @@ See: .planning/PROJECT.md (updated 2026-08-04)
 ## Current Position
 
 Phase: 1 of 19 (MV3/WXT Runtime + AntD Shells + Workspace)
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-08-04 — ROADMAP.md created from the canonical spec §18 phase order (19 phases); STATE.md initialized
+Plan: 0 of 9 executed in current phase
+Status: Ready to execute (plans 01-01..01-09 planned; checker feedback applied)
+Last activity: 2026-08-04 — Phase 1 plans created and revised; PATTERNS.md added; ready for wave-1 execution
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -96,6 +96,6 @@ Items acknowledged and carried forward (v2 scope, tracked in REQUIREMENTS.md):
 
 ## Session Continuity
 
-Last session: 2026-08-04T08:55:22.381Z
-Stopped at: Phase 1 UI-SPEC approved
-Resume file: /home/yongxin.Li/workspaces/nowpilot/.planning/phases/01-mv3-wxt-runtime-antd-shells-workspace/01-UI-SPEC.md
+Last session: 2026-08-04T11:30:00.000Z
+Stopped at: Session resumed — Phase 1 ready to execute, proceeding to execute wave 1 (plan 01-01)
+Resume file: /home/yongxin.Li/workspaces/nowpilot/.planning/phases/01-mv3-wxt-runtime-antd-shells-workspace/01-01-PLAN.md
