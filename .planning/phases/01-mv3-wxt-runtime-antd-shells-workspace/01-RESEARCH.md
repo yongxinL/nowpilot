@@ -498,22 +498,24 @@ const cfg = {
 
 ## Open Questions
 
-1. **Do we need a `verify:phase-1` script that runs `wxt build` before the isolation test?**
+> W-15 revision: all four questions were adopted into the plans and are marked RESOLVED inline.
+
+1. **Do we need a `verify:phase-1` script that runs `wxt build` before the isolation test?** (RESOLVED — 01-01 creates `verify:phase-1` including `wxt build` + the isolation check; 01-09 Task 5 runs it as the phase gate)
    - What we know: §24 lists `verify:phase-1`; the isolation/anti-pattern check (Pitfall 4) can only inspect `.output` after a build; D-04 requires eslint + prettier + tsc + tests.
    - What's unclear: whether "eslint + prettier + tsc + vitest" alone satisfies §24, or the isolation grep must run against a built bundle.
    - Recommendation: include `wxt build` + isolation check in the verify script; it's the only way to prove Pitfall 4 is avoided. Flag for planner to sequence build before verify.
 
-2. **Chrome runtime target for `sidePanel.open` (user gesture) testing**
+2. **Chrome runtime target for `sidePanel.open` (user gesture) testing** (RESOLVED — 01-06 uses the callback-style tabs.query → sidePanel.open pattern with unit tests; manual open-gesture verification is documented in 01-VALIDATION.md Manual-Only Verifications and deferred to browser e2e, RESEARCH A8)
    - What we know: `chrome.sidePanel.open({tabId})` needs a gesture; Chrome 127+ is stricter.
    - What's unclear: which Chrome channel the user runs for manual testing; whether Cmd+K open actions are exercised manually in Phase 1.
    - Recommendation: rely on unit tests for router logic + the callback-style pattern (A3); manual side-panel-open verification deferred to e2e (Phase 8+).
 
-3. **`wxt.config.ts` verbatim vs. `chrome120` target**
+3. **`wxt.config.ts` verbatim vs. `chrome120` target** (RESOLVED — 01-01 keeps Appendix G verbatim per D-05; minimum Chrome 116 is noted as the support constraint since sidePanel/setPanelBehavior need ≥116)
    - What we know: Appendix G pins `target: 'chrome120'` and `sourcemap: 'inline'`.
    - What's unclear: whether the user's actual browser is older (sidePanel API needs ≥116; setPanelBehavior ≥116).
    - Recommendation: keep Appendix G verbatim (D-05); note minimum Chrome 116 as a support constraint for the user.
 
-4. **Do phase-1 `verify` steps run in CI or locally only?**
+4. **Do phase-1 `verify` steps run in CI or locally only?** (RESOLVED — 01-01 ships `verify:phase-1` as a local-only script; no CI files in the §18 create list; CI is a later-phase concern)
    - What we know: `.planning/config.json` has no CI wiring documented in phase docs; `verify:phase-1` is a local script per §24.
    - What's unclear: whether a GitHub Actions workflow exists for this repo.
    - Recommendation: treat verify as local-only in Phase 1 (no CI files in §18 create-list); CI is a later-phase concern.
@@ -551,33 +553,29 @@ const cfg = {
 
 | Req ID | Behavior | Test Type | Automated Command | File Exists? |
 |--------|----------|-----------|-------------------|-------------|
-| RUNTIME-01 | RuntimeEnvelope serialize/deserialize round-trip | unit | `pnpm vitest run tests/core/runtime/RuntimeEnvelope.test.ts -x` | ❌ Wave 0 |
-| RUNTIME-02 | Background registers listeners synchronously; workerState.ok/fail envelope replies | unit | `pnpm vitest run tests/core/runtime/workerState.test.ts -x` | ❌ Wave 0 |
-| RUNTIME-03 | EventBus subscribe/emit/off + BroadcastBus cross-surface sync (fakeBrowser runtime events) | unit | `pnpm vitest run tests/core/events/EventBus.test.ts -x` | ❌ Wave 0 |
-| RUNTIME-04 | MessageBus routes typed messages, returns ResponseEnvelope | unit | `pnpm vitest run tests/core/runtime/MessageBus.test.ts -x` | ❌ Wave 0 |
-| RUNTIME-05 | Content bridge PING→PONG, capabilities request/reply (D-17) | unit | `pnpm vitest run tests/core/content/ContentScriptHost.test.ts -x` | ❌ Wave 0 |
-| WSPC-01 | WorkspaceStore hydrate from chrome.storage.local + URL params (M.1) | unit | `pnpm vitest run tests/core/workspace/WorkspaceStore.test.ts -x` | ❌ Wave 0 |
-| WSPC-02 | WorkspaceRouter.openStandalone creates/updates tabs, sets openedStandaloneTabId (M.2) | unit | `pnpm vitest run tests/core/workspace/WorkspaceRouter.test.ts -x` | ❌ Wave 0 |
-| WSPC-03 | WorkspaceSync heartbeat + version LWW (WORKSPACE_UPDATED) | unit | `pnpm vitest run tests/core/workspace/WorkspaceSync.test.ts -x` | ❌ Wave 0 |
-| WSPC-04 | Registries register at startup; page registry drives Shell nav | unit | `pnpm vitest run tests/core/registry -x` | ❌ Wave 0 |
-| WSPC-05 | ThemeStore resolveDark + pack switch + storage onChanged sync (D-13) | unit | `pnpm vitest run tests/core/theme/ThemeStore.test.ts -x` | ❌ Wave 0 |
-| UI-SPEC | Shells/Onboarding/page skeletons render with XProvider | component | `pnpm vitest run tests/components -x` | ❌ Wave 0 |
-| §24 isolation | No UI/antd in content script bundle (built `.output`) | build+grep | `pnpm wxt build && node tests/isolation/check-content-bundle.mjs` | ❌ Wave 0 |
+| RUNTIME-01 | RuntimeEnvelope serialize/deserialize round-trip | unit | `pnpm vitest run tests/core/runtime/RuntimeEnvelope.test.ts` | ❌ w2 (plan 02) |
+| RUNTIME-02 | Background registers listeners synchronously; workerState.ok/fail envelope replies | unit | `pnpm vitest run tests/core/runtime/workerState.test.ts` | ❌ w6 (plan 09) |
+| RUNTIME-03 | EventBus subscribe/emit/off + BroadcastBus cross-surface sync (fakeBrowser runtime events, M.3) | unit | `pnpm vitest run tests/core/events/EventBus.test.ts tests/core/runtime/BroadcastBus.test.ts` | ❌ w3/w4 (plans 03, 06) |
+| RUNTIME-04 | MessageBus routes typed messages, returns ResponseEnvelope | unit | `pnpm vitest run tests/core/messaging/MessageBus.test.ts` | ❌ w3 (plan 03) |
+| RUNTIME-05 | Content bridge PING→PONG, capabilities request/reply (D-17) | unit | `pnpm vitest run tests/core/content/ContentScriptHost.test.ts` | ❌ w5 (plan 07) |
+| WSPC-01 | WorkspaceStore hydrate from chrome.storage.local + URL params (M.1) | unit | `pnpm vitest run tests/core/workspace/WorkspaceStore.test.ts` | ❌ w4 (plan 06) |
+| WSPC-02 | WorkspaceRouter.openStandalone update-or-create tab dedupe, sets openedStandaloneTabId (M.2, W-12) | unit | `pnpm vitest run tests/core/workspace/WorkspaceRouter.test.ts` | ❌ w4 (plan 06) |
+| WSPC-03 | WorkspaceSync heartbeat + version LWW (WORKSPACE_UPDATED, M.3) | unit | `pnpm vitest run tests/core/workspace/WorkspaceSync.test.ts` | ❌ w4 (plan 06) |
+| WSPC-04 | Registries register at startup; page registry drives Shell nav | unit | `pnpm vitest run tests/core/registry` | ❌ w5 (plan 07) |
+| WSPC-05 | ThemeStore resolveDark + pack switch + storage onChanged sync (D-13) | unit | `pnpm vitest run tests/core/theme/ThemeStore.test.ts` | ❌ w4 (plan 05) |
+| UI-SPEC | Shells/Onboarding/page skeletons render with XProvider | component | `pnpm vitest run tests/components` | ❌ w5 (plan 08) |
+| §24 isolation | No UI/antd in content script bundle (built `.output`) | build+grep | `pnpm wxt build && node tests/isolation/check-content-bundle.mjs` | ❌ w5 (plan 07) |
 
 ### Sampling Rate
 - **Per task commit:** `pnpm vitest run tests/core/runtime tests/core/events` (fast, 30s)
 - **Per wave merge:** `pnpm vitest run` (full suite)
 - **Phase gate:** `verify:phase-1` — `pnpm eslint . && pnpm prettier --check . && pnpm tsc --noEmit && pnpm wxt build && pnpm vitest run tests/core/runtime tests/core/events tests/core/workspace tests/core/theme && node tests/isolation/check-content-bundle.mjs`
 
-### Wave 0 Gaps
-- [ ] `vitest.config.ts` — WxtVitest plugin (no test files yet)
-- [ ] `tests/setup.ts` — matchMedia polyfill + `fakeBrowser.reset()` per test
-- [ ] `tests/core/runtime/RuntimeEnvelope.test.ts` — RUNTIME-01 (zod fixture per §0.3)
-- [ ] `tests/core/events/EventBus.test.ts` — RUNTIME-03
-- [ ] `tests/core/workspace/WorkspaceStore.test.ts` — WSPC-01
-- [ ] `tests/core/theme/ThemeStore.test.ts` — WSPC-05 (spec §24 requires this exact path)
-- [ ] `tests/isolation/check-content-bundle.mjs` — §24 content-bundle isolation (grep for antd/React in built content script)
-- [ ] Dev deps install: `pnpm add -D vitest @testing-library/react @testing-library/dom @testing-library/jest-dom jsdom` — none installed yet
+### Test-Infra Creation Gaps (Wave 0 = plan 01-01 scaffold; remaining files created by their owning plans — see 01-VALIDATION.md creation map)
+- [ ] `vitest.config.ts` — WxtVitest plugin (plan 01-01, no test files yet)
+- [ ] `tests/setup.ts` — matchMedia polyfill + `fakeBrowser.reset()` per test (plan 01-01)
+- [ ] `tests/isolation/check-content-bundle.mjs` — §24 stub in 01-01; forbidden-token set completed in 01-07 (W-16)
+- [ ] Dev deps install: `pnpm add -D vitest @testing-library/react @testing-library/dom @testing-library/jest-dom jsdom` — none installed yet (plan 01-01)
 
 ## Security Domain
 
