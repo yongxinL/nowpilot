@@ -46,12 +46,10 @@ Read in this exact order:
 - §27 — LLM-Wiki & Filesystem Sync
 - §28 — Verified Agent Harness Requirements
 - §29 — Multimodal Input & Real-Time Interaction Foundation
-- §30 — Revised Master Implementation Order
-- §31 Verification, Security, and Acceptance Gates
-- §32 — Bounded Multi-Agent Collaboration
-- Appendices A–M — canonical constants, type registry, and reference implementations
+- §30 — Bounded Multi-Agent Collaboration (single-agent default)
+- Appendices A–O — canonical constants, type registry, error-code registry, and reference implementations (incl. Appendix O worked examples for cost-effective models)
 
-Appendices C, E, F, G, I, J, K, L, and M are **mandatory** reading for any AI coding agent.
+Appendices C, E, F, G, I, J, K, L, M, and O are **mandatory** reading for any AI coding agent. Appendix O gives copy-pasteable reference implementations for the harness sub-phases and the coordinator platform.
 
 ## §0 — Hard Rules (Non-Negotiable)
 
@@ -61,7 +59,7 @@ These rules apply to every phase, every module, and every AI coding agent.
 
 - Read §§0–5 fully before writing any code.
 - Read §§6–17 as background for the feature being implemented.
-- Read §§18–27 and the relevant appendix for the current phase.
+- Read §18 and the relevant feature sections, §§28–32, and appendices for the current phase. Use §18 only for implementation order.
 - Do not implement more than one phase per response unless explicitly requested.
 
 ### §0.2 DO NOT Rules
@@ -154,7 +152,9 @@ These rules apply to every phase, every module, and every AI coding agent.
 | PlannerService | src/core/ai/PlannerService.ts | Cheap JSON-only action planner |
 | ExecutorService | src/core/ai/ExecutorService.ts | Deterministic MCP/skill/built-in tool executor |
 | RendererService | src/core/ai/RendererService.ts | Final concise response renderer |
-| AgentOrchestrator | src/core/ai/AgentOrchestrator.ts | Planner → Executor loop with tier caps (Appendix I) |
+| AgentOrchestrator | src/core/ai/AgentOrchestrator.ts | Planner → Executor loop with tier caps (Appendix I) — the single-role engine |
+| CollaborationCoordinator | src/core/collaboration/CollaborationCoordinator.ts | Runs a CollaborationPlan; owns sequencing, permissions, commits, termination (§1.6, §30) |
+| CollaborationRoleRegistry | src/core/collaboration/CollaborationRoleRegistry.ts | Closed registry of allowed roles; the default one-role plan is the single-agent path |
 | ProviderRouter | src/core/ai/ProviderRouter.ts | Provider selection, retry, fallback, circuit breaker |
 | TierResolver | src/core/ai/TierResolver.ts | Maps haiku/flash tier → concrete (providerId, model) (Appendix D) |
 | PromptCacheManager | src/core/ai/PromptCacheManager.ts | Prompt cache segmentation and provider hints |
@@ -188,6 +188,42 @@ These rules apply to every phase, every module, and every AI coding agent.
 | NoteMaintenance | src/core/notes/NoteMaintenance.ts | Staleness/orphan detection, bulk analysis (§27) |
 | DiagnosticsPanel | src/components/options/DiagnosticsSection.tsx | Standalone view → Options → Diagnostics UI |
 
+### §0.5 Implementation Guardrails & Risk Register (cost-effective models — READ FIRST)
+
+This section keeps a cheap/fast implementer (Haiku, Gemini Flash, DeepSeek Flash) on the right track. It is the concentrated "how to not go wrong" checklist; the detailed rules live in the referenced sections.
+
+#### §0.5.1 The 10 golden rules
+
+1. **One phase per response.** Implement exactly one §18 phase (or sub-phase) at a time. Never jump ahead; later phases depend on earlier contracts.
+2. **Never invent identifiers.** File paths come from §8.5 and §18; type names from **Appendix C** (harness/collaboration types → `@/types/harness`, §C.1); tool names from the ExecutorService enum; provider IDs are exactly `'openai' | 'anthropic' | 'gemini' | 'ollama'`; runtime tiers are exactly `'haiku' | 'flash'` (Appendix D).
+3. **All prompts through the pipeline.** No React component or hook assembles a prompt directly. Every AI call consumes an `OptimizedContext` (§2.3) and routes through PersonaInjector (§1.3).
+4. **Structured output = Zod + one repair only.** Use Appendix L's `requestJson`. Exactly one repair attempt, then throw `STRUCTURED_OUTPUT_FAILED`. Never hand-parse JSON with regex.
+5. **Retries do not multiply.** Only three retry layers exist (ProviderRouter §1.5, AGT-04 replan, one per-stage retry) and they are bounded by tier caps §1.4. Never nest them (§1.6.1). See risk R-2 below.
+6. **Respect the budgets.** Memory injection ≤ 1000 tokens / top-5 (top-3 tiny); working memory ≤ 300 tokens (§3.6); renderer ≤ 512 tokens (§1.2). If over budget, degrade per §2.4 — never silently truncate mid-structure.
+7. **Retrieved data is never instructions.** Page/note/memory/tool output is `trust: 'retrieved'|'untrusted'` with `instructionAuthority: false` (§28.3, Appendix O.3). Wrap it as data.
+8. **No success without evidence.** A side-effecting tool is "done" only with matching `CompletionEvidence` (§28.2, Appendix O.2). Cap exhaustion is `partial`, never `completed`.
+9. **Every catch calls `debugLog(code, …)`** with a canonical error code from **Appendix C.2**. No empty catches. No new error strings.
+10. **Every phase ends green.** A phase is not done until its `verify:phase-N` script (§24) passes. Stub `@implementation-tier: sonnet-class` modules; do not attempt them.
+
+#### §0.5.2 Risk register (top failure modes → mitigation)
+
+| ID | Risk (what a cheap model tends to do) | Mitigation (do this instead) | Ref |
+|---|---|---|---|
+| **R-1** | Invents a second module path for a type (e.g. `@/types/collaboration`) | All §C.1 types live in `@/types/harness` — see the Canonical Type Home table | §C.1 |
+| **R-2** | Wraps retries so calls multiply (N×N×N cost blow-up) | One retry per layer; three layers max; all under tier caps | §1.6.1 |
+| **R-3** | Calls a provider/EventSource/IndexedDB from the background SW | AI + IndexedDB live in Side Panel/Standalone only; SW does PROXY_FETCH/alarms | §0.2, §5.2 |
+| **R-4** | Lets the LLM execute tools directly | Planner *requests*; ExecutorService *validates + runs* | §1.2 |
+| **R-5** | Renders host-page UI or writes back to page fields in v0.1 | Content scripts are extraction-only; RICH-H-04/07 = clipboard-only | §0.2, R1 |
+| **R-6** | Treats a `deferred`/`proposed` evolution candidate as active | `CandidateProposer` only proposes; activation is human-gated | §28.7a |
+| **R-7** | Puts persona config in the fact store | Persona = user config in PreferenceMemoryStore (`np_persona`), not UserMemoryStore | R2, §3.5 |
+| **R-8** | Skips the verifier and marks a write "done" | Postcondition verifier + `CompletionEvidence` required | §28.2 |
+| **R-9** | Installs a banned package (framer-motion, x-sdk, langchain…) | Use only the approved stack in §7; see §0.2 package hygiene | §7, §0.2 |
+| **R-10** | Logs raw prompt/tool bodies or secrets | Everything through `TraceRedactor` before persist/UI/export | §4.4 |
+
+#### §0.5.3 Per-turn implementation checklist
+
+Before returning code for a phase, confirm: (a) files match §8.5/§18; (b) types imported from the homes in §C.1; (c) a `verify:phase-N` script exists in `package.json` (§24); (d) at least one Zod fixture test per public boundary (§0.3); (e) every `catch` uses a §C.2 code; (f) no banned import; (g) worked example in **Appendix O** consulted for this phase (see the phase→example map in the Appendix O intro).
+
 ## §1 — Cost-Effective Runtime AI Architecture
 
 ### §1.1 Runtime Design Principle
@@ -195,6 +231,8 @@ These rules apply to every phase, every module, and every AI coding agent.
 NowPilot must assume the active runtime model may be cheap, fast, weaker at reasoning, small-context, local, or configured as the user's only provider. The system must not rely on the model to remember, decide tool safety, or preserve state.
 
 Runtime AI uses: `PlannerService → ExecutorService → RendererService` with a bounded loop between Planner and Executor as defined in §1.4 and Appendix I.
+
+NowPilot's runtime is a **coordinator-based agent platform**. The `Planner → Executor → Renderer` loop is the execution engine for a **single role**. A `CollaborationCoordinator` runs a `CollaborationPlan`; the **default configuration is a one-role plan**, which *is* the single-agent path. Selected complex workflows opt into multi-role plans (§30). Single-agent and multi-agent execution share one runtime, one tool-governance model, one memory model, one evaluation model, and one security model. See §1.6.
 
 ### §1.2 Planner → Executor → Renderer Flow
 
@@ -339,6 +377,38 @@ Retry / circuit breaker policy:
 - Retryable pre-first-token errors: TIMEOUT, PROVIDER_5XX, NETWORK, RATE_LIMITED.
 - Non-retryable: AUTH, MODEL_UNKNOWN, SCHEMA_INVALID, HOST_NOT_PERMITTED.
 - Circuit breaker: after 3 consecutive failures for a provider within 60 s, mark provider open for 5 minutes.
+
+### §1.6 Agent Platform Model (single-agent default, multi-agent opt-in)
+
+NowPilot is a **bounded agent platform**, not a single-purpose chat loop and not an open-ended multi-agent swarm. One architecture serves both modes:
+
+- **Default (single-agent):** every ordinary turn runs as a **one-role `CollaborationPlan`** — a single `AssistantRole` whose engine is the §1.2 `Planner → Executor → Renderer` loop under the §1.4 tier caps. There is no coordinator overhead beyond selecting the one-role plan. Routine chat, summarisation, rewriting, note Q&A, and simple retrieval always use this path.
+- **Opt-in (multi-agent):** selected complex workflows (§30.3) activate a **multi-role plan** of two or more registered roles coordinated through typed handoffs and shared verified task state. Activation is explicit (user / workflow / allowed deterministic complexity policy); the planner alone can never silently enable it (COLLAB-01).
+
+Invariants across **both** modes, enforced by the same modules:
+
+- one `CollaborationCoordinator` owns sequencing, permission requests, side-effect commits, and termination (COLLAB-05);
+- roles come from a **closed** `CollaborationRoleRegistry` (COLLAB-02) — no dynamic role or agent creation;
+- tools run only through `ExecutorService` under `ToolCapabilityManifest` governance (§28.5);
+- memory is system-owned (§3.1); workers never write durable memory/notes or execute side effects directly (COLLAB-06);
+- every trajectory produces a structured `AgentTurnOutcome` with `CompletionEvidence` (§28.2).
+
+**Forbidden in every mode (§0.2, §16.6):** open-ended agent-to-agent chat, dynamic unbounded spawning, peer-granted permissions, shared mutable worker memory, and treating agreement among roles as verification.
+
+#### §1.6.1 Stage events, human-in-the-loop, and retry bounds
+
+Three orchestration rules keep the coordinator predictable and cheap. They are **internal contracts**, not a runtime engine — NowPilot deliberately does **not** ship an event bus/emitter or the (deprecated) LlamaIndex Workflows engine.
+
+- **Typed stage events (L1).** Each stage's input/output is a member of a **discriminated `StageEvent` union** (Appendix C.1), so a stage's shape is compile-time checked for Haiku/Flash implementers. This is a *type*, not an event system: the coordinator still calls stages directly in §18/§30 order.
+- **Within-turn human input (L2).** A stage may emit an `input-required` `StageEvent` to pause **inside the current turn** for a clarification or a permission decision — surfaced as the `waiting-for-permission` / `ask_clarification` trajectory states (AGT-01). This is **within-turn only**; durable cross-session suspend/resume/rewind is explicitly **out of scope for v0.1** (§17.7.7) and deferred to v0.2+.
+- **Bounded, non-multiplying retry (L3).** NowPilot has exactly **three** retry layers and they **must not multiply**:
+  1. `ProviderRouter` — pre-first-token provider retry + circuit breaker (§1.5);
+  2. Agent loop replan — the deterministic AGT-04 policy (§28.2);
+  3. Per-stage coordinator retry — **at most one** retry per stage, after which the stage is terminal.
+
+  All three are bounded by the tier caps in §1.4; the per-stage retry is simply AGT-04 applied once per stage. The coordinator MUST NOT nest these into an N×N×N fan-out — total planner/tool calls always stay under the `CollaborationPlan` caps (COLLAB-03).
+
+This makes "single agent" the **degenerate one-role case** of the platform, so there is no second runtime to build later — multi-role workflows are added as **data** (roles + plans), not as a parallel architecture.
 
 ## §2 — Context-Adaptive Execution
 
@@ -513,6 +583,8 @@ Rules:
 - Summarise older messages after every 12 messages.
 - Store message bodies in IndexedDB only.
 
+> **Observational rolling summary (M2, enhancement).** The 12-message summariser MAY maintain a single **rolling observation log** — a dense running summary that *replaces* raw older turns as history grows, instead of appending isolated summaries. This keeps the injected `summary` small on long threads while preserving decisions, preferences, and open tasks. It is a refinement of the existing summariser, **not** a new store: it is **single-writer** on the primary surface (§13), lives only in `ConversationMemory.summary`, and never exceeds the tier's history budget (§2.2).
+
 ### §3.4 User Memory
 
 ```ts
@@ -580,6 +652,36 @@ export interface UserPreferences {
 ```
 
 Preferences are injected as compact JSON, not verbose prose. **Persona configuration (RICH-R-05) persists in this store (`np_persona`), never in UserMemoryStore (reconciliation R2, §17.7.5).**
+
+### §3.6 Working Memory (always-on user profile)
+
+Working memory is a **single Markdown block** the system keeps continuously available — a cheap "always-on user profile" that suits tiny models better than top-k retrieval. It answers "what should I always know about this user?" (name, role, environment, standing preferences, long-term goals) without spending a retrieval pass.
+
+```ts
+// One block per resource (user); Markdown so it is human-editable and token-cheap.
+export interface WorkingMemory {
+  resourceId: string;            // user/owner scope (NOT thread) — see §3.1
+  markdown: string;              // fixed template, see below
+  tokens: number;                // enforced cap
+  updatedAt: number;
+}
+export const WORKING_MEMORY_TEMPLATE = `# User Profile
+- **Name**:
+- **Role / Team**:
+- **Environment**:
+- **Preferences**:
+- **Long-term Goals**:`;
+```
+
+**Ownership & guardrails (mandatory):**
+
+- **Home store.** Working memory lives in **`UserMemoryStore`** as an *inferred* artefact (its facts have `source: 'inferred'|'explicit'`). It is **not** persona — persona is user *config* in `PreferenceMemoryStore` (R2, §3.5). Do not blur the two.
+- **Budget.** It is injected as part of the memory section and counts against the **memory budget** (§3.4: ≤ 1000 tokens total; top-3 memories in tiny mode, §2.5). Cap the block (recommended ≤ 300 tokens) so it can never crowd out retrieved facts; if over budget, truncate the block **before** dropping retrieved facts.
+- **Single-writer.** Updated only by the **primary surface** through `MemoryEngine` (§13). The Side Panel and Standalone view read the same block; they never write concurrently.
+- **Privacy.** All writes pass through `TraceRedactor` (§4.4). Working memory is **never** written to notes or `.md` backups and must not contain secrets or raw customer data.
+- **Scope.** Resource-scoped (per user), not thread-scoped — it persists across conversations, unlike `ConversationMemory` (§3.3).
+
+*Implementation lands in Phase 5 (Knowledge Base — `UserMemoryStore`); see Appendix O.10 for a worked updater.*
 
 ## §4 — AI/MCP Transaction Logging and Diagnostics
 
@@ -1284,7 +1386,7 @@ nowpilot/
 │   │   └── OnboardingModal.tsx
 │   │
 │   ├── hooks/{useChat, useStreamingLLM, useProviderRouter, useMemory, useDiagnostics, useConversations, useAddonContext, useWorkspace, useTheme, usePersona, useRichSuggestions}.ts   # +usePersona +useRichSuggestions
-│   └── types/{messages, storage, errors, addon, workspace, notes, persona}.ts   # +notes +persona
+│   └── types/{messages, storage, errors, addon, workspace, notes, persona, harness}.ts   # +notes +persona +harness(§C.1)
 │
 └── tests/  (see §24)
 ```
@@ -1504,6 +1606,12 @@ export const ProviderConfigSchema = z.object({
 | 10 | list-skills | {} | no | Lists registered skills |
 | 11 | export-data | { scopes: string[] } | yes | Export bundle (no API keys) |
 | 12 | execute-webhook | { event: string; payload: unknown } | yes | Fires a webhook |
+
+> **Tool-design guardrails (M4).** When adding or exposing tools (built-in or MCP), follow these principles — they keep the planner's tool budget small and behaviour predictable for cheap models:
+> - **Minimise surface area.** Prefer a few **workflow-shaped** capability tools (e.g. `search-notes`, `get-page-content`) over many narrow endpoint tools; a smaller enum is easier for Haiku/Flash to select correctly.
+> - **Read-only by default.** A tool is `dangerous: false` unless it has a side effect; side-effecting tools are the minority and each carries a `ToolCapabilityManifest` (§28.5) with a postcondition verifier.
+> - **Deterministic & bounded.** Tools validate input/output with Zod, are size-limited and redacted (TOL-04), and write tools are idempotent (TOL-05).
+> - **Discoverable.** When the combined schemas exceed the tools budget, use active discovery (TOL-06) rather than injecting every schema.
 
 ### §10.6 endpoints.ts
 
@@ -1774,6 +1882,48 @@ Full implementation shape (for Sonnet-class agents):
 - Abort: each window call receives ctx.abortSignal; reduce halts on abort.
 - **Model gate:** if active model context < 16K → SkillResult{ type: 'error', content: 'CODESEARCH_NEEDS_16K_CONTEXT' }.
 
+### §14.5 Dynamic Per-Call Tool Approval (M3)
+
+`UserPreferences.toolAutonomy` (`ask_every_time` | `allow_safe_tools` | `manual_only`, §3.5) sets the baseline. On top of that baseline, approval can be decided **per call** so risk scales with the actual arguments, not just the tool identity — this is the runtime expression of TOL-02 ("risk- and side-effect-based permission policy", §28.5).
+
+```ts
+// src/core/ai/ToolApprovalPolicy.ts
+import type { ToolCapabilityManifest } from '@/types/harness';
+
+export type ApprovalDecision = 'allow' | 'require-approval' | 'deny';
+
+export interface ApprovalContext {
+  manifest: ToolCapabilityManifest;
+  input: unknown;
+  autonomy: 'ask_every_time' | 'allow_safe_tools' | 'manual_only';
+}
+
+/** Deterministic baseline + optional per-call override. Coordinator-owned only. */
+export function decideApproval(
+  ctx: ApprovalContext,
+  perCall?: (ctx: ApprovalContext) => ApprovalDecision,   // optional dynamic hook (TOL-02)
+): ApprovalDecision {
+  if (ctx.autonomy === 'manual_only' && ctx.manifest.sideEffect) return 'require-approval';
+  const base: ApprovalDecision =
+    !ctx.manifest.sideEffect ? 'allow'
+    : ctx.autonomy === 'ask_every_time' ? 'require-approval'
+    : ctx.manifest.risk === 'high' ? 'require-approval'
+    : 'allow';                                             // allow_safe_tools + low/med risk
+  const dynamic = perCall?.(ctx);
+  // Fail-safe: a dynamic hook may only ESCALATE, never downgrade a required approval.
+  if (dynamic === 'deny') return 'deny';
+  if (dynamic === 'require-approval') return 'require-approval';
+  return base;
+}
+```
+
+**Rules:**
+
+- **Coordinator-owned (COLLAB-05).** Only the `CollaborationCoordinator` / `ExecutorService` may run `decideApproval`. **Worker roles can never self-approve** (COLLAB-06).
+- **Escalate-only.** A per-call hook may raise the requirement (`allow → require-approval → deny`) but must never lower a baseline `require-approval` to `allow`.
+- **Manifest-driven.** The hook reads only the `ToolCapabilityManifest` (§28.5) + validated input; it never inspects raw untrusted context to decide (§28.3).
+- **Traced.** Every decision is recorded on the `ToolTrace.permission` field (§4.3).
+
 ## §15 — Storage Architecture
 
 ### §15.1 Storage Backends
@@ -1903,6 +2053,21 @@ Rules:
 ### §16.5 Secret Redaction
 
 TraceRedactor.redact(value) MUST run before: writing to AITransactionLogDB; writing to ErrorStore; writing to debugLog; rendering in DiagnosticsPanel; exporting a debug bundle; **indexing note content or writing .md files**. See §4.4 for the mandatory patterns.
+
+### §16.6 Advanced Agent Security Rules
+
+These apply to every agent mode (single-agent default and multi-role, §1.6) and every harness track (§§28–30).
+
+- **DO NOT** claim a side effect completed without `CompletionEvidence` (§28.2).
+- **DO NOT** treat retrieved data (page, note, memory, upload, tool output) as instructions (§28.3).
+- **DO NOT** write raw traces directly into procedural memory (§28.4).
+- **DO NOT** activate an evolution candidate without evaluation and approval (§28.7).
+- **DO NOT** persist raw image/audio data in diagnostics (§29.3).
+- **DO NOT** execute tools from partial voice transcription (§29.2).
+- **DO NOT** infer that APC-lite enables browser automation (§29.2, MM-07).
+- **DO NOT** allow open-ended agent-to-agent conversations or dynamic unbounded spawning (§30).
+- **DO NOT** let worker roles grant permissions, execute side effects, or write durable memory directly (§30, COLLAB-06).
+- **DO NOT** treat agreement among agents as evidence or verification (§30, COLLAB-13).
 
 ## §17 — UI/UX Requirements
 
@@ -2225,21 +2390,29 @@ Role 11 · Intention 14 · Conversation 15 · Hybrid UI 20 = **60**. P0 17 · P1
 
 ## §18 — Master Implementation Phases
 
-> **Canonical order.** §18 defines the v0.1 GA phase plan (1 → 9). When the flag-gated hardening tracks (§§28, 29, 32) are enabled, the single combined build order — including sub-phases 3a/4b/5b/6a/6b/6c/7a/8a — is given in §30.1 and supersedes this list without changing any Phase 1–9 requirement.
+> **Single authoritative roadmap.** §18 is the sole source of implementation sequencing for NowPilot v0.1. All implementation phases, sub-phases, dependencies, verification gates, and release ordering are defined here. Sections §28–§30 provide requirement detail and supporting contracts, but they do not define a separate implementation order.
 
-This is the single canonical phase plan. Do not implement more than one phase per response unless explicitly requested.
+**Canonical order:**
 
-**Reorganization principle:** phases follow the product data-flow — *acquire → store → understand → display → extend → harden* — instead of pure implementation dependency order. Key moves: **PageContentService → Phase 4a** (core infrastructure, §26); **Notes + Memory + MiniSearch consolidate into Phase 5 (Knowledge Base)**; **LLM-Wiki + Filesystem Sync → Phase 5a**; **Phase 7 becomes the pure Workspace Experience (UI/UX) phase** hosting the RICH sub-waves; **Hardening & Release stays last (Phase 9)**. Persona runtime seeds are added to Phase 3.
-
+```text
+1 → 2 → 3 → 3a → 4 → 4a → 4b → 5 → 5a → 5b
+  → 6 → 6a → 6b → 6c → 7 → 7a → 8 → 8a → 9
 ```
-Data-flow view:
-  Page → PageContentService (4a)
-       → Knowledge Base: Memory · MiniSearch · Notes · Wikilinks (5)
-       → LLM-Wiki: RAG · auto-tag/category/summary · chat/page→note · filesystem sync (5a)
-       → Diagnostics (6)
-       → Workspace Experience UI/UX + RICH (7)
-       → Add-ons (8)
-       → Hardening & Release (9)
+
+Do not implement more than one phase per response unless explicitly requested.
+
+**Reorganisation principle:** phases follow the product data-flow of _acquire → store → understand → display → extend → harden_, while governance and reliability sub-phases are placed immediately after the capability they extend. Key placements: **PageContentService → Phase 4a**; **Notes + Memory + MiniSearch → Phase 5**; **LLM-Wiki + Filesystem Sync → Phase 5a**; **Workspace Experience + RICH → Phase 7**; **Hardening & Release → Phase 9**.
+
+```text
+AI runtime (3) → reliability/evidence (3a)
+Page → context (4) → PageContentService (4a) → trust-aware context (4b)
+    → Knowledge Base (5) → LLM-Wiki and filesystem sync (5a)
+    → memory governance and experience candidates (5b)
+    → Diagnostics (6) → evaluation (6a) → verified evolution (6b)
+    → bounded multi-role collaboration (6c)
+    → Workspace Experience + RICH (7) → multimodal input (7a)
+    → Add-ons (8) → tool governance and active discovery (8a)
+    → Hardening & Release (9)
 ```
 
 ### Phase 1 — MV3/WXT Runtime + AntD Shells + Workspace
@@ -2383,6 +2556,16 @@ tests/core/ai/persona/PersonaInjector.test.ts
 - **PersonaInjector prepends the persona block to the Planner, Executor, Renderer, and MemoryExtractor system prompts (persona-aware from day one), placed in the cached [SYSTEM] section so prompt caching is preserved.**
 - **UserPreferences.personaOverrides (name/tone/brevity) apply without a code change.**
 
+### Phase 3a — Agent Reliability and Evidence
+
+**Depends on:** Phase 3  
+**Create/modify:** AgentTrajectoryState, OutcomeVerifier, CompletionEvidence, AgentTurnOutcome, AgentOrchestrator integration, Renderer completion guard.  
+**Required tests:** `tests/core/ai/trajectory/**`, `tests/core/ai/OutcomeVerifier.test.ts`  
+**Verification:** `pnpm run verify:phase-3a`  
+**Requirements (from §28.2):** AGT-01 (P0) trajectory states · AGT-02 (P0) side-effect success needs CompletionEvidence · AGT-03 (P0) structured AgentTurnOutcome, cap exhaustion is `partial` · AGT-04 (P0) deterministic replan/terminal policy.  
+**Types:** `AgentTrajectoryState`, `CompletionEvidence`, `AgentTurnOutcome` (Appendix C.1).  
+**DONE when:** transitions, evidence, partial/cap behaviour, abort, and false-completion tests pass.
+
 ### Phase 4 — Context-Adaptive Execution
 
 **Create:**
@@ -2448,6 +2631,16 @@ tests/isolation/no-content-script-ui.test.ts        # verifies no React/AntD/def
 - SPA-nav (wxt:locationchange) + tabs.onUpdated invalidation works.
 - Passwords never captured (isPassword ⇒ value omitted).
 - pnpm run verify:phase-4a passes.
+
+### Phase 4b — Trust-Aware Context and Receipts
+
+**Depends on:** Phases 4 and 4a  
+**Create/modify:** ContextItem, trust policy, context receipt, injection defences, stable-prefix snapshots, progressive skill disclosure.  
+**Required tests:** `tests/core/context/trust/**`, `tests/security/prompt-injection/**`  
+**Verification:** `pnpm run verify:phase-4b`  
+**Requirements (from §28.3):** CTX-01 (P0) source trust/authority metadata · CTX-02 (P0) retrieved data is never instructions · CTX-03 (P0) ContextProvenanceManifest → context receipt · CTX-04 (P0) stable-prefix snapshot tests · CTX-05 (P1) progressive skill disclosure · CTX-06 (P1) context-quality diagnostics without raw text.  
+**Types:** `ContextItem`, `ContextReceiptEntry` (Appendix C.1).  
+**DONE when:** malicious page, note, and tool fixtures cannot alter policy, and Prompt Inspector reconstructs packing decisions.
 
 ### Phase 5 — Knowledge Base (Memory + MiniSearch + Notes)
 
@@ -2532,6 +2725,16 @@ tests/core/storage/migrations/v4.test.ts
 - v4 migration idempotent.
 - pnpm run verify:phase-5a passes.
 
+### Phase 5b — Memory Governance and Experience Candidates
+
+**Depends on:** Phases 5 and 5a  
+**Create/modify:** MemoryRecord, conflict resolver, lifecycle controls, procedural experience candidate store, edge provenance.  
+**Required tests:** `tests/core/memory/governance/**`, `tests/core/knowledge/provenance/**`  
+**Verification:** `pnpm run verify:phase-5b`  
+**Requirements (from §28.4):** MEM-01 (P0) working/episodic/semantic/preference/procedural taxonomy · MEM-02 (P0) source+confidence+lifecycle+sensitivity+verified-at · MEM-03 (P0) conflict precedence (correction > verified > prior > inference) · MEM-04 (P0) view/edit/pin/forget/disable/export/cloud-exclude controls · MEM-05 (P1) procedural experience gated by approval · KNW-01 (P1) edge provenance.  
+**Types:** `MemoryRecord`, `ProceduralExperience`, `KnowledgeEdgeSource` (Appendix C.1).  
+**DONE when:** conflicts, forget, expiry, sensitivity, provenance, and Notes/Memory boundaries pass.
+
 ### Phase 6 — Transaction Logging and Diagnostics
 
 **Create:**
@@ -2560,6 +2763,39 @@ tests/components/DiagnosticsSection.test.tsx
 - Every tool call creates a tool trace.
 - Redaction test proves secrets (+ note content + filesystem paths) are not persisted.
 - Diagnostics panel in Options can copy operation ID.
+
+### Phase 6a — Agent Evaluation
+
+**Depends on:** Phase 6 and available core capabilities  
+**Create:** `src/core/evaluation/**`, `tests/evals/**`, evaluation reports in Diagnostics.  
+**Required tests:** `tests/evals/**`  
+**Verification:** `pnpm run verify:phase-6a`  
+**Requirements (from §28.6):** EVAL-01 (P0) versioned golden suites · EVAL-02 (P0) multi-dimension trajectory rubric · EVAL-03 (P0) deterministic validators, judges only for qualitative dims · EVAL-04 (P0) first-failing-layer diagnostics · EVAL-05 (P0) safety/leak/injection/false-completion/citation/isolation regressions block release · EVAL-06 (P1) cost/latency/quality Pareto · EVAL-07 (P1) calibrated, versioned judges.  
+**Types:** `FailureLayer` (Appendix C.1).  
+**DONE when:** golden suites produce per-dimension evidence and failure-layer categorisation.
+
+### Phase 6b — Verified Continual Evolution
+
+**Depends on:** Phases 5b and 6a  
+**Create:** `src/core/evolution/**`, candidate store, sandbox runner, approval/version/rollback contracts.  
+**Required tests:** `tests/core/evolution/**`  
+**Verification:** `pnpm run verify:phase-6b`  
+**Requirements (from §28.7):** EVO-01 (P1) trajectories create candidates, never direct prod changes · EVO-02 (P1) one target layer per candidate · EVO-03 (P1) EvolutionCandidate stores evidence/baseline/security/version/rollback · EVO-04 (P0) untrusted content cannot update active prompts/tools/permissions/code/procedural memory · EVO-05 (P1) sandbox→approve→scoped rollout→monitor→rollback · EVO-06 (P2) agent-generated tools stay sandbox proposals.  
+**Candidate Proposer (from §28.7a):** PROP-01 (P1) inputs = failing evals + trace evidence only · PROP-02 (P1) one layer per proposal (deterministic `FailureLayer`→`targetLayer`) · PROP-03 (P1) evidence threshold (≥3 agreeing failures, ≥0.15 score drop) · PROP-04 (P1) per-proposal sandbox cost cap · PROP-05 (P0) proposes only, never activates · PROP-06 (P1) reproducible (suite version + op-ids + hash).  
+**Create:** `src/core/evolution/CandidateProposer.ts` (deterministic proposer), candidate store, sandbox runner, approval/version/rollback contracts.  
+**Types:** `EvolutionCandidate`, `EvolutionCandidateProposal`, `ProposerInput` (Appendix C.1).  
+**Worked example:** Appendix O.9.  
+**DONE when:** raw traces cannot self-activate; the proposer maps a failing eval to exactly one single-layer, cost-capped `proposed` candidate; and a candidate can be proposed, tested, approved, scoped, and rolled back.
+
+### Phase 6c — Bounded Multi-Role Collaboration
+
+**Depends on:** Phases 3a, 4b, 6a, and 6b  
+**Create:** `src/core/collaboration/**`, typed role policies and handoffs, collaboration coordinator, trace integration, and baseline evaluation fixtures.  
+**Required tests:** `tests/core/collaboration/**`, `tests/evals/collaboration/**`, `tests/security/collaboration-permissions.test.ts`  
+**Verification:** `pnpm run verify:phase-6c`  
+**Requirements (from §30.2):** COLLAB-01 (P1) explicit activation · COLLAB-02 (P1) closed role registry · COLLAB-03 (P1) CollaborationPlan caps/deadline (single-agent = one-role plan) · COLLAB-04 (P1) typed handoffs, no hidden reasoning · COLLAB-05/06 (P0) coordinator owns commits, workers no side effects · COLLAB-07 (P1) independent reviewer · COLLAB-08 (P1) contained failure/fallback · COLLAB-09/10 (P1) shared projected context + traces · COLLAB-11 (P1) single-agent baseline gate · COLLAB-12 (P2) future isolated workers · COLLAB-13 (P0) no open-ended/unbounded agents.  
+**Types:** `CollaborationRole`, `RolePolicy`, `CollaborationPlan`, `AgentHandoffArtifact`, `CollaborationOutcome` (Appendix C.1).  
+**DONE when:** roles, tools, contexts, budgets, permissions, handoffs, independent review, failure fallback, and single-agent baseline gates pass. Full requirements are in §30.
 
 ### Phase 7 — Workspace Experience (UI/UX) + RICH
 
@@ -2622,6 +2858,16 @@ This phase exposes capabilities built in Phases 3–5a as polished surfaces, the
 - RICH P0 (7.3) complete: persona header, welcome cards, quick-action chips, clarification + follow-up chips (max 2 rounds; graceful timeout), code-block Copy/Save-as-macro (Insert=clipboard-only), streaming stage indicators.
 - pnpm run verify:phase-7 passes.
 
+### Phase 7a — Multimodal Input Foundation
+
+**Depends on:** Phase 7 and Phase 4b  
+**Create:** `src/core/multimodal/**`, image input UI, voice transcription input, provider capability gates, modality fixtures.  
+**Required tests:** `tests/core/multimodal/**`, `tests/components/multimodal/**`  
+**Verification:** `pnpm run verify:phase-7a`  
+**Requirements (from §29.2):** MM-01 (P1) ModalityInput (no inline binary) · MM-02 (P1) ModalityObservation with confidence/sensitivity · MM-03 (P1) image paste/upload via vision model · MM-04 (P1) voice → editable Sender, explicit send · MM-05 (P2) later fast/slow split · MM-06 (P1) AbortSignal across transcribe/plan/tool/render · MM-07 (P0 boundary) APC-lite ≠ browser automation.  
+**Types:** `ModalityInput`, `ModalityObservation` (Appendix C.1).  
+**DONE when:** image and audio inputs become redacted ContextItems, unsupported providers fail safely, and abort works.
+
 ### Phase 8 — Add-ons and Content Script Runtime (Extraction-Only)
 
 **Create/complete:**
@@ -2660,6 +2906,16 @@ tests/isolation/no-content-script-ui.test.ts
 - TeamGQM add-on renders in Side Panel and Standalone view.
 - Add-ons can consume PageContentService + Memory + Notes + LLM-Wiki.
 
+### Phase 8a — Tool Governance and Active Discovery
+
+**Depends on:** Phase 8 and Phase 3a  
+**Create/modify:** ToolCapabilityManifest, risk matrix, verifier registry, result shaping, idempotency, active tool discovery.  
+**Required tests:** `tests/core/tools/governance/**`, `tests/core/tools/discovery/**`  
+**Verification:** `pnpm run verify:phase-8a`  
+**Requirements (from §28.5):** TOL-01 (P0) ToolCapabilityManifest (category/risk/side-effect/perms/scopes/timeout/cost/idempotency/verifier/hashes) · TOL-02 (P0) risk- & side-effect-based permission policy · TOL-03 (P0) postcondition verification · TOL-04 (P0) validate/redact/size-limit/shape/attribute results · TOL-05 (P0) idempotent write replay-safety · TOL-06 (P1) active discovery over tools budget · TOL-07 (P2) resumable long-running contract (future).  
+**Types:** `ToolCapabilityManifest` (Appendix C.1).  
+**DONE when:** manifests are complete, risky writes require confirmation, duplicate writes are prevented, and discovery stays within token budget.
+
 ### Phase 9 — Hardening and Release
 
 **Required test suites:**
@@ -2688,6 +2944,11 @@ tests/perf/**
 - First token < 2 s local / < 3 s cloud.
 - Filesystem restore round-trips a full vault.
 - RAG returns correct citations on a fixture note set.
+- Every inserted sub-phase verification command passes.
+- Prompt-injection, secret-leakage, false-completion, permission, and memory-isolation regressions block release.
+- Multimodal privacy and provider-routing fixtures pass.
+- Evolution candidate activation and rollback drills pass.
+- Release records include evaluation-suite and rubric versions.
 
 ## §19 — Runtime Edge Cases and Mitigations
 
@@ -3286,6 +3547,14 @@ Runs nightly via Scheduler. v0.1 produces exactly three Insight values: tag-tren
 | **Persona** | **PersonaProfile + PersonaInjector in Phase 3; config in PreferenceMemoryStore** | Persona-aware prompts from day one; user config ≠ inferred fact (R2) |
 | **RICH implementation** | **On Ant Design X presentation components, phased 7.3/7.4/7.5** | Reuses adopted stack; no new UI framework |
 | **Host-page write-back** | **Deferred (clipboard-only in v0.1)** | Extraction-only rule (§0.2); write-back needs v0.2+ injection (R1) |
+| **Agent architecture** | **Coordinator platform; single-agent = one-role plan** | One runtime, tool-governance, memory, evaluation & security model for both modes; multi-role added as data (roles + plans), not a second architecture (§1.6, §30) |
+| **Self-learning model** | **Human-verified continual evolution — NOT autonomous self-modification** | Live orchestration is deterministic; learning is a gated candidate pipeline (§28.6/§28.7/§28.7a). `CandidateProposer` only *proposes*; nothing activates without sandbox eval + human approval (EVO-01/04/05, PROP-05). Fits privacy/cost/safety posture |
+| **Stage typing** | **Discriminated `StageEvent` union (type only), not an event engine** | Compile-time-checked stage I/O for cheap models (L1); avoids importing the deprecated LlamaIndex Workflows engine (§1.6.1) |
+| **Human-in-the-loop** | **Within-turn `input-required` only** | Maps to `waiting-for-permission`/`ask_clarification` (AGT-01); durable cross-session suspend/resume/rewind deferred to v0.2+ (L2, §17.7.7) |
+| **Retry layering** | **Three bounded, non-multiplying layers** | ProviderRouter (§1.5) + AGT-04 replan + one per-stage retry, all under §1.4 tier caps; prevents N×N×N cost blow-up on cheap models (L3, §1.6.1) |
+| **Working memory** | **Markdown block in `UserMemoryStore`, budget-capped** | Cheap always-on user profile for tiny models (Mastra M1); kept distinct from persona config (R2); single-writer, redacted (§3.6) |
+| **Per-call tool approval** | **Dynamic, escalate-only, coordinator-owned** | Risk scales with actual arguments (TOL-02); workers never self-approve (COLLAB-06); baseline from `toolAutonomy` (Mastra M3, §14.5) |
+| **External agent frameworks** | **Rejected: @ant-design/x-sdk, LlamaIndex Workflows, Mastra** | Each is a server/UI-first or deprecated runtime that would duplicate the owned coordinator; patterns borrowed instead (see `DECISIONS.md`) |
 
 **Explicitly out of scope (do not implement):** Tailwind v4 + np-* tokens; shadcn/ui; @radix-ui/react-*; Tweakcn HSL mapping; Shadow DOM injection via ContentScriptHost UI mount; split preflight CSS; portal isolation via ui-shadow/ wrappers; dark mode via .dark class. See §25.
 
@@ -3299,13 +3568,21 @@ Each phase must define a real script. Minimum expected commands in package.json:
     "verify:phase-1":  "tsc --noEmit && vitest run tests/core/runtime tests/core/events tests/core/workspace tests/core/theme",
     "verify:phase-2":  "tsc --noEmit && vitest run tests/core/storage tests/core/security tests/core/utils tests/core/workspace/WorkspacePersistence.test.ts",
     "verify:phase-3":  "tsc --noEmit && vitest run tests/core/ai tests/core/ai/persona",
+    "verify:phase-3a": "tsc --noEmit && vitest run tests/core/ai/trajectory tests/core/ai/OutcomeVerifier.test.ts",
     "verify:phase-4":  "tsc --noEmit && vitest run tests/core/context",
     "verify:phase-4a": "tsc --noEmit && vitest run tests/core/extraction tests/core/content tests/isolation/no-content-script-ui.test.ts",
+    "verify:phase-4b": "tsc --noEmit && vitest run tests/core/context/trust tests/security/prompt-injection",
     "verify:phase-5":  "tsc --noEmit && vitest run tests/core/memory tests/core/search tests/core/notes/LinkParser.test.ts",
     "verify:phase-5a": "tsc --noEmit && vitest run tests/core/notes tests/core/storage/migrations",
+    "verify:phase-5b": "tsc --noEmit && vitest run tests/core/memory/governance tests/core/knowledge/provenance",
     "verify:phase-6":  "tsc --noEmit && vitest run tests/core/telemetry tests/components/DiagnosticsSection.test.tsx",
+    "verify:phase-6a": "tsc --noEmit && vitest run tests/evals",
+    "verify:phase-6b": "tsc --noEmit && vitest run tests/core/evolution tests/core/evolution/CandidateProposer.test.ts",
+    "verify:phase-6c": "tsc --noEmit && vitest run tests/core/collaboration tests/evals/collaboration tests/security/collaboration-permissions.test.ts",
     "verify:phase-7":  "tsc --noEmit && vitest run tests/hooks tests/components tests/components/rich tests/core/intent tests/core/notes",
+    "verify:phase-7a": "tsc --noEmit && vitest run tests/core/multimodal tests/components/multimodal",
     "verify:phase-8":  "tsc --noEmit && vitest run tests/core/content tests/addons tests/isolation",
+    "verify:phase-8a": "tsc --noEmit && vitest run tests/core/tools/governance tests/core/tools/discovery",
     "verify:phase-9":  "tsc --noEmit && vitest run && pnpm run lint",
     "verify:all":      "tsc --noEmit && vitest run && pnpm run lint",
     "test:perf":       "vitest run tests/perf",
@@ -3532,12 +3809,14 @@ Bidirectional filesystem sync (requires polling/Native Messaging) · embedding-b
 
 This section adds evidence-backed completion, trust-aware context, governed memory, capability-based tools, trajectory evaluation, and verified evolution. It does not replace the bounded Planner → Executor → Renderer architecture.
 
+> **Where each requirement is built:** the P0/P1 IDs below are folded next to their implementation phase in §18 (AGT→3a, CTX→4b, MEM/KNW→5b, TOL→8a, EVAL→6a, EVO→6b). Canonical shapes are in Appendix C.1; **worked reference implementations are in Appendix O**.
+
 ### §28.2 Agent reliability requirements
 
 - **AGT-01 (P0):** Add explicit trajectory states: assembling-context, planning, waiting-for-permission, executing, verifying, replanning, rendering, completed, failed, aborted.
 - **AGT-02 (P0):** Side-effecting success requires `CompletionEvidence`. Renderer must not claim execution without matching evidence.
 - **AGT-03 (P0):** Every turn produces a structured `AgentTurnOutcome`; cap exhaustion is partial, not successful.
-- **AGT-04 (P0):** Replanning follows the deterministic retry/terminal policy in `NOWPILOT_ADDITIONAL_REQUIREMENTS_AGENT_HARNESS.md`.
+- **AGT-04 (P0):** Replanning follows a deterministic retry/terminal policy: at most one replan per failed tool within the tier's planner cap (§1.4); a repeated identical failure, a cap breach, or an abort is terminal and yields a `partial` or `failed` `AgentTurnOutcome` — never a silent success.
 
 ### §28.3 Trust-aware context requirements
 
@@ -3589,11 +3868,28 @@ This section adds evidence-backed completion, trust-aware context, governed memo
 - **EVO-05 (P1):** Candidate activation requires sandbox evaluation, approval, scoped rollout, monitoring, and rollback.
 - **EVO-06 (P2):** Agent-generated tools remain sandbox proposals and cannot self-publish.
 
+### §28.7a Candidate Proposer contract
+
+**Design intent.** NowPilot's self-learning is **human-verified continual evolution, not autonomous self-modification.** The live orchestration (§1.2, §1.6) is deterministic and never rewrites itself at runtime. Learning happens *beside* the runtime as a **gated candidate pipeline**: evaluation (§28.6) detects a weakness, the **Candidate Proposer** turns it into a typed `EvolutionCandidate`, and nothing activates without sandbox evaluation + human approval (EVO-01/04/05).
+
+`CandidateProposer` (`src/core/evolution/CandidateProposer.ts`, Phase 6b) is the missing bridge between *evaluation output* and *evolution input*. It is **deterministic**: same eval failures ⇒ same proposals.
+
+- **PROP-01 (P1):** The proposer's **only** inputs are (a) failed golden-suite results carrying a `FailureLayer` (EVAL-04) and (b) the `AITransactionLog` evidence for those operations. It never reads raw untrusted content (page/note/tool output) to form a proposal (EVO-04, §28.3).
+- **PROP-02 (P1):** Each proposal targets **exactly one** layer, mapped deterministically from `FailureLayer` → candidate `targetLayer` (EVO-02). A failure spanning multiple layers yields multiple single-layer proposals, never one blended patch.
+- **PROP-03 (P1):** A proposal is emitted **only** when the weakness clears an **evidence threshold**: at least `PROPOSE_MIN_FAILURES` (default **3**) failing trajectories agree on the same `FailureLayer`, over a rubric-score drop ≥ `PROPOSE_MIN_SCORE_DELTA` (default **0.15**). Below threshold ⇒ no proposal (avoids over-fitting to one bad run).
+- **PROP-04 (P1):** Every proposal carries a **cost cap**: an estimated token/latency budget for its sandbox evaluation. If the projected sandbox cost exceeds `PROPOSE_MAX_EVAL_TOKENS` (default **50_000**), the proposal is marked `deferred`, not run — keeping self-learning affordable for cost-effective deployments.
+- **PROP-05 (P0):** The proposer **only proposes**. It emits `status: 'proposed'` candidates into the Phase 6b store and can never activate, scope-roll, or write them into active prompts/tools/permissions/procedural memory (EVO-01/04/05). Activation stays human-gated.
+- **PROP-06 (P1):** Every proposal is reproducible: it records the eval-suite version, the contributing `operationId`s, and a content hash so the same inputs regenerate an identical candidate (supports EVAL-07 judge/version calibration).
+
+Canonical types are in **Appendix C.1**; a worked implementation is in **Appendix O.9**. Constants live in Appendix C.1 alongside the types.
+
 ## §29 — Multimodal Input and Real-Time Interaction Foundation
 
 ### §29.1 Scope
 
 v0.1 adds a bounded multimodal input foundation, not a second agent architecture. Image, audio, and document inputs become normalised observations consumed by the existing ContextOptimizer and agent pipeline.
+
+> **Where each requirement is built:** the MM-* IDs below are folded into Phase 7a (§18). Canonical shapes are in Appendix C.1; a worked adapter is in **Appendix O.6**.
 
 ### §29.2 Requirements
 
@@ -3613,195 +3909,35 @@ v0.1 adds a bounded multimodal input foundation, not a second agent architecture
 - Never switch local to cloud for multimodal processing unless `allowCloudFallbackFromLocal` permits it.
 - If no compatible model is configured, return `MULTIMODAL_MODEL_UNAVAILABLE` with a settings action.
 
-## §30 — Revised Master Implementation Order
+## §30 — Bounded Multi-Agent Collaboration (single-agent default)
 
-### §30.1 Canonical order
+### §30.1 Architecture decision
 
-```text
-1 → 2 → 3 → 3a → 4 → 4a → 4b → 5 → 5a → 5b
-  → 6 → 6a → 6b → 6c → 7 → 7a → 8 → 8a → 9
-```
+NowPilot uses a **coordinator-based agent platform** (§1.6). **Single-agent execution is the default configuration, implemented as a one-role `CollaborationPlan`.** Multi-agent execution uses two or more registered roles coordinated through typed handoffs and shared verified task state.
 
-The original Phase 1–9 requirements remain intact. The following sub-phases insert new work without deleting or renumbering existing features.
+All agent execution — single-agent or multi-agent — uses the **same** runtime (§1.2), tool governance (§28.5), evaluation (§28.6), memory governance (§28.4), and security model (§16.6). Multi-role workflows are added as **data** (roles + plans), never as a second runtime, so there is no separate architecture to build later.
 
-### Phase 3a — Agent Reliability and Evidence
+The initial multi-role implementation is one `CollaborationCoordinator` running **bounded staged roles**. Dynamic agent creation, unbounded spawning, peer-granted permissions, uncontrolled agent-to-agent conversation, shared mutable worker memory, and agreement-as-verification remain **prohibited** in every mode (§16.6). Isolated parallel workers are deferred (§30.6).
 
-**Depends on:** Phase 3  
-**Create/modify:** `AgentTrajectoryState`, `OutcomeVerifier`, `CompletionEvidence`, `AgentTurnOutcome`, AgentOrchestrator integration, Renderer completion guard.  
-**DONE when:** transitions, evidence, partial/cap behaviour, abort, and false-completion tests pass.
+Routine chat, summarisation, rewriting, and simple retrieval run on the default one-role plan and never pay multi-agent overhead.
 
-### Phase 4b — Trust-Aware Context and Receipts
+### §30.2 Requirements
 
-**Depends on:** Phases 4 and 4a  
-**Create/modify:** `ContextItem`, trust policy, context receipt, injection defences, stable-prefix snapshots, progressive skill disclosure.  
-**DONE when:** malicious page/note/tool fixtures cannot alter policy and Prompt Inspector reconstructs packing decisions.
-
-### Phase 5b — Memory Governance and Experience Candidates
-
-**Depends on:** Phases 5 and 5a  
-**Create/modify:** `MemoryRecord`, conflict resolver, lifecycle controls, procedural experience candidate store, edge provenance.  
-**DONE when:** conflicts, forget, expiry, sensitivity, provenance, and Notes/Memory boundaries pass.
-
-### Phase 6a — Agent Evaluation
-
-**Depends on:** Phase 6 and available core capabilities  
-**Create:** `src/core/evaluation/**`, `tests/evals/**`, evaluation reports in Diagnostics.  
-**DONE when:** golden suites produce per-dimension evidence and failure-layer categorisation.
-
-### Phase 6b — Verified Continual Evolution
-
-**Depends on:** Phases 5b and 6a  
-**Create:** `src/core/evolution/**`, candidate store, sandbox runner, approval/version/rollback contracts.  
-**DONE when:** raw traces cannot self-activate; a candidate can be proposed, tested, approved, scoped, and rolled back.
-
-### Phase 6c — Bounded Multi-Role Collaboration
-
-**Depends on:** Phases 3a, 4b, 6a, and 6b  
-**Create:** `src/core/collaboration/**`, typed role policies and handoffs, collaboration coordinator, trace integration, and baseline evaluation fixtures.  
-**DONE when:** roles, tools, contexts, budgets, permissions, handoffs, independent review, failure fallback, and single-agent baseline gates pass. Full requirements are in §32.
-
-### Phase 7a — Multimodal Input Foundation
-
-**Depends on:** Phase 7 and Phase 4b  
-**Create:** `src/core/multimodal/**`, image input UI, voice transcription input, provider capability gates, modality fixtures.  
-**DONE when:** image/audio inputs become redacted ContextItems, unsupported providers fail safely, and abort works.
-
-### Phase 8a — Tool Governance and Active Discovery
-
-**Depends on:** Phase 8 and Phase 3a  
-**Create/modify:** `ToolCapabilityManifest`, risk matrix, verifier registry, result shaping, idempotency, active tool discovery.  
-**DONE when:** manifests are complete, risky writes require confirmation, duplicate writes are prevented, and discovery stays within token budget.
-
-### Phase 9 — Hardening and Release (expanded)
-
-In addition to all existing Phase 9 gates:
-
-- run every new sub-phase verification command;
-- block prompt-injection, secret-leakage, false-completion, permission, and memory-isolation regressions;
-- run multimodal privacy/provider fixtures;
-- run candidate activation/rollback drills;
-- include evaluation-suite and rubric versions in release records.
-
-## §31 — Additional Types, Error Codes, Verification & Security (Harness Tracks)
-
-### §31.1 New canonical types
-
-The full shapes are defined in `NOWPILOT_ADDITIONAL_REQUIREMENTS_AGENT_HARNESS.md`. Add them to Appendix C when implementing their target sub-phase:
-
-- `AgentTrajectoryState`
-- `CompletionEvidence`
-- `AgentTurnOutcome`
-- `ContextItem`
-- `ContextReceiptEntry`
-- `MemoryRecord`
-- `ProceduralExperience`
-- `KnowledgeEdgeSource`
-- `ToolCapabilityManifest`
-- `FailureLayer`
-- `EvolutionCandidate`
-- `ModalityInput`
-- `ModalityObservation`
-- `CollaborationRole`
-- `RolePolicy`
-- `CollaborationPlan`
-- `AgentHandoffArtifact`
-- `CollaborationOutcome`
-
-### §31.2 New error codes
-
-```text
-AGENT_STATE_INVALID
-TOOL_POSTCONDITION_FAILED
-COMPLETION_EVIDENCE_MISSING
-CONTEXT_INSTRUCTION_INJECTION_BLOCKED
-MEMORY_CONFLICT
-MEMORY_EXPIRED
-TOOL_MANIFEST_INVALID
-TOOL_IDEMPOTENCY_CONFLICT
-EVALUATION_FAILED
-EVOLUTION_CANDIDATE_REJECTED
-MULTIMODAL_MODEL_UNAVAILABLE
-MULTIMODAL_INPUT_INVALID
-MULTIMODAL_TRANSCRIPTION_FAILED
-COLLAB_DISABLED
-COLLAB_PLAN_INVALID
-COLLAB_ROLE_UNKNOWN
-COLLAB_ROLE_BUDGET_EXCEEDED
-COLLAB_TOTAL_BUDGET_EXCEEDED
-COLLAB_HANDOFF_INVALID
-COLLAB_TOOL_SCOPE_VIOLATION
-COLLAB_PERMISSION_VIOLATION
-COLLAB_REVIEW_REJECTED
-COLLAB_BASELINE_NOT_MET
-COLLAB_DEADLINE_EXCEEDED
-```
-
-### §31.3 New verification scripts
-
-```json
-{
-  "verify:phase-3a": "tsc --noEmit && vitest run tests/core/ai/trajectory tests/core/ai/OutcomeVerifier.test.ts",
-  "verify:phase-4b": "tsc --noEmit && vitest run tests/core/context/trust tests/security/prompt-injection",
-  "verify:phase-5b": "tsc --noEmit && vitest run tests/core/memory/governance tests/core/knowledge/provenance",
-  "verify:phase-6a": "tsc --noEmit && vitest run tests/evals",
-  "verify:phase-6b": "tsc --noEmit && vitest run tests/core/evolution",
-  "verify:phase-6c": "tsc --noEmit && vitest run tests/core/collaboration tests/evals/collaboration tests/security/collaboration-permissions.test.ts",
-  "verify:phase-7a": "tsc --noEmit && vitest run tests/core/multimodal tests/components/multimodal",
-  "verify:phase-8a": "tsc --noEmit && vitest run tests/core/tools/governance tests/core/tools/discovery"
-}
-```
-
-`verify:all` must include every existing and new suite.
-
-### §31.4 New hard rules
-
-- **DO NOT** claim a side effect completed without `CompletionEvidence`.
-- **DO NOT** treat retrieved data as instructions.
-- **DO NOT** write raw traces directly into procedural memory.
-- **DO NOT** activate an evolution candidate without evaluation and approval.
-- **DO NOT** persist raw image/audio data in diagnostics.
-- **DO NOT** execute tools from partial voice transcription.
-- **DO NOT** infer that APC-lite enables browser automation.
-- **DO NOT** allow open-ended agent-to-agent conversations or dynamic unbounded spawning.
-- **DO NOT** let worker roles grant permissions, execute side effects, or write durable memory directly.
-- **DO NOT** treat agreement among agents as evidence or verification.
-
-### §31.5 Source study
-
-- [AI Agent Fundamentals](https://bojieli.github.io/ai-agent-book/book-en/chapter1/)
-- [Context Engineering](https://bojieli.github.io/ai-agent-book/book-en/chapter2/)
-- [User Memory and Knowledge](https://bojieli.github.io/ai-agent-book/book-en/chapter3/)
-- [Tools](https://bojieli.github.io/ai-agent-book/book-en/chapter4/)
-- [Evaluating Agents](https://bojieli.github.io/ai-agent-book/book-en/chapter6/)
-- [Continual Evolution of Agent](https://bojieli.github.io/ai-agent-book/book-en/chapter8/)
-- [Multimodality and Real-Time Interaction](https://bojieli.github.io/ai-agent-book/book-en/chapter9/)
-- [Multi-Agent Collaboration](https://bojieli.github.io/ai-agent-book/book-en/chapter10/)
-
-## §32 — Bounded Multi-Agent Collaboration
-
-### §32.1 Product decision
-
-NowPilot may use specialised multi-agent collaboration for selected complex workflows, but v0.1 does not become an open-ended multi-agent platform. The initial architecture is one `CollaborationCoordinator` running bounded staged roles with shared verified task state and typed handoffs. Isolated parallel workers are deferred.
-
-Routine chat, summarisation, rewriting, and simple retrieval remain on the existing single-agent path.
-
-### §32.2 Requirements
-
-- **COLLAB-01 (P1):** Collaboration requires explicit user/workflow activation or an allowed deterministic complexity policy. Planner recommendation alone cannot silently enable it.
+- **COLLAB-01 (P1):** Multi-role collaboration requires explicit user/workflow activation or an allowed deterministic complexity policy. Planner recommendation alone cannot silently enable it. (The one-role default needs no activation.)
 - **COLLAB-02 (P1):** Roles come from a closed `CollaborationRoleRegistry`; each has a role-specific prompt, tool allowlist, context projection, budget, and timeout.
-- **COLLAB-03 (P1):** `CollaborationPlan` defines stages, dependencies, roles, total planner/tool/token caps, and deadline.
+- **COLLAB-03 (P1):** `CollaborationPlan` defines stages, dependencies, roles, total planner/tool/token caps, and deadline. The single-agent default is the one-role plan (`stages.length === 1`).
 - **COLLAB-04 (P1):** Roles exchange `AgentHandoffArtifact` values containing summaries, sourced facts, open questions, output references, and completion status. Hidden reasoning is never exchanged or logged.
 - **COLLAB-05 (P0 boundary):** One coordinator owns sequencing, permission requests, side-effect commits, and termination.
 - **COLLAB-06 (P0 boundary):** Workers cannot directly write memory/notes, execute side effects, export data, or activate evolution candidates.
 - **COLLAB-07 (P1):** High-impact output requires an independent reviewer that did not create the candidate result.
 - **COLLAB-08 (P1):** Role failures are contained and may trigger one safe retry, substitution, reduced-confidence continuation, single-agent fallback, or termination.
-- **COLLAB-09 (P1):** Initial staged roles share one OptimizedContext through role-specific projections and typed artefacts; full trajectories are not duplicated across roles.
+- **COLLAB-09 (P1):** Staged roles share one OptimizedContext through role-specific projections and typed artefacts; full trajectories are not duplicated across roles.
 - **COLLAB-10 (P1):** Collaboration traces record roles, policies, supplied sources, handoffs, tools, permissions, budgets, reviewer decision, evidence, and termination without raw prompts or hidden reasoning.
 - **COLLAB-11 (P1):** A collaborative workflow ships only after evaluation against the single-agent baseline and configured quality/cost/latency/safety gates.
 - **COLLAB-12 (P2):** Future isolated parallel workers are allowed only for independent sub-tasks and communicate through validated artefacts or referenced files.
 - **COLLAB-13 (P0 boundary):** Open-ended agent chat, dynamic unbounded spawning, peer-granted permissions, shared mutable worker memory, and agreement-as-verification are forbidden.
 
-### §32.3 Initial workflow candidates
+### §30.3 Initial multi-role workflow candidates
 
 1. Complex ServiceNow case investigation.
 2. Deep multi-source research.
@@ -3809,83 +3945,17 @@ Routine chat, summarisation, rewriting, and simple retrieval remain on the exist
 4. Verified evolution review.
 5. Specification → implementation → test → architecture review.
 
-### §32.4 Required types
+### §30.4 Required types
 
-Add canonical Zod-validated types to Appendix C during Phase 6c:
+Canonical Zod-validated shapes live in **Appendix C.1 (Harness-Track & Collaboration Types)** — implemented during Phase 6c: `CollaborationRole`, `RolePolicy`, `CollaborationPlan`, `AgentHandoffArtifact`, `CollaborationOutcome`. The `AssistantRole` used by the single-agent default is the one-role instance of `CollaborationRole`.
 
-- `CollaborationRole`
-- `RolePolicy`
-- `CollaborationPlan`
-- `AgentHandoffArtifact`
-- `CollaborationOutcome`
+### §30.5 Implementation & verification
 
-### §32.5 Phase 6c — Bounded Multi-Role Collaboration
+**Phase 6c (§18)** is the single source for the collaboration build steps, files, tests, and the `verify:phase-6c` command (also in §24). Collaboration error codes live in **Appendix C.2 (Error Code Registry)**.
 
-**Depends on:** Phases 3a, 4b, 6a, and 6b.  
-**Create:**
-
-```text
-src/core/collaboration/CollaborationRoleRegistry.ts
-src/core/collaboration/CollaborationPlan.ts
-src/core/collaboration/CollaborationCoordinator.ts
-src/core/collaboration/AgentHandoffArtifact.ts
-src/core/collaboration/CollaborationPolicy.ts
-src/core/collaboration/CollaborationTrace.ts
-```
-
-**Required tests:**
-
-```text
-tests/core/collaboration/CollaborationCoordinator.test.ts
-tests/core/collaboration/CollaborationPolicy.test.ts
-tests/core/collaboration/AgentHandoffArtifact.test.ts
-tests/evals/collaboration/SingleAgentBaseline.test.ts
-tests/security/collaboration-permissions.test.ts
-```
-
-**DONE when:**
-
-- only registered roles can run;
-- per-role and total budgets are enforced;
-- workers receive only allowed tools/context;
-- all handoffs validate and preserve source provenance;
-- one coordinator owns permissions and commits;
-- reviewer cannot approve unsupported claims;
-- failure/fallback paths are deterministic;
-- the first workflow passes its single-agent baseline gate;
-- `pnpm run verify:phase-6c` passes.
-
-### §32.6 Future Phase 8b — Isolated Parallel Workers
+### §30.6 Future Phase 8b — Isolated Parallel Workers
 
 Parallel worker execution is deferred until Phase 6c is stable and evaluated. It requires isolated contexts, bounded concurrency, cancellation, referenced artefacts, deterministic merge/review, and no shared mutable state. Agent-generated tool proposals remain a separate later capability and must not be combined with initial parallel-worker work.
-
-### §32.7 New error codes
-
-```text
-COLLAB_DISABLED
-COLLAB_PLAN_INVALID
-COLLAB_ROLE_UNKNOWN
-COLLAB_ROLE_BUDGET_EXCEEDED
-COLLAB_TOTAL_BUDGET_EXCEEDED
-COLLAB_HANDOFF_INVALID
-COLLAB_TOOL_SCOPE_VIOLATION
-COLLAB_PERMISSION_VIOLATION
-COLLAB_REVIEW_REJECTED
-COLLAB_BASELINE_NOT_MET
-COLLAB_DEADLINE_EXCEEDED
-```
-
-### §32.8 New verification command
-
-```json
-{
-  "verify:phase-6c": "tsc --noEmit && vitest run tests/core/collaboration tests/evals/collaboration tests/security/collaboration-permissions.test.ts"
-}
-```
-
-### §32.9 Source study
-
-- [Multi-Agent Collaboration](https://bojieli.github.io/ai-agent-book/book-en/chapter10/)
 
 ---
 
@@ -4131,6 +4201,17 @@ export interface ProviderConfig {
   enabled: boolean;
   priority: number;
   lastValidated?: number;
+}
+// Result returned by ExecutorService.execute() and consumed by AgentOrchestrator,
+// OutcomeVerifier (Appendix O.2), and CandidateProposer evidence. Referenced across
+// Appendix I/O — defined here as the single source of truth.
+export interface ToolExecutionResult<T = unknown> {
+  toolName: string;                 // used by OutcomeVerifier to pick a postcondition verifier
+  ok: boolean;
+  output?: T;
+  error?: { code: string; message: string; retryable: boolean };
+  evidence?: import('@/types/harness').CompletionEvidence; // set for side-effecting tools (§28.2)
+  durationMs: number;
 }
 ```
 
@@ -4588,6 +4669,295 @@ export const PersonaProfileSchema = z.object({
   emotionalRepertoire: z.array(z.string()).max(8),
 });
 export type PersonaProfile = z.infer<typeof PersonaProfileSchema>;
+```
+
+### Appendix C.1 — Harness-Track & Collaboration Types
+
+These shapes are **self-contained** (there is no external `NOWPILOT_ADDITIONAL_REQUIREMENTS_AGENT_HARNESS.md`). Implement each type in its target sub-phase (§18) and treat these as the single source of truth.
+
+> **CANONICAL TYPE HOME (MANDATORY).** All harness-track, collaboration, evolution, multimodal, stage-event, proposer, and working-memory types below live in **one file: `src/types/harness.ts`**, re-exported via the path alias **`@/types/harness`**. Every worked example (Appendix O) imports from `@/types/harness`. Do **not** invent `@/types/collaboration`, `@/types/evolution`, or `@/types/memory` for these shapes — that split is a common cost-effective-model error. `UserPreferences` and `RetrievedMemory` remain in `@/core/memory/types`; `ToolExecutionResult`/provider types remain in `@/core/ai/types`.
+>
+> | Type group | Types | Home file |
+> |---|---|---|
+> | Reliability | `AgentTrajectoryState`, `CompletionEvidence`, `AgentTurnOutcome` | `@/types/harness` |
+> | Trust context | `ContextItem`, `ContextReceiptEntry`, `TrustLevel` | `@/types/harness` |
+> | Memory gov. | `MemoryRecord`, `ProceduralExperience`, `KnowledgeEdgeSource`, `WorkingMemory` | `@/types/harness` |
+> | Tools | `ToolCapabilityManifest` | `@/types/harness` |
+> | Eval/evolution | `FailureLayer`, `EvolutionCandidate`, `EvolutionCandidateProposal`, `ProposerInput` | `@/types/harness` |
+> | Multimodal | `Modality`, `ModalityInput`, `ModalityObservation` | `@/types/harness` |
+> | Collaboration | `CollaborationRole`, `RolePolicy`, `CollaborationPlan`, `AgentHandoffArtifact`, `CollaborationOutcome`, `StageEvent` | `@/types/harness` |
+> | Runtime result | `ToolExecutionResult` | `@/core/ai/types` |
+
+```ts
+// src/types/harness.ts — single home for all types in this appendix section
+// ---- Agent reliability (Phase 3a, §28.2) ----
+export type AgentTrajectoryPhase =
+  | 'assembling-context' | 'planning' | 'waiting-for-permission'
+  | 'executing' | 'verifying' | 'replanning' | 'rendering'
+  | 'completed' | 'failed' | 'aborted';
+
+export interface AgentTrajectoryState {
+  operationId: string;
+  phase: AgentTrajectoryPhase;
+  plannerCalls: number;
+  toolCalls: number;
+  updatedAt: number;
+}
+export interface CompletionEvidence {
+  toolName: string;
+  operationId: string;
+  postconditionId: string;   // verifier that produced this evidence (TOL-03)
+  ok: boolean;
+  verifiedAt: number;
+  detail?: string;
+}
+export interface AgentTurnOutcome {
+  operationId: string;
+  status: 'completed' | 'partial' | 'failed' | 'aborted';
+  reasonCode: string;        // cap exhaustion => 'partial', never 'completed'
+  evidence: CompletionEvidence[];
+  plannerCalls: number;
+  toolCalls: number;
+}
+
+// ---- Trust-aware context (Phase 4b, §28.3) ----
+export type TrustLevel = 'system' | 'user' | 'tool' | 'retrieved' | 'untrusted';
+export interface ContextItem {
+  id: string;
+  kind: PromptSection['kind'];
+  text: string;
+  tokens: number;
+  trust: TrustLevel;
+  instructionAuthority: boolean;   // MUST be false for retrieved/untrusted data
+  relevance: number;               // 0..1
+  freshness: number;               // 0..1
+  sensitivity: 'none' | 'low' | 'high';
+  sourceId: string;
+}
+export interface ContextReceiptEntry {
+  sourceId: string;
+  included: boolean;
+  originalTokens: number;
+  finalTokens: number;
+  compression?: 'summarise' | 'structural' | 'topk';
+  cacheEligible: boolean;
+  omitReason?: string;
+}
+
+// ---- Memory & knowledge governance (Phase 5b, §28.4) ----
+export type MemoryKind = 'working' | 'episodic' | 'semantic' | 'preference' | 'procedural';
+export interface MemoryRecord {
+  id: string;
+  kind: MemoryKind;
+  content: string;
+  source: 'explicit' | 'inferred' | 'system' | 'correction';
+  confidence: number;              // 0..1
+  sensitivity: 'none' | 'low' | 'high';
+  lifecycle: 'active' | 'expired' | 'forgotten' | 'pinned';
+  verifiedAt?: number;
+  createdAt: number;
+  updatedAt: number;
+}
+export interface ProceduralExperience {
+  id: string;
+  trigger: string;
+  steps: string[];
+  status: 'candidate' | 'approved' | 'rejected';
+  evidenceOperationIds: string[];  // activated only after verification + approval
+  createdAt: number;
+}
+export type KnowledgeEdgeSource = 'explicit' | 'imported' | 'suggested' | 'accepted';
+
+// ---- Tool governance (Phase 8a, §28.5) ----
+export interface ToolCapabilityManifest {
+  toolName: string;
+  category: string;
+  risk: 'low' | 'medium' | 'high';
+  sideEffect: boolean;
+  requiredPermissions: string[];
+  scopes: string[];
+  timeoutMs: number;
+  estCostTokens: number;
+  idempotent: boolean;             // every write tool MUST be replay-safe (TOL-05)
+  verifierId?: string;             // postcondition verifier (TOL-03)
+  inputSchemaHash: string;
+  outputSchemaHash: string;
+}
+
+// ---- Evaluation & evolution (Phase 6a/6b, §28.6/§28.7) ----
+export type FailureLayer =
+  | 'knowledge' | 'retrieval' | 'context' | 'planning'
+  | 'tool' | 'permission' | 'memory' | 'rendering' | 'safety';
+export interface EvolutionCandidate {
+  id: string;
+  targetLayer: FailureLayer | 'instruction' | 'experience' | 'workflow' | 'model-tier';
+  evidenceOperationIds: string[];
+  baselineRef: string;
+  candidateRef: string;
+  security: 'sandboxed';           // never touches active prompts/tools directly (EVO-04)
+  version: string;
+  status: 'proposed' | 'approved' | 'rejected' | 'rolled-back';
+  rollbackRef: string;
+}
+
+// ---- Multimodal input (Phase 7a, §29) ----
+export type Modality = 'text' | 'image' | 'audio' | 'document';
+export interface ModalityInput {
+  id: string;
+  modality: Modality;
+  ref: string;                     // object/blob/storage ref — NEVER inline binary in prompts
+  mime: string;
+  createdAt: number;
+}
+export interface ModalityObservation {
+  sourceId: string;
+  modality: Modality;
+  extractedText?: string;
+  structure?: unknown;
+  confidence: number;              // 0..1
+  sensitivity: 'none' | 'low' | 'high';
+  createdAt: number;
+}
+
+// ---- Working memory (Phase 5, §3.6) ----
+export interface WorkingMemory {
+  resourceId: string;              // user/owner scope (NOT thread) — §3.1
+  markdown: string;                // fixed template below
+  tokens: number;                  // enforced cap (§3.6: ≤ 300 recommended)
+  updatedAt: number;
+}
+export const WORKING_MEMORY_TEMPLATE = `# User Profile
+- **Name**:
+- **Role / Team**:
+- **Environment**:
+- **Preferences**:
+- **Long-term Goals**:`;
+
+// ---- Bounded multi-agent collaboration (Phase 6c, §30) ----
+export interface CollaborationRole {
+  id: string;
+  label: string;
+  systemPromptId: string;
+  toolAllowlist: string[];
+  contextProjection: PromptSection['kind'][];   // which context kinds this role may see
+}
+export interface RolePolicy {
+  roleId: string;
+  plannerCap: number;
+  toolCap: number;
+  tokenCap: number;
+  timeoutMs: number;
+  canReview: boolean;              // independent reviewer flag (COLLAB-07)
+}
+export interface CollaborationPlan {
+  id: string;
+  stages: Array<{ roleId: string; dependsOn: string[] }>;
+  totalPlannerCap: number;
+  totalToolCap: number;
+  totalTokenCap: number;
+  deadlineMs: number;
+  // The DEFAULT single-agent path is a one-role plan: stages.length === 1 (§1.6).
+}
+export interface AgentHandoffArtifact {
+  fromRoleId: string;
+  summary: string;
+  sourcedFacts: Array<{ fact: string; sourceId: string }>;
+  openQuestions: string[];
+  outputRefs: string[];
+  completion: 'complete' | 'partial' | 'failed';
+  // Hidden chain-of-thought is NEVER exchanged or logged (COLLAB-04).
+}
+export interface CollaborationOutcome {
+  planId: string;
+  status: 'completed' | 'partial' | 'failed' | 'aborted' | 'fallback-single-agent';
+  reviewerRoleId?: string;
+  reviewerDecision?: 'approved' | 'rejected';
+  evidence: CompletionEvidence[];
+  terminatedReason: string;
+}
+
+// ---- Typed stage events (L1, §1.6.1) ----
+// A lightweight discriminated union for compile-time-checked stage I/O.
+// This is a TYPE ONLY — NOT an event bus/emitter. The coordinator still calls
+// stages directly in §18/§30 order; do not build a runtime event system.
+export type StageEvent =
+  | { kind: 'start';          userInput: string }
+  | { kind: 'handoff';        artifact: AgentHandoffArtifact }        // stage → stage
+  | { kind: 'input-required'; roleId: string; question: string;       // within-turn pause (L2)
+      options?: string[]; reason: 'clarification' | 'permission' }
+  | { kind: 'result';         outcome: CollaborationOutcome };
+// input-required maps to the 'waiting-for-permission' / 'ask_clarification'
+// trajectory states (AGT-01). It is WITHIN-TURN ONLY — no durable cross-session
+// suspend/resume/rewind in v0.1 (§17.7.7).
+
+// ---- Candidate Proposer (Phase 6b, §28.7a) ----
+export const PROPOSE_MIN_FAILURES     = 3;       // PROP-03: agreeing failing trajectories
+export const PROPOSE_MIN_SCORE_DELTA  = 0.15;    // PROP-03: rubric-score drop
+export const PROPOSE_MAX_EVAL_TOKENS  = 50_000;  // PROP-04: sandbox cost cap
+
+export interface ProposerInput {
+  suiteVersion: string;                          // PROP-06 reproducibility
+  failures: Array<{
+    operationId: string;                         // links to AITransactionLog (PROP-01)
+    failingLayer: FailureLayer;                  // from EVAL-04
+    scoreDelta: number;                          // baseline − candidate rubric score
+  }>;
+}
+export interface EvolutionCandidateProposal {
+  targetLayer: EvolutionCandidate['targetLayer'];// PROP-02 single layer
+  evidenceOperationIds: string[];
+  suiteVersion: string;
+  estEvalTokens: number;                         // PROP-04
+  contentHash: string;                           // PROP-06 deterministic identity
+  status: 'proposed' | 'deferred';               // 'deferred' when over cost cap; never 'approved' (PROP-05)
+}
+```
+
+### Appendix C.2 — Error Code Registry
+
+Canonical error codes — every `catch`/return path uses one of these verbatim (§0.3, `debugLog(code, …)`).
+
+```text
+# Runtime / provider
+PROVIDER_CHECK_FAILED
+HOST_NOT_PERMITTED
+CONTEXT_TOO_LARGE
+STRUCTURED_OUTPUT_FAILED
+STREAM_FAILED
+STREAM_INTERRUPTED
+# Notes / filesystem sync / RAG
+NOTE_SYNC_PERMISSION_REVOKED
+NOTE_TAGGER_FAILED
+RAG_NO_RESULTS
+# RICH
+RICH_SUGGESTION_TIMEOUT
+# Agent harness (Phases 3a/4b/5b/6a/6b/8a)
+AGENT_STATE_INVALID
+TOOL_POSTCONDITION_FAILED
+COMPLETION_EVIDENCE_MISSING
+CONTEXT_INSTRUCTION_INJECTION_BLOCKED
+MEMORY_CONFLICT
+MEMORY_EXPIRED
+TOOL_MANIFEST_INVALID
+TOOL_IDEMPOTENCY_CONFLICT
+EVALUATION_FAILED
+EVOLUTION_CANDIDATE_REJECTED
+# Multimodal (Phase 7a)
+MULTIMODAL_MODEL_UNAVAILABLE
+MULTIMODAL_INPUT_INVALID
+MULTIMODAL_TRANSCRIPTION_FAILED
+# Bounded multi-agent collaboration (Phase 6c, §30)
+COLLAB_DISABLED
+COLLAB_PLAN_INVALID
+COLLAB_ROLE_UNKNOWN
+COLLAB_ROLE_BUDGET_EXCEEDED
+COLLAB_TOTAL_BUDGET_EXCEEDED
+COLLAB_HANDOFF_INVALID
+COLLAB_TOOL_SCOPE_VIOLATION
+COLLAB_PERMISSION_VIOLATION
+COLLAB_REVIEW_REJECTED
+COLLAB_BASELINE_NOT_MET
+COLLAB_DEADLINE_EXCEEDED
 ```
 
 ## Appendix D — Tier → Model Resolver Table
@@ -5632,5 +6002,579 @@ export function classifyIntent(rawUrl: string): QuickAction[] {
 ```
 
 ---
+
+## Appendix O — Worked Reference Implementations for Cost-Effective Models
+
+Concrete, copy-pasteable references for the harness sub-phases and the coordinator platform. These are **canonical**: a Haiku/Flash/DeepSeek implementer should adapt them rather than invent new shapes. Every example uses only the types in Appendix C.1, the tiers in Appendix D, and the prompts in Appendix A. Each block is self-contained — no missing detail must be inferred.
+
+#### How to use these examples
+
+1. **Find your phase in the map below**, open that example, and adapt it — do not rewrite from scratch.
+2. **Keep the imports as written.** All harness/collaboration types come from `@/types/harness` (§C.1). If your editor cannot resolve an import, you have the wrong path (risk R-1), not a missing type.
+3. **Do not add behaviour the example omits.** These are minimal on purpose. Extra retries, extra LLM calls, or extra state are how cheap models blow the budget.
+4. **Wire the verifier/tests named in the phase block** (§18) before moving on.
+
+**Phase → worked-example map (which code to open for each phase):**
+
+| Phase | Worked example(s) | Also see |
+|---|---|---|
+| 1 — Runtime/Shells/Workspace | — | Appendix E, F, G, M |
+| 2 — Storage/Security/WriteJournal | **O.11** WriteJournal recover/replay | §15, §20.3 |
+| 3 — AI Runtime (+Persona) | Appendix I `runAgentTurn` | Appendix D, K, L, N |
+| 3a — Reliability & Evidence | **O.2** OutcomeVerifier | §28.2 |
+| 4 — Context-Adaptive | — (contract in §2.3) | §2.4 |
+| 4a — PageContentService | **O.12** layered extraction fallback | §26 |
+| 4b — Trust-Aware Context | **O.3** trust policy | §28.3 |
+| 5 — Knowledge Base | **O.10** working-memory updater | §3.4, §3.6 |
+| 5b — Memory Governance | **O.4** conflict resolver | §28.4 |
+| 6 — Logging & Diagnostics | **O.13** AITransactionLog + TraceRedactor | §4 |
+| 6a — Evaluation | **O.7** golden fixture + rubric | §28.6 |
+| 6b — Verified Evolution | **O.9** CandidateProposer | §28.7a |
+| 6c — Collaboration | **O.1** coordinator · **O.8** role registry | §30 |
+| 7a — Multimodal | **O.6** modality adapter | §29 |
+| 8a — Tool Governance | **O.5** manifest+verifier · §14.5 approval | §28.5 |
+
+**Common pitfalls (do NOT do these):** build an event bus for `StageEvent` (it is a type only, §1.6.1); call a provider from a React component (use the pipeline, §2.3); nest retries (R-2); parse JSON by hand (use Appendix L); mark a write done without evidence (O.2); persist raw bodies (use TraceRedactor, O.13).
+
+### O.1 CollaborationCoordinator — single-agent default (one-role plan)
+
+The default path is a **one-role plan** whose engine is `runAgentTurn` (Appendix I). Multi-role plans reuse the exact same worker call per stage. There is no second runtime.
+
+```ts
+// src/core/collaboration/CollaborationCoordinator.ts
+import { runAgentTurn } from '@/core/ai/AgentOrchestrator';
+import type { OptimizedContext } from '@/core/context/ContextOptimizer';
+import type {
+  CollaborationPlan, CollaborationRole, RolePolicy,
+  AgentHandoffArtifact, CollaborationOutcome, CompletionEvidence,
+} from '@/types/harness';        // canonical home (Appendix C.1)
+import { CollaborationRoleRegistry } from './CollaborationRoleRegistry';
+import { debugLog } from '@/core/log/debugLog';
+
+export interface CoordinatorInput {
+  operationId: string;
+  plan: CollaborationPlan;
+  userInput: string;
+  baseContext: OptimizedContext;   // one OptimizedContext, projected per role (COLLAB-09)
+  abortSignal: AbortSignal;
+}
+
+// The single-agent DEFAULT is literally this constant (§1.6, §30.1).
+export const DEFAULT_SINGLE_AGENT_PLAN: CollaborationPlan = {
+  id: 'default-single-agent',
+  stages: [{ roleId: 'assistant', dependsOn: [] }],
+  totalPlannerCap: 3, totalToolCap: 2, totalTokenCap: 8_000, deadlineMs: 30_000,
+};
+
+export async function runCollaboration(input: CoordinatorInput): Promise<CollaborationOutcome> {
+  const { plan, operationId } = input;
+  const handoffs: AgentHandoffArtifact[] = [];
+  const evidence: CompletionEvidence[] = [];
+  const deadline = Date.now() + plan.deadlineMs;
+  let plannerBudget = plan.totalPlannerCap;
+  let toolBudget = plan.totalToolCap;
+
+  for (const stage of plan.stages) {                       // COLLAB-03 staged, dependency order
+    if (input.abortSignal.aborted) return terminate('aborted', 'aborted');
+    if (Date.now() > deadline) return terminate('failed', 'COLLAB_DEADLINE_EXCEEDED');
+
+    const role = CollaborationRoleRegistry.get(stage.roleId); // COLLAB-02 closed registry
+    if (!role) return terminate('failed', 'COLLAB_ROLE_UNKNOWN');
+    const policy = CollaborationRoleRegistry.policyOf(role.id);
+
+    // Project the shared context down to what this role may see (COLLAB-09).
+    const roleContext = projectContext(input.baseContext, role);
+    // Only ONE coordinator ever owns caps/permissions/commits (COLLAB-05).
+    const turn = await runAgentTurn({
+      operationId: `${operationId}:${role.id}`,
+      userInput: composeRoleInput(input.userInput, handoffs, role),
+      context: roleContext,
+      abortSignal: input.abortSignal,
+      tier: {
+        plannerCap: Math.min(policy.plannerCap, plannerBudget),
+        toolCap: role.toolAllowlist.length ? Math.min(policy.toolCap, toolBudget) : 0,
+        mcpChaining: false,
+      },
+    });
+
+    plannerBudget -= turn.toolResults.length ? 1 : 1;
+    toolBudget -= turn.toolResults.length;
+    if (plannerBudget < 0) return terminate('partial', 'COLLAB_TOTAL_BUDGET_EXCEEDED');
+
+    handoffs.push(toHandoff(role, turn));                   // COLLAB-04 typed handoff, no CoT
+    evidence.push(...turn.toolResults
+      .map(r => (r as any).evidence).filter(Boolean) as CompletionEvidence[]);
+  }
+
+  // Independent review only for multi-role, high-impact output (COLLAB-07).
+  const reviewer = plan.stages.length > 1
+    ? CollaborationRoleRegistry.reviewerFor(plan) : undefined;
+  const reviewerDecision = reviewer
+    ? review(reviewer, handoffs, evidence) : undefined;
+  if (reviewer && reviewerDecision !== 'approved')
+    return terminate('failed', 'COLLAB_REVIEW_REJECTED', reviewer.id, reviewerDecision);
+
+  return { planId: plan.id, status: 'completed',
+    reviewerRoleId: reviewer?.id, reviewerDecision,
+    evidence, terminatedReason: 'ok' };
+
+  function terminate(status: CollaborationOutcome['status'], reason: string,
+                     reviewerRoleId?: string, reviewerDecision?: 'approved'|'rejected') {
+    debugLog(reason, 'collaboration terminated', { planId: plan.id, status });
+    return { planId: plan.id, status, reviewerRoleId, reviewerDecision,
+      evidence, terminatedReason: reason };
+  }
+}
+
+// --- helpers (pure, deterministic) ---
+function projectContext(ctx: OptimizedContext, role: CollaborationRole): OptimizedContext {
+  return { ...ctx, sections: ctx.sections.filter(s => role.contextProjection.includes(s.kind)) };
+}
+function composeRoleInput(userInput: string, prior: AgentHandoffArtifact[], role: CollaborationRole) {
+  if (prior.length === 0) return userInput;               // one-role default: just the user input
+  const facts = prior.flatMap(h => h.sourcedFacts).map(f => `- ${f.fact} [${f.sourceId}]`).join('\n');
+  return `Task: ${userInput}\n\nVerified facts so far:\n${facts}\n\nYour role: ${role.label}.`;
+}
+function toHandoff(role: CollaborationRole, turn: { streamedText: string; toolResults: unknown[] }): AgentHandoffArtifact {
+  return { fromRoleId: role.id, summary: turn.streamedText.slice(0, 600),
+    sourcedFacts: [], openQuestions: [], outputRefs: [], completion: 'complete' };
+}
+function review(_r: CollaborationRole, _h: AgentHandoffArtifact[], ev: CompletionEvidence[]) {
+  return ev.every(e => e.ok) ? 'approved' as const : 'rejected' as const; // no claim without evidence
+}
+```
+
+**Why this matters for cheap models:** ordinary chat calls `runCollaboration({ plan: DEFAULT_SINGLE_AGENT_PLAN, … })`. The implementer writes **one** coordinator; "multi-agent" is just a plan with more stages — no new architecture, no agent-to-agent chat.
+
+### O.2 OutcomeVerifier + CompletionEvidence (Phase 3a)
+
+No side effect may be reported as success without matching evidence (AGT-02).
+
+```ts
+// src/core/ai/OutcomeVerifier.ts
+import type { CompletionEvidence, AgentTurnOutcome } from '@/types/harness';
+import type { ToolExecutionResult } from './types';
+
+export interface Verifier {
+  postconditionId: string;
+  verify(result: ToolExecutionResult<unknown>): Promise<{ ok: boolean; detail?: string }>;
+}
+
+export async function buildOutcome(
+  operationId: string,
+  results: ToolExecutionResult<unknown>[],
+  verifiers: Record<string, Verifier>,   // keyed by toolName
+  caps: { plannerCalls: number; toolCalls: number; capHit: boolean },
+): Promise<AgentTurnOutcome> {
+  const evidence: CompletionEvidence[] = [];
+  for (const r of results) {
+    const v = verifiers[r.toolName];
+    if (!v) continue;                     // read-only tool: no postcondition required
+    const outcome = await v.verify(r);
+    evidence.push({ toolName: r.toolName, operationId, postconditionId: v.postconditionId,
+      ok: outcome.ok, verifiedAt: Date.now(), detail: outcome.detail });
+  }
+  const sideEffectFailed = evidence.some(e => !e.ok);
+  const status: AgentTurnOutcome['status'] =
+    caps.capHit ? 'partial' : sideEffectFailed ? 'failed' : 'completed'; // AGT-03: cap = partial
+  return { operationId, status,
+    reasonCode: caps.capHit ? 'cap_exhausted' : sideEffectFailed ? 'postcondition_failed' : 'ok',
+    evidence, plannerCalls: caps.plannerCalls, toolCalls: caps.toolCalls };
+}
+```
+
+### O.3 Trust-aware context — stripping instruction authority (Phase 4b)
+
+Retrieved/untrusted content is data, never instructions (CTX-02).
+
+```ts
+// src/core/context/TrustPolicy.ts
+import type { ContextItem, TrustLevel } from '@/types/harness';
+
+const AUTHORITY_BY_TRUST: Record<TrustLevel, boolean> = {
+  system: true, user: true, tool: false, retrieved: false, untrusted: false,
+};
+
+/** Enforce CTX-02: only system/user may carry instruction authority. */
+export function applyTrustPolicy(items: ContextItem[]): ContextItem[] {
+  return items.map(it => {
+    const allowed = AUTHORITY_BY_TRUST[it.trust];
+    if (it.instructionAuthority && !allowed) {
+      // Wrap so the model treats it as quoted DATA, not a directive.
+      return { ...it, instructionAuthority: false,
+        text: `<untrusted_data source="${it.sourceId}">\n${it.text}\n</untrusted_data>` };
+    }
+    return it;
+  });
+}
+// Blocked-injection error to raise when a retrieved item tries to redefine policy:
+//   throw Object.assign(new Error('blocked'), { code: 'CONTEXT_INSTRUCTION_INJECTION_BLOCKED' });
+```
+
+### O.4 MemoryRecord conflict resolver (Phase 5b)
+
+Deterministic precedence: correction > verified current > prior explicit > inference (MEM-03).
+
+```ts
+// src/core/memory/ConflictResolver.ts
+import type { MemoryRecord } from '@/types/harness';
+
+const RANK: Record<MemoryRecord['source'], number> =
+  { correction: 3, system: 2, explicit: 1, inferred: 0 };
+
+/** Returns the winning record for a set of conflicting memories about the same key. */
+export function resolveConflict(a: MemoryRecord, b: MemoryRecord): MemoryRecord {
+  if (RANK[a.source] !== RANK[b.source]) return RANK[a.source] > RANK[b.source] ? a : b;
+  // Same source rank → prefer verified, then most recent, then higher confidence.
+  const av = a.verifiedAt ?? 0, bv = b.verifiedAt ?? 0;
+  if (av !== bv) return av > bv ? a : b;
+  if (a.updatedAt !== b.updatedAt) return a.updatedAt > b.updatedAt ? a : b;
+  return a.confidence >= b.confidence ? a : b;
+}
+```
+
+### O.5 ToolCapabilityManifest instance + verifier + idempotency (Phase 8a)
+
+A concrete write tool with a manifest, postcondition verifier, and replay-safe key.
+
+```ts
+// src/addons/servicenow/tools/addWorkNote.ts
+import type { ToolCapabilityManifest } from '@/types/harness';
+
+export const addWorkNoteManifest: ToolCapabilityManifest = {
+  toolName: 'servicenow.addWorkNote',
+  category: 'servicenow-write',
+  risk: 'high', sideEffect: true,
+  requiredPermissions: ['servicenow:write'],
+  scopes: ['case:comment'],
+  timeoutMs: 15_000, estCostTokens: 0, idempotent: true,   // TOL-05
+  verifierId: 'servicenow.workNotePresent',                // TOL-03
+  inputSchemaHash: 'sha256-…', outputSchemaHash: 'sha256-…',
+};
+
+// Idempotency key: same case + same body ⇒ one write, safe on replay (TOL-05).
+export const workNoteIdempotencyKey = (i: { caseId: string; body: string }) =>
+  `swn:${i.caseId}:${hash(i.body)}`;
+
+// Postcondition verifier consumed by O.2 buildOutcome:
+export const workNoteVerifier = {
+  postconditionId: 'servicenow.workNotePresent',
+  async verify(result: { output?: { sysId?: string } }) {
+    return result.output?.sysId
+      ? { ok: true, detail: `note ${result.output.sysId}` }
+      : { ok: false, detail: 'no sysId returned' };        // → TOOL_POSTCONDITION_FAILED
+  },
+};
+function hash(s: string) { let h = 2166136261; for (let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=(h*16777619)>>>0;} return h.toString(16); }
+```
+
+### O.6 ModalityInput → ModalityObservation adapter (Phase 7a)
+
+Binary never enters prompts; only the extracted observation does (MM-01/02).
+
+```ts
+// src/core/multimodal/ModalityAdapter.ts
+import type { ModalityInput, ModalityObservation } from '@/types/harness';
+import { resolveTier } from '@/core/ai/TierResolver';
+import { TraceRedactor } from '@/core/telemetry/TraceRedactor';
+
+export async function toObservation(
+  input: ModalityInput,
+  callVision: (ref: string, model: string) => Promise<string>,
+  cfg: Parameters<typeof resolveTier>[0],
+): Promise<ModalityObservation> {
+  if (input.modality === 'text')
+    return { sourceId: input.id, modality: 'text', extractedText: '', confidence: 1,
+             sensitivity: 'none', createdAt: Date.now() };
+  const tier = resolveTier({ ...cfg, tier: 'flash' });     // vision-capable flash tier
+  if (!tier) throw Object.assign(new Error('no vision model'),
+    { code: 'MULTIMODAL_MODEL_UNAVAILABLE' });             // settings action
+  const raw = await callVision(input.ref, tier.model);     // ref only — never inline bytes
+  return { sourceId: input.id, modality: input.modality,
+    extractedText: TraceRedactor.redact(raw),              // redact before it becomes context
+    confidence: 0.8, sensitivity: 'low', createdAt: Date.now() };
+}
+```
+
+### O.7 Golden eval fixture + rubric scoring (Phase 6a)
+
+Deterministic validators first; judges only for qualitative dimensions (EVAL-03).
+
+```ts
+// tests/evals/planner/summarizeCase.golden.ts
+import type { FailureLayer } from '@/types/harness';
+
+export const goldenCase = {
+  id: 'planner-summarize-case-01',
+  input: { userInput: 'Summarize this case', pageKind: 'servicenow-incident' },
+  expect: {
+    action: 'run_tool', toolName: 'servicenow.getCase',   // deterministic outcome check
+    maxPlannerCalls: 2, mustCite: true,
+  },
+};
+
+export function scoreTrajectory(actual: {
+  action: string; toolName?: string; plannerCalls: number; citations: number;
+}): { pass: boolean; failingLayer?: FailureLayer; dims: Record<string, number> } {
+  const dims = {
+    outcome: actual.toolName === goldenCase.expect.toolName ? 1 : 0,
+    process: actual.plannerCalls <= goldenCase.expect.maxPlannerCalls ? 1 : 0,
+    grounding: actual.citations > 0 ? 1 : 0,
+  };
+  const failingLayer: FailureLayer | undefined =
+    dims.outcome === 0 ? 'planning' : dims.grounding === 0 ? 'retrieval' : undefined; // EVAL-04
+  return { pass: Object.values(dims).every(v => v === 1), failingLayer, dims };
+}
+```
+
+### O.8 Registering the default assistant role
+
+The single-agent default is one entry in the closed registry — nothing more.
+
+```ts
+// src/core/collaboration/CollaborationRoleRegistry.ts (excerpt)
+import type { CollaborationRole, RolePolicy } from '@/types/harness';        // canonical home (Appendix C.1)
+
+const ASSISTANT: CollaborationRole = {
+  id: 'assistant', label: 'Assistant', systemPromptId: 'renderer',
+  toolAllowlist: ['*'],                                    // gated again by ExecutorService + manifest
+  contextProjection: ['system','tool_schemas','preferences','memory','context','task','user_input'],
+};
+const ASSISTANT_POLICY: RolePolicy = {
+  roleId: 'assistant', plannerCap: 3, toolCap: 2, tokenCap: 8_000, timeoutMs: 30_000, canReview: false,
+};
+
+const ROLES = new Map<string, CollaborationRole>([[ASSISTANT.id, ASSISTANT]]);
+const POLICIES = new Map<string, RolePolicy>([[ASSISTANT.id, ASSISTANT_POLICY]]);
+
+export const CollaborationRoleRegistry = {
+  get: (id: string) => ROLES.get(id) ?? null,             // unknown → COLLAB_ROLE_UNKNOWN
+  policyOf: (id: string) => POLICIES.get(id)!,
+  reviewerFor: (_plan: unknown) => [...ROLES.values()].find(r => POLICIES.get(r.id)?.canReview),
+  register(role: CollaborationRole, policy: RolePolicy) { ROLES.set(role.id, role); POLICIES.set(role.id, policy); },
+};
+```
+
+---
+
+### O.9 CandidateProposer — evaluation failure → gated candidate (Phase 6b)
+
+Deterministic: same failing evals ⇒ same proposal. It **only proposes** (PROP-05); activation stays human-gated (EVO-05).
+
+```ts
+// src/core/evolution/CandidateProposer.ts
+import {
+  PROPOSE_MIN_FAILURES, PROPOSE_MIN_SCORE_DELTA, PROPOSE_MAX_EVAL_TOKENS,
+  type ProposerInput, type EvolutionCandidateProposal, type FailureLayer,
+} from '@/types/harness';
+
+// PROP-02: deterministic FailureLayer → candidate targetLayer.
+const LAYER_MAP: Record<FailureLayer, EvolutionCandidateProposal['targetLayer']> = {
+  knowledge: 'knowledge', retrieval: 'retrieval', context: 'instruction',
+  planning: 'instruction', tool: 'tool', permission: 'tool',
+  memory: 'experience', rendering: 'instruction', safety: 'instruction',
+};
+
+/** Pure function: eval failures in → zero or more single-layer proposals out. */
+export function proposeCandidates(input: ProposerInput): EvolutionCandidateProposal[] {
+  // PROP-03: group by failing layer, keep only layers with enough agreeing evidence.
+  const byLayer = new Map<FailureLayer, ProposerInput['failures']>();
+  for (const f of input.failures) {
+    (byLayer.get(f.failingLayer) ?? byLayer.set(f.failingLayer, []).get(f.failingLayer)!).push(f);
+  }
+  const out: EvolutionCandidateProposal[] = [];
+  for (const [layer, fs] of byLayer) {
+    const avgDelta = fs.reduce((s, f) => s + f.scoreDelta, 0) / fs.length;
+    if (fs.length < PROPOSE_MIN_FAILURES) continue;          // not enough evidence
+    if (avgDelta < PROPOSE_MIN_SCORE_DELTA) continue;        // drop too small
+    const ids = fs.map(f => f.operationId).sort();
+    const estEvalTokens = ids.length * 4_000;                // crude, deterministic estimate
+    out.push({
+      targetLayer: LAYER_MAP[layer],                         // PROP-02 single layer
+      evidenceOperationIds: ids,
+      suiteVersion: input.suiteVersion,                      // PROP-06
+      estEvalTokens,
+      contentHash: hash(`${layer}|${input.suiteVersion}|${ids.join(',')}`),
+      // PROP-04 cost cap → 'deferred' (never run) instead of 'proposed'.
+      status: estEvalTokens > PROPOSE_MAX_EVAL_TOKENS ? 'deferred' : 'proposed',
+      // PROP-05: never 'approved' here — activation is human-gated (EVO-05).
+    });
+  }
+  return out.sort((a, b) => a.contentHash.localeCompare(b.contentHash)); // stable order
+}
+
+function hash(s: string) {
+  let h = 2166136261; for (let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=(h*16777619)>>>0;}
+  return h.toString(16).padStart(8,'0');
+}
+```
+
+**Why this is safe & cheap:** it reads only eval results + trace IDs (PROP-01), emits one single-layer, cost-capped, reproducible `proposed` (or `deferred`) candidate, and cannot touch production — the sandbox runner + human approval come later in Phase 6b (EVO-05).
+
+### O.10 Working-memory updater (Phase 5, §3.6)
+
+Budget-capped, single-writer, redacted. Slots into `UserMemoryStore`; not persona.
+
+```ts
+// src/core/memory/WorkingMemory.ts
+import { WORKING_MEMORY_TEMPLATE, type WorkingMemory } from '@/types/harness';  // canonical home (Appendix C.1)
+import { TraceRedactor } from '@/core/telemetry/TraceRedactor';
+
+const MAX_WORKING_MEMORY_TOKENS = 300;   // §3.6: cap so it can't crowd out retrieval
+
+export function initWorkingMemory(resourceId: string): WorkingMemory {
+  return { resourceId, markdown: WORKING_MEMORY_TEMPLATE, tokens: estimate(WORKING_MEMORY_TEMPLATE), updatedAt: Date.now() };
+}
+
+/** Merge new profile facts into the Markdown block; redact + cap before persisting. */
+export function updateWorkingMemory(cur: WorkingMemory, patch: Partial<Record<
+  'Name' | 'Role / Team' | 'Environment' | 'Preferences' | 'Long-term Goals', string>>): WorkingMemory {
+  let md = cur.markdown;
+  for (const [field, value] of Object.entries(patch)) {
+    if (!value) continue;
+    const safe = TraceRedactor.redact(value);                        // §4.4 — never store secrets
+    md = md.replace(new RegExp(`(- \\*\\*${field}\\*\\*:).*`), `$1 ${safe}`);
+  }
+  let tokens = estimate(md);
+  if (tokens > MAX_WORKING_MEMORY_TOKENS) { md = truncateToTokens(md, MAX_WORKING_MEMORY_TOKENS); tokens = MAX_WORKING_MEMORY_TOKENS; }
+  return { ...cur, markdown: md, tokens, updatedAt: Date.now() };     // single-writer: primary surface only (§13)
+}
+
+const estimate = (s: string) => Math.ceil(s.length / 4);
+function truncateToTokens(s: string, cap: number) { return s.slice(0, cap * 4); }
+```
+
+### O.11 WriteJournal — crash-safe multi-store write + replay (Phase 2)
+
+Notes/memory span two stores (metadata in `chrome.storage.local`, body in IndexedDB). The journal makes a multi-store write **atomic-on-recovery**: on startup, any `pending`/`applying` entry is replayed or rolled back. Idempotent steps make replay safe (§20.3).
+
+```ts
+// src/core/storage/WriteJournal.ts
+import type { WriteJournalEntry } from '@/types/storage';   // Appendix C
+import { debugLog } from '@/core/log/debugLog';
+
+export interface JournalStep {
+  name: string;
+  apply(): Promise<void>;      // MUST be idempotent (safe to run twice on replay)
+  rollback(): Promise<void>;
+}
+
+export async function runJournaled(
+  entry: WriteJournalEntry,
+  steps: JournalStep[],
+  persist: (e: WriteJournalEntry) => Promise<void>,   // writes the journal entry itself
+): Promise<void> {
+  entry.status = 'applying'; entry.attempts++; await persist(entry);
+  const done: JournalStep[] = [];
+  try {
+    for (const s of steps) {
+      await s.apply();                                  // idempotent → replay-safe
+      entry.steps.push({ name: s.name, status: 'completed' });
+      done.push(s);
+      await persist(entry);
+    }
+    entry.status = 'completed'; await persist(entry);
+  } catch (e: any) {
+    debugLog('WRITE_JOURNAL_FAILED', 'rolling back', { id: entry.id, step: done.at(-1)?.name });
+    for (const s of done.reverse()) {
+      try { await s.rollback(); } catch (r: any) { debugLog('WRITE_JOURNAL_ROLLBACK_FAILED', r?.message ?? 'rollback', { id: entry.id }); }
+    }
+    entry.status = 'rolled-back'; await persist(entry);
+    throw e;
+  }
+}
+
+/** On startup: finish or undo any entry left mid-flight (crash recovery). */
+export async function recoverJournal(
+  load: () => Promise<WriteJournalEntry[]>,
+  replay: (e: WriteJournalEntry) => Promise<void>,
+): Promise<void> {
+  for (const e of await load()) {
+    if (e.status === 'applying' || e.status === 'pending') await replay(e); // idempotent replay
+  }
+}
+```
+
+**Why:** covers the Phase 2 DONE-when "WriteJournal recovery test passes." Keep every `apply()` idempotent (e.g. upsert by id) so a replay after a crash is a no-op, not a duplicate.
+
+### O.12 PageContentService — layered extraction with recorded fallback (Phase 4a)
+
+The service tries strategies in order and **records which one produced the result** (§26). Heavy libs (Defuddle) run in the panel, never in the content bundle (isolation test).
+
+```ts
+// src/core/extraction/PageContentService.ts
+import type { IExtractionStrategy, StrategyInput, StrategyResult } from './strategies/IExtractionStrategy'; // Appendix C
+import { debugLog } from '@/core/log/debugLog';
+
+export interface ExtractionOutcome {
+  result: StrategyResult;
+  sourceUsed: StrategyResult['source'];   // provenance — which layer won
+  fallbacksTried: string[];
+}
+
+export async function extractLayered(
+  input: StrategyInput,
+  strategies: IExtractionStrategy[],      // ordered: Defuddle → Readability → APC-lite → ServiceNow API
+): Promise<ExtractionOutcome> {
+  const tried: string[] = [];
+  for (const s of strategies) {
+    if (!s.canHandle({ url: input.url, mode: input.mode })) continue;
+    try {
+      const result = await s.run(input);
+      // Accept the first strategy that returns usable content.
+      if ((result.markdown && result.markdown.length > 0) || result.root) {
+        return { result, sourceUsed: result.source, fallbacksTried: tried };
+      }
+      tried.push(s.id);
+    } catch (e: any) {
+      tried.push(s.id);
+      debugLog('EXTRACTION_STRATEGY_FAILED', e?.message ?? 'strategy error', { strategy: s.id, url: input.url });
+    }
+  }
+  // Typed failure — never throw a bare error; caller shows a user-facing message.
+  throw Object.assign(new Error('no strategy produced content'), { code: 'EXTRACTION_FAILED', fallbacksTried: tried });
+}
+```
+
+**Guardrails:** the content-script bundle must contain **no** React/AntD/Defuddle/yaml (isolation test, §24). Content scripts only serialise HTML; `extractLayered` runs in the Side Panel/Standalone view. Passwords are never captured (`isPassword ⇒ value omitted`, §16).
+
+### O.13 AITransactionLog + TraceRedactor — safe tracing (Phase 6)
+
+Every AI/tool/provider op is traceable, but **nothing raw is persisted**. Redaction runs before *every* sink (persist, UI, console, export).
+
+```ts
+// src/core/telemetry/TraceRedactor.ts
+const REDACTION_PATTERNS: RegExp[] = [
+  /sk-[A-Za-z0-9_-]+/g, /key-[A-Za-z0-9_-]+/g, /Bearer\s+[A-Za-z0-9._-]+/gi,
+  /JSESSIONID=[^;\s]+/gi, /sysparm_ck[=:]\s*[^&\s]+/gi, /g_ck[=:]\s*[^&\s]+/gi,
+];
+export const TraceRedactor = {
+  redact(value: string): string {
+    return REDACTION_PATTERNS.reduce((s, re) => s.replace(re, '[REDACTED]'), value);
+  },
+};
+
+// src/core/telemetry/AITransactionLog.ts
+import type { AITransaction } from '@/types/harness';   // (trace shapes live with harness types)
+import { TraceRedactor } from './TraceRedactor';
+
+export function startTx(base: Omit<AITransaction, 'status' | 'startedAt'>): AITransaction {
+  return { ...base, status: 'started', startedAt: Date.now() };
+}
+/** Persist ONLY redacted metadata by default (raw bodies never stored — §4.2/§4.4). */
+export async function completeTx(
+  tx: AITransaction,
+  write: (t: AITransaction) => Promise<void>,
+  errorCode?: string,           // MUST be a code from Appendix C.2
+): Promise<void> {
+  tx.status = errorCode ? 'failed' : 'completed';
+  tx.endedAt = Date.now();
+  tx.durationMs = tx.endedAt - tx.startedAt;
+  if (errorCode) tx.errorCode = errorCode;
+  await write(tx);              // no prompt/body fields on this object by design
+}
+```
+
+**Rule of thumb:** if you ever pass a prompt, tool input/output, cookie, clipboard text, or case body toward a log/UI/export, it goes through `TraceRedactor.redact()` first (risk R-10). Deep traces store **redacted previews only** and expire fast (§4.2).
 
 **End of NowPilot Product Specification v0.1.**
