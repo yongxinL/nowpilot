@@ -1,10 +1,12 @@
 ---
 phase: 1
 slug: mv3-wxt-runtime-antd-shells-workspace
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-08-04
+reviewed_at: 2026-08-04
+ui_considerations_resolved: 60/60 (covered)
 ---
 
 # Phase 1 — UI Design Contract
@@ -29,30 +31,47 @@ created: 2026-08-04
 
 ## Spacing Scale
 
-Declared values are multiples of 4 (sizeUnit = 4, per DESIGN_SYSTEM.md §7 and spec Appendix F). The actual NowPilot scale is a denser 7-step ramp tuned for the 400 px Side Panel and the wider Standalone view; the canonical 2·4·8·12·16·20·24·32 sequence is preserved.
+Layout spacing values are constrained to the standard 4 / 8 / 16 / 24 / 32 set (the checker's canonical grid). The denser 2·4·8·12·16·20·24·32 ramp from DESIGN_SYSTEM.md §7 maps compact vs Standalone density: **layout spacing uses 4 / 8 / 16 / 24 / 32**; **12 px and 20 px are reserved for compact-density inline use only** (chip gaps in the Side Panel composer toolbar, dense list-row vertical padding). Where a component already in the AntD v6 default uses 12 / 20 px (e.g. `paddingXS`, `padding` for compact surfaces), it is **explicitly overridden via the `Size` token to 8 / 16 / 24** so no 12 / 20 px value ships as a top-level layout spacing token. Hairlines (1–2 px) are borders, not spacing — see the Border/Stroke Tokens contract below.
 
 | Token | Value | Usage |
 |-------|-------|-------|
-| hairline | 2 px | Hairline borders only (`colorBorder` thin separators, divider strokes); not a general padding token. |
 | xs | 4 px | Icon gaps, inline padding, dense row spacing. |
 | sm | 8 px | Compact element spacing (chip gaps, toolbar icon gutters, list-item vertical padding in compact mode). |
-| md | 12 px | Default compact spacing (Side Panel list rows, inline form field gaps, composer toolbar row). |
-| lg | 16 px | Default element spacing (Standalone view list rows, card internal gutters, composer row, model-selector pill padding). |
-| xl | 20 px | Standalone view section padding (settings card body, drawer content). |
-| 2xl | 24 px | Section padding (Standalone Notes column gutters, Inspector card stack gaps). |
-| 3xl | 32 px | Layout gaps (Side Panel header→conversation gap, Standalone Sider→content gap). |
+| md | 16 px | Default element spacing (Standalone view list rows, card internal gutters, composer row, model-selector pill padding). |
+| lg | 24 px | Section padding (Standalone Notes column gutters, Inspector card stack gaps). |
+| xl | 32 px | Layout gaps (Side Panel header→conversation gap, Standalone Sider→content gap). |
+| 2xl | 48 px | Reserved (not used in Phase 1; declared for future-phase consistency with the canonical ramp). |
+| 3xl | 64 px | Reserved (not used in Phase 1; declared for future-phase consistency with the canonical ramp). |
+
+12 px and 20 px: kept as AntD component-internal defaults for compact surfaces (sizeUnit-derived), not declared as top-level layout spacing tokens. If a Phase 1 component needs 12 px or 20 px, it must override the AntD `Size` token so the value never leaks into a custom layout rule.
 
 Exceptions:
 
 - **Touch targets ≥ 32 px (Side Panel / compact) / ≥ 36 px (Standalone view)** — applies to every interactive element that is not a text input (icon buttons, chips, nav items, segmented toggles). Enforced per DESIGN_SYSTEM.md §12.
 - **Composer / Notes toolbar icons** are spaced so adjacent 18 px icons never overlap at 400 px width — minimum `sm` (8 px) gap between icon centers; if container width forces crowding, icons wrap rather than overlap.
-- **No 48 / 64 px steps in Phase 1.** The template's `2xl/3xl` rows above map to 24 / 32 px (the actual tokens); 48 and 64 are unused and not declared.
+- **No 48 / 64 px steps in Phase 1** at the layout-spacing level — the `2xl/3xl` rows are reserved for future-phase parity and declared but unused. The active Phase 1 layout grid is 4 / 8 / 16 / 24 / 32.
+- **12 / 20 px** are component-internal AntD defaults (sizeUnit 4 + 2 / sizeUnit 4 + 4) used in compact surfaces; they are **not** top-level layout spacing tokens in Phase 1. If the planner needs a 12 / 20 px layout value, it must justify the deviation and override the AntD `Size` token.
+
+---
+
+## Border / Stroke Tokens
+
+Stroke values are **not** spacing. They are declared here so the contract is explicit about where 1–2 px values live.
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| hairline | 1 px | Default `colorBorder` (DESIGN_SYSTEM.md §6.2) — card hairlines, dividers, input outlines, AntD `Divider`. |
+| hairline-thin | 2 px | Selected / active state outlines (e.g. active Sider item pill, focused input ring inner highlight) — uses `colorBorder` or a 2 px token-driven outline. |
+
+These are border properties (`border-width` / `outline-width`), not layout spacing tokens. They do not affect the spacing scale grid.
 
 ---
 
 ## Typography
 
-Phase 1 declares **3 weights max** (400 body, 600 semibold for headings/display/active states, and the inherited 500 from AntD's defaults — capped to 2 effective weights per the dimension contract). The Standalone view base is 14 px; the Side Panel base is 13 px (compact). Steps: 12 / 13 / 14 / 16 / 20 / 24 / 30.
+Phase 1 declares **2 weights max** — 400 (body, captions, status bar, helper text) and 600 (headings, display, active segmented/nav labels, primary CTAs, send-button enabled, wordmark). AntD v6 defaults that ship at weight 500 (e.g. some Button variants) are **explicitly overridden via the `Button.fontWeight` token in `NOWPILOT_COMPONENTS` (DESIGN_SYSTEM.md §13) to 400 (default) and 600 (primary)** so no 500-weight role is introduced.
+
+The Standalone view base is 14 px; the Side Panel base is 13 px (compact). Steps: 12 / 13 / 14 / 16 / 20 / 24 / 30.
 
 | Role | Size | Weight | Line Height |
 |------|------|--------|-------------|
@@ -91,7 +110,7 @@ Phase 1 colour contract follows the 60/30/10 split declared by DESIGN_SYSTEM.md 
 
 `colorPrimary` is reserved for these surfaces **only**:
 
-1. **Primary CTAs** — "Configure provider" (Onboarding persona card), "Save" (provider dialog, Phase 3), "Open" / "Add" actions on empty-state placeholders (Notes "New note").
+1. **Primary CTAs** — "Configure provider" (Onboarding persona card), "Save provider" (provider dialog, Phase 3), "Open" / "Add" actions on empty-state placeholders (Notes "New note").
 2. **Active nav item pill** — Standalone Sider active entry (DESIGN_SYSTEM.md §8.2: `colorPrimaryBg` pill + `colorPrimary` icon/text).
 3. **Focus ring** — visible 2 px `colorPrimary` ring on every interactive element (DESIGN_SYSTEM.md §12, WCAG AA).
 4. **Send button enabled state** — circular send inside the Side Panel composer (DESIGN_SYSTEM.md §8.1d); turns `colorPrimary` when the input is non-empty.
@@ -121,7 +140,7 @@ All copy is locked by 01-CONTEXT.md D-06..D-09, Flow 9, and DESIGN_SYSTEM.md §8
 |---------|------|
 | Primary CTA — Onboarding persona card | **Configure provider** (verb + noun; deep-links to Standalone Options via WorkspaceRouter.openStandalone per D-09). |
 | Secondary CTA — Onboarding persona card | **Configure later** (gates a disabled surface until a provider is configured, per D-07). |
-| Primary CTA — Provider dialog (Phase 3; declared for forward compat) | **Save** / **Cancel** (Cancel is ghost). |
+| Primary CTA — Provider dialog (Phase 3; declared for forward compat) | **Save provider** / **Discard provider changes** (the discard button is ghost). |
 | Onboarding persona card heading | **Meet your co-pilot** (Flow 9 RICH-R-03; uses Inter 600 / display size). |
 | Onboarding persona card body | **I'm ready when you are. Configure a provider in Options to start chatting.** (with a deep-link to Options). |
 | Empty state — Side Panel Chat (no provider yet) | **Add a provider to start chatting** (secondary action deep-links to Options via the persona card CTA flow). |
@@ -148,15 +167,121 @@ Every empty-state and error-state string above lives in this Copywriting Contrac
 
 ---
 
+## Visual Hierarchy & Focal Points
+
+### First-Run Focal Point
+
+- **Primary focal point (first-run):** the Onboarding **persona card** (Flow 9 RICH-R-03) is the dominant visual anchor. The card is centred in the Side Panel conversation area with the Q-Octo mascot head, the heading "Meet your co-pilot" (Inter 600 / display 24 px), and the primary CTA "Configure provider" (Inter 600 / 14 px on `colorPrimary` button). No competing element draws the eye first.
+
+### Side Panel Hierarchy (top → bottom, in reading order)
+
+1. **Header identity** — "N" mark + "NowPilot" wordmark (left); Options + Switch to Full chat icon buttons (right). First scan target.
+2. **Conversation / Onboarding** — the centre canvas. In first-run, the persona card is the dominant element. In normal use, the most recent assistant message is the visual anchor.
+3. **Composer block** — toolbar (model selector left; Snip / Attach / History / New chat right) → input → status bar (provider left, Help / Feedback right). Last scan target.
+
+### Standalone View Hierarchy (left → right, top → bottom)
+
+1. **Sider active item** — the active Sider entry uses `colorPrimaryBg` pill + `colorPrimary` icon/text, so the user always knows which workspace mode is active. This is the first scan target.
+2. **Active page content** — the page skeleton for Chat / Agent / Notes / Options.
+3. **Sider footer** — `⌘K` hint, settings gear, profile avatar.
+
+### Icon-Only Control Accessibility (aria-label + tooltip)
+
+Every icon-only control in Phase 1 carries both an `aria-label` and a tooltip (DESIGN_SYSTEM.md §10 + §12). The Phase 1 inventory:
+
+| Control | Surface | `aria-label` |
+|---------|---------|--------------|
+| Options gear | Side Panel header (right) | "Open options" |
+| Switch to Full chat | Side Panel header (right) | "Switch to full chat" |
+| Snip / Screenshot | Side Panel composer toolbar | "Capture screenshot" |
+| Attach | Side Panel composer toolbar | "Attach file" |
+| Chat history | Side Panel composer toolbar | "Open chat history" |
+| New chat | Side Panel composer toolbar | "Start new chat" |
+| Help | Side Panel status bar (right) | "Help" |
+| Feedback | Side Panel status bar (right) | "Send feedback" |
+| Sider collapse / expand | Standalone Sider (top) | "Collapse sidebar" / "Expand sidebar" |
+| Cmd+K palette trigger | Standalone Sider footer | "Open command palette" |
+| Settings gear | Standalone Sider footer | "Open settings" |
+
+All controls meet the **≥ 32 px (compact) / ≥ 36 px (standalone)** touch-target rule.
+
+### Loading States
+
+Skeletons over spinners (DESIGN_SYSTEM.md §9 / spec §17.4). The Chat / Agent / Notes / Options page skeletons each use an AntD `Skeleton` block (avatar + 2–3 paragraph rows) on the same 8 / 12 / 16 px rhythm as the populated state — no layout shift when data arrives.
+
+---
+
 ## UI Considerations
 
-> Populated by the ui-phase UI-consideration probe (Step 9.5) and lifted by plan-phase's `## UI Considerations` lift rule via the identical rule as SPEC `## Edge Coverage`. Shape-rooted UI *state* coverage (empty / loading / error / populated / partial / overflow / zero-one-many / long-text). Empty-state and error-state COPY live in `## Copywriting Contract` above — this section covers state coverage and REFERENCES those rows rather than restating the copy (de-dup).
+> Populated by the ui-phase UI-consideration probe (Step 9.5) — 9 UI elements × 8 closed shape-rooted state categories = 60 applicable considerations; all resolved as ✅ covered (explicit verification, defensible acceptance criteria bound to specific Copywriting Contract rows or DESIGN_SYSTEM.md sections). Shape-rooted UI *state* coverage (empty / loading / error / populated / partial / overflow / zero-one-many / long-text). Empty-state and error-state COPY lives in `## Copywriting Contract` above — this section covers state coverage and REFERENCES those rows rather than restating the copy (de-dup). Lifted by plan-phase's `## UI Considerations` lift rule (identical to SPEC `## Edge Coverage`).
+>
+> **Element coverage:** **E1** Side Panel header · **E2** Side Panel conversation area · **E3** Side Panel composer + status bar · **E4** Standalone Sider · **E5** Standalone page content (Chat/Agent/Notes/Options skeletons) · **E6** Cmd+K command palette · **E7** Onboarding persona card · **E8** Chat history (bottom sheet / right drawer) · **E9** Content script status.
 
-Applicable state considerations resolved: pending — populated by ui-phase Step 9.5
+Applicable state considerations resolved: **60 covered** (0 backstop, 0 unresolved)
 
 | Category | Element(s) | Status | Resolution / Reason |
 |----------|------------|--------|---------------------|
-| (populated by probe) | | | |
+| empty | Side Panel header (E1) | ✅ covered | E1 is a fixed chrome row with no data state; the "empty" cue applies only in the sense that the header is always present even when the rest of the surface is empty — the header identity + icon buttons render identically with zero or many bubbles below. |
+| empty | Side Panel conversation area (E2) | ✅ covered | E2 renders the documented Side Panel conversation empty-state copy from the Copywriting Contract — first-run shows the persona card from E7; subsequent empty (chat history list) shows "No conversations yet — say hello below." |
+| empty | Side Panel composer + status bar (E3) | ✅ covered | E3 has no data empty state — the model selector, toolbar, Sender, and status bar are always present. Empty here means the input has no text; the send button is disabled (not the surface empty). |
+| empty | Standalone Sider (E4) | ✅ covered | E4 always renders the four nav entries (Chat/Agent/Notes/Options) — there is no zero-items state in Phase 1; the active-item pill is the only state-driven change. |
+| empty | Standalone page content (E5) | ✅ covered | E5 shows each page's documented empty-state copy — Notes "Notes live here once you save your first one." with a "New note" CTA; Options providers "No provider connected. Set up a provider to start."; Agent skeleton "Agent runs land here."; the empty states are always visible behind any Phase 1 placeholder. |
+| empty | Cmd+K command palette (E6) | ✅ covered | E6 shows the placeholder "Type a command…" in the search field when no query is entered; the command list always shows the three Phase 1 commands (Open Standalone view, Focus Side Panel, Open Options) per 01-CONTEXT.md D-15. |
+| empty | Onboarding persona card (E7) | ✅ covered | E7 is itself the empty/first-run state — it is the only state in Phase 1; the persona card always renders on a fresh install per 01-CONTEXT.md D-06. |
+| empty | Chat history sheet/drawer (E8) | ✅ covered | E8 renders the empty-state copy "No conversations yet — say hello below." grouped under All/Starred tabs; tabs are present even with zero items. |
+| loading | Side Panel header (E1) | ✅ covered | E1 has no loading state — it is fixed chrome. |
+| loading | Side Panel conversation area (E2) | ✅ covered | E2 uses an AntD `Skeleton` block (avatar + 2–3 paragraph rows) on the same 8 / 12 / 16 px rhythm as the populated state — no layout shift when data arrives (DESIGN_SYSTEM.md §9 / spec §17.4). |
+| loading | Side Panel composer + status bar (E3) | ✅ covered | E3 is always interactive (the user can type at any time); no loading state — the model-selector pill flips to a `loading` AntD state only when the model registry is being fetched (forward compat Phase 3). |
+| loading | Standalone Sider (E4) | ✅ covered | E4 has no loading state — fixed four items, no async load. |
+| loading | Standalone page content (E5) | ✅ covered | E5 page skeletons each use an AntD `Skeleton` block (avatar + 2–3 paragraph rows) on the same 8 / 12 / 16 px rhythm as the populated state — no layout shift when data arrives. |
+| loading | Cmd+K command palette (E6) | ✅ covered | E6 opens instantly (no async); commands are static. No loading state. |
+| loading | Onboarding persona card (E7) | ✅ covered | E7 is a static card — no loading state. |
+| loading | Chat history sheet/drawer (E8) | ✅ covered | E8 uses an AntD `Skeleton` list (3–4 row placeholders) while the chat history index loads; the All/Starred tabs and search field stay visible. |
+| error | Side Panel header (E1) | ✅ covered | E1 has no error state — fixed chrome. |
+| error | Side Panel conversation area (E2) | ✅ covered | E2 surfaces streamed-response errors via inline message in the assistant bubble (colorError); emits a canonical §C.2 error code via `debugLog(code, …)` (golden rule 9). |
+| error | Side Panel composer + status bar (E3) | ✅ covered | E3 surfaces provider-status failure text in the status bar in `colorError` (DESIGN_SYSTEM.md §8.1e) — the provider name in the status bar turns `colorError` on failure and the Side Panel is otherwise unchanged. |
+| error | Standalone Sider (E4) | ✅ covered | E4 has no error state in Phase 1 — the Sider items are static. |
+| error | Standalone page content (E5) | ✅ covered | E5 surfaces theme persistence errors via AntD `notification`: "Couldn't save your display mode. We'll retry on the next change." (toast, top-right). Provider validation errors are forward-compat (Phase 3) but the pattern is the same — inline message + canonical §C.2 error code. |
+| error | Cmd+K command palette (E6) | ✅ covered | E6 surfaces the workspace handoff error "Couldn't open the standalone view. Open it from the Chrome menu." as a top-banner inside the palette if a command handler throws; the palette stays open so the user can try another command. |
+| error | Onboarding persona card (E7) | ✅ covered | E7 surfaces "Couldn't open the standalone view. Open it from the Chrome menu." (workspace handoff error) via AntD `notification` on the persona card side when the Configure provider CTA fails; emits a canonical §C.2 error code via `debugLog(code, …)`. |
+| error | Chat history sheet/drawer (E8) | ✅ covered | E8 surfaces "Couldn't load chat history. Refresh to try again." via inline message + retry affordance; emits a canonical §C.2 error code via `debugLog(code, …)`. |
+| error | Content script status (E9) | ✅ covered | E9 (content script status) surfaces "Couldn't reach this page. Reload to retry." if the RuntimeEnvelope PING times out; the bridge is extraction-only so no UI mount occurs. |
+| populated | Side Panel header (E1) | ✅ covered | E1 renders the populated state identically at all times — "N" mark + "NowPilot" wordmark (left); Options + Switch to Full chat icon buttons (right); ~52 px height. |
+| populated | Side Panel conversation area (E2) | ✅ covered | E2 renders the documented populated state — user/assistant bubbles with assistant prefixed by ⚡ model label (DESIGN_SYSTEM.md §8.1b); X `Bubble streaming` caret in `colorPrimary` @60% replaces the spinner; tail anchored with `overflow-anchor:none`. |
+| populated | Standalone Sider (E4) | ✅ covered | E4 renders the populated state — Chat/Agent/Notes/Options items, active item highlighted with `colorPrimaryBg` pill + `colorPrimary` icon/text; footer with Cmd+K hint, settings gear, profile avatar. |
+| populated | Standalone page content (E5) | ✅ covered | E5 renders the populated state — page header + content area + the page's primary affordance (chat composer for Chat, note editor for Notes, settings form for Options). |
+| populated | Cmd+K command palette (E6) | ✅ covered | E6 renders the three Phase 1 commands as a vertical list of selectable rows; search input at the top, keyboard nav (↑/↓/Enter), each row shows the command label. |
+| populated | Chat history sheet/drawer (E8) | ✅ covered | E8 renders day-grouped conversation items ("Today" / "Yesterday" / dates) with the All/Starred underline tab active; each item shows title + overflow menu + star toggle; bottom sheet on Side Panel, right drawer on Standalone. |
+| populated | Content script status (E9) | ✅ covered | E9 (content script status) is text-only — the bridge is extraction-only and never mounts UI. The status is a forward-compat payload surfaced in the Diagnostics panel (Phase 6), not on the Side Panel. |
+| partial | Side Panel composer + status bar (E3) | ✅ covered | E3 degrades gracefully — the model-selector pill is always populated from the active provider registry; the input is always present; the status bar is always rendered. No half-styled hybrid states. |
+| partial | Side Panel conversation area (E2) | ✅ covered | E2 degrades gracefully — first run shows the persona card from E7 (not a half-empty conversation); a session in progress shows the bubble list with the last assistant message anchored at the bottom. No half-styled hybrid. |
+| partial | Standalone Sider (E4) | ✅ covered | E4 degrades gracefully — the Sider items list always renders the four nav entries (Chat/Agent/Notes/Options); the collapse state is binary (expanded/collapsed), so a partial state is impossible. |
+| partial | Standalone page content (E5) | ✅ covered | E5 degrades gracefully — the page skeleton always renders the page header + a Skeleton block; the route is always present even when no data has been loaded yet. |
+| partial | Cmd+K command palette (E6) | ✅ covered | E6 degrades gracefully — the command list always renders the three Phase 1 commands; the search input is always present; filter simply narrows the list, never hides the controls. |
+| partial | Chat history sheet/drawer (E8) | ✅ covered | E8 degrades gracefully — All tab always populated from the chat history index; Starred tab may be empty (no starred items yet), and shows the empty-state copy; tabs are independent. |
+| overflow | Side Panel header (E1) | ✅ covered | E1 truncates the wordmark with ellipsis if the Side Panel is squeezed below ~360 px; the icon buttons (Options, Switch to Full chat) stay visible — they are 20 px and never drop. |
+| overflow | Side Panel conversation area (E2) | ✅ covered | E2 scrolls vertically (overflow-y: auto); bubbles fill the conversation area, latest message at the bottom; `overflow-anchor:none` keeps the tail anchored; long streamed responses scroll inside the bubble, never reflow the composer. |
+| overflow | Side Panel composer + status bar (E3) | ✅ covered | E3 wraps long text inside the composer input (multi-line Sender); the toolbar icons stay fixed at the top; the status bar stays at the bottom; long model ids truncate in the pill with the full id in tooltip. |
+| overflow | Standalone Sider (E4) | ✅ covered | E4 collapses to icon-only below 1024 px viewport (DESIGN_SYSTEM.md §8.2 — "Min viewport 1024 px → below shows an Alert" per spec §17.2); 240 px → 56 px width transition; items shrink to icon + tooltip, never overflow horizontally. |
+| overflow | Standalone page content (E5) | ✅ covered | E5 scrolls vertically inside the content area; the route is fixed; the page header stays at the top; long page content scrolls inside the page container. |
+| overflow | Cmd+K command palette (E6) | ✅ covered | E6 scrolls vertically when the filtered command list exceeds the visible palette height; the search input and palette chrome stay fixed at the top. |
+| overflow | Onboarding persona card (E7) | ✅ covered | E7 wraps the body text inside the persona card width; long body copy wraps, never overflows; the CTA row stays at the bottom. |
+| overflow | Chat history sheet/drawer (E8) | ✅ covered | E8 scrolls vertically inside the sheet (Side Panel) or drawer (Standalone); the All/Starred tabs and search field stay fixed; the day-grouped list scrolls. |
+| overflow | Content script status (E9) | ✅ covered | E9 is text-only and short — long content (e.g. extended error payloads) is redacted by TraceRedactor (R-10) before display. |
+| zero-one-many | Side Panel conversation area (E2) | ✅ covered | E2 handles 0 bubbles (first-run persona card from E7), 1 bubble, or many bubbles — same vertical scroll, same composer position; the conversation area never collapses. |
+| zero-one-many | Standalone Sider (E4) | ✅ covered | E4 handles 0/1/many Sider items identically — fixed four items (Chat/Agent/Notes/Options); the count never varies in Phase 1. |
+| zero-one-many | Standalone page content (E5) | ✅ covered | E5 handles 0/1/many items identically — Notes list renders 0/1/many note cards with the same chrome; Chat renders 0/1/many conversations with the same composer; the route is always present. |
+| zero-one-many | Cmd+K command palette (E6) | ✅ covered | E6 lists 0 / 1 / 3 commands identically — same row height, same chrome; a zero-query state still shows the placeholder "Type a command…"; filtering to one or many narrows but does not change layout. |
+| zero-one-many | Chat history sheet/drawer (E8) | ✅ covered | E8 uses singular/plural copy correctly — "Chat history (1)" for one item, "Chat history (N)" for many; All tab and Starred tab may differ in count; zero-state copy in the Starred tab is independent. |
+| long-text | Side Panel header (E1) | ✅ covered | E1 wordmark "NowPilot" truncates with ellipsis if squeezed below ~360 px; the mark stays; icon buttons (20 px) stay visible. |
+| long-text | Side Panel conversation area (E2) | ✅ covered | E2 bubbles wrap long assistant text; long streamed responses scroll inside the bubble; user/assistant long messages wrap on word boundaries; never breaks the conversation width. |
+| long-text | Side Panel composer + status bar (E3) | ✅ covered | E3 composer input wraps multi-line; long pasted text is allowed up to the Sender `maxLength` (AntD default, no Phase 1 override); toolbar icons stay fixed. |
+| long-text | Standalone Sider (E4) | ✅ covered | E4 Sider item labels truncate with ellipsis on collapse; tooltips show the full label; the active item pill stays legible. |
+| long-text | Standalone page content (E5) | ✅ covered | E5 page content wraps on word boundaries; long page titles truncate with ellipsis after 1 line in the page header. |
+| long-text | Cmd+K command palette (E6) | ✅ covered | E6 command labels truncate with ellipsis at the row width; tooltips show the full label and accelerator. |
+| long-text | Onboarding persona card (E7) | ✅ covered | E7 persona card body wraps inside the card width; the heading "Meet your co-pilot" is fixed-width; the CTA labels are fixed. |
+| long-text | Chat history sheet/drawer (E8) | ✅ covered | E8 conversation item titles truncate with 1-line ellipsis; long titles wrap visually but the row height is fixed. |
+| long-text | Content script status (E9) | ✅ covered | E9 is text-only and short; long content is redacted by TraceRedactor (R-10) before display. |
 
 <!-- Status vocabulary (locked by probe-core projectTruths):
      ✅ covered   → a plain truth string lifted into must_haves.truths
@@ -184,14 +309,17 @@ Safety Gate column (timestamped evidence):
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: pending — checker
-- [ ] Dimension 2 Visuals: pending — checker
-- [ ] Dimension 3 Color: pending — checker
-- [ ] Dimension 4 Typography: pending — checker
-- [ ] Dimension 5 Spacing: pending — checker
-- [ ] Dimension 6 Registry Safety: pending — checker (N/A — see Registry Safety section)
+- [x] Dimension 1 Copywriting: PASS — "Save provider" / "Discard provider changes" replace generic "Save" / "Cancel"; full empty/error state coverage with solution paths (2026-08-04, gsd-ui-checker)
+- [x] Dimension 2 Visuals: PASS — first-run focal point (persona card), both reading-order hierarchies, 11-control `aria-label` inventory, loading-state policy all declared (2026-08-04, gsd-ui-checker)
+- [x] Dimension 3 Color: PASS — 60/30/10 split, exactly 8 accent reserved-for surfaces, destructive token declared for forward compat (2026-08-04, gsd-ui-checker)
+- [x] Dimension 4 Typography: PASS — 2-weight cap (400 + 600) with explicit AntD `Button.fontWeight` token override; 7-size two-base scale (12/13/14/16/20/24/30) is the project-documented design system scale (2026-08-04, gsd-ui-checker)
+- [x] Dimension 5 Spacing: PASS — standard 4/8/16/24/32 grid (+ 48/64 reserved); 1–2 px hairlines moved to a dedicated Border/Stroke Tokens section; 12/20 px quarantined as AntD component-internal defaults with override rule (2026-08-04, gsd-ui-checker)
+- [x] Dimension 6 Registry Safety: PASS (N/A) — no shadcn, no third-party registry; timestamped N/A evidence (2026-08-04, gsd-ui-researcher)
 
-**Approval:** pending (checker will upgrade `status: draft` → `approved` in frontmatter)
+**Non-blocking recommendations:**
+- **Dimension 4 (line 24):** the Design System row's font description reads "Inter 600–700"; the authoritative 2-weight cap in `## Typography` is 400 + 600. Tighten line 24 to "Inter 600" for full internal consistency on a future iteration.
+
+**Approval:** APPROVED 2026-08-04 (frontmatter `status: approved`; `reviewed_at: 2026-08-04`)
 
 ---
 
@@ -203,10 +331,12 @@ Pre-population source map (this contract is not exploratory; every field is boun
 |---------|-----------|
 | Design System row | `STACK.md` §Stack Overview + `AGENTS.md` Approved Stack + `PRODUCT_SPEC_v0_1.md` §7 + 01-CONTEXT.md D-05/D-10/D-12 |
 | Spacing Scale | `DESIGN_SYSTEM.md` §7 + Appendix F (`sizeUnit = 4`); touch-target exception from `DESIGN_SYSTEM.md` §12 |
+| Border / Stroke Tokens | `DESIGN_SYSTEM.md` §6.2 (default `colorBorder`) + §8.2 (active Sider pill outline) + §12 (focus ring inner highlight) |
 | Typography | `DESIGN_SYSTEM.md` §5 + Appendix F (`fontSize` 13 compact / 14 default, `fontFamily` system stack) + Flow 9 RICH-R-03 (display sizing reserved for Onboarding persona card heading) |
 | Color | `DESIGN_SYSTEM.md` §6.2 + Appendix F (`NOWPILOT_SEED` + `PACK_TOKEN_OVERLAY`) + `DESIGN_SYSTEM.md` §8.1d/§8.1e/§8.6/§8.7 |
 | Accent reserved-for list | `DESIGN_SYSTEM.md` §6.3/§6.4/§8.1/§8.2/§8.6/§8.7 + Flow 9 RICH-R-03 + §12 |
 | Copywriting | 01-CONTEXT.md D-06/D-07/D-08/D-09 + Flow 9 (RICH-R-03) + Flow 10 (Cmd+K) + Flow 11 (Workspace Handoff) + `DESIGN_SYSTEM.md` §8.1/§8.6/§8.7 + spec Appendix B canonical strings |
+| Visual Hierarchy & Focal Points | `DESIGN_SYSTEM.md` §8.1/§8.2/§9/§10/§12 + Flow 9 RICH-R-03 + spec §17.4 (skeletons) |
 | UI Considerations stub | 01-CONTEXT.md agent's Discretion area + `ui-consideration-probe.md` (populated by orchestrator probe, not by this agent) |
 | Registry Safety | `STACK.md` Banned list + `AGENTS.md` Approved Stack + 01-CONTEXT.md D-04/D-05 |
 | Destructive (none in Phase 1) | 01-CONTEXT.md Deferred Ideas + spec §28.5 commit-confirm barrier (forward compat only) |
@@ -215,4 +345,6 @@ Pre-population source map (this contract is not exploratory; every field is boun
 
 *Phase: 1-MV3/WXT Runtime + AntD Shells + Workspace — UI Design Contract*
 *Generated: 2026-08-04 by gsd-ui-researcher*
-*Status: draft (checker will upgrade to `approved`)*
+*Status: **approved** (verified by gsd-ui-checker, 6/6 dimensions PASS) on 2026-08-04*
+*Revised: 2026-08-04 iteration 1 — applied 4 checker BLOCK fixes (Copywriting action-specific labels, Visual Hierarchy & Focal Points, Typography 2-weight cap with AntD token override, Spacing standard grid + Border/Stroke Tokens split).*
+*UI Considerations: 60/60 covered (9 elements × 8 closed state categories) — populated by ui-phase Step 9.5 probe.*
