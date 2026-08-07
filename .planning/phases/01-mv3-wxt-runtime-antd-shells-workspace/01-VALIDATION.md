@@ -68,10 +68,10 @@ created: 2026-08-04
 | Test file / infra | Owning plan | Wave |
 |-------------------|-------------|------|
 | `vitest.config.ts` (WxtVitest) + `tests/setup.ts` (matchMedia polyfill + fakeBrowser reset) + dev deps install | 01-01 | 1 |
-| `tests/isolation/check-content-bundle.mjs` (01-01 stub → meaningful enforcement in 01-07, W-16 token set) | 01-01 → 01-07 | 1 → 5 |
+| `tests/isolation/check-content-bundle.mjs` (01-01 stub → meaningful enforcement in 01-07, W-16 token set) + `tests/isolation/no-content-script-ui.test.ts` (§24-named vitest wrapper over the script, I4) | 01-01 → 01-07 | 1 → 5 |
 | `tests/core/runtime/{RuntimeEnvelope,OperationId}.test.ts` | 01-02 | 2 |
 | `tests/core/events/EventBus.test.ts` + `tests/core/messaging/MessageBus.test.ts` | 01-03 | 3 |
-| `tests/core/error/debugLog.test.ts` + `tests/components/{ErrorBoundary,PortableMarkdown,MinimalMode,FocusTrap}.test.tsx` | 01-04 | 3 |
+| `tests/core/error/debugLog.test.ts` + `tests/components/{ErrorBoundary,PortableMarkdown,FocusTrap}.test.tsx` | 01-04 | 3 |
 | `tests/core/theme/{ThemePackRegistry,ThemeStore}.test.ts` | 01-05 | 4 |
 | `tests/core/runtime/BroadcastBus.test.ts` + `tests/core/workspace/{WorkspaceStore,WorkspaceRouter,WorkspaceSync}.test.ts` | 01-06 | 4 |
 | `tests/core/registry/{AddonRegistry,PageRegistry}.test.ts` + `tests/core/content/ContentScriptHost.test.ts` | 01-07 | 5 |
@@ -84,6 +84,7 @@ created: 2026-08-04
 - [ ] `tests/setup.ts` — matchMedia polyfill + `fakeBrowser.reset()` per test
 - [ ] Dev deps install: `pnpm add -D vitest @testing-library/react @testing-library/dom @testing-library/jest-dom jsdom` — none installed yet
 - [ ] `tests/isolation/check-content-bundle.mjs` — §24 stub (forbidden-token set completed in 01-07, W-16)
+- [ ] `tests/isolation/no-content-script-ui.test.ts` — §24-named vitest wrapper over check-content-bundle.mjs (I4)
 
 ---
 

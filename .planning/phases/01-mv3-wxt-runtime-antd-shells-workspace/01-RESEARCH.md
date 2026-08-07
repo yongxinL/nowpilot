@@ -63,7 +63,7 @@ Phase 1 is the greenfield foundation of the NowPilot Chrome MV3 extension: a WXT
 | ID | Description | Research Support |
 |----|-------------|------------------|
 | RUNTIME-01 | WXT MV3 extension builds with side panel, standalone view, background SW, and extraction-only content script entrypoints | Appendix G wxt.config.ts (verified compatible with wxt 0.19.29 + @wxt-dev/module-react ^1.2.2, peer `wxt >= 0.19.16`); entrypoint naming: `sidepanel/index.html`→`sidepanel.html`, `standalone/index.html`→`standalone.html`, `content/core.content.ts`, `background.ts` |
-| RUNTIME-02 | Side panel opens; first-run onboarding appears on fresh install | `chrome.sidePanel.setPanelBehavior({openPanelOnActionClick:true})` in LifecycleManager (onInstalled + onStartup); OnboardingModal gate on `workspace.activeProvider` (D-07) |
+| RUNTIME-02 | Side panel opens; first-run onboarding appears on fresh install | `chrome.sidePanel.setPanelBehavior({openPanelOnActionClick:true})` in LifecycleManager (onInstalled + onStartup); OnboardingModal gate on `ProviderRegistry.hasActiveProvider()` (D-07, W2 — NOT workspace.activeProvider, which is inert in Phase 1 per D-18) |
 | RUNTIME-03 | Standalone view opens from side panel; workspace state hands off correctly (no duplicate tabs) | Appendix M.2 `WorkspaceRouter.openStandalone` — persist → `chrome.tabs.query` by `standalone.html*` URL → update-or-create; M.1 `hydrateFromURL` on mount; §20.2 idempotency key = workspaceId |
 | RUNTIME-04 | AntD theme/design tokens applied via ThemeStore + antdConfig (compact for side panel, default for standalone) | Appendix F getAntdConfig (algorithm array incl. compactAlgorithm); one XProvider per surface; antd 6.5.3 CSS-variable theming verified; App.useApp() required |
 | RUNTIME-05 | Chat, Agent, Notes, Options page skeletons render in both surfaces | §18 file list + SidePanelPageRegistry/StandalonePageRegistry; side panel = Chat+Agent; standalone = Chat+Agent+Notes+Options (§8.3); AntD Skeleton blocks per UI-SPEC |
@@ -87,7 +87,7 @@ Phase 1 is the greenfield foundation of the NowPilot Chrome MV3 extension: a WXT
 | Theme tokens + display mode | ThemeStore + antdConfig (both surfaces) | chrome.storage.onChanged | D-13: chrome.storage.local canonical, onChanged sync across contexts |
 | Background messaging (PROXY_FETCH, OPEN_*) | Background SW | MessageBus | SW is the only context all others reach; typed RuntimeEnvelope |
 | Content-script bridge | Content script (ISOLATED) | Background router | PING/PONG/CAPABILITIES only; no UI, no extraction in Phase 1 (D-16/D-17) |
-| Onboarding gate | Side Panel (first-run) | WorkspaceStore.activeProvider | D-07 gate reads activeProvider; CTA deep-links via WorkspaceRouter |
+| Onboarding gate | Side Panel (first-run) | ProviderRegistry.hasActiveProvider() | D-07 gate reads the registry (W2 — activeProvider field is inert in Phase 1, D-18); CTA deep-links via WorkspaceRouter |
 | Command palette | Both surfaces (in-page) | WorkspaceRouter / chrome.sidePanel | Flow 10 commands execute surface-local or via router; sidePanel.open needs gesture |
 | Registries | Core (both surfaces) | — | AddonRegistry/Registry/AddonSettingsStore/page registries register at startup (WSPC-04) |
 
@@ -384,7 +384,7 @@ export default defineConfig({
 **What goes wrong:** A handler replies with a bare object or a new one-off message type; the events bridge can't route it, tests fail, and `trust`/`instructionAuthority` fields silently vanish.
 **Why it happens:** Fastest path to code in a greenfield phase; the canonical envelope looks heavier than a plain `{type, data}` object.
 **How to avoid:** Every background and content handler returns `ResponseEnvelope` (via `workerState.ok`/`workerState.fail`); new message types are added to the canonical `MessageType` enum (per D-17, PING/PONG/GET_CONTENT_CAPABILITIES/CONTENT_CAPABILITIES are additions to it, not new contracts). Zod fixture tests per public boundary (§0.3) enforce shape.
-**Warning signs:** `as any` casts at the edge of `MessageBus`, or a message object that has no `id`/`kind` fields.
+**Warning signs:** `as any` casts at the edge of `MessageBus`, or a reply object that has no `id`/`ok` fields (a real ResponseEnvelope is `{ id, ok: true, data }` or `{ id, ok: false, error }`).
 
 ### Pitfall 6: Theme breakage from the double-provider or matchMedia-in-jsdom
 **What goes wrong:** Tokens don't apply (default white theme despite dark mode), or `getAntdConfig` throws in tests (`window.matchMedia is not a function`).
@@ -400,28 +400,33 @@ export default defineConfig({
 
 ## Code Examples
 
-### RuntimeEnvelope and a PONG reply (content bridge)
+### RuntimeEnvelope / ResponseEnvelope and a PONG reply (content bridge)
 ```typescript
-// Source: spec §20.1 RuntimeEnvelope + D-17 (canonical)
+// Source: spec Appendix C (canonical) + §20.1 + D-17 — Phase 1 envelope has NO
+// kind/trust/instructionAuthority fields; those live on ContextItem in Phase 4b (§C.1).
 // src/core/runtime/OperationId.ts
 export function createOperationId(): string {
   return crypto.randomUUID();
 }
 
 // src/core/runtime/RuntimeEnvelope.ts
-export interface RuntimeEnvelope<T extends MessageType = MessageType, D = unknown> {
-  id: string;           // operationId
-  kind: 'request' | 'response';
-  type: T;              // canonical MessageType
-  payload?: D;
-  trust: 'trusted' | 'retrieved' | 'untrusted';
-  instructionAuthority: boolean;
+export interface RuntimeEnvelope<T = unknown> {
+  id: string;                    // operationId (crypto.randomUUID())
+  type: MessageTypeValue;        // canonical MessageType only
+  createdAt: number;
+  source: 'sidepanel' | 'background' | 'content' | 'addon' | 'standalone';
+  target?: 'sidepanel' | 'background' | 'content' | 'addon' | 'standalone';
+  payload: T;
 }
+export type ResponseEnvelope<T = unknown> =
+  | { id: string; ok: true;  data: T }
+  | { id: string; ok: false; error: { code: string; message: string; retryable: boolean } };
 
-// content script reply (core.content.ts):
+// content script reply (core.content.ts): PONG is a ResponseEnvelope, NOT a mutated request
 chrome.runtime.onMessage.addListener((msg: RuntimeEnvelope, _sender, sendResponse) => {
-  if (msg.type === 'PING') {
-    sendResponse({ ...msg, kind: 'response', type: 'PONG', payload: { ok: true } });
+  if (msg.type === MessageType.PING) {
+    sendResponse({ id: msg.id, ok: true, data: { pong: true } } satisfies ResponseEnvelope<{ pong: true }>);
+    return true;
   }
 });
 ```
@@ -486,7 +491,7 @@ const cfg = {
 
 | # | Claim | Section | Risk if Wrong |
 |---|-------|---------|---------------|
-| A1 | `@wxt-dev/module-react` peer `wxt>=0.19.16` makes `^1.2.2` compatible with `wxt ^0.19` | Standard Stack | If peer resolution conflicts, pin module to a 1.x version verified against 0.19.29 or add `--legacy-peer-deps` |
+| A1 | `@wxt-dev/module-react` peer `wxt>=0.19.16` makes `^1.2.2` compatible with `wxt ^0.19` | Standard Stack | If pnpm's strict peer resolution conflicts (I3), do NOT use `--legacy-peer-deps` (npm-only — has no effect under pnpm): prefer a pinned `pnpm.overrides` entry for the offending package, or last resort `strict-peer-dependencies=false` in `.npmrc`. Plan 01-01 Task 1 runs `pnpm why wxt @wxt-dev/module-react` to confirm single resolved versions |
 | A2 | AntD v6 CSS-variable theming is the default and `algorithm` arrays compose (`[darkAlgorithm, compactAlgorithm]`) | State of the Art / Patterns | If v6 still requires CSS-in-JS opt-in, the theming pattern changes; verify against installed antd version at plan time |
 | A3 | `chrome.sidePanel.open` gesture requirement + crbug 1478648 (await drops gesture in Chrome 127+) applies to WXT's runtime-messaging path | Common Pitfalls | If Chrome version in target env is <127, the bug may not reproduce, but the callback-style workaround is still safe |
 | A4 | `WxtVitest()` + `fakeBrowser` is the current official WXT testing path (wxt.dev guide) | Code Examples | If the API changed in 0.19.x patch line, adapt to the documented `wxt/testing` entry in the installed version |
@@ -538,7 +543,7 @@ const cfg = {
 
 ## Validation Architecture
 
-> Per `.planning/config.json`: `workflow.nyquist_validation` enabled → this section is required. Phase gate: `verify:phase-1` (spec §24) must pass — eslint + prettier + `tsc --noEmit` + `vitest run tests/core/runtime tests/core/events tests/core/workspace tests/core/theme` + isolation check.
+> Per `.planning/config.json`: `workflow.nyquist_validation` enabled → this section is required. Phase gate: `verify:phase-1` (spec §24) must pass — eslint + prettier + `tsc --noEmit` + `vitest run` (the FULL suite, not the four §24 dirs — B2) + isolation check.
 
 ### Test Framework
 
@@ -569,7 +574,7 @@ const cfg = {
 ### Sampling Rate
 - **Per task commit:** `pnpm vitest run tests/core/runtime tests/core/events` (fast, 30s)
 - **Per wave merge:** `pnpm vitest run` (full suite)
-- **Phase gate:** `verify:phase-1` — `pnpm eslint . && pnpm prettier --check . && pnpm tsc --noEmit && pnpm wxt build && pnpm vitest run tests/core/runtime tests/core/events tests/core/workspace tests/core/theme && node tests/isolation/check-content-bundle.mjs`
+- **Phase gate:** `verify:phase-1` — `pnpm eslint . && pnpm prettier --check . && pnpm tsc --noEmit && pnpm wxt build && pnpm vitest run && node tests/isolation/check-content-bundle.mjs`
 
 ### Test-Infra Creation Gaps (Wave 0 = plan 01-01 scaffold; remaining files created by their owning plans — see 01-VALIDATION.md creation map)
 - [ ] `vitest.config.ts` — WxtVitest plugin (plan 01-01, no test files yet)
@@ -596,7 +601,7 @@ const cfg = {
 | Pattern | STRIDE | Standard Mitigation |
 |---------|--------|---------------------|
 | Content script DOM injection / page UI | Tampering | ISOLATED world, extraction-only (D-16); no UI mount in Phase 1 (R-5) |
-| Message envelope spoofing from page | Spoofing | `MessageType` whitelist + `trust: 'retrieved'` default (Golden Rule 7); only trusted (own-extension) senders accepted |
+| Message envelope spoofing from page | Spoofing | sender validation (`sender.id === chrome.runtime.id`) + `MessageType` whitelist — the Phase-1 spoof control; `trust` / `instructionAuthority` are **Phase 4b** concerns (they live on `ContextItem`, §C.1), not the Phase-1 transport envelope |
 | Storage key collision (np_workspace etc.) | Tampering | Canonical key names from Appendix M only; never store conversation bodies/API keys (R-10) |
 | Bundle smuggling (antd/React into content script) | Tampering | Appendix G manualChunks verbatim + build-time isolation grep |
 | Side panel/standalone cross-context state desync | — | Single source of truth = chrome.storage.local + onChanged (D-13) |

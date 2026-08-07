@@ -851,7 +851,7 @@ Background owns: chrome.sidePanel.setPanelBehavior, context menus, PROXY_FETCH, 
 
 Side Panel owns: AI streaming, MCP runtime, ProviderRouter, PromptCacheManager, ContextOptimizer, MemoryEngine, AITransactionLog, IndexedDB, WorkspaceStore (side-panel instance).
 
-Standalone view owns: All Options screens, full-page Chat/Agent/Notes workspaces, TeamGQM full workspace, **LLM-Wiki + Filesystem Sync (§27)**, WorkspaceStore (standalone instance).
+Standalone view owns: All Options screens, full-page Chat/Notes workspaces, TeamGQM full workspace, **LLM-Wiki + Filesystem Sync (§27)**, WorkspaceStore (standalone instance).
 
 Content Scripts own: Page context extraction, SPA navigation detection, ServiceNow token/case extraction. **No UI rendering** in v0.1.
 
@@ -930,7 +930,7 @@ Opening rules:
 
 ### §5.5 Ant Design Setup
 
-NowPilot uses Ant Design v6 as its primary design system, with Ant Design X 2.x presentation components (Bubble, Sender, Conversations, ThoughtChain, etc. — §7.2, §9) for Chat/Agent surfaces. `XProvider` (from `@ant-design/x`) **extends** antd's `ConfigProvider`, so each surface mounts **exactly one** provider — `XProvider` — and wraps `AntdApp` inside it. Never nest `ConfigProvider` inside `XProvider` (or vice-versa): that double-wraps theme/locale/icon context. Plain-AntD-only trees that render no X components may use `ConfigProvider` directly.
+NowPilot uses Ant Design v6 as its primary design system, with Ant Design X 2.x presentation components (Bubble, Sender, Conversations, ThoughtChain, etc. — §7.2, §9) for the Chat surface (incl. Agent mode). `XProvider` (from `@ant-design/x`) **extends** antd's `ConfigProvider`, so each surface mounts **exactly one** provider — `XProvider` — and wraps `AntdApp` inside it. Never nest `ConfigProvider` inside `XProvider` (or vice-versa): that double-wraps theme/locale/icon context. Plain-AntD-only trees that render no X components may use `ConfigProvider` directly.
 
 Side Panel:
 
@@ -1011,7 +1011,7 @@ NowPilot is a privacy-first, extensible Chrome extension AI assistant and **pers
 - AI chat with streaming and abort
 - Atomic note-taking with wikilinks and a note graph
 - **LLM-Wiki knowledge layer** — auto-tagging, categorization, summaries, RAG "Ask notes", chat/page-to-note capture, and Markdown filesystem backup (§27)
-- Agent workflows with tool-calling
+- Agentic tool-calling workflows (via the Chat **Agent mode** toggle — §17.8; not a separate page)
 - Prompt templates and slash commands
 - A personal knowledge layer
 - Layered page-content extraction (§26)
@@ -1047,8 +1047,7 @@ It is optimized for **deep work, configuration, diagnostics, and large workspace
 
 The Standalone view contains:
 
-- Chat (full-screen)
-- Agent (full-screen, shares workspace with Chat)
+- Chat (full-screen; includes optional **Agent mode** toggle — §17.8, no separate Agent page)
 - Notes (full workspace: list, editor, backlinks, graph, **+ LLM-Wiki + Filesystem Sync**)
 - TeamGQM (add-on, full-page)
 - Options (all configuration and diagnostics)
@@ -1074,8 +1073,8 @@ Core never knows about specific websites. Add-ons never bypass core APIs.
 
 **In scope for v0.1:**
 
-- Side panel shell (Chat, Agent, Write, TeamGQM, Open Standalone view)
-- Full app shell (Chat, Agent, Notes, TeamGQM, Options)
+- Side panel shell (**Chat only**; "Switch to Full chat" handoff button)
+- Standalone shell (**Main:** Chat, Note, Write, Tools · **Add-ons:** TeamGQM · Options in footer)
 - Shared WorkspaceStore across both surfaces
 - 4 provider adapters (OpenAI, Anthropic, Gemini, Ollama)
 - PageContentService (core) — layered page extraction (Defuddle → APC-lite DOM walk), feeding ContextOptimizerInput.pageContext, indexed by MiniSearch.
@@ -1212,14 +1211,14 @@ Chrome Browser
 │   ├── StorageLayer (ChatHistoryDB, NotesDB, MemoryDB, ErrorStore, WriteJournal)
 │   ├── WorkspaceStore (Zustand) + WorkspaceSync (BroadcastBus)
 │   ├── MessageBus (cross-context), EventBus (in-panel), BroadcastBus (cross-surface)
-│   └── UI: Chat / Agent / Write (add-on) / TeamGQM (add-on) / Open Standalone view + RICH surfaces
+│   └── UI: Chat only (+ RICH surfaces) · "Switch to Full chat" handoff
 │
 ├── Standalone view (app/main.tsx)                               [persistent tab]
 │   ├── AntD ConfigProvider (default density) + AntdApp
 │   ├── StandaloneShell + StandaloneRouter (AntD Layout w/ Sider)
 │   ├── Same core services as Side Panel (single-writer coordination via WorkspaceStore)
 │   ├── LLM-Wiki services (NoteTagger/NoteQA/NoteChatConverter/NoteFileSync/NoteMaintenance)
-│   └── UI: Chat / Agent / Notes (+LLM-Wiki) / TeamGQM / Options
+│   └── UI (Sider): Chat / Note (+LLM-Wiki) / Write / Tools · Add-ons: TeamGQM · Options (footer)
 │
 ├── Content Scripts (extraction-only)
 │   ├── ContentScriptHost         message bridge only, no UI mount
@@ -1273,7 +1272,7 @@ Rules:
 | Width | ~400 px (Chrome default) | Full browser viewport |
 | Density | AntD **compact** algorithm | AntD default density |
 | Purpose | Fast, context-adjacent workflows | Deep work, config, diagnostics |
-| Pages | Chat, Agent, Write, TeamGQM, Open Standalone view | Chat, Agent, Notes (+LLM-Wiki), TeamGQM, Options |
+| Pages | **Chat only** (+ "Switch to Full chat") | **Main:** Chat, Note (+LLM-Wiki), Write, Tools · **Add-ons:** TeamGQM · Options (footer) |
 | Persistence | Persistent while open | Persistent tab |
 | Opened by | Chrome action button, keyboard shortcut, context menu | "Open Standalone view" action, command palette, options link |
 | Notes management | ❌ (view/quick-save only) | ✅ full workspace + LLM-Wiki + Filesystem Sync |
@@ -1378,8 +1377,10 @@ nowpilot/
 │   ├── components/
 │   │   ├── sidepanel/{SidePanelShell, SidePanelRouter}.tsx
 │   │   ├── app/{StandaloneShell, StandaloneRouter}.tsx
-│   │   ├── pages/{ChatPage, AgentPage, NotesPage, OptionsPage}.tsx
-│   │   ├── options/{Providers, Models, MCP, Prompts, Slash, Diagnostics, Memory, ImportExport, FeatureFlags, AddonSettings, Persona, Notes}Section.tsx   # +Persona +Notes
+│   │   ├── pages/{ChatPage, NotesPage, OptionsPage}.tsx   # Agent mode is a ChatPage state, not a page
+│   │   ├── options/{GeneralSection, NotesSection, AdvancedSection}.tsx        # 3 top-level nav sections (§17.2g)
+│   │   ├── options/general/{AccountCard, AIAccessCard, AppearanceCard}.tsx    # General sub-cards
+│   │   ├── options/advanced/{MCP, Memory, Diagnostics, Prompts, Slash, FeatureFlags, AddonSettings, Persona, ImportExport, About}Panel.tsx  # Advanced sub-panels
 │   │   ├── notes/{BacklinksPanel, WikilinkAutocomplete, NoteGraphView, NotePreview, SaveToNoteDialog}.tsx    # +SaveToNoteDialog
 │   │   ├── rich/{WelcomeCards, QuickActionChips, ClarificationChips, FollowUpChips, PersonaHeader, StageIndicator, ClosureZone, ContextPane, TemplateCatalog, CodeBlockActions, StepCards}.tsx
 │   │   ├── patterns/{ChatMessage, HistoryListItem, ToolCard, SkillMessageRenderer, SourceCard}.tsx
@@ -1419,8 +1420,7 @@ The side panel intentionally does NOT include: Notes editor, DiagnosticsPanel, P
 
 | Feature | Priority | Notes |
 |---|---|---|
-| Chat (full-screen) | P0 | Shares WorkspaceStore + conversation with side panel |
-| Agent (full-screen) | P0 | Shares WorkspaceStore + conversation with Chat |
+| Chat (full-screen) | P0 | Shares WorkspaceStore + conversation with side panel; includes optional **Agent mode** toggle (§17.8) |
 | Notes | P0 | List, editor, wikilinks, backlinks, graph, search, **+ LLM-Wiki + Filesystem Sync (§27)** |
 | TeamGQM add-on (full-page) | P0 | Full workspace for TeamGQM add-on |
 | Options | P0 | See §9.3 |
@@ -1430,24 +1430,15 @@ The side panel intentionally does NOT include: Notes editor, DiagnosticsPanel, P
 
 ### §9.3 Options Page
 
-Options is a Standalone page with the following sections, each accessible via a left-side Menu inside a Layout:
+Options is a Standalone page with a **left-side settings Menu of exactly three top-level sections** — **General · Notes · Advanced** — inside an AntD Layout. There is **no user-info footer** in this Menu; a **Help Center ↗** link sits at the bottom. Detailed layout in §17.4.
 
 | Section | Purpose |
 |---|---|
-| **General** | **Account (name/email/log-out); AI access (Service provider select + provider grid → Set-up dialog §17.2d); Appearance (Display mode Light/Dark/Auto + Theme pack Default/Liquid Glass/Claude Warm), display language, font size, side-panel position — see §17.1a** |
-| Providers | Add/edit/delete provider configs, test connections, priority order |
-| Models | Per-provider model list + context window override |
-| MCP Servers | Add/enable/disable external MCP servers, view permissions |
-| Prompt Templates | Create/edit/delete prompt templates + {{variable}} editor |
-| Slash Commands | Manage slash command → template mapping |
-| Memory | View/edit user memory facts; enable/disable memory |
-| Diagnostics | DiagnosticsPanel, transaction traces, export debug bundle |
-| Import / Export | Sanitised JSON/ZIP export; import merge; **Restore from folder (§27)** |
-| Feature Flags | Toggle P2 features (webhooks, insights, TTS) |
-| Add-on Settings | Namespaced settings per registered add-on |
-| **Persona** | Edit AI name, tone, brevity (RICH-R-04) |
-| **Notes** | LLM feature toggles, backup folder config, bulk maintenance (§27) |
-| About | Version, license, links |
+| **General** | Account (name/email + **Log out**); **AI access** (Service-provider `Select` defaulting to **"Custom API Key"** + a 2×2 **provider grid** — OpenAI · Google (Gemini) · Ollama · Anthropic (Claude) — each with an inline edit-pencil + enable `Switch` or **Set up** link → provider dialog §17.2d); **Appearance** in this order: **Theme pack** (Default / Liquid Glass / Claude Warm) → **Display mode** (Auto / Light / Dark) → Display language → Font size for messages → Side-panel position (Chrome-114+ browser setting, external ↗). See §17.1a. |
+| **Notes** | LLM feature toggles (autoTag/autoCategorize/autoSummary/aiSearch), backup-folder config, and bulk maintenance ("Re-analyze all notes") — §27. |
+| **Advanced** | Grouped sub-panels: **MCP Servers** (add/enable/disable, permissions), **Memory** (view/edit facts, enable/disable), **Diagnostics** (DiagnosticsPanel, transaction traces, export debug bundle), **Prompt Templates** ({{variable}} editor), **Slash Commands** (command → template mapping), **Feature Flags** (webhooks/insights/tts + harness tracks), **Add-on Settings** (namespaced per add-on), **Persona** (name/tone/brevity, RICH-R-04), **Import / Export** (sanitised JSON/ZIP + **Restore from folder**, §27), and **About** (version, license, links). |
+
+Provider add/edit/delete, connection tests, and per-model management (formerly separate "Providers" / "Models" sections) happen inside the **provider configuration dialog** (§17.2d), reached from the General → AI access grid.
 
 ### §9.4 Add-on Contract
 
@@ -1498,7 +1489,7 @@ Rules:
 
 **Side Panel Page:** SidePanelTeamGQMPage — compact quick view: Latest TeamGQM digest · Quick action buttons · Link to full page.
 
-**Standalone view Page:** StandaloneTeamGQMPage — full workspace: History · Reports · Detailed views · Shared workspace context (same conversationId as Chat/Agent).
+**Standalone view Page:** StandaloneTeamGQMPage — full workspace: History · Reports · Detailed views · Shared workspace context (same conversationId as Chat).
 
 **Skills:** TeamGQMSummarySkill — implementation-specific; this spec defines only the integration shell.
 
@@ -1660,9 +1651,9 @@ Rules:
 
 Applies to Side Panel Chat and Standalone view Chat.
 
-- useChat runs slash-check.
+- useChat runs slash-check (incl. `/agent` toggle, §17.8).
 - Assemble context via ContextOptimizer (sourced from WorkspaceStore).
-- Call AgentOrchestrator.runTurn(input, ctx).
+- Call AgentOrchestrator.runTurn(input, ctx). If the conversation's `agentMode` is on (AGENT-02), the orchestrator uses the tier's agent step ceiling and `toolAutonomy ≥ allow_safe_tools`; otherwise the standard per-turn caps apply. Same pipeline either way.
 - Stream through ChunkBuffer → render via PortableMarkdown.
 - On stream end append to ChatHistoryDB. First message → Flow 1a.
 - On provider error: AntD notification.error with Retry / Open Settings.
@@ -1769,7 +1760,7 @@ Every page must render these states with these exact strings (from STR in Append
 | Component | Surface | Loading | Empty | Error | Success |
 |---|---|---|---|---|---|
 | ChatPage | Side Panel + Standalone view | "Connecting to provider..." | "Start a conversation" | "Provider error. [Retry] [Switch Provider]" | Message stream visible |
-| AgentPage | Side Panel + Standalone view | "Preparing agent..." | "Describe a task and the agent will plan steps" | "Agent error: [message]. [Retry]" | Step progress visible |
+| ChatPage (Agent mode) | Side Panel + Standalone view | "Preparing agent..." | "Describe a task and the agent will plan steps" | "Agent error: [message]. [Retry]" | Thought-process step progress visible |
 | WritePage | Side Panel | "Preparing..." | "Choose an action or paste text" | "Write skill failed: [message]. [Retry]" | Streamed output visible |
 | TeamGQMPage (side panel) | Side Panel | "Loading..." | "No TeamGQM context available" | "Failed to load. [Retry]" | Summary + actions |
 | NotesPage | Standalone view | "Loading notes..." | "No notes yet. Press + to create one." | "Failed to load notes. [Retry]" | Note list |
@@ -2078,8 +2069,8 @@ Side panel is 400 px wide (Chrome default). All UI must work at this width. **Th
 **Structure (using AntD compact algorithm):**
 
 - **Header (~52 px)** — left: app mark ("N" avatar) + "NowPilot" wordmark. Right: **exactly two** icon buttons — **Options** (`SettingOutlined`, opens Standalone view → Options) and **Switch to Full chat** (`ExpandAltOutlined`, workspace handoff, Flow 11). **No provider chip** (provider moved to the status bar), **no nav rail**.
-- **Conversation area** — fills/scrolls; user bubbles right (`colorPrimaryBg`), assistant bubbles left prefixed by a small ⚡ model-id label, body via `PortableMarkdown`. Per-message action toolbar (Copy · Expand · Regenerate · Quote/save-note · Share · Read-aloud). Follow-up chips below (RICH-C-05). Empty state = mascot + Welcome cards (RICH-I-01).
-- **Composer toolbar (above the input, space-between)** — left: **model selector** (`⚡ model-id ▾`, the only model control in the Side Panel). Right: **Screenshot/snip** (`ScissorOutlined`) · **Attach** (`PaperClipOutlined`) · **Chat history** (`HistoryOutlined`, opens the bottom sheet, §17.1b) · **New chat** (`FormOutlined`).
+- **Conversation area** — fills/scrolls; user bubbles right (`colorPrimaryBg`); assistant turns left in a **response container** whose order is: `NowPilot` (avatar + name) → **Thought process** block (collapsed, §17.1c) → response body via `PortableMarkdown` → **action panel** (hover-only, §17.1d). The model id (e.g. `gemma-4-2b-it`) is shown as a tag on the Thought-process header, **not** after "NowPilot". Follow-up chips below (RICH-C-05). Empty state = mascot + Welcome cards (RICH-I-01).
+- **Composer toolbar (above the input, space-between)** — left: **model selector** (`⚡ model-id ▾`, the only model control in the Side Panel) + an **Agent-mode control** (`Chat ↔ Agent` segmented/switch; also `/agent`, §17.8). Right (**icon-only**, no labels): **Attach** (`PaperClipOutlined`, first) · **Chat history** (`HistoryOutlined`, opens the bottom sheet, §17.1b) · **New chat** (`FormOutlined`). There is **no** separate Screenshot/snip icon — screen capture is offered inside the **Attach** popover.
 - **Input** — rounded (radius 12), placeholder "Ask anything, @ models, / prompts", **send button inside** bottom-right; slash suggestion overlay.
 - **Status bar (below the input)** — left: active **provider name** (e.g. "OpenAI"; turns `colorError` on provider failure). Right: **Help** (`QuestionCircleOutlined`) + **Feedback** (`MailOutlined`) icons.
 - **Global overlays** — Cmd+K palette (AntD Modal), toasts via App.useApp().message, permission dialogs via App.useApp().modal.confirm, chat-history bottom sheet (§17.1b).
@@ -2097,7 +2088,28 @@ Rules:
 
 #### §17.1b Chat History — Bottom Sheet (Side Panel)
 
-The composer's **Chat history** (🕘) icon opens a **bottom sheet** that slides up over a dimmed conversation (rounded top corners, `E3` elevation; dismiss via drag-down, ✕, or scrim tap). Content: title "Chat history" + count; **All / Starred** underline tabs + clear/delete (trash) icon; a Search field; day-grouped items ("Today"/"Yesterday"/dates), each item = title + `…` overflow (rename/delete/star) + star toggle. Tapping an item loads that conversation. Backed by `useChatHistory`; states per §12. The Standalone view presents the same content as a **right drawer** (§17.2b).
+The composer's **Chat history** (🕘) icon opens a **bottom sheet** that slides up over a dimmed conversation (rounded top corners, `E3` elevation; dismiss via drag-down, ✕, or scrim tap). Layout, top → bottom:
+
+- **Header row:** title "Chat history" on the left; **All / Starred** underline tabs; a **Delete all** (trash) icon on the **right of this same row** (right of the Starred tab, **above** the search box).
+- **Search box:** "Search conversations" (below the header row).
+- **Conversation list:** day-grouped ("Today"/"Yesterday"/dates). Each item = title + relative timestamp. On the **right of the row and only on hover**, two controls appear in this order: **`…` More menu**, then the **Star** toggle. Star toggles filled/outline (a starred item keeps its filled star visible even when not hovered). Tapping the item body loads that conversation.
+- **`…` More menu actions:** **Export · Edit title · Delete** (Delete confirms first).
+
+Backed by `useChatHistory`; states per §12. The Standalone view presents the same content model as a **right drawer/modal** (§17.2b).
+
+#### §17.1c Thought Process (inside the response container)
+
+Every assistant turn renders a **Thought process** block **inside** the response container, directly under the `NowPilot` name and **above** the response body:
+
+- **Collapsed by default**, shown as `⟠ Thought process  [model-id]  ›`. The **model used for processing is shown here** as a tag (e.g. `gemma-4-2b-it`) — it is **not** shown after "NowPilot".
+- **Expandable** to reveal the ordered reasoning / agent steps (X `ThoughtChain`). While streaming it doubles as the stage indicator (RICH-H-08: "Reading page context → Planning → Generating"), then settles to a collapsed "N steps" summary on completion.
+
+#### §17.1d Message Action Panels (hover-only, with tooltips)
+
+Action panels appear **only on hover** over a message container and each icon shows an individual **tooltip** on hover.
+
+- **Assistant response** — panel at the **bottom-left** of the response container. Actions (left → right): **Copy · Save to note · Regenerate · Quote · Share · Like · Dislike · Read aloud**. (Insert-into-page is clipboard-only in v0.1, R1.)
+- **User message** — panel on the user bubble. Actions: **Edit · Copy · Share · Read aloud**.
 
 ### §17.1a Appearance Settings (Options → General)
 
@@ -2116,35 +2128,44 @@ Standalone view is served from standalone.html in a normal browser tab. Uses Ant
 
 ```
 +------------------------------------------------------------+
-| Header (56 px)                                             |
-|  NowPilot logo · workspace title · theme toggle · avatar   |
+| Sider top: NowPilot logo · collapse/expand chevron         |
 +----------+-------------------------------------------------+
+|  Sider   |            Content Area (per-page)               |
+| 240px    |                                                 |
+| /72px    |   Chat / Note / Write / Tools / TeamGQM          |
 |          |                                                 |
-|  Sider   |            Content Area                         |
-|  (240px) |                                                 |
-|          |   Chat / Agent / Notes / TeamGQM / Options      |
-|  Menu:   |                                                 |
+| MAIN     |                                                 |
 |  - Chat  |                                                 |
-|  - Agent |                                                 |
-|  - Notes |                                                 |
-|  - TeamGQM|                                                |
-|  - Options|                                                |
+|  - Note  |                                                 |
+|  - Write |                                                 |
+|  - Tools |                                                 |
+|  ──────  |  ← separator                                    |
+| ADD-ONS  |                                                 |
+|  - TeamGQM (optional)                                      |
+|          |                                                 |
+| Footer: profile avatar · Settings                          |
 +----------+-------------------------------------------------+
 ```
+
+**Sider navigation (SIDER-01…04):**
+
+- **SIDER-01 — Grouping.** The Sider is the surface switcher, split into two groups with a **visible separator** between them: a **Main group** — **Chat · Note · Write · Tools** — and a **Secondary "Add-ons" group** — **TeamGQM** (optional / flag-gated; other add-ons register here too). Active item = `colorPrimaryBg` pill + `colorPrimary`.
+- **SIDER-02 — Collapsible.** A collapse/expand **chevron** at the Sider top toggles between **expanded (240 px, icon + label)** and **collapsed (72 px, icon-only + tooltip)**. State persists in `chrome.storage.sync.np_sider_collapsed`. `⌘B` toggles it.
+- **SIDER-03 — Footer.** Profile avatar / name and a **Settings** entry (opens Options). `⌘K` opens global search / command palette.
+- **SIDER-04 — Options is not a Sider item.** Options opens from the footer Settings entry (or `⌘,`), rendered in the Content Area with its own secondary vertical menu (§17.4). Chat is the default landing page.
 
 Rules:
 
 - Use AntD default density (no compact algorithm).
-- Sider is collapsible; state persisted per user in chrome.storage.sync.
 - Content Area may use AntD Tabs, Table, Form, Descriptions, Card, Steps, Drawer, Modal.
-- The Options page uses AntD Menu (secondary vertical) inside the Content Area to switch between sub-sections.
+- **Per-page top bar (TOPBAR-01):** the top-bar action set is **page-specific**. **New Note / Import / Backup** belong to the **Note page only** (§17.2c). The **Chat page** top bar shows only global search + an overflow `⋮`; it does **not** show New Note/Import/Backup, and chat history + new chat live in the composer toolbar (not the top bar).
 - Minimum supported viewport width: 1024 px. Below → show AntD Alert "This view is optimized for wider screens; open the side panel for narrow layouts."
 
-The Standalone Sider is the surface switcher: **Chat · Note · Write · Tools · [TeamGQM optional] · Options**. Active item = `colorPrimaryBg` pill + `colorPrimary`. Footer holds profile avatar, settings gear, and a `⌘K` hint. The Standalone view **Chat** page reuses the Side Panel composer/bubble recipes at default density.
+The Standalone **Chat** page reuses the Side Panel composer/bubble recipes (§17.1c/d) at default density; its chat history opens as a **right drawer/modal** (§17.2b).
 
-#### §17.2b Chat History — Right Drawer (Standalone view)
+#### §17.2b Chat History — Right Drawer / Modal (Standalone view)
 
-In the Standalone view, the **Chat history** control opens a **right-side drawer** (~360–400 px) that slides in over a dimmed content area (the Sider stays visible; `E3` elevation; scrim over content only). Identical content model to the Side Panel bottom sheet (§17.1b): title + count, **All / Starred** tabs, clear/delete, search, day-grouped items with `…` overflow + star. `useChatHistory` backs both surfaces; only the entry animation differs (bottom-sheet vs right-drawer).
+In the Standalone view, the **Chat history** control **in the Chat composer toolbar** (the 🕘 icon above the input — **not** a top-bar control) opens a **right-side modal drawer** (~320–400 px) that slides in **from the right** over a dimmed content area (the Sider stays visible; `E3` elevation; scrim over content only; dismiss via ✕, scrim click, or `Esc`). Identical content model and behaviour to the Side Panel bottom sheet (§17.1b): header row with **All / Starred** tabs + **Delete all** on the right (above search), a search box, day-grouped items, hover-only **`…` More** (Export · Edit title · Delete) + **Star** toggle. `useChatHistory` backs both surfaces; only the entry animation differs (bottom-sheet vs right-drawer).
 
 #### §17.2c Notes Page — 4-Column Workspace (Standalone view only)
 
@@ -2187,8 +2208,66 @@ Each provider card's **Set up** opens a centred AntD `Modal` (`E3`, radius 16):
 - **API key:** password `Input.Password` with eye toggle; AES-encrypted per §15.2; the stored key is never rendered in plaintext on reload.
 - **API proxy URL (optional):** a `Switch`; when on, reveals a URL input mapped to `ProviderConfig.customBaseURL` (§10.3).
 - **Check connection:** helper text "Check if your API key and proxy (if used) are valid." + **Check** button → `validateConfig()`; inline success/error (`colorSuccess`/`colorError`; error code `PROVIDER_CHECK_FAILED`).
-- **Model list:** count label + **↻ Update list** (`getModels()`) + **+** to add a custom model id; each row = model id + **enable/disable `Switch`**. Enabled models populate the composer model selector.
+- **Model list:** count label ("N models available") + **↻ Update list** (`getModels()`) + **+ Add custom model**. Rendered as a table with columns **Model name · Type · Context window · Source · Recommended · Enabled**:
+  - **Model name** — display id (e.g. `gpt-4o`).
+  - **Type** — `Chat | Embedding | Other`.
+  - **Context window** — token limit (e.g. `128K`, `200K`, `1M`).
+  - **Source** — `Provider` (fetched) or `Custom` (user-added).
+  - **Recommended** — a tag when the provider suggests the model, else `—`.
+  - **Enabled** — a per-model `Switch`; only enabled models appear in the composer model selector.
+- **Note (embedding):** `Type: Embedding` models may be **listed** (they are part of a provider's model set) but are **not used for retrieval in v0.1** — embedding/vector search is deferred to v0.2+ (§23). They can be left disabled; enabling one does not activate semantic search.
 - **Footer:** **Cancel** (ghost) / **Save** (primary → persists `ProviderConfigSchema`, §10.3).
+
+#### §17.2e Write Page (Standalone view)
+
+A three-region composing workspace (Write add-on, §9.5) at default density:
+
+- **Left — Template list (~320 px):** "My Templates" with **+ New Template**, a search box, and template entries (e.g. Incident Report, RCA Report, Change Request, Problem Report, Business Update, Email to Stakeholders, Post-mortem). Selecting a template loads it into the editor.
+- **Centre — Editor (flexible):** document **Title** field + a rich-text formatting toolbar (`Paragraph▾`, bold/italic/underline, lists, link, more) over the body. **Auto-save** with a "Saved / Auto-saved N mins ago" indicator; top-right **Export ▾** and overflow `⋮`.
+- **Right — Insert / AI Assist panel (~280 px):** **Insert** group (Notes, Templates, Variables, Date/Time, Divider) and **AI Assist** group (Improve writing, Fix grammar, Make shorter, Make longer). AI Assist actions route through the standard runtime (Planner→Executor→Renderer).
+- **Actions:** Save (auto) · Export ▾ · More options. Output actions match §9.5 (Copy / Insert into chat / Save as note).
+
+#### §17.2f Tools Page (Standalone view)
+
+A catalogue + detail layout for built-in tools, MCP servers, and skills (§10, §14):
+
+- **Header:** page title, **search tools**, filter tabs (**All · Built-in · MCP · Skill/Add-on**), a grid/list **view toggle**, and **+ Add Tool** (add an MCP server / skill).
+- **Tool grid (responsive cards):** each card shows name, a **type tag** (`Built-in` / `MCP` / `Skill`), a short description, a status line (e.g. `Connected` for MCP, tool count), and an **enable/disable `Switch`**. Examples: ServiceNow MCP, Jira MCP, Confluence MCP, Web Search, Calculator, Code Interpreter, Note Tagger, Note QA, Defuddle Parser.
+- **Right — Tool Details panel (~320 px):** selected tool's status (Connected/Enabled/Disabled/Error), version, type, description, and **Actions** (Configure · Reconnect · View tools · **Remove**).
+- **Card states:** Connected · Enabled · Disabled · Error (colour + label, never colour alone).
+
+#### §17.2g Options Page (Standalone view)
+
+A settings shell: a **left settings Menu** + **card-based content** at default density (spec §9.3).
+
+```
+┌───────────┬──────────────────────────────────────────────┐
+│ (N)NowPilot ‹│ [search ⌘K]                          ? │  top bar: search + help
+│  ▣ General  │  Account                                    │
+│  ▤ Notes    │  ┌ (N) NowPilot · you are signed in  [Log out]┐
+│  ⚙ Advanced │  AI access                                  │
+│             │  Service provider            [Custom API Key ▾]│
+│             │  "API key stored locally, never sent…"      │
+│             │  ┌ OpenAI      ✎ (—●) ┐ ┌ Google (Gemini) Set up┐
+│             │  ┌ Ollama      Set up ┐ ┌ Anthropic(Claude) ✎(—●)┐
+│             │  Appearance                                 │
+│             │  Theme pack …………………… [Liquid Glass ▾]        │  ← ABOVE display mode
+│             │  Display mode ………………… [Auto ▾]              │
+│             │  Display language ……… [English (US) ▾]       │
+│             │  Font size for messages [Auto ▾]            │
+│             │  Side panel position ……………………………… ↗         │
+│  ──────     │                                             │
+│  ? Help ↗   │                                             │
+└───────────┴──────────────────────────────────────────────┘
+```
+
+- **OPT-01 — Nav (exactly 3 sections):** the left Menu has **General · Notes · Advanced** only (no Providers/Models/etc. as separate items — those live under Advanced or inside the provider dialog). Active item = `colorPrimaryBg` pill. **No user-info footer**; a **Help Center ↗** link sits at the bottom (external).
+- **OPT-02 — General → Account card:** avatar + name + "signed in" line + **Log out** (clears local session). No account-management backend in v0.1.
+- **OPT-03 — General → AI access card:** a **Service provider** `Select` (default label **"Custom API Key"**, for BYO-key / compatible endpoints) + the privacy line "Your API key is stored locally in your browser and is never sent elsewhere." + a **2×2 provider grid** (OpenAI · Google (Gemini) · Ollama · Anthropic (Claude)). Each cell shows the provider name and either an **edit-pencil + enable `Switch`** (configured) or a **Set up** link (unconfigured) → provider dialog (§17.2d).
+- **OPT-04 — General → Appearance card (order matters):** **Theme pack** (Default / Liquid Glass / Claude Warm) is listed **first / above Display mode**, then **Display mode** (Auto / Light / Dark), **Display language**, **Font size for messages** ("Auto adjust according to sidebar width"), and **Side panel position** (opens the Chrome-114+ browser setting, external ↗). Wiring per §17.1a.
+- **OPT-05 — Notes section:** the LLM feature toggles + backup-folder config + bulk maintenance (§27).
+- **OPT-06 — Advanced section:** grouped sub-panels (MCP Servers, Memory, Diagnostics, Prompt Templates, Slash Commands, Feature Flags, Add-on Settings, Persona, Import/Export, About) — the heavier/rarely-changed settings, kept out of General.
+- Cards: `colorBgContainer`, radius 12, `E1`, ~20 px padding, hairline row dividers; all changes **auto-saved**.
 
 ### §17.3 AntD Theme System
 
@@ -2388,6 +2467,21 @@ Role 11 · Intention 14 · Conversation 15 · Hybrid UI 20 = **60**. P0 17 · P1
 | Cross-session conversation resumption w/ full replay | Deferred; v0.1 stateless between sessions |
 | Shadow DOM injection / host-page write-back | Deferred per §0.2 (R1) |
 
+### §17.8 Agent Mode (a Chat mode, not a separate page)
+
+There is **no separate Agent page**. Everything an "agent" does runs through the same `AgentOrchestrator` (Planner → Executor → Renderer) that already backs every Chat turn (§1.2), and the multi-step reasoning is already surfaced in the **Thought process** block (§17.1c). "Agent" is therefore an **optional mode of the Chat surface**, exposed on both surfaces.
+
+- **AGENT-01 — Trigger.** Agent mode is toggled per conversation via an **Agent-mode control in the Chat composer** (a `Segmented`/switch: *Chat ↔ Agent*) **or** the `/agent` slash command. Default is plain Chat. The toggle lives in the composer, not the nav; there is no Agent entry in the Side Panel or the Standalone Sider.
+- **AGENT-02 — Effect (deterministic, no new engine).** When enabled for a conversation, the turn is annotated `agentMode: true`, which only:
+  1. raises the planner/tool **step caps** for the current tier (§1.4) up to that tier's agent ceiling (e.g. medium → up to 3 planner / 2 tool; large → up to 5 / 3), and
+  2. sets the effective `toolAutonomy` to at least `allow_safe_tools` for the turn (§3.5), while dangerous tools still prompt (Flow 2).
+  It does **not** change the pipeline, streaming, memory, or storage. Minimal/tiny tier ignores the toggle (agent loops stay disabled, §2.5).
+- **AGENT-03 — Presentation.** Agent-mode turns use the **same** bubble + **Thought process** expander; the step progress is the Thought-process content (RICH-H-08 stage indicator). No separate layout, history, or composer.
+- **AGENT-04 — State.** `agentMode` is a per-conversation flag on `WorkspaceState`/the chat session (persisted with the conversation), not a global setting and not a surface. Switching it never navigates away from Chat.
+- **AGENT-05 — Scope guard.** Agent mode never enables host-page automation (extraction-only, §0.4/§26.7); it acts only through tools/APIs (§10.5). The Verified Agent Harness (§28) applies unchanged when its flag is on.
+
+Rationale (ADR): a distinct Agent page would duplicate the composer, history, and state model over an identical runtime, adding surface area and user confusion for no capability gain; folding it into a Chat toggle matches the industry pattern (single conversational surface + agent toggle) and reduces implementation/testing cost for cost-effective models.
+
 ## §18 — Master Implementation Phases
 
 > **Single authoritative roadmap.** §18 is the sole source of implementation sequencing for NowPilot v0.1. All implementation phases, sub-phases, dependencies, verification gates, and release ordering are defined here. Sections §28–§30 provide requirement detail and supporting contracts, but they do not define a separate implementation order.
@@ -2443,7 +2537,7 @@ src/core/components/{ErrorBoundary, PortableMarkdown}.tsx
 src/components/sidepanel/{SidePanelShell, SidePanelRouter}.tsx
 src/components/standalone/{StandaloneShell, StandaloneRouter}.tsx
 src/components/OnboardingModal.tsx                  # Flow 9
-src/components/pages/{ChatPage, AgentPage, NotesPage, OptionsPage}.tsx   # skeletons only
+src/components/pages/{ChatPage, NotesPage, OptionsPage}.tsx   # skeletons only (Agent mode = ChatPage state)
 ```
 
 **Required tests:**
@@ -2802,11 +2896,14 @@ tests/components/DiagnosticsSection.test.tsx
 **Create:**
 
 ```
-src/components/pages/ChatPage.tsx                   # full — reused by Side Panel + Standalone view
-src/components/pages/AgentPage.tsx
+src/components/pages/ChatPage.tsx                   # full — reused by Side Panel + Standalone view; hosts Agent mode
+src/components/chat/AgentModeToggle.tsx             # composer toggle / `/agent` — raises tier caps + toolAutonomy (§17.8)
 src/components/pages/NotesPage.tsx                  # Standalone view only, incl. LLM-Wiki panels
 src/components/pages/OptionsPage.tsx                # Standalone view only
-src/components/options/{ProvidersSection, ModelsSection, MCPSection, PromptsSection, SlashSection, MemorySection, ImportExportSection, FeatureFlagsSection, AddonSettingsSection, PersonaSection, NotesSection}.tsx
+src/components/options/{GeneralSection, NotesSection, AdvancedSection}.tsx
+src/components/options/general/{AccountCard, AIAccessCard, ProviderGrid, AppearanceCard}.tsx
+src/components/options/advanced/{MCPPanel, MemoryPanel, DiagnosticsPanel, PromptsPanel, SlashPanel, FeatureFlagsPanel, AddonSettingsPanel, PersonaPanel, ImportExportPanel, AboutPanel}.tsx
+src/components/options/ProviderConfigDialog.tsx
 src/components/notes/{BacklinksPanel, WikilinkAutocomplete, NoteGraphView, NotePreview, SaveToNoteDialog}.tsx
 src/components/patterns/{ChatMessage, HistoryListItem, ToolCard, SkillMessageRenderer, SourceCard}.tsx
 src/components/rich/{WelcomeCards, QuickActionChips, ClarificationChips, FollowUpChips, PersonaHeader, StageIndicator, ClosureZone, ContextPane, TemplateCatalog, CodeBlockActions, StepCards}.tsx
@@ -2841,7 +2938,7 @@ tests/core/notes/LinkParser.test.ts
 
 This phase exposes capabilities built in Phases 3–5a as polished surfaces, then layers RICH in sub-waves:
 
-- **Phase 7.1 — Core screens:** Chat/Agent/Notes/Options render with Planner→Executor→Renderer, ChunkBuffer streaming, /write /ask presets, note wikilinks, Options forms, Diagnostics.
+- **Phase 7.1 — Core screens:** Chat (incl. Agent mode toggle)/Notes/Options render with Planner→Executor→Renderer, ChunkBuffer streaming, /write /ask presets, note wikilinks, Options forms, Diagnostics.
 - **Phase 7.2 — LLM-Wiki UI surfacing:** NotesPage "Ask notes" bar, category tree toggle, summary lines, orphan badges, AI-search toggle, backup status Tag, SaveToNoteDialog.
 - **Phase 7.3 — RICH Core (17 P0):** RICH-R-01/02/11, RICH-H-01, RICH-I-01/05/06, RICH-C-01/02/03/04, RICH-C-05/06/07/08, RICH-H-04 (clipboard-only insert), RICH-H-08. *(persona runtime seeds already in Phase 3.)*
 - **Phase 7.4 — RICH Enhance (22 P1):** RICH-R-03/05/06/08/09/10, RICH-I-02/03/08/09/10, RICH-C-09/12/13/14, RICH-H-02/03/05/06/11/12/16.
@@ -3491,7 +3588,7 @@ Runs nightly via Scheduler. v0.1 produces exactly three Insight values: tag-tren
 | Extension framework | WXT | Type-safe, HMR, cross-browser, no cloud dependency |
 | UI framework | React 19 | Streaming renders via concurrent mode |
 | **UI component library** | **Ant Design v6** | Enterprise data components, mature forms/tables, accessibility, i18n; v6 compatible upgrade over v5 (React ≥18, CSS-variable theming, official CLI + machine-readable DESIGN.md reduce AI-coding-agent hallucination) |
-| **AI chat components** | **Ant Design X 2.x** (presentation only) | Bubble, Sender, Conversations, ThoughtChain, Think, Attachments, Suggestion, Sources, FileCard map onto Chat/Agent needs. X 2.x targets antd v6 and is the actively developed line; X 1.x pairs with antd v5 (1-year bugfix-only window from Nov 2025) |
+| **AI chat components** | **Ant Design X 2.x** (presentation only) | Bubble, Sender, Conversations, ThoughtChain, Think, Attachments, Suggestion, Sources, FileCard map onto Chat (incl. Agent mode) needs. X 2.x targets antd v6 and is the actively developed line; X 1.x pairs with antd v5 (1-year bugfix-only window from Nov 2025) |
 | **Markdown/streaming rendering** | **@ant-design/x-markdown** | Purpose-built for incremental/streaming; built-in LaTeX/mermaid/code-highlight replace 5 packages |
 | **AI chat data flow** | **NOT @ant-design/x-sdk** — kept AgentOrchestrator/ProviderRouter/ContextOptimizer | x-sdk's useXChat/ChatProvider calls providers directly from the UI, bypassing Planner→Executor→Renderer, ContextOptimizer, MemoryEngine, AITransactionLog |
 | **Dynamic agent-generated UI (A2UI)** | **Deferred to v0.2+** — not @ant-design/x-card in v0.1 | A2UI's createSurface/updateComponents command stream is a harder JSON target than the 3-action PlannerDecisionSchema; unsafe for Haiku/Flash today (§25.6) |
@@ -3500,7 +3597,7 @@ Runs nightly via Scheduler. v0.1 produces exactly three Insight values: tag-tren
 | **Shared workspace** | WorkspaceStore (Zustand) + BroadcastBus | Single source of truth across surfaces; cross-surface handoff |
 | **Content scripts** | Extraction-only in v0.1 | No UI in host pages; simpler bundle; page injection deferred |
 | **Page injection** | **Deferred to v0.2+** | Reduces v0.1 complexity; add-on architecture preserved |
-| **Page-content extraction placement** | **Core PageContentService**, not a tool | Shared infra for Chat/Agent/Summarize/research/add-ons; central cache, concurrency, redaction |
+| **Page-content extraction placement** | **Core PageContentService**, not a tool | Shared infra for Chat (incl. Agent mode)/Summarize/research/add-ons; central cache, concurrency, redaction |
 | **Main-content extraction** | **Defuddle** | Purpose-built Readability successor; preserves footnotes/math/code; clean Markdown; MIT; runs in side panel/standalone view |
 | **Extraction model** | **Layered strategy** (Defuddle → APC-lite → ServiceNow API) | Right tool per page type |
 | **Page-content retrieval** | **MiniSearch over extracted content** (ephemeral, per-tab) | Keeps large pages within the 2,000-token budget; reuses core engine; never persisted |
@@ -3636,7 +3733,7 @@ Side Panel + Standalone view continue to use AntD. Injected UI uses Tailwind + R
 
 ### §26.1 Principle
 
-Page-content extraction is **core infrastructure**, not a tool (built in **Phase 4a**). A single PageContentService owns extraction for every surface (Chat, Agent, Summarize, /research, add-ons). It applies a **layered strategy**, caches per tab, redacts before use, and feeds ContextOptimizerInput.pageContext (§2.3).
+Page-content extraction is **core infrastructure**, not a tool (built in **Phase 4a**). A single PageContentService owns extraction for every surface (Chat incl. Agent mode, Summarize, /research, add-ons). It applies a **layered strategy**, caches per tab, redacts before use, and feeds ContextOptimizerInput.pageContext (§2.3).
 
 ### §26.2 Layered strategy (ordered)
 
@@ -3654,7 +3751,7 @@ extract(tabId, mode)
 ```
 
 - **DefuddleStrategy** is the default for reading/summarizing.
-- **ApcLiteStrategy** is used when the Agent needs structure (forms, tables, clickable/editable elements, node ids + geometry) — the substrate for future v2 automation (§26.7).
+- **ApcLiteStrategy** is used when the agentic runtime needs structure (forms, tables, clickable/editable elements, node ids + geometry) — the substrate for future v2 automation (§26.7).
 - **ServiceNow** always tries the Table API first (§9.7); extraction is fallback only.
 
 ### §26.3 Strategy contract
@@ -3698,7 +3795,7 @@ The content script only reads/serializes HTML; **Defuddle parsing runs in the si
 
 ### §26.7 Browser automation — deferred to v2
 
-NowPilot v0.1 is **read-only**: content scripts are extraction-only (§5.6); the Agent acts through tools/APIs (§10.5), never by driving the host-page UI. Genuine automation (click/type/navigate) needs **trusted input events** (event.isTrusted), which only chrome.debugger + CDP Input can produce. v0.1/v0.2: no host-page automation, no "debugger" permission. **v2:** add "debugger", a DebuggerSession manager, and automation tools (clickElement/typeText/navigate) resolving a stable APCLiteNode.id → geometry → Input.dispatchMouseEvent. The APCLiteNode schema (Appendix C) is already automation-ready — no schema rework. A separate v2 Automation addendum spec must be ratified first.
+NowPilot v0.1 is **read-only**: content scripts are extraction-only (§5.6); the agentic runtime acts through tools/APIs (§10.5), never by driving the host-page UI. Genuine automation (click/type/navigate) needs **trusted input events** (event.isTrusted), which only chrome.debugger + CDP Input can produce. v0.1/v0.2: no host-page automation, no "debugger" permission. **v2:** add "debugger", a DebuggerSession manager, and automation tools (clickElement/typeText/navigate) resolving a stable APCLiteNode.id → geometry → Input.dispatchMouseEvent. The APCLiteNode schema (Appendix C) is already automation-ready — no schema rework. A separate v2 Automation addendum spec must be ratified first.
 
 ### §26.8 Reference projects (informative, non-normative)
 

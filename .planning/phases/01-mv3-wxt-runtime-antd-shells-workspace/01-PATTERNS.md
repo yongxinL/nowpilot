@@ -43,6 +43,7 @@ All files below are **create** (no modify). Roles and data flow per the GSD mapp
 | `src/core/registry/SidePanelPageRegistry.ts` | registry | CRUD | Appendix C type (line 4364) + §17.1 usage | exact (type) |
 | `src/core/registry/StandalonePageRegistry.ts` | registry | CRUD | Appendix C type (line 4374) + §17.2 Sider usage | exact (type) |
 | `src/core/input/KeymapRegistry.ts` | registry | event-driven | Appendix C type (line 4353) + Flow 8 (line 1698) | exact (type) |
+| `src/core/ai/ProviderRegistry.ts` | registry | request-response | Phase 3 canonical home (line 2518) — Phase-1 D-07 gate stub; Phase 3 augments this exact file, no duplicate under core/providers/ (B3) | role-match (stub) |
 | `src/core/theme/ThemeStore.ts` | store | CRUD | Appendix F.1 (line 5107) **minus persist middleware**, plus D-13 storage adapter + onChanged | exact (adapted) |
 | `src/core/theme/antdConfig.ts` | utility | transform | Appendix F.2 (line 5150) verbatim | exact (verbatim) |
 | `src/core/workspace/WorkspaceStore.ts` | store | CRUD | Appendix M.1 (line 5731) + D-18 full field set + §21.5 type | exact (verbatim + D-18) |
@@ -119,8 +120,8 @@ export default defineConfig({
 **Analog:** §24 (line 3561) + RESEARCH Pattern 4.
 
 ```json
-// package.json scripts — Source: §24 (line 3568) + D-02/D-04 + RESEARCH line 570
-"verify:phase-1": "eslint . && prettier --check . && tsc --noEmit && wxt build && vitest run tests/core/runtime tests/core/events tests/core/workspace tests/core/theme && node tests/isolation/check-content-bundle.mjs"
+// package.json scripts — Source: §24 (line 3568) + D-02/D-04 + RESEARCH line 570; B2: `vitest run` is the FULL suite (no dir list)
+"verify:phase-1": "eslint . && prettier --check . && tsc --noEmit && wxt build && vitest run && node tests/isolation/check-content-bundle.mjs"
 ```
 ```ts
 // vitest.config.ts — Source: RESEARCH Pattern 4 (lines 319-333) / wxt.dev unit-testing guide
@@ -490,7 +491,7 @@ All shells/page components: **no innerHTML, no hard-coded hex** — colors via t
 
 #### `src/components/OnboardingModal.tsx` (component)
 
-**Analog:** Flow 9 (line 1702) + D-06…D-09 + UI-SPEC persona card (lines 172–175). Phase 1 = Step 1 persona card + Configure later gate. Gate: `useWorkspaceStore(s => s.state.activeProvider)` — no provider ⇒ persona card + disabled surface (D-07). CTA "Configure provider" → `WorkspaceRouter.openStandalone({ page: 'options' })` (D-09). Persona fields from `np_persona` defaults (PreferenceMemoryStore — read-only, D-08). Heading "Meet your co-pilot" (UI-SPEC line 144, Flow 9 RICH-R-03). Handoff failure → AntD `notification` + `debugLog` canonical code (UI-SPEC line 246).
+**Analog:** Flow 9 (line 1702) + D-06…D-09 + UI-SPEC persona card (lines 172–175). Phase 1 = Step 1 persona card + Configure later gate. Gate: `ProviderRegistry.hasActiveProvider()` (D-07, W2 — NOT `useWorkspaceStore(...).activeProvider`: that field is inert in Phase 1 per D-18) — no provider ⇒ persona card + disabled surface (D-07). CTA "Configure provider" → `WorkspaceRouter.openStandalone({ page: 'options' })` (D-09). Persona fields from `np_persona` defaults (PreferenceMemoryStore — read-only, D-08). Heading "Meet your co-pilot" (UI-SPEC line 144, Flow 9 RICH-R-03). Handoff failure → AntD `notification` + `debugLog` canonical code (UI-SPEC line 246).
 
 #### `src/components/pages/*.tsx` (skeletons)
 
@@ -503,10 +504,11 @@ All shells/page components: **no innerHTML, no hard-coded hex** — colors via t
 **Analog:** RESEARCH (lines 403–427) + §5.1 content entrypoint. Minimum message subset only; envelope replies:
 
 ```ts
-// content script reply — Source: RESEARCH lines 421-426 (PING→PONG; D-17)
+// content script reply — Source: Appendix C (canonical) + D-17; PONG is a ResponseEnvelope, NOT a mutated request
 chrome.runtime.onMessage.addListener((msg: RuntimeEnvelope, _sender, sendResponse) => {
-  if (msg.type === 'PING') {
-    sendResponse({ ...msg, kind: 'response', type: 'PONG', payload: { ok: true } });
+  if (msg.type === MessageType.PING) {
+    sendResponse({ id: msg.id, ok: true, data: { pong: true } } satisfies ResponseEnvelope<{ pong: true }>);
+    return true;
   }
 });
 ```
