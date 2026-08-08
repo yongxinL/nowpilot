@@ -80,13 +80,11 @@ describe('sidepanel entrypoint mount', () => {
     // the fresh init() chain reads the seeded storage.
     vi.resetModules();
     const { createSidePanelApp: FreshApp } = await import('@/entrypoints/sidepanel/main');
-    const { useAddonSettingsStore: FreshAddon } = await import(
-      '@/core/registry/AddonSettingsStore'
-    );
+    const { useAddonSettingsStore: FreshAddon } =
+      await import('@/core/registry/AddonSettingsStore');
     await waitFor(() => {
       const onboarding = FreshAddon.getState().settings.onboarding as
-        | { done?: boolean }
-        | undefined;
+        { done?: boolean } | undefined;
       expect(onboarding?.done).toBe(true);
     });
     // D-06 gate: onboarding.done → the router renders the shell, not the modal.

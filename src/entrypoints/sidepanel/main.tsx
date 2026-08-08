@@ -99,7 +99,8 @@ if (typeof document !== 'undefined') {
   const workspaceSync = new WorkspaceSync('sidepanel');
   // WR-03: activate the workspace lifecycle AFTER hydration completes — start()
   // must never run before np_workspace is merged (VERIFICATION gaps[0] fix).
-  void useWorkspaceStore.getState().init().then(() => {
+  const workspaceInit = useWorkspaceStore.getState().init();
+  void workspaceInit.then(() => {
     useWorkspaceStore.getState().start('sidepanel');
     workspaceSync.start();
   });

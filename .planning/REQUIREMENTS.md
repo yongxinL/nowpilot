@@ -177,8 +177,8 @@ Deferred to a future release. Tracked but not in the current roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| RUNTIME-01…05 | Phase 1 | In Progress (RUNTIME-01, RUNTIME-02, RUNTIME-03, RUNTIME-04 done) |
-| WSPC-01…05 | Phase 1 | In Progress (WSPC-01, WSPC-02, WSPC-03, WSPC-04, WSPC-05 done) |
+| RUNTIME-01…05 | Phase 1 | Done |
+| WSPC-01…05 | Phase 1 | Done |
 | STORAGE-01…05 | Phase 2 | Pending |
 | AI-01…07 | Phase 3 | Pending |
 | AGT-01…05 | Phase 3a | Pending |

@@ -55,13 +55,11 @@ describe('standalone entrypoint mount', () => {
     // the wiring against EMPTY storage at file load).
     vi.resetModules();
     await import('@/entrypoints/standalone/main');
-    const { useAddonSettingsStore: FreshAddon } = await import(
-      '@/core/registry/AddonSettingsStore'
-    );
+    const { useAddonSettingsStore: FreshAddon } =
+      await import('@/core/registry/AddonSettingsStore');
     await waitFor(() => {
       const onboarding = FreshAddon.getState().settings.onboarding as
-        | { done?: boolean }
-        | undefined;
+        { done?: boolean } | undefined;
       expect(onboarding?.done).toBe(true);
     });
   });
