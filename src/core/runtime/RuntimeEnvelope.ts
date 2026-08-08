@@ -6,8 +6,8 @@
 import type { MessageTypeValue } from './MessageType';
 
 export interface RuntimeEnvelope<T = unknown> {
-  id: string;                    // operationId (crypto.randomUUID())
-  type: MessageTypeValue;        // canonical MessageType only
+  id: string; // operationId (crypto.randomUUID())
+  type: MessageTypeValue; // canonical MessageType only
   createdAt: number;
   source: 'sidepanel' | 'background' | 'content' | 'addon' | 'standalone';
   target?: 'sidepanel' | 'background' | 'content' | 'addon' | 'standalone';

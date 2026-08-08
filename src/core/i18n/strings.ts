@@ -56,8 +56,10 @@ export const STR = {
     backupError: 'Backup: Error',
     backupConfigure: 'Configure',
     backupBannerLost: 'Backup folder not accessible. [Re-select folder] [Dismiss]',
-    restorePreview: 'Found [n] notes ([new] new, [updated] updated, [unchanged] unchanged). Proceed?',
-    externalChange: 'This file was modified externally. Overwrite with app version? [Overwrite] [Skip]',
+    restorePreview:
+      'Found [n] notes ([new] new, [updated] updated, [unchanged] unchanged). Proceed?',
+    externalChange:
+      'This file was modified externally. Overwrite with app version? [Overwrite] [Skip]',
     stale: 'Content has changed — [Regenerate tags/summary]',
     orphan: 'Orphan',
     taggerFailed: "Couldn't analyze — [Retry]",
@@ -69,7 +71,7 @@ export const STR = {
     loading: 'Preparing agent...',
     empty: 'Describe a task and the agent will plan steps',
     error: 'Agent error: [message]. [Retry]',
-    working: 'NowPilot is working...',           // RICH-H-03
+    working: 'NowPilot is working...', // RICH-H-03
   },
   standalone: {
     openTitle: 'Open Standalone view',
@@ -100,8 +102,8 @@ export const STR = {
     importExport: 'Import / Export',
     featureFlags: 'Feature Flags',
     addonSettings: 'Add-on Settings',
-    persona: 'Persona',           //
-    notes: 'Notes',               //
+    persona: 'Persona', //
+    notes: 'Notes', //
     about: 'About',
     // Phase-1 canonical addition (UI-SPEC Copywriting Contract: Options empty state)
     noProvider: 'No provider connected. Set up a provider to start.',
