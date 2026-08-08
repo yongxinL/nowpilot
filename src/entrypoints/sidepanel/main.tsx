@@ -90,6 +90,10 @@ export function createSidePanelApp() {
   return <SidePanelRoot />;
 }
 
+// WR-12: module-scope ref so the teardown hook (pagehide) can reach stop() —
+// an HMR re-evaluation must not leak a second live WorkspaceSync instance.
+let workspaceSync: WorkspaceSync | null = null;
+
 // Fire the theme hydrate before first render (plan truth). Module-scope guard:
 // only mount when a #root element exists (jsdom tests have none).
 if (typeof document !== 'undefined') {
@@ -98,7 +102,7 @@ if (typeof document !== 'undefined') {
   void useAddonSettingsStore.getState().init();
   // WR-03: module-level sync ref (held for stop()); the constructor is
   // side-effect-free — only start() activates subscriptions/timers.
-  const workspaceSync = new WorkspaceSync('sidepanel');
+  workspaceSync = new WorkspaceSync('sidepanel');
   // WR-03: activate the workspace lifecycle AFTER hydration completes — start()
   // must never run before np_workspace is merged (VERIFICATION gaps[0] fix).
   const workspaceInit = useWorkspaceStore.getState().init();
@@ -107,13 +111,16 @@ if (typeof document !== 'undefined') {
   // broken workspace never activates silently.
   void workspaceInit
     .then(() => {
-      void useWorkspaceStore.getState().start('sidepanel').catch((err: unknown) => {
-        debugLog(ERROR_CODES.WORKSPACE_START, 'workspace start failed at mount', {
-          error: err instanceof Error ? err : undefined,
-          module: 'WorkspaceStore',
+      void useWorkspaceStore
+        .getState()
+        .start('sidepanel')
+        .catch((err: unknown) => {
+          debugLog(ERROR_CODES.WORKSPACE_START, 'workspace start failed at mount', {
+            error: err instanceof Error ? err : undefined,
+            module: 'WorkspaceStore',
+          });
         });
-      });
-      workspaceSync.start();
+      workspaceSync?.start();
     })
     .catch((err: unknown) => {
       debugLog(ERROR_CODES.WORKSPACE_INIT, 'workspace init failed at mount', {
@@ -121,6 +128,14 @@ if (typeof document !== 'undefined') {
         module: 'WorkspaceStore',
       });
     });
+  // WR-12: teardown — stop the sync instance (heartbeat, bus/store/bridge
+  // subscriptions) and detach the store's storage listener when the surface is
+  // unloaded (page close / HMR re-evaluation), so no second instance leaks.
+  window.addEventListener('pagehide', () => {
+    workspaceSync?.stop();
+    workspaceSync = null;
+    useWorkspaceStore.getState().stop();
+  });
   const rootElement = document.getElementById('root');
   if (rootElement !== null) {
     createRoot(rootElement).render(createSidePanelApp());
