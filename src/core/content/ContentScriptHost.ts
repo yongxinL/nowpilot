@@ -93,7 +93,7 @@ export class ContentScriptHost {
     const url = hasDom ? document.URL : '';
     return {
       url,
-      origin: hasDom ? document.origin : '',
+      origin: hasDom ? document.location.origin : '',
       hostname: hasDom ? document.location.hostname : '',
       title: hasDom ? document.title : '',
       meta: {},

@@ -116,9 +116,7 @@ describe('StandalonePageRegistry', () => {
   it('invalid registration (empty id) is skipped without throwing', () => {
     const registry = new StandalonePageRegistry();
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    expect(() =>
-      registry.register({ id: '', label: 'bad', component: 'XPage' }),
-    ).not.toThrow();
+    expect(() => registry.register({ id: '', label: 'bad', component: 'XPage' })).not.toThrow();
     expect(registry.list()).toHaveLength(0);
     spy.mockRestore();
   });

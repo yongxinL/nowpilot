@@ -11,10 +11,7 @@ import { fakeBrowser } from 'wxt/testing';
 import { Registry } from '@/core/registry/Registry';
 import { AddonRegistry } from '@/core/registry/AddonRegistry';
 import type { AddonEntry } from '@/core/registry/AddonRegistry';
-import {
-  useAddonSettingsStore,
-  NP_ADDON_SETTINGS_KEY,
-} from '@/core/registry/AddonSettingsStore';
+import { useAddonSettingsStore, NP_ADDON_SETTINGS_KEY } from '@/core/registry/AddonSettingsStore';
 
 function makeAddon(overrides: Partial<AddonEntry> = {}): AddonEntry {
   return { id: 'addon-a', name: 'Addon A', version: '0.1.0', enabled: true, ...overrides };
@@ -136,7 +133,7 @@ describe('AddonSettingsStore', () => {
   });
 
   it('malformed stored values are never merged raw (T-1-13 style)', async () => {
-    await fakeBrowser.storage.local.set({ [NP_ADDON_SETTINGS_KEY]: { 'bad': 'not-an-object' } });
+    await fakeBrowser.storage.local.set({ [NP_ADDON_SETTINGS_KEY]: { bad: 'not-an-object' } });
     await useAddonSettingsStore.getState().init();
     expect(useAddonSettingsStore.getState().getSetting('bad', 'x', 'fb')).toBe('fb');
   });
