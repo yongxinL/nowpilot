@@ -148,7 +148,9 @@ describe('WorkspaceSync', () => {
     sync.start();
     const localId = useWorkspaceStore.getState().workspace.workspaceId;
 
-    const stale = freshWorkspace({ workspaceId: 'ws-stale', version: 0, updatedAt: 100 });
+    // Same-workspace fixture (WR-13): the M.3 scope gate is passed, so the
+    // version <= local.version LWW branch is what rejects the snapshot.
+    const stale = freshWorkspace({ workspaceId: 'ws-local', version: 0, updatedAt: 100 });
     await fakeBrowser.runtime.sendMessage(
       envelope(MessageType.WORKSPACE_UPDATED, { state: stale, from: 'standalone' }),
     );
