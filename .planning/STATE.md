@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 01
 current_phase_name: MV3/WXT Runtime + AntD Shells + Workspace
 status: executing
-stopped_at: Completed 01-03-PLAN.md
-last_updated: "2026-08-08T07:53:39.049Z"
+stopped_at: Completed 01-04-PLAN.md
+last_updated: "2026-08-08T08:52:35.652Z"
 last_activity: 2026-08-08
 last_activity_desc: Phase 01 execution started
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 9
-  completed_plans: 3
+  completed_plans: 4
 ---
 
 # Project State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-08-04)
 ## Current Position
 
 Phase: 01 (MV3/WXT Runtime + AntD Shells + Workspace) — EXECUTING
-Plan: 4 of 9
+Plan: 5 of 9
 Status: Ready to execute
 Last activity: 2026-08-08 — Phase 01 execution started
 
-Progress: [███░░░░░░░] 33%
+Progress: [████░░░░░░] 44%
 
 ## Performance Metrics
 
@@ -62,6 +62,7 @@ Progress: [███░░░░░░░] 33%
 | Phase 01 P01 | 174min | 4 tasks | 27 files |
 | Phase 01-mv3-wxt-runtime-antd-shells-workspace P02 | 22min | 4 tasks | 11 files |
 | Phase 01-mv3-wxt-runtime-antd-shells-workspace P01-03 | 38 min | 3 tasks | 7 files |
+| Phase 01 P04 | 48 | 3 tasks | 18 files |
 
 ## Accumulated Context
 
@@ -79,6 +80,9 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 01-mv3-wxt-runtime-antd-shells-workspace]: Phase-1 debugLog error codes canonicalized into PRODUCT_SPEC Appendix C.2 (38-code Phase-1 block) — they were absent from the spec despite the plan's acceptance criteria; Golden Rule 9 codes are now spec-canonical for 01-04 errorCodes.ts — Plan acceptance criterion greps the spec for SIDEPANEL_BEHAVIOR/REGISTRY_INIT/THEME_WRITE/MSG_UNKNOWN_TYPE; 0 matches found before fix
 - [Phase 01-mv3-wxt-runtime-antd-shells-workspace]: STR Phase-1 additions sourced verbatim from the UI-SPEC Copywriting Contract (historyEmpty, onboarding.heading/body/configureProvider/configureLater, handoffFailed, cmdk.placeholder, newNote, options.noProvider, theme.saveFailed) — Plan claimed additions were already reconciled in Appendix B but they were absent; UI-SPEC Copywriting Contract is the canonical verbatim source the plan names
 - [Phase 01-mv3-wxt-runtime-antd-shells-workspace]: MessageBus/EventBus are the messaging layer; MessageBusBridge (7-method phase-owned contract, W3) is the single choke point surfaces import — surfaces never import MessageBus directly (R-4 module-level). Bridge consumes RuntimeEnvelope + MessageType whitelist from 01-02 (Pitfall 5: unknown types throw MSG_UNKNOWN_TYPE before dispatch). port.enableEmitter is a wxt 0.21+ API absent from pinned 0.19.29 — base chrome.runtime.Port API provides the same transport (Rule 1). EventBus handlers run in try/catch (debugLog EVT_HANDLER, deferred typeof-guarded until 01-04). jsdom 30/esbuild invariant break forces node env + navigator stub for bridge tests (Rule 3).
+- [Phase 01]: debugLog + errorCodes.ts home at src/core/error/ (co-located contract, W-7 path reconciliation; §18's src/core/log/ split is non-load-bearing in Phase 1) — Canonical codes are the Golden Rule 9 vocabulary
+- [Phase 01]: PortableMarkdown wraps XMarkdown (escapeRawHtml) + unconditional DOMPurify.sanitize — x-markdown 2.9.0 has no PortableMarkdown/skipHtml export — Same T-1-07 sanitization capability via the package's actual API
+- [Phase 01]: Component tests run in custom jsdom-align environment (realm-aligned codecs) + threads pool + explicit RTL cleanup — vitest jsdom setup splits TextEncoder (Node realm) / Uint8Array (jsdom realm), breaking esbuild 0.25 invariant
 
 ### Pending Todos
 
@@ -107,6 +111,6 @@ Items acknowledged and carried forward (v2 scope, tracked in REQUIREMENTS.md):
 
 ## Session Continuity
 
-Last session: 2026-08-08T07:51:48.322Z
-Stopped at: Completed 01-03-PLAN.md
+Last session: 2026-08-08T08:52:35.621Z
+Stopped at: Completed 01-04-PLAN.md
 Resume file: None
