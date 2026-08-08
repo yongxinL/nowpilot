@@ -82,6 +82,11 @@ export class MessageBus {
     };
   }
 
+  /** Remove a previously-registered subscriber by reference. */
+  unsubscribeListener(callback: MessageListener): void {
+    this.listeners.delete(callback);
+  }
+
   /** Broadcast a validated message to every connected port. */
   broadcastToPorts(message: RuntimeEnvelope<unknown>): void {
     this.assertKnownType(message);
