@@ -50,7 +50,7 @@ Plans:
 - [x] 01-03-PLAN.md — MessageBus + MessageBusBridge + EventBus/EventBusManager (Pitfall 5 whitelist) (wave 2)
 - [x] 01-04-PLAN.md — errorCodes + debugLog (Golden Rule 9, R-10), i18n, keymap, core components (ErrorBoundary, PortableMarkdown, MinimalMode, FocusTrap) (wave 2)
 - [x] 01-05-PLAN.md — ThemeStore (chrome.storage.local, D-13), ThemePackRegistry (WSPC-04), antdConfig (wave 3)
-- [ ] 01-06-PLAN.md — WorkspaceStore (D-18), WorkspaceRouter (Pitfall 1 gesture-safe), WorkspaceSync (PING/PONG handoff) (wave 3)
+- [x] 01-06-PLAN.md — WorkspaceStore (D-18), WorkspaceRouter (Pitfall 1 gesture-safe), WorkspaceSync (PING/PONG handoff) (wave 3)
 - [ ] 01-07-PLAN.md — AddonRegistry/AddonSettingsStore/PageRegistry, ContentScriptHost + PageContextBridge (D-16), content bundle isolation (Pitfall 4) (wave 4)
 - [ ] 01-08-PLAN.md — SidePanel/Standalone shells + routers, Onboarding (Flow 9/D-06), CmdKPicker (Flow 10), page skeletons (wave 5)
 - [ ] 01-09-PLAN.md — entrypoint mounts (Appendix F one provider per surface), mount smoke tests, full verify:phase-1 + DONE-when hygiene gates (wave 5)

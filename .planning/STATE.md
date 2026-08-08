@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 01
 current_phase_name: MV3/WXT Runtime + AntD Shells + Workspace
 status: executing
-stopped_at: Completed 01-05-PLAN.md
-last_updated: "2026-08-08T09:14:27.563Z"
+stopped_at: Completed 01-06-PLAN.md
+last_updated: "2026-08-08T09:50:32.241Z"
 last_activity: 2026-08-08
 last_activity_desc: Phase 01 execution started
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 9
-  completed_plans: 5
+  completed_plans: 6
 ---
 
 # Project State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-08-04)
 ## Current Position
 
 Phase: 01 (MV3/WXT Runtime + AntD Shells + Workspace) — EXECUTING
-Plan: 6 of 9
+Plan: 7 of 9
 Status: Ready to execute
 Last activity: 2026-08-08 — Phase 01 execution started
 
-Progress: [██████░░░░] 56%
+Progress: [███████░░░] 67%
 
 ## Performance Metrics
 
@@ -64,6 +64,7 @@ Progress: [██████░░░░] 56%
 | Phase 01-mv3-wxt-runtime-antd-shells-workspace P01-03 | 38 min | 3 tasks | 7 files |
 | Phase 01 P04 | 48 | 3 tasks | 18 files |
 | Phase 01-mv3-wxt-runtime-antd-shells-workspace P05 | 9min | 3 tasks | 6 files |
+| Phase 01-mv3-wxt-runtime-antd-shells-workspace P06 | 31min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -89,6 +90,7 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 01-mv3-wxt-runtime-antd-shells-workspace]: onChanged + matchMedia listeners use remove-then-add (exactly one active listener, T-1-11) instead of a boolean flag - survives fakeBrowser.reset() which wipes chrome listeners between tests
 - [Phase 01-mv3-wxt-runtime-antd-shells-workspace]: Registry singleton pre-registration uses a register() loop (not registerAll) to hold the plan grep fixture (registerAll|getThemePackRegistry == 2)
 - [Phase 01-mv3-wxt-runtime-antd-shells-workspace]: ERROR_CODES.* property access - 01-04 exports codes as ERROR_CODES.THEME_INIT etc, not named exports; all theme files use ERROR_CODES.* (Golden Rule 9)
+- [Phase 01-mv3-wxt-runtime-antd-shells-workspace]: sidePanel.open options are a discriminated union (tabId XOR windowId) — the plan prose's {tabId, windowId} would throw in Chrome and fail tsc; WorkspaceRouter computes tabId-or-windowId (Rule 1). Handoff state machine lives in WorkspaceSync (getHandoffState) + EventBus SHOW_HANDOFF_*/ELECTION_FAILED events — WorkspaceState has no handoff field and D-18 forbids type widening. BroadcastBus.startHeartbeat takes an injected state provider so the dependency-free runtime core never imports zustand (Pitfall 4). WORKSPACE_MIRROR is not a canonical MessageType — mirror snapshots ride WORKSPACE_UPDATED with a mirror payload marker (Pitfall 5). WORKSPACE_SYNC canonical code added to errorCodes.ts + spec Appendix C.2 (Rule 2). WorkspaceRouter uses the raw chrome global (callback-typed) not the promise-only wxt/browser polyfill — the callback chain is the Pitfall 1 guard. — Chrome API contract correctness (OpenOptions union), D-18 type-drift boundary (no store widening), Pitfall 4 content-bundle safety (no zustand in runtime core), Pitfall 5 no-new-message-contract, Golden Rule 9 canonical codes, Pitfall 1 gesture preservation.
 
 ### Pending Todos
 
@@ -117,6 +119,6 @@ Items acknowledged and carried forward (v2 scope, tracked in REQUIREMENTS.md):
 
 ## Session Continuity
 
-Last session: 2026-08-08T09:11:48.790Z
-Stopped at: Completed 01-05-PLAN.md
+Last session: 2026-08-08T09:50:32.212Z
+Stopped at: Completed 01-06-PLAN.md
 Resume file: None
