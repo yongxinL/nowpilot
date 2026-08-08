@@ -23,7 +23,7 @@ This phase delivers the foundational Chrome MV3 extension runtime: a WXT scaffol
 ### Onboarding (Flow 9)
 - **D-06:** Phase 1 ships **Step 1 (persona card) + a "configure later" gate** — not the full 4-step provider flow. Provider steps (pick provider → enter key → validate) arrive with Phase 3.
 - **D-07:** The gate condition is a **ProviderRegistry check** for an active provider (`activeProvider`). No provider configured ⇒ onboarding shows persona card then a disabled surface.
-- **D-08:** The persona card is **read-only default persona** (name/tone/brevity from `np_persona` defaults in PreferenceMemoryStore) — not editable (editing is Phase 7 Options → Persona).
+- **D-08 [informational]:** The persona card is **read-only default persona** (name/tone/brevity from `np_persona` defaults in PreferenceMemoryStore) — not editable (editing is Phase 7 Options → Persona). Already delivered in OnboardingModal, verified; drove read-only persona constraint.
 - **D-09:** The "Configure provider" CTA **deep-links to Options** in the Standalone view (via WorkspaceRouter). Onboarding completes once a provider is configured.
 
 ### Theme (Appendix F)
