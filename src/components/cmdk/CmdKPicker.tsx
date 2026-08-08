@@ -9,6 +9,11 @@
 // 'Open Options' sets the standalone active page via navigateToPage (the
 // StandaloneRouter action). Every error path logs CMDK_COMMAND and never
 // throws (Golden Rule 9). Wrapped in ErrorBoundary.
+//
+// Controlled mode (01-09): the entrypoints lift the mod+k capture — they pass
+// `open`/`onOpenChange` and the picker stops self-capturing (the entrypoint's
+// global keydown listener owns the shortcut). Without those props the picker
+// self-captures mod+k exactly as before (uncontrolled, the 01-08 contract).
 import { useCallback, useEffect, useState } from 'react';
 import { Input, Modal, Typography } from 'antd';
 import { navigateToPage } from '@/components/standalone/standaloneNav';
@@ -19,6 +24,13 @@ import { ERROR_CODES } from '@/core/error/errorCodes';
 import { isCmdK } from '@/core/input/KeymapRegistry';
 import { STR } from '@/core/i18n/strings';
 import { WorkspaceRouter } from '@/core/workspace/WorkspaceRouter';
+
+export interface CmdKPickerProps {
+  /** Controlled visibility (01-09 entrypoints lift the mod+k capture). */
+  open?: boolean;
+  /** Controlled-visibility change callback (close via Escape/backdrop/Enter). */
+  onOpenChange?: (open: boolean) => void;
+}
 
 interface CmdKCommand {
   id: 'open-standalone' | 'focus-side-panel' | 'open-options';
@@ -53,18 +65,33 @@ const COMMANDS: CmdKCommand[] = [
   },
 ];
 
-export function CmdKPicker() {
-  const [open, setOpen] = useState(false);
+export function CmdKPicker({ open: controlledOpen, onOpenChange }: CmdKPickerProps = {}) {
+  const [internalOpen, setInternalOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [highlighted, setHighlighted] = useState(0);
+
+  // Controlled vs uncontrolled: when the entrypoint provides `open`, the parent
+  // owns visibility (and the key capture); otherwise the picker manages itself.
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = useCallback(
+    (next: boolean): void => {
+      if (!isControlled) setInternalOpen(next);
+      onOpenChange?.(next);
+    },
+    [isControlled, onOpenChange],
+  );
 
   const close = useCallback((): void => {
     setOpen(false);
     setQuery('');
     setHighlighted(0);
-  }, []);
+  }, [setOpen]);
 
   useEffect(() => {
+    // Self-capture only when uncontrolled — in controlled mode the entrypoint's
+    // global keydown listener owns mod+k (01-09), so no double capture.
+    if (isControlled) return;
     const onKeyDown = (event: KeyboardEvent): void => {
       if (isCmdK(event)) {
         event.preventDefault();
@@ -73,7 +100,7 @@ export function CmdKPicker() {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
+  }, [isControlled, setOpen]);
 
   const filtered = COMMANDS.filter((cmd) =>
     cmd.label.toLowerCase().includes(query.trim().toLowerCase()),

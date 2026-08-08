@@ -20,6 +20,13 @@ import { STR } from '@/core/i18n/strings';
 import { useThemeStore } from '@/core/theme/ThemeStore';
 import { useWorkspaceStore } from '@/core/workspace/WorkspaceStore';
 
+export interface SidePanelShellProps {
+  /** Controlled Cmd+K palette visibility (lifted at the 01-09 entrypoint). */
+  pickerOpen?: boolean;
+  /** Controlled Cmd+K palette visibility change callback. */
+  onPickerOpenChange?: (open: boolean) => void;
+}
+
 const headerStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
@@ -37,7 +44,7 @@ const composerStyle: React.CSSProperties = {
   padding: 16,
 };
 
-export function SidePanelShell() {
+export function SidePanelShell({ pickerOpen, onPickerOpenChange }: SidePanelShellProps = {}) {
   const mode = useThemeStore((s) => s.mode);
   const activeSurface = useWorkspaceStore((s) => s.workspace.activeSurface);
   // T-1-18: re-evaluate on registry change (no cached UI flag) — the D-07
@@ -62,7 +69,7 @@ export function SidePanelShell() {
         <Layout.Footer style={composerStyle}>
           <Input placeholder={STR.chat.askPlaceholder} disabled />
         </Layout.Footer>
-        <CmdKPicker />
+        <CmdKPicker open={pickerOpen} onOpenChange={onPickerOpenChange} />
       </Layout>
     </ErrorBoundary>
   );
