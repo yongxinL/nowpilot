@@ -10,7 +10,7 @@
 ### Runtime & Shells (Phase 1)
 
 - [x] **RUNTIME-01**: WXT MV3 extension builds with side panel, standalone view, background SW, and extraction-only content script entrypoints
-- [ ] **RUNTIME-02**: Side panel opens; first-run onboarding appears on fresh install
+- [x] **RUNTIME-02**: Side panel opens; first-run onboarding appears on fresh install
 - [ ] **RUNTIME-03**: Standalone view opens from side panel; workspace state hands off correctly (no duplicate tabs)
 - [ ] **RUNTIME-04**: AntD theme/design tokens applied via ThemeStore + antdConfig (compact for side panel, default for standalone)
 - [ ] **RUNTIME-05**: Chat, Agent, Notes, Options page skeletons render in both surfaces
@@ -177,7 +177,7 @@ Deferred to a future release. Tracked but not in the current roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| RUNTIME-01…05 | Phase 1 | In Progress (RUNTIME-01 done) |
+| RUNTIME-01…05 | Phase 1 | In Progress (RUNTIME-01, RUNTIME-02 done) |
 | WSPC-01…05 | Phase 1 | In Progress (WSPC-03 done) |
 | STORAGE-01…05 | Phase 2 | Pending |
 | AI-01…07 | Phase 3 | Pending |
