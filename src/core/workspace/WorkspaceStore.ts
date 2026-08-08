@@ -7,9 +7,13 @@
 // zustand's storage middleware (Pitfall 7: storage middleware writes localStorage,
 // which does not cross surfaces). chrome.storage.onChanged propagates foreign-surface
 // writes with version-LWW adoption (T-1-13: stored values are schema-validated
-// before merge; unknown keys are never spread raw). Inert WorkspaceState fields
-// stay untouched by every mutation (D-18 / T-1-05). Every error path calls
-// debugLog with a canonical WORKSPACE_*/STORE_* code and never throws (Golden Rule 9).
+// before merge; unknown keys are never spread raw). M.3 workspace scope gate
+// (WR-10): only snapshots carrying the LOCAL workspaceId propagate — a different
+// window's workspace snapshot is ignored with a STORE_SYNC log, matching
+// WorkspaceSync.handleRemoteUpdate so the two inbound paths agree. Inert
+// WorkspaceState fields stay untouched by every mutation (D-18 / T-1-05). Every
+// error path calls debugLog with a canonical WORKSPACE_*/STORE_* code and never
+// throws (Golden Rule 9).
 import { create } from 'zustand';
 import { produce } from 'immer';
 import { debugLog } from '@/core/error/debugLog';
@@ -146,7 +150,8 @@ export const useWorkspaceStore = create<WorkspaceStoreShape>()((set, get) => ({
     }
     set({ workspace: ws, isReady: true });
 
-    // chrome.storage.onChanged — foreign-surface writes propagate with version-LWW.
+    // chrome.storage.onChanged — same-workspace foreign-surface writes propagate
+    // with version-LWW (M.3 scope gate, WR-10).
     const handleChanged: OnChangedListener = (changes, area) => {
       if (area !== 'local') return;
       const change = changes[NP_WORKSPACE_KEY];
@@ -154,6 +159,18 @@ export const useWorkspaceStore = create<WorkspaceStoreShape>()((set, get) => ({
       const incoming = sanitizeStored(change.newValue);
       if (incoming === null) return; // T-1-13: never merge raw storage
       const local = get().workspace;
+      // M.3 workspace scope gate (WR-10) — a snapshot from a DIFFERENT workspace
+      // (another window's workspaceId) is never adopted. Must agree with
+      // WorkspaceSync.handleRemoteUpdate: shape-check → sanitizeStored →
+      // workspaceId gate → version-LWW, so both inbound paths reject foreign
+      // snapshots at the same point.
+      if (incoming.workspaceId !== local.workspaceId) {
+        debugLog(ERROR_CODES.STORE_SYNC, 'np_workspace change ignored (foreign workspace)', {
+          silent: true,
+          module: 'WorkspaceStore',
+        });
+        return;
+      }
       if (incoming.version !== undefined && incoming.version > local.version) {
         // LWW adoption — merges the active fields; inert fields stay untouched.
         set({ workspace: { ...local, ...incoming } });

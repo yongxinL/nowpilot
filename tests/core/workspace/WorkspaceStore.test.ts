@@ -139,10 +139,13 @@ describe('WorkspaceStore', () => {
 
   it('chrome.storage.onChanged foreign write merges into state (version-LWW)', async () => {
     await useWorkspaceStore.getState().init();
-    // A foreign surface (the standalone view) writes a HIGHER-version snapshot.
+    const localId = useWorkspaceStore.getState().workspace.workspaceId;
+    // A foreign surface (the standalone view of the SAME workspace) writes a
+    // HIGHER-version snapshot — the M.3 workspaceId gate (WR-10) requires the
+    // workspaceId to match, so the LWW-adopt branch is what fires.
     await fakeBrowser.storage.local.set({
       np_workspace: {
-        workspaceId: 'ws-foreign',
+        workspaceId: localId,
         conversationId: 'conv-foreign',
         activeSurface: 'standalone',
         version: 5,
@@ -151,19 +154,44 @@ describe('WorkspaceStore', () => {
     });
 
     const ws = useWorkspaceStore.getState().workspace;
-    expect(ws.workspaceId).toBe('ws-foreign');
+    expect(ws.workspaceId).toBe(localId);
     expect(ws.conversationId).toBe('conv-foreign');
     expect(ws.activeSurface).toBe('standalone');
     expect(ws.version).toBe(5);
   });
 
+  it('onChanged write from a foreign workspaceId is ignored (M.3 scope gate)', async () => {
+    await useWorkspaceStore.getState().init();
+    const localId = useWorkspaceStore.getState().workspace.workspaceId;
+    const localConv = useWorkspaceStore.getState().workspace.conversationId;
+    // Another window's workspace publishes a HIGHER-version snapshot — the M.3
+    // workspaceId gate (WR-10) must reject it BEFORE version-LWW, exactly like
+    // WorkspaceSync.handleRemoteUpdate (the two inbound paths agree).
+    await fakeBrowser.storage.local.set({
+      np_workspace: {
+        workspaceId: 'ws-foreign',
+        conversationId: 'conv-foreign',
+        activeSurface: 'standalone',
+        version: 99,
+        updatedAt: 99000,
+      },
+    });
+
+    const ws = useWorkspaceStore.getState().workspace;
+    expect(ws.workspaceId).toBe(localId);
+    expect(ws.conversationId).toBe(localConv);
+    expect(ws.version).toBe(0);
+  });
+
   it('foreign write with equal/lower version is ignored (LWW)', async () => {
     await useWorkspaceStore.getState().init();
     const localId = useWorkspaceStore.getState().workspace.workspaceId;
-    // A stale surface writes an OLDER snapshot (version 0 == local default version).
+    // A stale surface of the SAME workspace writes an OLDER snapshot (version 0
+    // == local default version) — the M.3 gate passes, so the equal-version LWW
+    // branch is what rejects it (WR-10 keeps this branch reachable).
     await fakeBrowser.storage.local.set({
       np_workspace: {
-        workspaceId: 'ws-stale',
+        workspaceId: localId,
         conversationId: 'conv-stale',
         activeSurface: 'sidepanel',
         version: 0,
