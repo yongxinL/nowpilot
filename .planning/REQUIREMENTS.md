@@ -19,7 +19,7 @@
 
 - [ ] **WSPC-01**: WorkspaceStore (Zustand) persists theme, conversation, and add-on state
 - [ ] **WSPC-02**: WorkspaceSync keeps side panel and standalone surfaces in sync via BroadcastBus
-- [ ] **WSPC-03**: MessageBus, EventBus, and BroadcastBus provide cross-context / in-panel / cross-surface communication
+- [x] **WSPC-03**: MessageBus, EventBus, and BroadcastBus provide cross-context / in-panel / cross-surface communication
 - [ ] **WSPC-04**: AddonRegistry, Registry, AddonSettingsStore, and page registries register add-ons at startup
 - [ ] **WSPC-05**: ErrorBoundary, PortableMarkdown, and debugLog (canonical §C.2 codes) exist
 
@@ -177,8 +177,8 @@ Deferred to a future release. Tracked but not in the current roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| RUNTIME-01…05 | Phase 1 | Pending |
-| WSPC-01…05 | Phase 1 | Pending |
+| RUNTIME-01…05 | Phase 1 | In Progress (RUNTIME-01 done) |
+| WSPC-01…05 | Phase 1 | In Progress (WSPC-03 done) |
 | STORAGE-01…05 | Phase 2 | Pending |
 | AI-01…07 | Phase 3 | Pending |
 | AGT-01…05 | Phase 3a | Pending |

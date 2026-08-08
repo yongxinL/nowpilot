@@ -46,7 +46,7 @@ NowPilot v0.1 is a privacy-first, local-first AI assistant and personal knowledg
 Plans:
 
 - [x] 01-01-PLAN.md — pnpm + WXT scaffold, pinned stack, wxt.config.ts (Appendix G), vitest toolchain, verify:phase-1 gate (wave 1)
-- [ ] 01-02-PLAN.md — canonical types: RuntimeEnvelope, MessageType (Appendix E + D-17), WorkspaceState (D-18), STR/PROMPTS constants (wave 2)
+- [x] 01-02-PLAN.md — canonical types: RuntimeEnvelope, MessageType (Appendix E + D-17), WorkspaceState (D-18), STR/PROMPTS constants (wave 2)
 - [ ] 01-03-PLAN.md — MessageBus + MessageBusBridge + EventBus/EventBusManager (Pitfall 5 whitelist) (wave 2)
 - [ ] 01-04-PLAN.md — errorCodes + debugLog (Golden Rule 9, R-10), i18n, keymap, core components (ErrorBoundary, PortableMarkdown, MinimalMode, FocusTrap) (wave 2)
 - [ ] 01-05-PLAN.md — ThemeStore (chrome.storage.local, D-13), ThemePackRegistry (WSPC-04), antdConfig (wave 3)

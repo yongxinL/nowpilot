@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 01
 current_phase_name: MV3/WXT Runtime + AntD Shells + Workspace
 status: executing
-stopped_at: Completed 01-01-PLAN.md
-last_updated: "2026-08-08T06:34:19.127Z"
+stopped_at: Completed 01-02-PLAN.md
+last_updated: "2026-08-08T07:07:50.015Z"
 last_activity: 2026-08-08
 last_activity_desc: Phase 01 execution started
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 9
-  completed_plans: 1
+  completed_plans: 2
 ---
 
 # Project State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-08-04)
 ## Current Position
 
 Phase: 01 (MV3/WXT Runtime + AntD Shells + Workspace) — EXECUTING
-Plan: 2 of 9
+Plan: 3 of 9
 Status: Ready to execute
 Last activity: 2026-08-08 — Phase 01 execution started
 
-Progress: [█░░░░░░░░░] 11%
+Progress: [██░░░░░░░░] 22%
 
 ## Performance Metrics
 
@@ -60,6 +60,7 @@ Progress: [█░░░░░░░░░] 11%
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
 | Phase 01 P01 | 174min | 4 tasks | 27 files |
+| Phase 01-mv3-wxt-runtime-antd-shells-workspace P02 | 22min | 4 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -74,6 +75,8 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 5]: MiniSearch for retrieval (no embeddings); local-FS sync is one-way export-first (never bidirectional)
 - [All phases]: Human-verified continual evolution (never autonomous); every phase ends green via `verify:phase-N`; every catch uses a canonical §C.2 error code
 - [Phase 01]: manualChunks applied via vite:build:extendConfig hook scoped to HTML multi-page groups (WXT 0.19 lib-mode IIFE builds reject top-level manualChunks); Appendix G isolation intent preserved via import restriction + isolation grep — Plan's verbatim-config and build-exit-0 acceptance criteria were mutually exclusive under WXT 0.19
+- [Phase 01-mv3-wxt-runtime-antd-shells-workspace]: Phase-1 debugLog error codes canonicalized into PRODUCT_SPEC Appendix C.2 (38-code Phase-1 block) — they were absent from the spec despite the plan's acceptance criteria; Golden Rule 9 codes are now spec-canonical for 01-04 errorCodes.ts — Plan acceptance criterion greps the spec for SIDEPANEL_BEHAVIOR/REGISTRY_INIT/THEME_WRITE/MSG_UNKNOWN_TYPE; 0 matches found before fix
+- [Phase 01-mv3-wxt-runtime-antd-shells-workspace]: STR Phase-1 additions sourced verbatim from the UI-SPEC Copywriting Contract (historyEmpty, onboarding.heading/body/configureProvider/configureLater, handoffFailed, cmdk.placeholder, newNote, options.noProvider, theme.saveFailed) — Plan claimed additions were already reconciled in Appendix B but they were absent; UI-SPEC Copywriting Contract is the canonical verbatim source the plan names
 
 ### Pending Todos
 
@@ -102,6 +105,6 @@ Items acknowledged and carried forward (v2 scope, tracked in REQUIREMENTS.md):
 
 ## Session Continuity
 
-Last session: 2026-08-08T06:34:19.112Z
-Stopped at: Completed 01-01-PLAN.md
+Last session: 2026-08-08T07:07:49.987Z
+Stopped at: Completed 01-02-PLAN.md
 Resume file: None
