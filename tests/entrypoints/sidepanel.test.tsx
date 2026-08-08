@@ -8,13 +8,20 @@
 //       (a second provider or a double AntdApp would render twice),
 //   (c) the D-07 onboarding gate decides the initial screen (onboarding pending
 //       → Onboarding; provider present → the enabled shell header),
-//   (d) the lifted mod+k capture opens the Cmd+K palette (controlled picker).
-import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+//   (d) the lifted mod+k capture opens the Cmd+K palette (controlled picker),
+//   (e) [01-10] the module-scope workspace lifecycle (WR-03) fires at import:
+//       np_workspace hydrates, activeSurface becomes 'sidepanel', version bumps,
+//   (f) [01-10] onboarding.done round-trips through np_addon_settings on a
+//       FRESH module load (WR-02, D-06 persistence): a seeded storage value
+//       hydrates the fresh store via the module-scope init() and the router
+//       renders the shell, not the OnboardingModal.
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createSidePanelApp } from '@/entrypoints/sidepanel/main';
 import { getProviderRegistry } from '@/core/ai/ProviderRegistry';
 import { STR } from '@/core/i18n/strings';
 import { useAddonSettingsStore } from '@/core/registry/AddonSettingsStore';
+import { useWorkspaceStore } from '@/core/workspace/WorkspaceStore';
 
 beforeEach(() => {
   getProviderRegistry().clear();
@@ -52,5 +59,39 @@ describe('sidepanel entrypoint mount', () => {
     await screen.findByText('NowPilot');
     fireEvent.keyDown(window, { key: 'k', metaKey: true });
     expect(await screen.findByPlaceholderText(STR.cmdk.placeholder)).toBeTruthy();
+  });
+
+  it('workspace lifecycle fires at module scope (01-10 WR-03)', async () => {
+    render(createSidePanelApp());
+    // The static import already executed the module-scope wiring against
+    // (empty) storage; waitFor absorbs the async init().then(start) chain.
+    await waitFor(() => expect(useWorkspaceStore.getState().isReady).toBe(true));
+    await waitFor(() => {
+      expect(useWorkspaceStore.getState().workspace.activeSurface).toBe('sidepanel');
+      expect(useWorkspaceStore.getState().workspace.version).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  it('onboarding round-trips through np_addon_settings on a fresh module load (01-10 WR-02)', async () => {
+    // Seed storage as if the user clicked 'Configure later' on a prior load.
+    await chrome.storage.local.set({ np_addon_settings: { onboarding: { done: true } } });
+    // The static top-of-file import already ran the module-scope wiring against
+    // EMPTY storage; resetModules + dynamic import re-evaluates the modules so
+    // the fresh init() chain reads the seeded storage.
+    vi.resetModules();
+    const { createSidePanelApp: FreshApp } = await import('@/entrypoints/sidepanel/main');
+    const { useAddonSettingsStore: FreshAddon } = await import(
+      '@/core/registry/AddonSettingsStore'
+    );
+    await waitFor(() => {
+      const onboarding = FreshAddon.getState().settings.onboarding as
+        | { done?: boolean }
+        | undefined;
+      expect(onboarding?.done).toBe(true);
+    });
+    // D-06 gate: onboarding.done → the router renders the shell, not the modal.
+    render(FreshApp());
+    expect(await screen.findByText('NowPilot')).toBeTruthy();
+    expect(screen.queryByText(STR.onboarding.heading)).toBeNull();
   });
 });
