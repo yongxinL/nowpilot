@@ -13,7 +13,7 @@
 - [x] **RUNTIME-02**: Side panel opens; first-run onboarding appears on fresh install
 - [x] **RUNTIME-03**: Standalone view opens from side panel; workspace state hands off correctly (no duplicate tabs)
 - [x] **RUNTIME-04**: AntD theme/design tokens applied via ThemeStore + antdConfig (compact for side panel, default for standalone)
-- [ ] **RUNTIME-05**: Chat, Agent, Notes, Options page skeletons render in both surfaces
+- [x] **RUNTIME-05**: Chat, Agent, Notes, Options page skeletons render in both surfaces
 
 ### Workspace (Phase 1)
 
