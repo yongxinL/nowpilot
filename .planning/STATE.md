@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 01
 current_phase_name: MV3/WXT Runtime + AntD Shells + Workspace
 status: executing
-stopped_at: Completed 01-07-PLAN.md
-last_updated: "2026-08-08T11:01:44.835Z"
+stopped_at: Completed 01-08-PLAN.md
+last_updated: "2026-08-08T12:13:02.521Z"
 last_activity: 2026-08-08
 last_activity_desc: Phase 01 execution started
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 9
-  completed_plans: 7
+  completed_plans: 8
 ---
 
 # Project State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-08-04)
 ## Current Position
 
 Phase: 01 (MV3/WXT Runtime + AntD Shells + Workspace) — EXECUTING
-Plan: 8 of 9
+Plan: 9 of 9
 Status: Ready to execute
 Last activity: 2026-08-08 — Phase 01 execution started
 
-Progress: [████████░░] 78%
+Progress: [█████████░] 89%
 
 ## Performance Metrics
 
@@ -66,6 +66,7 @@ Progress: [████████░░] 78%
 | Phase 01-mv3-wxt-runtime-antd-shells-workspace P05 | 9min | 3 tasks | 6 files |
 | Phase 01-mv3-wxt-runtime-antd-shells-workspace P06 | 31min | 3 tasks | 10 files |
 | Phase 01-mv3-wxt-runtime-antd-shells-workspace P07 | 14min | 4 tasks | 18 files |
+| Phase 01-mv3-wxt-runtime-antd-shells-workspace P08 | 20 min | 3 tasks | 20 files |
 
 ## Accumulated Context
 
@@ -93,6 +94,10 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 01-mv3-wxt-runtime-antd-shells-workspace]: ERROR_CODES.* property access - 01-04 exports codes as ERROR_CODES.THEME_INIT etc, not named exports; all theme files use ERROR_CODES.* (Golden Rule 9)
 - [Phase 01-mv3-wxt-runtime-antd-shells-workspace]: sidePanel.open options are a discriminated union (tabId XOR windowId) — the plan prose's {tabId, windowId} would throw in Chrome and fail tsc; WorkspaceRouter computes tabId-or-windowId (Rule 1). Handoff state machine lives in WorkspaceSync (getHandoffState) + EventBus SHOW_HANDOFF_*/ELECTION_FAILED events — WorkspaceState has no handoff field and D-18 forbids type widening. BroadcastBus.startHeartbeat takes an injected state provider so the dependency-free runtime core never imports zustand (Pitfall 4). WORKSPACE_MIRROR is not a canonical MessageType — mirror snapshots ride WORKSPACE_UPDATED with a mirror payload marker (Pitfall 5). WORKSPACE_SYNC canonical code added to errorCodes.ts + spec Appendix C.2 (Rule 2). WorkspaceRouter uses the raw chrome global (callback-typed) not the promise-only wxt/browser polyfill — the callback chain is the Pitfall 1 guard. — Chrome API contract correctness (OpenOptions union), D-18 type-drift boundary (no store widening), Pitfall 4 content-bundle safety (no zustand in runtime core), Pitfall 5 no-new-message-contract, Golden Rule 9 canonical codes, Pitfall 1 gesture preservation.
 - [Phase 01-mv3-wxt-runtime-antd-shells-workspace]: Content entry at src/entrypoints/core.content.ts (not the §18 content/ subdirectory) — wxt 0.19.29 entrypoint globs do not match content/core.content.ts; empirically verified the spec path builds no content bundle. Flat path resolves name 'core' + content-scripts/core.js output exactly as the plan's W-7 note promises. Rule 3. — Rule 3 blocking: wxt 0.19.29 glob set (content.ts | content/index.ts | *.content.ts | *.content/index.ts) cannot discover the §18 canonical path; verified with a real build (no content_scripts emitted). Plan's own W-7 note promises name 'core' + content-scripts output — only the flat path delivers that.
+- [Phase ?]: Onboarding-done lives in AddonSettingsStore (np_addon_settings onboarding.done) not WorkspaceStore — D-18 forbids type widening; SidePanelRouter gates on ProviderRegistry presence (W-10) + this onboarding flag
+- [Phase ?]: ProviderRegistry is push-reactive (subscribe + useSyncExternalStore in router+shell, T-1-18 — no cached UI flag) with clear() for test isolation; canonical home src/core/ai/ for Phase 3 extension
+- [Phase ?]: navigateToPage (StandaloneRouter action) implemented in co-located standaloneNav.ts and re-exported — avoids CmdKPicker<->StandaloneRouter<->StandaloneShell circular import
+- [Phase ?]: Cmd+K palette Modal conditionally mounted ({open && <Modal open>}) — rc-motion leave animations never complete in jsdom; deterministic close
 
 ### Pending Todos
 
@@ -121,6 +126,6 @@ Items acknowledged and carried forward (v2 scope, tracked in REQUIREMENTS.md):
 
 ## Session Continuity
 
-Last session: 2026-08-08T11:01:44.806Z
-Stopped at: Completed 01-07-PLAN.md
+Last session: 2026-08-08T12:12:27.942Z
+Stopped at: Completed 01-08-PLAN.md
 Resume file: None
