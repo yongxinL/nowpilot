@@ -9,6 +9,7 @@ export default tseslint.config(
     ignores: [
       '.output/**',
       '.wxt/**',
+      '.cache/**',
       'node_modules/**',
       'dist/**',
       'assets/**',

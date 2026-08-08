@@ -184,3 +184,6 @@ references/
 .output/
 dist/
 .wxt/
+
+# Repo-local tool caches (Chrome for Testing downloads etc.)
+.cache/
