@@ -12,7 +12,7 @@
 - [x] **RUNTIME-01**: WXT MV3 extension builds with side panel, standalone view, background SW, and extraction-only content script entrypoints
 - [x] **RUNTIME-02**: Side panel opens; first-run onboarding appears on fresh install
 - [ ] **RUNTIME-03**: Standalone view opens from side panel; workspace state hands off correctly (no duplicate tabs)
-- [ ] **RUNTIME-04**: AntD theme/design tokens applied via ThemeStore + antdConfig (compact for side panel, default for standalone)
+- [x] **RUNTIME-04**: AntD theme/design tokens applied via ThemeStore + antdConfig (compact for side panel, default for standalone)
 - [ ] **RUNTIME-05**: Chat, Agent, Notes, Options page skeletons render in both surfaces
 
 ### Workspace (Phase 1)
@@ -20,7 +20,7 @@
 - [ ] **WSPC-01**: WorkspaceStore (Zustand) persists theme, conversation, and add-on state
 - [ ] **WSPC-02**: WorkspaceSync keeps side panel and standalone surfaces in sync via BroadcastBus
 - [x] **WSPC-03**: MessageBus, EventBus, and BroadcastBus provide cross-context / in-panel / cross-surface communication
-- [ ] **WSPC-04**: AddonRegistry, Registry, AddonSettingsStore, and page registries register add-ons at startup
+- [x] **WSPC-04**: AddonRegistry, Registry, AddonSettingsStore, and page registries register add-ons at startup
 - [x] **WSPC-05**: ErrorBoundary, PortableMarkdown, and debugLog (canonical §C.2 codes) exist
 
 ### Persistence & Storage (Phase 2)
@@ -177,8 +177,8 @@ Deferred to a future release. Tracked but not in the current roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| RUNTIME-01…05 | Phase 1 | In Progress (RUNTIME-01, RUNTIME-02 done) |
-| WSPC-01…05 | Phase 1 | In Progress (WSPC-03, WSPC-05 done) |
+| RUNTIME-01…05 | Phase 1 | In Progress (RUNTIME-01, RUNTIME-02, RUNTIME-04 done) |
+| WSPC-01…05 | Phase 1 | In Progress (WSPC-03, WSPC-04, WSPC-05 done) |
 | STORAGE-01…05 | Phase 2 | Pending |
 | AI-01…07 | Phase 3 | Pending |
 | AGT-01…05 | Phase 3a | Pending |

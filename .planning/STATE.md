@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 01
 current_phase_name: MV3/WXT Runtime + AntD Shells + Workspace
 status: executing
-stopped_at: Completed 01-04-PLAN.md
-last_updated: "2026-08-08T08:52:35.652Z"
+stopped_at: Completed 01-05-PLAN.md
+last_updated: "2026-08-08T09:14:27.563Z"
 last_activity: 2026-08-08
 last_activity_desc: Phase 01 execution started
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 9
-  completed_plans: 4
+  completed_plans: 5
 ---
 
 # Project State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-08-04)
 ## Current Position
 
 Phase: 01 (MV3/WXT Runtime + AntD Shells + Workspace) — EXECUTING
-Plan: 5 of 9
+Plan: 6 of 9
 Status: Ready to execute
 Last activity: 2026-08-08 — Phase 01 execution started
 
-Progress: [████░░░░░░] 44%
+Progress: [██████░░░░] 56%
 
 ## Performance Metrics
 
@@ -63,6 +63,7 @@ Progress: [████░░░░░░] 44%
 | Phase 01-mv3-wxt-runtime-antd-shells-workspace P02 | 22min | 4 tasks | 11 files |
 | Phase 01-mv3-wxt-runtime-antd-shells-workspace P01-03 | 38 min | 3 tasks | 7 files |
 | Phase 01 P04 | 48 | 3 tasks | 18 files |
+| Phase 01-mv3-wxt-runtime-antd-shells-workspace P05 | 9min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -83,6 +84,11 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 01]: debugLog + errorCodes.ts home at src/core/error/ (co-located contract, W-7 path reconciliation; §18's src/core/log/ split is non-load-bearing in Phase 1) — Canonical codes are the Golden Rule 9 vocabulary
 - [Phase 01]: PortableMarkdown wraps XMarkdown (escapeRawHtml) + unconditional DOMPurify.sanitize — x-markdown 2.9.0 has no PortableMarkdown/skipHtml export — Same T-1-07 sanitization capability via the package's actual API
 - [Phase 01]: Component tests run in custom jsdom-align environment (realm-aligned codecs) + threads pool + explicit RTL cleanup — vitest jsdom setup splits TextEncoder (Node realm) / Uint8Array (jsdom realm), breaking esbuild 0.25 invariant
+- [Phase 01-mv3-wxt-runtime-antd-shells-workspace]: PACK_TOKEN_OVERLAY co-located in themePacks.ts (single source); antdConfig imports it rather than re-declaring the Appendix F.2 constant
+- [Phase 01-mv3-wxt-runtime-antd-shells-workspace]: antdConfig reads pack seed tokens from the registry pack def (fallback THEME_PACKS.default.tokens + REGISTRY_INIT silent) - the plan contract implies tokens flow from pack definitions
+- [Phase 01-mv3-wxt-runtime-antd-shells-workspace]: onChanged + matchMedia listeners use remove-then-add (exactly one active listener, T-1-11) instead of a boolean flag - survives fakeBrowser.reset() which wipes chrome listeners between tests
+- [Phase 01-mv3-wxt-runtime-antd-shells-workspace]: Registry singleton pre-registration uses a register() loop (not registerAll) to hold the plan grep fixture (registerAll|getThemePackRegistry == 2)
+- [Phase 01-mv3-wxt-runtime-antd-shells-workspace]: ERROR_CODES.* property access - 01-04 exports codes as ERROR_CODES.THEME_INIT etc, not named exports; all theme files use ERROR_CODES.* (Golden Rule 9)
 
 ### Pending Todos
 
@@ -111,6 +117,6 @@ Items acknowledged and carried forward (v2 scope, tracked in REQUIREMENTS.md):
 
 ## Session Continuity
 
-Last session: 2026-08-08T08:52:35.621Z
-Stopped at: Completed 01-04-PLAN.md
+Last session: 2026-08-08T09:11:48.790Z
+Stopped at: Completed 01-05-PLAN.md
 Resume file: None
