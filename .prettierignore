@@ -1,0 +1,13 @@
+.planning/
+.output/
+.wxt/
+node_modules/
+dist/
+assets/
+public/
+references/
+pnpm-lock.yaml
+LICENSE
+# Project docs (not source; not part of the format gate)
+AGENTS.md
+README.md
