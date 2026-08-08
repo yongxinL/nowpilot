@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v0.1
 milestone_name: milestone
-current_phase: 1
+current_phase: 01
 current_phase_name: MV3/WXT Runtime + AntD Shells + Workspace
-status: ready-to-execute
-stopped_at: Phase 1 plans ready to execute (9 plans)
-last_updated: "2026-08-04T11:30:00.000Z"
-last_activity: 2026-08-04
-last_activity_desc: Phase 1 planned and revised (9 plans, checker feedback applied); ready to execute wave 1
+status: executing
+stopped_at: Completed 01-01-PLAN.md
+last_updated: "2026-08-08T06:34:19.127Z"
+last_activity: 2026-08-08
+last_activity_desc: Phase 01 execution started
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 9
-  completed_plans: 0
+  completed_plans: 1
 ---
 
 # Project State
@@ -24,16 +24,16 @@ See: .planning/PROJECT.md (updated 2026-08-04)
 
 **Core value:** A privacy-first, local-first AI assistant where chat, extracted page content, and a linked notes/knowledge layer combine into a persistent personal workspace — no data leaves the machine unless the user deliberately configures a cloud provider.
 
-**Current focus:** Phase 1 — MV3/WXT Runtime + AntD Shells + Workspace
+**Current focus:** Phase 01 — MV3/WXT Runtime + AntD Shells + Workspace
 
 ## Current Position
 
-Phase: 1 of 19 (MV3/WXT Runtime + AntD Shells + Workspace)
-Plan: 0 of 9 executed in current phase
-Status: Ready to execute (plans 01-01..01-09 planned; checker feedback applied)
-Last activity: 2026-08-04 — Phase 1 plans created and revised; PATTERNS.md added; ready for wave-1 execution
+Phase: 01 (MV3/WXT Runtime + AntD Shells + Workspace) — EXECUTING
+Plan: 2 of 9
+Status: Ready to execute
+Last activity: 2026-08-08 — Phase 01 execution started
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█░░░░░░░░░] 11%
 
 ## Performance Metrics
 
@@ -55,6 +55,11 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: —
 
 *Updated after each plan completion*
+**Per-Plan Metrics:**
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| Phase 01 P01 | 174min | 4 tasks | 27 files |
 
 ## Accumulated Context
 
@@ -68,6 +73,7 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 4b]: Retrieved data is never instructions (`instructionAuthority: false`); every OptimizedContext carries a ContextProvenanceManifest
 - [Phase 5]: MiniSearch for retrieval (no embeddings); local-FS sync is one-way export-first (never bidirectional)
 - [All phases]: Human-verified continual evolution (never autonomous); every phase ends green via `verify:phase-N`; every catch uses a canonical §C.2 error code
+- [Phase 01]: manualChunks applied via vite:build:extendConfig hook scoped to HTML multi-page groups (WXT 0.19 lib-mode IIFE builds reject top-level manualChunks); Appendix G isolation intent preserved via import restriction + isolation grep — Plan's verbatim-config and build-exit-0 acceptance criteria were mutually exclusive under WXT 0.19
 
 ### Pending Todos
 
@@ -96,6 +102,6 @@ Items acknowledged and carried forward (v2 scope, tracked in REQUIREMENTS.md):
 
 ## Session Continuity
 
-Last session: 2026-08-04T11:30:00.000Z
-Stopped at: Session resumed — Phase 1 ready to execute, proceeding to execute wave 1 (plan 01-01)
-Resume file: /home/yongxin.Li/workspaces/nowpilot/.planning/phases/01-mv3-wxt-runtime-antd-shells-workspace/01-01-PLAN.md
+Last session: 2026-08-08T06:34:19.112Z
+Stopped at: Completed 01-01-PLAN.md
+Resume file: None
