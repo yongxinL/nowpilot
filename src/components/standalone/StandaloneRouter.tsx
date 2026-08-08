@@ -11,7 +11,20 @@ import { useStandaloneNav } from '@/components/standalone/standaloneNav';
 
 export { navigateToPage, useStandaloneNav } from '@/components/standalone/standaloneNav';
 
-export function StandaloneRouter() {
+export interface StandaloneRouterProps {
+  /** Controlled Cmd+K palette visibility (lifted at the 01-09 entrypoint). */
+  pickerOpen?: boolean;
+  /** Controlled Cmd+K palette visibility change callback. */
+  onPickerOpenChange?: (open: boolean) => void;
+}
+
+export function StandaloneRouter({ pickerOpen, onPickerOpenChange }: StandaloneRouterProps = {}) {
   const activePageId = useStandaloneNav((s) => s.activePageId);
-  return <StandaloneShell activePageId={activePageId} />;
+  return (
+    <StandaloneShell
+      activePageId={activePageId}
+      pickerOpen={pickerOpen}
+      onPickerOpenChange={onPickerOpenChange}
+    />
+  );
 }

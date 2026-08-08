@@ -39,9 +39,17 @@ const contentStyle: React.CSSProperties = {
 export interface StandaloneShellProps {
   /** StandalonePageRegistry id of the active page ('chat' default). */
   activePageId: string;
+  /** Controlled Cmd+K palette visibility (lifted at the 01-09 entrypoint). */
+  pickerOpen?: boolean;
+  /** Controlled Cmd+K palette visibility change callback. */
+  onPickerOpenChange?: (open: boolean) => void;
 }
 
-export function StandaloneShell({ activePageId }: StandaloneShellProps) {
+export function StandaloneShell({
+  activePageId,
+  pickerOpen,
+  onPickerOpenChange,
+}: StandaloneShellProps) {
   const registryEntry = getStandalonePageRegistry().get(activePageId);
   const ActivePage =
     (registryEntry !== undefined ? PAGE_COMPONENTS[registryEntry.component] : undefined) ??
@@ -58,7 +66,7 @@ export function StandaloneShell({ activePageId }: StandaloneShellProps) {
         <Layout.Content style={contentStyle}>
           <ActivePage />
         </Layout.Content>
-        <CmdKPicker />
+        <CmdKPicker open={pickerOpen} onOpenChange={onPickerOpenChange} />
       </Layout>
     </ErrorBoundary>
   );
