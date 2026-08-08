@@ -121,8 +121,13 @@ export class MessageBus {
   }
 }
 
-/** Minimal structural guard: a RuntimeEnvelope has id/type/createdAt/source. */
-function isRuntimeEnvelopeShape(message: unknown): message is RuntimeEnvelope<unknown> {
+/**
+ * The SINGLE shared structural guard for inbound runtime messages: a
+ * RuntimeEnvelope has id/type/createdAt/source (all typed). Used by
+ * MessageBus.dispatchInbound AND BackgroundRouter's listener (01-11 WR-09) —
+ * never duplicate this predicate.
+ */
+export function isRuntimeEnvelopeShape(message: unknown): message is RuntimeEnvelope<unknown> {
   if (typeof message !== 'object' || message === null) return false;
   const candidate = message as Record<string, unknown>;
   return (

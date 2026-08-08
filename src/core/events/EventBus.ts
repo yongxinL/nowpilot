@@ -86,10 +86,14 @@ export class EventBus<E extends string = EventType> {
           try {
             handler(data);
           } catch (err) {
-            debugLog(ERROR_CODES.EVT_HANDLER, `EventBus scoped handler error for scope "${scope}"`, {
-              error: err instanceof Error ? err : undefined,
-              context: 'EventBus.emit.scope',
-            });
+            debugLog(
+              ERROR_CODES.EVT_HANDLER,
+              `EventBus scoped handler error for scope "${scope}"`,
+              {
+                error: err instanceof Error ? err : undefined,
+                context: 'EventBus.emit.scope',
+              },
+            );
           }
         }
       }

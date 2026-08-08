@@ -4,9 +4,12 @@
 // dispatcher"). Owns TWO responsibilities:
 //
 //   1. VALIDATE — §16.2: `sender.id !== chrome.runtime.id` → return false
-//      (never respond to a foreign sender). Valid sender + non-canonical
-//      message type → reply workerState.fail(MSG_UNKNOWN_TYPE, ...) (Pitfall 5:
-//      the MessageType whitelist is the ONLY vocabulary; T-1-04).
+//      (never respond to a foreign sender). Structural guard first (shared
+//      isRuntimeEnvelopeShape, WR-09): a malformed message from a valid sender
+//      gets a MSG_DESERIALIZE fail-envelope reply — never a synchronous throw.
+//      Valid shape + non-canonical message type → reply
+//      workerState.fail(MSG_UNKNOWN_TYPE, ...) (Pitfall 5: the MessageType
+//      whitelist is the ONLY vocabulary; T-1-04).
 //   2. DISPATCH — valid envelopes go to the in-context MessageBus (01-03) and
 //      are acknowledged via workerState.ok/fail (Pitfall 5: replies are always
 //      ResponseEnvelopes, never a mutated request).
@@ -17,7 +20,7 @@
 // sendResponse — dispatch errors are caught and logged (EVT_HANDLER, Golden
 // Rule 9) then answered with a fail envelope. Dependency-free core (Pitfall 4):
 // no React, no antd, no zustand.
-import { MessageBus } from '@/core/messaging/MessageBus';
+import { MessageBus, isRuntimeEnvelopeShape } from '@/core/messaging/MessageBus';
 import { MessageTypeValues } from '@/core/runtime/MessageType';
 import type { RuntimeEnvelope, ResponseEnvelope } from '@/core/runtime/RuntimeEnvelope';
 import { workerState } from '@/core/runtime/workerState';
@@ -48,7 +51,17 @@ export const BackgroundRouter = {
       // §16.2: never respond to foreign senders (spoof guard).
       if (sender.id !== chrome.runtime.id) return false;
 
-      const envelope = message as RuntimeEnvelope<unknown>;
+      // Structural guard FIRST (shared isRuntimeEnvelopeShape — WR-09): a
+      // malformed message from a valid sender is answered with a fail envelope
+      // instead of throwing synchronously on property access. Validates SHAPE
+      // before the whitelist TYPE check below (same ordering as
+      // MessageBus.dispatchInbound).
+      if (!isRuntimeEnvelopeShape(message)) {
+        sendResponse(workerState.fail(ERROR_CODES.MSG_DESERIALIZE, 'malformed envelope'));
+        return true;
+      }
+
+      const envelope = message;
 
       // Pitfall 5 / T-1-04: canonical MessageType whitelist — an unknown type
       // from a valid sender is answered with the canonical fail shape.
