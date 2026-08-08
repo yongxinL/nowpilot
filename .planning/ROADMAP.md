@@ -41,13 +41,13 @@ NowPilot v0.1 is a privacy-first, local-first AI assistant and personal knowledg
   4. User opens the Cmd+K palette with the command set on both surfaces.
   5. Chat, Agent, Notes, and Options page skeletons render in both surfaces with the AntD theme applied; no `innerHTML`/`dangerouslySetInnerHTML` anywhere in src and no banned packages installed.
 
-**Plans**: 9/9 executed + 2 gap-closure planned (01-10, 01-11)
+**Plans**: 10/11 plans executed
 
 Plans:
 **Wave 1**
 
 - [x] 01-01-PLAN.md — pnpm + WXT scaffold, pinned stack, wxt.config.ts (Appendix G), vitest toolchain, verify:phase-1 gate (wave 1)
-- [ ] 01-10-PLAN.md — gap closure: workspace sync + onboarding hydration mount wiring (WR-02/WR-03; closes the 2 failed verification truths) (wave 1)
+- [x] 01-10-PLAN.md — gap closure: workspace sync + onboarding hydration mount wiring (WR-02/WR-03; closes the 2 failed verification truths) (wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -353,7 +353,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. MV3/WXT Runtime + AntD Shells + Workspace | 9/11 | In Progress|  |
+| 1. MV3/WXT Runtime + AntD Shells + Workspace | 10/11 | In Progress|  |
 | 2. Storage, Security, WriteJournal, Workspace Persistence | TBD | Not started | - |
 | 3. Cost-Effective AI Runtime (+ Persona seed) | TBD | Not started | - |
 | 3a. Agent Reliability and Evidence | TBD | Not started | - |
