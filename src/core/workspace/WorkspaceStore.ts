@@ -56,8 +56,12 @@ function pickActive(ws: WorkspaceState): Record<string, unknown> {
  * T-1-13: validate a stored np_workspace value before it is ever merged. Returns a
  * Partial<WorkspaceState> carrying only the D-18 active fields, or null when the
  * payload is malformed (unknown keys are dropped — raw storage is never spread).
+ *
+ * SHARED inbound gate (01-11 WR-04): consumed by both the store's own onChanged
+ * handler and WorkspaceSync's remote-update path (the cross-surface adoption
+ * guard) — one sanitizer for every np_workspace value that reaches the store.
  */
-function sanitizeStored(value: unknown): Partial<WorkspaceState> | null {
+export function sanitizeStored(value: unknown): Partial<WorkspaceState> | null {
   if (typeof value !== 'object' || value === null) return null;
   const v = value as Record<string, unknown>;
   if (typeof v.workspaceId !== 'string' || v.workspaceId.length === 0) return null;

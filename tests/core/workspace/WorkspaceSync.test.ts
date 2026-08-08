@@ -1,11 +1,13 @@
 // tests/core/workspace/WorkspaceSync.test.ts — WorkspaceSync (Appendix M.3) tests
 // (WSPC-02): store changes publish WORKSPACE_UPDATED with a bumped version; remote
-// WORKSPACE_UPDATED adopts with version-LWW (higher wins, lower/equal ignored);
-// requestHandoff publishes WORKSPACE_HANDOFF via the whitelisted bridge and a PONG
-// from the target completes the handoff (SHOW_HANDOFF_COMPLETE); a missing PONG
-// transitions to electionFailed (T-1-14); non-whitelist message types are ignored
-// (Pitfall 5 / T-1-12); mirroring emits WORKSPACE_MIRRORING_START/STOP. Drives the
-// fakeBrowser runtime channel (01-03 precedent). Node env — pure logic, no DOM.
+// WORKSPACE_UPDATED adopts with version-LWW (higher wins, lower/equal ignored)
+// through the T-1-13 sanitizer + M.3 workspaceId scope gate (foreign workspaceId
+// and malformed state are ignored — WR-04); requestHandoff publishes
+// WORKSPACE_HANDOFF via the whitelisted bridge and a PONG from the target completes
+// the handoff (SHOW_HANDOFF_COMPLETE); a missing PONG transitions to electionFailed
+// (T-1-14); non-whitelist message types are ignored (Pitfall 5 / T-1-12); mirroring
+// emits WORKSPACE_MIRRORING_START/STOP. Drives the fakeBrowser runtime channel
+// (01-03 precedent). Node env — pure logic, no DOM.
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fakeBrowser } from 'wxt/testing';
@@ -81,8 +83,10 @@ describe('WorkspaceSync', () => {
     const sync = new WorkspaceSync('sidepanel');
     sync.start();
 
+    // Same-workspace fixture (the M.3 scope gate requires workspaceId to match
+    // the local one — the other fields still assert the merge).
     const remote = freshWorkspace({
-      workspaceId: 'ws-remote',
+      workspaceId: 'ws-local',
       conversationId: 'conv-remote',
       activeSurface: 'standalone',
       version: 9,
@@ -93,10 +97,48 @@ describe('WorkspaceSync', () => {
     );
 
     const ws = useWorkspaceStore.getState().workspace;
-    expect(ws.workspaceId).toBe('ws-remote');
+    expect(ws.workspaceId).toBe('ws-local');
     expect(ws.conversationId).toBe('conv-remote');
     expect(ws.activeSurface).toBe('standalone');
     expect(ws.version).toBe(9);
+
+    sync.stop();
+  });
+
+  it('a WORKSPACE_UPDATED from a foreign workspaceId is ignored (M.3 scope gate)', async () => {
+    const sync = new WorkspaceSync('sidepanel');
+    sync.start();
+
+    const remote = freshWorkspace({
+      workspaceId: 'ws-foreign',
+      conversationId: 'conv-foreign',
+      activeSurface: 'standalone',
+      version: 99,
+      updatedAt: 99000,
+    });
+    await fakeBrowser.runtime.sendMessage(
+      envelope(MessageType.WORKSPACE_UPDATED, { state: remote, from: 'standalone' }),
+    );
+
+    const ws = useWorkspaceStore.getState().workspace;
+    expect(ws.workspaceId).toBe('ws-local');
+    expect(ws.version).toBe(0);
+
+    sync.stop();
+  });
+
+  it('a malformed WORKSPACE_UPDATED state payload is ignored (T-1-13)', async () => {
+    const sync = new WorkspaceSync('sidepanel');
+    sync.start();
+
+    // Missing workspaceId/conversationId/activeSurface — fails sanitizeStored.
+    await fakeBrowser.runtime.sendMessage(
+      envelope(MessageType.WORKSPACE_UPDATED, { state: { version: 99 }, from: 'standalone' }),
+    );
+
+    const ws = useWorkspaceStore.getState().workspace;
+    expect(ws.workspaceId).toBe('ws-local');
+    expect(ws.version).toBe(0);
 
     sync.stop();
   });

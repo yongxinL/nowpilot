@@ -12,7 +12,7 @@
 // WORKSPACE_* code and never throws (Golden Rule 9). The handoff PONG wait is a
 // single bounded setTimeout that is always cleared (T-1-14 — a missing PONG only
 // transitions handoff state, no crash path).
-import { useWorkspaceStore } from '@/core/workspace/WorkspaceStore';
+import { useWorkspaceStore, sanitizeStored } from '@/core/workspace/WorkspaceStore';
 import { broadcastBus } from '@/core/runtime/BroadcastBus';
 import { MessageType, MessageTypeValues } from '@/core/runtime/MessageType';
 import { MessageBusBridge } from '@/core/messaging/MessageBusBridge';
@@ -194,22 +194,52 @@ export class WorkspaceSync {
     });
   }
 
-  /** LWW adoption (M.3): adopt only when remote.version > local.version. */
+  /**
+   * Inbound adoption gate (T-1-13 + M.3, WR-04): a remote WORKSPACE_UPDATED
+   * snapshot is adopted only when it (1) is object-shaped, (2) passes the shared
+   * sanitizeStored D-18 shape guard (null when malformed — ignored), (3) carries
+   * the LOCAL workspaceId (BroadcastBus delivers to ALL extension contexts, so a
+   * snapshot from another window's workspace is never adopted), and (4) has a
+   * version strictly higher than the local one (LWW). Adoption is a
+   * field-preserving merge ({ ...local, ...sanitized }) so the inert D-18 fields
+   * stay from the local state (T-1-05).
+   */
   private handleRemoteUpdate(payload: unknown): void {
     const incoming = payload as InboundPayload;
     if (typeof incoming?.state !== 'object' || incoming.state === null) return;
-    const remoteVersion = incoming.state.version;
     const local = useWorkspaceStore.getState().workspace;
-    if (typeof remoteVersion !== 'number' || remoteVersion <= local.version) {
+
+    // T-1-13 shape guard — malformed snapshots are never adopted.
+    const sanitized = sanitizeStored(incoming.state);
+    if (sanitized === null) {
+      debugLog(ERROR_CODES.WORKSPACE_SYNC, 'remote update ignored (malformed state)', {
+        silent: true,
+        module: 'WorkspaceSync',
+      });
+      return;
+    }
+
+    // M.3 workspace scope gate — a foreign workspaceId must never be adopted.
+    if (sanitized.workspaceId !== local.workspaceId) {
+      debugLog(ERROR_CODES.WORKSPACE_SYNC, 'remote update ignored (foreign workspace)', {
+        silent: true,
+        module: 'WorkspaceSync',
+      });
+      return;
+    }
+
+    // Version-LWW (M.3): adopt only when remote.version > local.version.
+    if (typeof sanitized.version !== 'number' || sanitized.version <= local.version) {
       debugLog(ERROR_CODES.WORKSPACE_SYNC, 'remote update ignored (LWW)', {
         silent: true,
         module: 'WorkspaceSync',
       });
       return;
     }
-    // Adopt the remote snapshot verbatim (M.3 setState pattern — version is kept
-    // as the remote's so the echo is ignored by both sides).
-    useWorkspaceStore.setState({ workspace: incoming.state });
+
+    // Field-preserving merge (T-1-05): inert D-18 fields stay from the local
+    // state; the sanitized active fields + version come from the remote.
+    useWorkspaceStore.setState({ workspace: { ...local, ...sanitized } });
     debugLog(ERROR_CODES.WORKSPACE_SYNC, 'remote update adopted (LWW)', {
       silent: true,
       module: 'WorkspaceSync',
