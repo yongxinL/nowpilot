@@ -41,7 +41,7 @@ NowPilot v0.1 is a privacy-first, local-first AI assistant and personal knowledg
   4. User opens the Cmd+K palette with the command set on both surfaces.
   5. Chat, Agent, Notes, and Options page skeletons render in both surfaces with the AntD theme applied; no `innerHTML`/`dangerouslySetInnerHTML` anywhere in src and no banned packages installed.
 
-**Plans**: 8/9 plans executed
+**Plans**: 9/9 plans executed
 
 Plans:
 
@@ -53,7 +53,7 @@ Plans:
 - [x] 01-06-PLAN.md — WorkspaceStore (D-18), WorkspaceRouter (Pitfall 1 gesture-safe), WorkspaceSync (PING/PONG handoff) (wave 3)
 - [x] 01-07-PLAN.md — AddonRegistry/AddonSettingsStore/PageRegistry, ContentScriptHost + PageContextBridge (D-16), content bundle isolation (Pitfall 4) (wave 4)
 - [x] 01-08-PLAN.md — SidePanel/Standalone shells + routers, Onboarding (Flow 9/D-06), CmdKPicker (Flow 10), page skeletons (wave 5)
-- [ ] 01-09-PLAN.md — entrypoint mounts (Appendix F one provider per surface), mount smoke tests, full verify:phase-1 + DONE-when hygiene gates (wave 5)
+- [x] 01-09-PLAN.md — entrypoint mounts (Appendix F one provider per surface), mount smoke tests, full verify:phase-1 + DONE-when hygiene gates (wave 5)
 
 **UI hint**: yes
 
@@ -335,7 +335,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. MV3/WXT Runtime + AntD Shells + Workspace | 8/9 | In Progress|  |
+| 1. MV3/WXT Runtime + AntD Shells + Workspace | 9/9 | In Progress|  |
 | 2. Storage, Security, WriteJournal, Workspace Persistence | TBD | Not started | - |
 | 3. Cost-Effective AI Runtime (+ Persona seed) | TBD | Not started | - |
 | 3a. Agent Reliability and Evidence | TBD | Not started | - |

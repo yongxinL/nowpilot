@@ -4,16 +4,16 @@ milestone: v0.1
 milestone_name: milestone
 current_phase: 01
 current_phase_name: MV3/WXT Runtime + AntD Shells + Workspace
-status: executing
-stopped_at: Completed 01-08-PLAN.md
-last_updated: "2026-08-08T12:13:02.521Z"
+status: verifying
+stopped_at: Completed 01-09-PLAN.md
+last_updated: "2026-08-08T13:16:10.386Z"
 last_activity: 2026-08-08
 last_activity_desc: Phase 01 execution started
 progress:
   total_phases: 1
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 9
-  completed_plans: 8
+  completed_plans: 9
 ---
 
 # Project State
@@ -30,10 +30,10 @@ See: .planning/PROJECT.md (updated 2026-08-04)
 
 Phase: 01 (MV3/WXT Runtime + AntD Shells + Workspace) — EXECUTING
 Plan: 9 of 9
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-08-08 — Phase 01 execution started
 
-Progress: [█████████░] 89%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -67,6 +67,7 @@ Progress: [█████████░] 89%
 | Phase 01-mv3-wxt-runtime-antd-shells-workspace P06 | 31min | 3 tasks | 10 files |
 | Phase 01-mv3-wxt-runtime-antd-shells-workspace P07 | 14min | 4 tasks | 18 files |
 | Phase 01-mv3-wxt-runtime-antd-shells-workspace P08 | 20 min | 3 tasks | 20 files |
+| Phase 01-mv3-wxt-runtime-antd-shells-workspace P09 | 20min | 5 tasks | 16 files |
 
 ## Accumulated Context
 
@@ -98,6 +99,10 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase ?]: ProviderRegistry is push-reactive (subscribe + useSyncExternalStore in router+shell, T-1-18 — no cached UI flag) with clear() for test isolation; canonical home src/core/ai/ for Phase 3 extension
 - [Phase ?]: navigateToPage (StandaloneRouter action) implemented in co-located standaloneNav.ts and re-exported — avoids CmdKPicker<->StandaloneRouter<->StandaloneShell circular import
 - [Phase ?]: Cmd+K palette Modal conditionally mounted ({open && <Modal open>}) — rc-motion leave animations never complete in jsdom; deterministic close
+- [Phase 01-mv3-wxt-runtime-antd-shells-workspace]: CmdKPicker gained an optional controlled interface (open/onOpenChange): entrypoints lift the mod+k capture and own visibility (plan: 'state lifted here, passed to SidePanelShell'); when controlled the picker stops self-capturing (single capture source) - uncontrolled 01-08 behavior byte-identical — CmdKPicker gained an optional controlled interface (open/onOpenChange): entrypoints lift the mod+k capture and own visibility (plan: 'state lifted here, passed to SidePanelShell'); when controlled the picker stops self-capturing (single capture source) - uncontrolled 01-08 behavior byte-identical
+- [Phase 01-mv3-wxt-runtime-antd-shells-workspace]: workerState.ok/fail thread an optional request id (default fresh operationId): the 01-02 ResponseEnvelope REQUIRES id so the plan's no-id sketch could not compile - replies stay correlatable and traceable — workerState.ok/fail thread an optional request id (default fresh operationId): the 01-02 ResponseEnvelope REQUIRES id so the plan's no-id sketch could not compile - replies stay correlatable and traceable
+- [Phase 01-mv3-wxt-runtime-antd-shells-workspace]: BackgroundRouter splits §16.2 validation: foreign senders (sender.id !== chrome.runtime.id) get return false (Appendix E canonical - never respond to foreign senders); valid sender + non-whitelisted type gets workerState.fail(MSG_UNKNOWN_TYPE) reply — BackgroundRouter splits §16.2 validation: foreign senders (sender.id !== chrome.runtime.id) get return false (Appendix E canonical - never respond to foreign senders); valid sender + non-whitelisted type gets workerState.fail(MSG_UNKNOWN_TYPE) reply
+- [Phase 01-mv3-wxt-runtime-antd-shells-workspace]: BackgroundRouter dispatch to MessageBus: the 01-03 MessageBus is subscribed in the background (its own whitelist-guarded runtime listener) so valid envelopes reach background subscribers; Phase 1 has no background consumers (R-3) so dispatch() acknowledges valid envelopes - per-type handlers extend dispatch() when they land — BackgroundRouter dispatch to MessageBus: the 01-03 MessageBus is subscribed in the background (its own whitelist-guarded runtime listener) so valid envelopes reach background subscribers; Phase 1 has no background consumers (R-3) so dispatch() acknowledges valid envelopes - per-type handlers extend dispatch() when they land
 
 ### Pending Todos
 
@@ -126,6 +131,6 @@ Items acknowledged and carried forward (v2 scope, tracked in REQUIREMENTS.md):
 
 ## Session Continuity
 
-Last session: 2026-08-08T12:12:27.942Z
-Stopped at: Completed 01-08-PLAN.md
+Last session: 2026-08-08T13:12:55.919Z
+Stopped at: Completed 01-09-PLAN.md
 Resume file: None
