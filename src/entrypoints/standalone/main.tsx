@@ -4,6 +4,14 @@
 // TAB via the 01-06 update-or-create dedupe (W-12) — no popup window
 // dimensions apply here.
 //
+// 01-10 gap closure (REVIEW WR-02/WR-03): this mount also hydrates the
+// addon-settings store (np_addon_settings — onboarding.done persists across
+// surface loads) and fires the workspace lifecycle (hydrate np_workspace →
+// activate the standalone surface → start the cross-surface sync loop from the
+// module-level sync ref held for stop()). Described by concept here — no
+// literal call expressions in the header so the per-file call-site greps stay
+// unambiguous.
+//
 // Mirrors the side panel mount (01-09 Task 1): exactly ONE provider per surface
 // (§5.5 / Appendix F) — the XProvider from @ant-design/x EXTENDS antd's
 // provider, so the getAntdConfig (01-05) config is spread into the single
@@ -21,6 +29,9 @@ import { ErrorBoundary } from '@/core/components/ErrorBoundary';
 import { isCmdK } from '@/core/input/KeymapRegistry';
 import { getAntdConfig } from '@/core/theme/antdConfig';
 import { useThemeStore } from '@/core/theme/ThemeStore';
+import { useWorkspaceStore } from '@/core/workspace/WorkspaceStore';
+import { WorkspaceSync } from '@/core/workspace/WorkspaceSync';
+import { useAddonSettingsStore } from '@/core/registry/AddonSettingsStore';
 // The single provider reference on this surface (Appendix F: XProvider EXTENDS
 // antd's provider — exactly one provider per surface, grep fixture).
 export type { ConfigProviderProps } from 'antd';
@@ -76,6 +87,17 @@ export function createStandaloneApp() {
 // only mount when a #root element exists (jsdom tests have none).
 if (typeof document !== 'undefined') {
   void useThemeStore.getState().init();
+  // WR-02: hydrate np_addon_settings so onboarding.done persists across loads.
+  void useAddonSettingsStore.getState().init();
+  // WR-03: module-level sync ref (held for stop()); the constructor is
+  // side-effect-free — only start() activates subscriptions/timers.
+  const workspaceSync = new WorkspaceSync('standalone');
+  // WR-03: activate the workspace lifecycle AFTER hydration completes — start()
+  // must never run before np_workspace is merged (VERIFICATION gaps[0] fix).
+  void useWorkspaceStore.getState().init().then(() => {
+    useWorkspaceStore.getState().start('standalone');
+    workspaceSync.start();
+  });
   const rootElement = document.getElementById('root');
   if (rootElement !== null) {
     createRoot(rootElement).render(<StandaloneRoot />);

@@ -14,6 +14,14 @@
 // CmdKPicker visibility state is threaded into SidePanelShell (controlled
 // picker — the picker stops self-capturing when a parent owns the capture).
 //
+// 01-10 gap closure (REVIEW WR-02/WR-03): this mount also hydrates the
+// addon-settings store (np_addon_settings — onboarding.done persists across
+// surface loads) and fires the workspace lifecycle (hydrate np_workspace →
+// activate the sidepanel surface → start the cross-surface sync loop from the
+// module-level sync ref held for stop()). Described by concept here — no
+// literal call expressions in the header so the per-file call-site greps stay
+// unambiguous.
+//
 // Pitfall 4: this entrypoint imports NO content-script module and no UI library
 // beyond the locked antd/x stack. Entrypoints are the ONLY places that call
 // createRoot — everything upstream is tree-imported.
@@ -26,6 +34,9 @@ import { ErrorBoundary } from '@/core/components/ErrorBoundary';
 import { isCmdK } from '@/core/input/KeymapRegistry';
 import { getAntdConfig } from '@/core/theme/antdConfig';
 import { useThemeStore } from '@/core/theme/ThemeStore';
+import { useWorkspaceStore } from '@/core/workspace/WorkspaceStore';
+import { WorkspaceSync } from '@/core/workspace/WorkspaceSync';
+import { useAddonSettingsStore } from '@/core/registry/AddonSettingsStore';
 // The single provider reference on this surface (Appendix F: XProvider EXTENDS
 // antd's provider — exactly one provider per surface, grep fixture).
 export type { ConfigProviderProps } from 'antd';
@@ -81,6 +92,17 @@ export function createSidePanelApp() {
 // only mount when a #root element exists (jsdom tests have none).
 if (typeof document !== 'undefined') {
   void useThemeStore.getState().init();
+  // WR-02: hydrate np_addon_settings so onboarding.done persists across loads.
+  void useAddonSettingsStore.getState().init();
+  // WR-03: module-level sync ref (held for stop()); the constructor is
+  // side-effect-free — only start() activates subscriptions/timers.
+  const workspaceSync = new WorkspaceSync('sidepanel');
+  // WR-03: activate the workspace lifecycle AFTER hydration completes — start()
+  // must never run before np_workspace is merged (VERIFICATION gaps[0] fix).
+  void useWorkspaceStore.getState().init().then(() => {
+    useWorkspaceStore.getState().start('sidepanel');
+    workspaceSync.start();
+  });
   const rootElement = document.getElementById('root');
   if (rootElement !== null) {
     createRoot(rootElement).render(createSidePanelApp());
