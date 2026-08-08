@@ -31,6 +31,8 @@ import { App as AntdApp } from 'antd';
 import { XProvider } from '@ant-design/x';
 import { SidePanelRouter } from '@/components/sidepanel/SidePanelRouter';
 import { ErrorBoundary } from '@/core/components/ErrorBoundary';
+import { debugLog } from '@/core/error/debugLog';
+import { ERROR_CODES } from '@/core/error/errorCodes';
 import { isCmdK } from '@/core/input/KeymapRegistry';
 import { getAntdConfig } from '@/core/theme/antdConfig';
 import { useThemeStore } from '@/core/theme/ThemeStore';
@@ -100,10 +102,25 @@ if (typeof document !== 'undefined') {
   // WR-03: activate the workspace lifecycle AFTER hydration completes — start()
   // must never run before np_workspace is merged (VERIFICATION gaps[0] fix).
   const workspaceInit = useWorkspaceStore.getState().init();
-  void workspaceInit.then(() => {
-    useWorkspaceStore.getState().start('sidepanel');
-    workspaceSync.start();
-  });
+  // WR-11: every link of the mount chain is rejection-observable (Golden Rule
+  // 9) — start() is awaited-with-catch and init() failures are logged, so a
+  // broken workspace never activates silently.
+  void workspaceInit
+    .then(() => {
+      void useWorkspaceStore.getState().start('sidepanel').catch((err: unknown) => {
+        debugLog(ERROR_CODES.WORKSPACE_START, 'workspace start failed at mount', {
+          error: err instanceof Error ? err : undefined,
+          module: 'WorkspaceStore',
+        });
+      });
+      workspaceSync.start();
+    })
+    .catch((err: unknown) => {
+      debugLog(ERROR_CODES.WORKSPACE_INIT, 'workspace init failed at mount', {
+        error: err instanceof Error ? err : undefined,
+        module: 'WorkspaceStore',
+      });
+    });
   const rootElement = document.getElementById('root');
   if (rootElement !== null) {
     createRoot(rootElement).render(createSidePanelApp());
