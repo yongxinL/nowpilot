@@ -41,7 +41,7 @@ NowPilot v0.1 is a privacy-first, local-first AI assistant and personal knowledg
   4. User opens the Cmd+K palette with the command set on both surfaces.
   5. Chat, Agent, Notes, and Options page skeletons render in both surfaces with the AntD theme applied; no `innerHTML`/`dangerouslySetInnerHTML` anywhere in src and no banned packages installed.
 
-**Plans**: 9/9 plans executed
+**Plans**: 9/9 executed + 2 gap-closure planned (01-10, 01-11)
 
 Plans:
 
@@ -54,6 +54,8 @@ Plans:
 - [x] 01-07-PLAN.md — AddonRegistry/AddonSettingsStore/PageRegistry, ContentScriptHost + PageContextBridge (D-16), content bundle isolation (Pitfall 4) (wave 4)
 - [x] 01-08-PLAN.md — SidePanel/Standalone shells + routers, Onboarding (Flow 9/D-06), CmdKPicker (Flow 10), page skeletons (wave 5)
 - [x] 01-09-PLAN.md — entrypoint mounts (Appendix F one provider per surface), mount smoke tests, full verify:phase-1 + DONE-when hygiene gates (wave 5)
+- [ ] 01-10-PLAN.md — gap closure: workspace sync + onboarding hydration mount wiring (WR-02/WR-03; closes the 2 failed verification truths) (wave 1)
+- [ ] 01-11-PLAN.md — gap closure: messaging/sync hardening — real debugLog rewiring + inbound adoption + shape guards (WR-01/WR-04/WR-08/WR-09) (wave 2)
 
 **UI hint**: yes
 
