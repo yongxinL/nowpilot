@@ -41,7 +41,7 @@ NowPilot v0.1 is a privacy-first, local-first AI assistant and personal knowledg
   4. User opens the Cmd+K palette with the command set on both surfaces.
   5. Chat, Agent, Notes, and Options page skeletons render in both surfaces with the AntD theme applied; no `innerHTML`/`dangerouslySetInnerHTML` anywhere in src and no banned packages installed.
 
-**Plans**: 10/11 plans executed
+**Plans**: 11/11 plans executed
 
 Plans:
 **Wave 1**
@@ -52,7 +52,7 @@ Plans:
 **Wave 2** *(blocked on Wave 1 completion)*
 
 - [x] 01-02-PLAN.md — canonical types: RuntimeEnvelope, MessageType (Appendix E + D-17), WorkspaceState (D-18), STR/PROMPTS constants (wave 2)
-- [ ] 01-11-PLAN.md — gap closure: messaging/sync hardening — real debugLog rewiring + inbound adoption + shape guards (WR-01/WR-04/WR-08/WR-09) (wave 2)
+- [x] 01-11-PLAN.md — gap closure: messaging/sync hardening — real debugLog rewiring + inbound adoption + shape guards (WR-01/WR-04/WR-08/WR-09) (wave 2)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -353,7 +353,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. MV3/WXT Runtime + AntD Shells + Workspace | 10/11 | In Progress|  |
+| 1. MV3/WXT Runtime + AntD Shells + Workspace | 11/11 | In Progress|  |
 | 2. Storage, Security, WriteJournal, Workspace Persistence | TBD | Not started | - |
 | 3. Cost-Effective AI Runtime (+ Persona seed) | TBD | Not started | - |
 | 3a. Agent Reliability and Evidence | TBD | Not started | - |

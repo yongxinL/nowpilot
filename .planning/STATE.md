@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 01
 current_phase_name: mv3-wxt-runtime-antd-shells-workspace
 status: executing
-stopped_at: Completed 01-10-PLAN.md
-last_updated: "2026-08-08T22:02:47.173Z"
+stopped_at: Completed 01-11-PLAN.md
+last_updated: "2026-08-08T22:17:18.281Z"
 last_activity: 2026-08-08
 last_activity_desc: Phase 01 execution started
 progress:
   total_phases: 1
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 11
-  completed_plans: 10
+  completed_plans: 11
 ---
 
 # Project State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-08-04)
 ## Current Position
 
 Phase: 01 (mv3-wxt-runtime-antd-shells-workspace) — EXECUTING
-Plan: 2 of 11
+Plan: 3 of 11
 Status: Ready to execute
 Last activity: 2026-08-08 — Phase 01 execution started
 
-Progress: [█████████░] 91%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -69,6 +69,7 @@ Progress: [█████████░] 91%
 | Phase 01-mv3-wxt-runtime-antd-shells-workspace P08 | 20 min | 3 tasks | 20 files |
 | Phase 01-mv3-wxt-runtime-antd-shells-workspace P09 | 20min | 5 tasks | 16 files |
 | Phase 01 P10 | 10min | 3 tasks | 5 files |
+| Phase 01-mv3-wxt-runtime-antd-shells-workspace P11 | 9 | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -106,6 +107,7 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 01-mv3-wxt-runtime-antd-shells-workspace]: BackgroundRouter dispatch to MessageBus: the 01-03 MessageBus is subscribed in the background (its own whitelist-guarded runtime listener) so valid envelopes reach background subscribers; Phase 1 has no background consumers (R-3) so dispatch() acknowledges valid envelopes - per-type handlers extend dispatch() when they land — BackgroundRouter dispatch to MessageBus: the 01-03 MessageBus is subscribed in the background (its own whitelist-guarded runtime listener) so valid envelopes reach background subscribers; Phase 1 has no background consumers (R-3) so dispatch() acknowledges valid envelopes - per-type handlers extend dispatch() when they land
 - [Phase 01]: Split init().then chain into a named const so the mandated per-file grep fixture survives prettier chain-breaking — same semantics, prettier-stable call-site literal — Prettier --check (part of verify:phase-1) failed on the chained call; acceptance criteria require useWorkspaceStore.getState().init == 1 per entrypoint file
 - [Phase 01]: Fresh-module persistence tests import the entrypoint module (not just the store) so the module-scope init() fires against seeded storage — Standalone hydration test initially imported only the store module; the init() wiring lives in the entrypoint, so seeding was never read
+- [Phase 01-mv3-wxt-runtime-antd-shells-workspace]: Adopted the err instanceof Error ? err : undefined narrowing in rewired catch bodies — the plan's literal { error: err } fails tsc under strict catch-variable typing (unknown vs Error); matches WorkspaceStore/ProviderRegistry precedent — Rule 1 type-correctness adaptation required for gate-green; identical runtime behavior
 
 ### Pending Todos
 
@@ -134,6 +136,6 @@ Items acknowledged and carried forward (v2 scope, tracked in REQUIREMENTS.md):
 
 ## Session Continuity
 
-Last session: 2026-08-08T22:02:47.142Z
-Stopped at: Completed 01-10-PLAN.md
+Last session: 2026-08-08T22:16:54.707Z
+Stopped at: Completed 01-11-PLAN.md
 Resume file: None
