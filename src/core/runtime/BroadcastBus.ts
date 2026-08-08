@@ -12,21 +12,13 @@
 import { MessageType, MessageTypeValues } from './MessageType';
 import type { MessageTypeValue } from './MessageType';
 import type { RuntimeEnvelope } from './RuntimeEnvelope';
+import { debugLog } from '@/core/error/debugLog';
+import { ERROR_CODES } from '@/core/error/errorCodes';
 
 const HEARTBEAT_MS = 3000;
 
 export type HeartbeatStateProvider = () => { workspaceId: string; version: number };
 export type BroadcastPayloadHandler = (payload: unknown) => void;
-
-type DebugLogFn = (
-  code: string,
-  message: string,
-  options?: { error?: unknown; context?: string; extra?: Record<string, unknown> },
-) => void;
-// Deferred debugLog (Golden Rule 9): the runtime core stays dependency-free
-// (Pitfall 4), so this module uses the typeof-guarded hook like MessageBus — a
-// missing logger never breaks the bus.
-declare const debugLog: DebugLogFn | undefined;
 
 export class BroadcastBus {
   private readonly source: RuntimeEnvelope['source'];
@@ -78,14 +70,12 @@ export class BroadcastBus {
       payload,
     };
     void browser.runtime.sendMessage(envelope).catch((err: unknown) => {
-      // Fire-and-forget, MV3: no receiving end is normal. Route to debugLog when
-      // present (deferred — dependency-free core).
-      if (typeof debugLog === 'function') {
-        debugLog('MSG_SERIALIZE', 'BroadcastBus.emit: runtime send failed', {
-          error: err,
-          context: 'BroadcastBus.emit',
-        });
-      }
+      // Fire-and-forget, MV3: no receiving end is normal. Route to debugLog with
+      // the canonical MSG_SERIALIZE code (Golden Rule 9).
+      debugLog(ERROR_CODES.MSG_SERIALIZE, 'BroadcastBus.emit: runtime send failed', {
+        error: err instanceof Error ? err : undefined,
+        context: 'BroadcastBus.emit',
+      });
     });
   }
 

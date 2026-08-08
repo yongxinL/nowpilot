@@ -32,8 +32,13 @@ export class ProviderRegistry {
     for (const listener of [...this.listeners]) {
       try {
         listener();
-      } catch {
-        // A broken listener must never break the registry (Golden Rule 9).
+      } catch (err) {
+        // A broken listener must never break the registry (Golden Rule 9) — but
+        // the failure is logged so it stays observable.
+        debugLog(ERROR_CODES.EVT_HANDLER, 'ProviderRegistry listener error', {
+          error: err instanceof Error ? err : undefined,
+          module: 'ProviderRegistry',
+        });
       }
     }
   }

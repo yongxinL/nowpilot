@@ -5,9 +5,8 @@
 // (Golden Rule 9). Dependency-free core (Pitfall 4): no surface imports.
 //
 // Event names match the Phase-1 in-panel events (§13 / Appendix E vocabulary).
-// Deferred debugLog: lands in 01-04 as src/core/log/debugLog.ts. Until then this
-// module compiles standalone — every catch calls the guarded hook (typeof check),
-// so a missing logger never breaks the handler loop. 01-04 wires the real import.
+// Gap-closure plan 01-11 wired the real import: debugLog now resolves to
+// src/core/error/debugLog.ts (Golden Rule 9) — every catch logs canonically.
 export const EVENT_TYPES = [
   'SHOW_HANDOFF_PENDING',
   'SHOW_HANDOFF_COMPLETE',
@@ -27,12 +26,8 @@ export type EventType = (typeof EVENT_TYPES)[number];
 export type EventScope = 'sidepanel' | 'standalone' | 'background';
 export type EventHandler<T = unknown> = (data: T) => void;
 
-type DebugLogFn = (
-  code: string,
-  message: string,
-  options?: { error?: unknown; context?: string; extra?: Record<string, unknown> },
-) => void;
-declare const debugLog: DebugLogFn | undefined;
+import { debugLog } from '@/core/error/debugLog';
+import { ERROR_CODES } from '@/core/error/errorCodes';
 
 /**
  * Synchronous, typed event bus. Handlers registered per event name; emit
@@ -76,12 +71,10 @@ export class EventBus<E extends string = EventType> {
         try {
           handler(data);
         } catch (err) {
-          if (typeof debugLog === 'function') {
-            debugLog('EVT_HANDLER', `EventBus handler error for event "${event}"`, {
-              error: err,
-              context: 'EventBus.emit',
-            });
-          }
+          debugLog(ERROR_CODES.EVT_HANDLER, `EventBus handler error for event "${event}"`, {
+            error: err instanceof Error ? err : undefined,
+            context: 'EventBus.emit',
+          });
         }
       }
     }
@@ -93,12 +86,10 @@ export class EventBus<E extends string = EventType> {
           try {
             handler(data);
           } catch (err) {
-            if (typeof debugLog === 'function') {
-              debugLog('EVT_HANDLER', `EventBus scoped handler error for scope "${scope}"`, {
-                error: err,
-                context: 'EventBus.emit.scope',
-              });
-            }
+            debugLog(ERROR_CODES.EVT_HANDLER, `EventBus scoped handler error for scope "${scope}"`, {
+              error: err instanceof Error ? err : undefined,
+              context: 'EventBus.emit.scope',
+            });
           }
         }
       }

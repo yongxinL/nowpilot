@@ -13,20 +13,12 @@
 // transport (PORT_STREAM_* messages flow through port.postMessage/onMessage).
 import * as MessageType from '@/core/runtime/MessageType';
 import type { RuntimeEnvelope } from '@/core/runtime/RuntimeEnvelope';
+import { debugLog } from '@/core/error/debugLog';
+import { ERROR_CODES } from '@/core/error/errorCodes';
 
 export const NP_PORT_NAME = 'np-port';
 
 export type MessageListener = (message: RuntimeEnvelope<unknown>) => void;
-
-// Deferred debugLog: lands in 01-04 as src/core/log/debugLog.ts. Until then this
-// module compiles standalone — every catch calls the guarded hook (typeof check),
-// so a missing logger never breaks the transport. 01-04 wires the real import.
-type DebugLogFn = (
-  code: string,
-  message: string,
-  options?: { error?: unknown; context?: string; extra?: Record<string, unknown> },
-) => void;
-declare const debugLog: DebugLogFn | undefined;
 
 export class MessageBus {
   private readonly listeners = new Set<MessageListener>();
@@ -58,13 +50,11 @@ export class MessageBus {
     this.assertKnownType(message);
     void browser.runtime.sendMessage(message).catch((err: unknown) => {
       // Fire-and-forget: no receiving end is normal (MV3). Route to debugLog
-      // when present (deferred until 01-04).
-      if (typeof debugLog === 'function') {
-        debugLog('MSG_SERIALIZE', 'MessageBus.publish: runtime send failed', {
-          error: err,
-          context: 'MessageBus.publish',
-        });
-      }
+      // with the canonical MSG_SERIALIZE code (Golden Rule 9).
+      debugLog(ERROR_CODES.MSG_SERIALIZE, 'MessageBus.publish: runtime send failed', {
+        error: err instanceof Error ? err : undefined,
+        context: 'MessageBus.publish',
+      });
     });
   }
 
