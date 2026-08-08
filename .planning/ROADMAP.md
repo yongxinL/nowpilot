@@ -44,18 +44,34 @@ NowPilot v0.1 is a privacy-first, local-first AI assistant and personal knowledg
 **Plans**: 9/9 executed + 2 gap-closure planned (01-10, 01-11)
 
 Plans:
+**Wave 1**
 
 - [x] 01-01-PLAN.md — pnpm + WXT scaffold, pinned stack, wxt.config.ts (Appendix G), vitest toolchain, verify:phase-1 gate (wave 1)
+- [ ] 01-10-PLAN.md — gap closure: workspace sync + onboarding hydration mount wiring (WR-02/WR-03; closes the 2 failed verification truths) (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [x] 01-02-PLAN.md — canonical types: RuntimeEnvelope, MessageType (Appendix E + D-17), WorkspaceState (D-18), STR/PROMPTS constants (wave 2)
+- [ ] 01-11-PLAN.md — gap closure: messaging/sync hardening — real debugLog rewiring + inbound adoption + shape guards (WR-01/WR-04/WR-08/WR-09) (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [x] 01-03-PLAN.md — MessageBus + MessageBusBridge + EventBus/EventBusManager (Pitfall 5 whitelist) (wave 2)
 - [x] 01-04-PLAN.md — errorCodes + debugLog (Golden Rule 9, R-10), i18n, keymap, core components (ErrorBoundary, PortableMarkdown, MinimalMode, FocusTrap) (wave 2)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [x] 01-05-PLAN.md — ThemeStore (chrome.storage.local, D-13), ThemePackRegistry (WSPC-04), antdConfig (wave 3)
 - [x] 01-06-PLAN.md — WorkspaceStore (D-18), WorkspaceRouter (Pitfall 1 gesture-safe), WorkspaceSync (PING/PONG handoff) (wave 3)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
 - [x] 01-07-PLAN.md — AddonRegistry/AddonSettingsStore/PageRegistry, ContentScriptHost + PageContextBridge (D-16), content bundle isolation (Pitfall 4) (wave 4)
 - [x] 01-08-PLAN.md — SidePanel/Standalone shells + routers, Onboarding (Flow 9/D-06), CmdKPicker (Flow 10), page skeletons (wave 5)
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
 - [x] 01-09-PLAN.md — entrypoint mounts (Appendix F one provider per surface), mount smoke tests, full verify:phase-1 + DONE-when hygiene gates (wave 5)
-- [ ] 01-10-PLAN.md — gap closure: workspace sync + onboarding hydration mount wiring (WR-02/WR-03; closes the 2 failed verification truths) (wave 1)
-- [ ] 01-11-PLAN.md — gap closure: messaging/sync hardening — real debugLog rewiring + inbound adoption + shape guards (WR-01/WR-04/WR-08/WR-09) (wave 2)
 
 **UI hint**: yes
 
