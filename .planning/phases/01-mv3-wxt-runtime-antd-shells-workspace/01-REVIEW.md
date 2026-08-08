@@ -21,6 +21,8 @@ findings:
   warning: 7
   info: 8
   total: 15
+resolved: [WR-10, WR-11, WR-12, WR-13]
+deferred: [WR-05, WR-06, WR-07]
 status: issues_found
 ---
 
@@ -43,6 +45,8 @@ This is an updated review of the 01-10 (mount wiring) and 01-11 (messaging/works
 Also verified: the 01-10 wiring does activate the previously-dead lifecycle (WR-02/WR-03 closures) — both entrypoints fire addon-settings hydration and the `init().then(start; sync.start())` chain, with behavioral tests that genuinely exercise the fresh-module path. **No CRITICAL (security/data-loss) defects found** in the new code: no new packages, no content-script imports in entrypoints, AI/IndexedDB stay out of the background SW, and the message-inbound guards are consistent with `MessageBus.dispatchInbound`.
 
 However, four new WARNING-level issues surfaced from the gap-closure changes themselves (WR-10…WR-13): the M.3 workspace scope gate is missing from the store's own `onChanged` adoption path (the primary cross-surface channel), the mount's fire-and-forget init chain has no rejection handling, the module-scope `WorkspaceSync` ref is held but `stop()` is unreachable (HMR leak), and the LWW-rejection test branch became vacuous after the scope gate was added.
+
+**All four (WR-10…WR-13) were resolved in the follow-up fix pass (2026-08-08)** — see the per-finding `Status: RESOLVED` blocks below. Remaining open items are the deferred WR-05/WR-06/WR-07 and the carried Info findings.
 
 ## Verified Fixes (prior findings closed by 01-10/01-11)
 
@@ -78,7 +82,7 @@ Verified: both mounts now hydrate `np_addon_settings` (`void useAddonSettingsSto
 
 ## Warnings
 
-### WR-10: M.3 workspaceId scope gate missing from the store's onChanged adoption path — cross-window contamination remains reachable via the primary channel
+### WR-10: M.3 workspaceId scope gate missing from the store's onChanged adoption path — cross-window contamination remains reachable via the primary channel — RESOLVED
 
 **File:** `src/core/workspace/WorkspaceStore.ts:150-175`
 
@@ -109,7 +113,9 @@ if (incoming.version !== undefined && incoming.version > local.version) {
 
 Note the plan's T-1-11-05 explicitly accepts first-boot id divergence as an edge; the gate above would *prevent* the current storage-path convergence in that edge, so the correct resolution is to make the two paths consistent and re-validate the first-boot edge (either both gate, or the broadcast gate is documented as intentionally stricter).
 
-### WR-11: Mount wiring chain has no `.catch()` and drops the `start()` promise — silent failure with no debugLog on any rejection
+**Status: RESOLVED** (2026-08-08, fix commit `84509ba`). `handleChanged` now runs the identical inbound ordering as `WorkspaceSync.handleRemoteUpdate` — shape-check → shared `sanitizeStored` → workspaceId gate (foreign snapshot ignored with a `STORE_SYNC` log) → version-LWW adoption. The two inbound paths agree: a different window's workspaceId is rejected by both, and same-workspace cross-surface LWW propagation still works. Test updates in `tests/core/workspace/WorkspaceStore.test.ts` (same commit): the adoption test now writes the local workspaceId (proving same-workspace foreign-surface adoption), a new negative test asserts a foreign workspaceId with a higher version is rejected BEFORE the LWW check, and the equal-version LWW test uses the local workspaceId so that branch is actually exercised. `verify:phase-1` and `tests/core/workspace` + `tests/entrypoints` all green.
+
+### WR-11: Mount wiring chain has no `.catch()` and drops the `start()` promise — silent failure with no debugLog on any rejection — RESOLVED
 
 **File:** `src/entrypoints/sidepanel/main.tsx:102-106` · `src/entrypoints/standalone/main.tsx:97-101`
 
@@ -146,7 +152,9 @@ void workspaceInit
   });
 ```
 
-### WR-12: Module-scope `workspaceSync` ref is never stopped — `stop()` unreachable; HMR re-evaluation double-instantiates and leaks subscriptions
+**Status: RESOLVED** (2026-08-08, fix commit `fa9c781`). Both entrypoints now wrap the mount chain exactly as above: the inner `start()` promise is `void`-ed with its own `.catch` (canonical `WORKSPACE_START`, `error: err instanceof Error ? err : undefined`, `module: 'WorkspaceStore'`) and the outer chain has a `.catch` for init rejection (canonical `WORKSPACE_INIT`, same extra shape) — Golden Rule 9 restored on the path that makes the workspace feature live. `debugLog`/`ERROR_CODES` imported in both entrypoints. `tsc --noEmit` clean; `tests/entrypoints` 11/11 green.
+
+### WR-12: Module-scope `workspaceSync` ref is never stopped — `stop()` unreachable; HMR re-evaluation double-instantiates and leaks subscriptions — RESOLVED
 
 **File:** `src/entrypoints/sidepanel/main.tsx:99` · `src/entrypoints/standalone/main.tsx:94`
 
@@ -168,7 +176,9 @@ window.addEventListener('pagehide', () => {
 });
 ```
 
-### WR-13: LWW lower/equal rejection branch is now untested — stale fixture is rejected by the scope gate first
+**Status: RESOLVED** (2026-08-08, fix commit `ff952b7`). Both entrypoints hoist the ref to true module scope (`let workspaceSync: WorkspaceSync | null = null` outside the `typeof document !== 'undefined'` guard), assign it inside the guard, start via `workspaceSync?.start()`, and register a `pagehide` listener that calls `workspaceSync.stop()` (which itself stops the heartbeat via `broadcastBus.stopHeartbeat()` and unsubscribes bus/store/bridge), nulls the ref, and calls `useWorkspaceStore.getState().stop()` to detach the store's onChanged listener — no second instance survives an HMR re-evaluation. The "held for stop()" claim in the source is now true. `tsc --noEmit` clean; `tests/entrypoints` 11/11 green.
+
+### WR-13: LWW lower/equal rejection branch is now untested — stale fixture is rejected by the scope gate first — RESOLVED
 
 **File:** `tests/core/workspace/WorkspaceSync.test.ts:146-161`
 
@@ -181,6 +191,8 @@ const stale = freshWorkspace({ workspaceId: 'ws-local', version: 0, updatedAt: 1
 ```
 
 (Assertions unchanged — the point is the fixture must pass the scope gate to test what the test name claims.)
+
+**Status: RESOLVED** (2026-08-08, fix commit `5881dce`). The fixture now uses the local `workspaceId: 'ws-local'` (matching the store set in `beforeEach`), so the payload passes the M.3 scope gate and the `version <= local.version` LWW branch is what rejects it — a regression that made equal-or-lower same-workspace versions adopt would now be caught. `tests/core/workspace/WorkspaceSync.test.ts` 9/9 green.
 
 ### WR-05: Deep-link to Standalone Options lands on Chat — STILL OPEN (deferred)
 
@@ -259,4 +271,4 @@ The 01-11 plan's stated goal was "single shared guard predicate … never duplic
 _Reviewed: 2026-08-08T22:45:00Z_
 _Reviewer: the agent (gsd-code-reviewer)_
 _Depth: standard_
-_Notes: 01-10/01-11 gap-closure review; prior baseline review superseded. WR-01/WR-02/WR-03/WR-04/WR-08/WR-09 verified fixed in source; new findings WR-10…WR-13 and IN-06…IN-08 added; WR-05/WR-06/WR-07 and IN-01…IN-05 carried._
+_Notes: 01-10/01-11 gap-closure review; prior baseline review superseded. WR-01/WR-02/WR-03/WR-04/WR-08/WR-09 verified fixed in source; new findings WR-10…WR-13 and IN-06…IN-08 added; WR-05/WR-06/WR-07 and IN-01…IN-05 carried. Follow-up fix pass (2026-08-08, commits `84509ba`, `fa9c781`, `ff952b7`, `5881dce`) resolved WR-10…WR-13 — see per-finding status blocks; WR-05/WR-06/WR-07 remain deferred and IN-01…IN-08 remain as carried._
