@@ -24,6 +24,7 @@
     "@ant-design/x": "^2.9.0",
     "@ant-design/x-markdown": "^2.9.0",
     "antd": "^6.5.3",
+    "dompurify": "^3.4.13",
     "immer": "^10.2.0",
     "motion": "^12.43.0",
     "react": "^19.2.8",

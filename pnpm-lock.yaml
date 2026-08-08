@@ -20,6 +20,9 @@ importers:
       antd:
         specifier: ^6.5.3
         version: 6.5.3(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      dompurify:
+        specifier: ^3.4.13
+        version: 3.4.13
       immer:
         specifier: ^10.2.0
         version: 10.2.0

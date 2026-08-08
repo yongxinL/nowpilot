@@ -1,9 +1,20 @@
 // tests/setup.ts — Source: RESEARCH A5 + Pattern 4 (lines 342-343)
-// Two responsibilities:
+// Responsibilities:
 // (a) polyfill window.matchMedia (jsdom lacks it — Pitfall 6/A5) with a mock
 //     implementing matches/onchange and a stable query result
 // (b) reset fakeBrowser per test so chrome.* mocks are clean
-import { beforeEach } from 'vitest';
+// (c) RTL DOM cleanup per test — vitest runs WITHOUT globals (globals: false),
+//     so @testing-library/react cannot auto-register its afterEach(cleanup);
+//     without this, component-test DOM leaks across tests (01-04 Rule 3)
+// (d) re-align the TextEncoder realm (01-04 Rule 3): vitest's jsdom setup
+//     overrides globalThis.Uint8Array with the jsdom-window realm but leaves
+//     globalThis.TextEncoder in Node's realm, so esbuild 0.25's load-time
+//     invariant `TextEncoder.encode("") instanceof Uint8Array` fails whenever
+//     esbuild loads after the environment is set up. Probing the encoder's
+//     actual output constructor and pinning the global Uint8Array to it makes
+//     the invariant hold for every later esbuild load in the worker.
+import { afterEach, beforeEach } from 'vitest';
+import { cleanup } from '@testing-library/react';
 import { fakeBrowser } from 'wxt/testing';
 
 // --- (a) window.matchMedia polyfill (jsdom lacks it) ---
@@ -61,3 +72,15 @@ if (typeof window !== 'undefined' && typeof window.matchMedia !== 'function') {
 beforeEach(() => {
   fakeBrowser.reset();
 });
+// --- (c) RTL cleanup per test (vitest runs with globals disabled, so RTL's
+// auto-registered afterEach(cleanup) never fires — without this, component-test
+// DOM leaks across tests and getByText finds stale matches) ---
+afterEach(() => {
+  cleanup();
+});
+// --- (d) TextEncoder realm alignment (see header) ---
+if (typeof globalThis.TextEncoder === 'function') {
+  const probe = new globalThis.TextEncoder().encode('');
+  const probeCtor = probe.constructor as typeof Uint8Array;
+  if (typeof probeCtor === 'function') globalThis.Uint8Array = probeCtor;
+}
