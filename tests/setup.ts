@@ -16,6 +16,11 @@
 import { afterEach, beforeEach } from 'vitest';
 import { cleanup } from '@testing-library/react';
 import { fakeBrowser } from 'wxt/testing';
+// (e) register @testing-library/jest-dom matchers (toBeDisabled, toBeInTheDocument,
+//     ...) — vitest runs WITHOUT globals, so jest-dom's auto-registration never
+//     fires; the explicit vitest entry augments vitest's expect (01-08 Rule 3:
+//     first component tests to use matcher-style assertions).
+import '@testing-library/jest-dom/vitest';
 
 // --- (a) window.matchMedia polyfill (jsdom lacks it) ---
 type MatchMediaListener = (event: MediaQueryListEvent) => void;

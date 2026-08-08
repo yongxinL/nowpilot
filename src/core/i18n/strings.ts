@@ -15,6 +15,8 @@ export const STR = {
     cannotPin: 'Cannot pin this page. Try a regular web page.',
     // Phase-1 canonical addition (UI-SPEC Copywriting Contract: Chat history empty state)
     historyEmpty: 'No conversations yet — say hello below.',
+    // Phase-1 canonical addition (UI-SPEC §17.1 composer input placeholder, verbatim)
+    askPlaceholder: 'Ask anything, @ models, / prompts',
   },
   diagnostics: {
     title: 'Diagnostics',
