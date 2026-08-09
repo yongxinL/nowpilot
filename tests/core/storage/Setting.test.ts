@@ -113,6 +113,36 @@ describe('Setting — encrypted-only contract (A-11)', () => {
     await settingWrite('np_providers', envelope);
     expect(localSet).toHaveBeenCalledWith({ np_providers: envelope });
   });
+
+  it('np_providers.<providerId> per-provider keys resolve to the SAME { local, encrypted: true } policy (WR-10)', async () => {
+    const localSet = vi.spyOn(fakeBrowser.storage.local, 'set');
+
+    // A ProviderConfig[] array under a per-provider key is refused (not an
+    // envelope) — the tri-state mismatch (array vs envelope vs per-key) is
+    // resolved to ONE model: per-provider envelope keys.
+    await settingWrite('np_providers.provider-anthropic', {
+      id: 'provider-anthropic',
+      apiKey: 'sk-plaintext',
+    });
+    expect(localSet).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        'np_providers.provider-anthropic': expect.anything(),
+      }) as Record<string, unknown>,
+    );
+
+    // An envelope (the KeyVault wire form — CR-02 base64 strings or raw bytes)
+    // passes the gate and lands in chrome.storage.local.
+    const envelope = {
+      salt: new Uint8Array(16).fill(0x11),
+      iv: new Uint8Array(12).fill(0x22),
+      ciphertext: new Uint8Array(48).fill(0x33),
+    };
+    await settingWrite('np_providers.provider-anthropic', envelope);
+    expect(localSet).toHaveBeenCalledWith({ 'np_providers.provider-anthropic': envelope });
+    expect((await fakeBrowser.storage.local.get('np_providers.provider-anthropic'))[
+      'np_providers.provider-anthropic'
+    ]).toBeDefined();
+  });
 });
 
 describe('Setting — migrate-on-read (np_schema_version, D-10)', () => {

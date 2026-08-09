@@ -1921,7 +1921,7 @@ export function decideApproval(
 
 ```
 chrome.storage.local  (10 MB limit)
-  np_providers          ProviderConfig[]                     (encrypted apiKey fields)
+  np_providers.<providerId>  VaultEnvelope             (per-provider AES-GCM envelope, §15.2 — one key per provider; Phase-2 review WR-10 aligns the data model with the Setting registry { encrypted: true } gate and the KeyVault per-provider key usage)
   np_flags              FeatureFlags
   np_mcp_servers        MCPServerConfig[]
   np_mcp_permissions    Record<toolName,{allow,grantedAt}>

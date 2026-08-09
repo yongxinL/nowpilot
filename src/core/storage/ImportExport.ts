@@ -67,7 +67,11 @@ import {
   type MemoryMessage,
 } from '@/core/storage/MemoryDB';
 import { persistJournalEntry, runJournaled, type JournalStep } from '@/core/storage/WriteJournal';
-import { CURRENT_SCHEMA_VERSION, STORAGE_KEY_REGISTRY } from '@/core/storage/Setting';
+import {
+  CURRENT_SCHEMA_VERSION,
+  resolveKeyPermission,
+  STORAGE_KEY_REGISTRY,
+} from '@/core/storage/Setting';
 import { NP_WORKSPACE_KEY } from '@/core/workspace/WorkspaceStore';
 
 // ---------------------------------------------------------------------------
@@ -695,7 +699,7 @@ async function mergeSettings(
       kept++;
       continue;
     }
-    const permission = STORAGE_KEY_REGISTRY[key];
+    const permission = resolveKeyPermission(key); // WR-10: np_providers.<id> resolved too
     if (
       permission === undefined ||
       permission.writeAllowed === false ||

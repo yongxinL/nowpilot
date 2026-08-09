@@ -96,6 +96,24 @@ function isVaultEnvelopeShape(value: unknown): boolean {
   return 'salt' in v && 'iv' in v && 'ciphertext' in v;
 }
 
+/**
+ * Resolve a key's permission, honoring the np_providers PER-PROVIDER key model
+ * (WR-10): every `np_providers.<providerId>` key — the per-provider vault
+ * ciphertext home the KeyVault/tests already use — carries the SAME
+ * { local, encrypted: true } policy as the base `np_providers` registry entry.
+ * The base key stays registered (encrypted-only gate, A-11) for backward
+ * compat; a ProviderConfig[] array (spec §15.1's stale wording) is refused by
+ * the envelope gate, so the tri-state mismatch (array vs single envelope vs
+ * per-provider keys) is resolved to ONE model: per-provider envelopes.
+ * Exported so ImportExport's merge gate applies the same resolution.
+ */
+export function resolveKeyPermission(key: string): KeyPermission | undefined {
+  if (key === 'np_providers' || key.startsWith('np_providers.')) {
+    return { area: 'local', encrypted: true };
+  }
+  return STORAGE_KEY_REGISTRY[key];
+}
+
 function areaApi(area: StorageArea): chrome.storage.StorageArea {
   switch (area) {
     case 'sync':
@@ -119,7 +137,7 @@ let writeChain: Promise<void> = Promise.resolve();
  */
 export function settingWrite<T>(key: string, value: T): Promise<void> {
   const run = writeChain.then(async () => {
-    const permission = STORAGE_KEY_REGISTRY[key];
+    const permission = resolveKeyPermission(key);
     if (permission === undefined || permission.writeAllowed === false) {
       debugLog(ERROR_CODES.STORE_WRITE, 'refused write to disallowed key', {
         module: 'Setting',
@@ -161,7 +179,7 @@ export async function settingRead<T>(
   sanitize: (v: unknown) => T | null,
   fallback: T,
 ): Promise<T> {
-  const permission = STORAGE_KEY_REGISTRY[key];
+  const permission = resolveKeyPermission(key);
   if (permission === undefined || permission.writeAllowed === false) {
     debugLog(ERROR_CODES.STORE_READ, 'refused read of disallowed key', {
       module: 'Setting',
@@ -273,7 +291,7 @@ function writeSyncWithShadow<T>(key: string, value: T): Promise<void> {
  * `settingWrite` (same refusal semantics, never throws).
  */
 export function settingWriteSync<T>(key: string, value: T): Promise<void> {
-  const permission = STORAGE_KEY_REGISTRY[key];
+  const permission = resolveKeyPermission(key);
   if (
     permission === undefined ||
     permission.writeAllowed === false ||
@@ -301,7 +319,7 @@ export async function settingReadSync<T>(
   sanitize: (v: unknown) => T | null,
   fallback: T,
 ): Promise<T> {
-  const permission = STORAGE_KEY_REGISTRY[key];
+  const permission = resolveKeyPermission(key);
   if (
     permission === undefined ||
     permission.writeAllowed === false ||
