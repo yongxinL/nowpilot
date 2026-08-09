@@ -12,7 +12,6 @@ import { IDBFactory } from 'fake-indexeddb';
 import { buildJournalRecoveryFixture } from '../../fixtures/index';
 import {
   loadPendingEntries,
-  openWriteJournalDB,
   persistJournalEntry,
   recoverJournal,
   runJournaled,
@@ -181,7 +180,6 @@ describe('recoverJournal — O.11 replay', () => {
 
 describe('WriteJournalDB — entries store persist + load', () => {
   it('persistJournalEntry stores a completed update-workspace entry and loadPendingEntries returns it', async () => {
-    const db = await openWriteJournalDB();
     const entry = makeEntry({ id: 'persist-1', status: 'completed' });
     await persistJournalEntry(entry);
 
@@ -191,7 +189,6 @@ describe('WriteJournalDB — entries store persist + load', () => {
   });
 
   it('redacts step error strings through redactSensitive BEFORE put (D-16 / T-2-04-04)', async () => {
-    const db = await openWriteJournalDB();
     const entry = makeEntry({
       id: 'redact-1',
       status: 'rolled-back',
