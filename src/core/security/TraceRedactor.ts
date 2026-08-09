@@ -1,9 +1,21 @@
-// src/core/security/TraceRedactor.ts — R-10 audit point (placeholder).
-// TODO(security-phase): the real redactor scrubs secrets, tokens, and prompt/
-// tool bodies before persist/UI/export (R-10). Until the security phase lands,
-// this is a thin pass-through so debugLog's redaction contract stays stable —
-// every string debugLog logs already routes through this function, so enabling
-// real redaction later requires no caller changes.
+// src/core/security/TraceRedactor.ts — R-10 audit point (canonical body).
+// This is the canonical R-10 redaction body sourced from Appendix O.13 of the
+// product spec (lines 6686-6694, REDACTION_PATTERNS verbatim) and kept in sync
+// with the spec. Every string debugLog logs already routes through this
+// function, so the body swap is caller-invisible: the exported signature
+// `redact(s: string): string` is stable and no caller file changes.
+// §16.5: redaction MUST run before writing to AITransactionLogDB / ErrorStore /
+// debugLog / DiagnosticsPanel / export; field-level redaction for storage-bound
+// objects lives in ./redactSensitive.ts (D-16).
+const REDACTION_PATTERNS: RegExp[] = [
+  /sk-[A-Za-z0-9_-]+/g,
+  /key-[A-Za-z0-9_-]+/g,
+  /Bearer\s+[A-Za-z0-9._-]+/gi,
+  /JSESSIONID=[^;\s]+/gi,
+  /sysparm_ck[=:]\s*[^&\s]+/gi,
+  /g_ck[=:]\s*[^&\s]+/gi,
+];
+
 export function redact(s: string): string {
-  return s;
+  return REDACTION_PATTERNS.reduce((out, re) => out.replace(re, '[REDACTED]'), s);
 }
