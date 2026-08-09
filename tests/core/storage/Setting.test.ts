@@ -139,9 +139,11 @@ describe('Setting — encrypted-only contract (A-11)', () => {
     };
     await settingWrite('np_providers.provider-anthropic', envelope);
     expect(localSet).toHaveBeenCalledWith({ 'np_providers.provider-anthropic': envelope });
-    expect((await fakeBrowser.storage.local.get('np_providers.provider-anthropic'))[
-      'np_providers.provider-anthropic'
-    ]).toBeDefined();
+    expect(
+      (await fakeBrowser.storage.local.get('np_providers.provider-anthropic'))[
+        'np_providers.provider-anthropic'
+      ],
+    ).toBeDefined();
   });
 });
 

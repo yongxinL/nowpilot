@@ -166,7 +166,8 @@ export function runMigrations<T extends DBSchema = DBSchema>(
         // installs (the DB would open at version N with zero object stores).
         const chain = spec.migrations
           .filter(
-            (migration) => migration.fromVersion >= fromVersion && migration.fromVersion < toVersion,
+            (migration) =>
+              migration.fromVersion >= fromVersion && migration.fromVersion < toVersion,
           )
           .sort((a, b) => a.fromVersion - b.fromVersion);
         for (const migration of chain) {

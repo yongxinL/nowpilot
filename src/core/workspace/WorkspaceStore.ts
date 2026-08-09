@@ -349,10 +349,7 @@ export const useWorkspaceStore = create<WorkspaceStoreShape>()((set, get) => ({
         // D-07 forward-compat (T-2-04-02): an unknown operation value is
         // skipped-and-logged, never thrown — a future-version entry cannot
         // brick startup.
-        if (
-          entry.operation !== 'update-workspace' &&
-          entry.operation !== 'restore-notes-batch'
-        ) {
+        if (entry.operation !== 'update-workspace' && entry.operation !== 'restore-notes-batch') {
           debugLog(ERROR_CODES.WRITE_JOURNAL_FAILED, 'journal replay skipped (unknown operation)', {
             silent: true,
             module: 'WorkspaceStore',

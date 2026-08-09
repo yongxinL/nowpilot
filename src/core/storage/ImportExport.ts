@@ -371,10 +371,6 @@ function isFiniteNumber(v: unknown): v is number {
   return typeof v === 'number' && Number.isFinite(v);
 }
 
-function isStringArray(v: unknown): v is string[] {
-  return Array.isArray(v) && v.every((element) => typeof element === 'string');
-}
-
 function isChatSession(v: unknown): v is ChatSession {
   return (
     isRecord(v) &&

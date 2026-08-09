@@ -215,17 +215,15 @@ describe('JSON canonical round-trip (D-17)', () => {
     // read via listSessions (which swallows read failures and resolves []),
     // so a failed read would have serialized as an empty group with no error.
     const originalGetAll = IDBObjectStore.prototype.getAll;
-    const getAllSpy = vi
-      .spyOn(IDBObjectStore.prototype, 'getAll')
-      .mockImplementation(function (
-        this: IDBObjectStore,
-        ...args: Parameters<typeof originalGetAll>
-      ) {
-        if (this.name === 'sessions') {
-          return Promise.reject(new Error('sessions read broken')) as never;
-        }
-        return originalGetAll.apply(this, args) as never;
-      });
+    const getAllSpy = vi.spyOn(IDBObjectStore.prototype, 'getAll').mockImplementation(function (
+      this: IDBObjectStore,
+      ...args: Parameters<typeof originalGetAll>
+    ) {
+      if (this.name === 'sessions') {
+        return Promise.reject(new Error('sessions read broken')) as never;
+      }
+      return originalGetAll.apply(this, args) as never;
+    });
 
     await expect(exportJson(['chat-history'])).rejects.toThrow('sessions read broken');
 
@@ -351,8 +349,12 @@ describe('per-group MERGE/upsert semantics (D-18 / T-2-09-02)', () => {
     expect(await getSession(db, 's-bad')).toBeUndefined();
     expect(await db.get('messages', 'm-bad')).toBeUndefined();
     // …while the valid siblings landed.
-    expect(await getSession(db, 's-good')).toEqual(makeSession({ id: 's-good', title: 'good session' }));
-    expect(await db.get('messages', 'm-good')).toEqual(makeMessage({ id: 'm-good', sessionId: 's-good' }));
+    expect(await getSession(db, 's-good')).toEqual(
+      makeSession({ id: 's-good', title: 'good session' }),
+    );
+    expect(await db.get('messages', 'm-good')).toEqual(
+      makeMessage({ id: 'm-good', sessionId: 's-good' }),
+    );
     db.close();
     // The skip was logged, not silent.
     expect(consoleSpy).toHaveBeenCalledWith(
