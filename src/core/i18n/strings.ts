@@ -114,6 +114,13 @@ export const STR = {
     // Phase-1 canonical addition (UI-SPEC Copywriting Contract: theme persistence error)
     saveFailed: "Couldn't save your display mode. We'll retry on the next change.",
   },
+  // Phase-2 canonical additions (Appendix B + CONTEXT D-12/D-04 wording, verbatim)
+  storage: {
+    // D-12 degraded-mode persistent banner (component renders in Phase 7)
+    degradedBanner: 'Storage failed to upgrade — data is read-only. Use Import/Export to back up.',
+    // D-04 PROVIDER_KEY_UNREADABLE recovery path: provider surfaces as "Key required — re-enter"
+    providerKeyRequired: 'Key required — re-enter',
+  },
   // --- RICH (§17.7) ---
   rich: {
     personaTagline: 'NowPilot — Your ServiceNow support co-pilot',

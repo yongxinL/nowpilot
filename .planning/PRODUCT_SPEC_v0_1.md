@@ -5097,6 +5097,14 @@ COMPONENT_UNMOUNT
 PROMISE_REJECT
 SIDEPANEL_BEHAVIOR
 UNKNOWN
+# Phase 2 — storage / vault / journal (canonical additions, 02-01 reconciliation)
+# CONTEXT line 84: these six must be canonical in BOTH the spec registry and errorCodes.ts (Golden Rule 9 vocabulary for the storage layer).
+VAULT_DECRYPT_FAILED
+PROVIDER_KEY_UNREADABLE
+IDB_MIGRATION_FAILED
+SYNC_QUOTA_EXCEEDED
+WRITE_JOURNAL_FAILED
+WRITE_JOURNAL_ROLLBACK_FAILED
 ```
 
 ## Appendix D — Tier → Model Resolver Table
