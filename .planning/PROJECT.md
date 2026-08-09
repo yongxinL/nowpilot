@@ -16,12 +16,12 @@ A privacy-first, local-first AI assistant where chat, extracted page content, an
   *Validated in Phase 01: MV3/WXT Runtime + AntD Shells + Workspace (11/11 plans, 8/8 must-haves verified; RUNTIME-01…05, WSPC-01…05)*
 - **Workspace** — shared WorkspaceStore, layout, navigation, dialog framework
   *Validated in Phase 01 (foundation): WorkspaceStore init/start wired at both mounts, WorkspaceSync live via BroadcastBus, M.3 workspaceId scope gate on both inbound paths*
+- **Persistence & storage** — IndexedDB (idb) stores, AES-GCM encrypted vault, WriteJournal crash-safe writes, per-key permissioned storage layer, migrate-on-read, sync-quota shadow, import/export core
+  *Validated in Phase 02: Storage, Security, WriteJournal, Workspace Persistence (11/11 plans, 10/10 must-haves verified; STORAGE-01…05; code review clean — 2 critical + 10 warning findings resolved)*
 
 ### Active
 
 v1 scope, derived from the canonical product spec (`.planning/PRODUCT_SPEC_v0_1.md`) and detailed in `.planning/REQUIREMENTS.md`. Top-level capability areas:
-
-- [ ] **Persistence & storage** — IndexedDB (idb) encrypted vault, WriteJournal (CRDT), WriteTransaction, storage secrets, backup/restore
 - [ ] **Cost-effective AI runtime** — Vercel AI SDK, Anthropic/SDK provider integrations, Planner→Executor→Renderer orchestration, streaming (SSE + text), cost guardrails (tier caps, monthly budget)
 - [ ] **Agent reliability & evidence** — agent-level token budget, CheckpointRecorder, evidence (probe + path), commit-confirm barrier, fallback/recovery
 - [ ] **Context-adaptive execution** — context windows, ContextUpdate events, context-aware selection, phase-aware prompting
@@ -89,4 +89,4 @@ v1 scope, derived from the canonical product spec (`.planning/PRODUCT_SPEC_v0_1.
 | ServiceNow, Write, TeamGQM as first-party add-ons | P1 add-ons; architecture supports third-party add-on SDK later | ✓ Spec §25 |
 
 ---
-*Last updated: 2026-08-08 after Phase 01 completion (/gsd-plan-phase 1 --gaps → gap-closure execute)*
+*Last updated: 2026-08-09 after Phase 02 completion (/gsd-execute-phase 2 → verification passed, code review clean)*
