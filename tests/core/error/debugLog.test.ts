@@ -53,4 +53,26 @@ describe('debugLog', () => {
     expect(() => debugLog('PROMISE_REJECT', 'x', { extra: { nested: { a: 1 } } })).not.toThrow();
     consoleSpy.mockRestore();
   });
+
+  it('routes options.extra through redactSensitive — secrets in extra never reach the console verbatim (WR-05)', () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    debugLog('STORE_WRITE', 'write failed', {
+      extra: {
+        keyId: 'np_theme', // benign key stays
+        password: 'hunter2', // DROPPED by redactSensitive (A-05)
+        apiKey: 'sk-live-secret-987654321', // inline-scrubbed to [REDACTED]
+        nested: { access_token: 'at-supersecret' }, // DROPPED by suffix rule (WR-04)
+      },
+    });
+
+    const written = consoleSpy.mock.calls[0];
+    // third arg is the extra object — secret values must not survive
+    const serialized = JSON.stringify(written[2]);
+    expect(serialized).toContain('np_theme');
+    expect(serialized).not.toContain('hunter2');
+    expect(serialized).not.toContain('sk-live-secret-987654321');
+    expect(serialized).not.toContain('at-supersecret');
+    expect(serialized).toContain('[REDACTED]');
+    consoleSpy.mockRestore();
+  });
 });

@@ -5,6 +5,7 @@
 // TraceRedactor.redact before persist/UI/export (R-10). debugLog NEVER throws —
 // a logging failure must never break the caller's error path.
 import * as TraceRedactor from '@/core/security/TraceRedactor';
+import { redactSensitive } from '@/core/security/redactSensitive';
 import type { ErrorCode } from '@/core/error/errorCodes';
 
 export interface DebugLogOptions {
@@ -30,8 +31,13 @@ export function debugLog(code: ErrorCode, message: string, options: DebugLogOpti
     if (options.module) parts.push(`module=${TraceRedactor.redact(options.module)}`);
     if (options.addonId) parts.push(`addon=${TraceRedactor.redact(options.addonId)}`);
     const errorDetail = options.error ? TraceRedactor.redact(options.error.message) : undefined;
+    // WR-05: options.extra is routed through redactSensitive (values only —
+    // keys kept) before the console call. R-10/O.13 demands redaction before
+    // EVERY sink including the console; a future caller putting a secret in
+    // `extra` must not land it verbatim in devtools.
+    const safeExtra = options.extra ? redactSensitive(options.extra) : undefined;
     // This module is the ONLY permitted console.error in the codebase (plan truth).
-    console.error(parts.join(' '), errorDetail ?? '', options.extra ?? {});
+    console.error(parts.join(' '), errorDetail ?? '', safeExtra ?? {});
   } catch {
     // debugLog must never throw (Golden Rule 9): a redact/console failure is
     // dropped silently rather than escaping into the caller's error path.
