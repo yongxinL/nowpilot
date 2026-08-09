@@ -116,7 +116,8 @@ describe('NotesDB — notes + concepts stores', () => {
     expect(await getConcept(db, 'mysql')).toEqual(makeConcept('mysql', 'MySQL'));
     expect(await getConcept(db, 'absent')).toBeUndefined();
 
+    // getAll returns key (slug) order — membership is the contract, not order.
     const all = await listConcepts(db);
-    expect(all.map((c) => c.slug)).toEqual(['mysql', 'llm']);
+    expect(all.map((c) => c.slug).sort()).toEqual(['llm', 'mysql']);
   });
 });
