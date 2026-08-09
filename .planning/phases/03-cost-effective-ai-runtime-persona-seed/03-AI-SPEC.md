@@ -179,7 +179,8 @@ The ai-sdk's per-provider LanguageModel adapters give the ProviderRouter exactly
 
 ```bash
 # ai ^4 core + the three published provider packages (v1 line). zod/zod-to-json-schema already in the approved stack.
-npm install ai@^4 @ai-sdk/openai@^1 @ai-sdk/anthropic@^1 @ai-sdk/google@^1
+# Install with pnpm (D-01 — repo is pnpm-standardized, pnpm-lock.yaml is the only lockfile):
+pnpm add ai@^4 @ai-sdk/openai@^1 @ai-sdk/anthropic@^1 @ai-sdk/google@^1
 
 # ⚠️ Do NOT install @ai-sdk/ollama — it is NOT published on npm (registry 404, zero
 # versions — verified). The Ollama adapter uses @ai-sdk/openai's createOpenAI with
@@ -608,7 +609,7 @@ This is a **Hybrid** system (conversational surface + bounded autonomous loop); 
 ```bash
 # No new dependencies — vitest ^4 + msw ^2 already in devDependencies (package.json).
 # Add a focused eval script so CI can run the AI eval suite alone:
-npm pkg set scripts.test:ai="vitest run tests/core/ai"
+pnpm pkg set scripts.test:ai="vitest run tests/core/ai"
 # The eval suite (8 files): tests/core/ai/{PlannerService,ExecutorService,RendererService,
 #   AgentOrchestrator,ProviderRouter,StructuredOutput}.test.ts
 #   + tests/core/ai/persona/{PersonaProfile,PersonaInjector}.test.ts

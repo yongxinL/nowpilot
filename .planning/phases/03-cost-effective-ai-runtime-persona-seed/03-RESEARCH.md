@@ -122,9 +122,9 @@ The critical findings the planner must encode: **(1) `maxRetries` silently defau
 | SDK `tool()`/`tools`/`maxSteps` for the tool loop | ExecutorService (deterministic) | R-4: Planner requests, Executor validates+runs; ai@4 `generateObject` has no `tools` param anyway; SDK tool-calling would re-introduce LLM-controlled execution (Pitfall 6) |
 | `experimental_repairText`/`experimental_repairToolCall` | Appendix L one-repair `requestJson` | SDK-internal repair would nest a second repair mechanism inside the app's single repair (Pitfall 7, R-2) |
 
-**Installation (plan must include):**
+**Installation (plan must include — via pnpm per D-01; the repo is pnpm-standardized with `pnpm-lock.yaml` as the only lockfile, package-lock.json removed in Phase 1 — never `npm install`):**
 ```bash
-npm install ai@4.3.19 @ai-sdk/openai@1.3.24 @ai-sdk/anthropic@1.2.12 @ai-sdk/google@1.2.22 zod-to-json-schema@^3
+pnpm add ai@4.3.19 @ai-sdk/openai@1.3.24 @ai-sdk/anthropic@1.2.12 @ai-sdk/google@1.2.22 zod-to-json-schema@^3
 # DO NOT install @ai-sdk/ollama (npm 404 — verified). Ollama = createOpenAI + localhost baseURL (§10.2).
 # Planner task: amend AGENTS.md §7 stack line (remove stale '@ai-sdk/ollama ^1', add zod-to-json-schema ^3).
 ```
@@ -569,11 +569,11 @@ All five questions are resolved by the phase plans; each item carries its carryi
 | Dependency | Required By | Available | Version | Fallback |
 |------------|------------|-----------|---------|----------|
 | Node.js | vitest, wxt build, tsc | ✓ | v24.18.1 | — |
-| npm | install ai-sdk deps | ✓ | 12.0.2 | — |
+| pnpm | install ai-sdk deps (D-01) | ✓ | 11.18.0 | — |
 | vitest | 8 required test files + eval suite | ✓ | ^4.1.10 (installed) | — |
 | msw | HTTP-level provider test fallback | ✓ | ^2.15.0 (devDependency) | injected `fetch` (primary) |
 | @ant-design/x | Bubble/Sender chat surface | ✓ | ^2.9.0 (installed) | — |
-| ai + @ai-sdk/* + zod-to-json-schema | THE Phase-3 runtime | ✗ | — | **Blocking: not installed — plan task `npm install` with the exact locked versions** |
+| ai + @ai-sdk/* + zod-to-json-schema | THE Phase-3 runtime | ✗ | — | **Blocking: not installed — plan task `pnpm add` with the exact locked versions (D-01)** |
 | ollama (local binary) | Manual UAT of the ollama provider (not unit tests) | ✗ | — | Mock-fetch tests cover the adapter; real local-provider UAT needs `ollama pull llama3.2:3b` + `qwen2.5:7b` — flag as a human-verify item; the OpenAI-compatible path is covered by tests + a configured remote OpenAI-compatible endpoint |
 | Chrome (extension runtime) | Manual streaming UAT | ✗ (not probed) | — | `wxt build` + load-extension; e2e smoke script exists (`verify:e2e-phase-1`) |
 
@@ -618,11 +618,11 @@ All five questions are resolved by the phase plans; each item carries its carryi
 - **Phase gate:** `pnpm run verify:phase-3` green — includes eslint/prettier/tsc/wxt-build/vitest/isolation
 
 ### Wave 0 Gaps
-- [ ] `npm install ai@4.3.19 @ai-sdk/openai@1.3.24 @ai-sdk/anthropic@1.2.12 @ai-sdk/google@1.2.22 zod-to-json-schema@^3` — the SDK is not installed
+- [ ] `pnpm add ai@4.3.19 @ai-sdk/openai@1.3.24 @ai-sdk/anthropic@1.2.12 @ai-sdk/google@1.2.22 zod-to-json-schema@^3` — the SDK is not installed (D-01: pnpm only — no npm install, no package-lock.json)
 - [ ] `tests/core/ai/` directory + the 8 §18 test files (all ❌ above)
 - [ ] `tests/fixtures/optimizedContext.ts` — D-08 deterministic builder (Phase-3 create-list item)
 - [ ] `src/core/ai/types.ts` seed (ProviderId canonical, OptimizedContext, PromptSection, UserPreferences seed) — every other file's compile dependency
-- [ ] `scripts.test:ai` — `npm pkg set scripts.test:ai="vitest run tests/core/ai"` (AI-SPEC §5)
+- [ ] `scripts.test:ai` — `pnpm pkg set scripts.test:ai="vitest run tests/core/ai"` (AI-SPEC §5)
 - [ ] Error-code additions to `src/core/error/errorCodes.ts` (Phase-3 block: TOOL_REJECTED, PERSONA_LOAD_FAILED, STRUCTURED_OUTPUT_FAILED, PLANNER_FAILED, STREAM_FAILED, NETWORK, TIMEOUT, RATE_LIMITED, PROVIDER_5XX, PROVIDER_AUTH, PROVIDER_MODEL_UNKNOWN, SCHEMA_INVALID, HOST_NOT_PERMITTED) + mirror into spec Appendix C.2 (Golden Rule 9; Phase-1/2 precedent)
 - [ ] AGENTS.md §7 stack amendment (remove `@ai-sdk/ollama ^1`; add zod-to-json-schema ^3)
 
