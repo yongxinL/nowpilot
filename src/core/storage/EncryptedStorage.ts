@@ -46,7 +46,12 @@ export function isVaultDecryptFailed(err: unknown): err is VaultDecryptFailedErr
   );
 }
 
-function vaultDecryptFailed(): VaultDecryptFailedError {
+/**
+ * Factory for the D-03 typed decrypt-failure error — used by KeyVault when a
+ * decrypt cannot even be attempted (e.g. installSecret missing with ciphertext
+ * present, road (b) of D-04) so callers still see the single typed code.
+ */
+export function createVaultDecryptFailedError(): VaultDecryptFailedError {
   const err = new Error(
     'AES-GCM decryption failed — auth-tag mismatch or malformed envelope',
   ) as VaultDecryptFailedError;
@@ -120,6 +125,6 @@ export async function decrypt(derivedKey: CryptoKey, envelope: VaultEnvelope): P
     );
     return new TextDecoder().decode(plaintext);
   } catch {
-    throw vaultDecryptFailed();
+    throw createVaultDecryptFailedError();
   }
 }
