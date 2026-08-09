@@ -191,7 +191,6 @@ export function runMigrations<T extends DBSchema = DBSchema>(
       } catch (err) {
         // Pitfall 3: capture the ORIGINAL error BEFORE the abort swallows it.
         if (capturedError === null) capturedError = err;
-        // TEMP DEBUG
         throw err; // sync throw → upgrade aborts atomically → onerror(AbortError)
       }
     };
@@ -213,7 +212,6 @@ export function runMigrations<T extends DBSchema = DBSchema>(
     };
 
     request.onerror = () => {
-      // TEMP DEBUG
       const requestError = request.error ?? new Error(`indexedDB.open failed for ${spec.dbName}`);
       if (capturedError !== null || requestError.name === 'AbortError') {
         // A migration failure (sync throw, async rejection, or upgrade abort) →
