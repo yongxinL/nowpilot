@@ -7,7 +7,7 @@ NowPilot v0.1 is a privacy-first, local-first AI assistant and personal knowledg
 ## Phases
 
 - [x] **Phase 1: MV3/WXT Runtime + AntD Shells + Workspace** - Installable extension with side panel + standalone surfaces, onboarding, theme, Cmd+K, and shared workspace state (completed 2026-08-08)
-- [ ] **Phase 2: Storage, Security, WriteJournal, Workspace Persistence** - Encrypted vault, crash-safe write journal, IndexedDB stores, and durable workspace state
+- [x] **Phase 2: Storage, Security, WriteJournal, Workspace Persistence** - Encrypted vault, crash-safe write journal, IndexedDB stores, and durable workspace state (completed 2026-08-09)
 - [ ] **Phase 3: Cost-Effective AI Runtime (+ Persona seed)** - Four-provider AI runtime with Planner→Executor→Renderer, streaming, cost guardrails, persona from day one
 - [ ] **Phase 3a: Agent Reliability and Evidence** - Token-budgeted agent runs, checkpoint rollback, CompletionEvidence, bounded replan, commit-confirm barrier
 - [ ] **Phase 4: Context-Adaptive Execution** - Tiered context windows, budget enforcement, graceful degradation, provenance manifests
@@ -381,7 +381,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. MV3/WXT Runtime + AntD Shells + Workspace | 11/11 | Complete    | 2026-08-08 |
-| 2. Storage, Security, WriteJournal, Workspace Persistence | 11/11 | In Progress|  |
+| 2. Storage, Security, WriteJournal, Workspace Persistence | 11/11 | Complete    | 2026-08-09 |
 | 3. Cost-Effective AI Runtime (+ Persona seed) | TBD | Not started | - |
 | 3a. Agent Reliability and Evidence | TBD | Not started | - |
 | 4. Context-Adaptive Execution | TBD | Not started | - |

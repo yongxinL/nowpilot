@@ -25,11 +25,11 @@
 
 ### Persistence & Storage (Phase 2)
 
-- [ ] **STORAGE-01**: IndexedDB stores (ChatHistoryDB, NotesDB, MemoryDB, ErrorStore) work via idb with strict typing
-- [ ] **STORAGE-02**: StorageLayer, StorageSession, and per-key permissions implemented
-- [ ] **STORAGE-03**: Encrypted vault (AES-GCM crypto.subtle) protects secrets/sensitive values
-- [ ] **STORAGE-04**: WriteJournal + WriteTransaction enable crash-safe, conflict-safe writes
-- [ ] **STORAGE-05**: Import/export (sanitized JSON/ZIP) and backup/restore function
+- [x] **STORAGE-01**: IndexedDB stores (ChatHistoryDB, NotesDB, MemoryDB, ErrorStore) work via idb with strict typing
+- [x] **STORAGE-02**: StorageLayer, StorageSession, and per-key permissions implemented
+- [x] **STORAGE-03**: Encrypted vault (AES-GCM crypto.subtle) protects secrets/sensitive values
+- [x] **STORAGE-04**: WriteJournal + WriteTransaction enable crash-safe, conflict-safe writes
+- [x] **STORAGE-05**: Import/export (sanitized JSON/ZIP) and backup/restore function
 
 ### AI Runtime & Cost (Phase 3)
 
