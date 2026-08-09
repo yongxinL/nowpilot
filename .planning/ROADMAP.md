@@ -99,11 +99,11 @@ Plans:
 
 - [ ] 02-02-PLAN.md — real redaction: TraceRedactor body (O.13) + redactSensitive (DROP passwords) (wave 2)
 - [ ] 02-03-PLAN.md — vault: EncryptedStorage (AES-GCM-256) + KeyVault (installSecret + PROVIDER_KEY_UNREADABLE) (wave 2)
-- [ ] 02-04-PLAN.md — WriteJournal framework + WorkspaceStore journal rewire + recovery tests (wave 2)
 - [ ] 02-05-PLAN.md — Setting.ts: per-key permissioned KV + serialized writes + migrate-on-read (np_schema_version) (wave 2)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
+- [ ] 02-04-PLAN.md — WriteJournal framework + WorkspaceStore journal rewire + recovery tests (wave 3)
 - [ ] 02-06-PLAN.md — IndexedDBMigrator (raw-open + wrap, v1→v2 fixture, degraded mode) + ErrorStore (FIFO 100, redacted) (wave 3)
 - [ ] 02-07-PLAN.md — ChatHistoryDB + NotesDB + MemoryDB (idb typed CRUD) (wave 3)
 
