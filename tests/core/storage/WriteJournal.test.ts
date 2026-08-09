@@ -114,6 +114,45 @@ describe('runJournaled — O.11 happy path and rollback', () => {
       expect.anything(),
     );
   });
+
+  it('aborts (rejects) when the journal itself cannot be persisted — no step ever runs (WR-03)', async () => {
+    const entry = makeEntry();
+    const persist = vi.fn(async () => {
+      throw new Error('idb unavailable');
+    });
+    const step = makeStep('write-np-workspace');
+
+    await expect(runJournaled(entry, [step], persist)).rejects.toThrow('idb unavailable');
+
+    // The journal never became durable → the write must NOT proceed. (The
+    // 'applying' boundary persist sits OUTSIDE the try per Appendix O.11
+    // verbatim, so the rejection propagates directly — nothing was logged.)
+    expect(step.apply).not.toHaveBeenCalled();
+    expect(step.rollback).not.toHaveBeenCalled();
+    expect(entry.status).toBe('applying');
+  });
+
+  it('a failure to persist the rolled-back marker is logged but never masks the original error (WR-03)', async () => {
+    const entry = makeEntry();
+    let persistCalls = 0;
+    const persist = vi.fn(async () => {
+      persistCalls++;
+      if (persistCalls >= 2) throw new Error('persist broken'); // the rolled-back persist
+    });
+    const step = makeStep('write-np-workspace');
+    (step.apply as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('boom'));
+
+    await expect(runJournaled(entry, [step], persist)).rejects.toThrow('boom');
+
+    // The ORIGINAL error surfaces — not the persist failure — and the failed
+    // rolled-back persist was logged (message in the first arg, cause in the
+    // second), never swallowed silently.
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining('failed to persist rolled-back entry'),
+      expect.stringContaining('persist broken'),
+      expect.anything(),
+    );
+  });
 });
 
 describe('recoverJournal — O.11 replay', () => {

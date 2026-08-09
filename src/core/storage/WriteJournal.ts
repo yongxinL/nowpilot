@@ -77,7 +77,18 @@ export async function runJournaled(
       }
     }
     entry.status = 'rolled-back';
-    await persist(entry);
+    try {
+      await persist(entry);
+    } catch (p) {
+      // WR-03: a failure to persist the 'rolled-back' marker is logged and
+      // swallowed — the original error already propagated; masking it with a
+      // persist failure would lose the real cause. The entry stays 'applying'
+      // on disk, so recovery re-attempts the replay (idempotent).
+      debugLog(ERROR_CODES.WRITE_JOURNAL_FAILED, 'failed to persist rolled-back entry', {
+        error: p instanceof Error ? p : undefined,
+        module: 'WriteJournal',
+      });
+    }
     throw e;
   }
 }
@@ -117,7 +128,11 @@ export async function openWriteJournalDB(): Promise<IDBPDatabase<WriteJournalDBS
 /**
  * Persist a journal entry — the D-16 write-boundary hook: the entry's step
  * error / message strings run through redactSensitive BEFORE put (R-10,
- * T-2-04-04). Never throws (Golden Rule 9).
+ * T-2-04-04). WR-03: unlike the old swallow-and-resolve, a persist failure is
+ * RETHROWN after logging so runJournaled ABORTS (and rolls back) when the
+ * journal itself cannot be written — journal atomicity must not silently void
+ * (O.11 depends on durable persist). Golden Rule 9 still holds: debugLog
+ * runs before the throw.
  */
 export async function persistJournalEntry(e: WriteJournalEntry): Promise<void> {
   try {
@@ -129,6 +144,7 @@ export async function persistJournalEntry(e: WriteJournalEntry): Promise<void> {
       error: err instanceof Error ? err : undefined,
       module: 'WriteJournal',
     });
+    throw err;
   }
 }
 
