@@ -34,7 +34,10 @@ export class RateLimiter {
    */
   constructor(
     private readonly addonId: string,
-    config: RateLimiterConfig = { capacity: DEFAULT_CAPACITY, refillPerSecond: DEFAULT_REFILL_PER_SECOND },
+    config: RateLimiterConfig = {
+      capacity: DEFAULT_CAPACITY,
+      refillPerSecond: DEFAULT_REFILL_PER_SECOND,
+    },
   ) {
     this.capacity = config.capacity;
     this.refillPerSecond = config.refillPerSecond;

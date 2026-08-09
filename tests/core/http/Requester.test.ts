@@ -33,7 +33,11 @@ describe('Requester — PROXY_FETCH wrapper', () => {
   it('passes a successful ProxyFetchResponse through unchanged', async () => {
     const sendSpy = vi
       .spyOn(fakeBrowser.runtime, 'sendMessage')
-      .mockResolvedValue({ ok: true, status: 200, body: '{"result":"ok"}' } satisfies ProxyFetchResponse);
+      .mockResolvedValue({
+        ok: true,
+        status: 200,
+        body: '{"result":"ok"}',
+      } satisfies ProxyFetchResponse);
 
     const response = await request(makePayload());
 
@@ -53,7 +57,12 @@ describe('Requester — PROXY_FETCH wrapper', () => {
     const promise = request(makePayload(), { timeoutMs: 50 });
     vi.advanceTimersByTime(100);
 
-    await expect(promise).resolves.toEqual({ ok: false, status: 0, body: '', error: 'PROXY_FETCH_TIMEOUT' });
+    await expect(promise).resolves.toEqual({
+      ok: false,
+      status: 0,
+      body: '',
+      error: 'PROXY_FETCH_TIMEOUT',
+    });
     expect(consoleSpy).toHaveBeenCalled(); // debugLog routed (Golden Rule 9)
   });
 
@@ -74,9 +83,7 @@ describe('Requester — PROXY_FETCH wrapper', () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const sendSpy = vi.spyOn(fakeBrowser.runtime, 'sendMessage');
 
-    const response = await request(
-      makePayload({ method: 'TRACE' as ProxyFetchRequest['method'] }),
-    );
+    const response = await request(makePayload({ method: 'TRACE' as ProxyFetchRequest['method'] }));
 
     expect(response.ok).toBe(false);
     expect(response.status).toBe(0);
@@ -88,8 +95,18 @@ describe('Requester — PROXY_FETCH wrapper', () => {
   it('retries exactly once when retrySafe is set, then returns the failure (T-2-10-02)', async () => {
     const sendSpy = vi
       .spyOn(fakeBrowser.runtime, 'sendMessage')
-      .mockResolvedValueOnce({ ok: false, status: 0, body: '', error: 'flaky' } satisfies ProxyFetchResponse)
-      .mockResolvedValueOnce({ ok: false, status: 0, body: '', error: 'still down' } satisfies ProxyFetchResponse);
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 0,
+        body: '',
+        error: 'flaky',
+      } satisfies ProxyFetchResponse)
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 0,
+        body: '',
+        error: 'still down',
+      } satisfies ProxyFetchResponse);
 
     const response = await request(makePayload({ retrySafe: true }));
 
@@ -100,7 +117,12 @@ describe('Requester — PROXY_FETCH wrapper', () => {
   it('never retries without retrySafe even when the payload is retryable (Appendix C)', async () => {
     const sendSpy = vi
       .spyOn(fakeBrowser.runtime, 'sendMessage')
-      .mockResolvedValueOnce({ ok: false, status: 0, body: '', error: 'flaky' } satisfies ProxyFetchResponse);
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 0,
+        body: '',
+        error: 'flaky',
+      } satisfies ProxyFetchResponse);
 
     const response = await request(makePayload()); // no retrySafe
 

@@ -40,7 +40,10 @@ function validatePayload(payload: ProxyFetchRequest): string | null {
  * One bounded send attempt — never throws. On rejection/timeout it debugLogs a
  * canonical code and resolves a ProxyFetchResponse-shaped failure (Golden Rule 9).
  */
-async function sendOnce(payload: ProxyFetchRequest, timeoutMs: number): Promise<ProxyFetchResponse> {
+async function sendOnce(
+  payload: ProxyFetchRequest,
+  timeoutMs: number,
+): Promise<ProxyFetchResponse> {
   const message: ProxyFetchRequest = { ...payload, type: 'PROXY_FETCH' };
   const timeout = new Promise<ProxyFetchResponse>((resolve) => {
     setTimeout(() => {
@@ -94,7 +97,12 @@ export async function request(
     return { ok: false, status: 0, body: '', error: validationError };
   }
   const maxAttempts = payload.retrySafe ? DEFAULT_RETRIES + 1 : 1;
-  let lastFailure: ProxyFetchResponse = { ok: false, status: 0, body: '', error: 'PROXY_FETCH_FAILED' };
+  let lastFailure: ProxyFetchResponse = {
+    ok: false,
+    status: 0,
+    body: '',
+    error: 'PROXY_FETCH_FAILED',
+  };
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     const response = await sendOnce(payload, timeoutMs);
     if (response.ok) return response;
