@@ -88,7 +88,34 @@ Plans:
   4. The database migrates from the v1 → v2 fixture without data loss.
   5. User can import/export sanitized JSON/ZIP and back up/restore their data.
 
-**Plans**: TBD
+**Plans**: 11 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 02-01-PLAN.md — foundation: deps (idb/fflate/fake-indexeddb), test harness, storage types, canonical error codes + spec C.2, i18n strings, fixture builders (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 02-02-PLAN.md — real redaction: TraceRedactor body (O.13) + redactSensitive (DROP passwords) (wave 2)
+- [ ] 02-03-PLAN.md — vault: EncryptedStorage (AES-GCM-256) + KeyVault (installSecret + PROVIDER_KEY_UNREADABLE) (wave 2)
+- [ ] 02-04-PLAN.md — WriteJournal framework + WorkspaceStore journal rewire + recovery tests (wave 2)
+- [ ] 02-05-PLAN.md — Setting.ts: per-key permissioned KV + serialized writes + migrate-on-read (np_schema_version) (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 02-06-PLAN.md — IndexedDBMigrator (raw-open + wrap, v1→v2 fixture, degraded mode) + ErrorStore (FIFO 100, redacted) (wave 3)
+- [ ] 02-07-PLAN.md — ChatHistoryDB + NotesDB + MemoryDB (idb typed CRUD) (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 02-08-PLAN.md — sync-quota shadow (D-15) + ThemeStore rewire through Setting.ts + APPR-03 spec touch (wave 4)
+- [ ] 02-09-PLAN.md — ImportExport core: JSON+ZIP (fflate), scoped groups, manifest, merge/upsert journaled restore (wave 4)
+- [ ] 02-10-PLAN.md — RateLimiter + Requester functional primitives (wave 4)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 02-11-PLAN.md — storage-layer entrypoint init + content-bundle isolation tokens + no-secrets privacy test + verify:phase-2 gate (wave 5)
 
 ### Phase 3: Cost-Effective AI Runtime (+ Persona seed)
 
@@ -354,7 +381,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. MV3/WXT Runtime + AntD Shells + Workspace | 11/11 | Complete    | 2026-08-08 |
-| 2. Storage, Security, WriteJournal, Workspace Persistence | TBD | Not started | - |
+| 2. Storage, Security, WriteJournal, Workspace Persistence | 0/11 | Not started | - |
 | 3. Cost-Effective AI Runtime (+ Persona seed) | TBD | Not started | - |
 | 3a. Agent Reliability and Evidence | TBD | Not started | - |
 | 4. Context-Adaptive Execution | TBD | Not started | - |
