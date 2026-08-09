@@ -30,6 +30,66 @@ export interface VaultEnvelope {
 }
 
 /**
+ * JSON-safe wire form of a §15.2 envelope (CR-02 review fix): chrome.storage
+ * serializes every value via JSON.stringify (its quota is computed on the
+ * serialized bytes) and the project's fakeBrowser mock JSON-round-trips every
+ * write — raw `Uint8Array`/`ArrayBuffer` degrade into index-keyed plain
+ * objects / `{}` under that round-trip. The base64 string form survives it
+ * losslessly, so persisted envelopes can be decrypted on read-back. Use
+ * serializeEnvelope BEFORE any chrome.storage write and deserializeEnvelope on
+ * read.
+ */
+export interface SerializedVaultEnvelope {
+  salt: string;
+  iv: string;
+  ciphertext: string;
+}
+
+/** Base64-encode raw bytes (browser-safe; used by the wire form, D-02). */
+export function encodeBase64Bytes(bytes: Uint8Array): string {
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
+/** Decode base64 → raw bytes (inverse of encodeBase64Bytes). */
+export function decodeBase64Bytes(value: string): Uint8Array {
+  const binary = atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+/** Serialize an in-memory envelope to its JSON-safe base64 wire form. */
+export function serializeEnvelope(envelope: VaultEnvelope): SerializedVaultEnvelope {
+  return {
+    salt: encodeBase64Bytes(envelope.salt),
+    iv: encodeBase64Bytes(envelope.iv),
+    ciphertext: encodeBase64Bytes(new Uint8Array(envelope.ciphertext)),
+  };
+}
+
+/** Deserialize a storage-round-tripped base64 wire form back to a live envelope. */
+export function deserializeEnvelope(serialized: SerializedVaultEnvelope): VaultEnvelope {
+  return {
+    salt: decodeBase64Bytes(serialized.salt),
+    iv: decodeBase64Bytes(serialized.iv),
+    ciphertext: decodeBase64Bytes(serialized.ciphertext).buffer,
+  };
+}
+
+/** True when `value` is a base64 wire-form envelope (CR-02 — JSON-safe shape). */
+export function isSerializedVaultEnvelope(value: unknown): value is SerializedVaultEnvelope {
+  if (typeof value !== 'object' || value === null) return false;
+  const record = value as Record<string, unknown>;
+  return (
+    typeof record.salt === 'string' &&
+    typeof record.iv === 'string' &&
+    typeof record.ciphertext === 'string'
+  );
+}
+
+/**
  * Typed decrypt-failure error (D-03): carries `code ===
  * ERROR_CODES.VAULT_DECRYPT_FAILED`. Callers match the CODE, never a free-form
  * message — wrong key and tampered ciphertext are indistinguishable and both

@@ -132,10 +132,12 @@ export class KeyVault {
 
   /**
    * Convenience: read installSecret (NON-generating), derive, decrypt. Any
-   * failure — missing installSecret, wrong key, tampered ciphertext — converts
-   * into the single PROVIDER_KEY_UNREADABLE state (D-04) and rethrows the
-   * typed VAULT_DECRYPT_FAILED so callers know the read failed. Nothing is
-   * wiped and nothing is regenerated.
+   * failure — missing installSecret, wrong key, tampered ciphertext, OR a
+   * malformed/JSON-mangled envelope (CR-02: a storage-round-tripped envelope
+   * whose byte arrays degraded into plain objects makes deriveKey throw a raw
+   * TypeError) — converts into the single PROVIDER_KEY_UNREADABLE state (D-04)
+   * and rethrows the typed VAULT_DECRYPT_FAILED so callers always match the
+   * D-03 contract. Nothing is wiped and nothing is regenerated.
    */
   async decryptSecret(envelope: VaultEnvelope): Promise<string> {
     const secret = await this.readInstallSecretOnly();
@@ -152,21 +154,27 @@ export class KeyVault {
       );
       throw createVaultDecryptFailedError();
     }
-    const key = await this.getDerivedKey(secret, envelope.salt);
     try {
+      // CR-02: the ENTIRE derive+decrypt sequence lives inside the typed-error
+      // path — a malformed salt/IV/ciphertext (e.g. a JSON-mangled envelope
+      // read back from chrome.storage) must converge on the SAME typed
+      // VAULT_DECRYPT_FAILED + PROVIDER_KEY_UNREADABLE state, never a raw
+      // crypto TypeError that bypasses the one shared unreadable state (D-04).
+      const key = await this.getDerivedKey(secret, envelope.salt);
       return await decrypt(key, envelope);
     } catch (err) {
-      if (isVaultDecryptFailed(err)) {
-        // Roads (a) and (c) are cryptographically indistinguishable (D-03) —
-        // one typed throw → ONE shared state (D-04). The reason records the
-        // most likely road for diagnostics only.
-        this.setProviderKeyUnreadable('tampered-ciphertext');
-        debugLog(ERROR_CODES.PROVIDER_KEY_UNREADABLE, 'provider key decrypt failed', {
-          error: err,
-          module: 'KeyVault',
-        });
-      }
-      throw err;
+      // Roads (a) and (c) are cryptographically indistinguishable (D-03) —
+      // one typed throw → ONE shared state (D-04). The reason records the
+      // most likely road for diagnostics only.
+      this.setProviderKeyUnreadable('tampered-ciphertext');
+      debugLog(ERROR_CODES.PROVIDER_KEY_UNREADABLE, 'provider key decrypt failed', {
+        error: err instanceof Error ? err : undefined,
+        module: 'KeyVault',
+      });
+      if (isVaultDecryptFailed(err)) throw err;
+      // A raw crypto/TypeError failure (malformed envelope) is normalized to
+      // the typed code so callers can always match the D-03 contract.
+      throw createVaultDecryptFailedError();
     }
   }
 

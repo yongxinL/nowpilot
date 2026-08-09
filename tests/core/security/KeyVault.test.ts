@@ -24,6 +24,11 @@ import {
   buildVaultRoundtripFixture,
   FIXED_PLAINTEXT,
 } from '../../fixtures/index';
+import {
+  deserializeEnvelope,
+  serializeEnvelope,
+  type VaultEnvelope,
+} from '@/core/storage/EncryptedStorage';
 
 describe('KeyVault — installSecret lifecycle (D-02)', () => {
   it('generates np_install_secret once, persists it to chrome.storage.local, and never regenerates', async () => {
@@ -44,6 +49,49 @@ describe('KeyVault — installSecret lifecycle (D-02)', () => {
 });
 
 describe('KeyVault — the three roads to unreadable converge on ONE state (D-04)', () => {
+  it('a storage-round-tripped envelope (serialized → chrome.storage → deserialized) still decrypts (CR-02)', async () => {
+    const fixture = buildVaultRoundtripFixture();
+    await fakeBrowser.storage.local.set({ [NP_INSTALL_SECRET_KEY]: fixture.installSecret });
+    const vault = new KeyVault();
+    const envelope = await vault.encryptSecret(FIXED_PLAINTEXT);
+
+    // Persist the SERIALIZED wire form (the JSON-safe base64 representation —
+    // raw Uint8Array/ArrayBuffer would degrade under chrome.storage's
+    // JSON.stringify round-trip, CR-02). fakeBrowser JSON-round-trips every
+    // storage.set, exactly like the production quota math.
+    const ciphertextKey = 'np_providers.provider-roundtrip';
+    await fakeBrowser.storage.local.set({ [ciphertextKey]: serializeEnvelope(envelope) });
+
+    // Read back what storage actually holds and deserialize it.
+    const stored = (await fakeBrowser.storage.local.get(ciphertextKey))[ciphertextKey];
+    expect(stored).toBeDefined();
+    const restored = deserializeEnvelope(stored as ReturnType<typeof serializeEnvelope>);
+
+    // The read-back envelope decrypts to the original plaintext — the vault
+    // survives a real persist→read cycle, not just in-memory decryption.
+    await expect(vault.decryptSecret(restored)).resolves.toBe(FIXED_PLAINTEXT);
+    expect(vault.getProviderKeyState()).toBe(PROVIDER_KEY_STATE.OK);
+  });
+
+  it('a JSON-degraded raw envelope converges on the TYPED code + shared unreadable state (CR-02)', async () => {
+    const fixture = buildVaultRoundtripFixture();
+    await fakeBrowser.storage.local.set({ [NP_INSTALL_SECRET_KEY]: fixture.installSecret });
+    const vault = new KeyVault();
+    const envelope = await vault.encryptSecret(fixture.plaintext);
+
+    // Simulate the exact degradation the review documents: chrome.storage
+    // JSON-round-trips values, so a RAW (byte-array) envelope written directly
+    // comes back as { salt: {0:…}, iv: {0:…}, ciphertext: {} } — deriveKey
+    // throws a raw TypeError on the mangled salt. The D-03 contract demands
+    // the typed VAULT_DECRYPT_FAILED + the shared PROVIDER_KEY_UNREADABLE
+    // state, never a raw error bypassing the D-04 recovery path.
+    const degraded = JSON.parse(JSON.stringify(envelope)) as VaultEnvelope;
+    await expect(vault.decryptSecret(degraded)).rejects.toMatchObject({
+      code: ERROR_CODES.VAULT_DECRYPT_FAILED,
+    });
+    expect(vault.getProviderKeyState()).toBe(PROVIDER_KEY_STATE.PROVIDER_KEY_UNREADABLE);
+  });
+
   it('cross-install: encrypt with secret A, decrypt with secret B → PROVIDER_KEY_UNREADABLE, ciphertext NOT wiped', async () => {
     const fixture = buildCrossInstallFixture();
     const ciphertextKey = 'np_providers.provider-anthropic';

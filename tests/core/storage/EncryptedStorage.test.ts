@@ -9,7 +9,15 @@
 // (RESEARCH Pattern 3).
 import { describe, expect, it } from 'vitest';
 import { ERROR_CODES } from '@/core/error/errorCodes';
-import { decrypt, deriveKey, encrypt } from '@/core/storage/EncryptedStorage';
+import {
+  decrypt,
+  deriveKey,
+  decodeBase64Bytes,
+  deserializeEnvelope,
+  encodeBase64Bytes,
+  encrypt,
+  serializeEnvelope,
+} from '@/core/storage/EncryptedStorage';
 import { buildVaultRoundtripFixture, FIXED_INSTALL_SECRET_B } from '../../fixtures/index';
 
 describe('EncryptedStorage — AES-GCM roundtrip (vault-roundtrip fixture)', () => {
@@ -56,5 +64,40 @@ describe('EncryptedStorage — AES-GCM roundtrip (vault-roundtrip fixture)', () 
     await expect(decrypt(key, tamperedEnvelope)).rejects.toMatchObject({
       code: ERROR_CODES.VAULT_DECRYPT_FAILED,
     });
+  });
+});
+
+describe('EncryptedStorage — storage-serializable wire form (CR-02)', () => {
+  it('serializeEnvelope → JSON round-trip → deserializeEnvelope is byte-lossless and still decrypts', async () => {
+    const fixture = buildVaultRoundtripFixture();
+    const key = await deriveKey(fixture.installSecret, fixture.extensionId, fixture.salt);
+    const envelope = await encrypt(key, fixture.plaintext, fixture.salt);
+
+    const wire = serializeEnvelope(envelope);
+    // The wire form is plain base64 strings — JSON-serializable (chrome.storage
+    // computes quota on JSON.stringify and the fakeBrowser mock JSON-round-trips
+    // every write).
+    expect(typeof wire.salt).toBe('string');
+    expect(typeof wire.iv).toBe('string');
+    expect(typeof wire.ciphertext).toBe('string');
+
+    const roundTripped = JSON.parse(JSON.stringify(wire)) as typeof wire;
+    expect(roundTripped).toEqual(wire);
+
+    const restored = deserializeEnvelope(roundTripped);
+    // Bytes survive the round-trip exactly.
+    expect([...restored.salt]).toEqual([...envelope.salt]);
+    expect([...restored.iv]).toEqual([...envelope.iv]);
+    expect([...new Uint8Array(restored.ciphertext)]).toEqual([
+      ...new Uint8Array(envelope.ciphertext),
+    ]);
+    await expect(decrypt(key, restored)).resolves.toBe(fixture.plaintext);
+  });
+
+  it('encodeBase64Bytes/decodeBase64Bytes are inverse for arbitrary bytes', () => {
+    const bytes = new Uint8Array([0, 1, 2, 254, 255, 0x7f, 0x80]);
+    expect(encodeBase64Bytes(bytes)).toBeDefined();
+    // decode(encode(b)) === b
+    expect([...decodeBase64Bytes(encodeBase64Bytes(bytes))]).toEqual([...bytes]);
   });
 });
