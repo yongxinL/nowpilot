@@ -17,11 +17,11 @@ export const FIXED_INSTALL_SECRET_B = 'VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
 /** Deterministic fakeBrowser runtime.id (verified: 'test-extension-id'). */
 export const FIXED_EXTENSION_ID = 'test-extension-id';
 /** Per-key 16-byte salt: 0x11 × 16 (D-02: per-key 16-byte salt). */
-export function fixedSalt(): Uint8Array {
+export function fixedSalt(): Uint8Array<ArrayBuffer> {
   return new Uint8Array(16).fill(0x11);
 }
 /** Per-key 12-byte IV: 0x22 × 12 (D-02: 12-byte IV). */
-export function fixedIv(): Uint8Array {
+export function fixedIv(): Uint8Array<ArrayBuffer> {
   return new Uint8Array(12).fill(0x22);
 }
 /** Fixed secret-shaped plaintext for vault roundtrips. */
@@ -36,8 +36,8 @@ export interface VaultRoundtripFixture {
   installSecret: string;
   extensionId: string;
   plaintext: string;
-  salt: Uint8Array;
-  iv: Uint8Array;
+  salt: Uint8Array<ArrayBuffer>;
+  iv: Uint8Array<ArrayBuffer>;
 }
 
 export function buildVaultRoundtripFixture(
@@ -59,9 +59,9 @@ export function buildVaultRoundtripFixture(
 // ---------------------------------------------------------------------------
 
 export interface CrossInstallEnvelope {
-  salt: Uint8Array;
-  iv: Uint8Array;
-  ciphertext: Uint8Array;
+  salt: Uint8Array<ArrayBuffer>;
+  iv: Uint8Array<ArrayBuffer>;
+  ciphertext: Uint8Array<ArrayBuffer>;
 }
 
 export interface CrossInstallFixture {
