@@ -9,6 +9,12 @@
 // include @ant-design/x, @ant-design/x-markdown, antd, React, react (catches
 // minified lowercase), react-dom, defuddle, or yaml (W-16).
 //
+// 02-11 (R-3): the token set is extended with the vault/IDB/network stack —
+// idb, fflate, KeyVault, EncryptedStorage, fake-indexeddb — so the content
+// bundle can never include the storage/vault machinery. AI + IndexedDB + the
+// vault live in Side Panel/Standalone only (R-3); the content bundle is the
+// hard isolation boundary that proves it.
+//
 // If no content bundle exists yet, it exits 0 with a note: nothing to check
 // (meaningful enforcement starts once a build produces content bundles).
 import { readdir, readFile, stat } from 'node:fs/promises';
@@ -29,6 +35,13 @@ const FORBIDDEN_TOKENS = [
   'react-dom',
   'defuddle',
   'yaml',
+  // 02-11 (R-3): vault/IDB/network stack — the content bundle must never
+  // include the storage layer or its test harness.
+  'idb',
+  'fflate',
+  'KeyVault',
+  'EncryptedStorage',
+  'fake-indexeddb',
 ];
 
 async function walk(dir) {
