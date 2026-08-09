@@ -41,7 +41,6 @@ import type { WriteJournalEntry } from '@/types/storage';
 import {
   openChatHistoryDB,
   getSession,
-  listSessions,
   putMessage,
   putSession,
   type ChatMessage,
@@ -51,8 +50,6 @@ import {
   openNotesDB,
   getConcept,
   getNote,
-  listConcepts,
-  listNotes,
   putConcept,
   putNote,
   type Concept,
@@ -62,7 +59,6 @@ import {
   openMemoryDB,
   getConversationSummary,
   getFact,
-  listFacts,
   putConversationSummary,
   putFact,
   putMemoryMessage,
@@ -149,6 +145,12 @@ export function buildManifest(): ExportManifest {
  * workspace reads np_workspace, settings reads the non-secret Setting keys.
  * Read failures are logged (STORE_READ) and rethrown — an incomplete export
  * must surface, never ship silently.
+ *
+ * WR-09: the store reads are DIRECT (db.getAll) inside this function's own
+ * try/catch — the store list helpers (listSessions/listNotes/listFacts) swallow
+ * read failures and resolve [] per their contract, which would serialize a
+ * failed read as an empty group with no error. A backup can never silently
+ * lack all sessions/notes/facts again.
  */
 export async function collectGroup(group: ExportGroup): Promise<Record<string, unknown>> {
   try {
@@ -156,7 +158,7 @@ export async function collectGroup(group: ExportGroup): Promise<Record<string, u
       case 'chat-history': {
         const db = await openChatHistoryDB();
         const data: Record<string, unknown> = {
-          sessions: await listSessions(db),
+          sessions: await db.getAll('sessions'),
           messages: await db.getAll('messages'),
         };
         db.close();
@@ -165,8 +167,8 @@ export async function collectGroup(group: ExportGroup): Promise<Record<string, u
       case 'notes': {
         const db = await openNotesDB();
         const data: Record<string, unknown> = {
-          notes: await listNotes(db),
-          concepts: await listConcepts(db),
+          notes: await db.getAll('notes'),
+          concepts: await db.getAll('concepts'),
         };
         db.close();
         return data;
@@ -175,7 +177,7 @@ export async function collectGroup(group: ExportGroup): Promise<Record<string, u
         const db = await openMemoryDB();
         const data: Record<string, unknown> = {
           messages: await db.getAll('messages'),
-          facts: await listFacts(db),
+          facts: await db.getAll('userFacts'),
           conversationSummaries: await db.getAll('conversationSummaries'),
         };
         db.close();

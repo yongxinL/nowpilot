@@ -14,7 +14,7 @@
 // Setting permission table (chrome.storage via fakeBrowser), so round-trip and
 // exclusion proofs exercise the production data path end-to-end.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { IDBFactory } from 'fake-indexeddb';
+import { IDBFactory, IDBObjectStore } from 'fake-indexeddb';
 import { fakeBrowser } from 'wxt/testing';
 import {
   EXPORT_GROUPS,
@@ -205,6 +205,29 @@ describe('JSON canonical round-trip (D-17)', () => {
     expect(await memoryDb.get('messages', ['conv-1', 1])).toEqual(makeMemoryMessage());
     expect(await getFact(memoryDb, 'f-1')).toEqual(makeFact());
     memoryDb.close();
+  });
+
+  it('a failed store read SURFACES — an incomplete export never ships silently (WR-09)', async () => {
+    await seedChatHistory();
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    // Force the sessions getAll to reject mid-export. The OLD implementation
+    // read via listSessions (which swallows read failures and resolves []),
+    // so a failed read would have serialized as an empty group with no error.
+    const originalGetAll = IDBObjectStore.prototype.getAll;
+    const getAllSpy = vi
+      .spyOn(IDBObjectStore.prototype, 'getAll')
+      .mockImplementation(function (this: IDBObjectStore, ...args: unknown[]) {
+        if (this.name === 'sessions') {
+          return Promise.reject(new Error('sessions read broken')) as never;
+        }
+        return originalGetAll.apply(this, args) as never;
+      });
+
+    await expect(exportJson(['chat-history'])).rejects.toThrow('sessions read broken');
+
+    getAllSpy.mockRestore();
+    consoleSpy.mockRestore();
   });
 });
 
