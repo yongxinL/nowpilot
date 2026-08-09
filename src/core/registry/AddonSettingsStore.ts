@@ -32,8 +32,12 @@ type OnChangedListener = (
 // while surviving fakeBrowser.reset() between tests.
 let onChangedListener: OnChangedListener | null = null;
 
-/** Validate a stored np_addon_settings value (never merge raw storage). */
-function sanitizeStored(value: unknown): Record<string, Record<string, unknown>> {
+/**
+ * Validate a stored np_addon_settings value (never merge raw storage). Exported
+ * so Setting.ts's migrate-on-read (D-10) reuses this exact shape guard as the
+ * np_addon_settings per-key sanitizer — one guard for every inbound path.
+ */
+export function sanitizeStored(value: unknown): Record<string, Record<string, unknown>> {
   if (typeof value !== 'object' || value === null) return {};
   const v = value as Record<string, unknown>;
   const out: Record<string, Record<string, unknown>> = {};
