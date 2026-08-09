@@ -76,7 +76,7 @@ describe('MemoryDB — composite-keyed messages + facts + summaries', () => {
     db = await openMemoryDB();
 
     await putFact(db, makeFact('f1', 'user prefers concise answers'));
-    await putFact(db, makeFact('f2', 'works on NowPilot',));
+    await putFact(db, makeFact('f2', 'works on NowPilot'));
 
     expect(await getFact(db, 'f1')).toEqual(makeFact('f1', 'user prefers concise answers'));
     expect(await getFact(db, 'absent')).toBeUndefined();
