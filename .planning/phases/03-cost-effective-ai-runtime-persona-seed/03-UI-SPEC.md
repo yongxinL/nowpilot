@@ -1,10 +1,11 @@
 ---
 phase: 3
 slug: cost-effective-ai-runtime-persona-seed
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-08-09
+reviewed_at: 2026-08-09
 ---
 
 # Phase 3 — UI Design Contract
@@ -226,24 +227,33 @@ Welcome cards, Prompts, clarification/follow-up chips, persona header, stage ind
 
 > Populated by the ui-phase UI-consideration probe (Step 9.5) — shape-rooted UI *state* coverage for the Phase-3 chat surface. Empty/error COPY lives in `## Copywriting Contract` above; this section covers state coverage and REFERENCES those rows (de-dup). **Elements:** **E1** conversation bubble list · **E2** Sender (input + send) · **E3** failed/error surface · **E4** provider-unconfigured gate (shell) · **E5** loading skeleton.
 
-Applicable state considerations resolved: **14 covered** (0 backstop, 0 unresolved)
+Applicable state considerations resolved: **16 covered** · **7 dismissed** (0 backstop, 0 unresolved)
 
 | Category | Element(s) | Status | Resolution / Reason |
 |----------|------------|--------|---------------------|
 | empty | Conversation bubble list (E1) | ✅ covered | Zero-bubble conversation renders the centered "Start a conversation" one-liner (`STR.chat.empty`, `colorTextTertiary`); welcome cards / prompts are fenced (D-03), so no body copy and no CTA render in the empty state. |
-| empty | Sender (E2) | ✅ covered | The Sender has no data-empty state — "empty" means empty input, which disables the send button (not a surface empty). Placeholder `STR.chat.askPlaceholder` always present when input is empty. |
-| empty | Provider-unconfigured gate (E4) | ✅ covered | No active provider renders the shell gate Alert "Configure an AI provider in Settings first." (`STR.chat.noProvider`) with the disabled input; `PROVIDER_KEY_UNREADABLE`-disabled providers collapse into this same gate (D-21) — no distinct Phase-3 UI (`STR.storage.providerKeyRequired` renders in Phase 7). |
-| loading | Conversation bubble list (E1) | ✅ covered | Surface/registry load renders `ChatPageSkeleton` (AntD Skeleton, avatar + 3 paragraph rows on the 8/12/16 px rhythm) — no layout shift when the surface populates (DESIGN_SYSTEM.md §9; Phase-1 E2 pattern). |
-| loading | Conversation bubble list (E1, streaming) | ✅ covered | Streaming is rendered as the X Bubble `streaming` caret (`colorPrimary` @60%) + growing text via ChunkBuffer — **never a spinner** (DESIGN_SYSTEM.md §6.3/§11). |
-| error | Conversation bubble list / failed surface (E1/E3) | ✅ covered | A failed stream shows the assistant bubble's partial text (if any) plus the inline error line "Provider error." (`colorError`) with the Retry action (Copywriting Contract, error row); the §C.2 code + message go to `debugLog` (Golden Rule 9, R-10) — never raw in the UI. |
-| error | Sender (E2) | ✅ covered | After a failure the send button re-enables (idle); Retry re-sends the last user input. No dead-end state. |
+| loading | Conversation bubble list (E1) | ✅ covered | Surface/registry load renders `ChatPageSkeleton` (AntD Skeleton, avatar + 3 paragraph rows on the 8/12/16 px rhythm); in-stream rendering is the X Bubble `streaming` caret (`colorPrimary` @60%) + growing text via ChunkBuffer — **never a spinner** (DESIGN_SYSTEM.md §9/§6.3/§11; Phase-1 E2 pattern). |
+| error | Conversation bubble list (E1) | ✅ covered | A failed stream shows the assistant bubble's partial text (if any) plus the inline error line "Provider error." (`colorError`) with the Retry action (Copywriting Contract, error row); the §C.2 code + message go to `debugLog` (Golden Rule 9, R-10) — never raw in the UI. |
 | populated | Conversation bubble list (E1) | ✅ covered | Happy path = user bubble right (`colorPrimaryBg` light / `colorPrimary` @18% dark, radius 12) / assistant bubble left (`colorBgContainer`, 1 px `colorBorder`, radius 12, name "NowPilot"); `role="log"` `aria-live="polite"` (spec §17.6). |
 | partial | Conversation bubble list (E1) | ✅ covered | Mid-stream partial text is the normal path (ChunkBuffer rAF flush ≤ 16 ms, 8 kB/s → 33 ms, Appendix J.1); an interrupted stream retains partial text above the error line; chrome never renders half-styled. |
 | overflow | Conversation bubble list (E1) | ✅ covered | The conversation area scrolls vertically (`overflow-y: auto`, `overflow-anchor: none` tail anchored); long messages wrap on word boundaries; the Sender stays fixed below (DESIGN_SYSTEM.md §8.1b). |
-| overflow | Sender (E2) | ✅ covered | Multi-line Sender wraps long input; the send button stays bottom-right; `maxLength` = AntD default (no Phase-3 override, Phase-1 E3 pattern). |
 | zero-one-many | Conversation bubble list (E1) | ✅ covered | 0 bubbles (empty cue) / 1 / many render identically — same scroll region, same fixed Sender; the conversation never collapses or shifts the composer. |
-| long-text | Conversation bubble list (E1) | ✅ covered | Long streamed responses wrap on word boundaries; very long responses grow the bubble and scroll within the conversation list; code blocks (Phase-7 recipe) are not in Phase 3. |
-| long-text | Sender (E2) | ✅ covered | Long pasted input wraps multi-line inside the Sender; placeholder hides on input; no input length cap beyond the AntD default. |
+| empty | Sender (E2) | ✅ covered | The Sender has no data-empty state — "empty" means empty input, which disables the send button (not a surface empty). Placeholder `STR.chat.askPlaceholder` always present when input is empty. |
+| loading | Sender (E2) | ✅ covered | While streaming the send button is disabled (one stream per session, spec §17.5); no separate loading surface renders inside the composer. |
+| error | Sender (E2) | ✅ covered | After a failure the send button re-enables (idle); Retry re-sends the last user input. No dead-end state. |
+| partial | Sender (E2) | ⚪ dismissed | Single-message composer — the input holds either nothing or one message; there is no partial-data state for a single-value input. |
+| long-text | Sender (E2) | ✅ covered | Long pasted input wraps multi-line inside the Sender; placeholder hides on input; `maxLength` = AntD default (no Phase-3 override, Phase-1 E3 pattern). |
+| empty | Failed/error surface (E3) | ⚪ dismissed | The error surface exists only as a sub-state of a failed stream; zero-bubble empty-state coverage is owned by E1 (empty row). |
+| loading | Failed/error surface (E3) | ⚪ dismissed | The error surface appears only after a stream has failed; loading coverage is owned by E1/E5 (loading rows). |
+| error | Failed/error surface (E3) | ✅ covered | Failed stream renders the inline "Provider error." line (`colorError`) + the Retry text action (`colorPrimary`); partial streamed text is retained above (Copywriting Contract, error row). |
+| populated | Failed/error surface (E3) | ⚪ dismissed | E3 is rendered only on failure; the populated happy path is E1's populated row. |
+| partial | Failed/error surface (E3) | ✅ covered | An interrupted stream retains its partial text above the error line, before the Retry action. |
+| overflow | Failed/error surface (E3) | ✅ covered | Partial text + error line wrap within the assistant bubble; the conversation area scrolls (E1 overflow row). |
+| zero-one-many | Failed/error surface (E3) | ⚪ dismissed | E3 is a single failed-message surface, not an itemized collection; count semantics are owned by E1's zero-one-many row. |
+| overflow | Provider-unconfigured gate (E4) | ✅ covered | The shell gate Alert "Configure an AI provider in Settings first." (`STR.chat.noProvider`) is a short fixed string that wraps within the Alert; `PROVIDER_KEY_UNREADABLE`-disabled providers collapse into this same gate (D-21). |
+| long-text | Provider-unconfigured gate (E4) | ✅ covered | Gate copy is fixed-length; wraps harmlessly inside the Alert; disabled input carries no user text. |
+| overflow | Loading skeleton (E5) | ⚪ dismissed | The skeleton is a fixed placeholder (avatar + 3 rows) inside the conversation area; it holds no user content and cannot overflow meaningfully. |
+| long-text | Loading skeleton (E5) | ⚪ dismissed | The skeleton renders fixed-size placeholder rows, no real text; long-text applies only to real content (E1/E2 rows). |
 
 <!-- Status vocabulary (locked by probe-core projectTruths):
      ✅ covered   → a plain truth string lifted into must_haves.truths
@@ -271,14 +281,14 @@ Safety Gate column (timestamped evidence):
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS
-- [ ] Dimension 2 Visuals: PASS
-- [ ] Dimension 3 Color: PASS
-- [ ] Dimension 4 Typography: PASS
-- [ ] Dimension 5 Spacing: PASS
-- [ ] Dimension 6 Registry Safety: PASS
+- [x] Dimension 1 Copywriting: PASS
+- [x] Dimension 2 Visuals: PASS
+- [x] Dimension 3 Color: PASS
+- [x] Dimension 4 Typography: PASS
+- [x] Dimension 5 Spacing: PASS
+- [x] Dimension 6 Registry Safety: PASS
 
-**Approval:** pending
+**Approval:** approved (gsd-ui-checker, 2026-08-09 — no FLAGs, no BLOCKs)
 
 ---
 
@@ -307,4 +317,4 @@ Pre-population source map (this contract is not exploratory; every field is boun
 
 *Phase: 3-Cost-Effective AI Runtime (+ Persona seed) — UI Design Contract*
 *Generated: 2026-08-09 by gsd-ui-researcher*
-*Status: **draft** (awaiting gsd-ui-checker verification)*
+*Status: **approved** (gsd-ui-checker verification + ui-consideration probe, 2026-08-09)*
