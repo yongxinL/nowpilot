@@ -1,11 +1,12 @@
 // tests/core/theme/ThemeStore.test.ts — ThemeStore D-13 contract tests: hydrate
-// from chrome.storage.local (np_theme/np_theme_pack), write-through setMode /
-// setPack, chrome.storage.onChanged foreign-write propagation, and 'auto' mode
-// resolution via matchMedia. Uses the wxt fakeBrowser chrome.* stubs (WxtVitest
-// extensionApiMock) for chrome.storage.local + chrome.storage.onChanged, and the
-// tests/setup.ts matchMedia polyfill (Pitfall 6). Runs in the default
-// jsdom-align environment — window + matchMedia are required.
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+// sync-first through Setting (np_theme/np_theme_pack, D-15 local shadow
+// fallback), write-through setMode / setPack via settingWriteSync,
+// chrome.storage.onChanged foreign-write propagation (sync + local areas), and
+// 'auto' mode resolution via matchMedia. Uses the wxt fakeBrowser chrome.*
+// stubs (WxtVitest extensionApiMock) and the tests/setup.ts matchMedia polyfill
+// (Pitfall 6). Runs in the default jsdom-align environment. Fake timers drive
+// the Setting.ts cosmetic debounce deterministically (100ms window, D-15).
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fakeBrowser } from 'wxt/testing';
 import { useThemeStore } from '@/core/theme/ThemeStore';
 
@@ -28,6 +29,9 @@ function stubMatchMedia(matchesDark: boolean): void {
 let originalMatchMedia: typeof window.matchMedia;
 
 beforeEach(() => {
+  // Fake timers make the Setting.ts cosmetic debounce (D-15) deterministic;
+  // useRealTimers in afterEach discards any pending timer (no cross-test leak).
+  vi.useFakeTimers();
   originalMatchMedia = window.matchMedia;
   // Reset the store to its initial state for a clean per-test run.
   useThemeStore.setState({
@@ -39,6 +43,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   if (originalMatchMedia) window.matchMedia = originalMatchMedia;
 });
 
@@ -58,19 +63,26 @@ describe('ThemeStore', () => {
     expect(useThemeStore.getState().getResolved()).toBe('dark');
   });
 
-  it('setMode(light) writes chrome.storage.local.np_theme and updates state', async () => {
+  it('setMode(light) writes sync np_theme via Setting (D-15) and updates state', async () => {
     await useThemeStore.getState().init();
-    await useThemeStore.getState().setMode('light');
-    const stored = await fakeBrowser.storage.local.get('np_theme');
+    const p = useThemeStore.getState().setMode('light');
+    await vi.advanceTimersByTimeAsync(200); // fire the 100ms cosmetic debounce
+    await p;
+    const stored = await fakeBrowser.storage.sync.get('np_theme');
     expect(stored.np_theme).toBe('light');
+    // No local shadow on the happy path — sync is the canonical store (D-15).
+    const local = await fakeBrowser.storage.local.get('np_theme');
+    expect(local.np_theme).toBeUndefined();
     expect(useThemeStore.getState().mode).toBe('light');
     expect(useThemeStore.getState().resolved).toBe('light');
   });
 
-  it('setPack(liquid-glass) writes np_theme_pack and updates state', async () => {
+  it('setPack(liquid-glass) writes sync np_theme_pack via Setting (D-15) and updates state', async () => {
     await useThemeStore.getState().init();
-    await useThemeStore.getState().setPack('liquid-glass');
-    const stored = await fakeBrowser.storage.local.get('np_theme_pack');
+    const p = useThemeStore.getState().setPack('liquid-glass');
+    await vi.advanceTimersByTimeAsync(200); // fire the 100ms cosmetic debounce
+    await p;
+    const stored = await fakeBrowser.storage.sync.get('np_theme_pack');
     expect(stored.np_theme_pack).toBe('liquid-glass');
     expect(useThemeStore.getState().pack).toBe('liquid-glass');
   });

@@ -1,16 +1,21 @@
 // src/core/theme/ThemeStore.ts — Canonical theme store (D-13). The single
-// writer and reader of np_theme + np_theme_pack in chrome.storage.local —
-// deliberately NOT zustand's storage middleware (Pitfall 7: storage-backed
-// middleware writes localStorage, which does not cross surfaces; the plan pins
-// the storage adapter + chrome.storage.onChanged instead). init() hydrates from
-// storage, subscribes to chrome.storage.onChanged for both keys (foreign writes
-// from the other surface propagate atomically) and to matchMedia for 'auto'
-// mode (D-11). T-1-10: stored values are read-validated on every load — unknown
-// values fall back to 'auto'/'default' (never trust raw storage). Every error
-// path calls debugLog with a canonical THEME_* code (Golden Rule 9).
+// writer and reader of np_theme + np_theme_pack — deliberately NOT zustand's
+// storage middleware (Pitfall 7: storage-backed middleware writes localStorage,
+// which does not cross surfaces; the plan pins the storage adapter +
+// chrome.storage.onChanged instead). D-15 rewire (02-08): persistence now flows
+// through Setting.ts sync-first (settingReadSync / settingWriteSync) with the
+// local shadow fallback for chrome.storage.sync quota/rate failures — ThemeStore
+// stays the read-validate owner (T-1-10). init() hydrates from storage,
+// subscribes to chrome.storage.onChanged for both keys AND both areas (sync =
+// the canonical store, local = a transient shadow; foreign writes from either
+// surface propagate atomically) and to matchMedia for 'auto' mode (D-11).
+// T-1-10: stored values are read-validated on every load — unknown values fall
+// back to 'auto'/'default' (never trust raw storage). Every error path calls
+// debugLog with a canonical THEME_* code (Golden Rule 9).
 import { create } from 'zustand';
 import { debugLog } from '@/core/error/debugLog';
 import { ERROR_CODES } from '@/core/error/errorCodes';
+import { settingReadSync, settingWriteSync } from '@/core/storage/Setting';
 import { isThemePackId } from '@/core/theme/themePacks';
 import type { ThemeMode, ThemePack } from '@/core/theme/themePacks';
 
@@ -30,7 +35,6 @@ export interface ThemeState {
 }
 
 const DARK_QUERY = '(prefers-color-scheme: dark)';
-const STORAGE_KEYS = ['np_theme', 'np_theme_pack'];
 
 function resolveScheme(mode: ThemeMode): 'light' | 'dark' {
   if (mode === 'dark') return 'dark';
@@ -69,12 +73,17 @@ export const useThemeStore = create<ThemeState>()((set, get) => ({
     let mode: ThemeMode = 'auto';
     let pack: ThemePack = 'default';
     try {
-      const stored = await chrome.storage.local.get(STORAGE_KEYS);
-      if (isValidMode(stored.np_theme)) mode = stored.np_theme;
-      if (isThemePackId(stored.np_theme_pack)) pack = stored.np_theme_pack;
+      // D-15 rewire: hydrate sync-first through Setting (local shadow fallback);
+      // the read-validate idiom (T-1-10) still gates every stored value.
+      mode = await settingReadSync('np_theme', (v: unknown) => (isValidMode(v) ? v : null), 'auto');
+      pack = await settingReadSync(
+        'np_theme_pack',
+        (v: unknown) => (isThemePackId(v) ? v : null),
+        'default',
+      );
     } catch (err) {
       // T-1-10 / Golden Rule 9: never throw — fall back to 'auto'/'default'.
-      debugLog(ERROR_CODES.THEME_INIT, 'failed to read theme from chrome.storage.local', {
+      debugLog(ERROR_CODES.THEME_INIT, 'failed to read theme via Setting (sync-first)', {
         error: err instanceof Error ? err : undefined,
         module: 'ThemeStore',
       });
@@ -82,20 +91,24 @@ export const useThemeStore = create<ThemeState>()((set, get) => ({
     set({ mode, pack, resolved: resolveScheme(mode), isReady: true });
 
     // chrome.storage.onChanged — foreign writes propagate to this surface (D-13).
+    // D-15 rewire: the change may arrive from EITHER area — 'sync' (the
+    // canonical store) or 'local' (a transient shadow) — both go through the
+    // same read-validate gate.
     const handleChanged: OnChangedListener = (changes, area) => {
-      if (area !== 'local') return;
-      const modeChange = changes.np_theme;
-      if (modeChange !== undefined && isValidMode(modeChange.newValue)) {
-        set({ mode: modeChange.newValue, resolved: resolveScheme(modeChange.newValue) });
+      if (area === 'sync' || area === 'local') {
+        const modeChange = changes.np_theme;
+        if (modeChange !== undefined && isValidMode(modeChange.newValue)) {
+          set({ mode: modeChange.newValue, resolved: resolveScheme(modeChange.newValue) });
+        }
+        const packChange = changes.np_theme_pack;
+        if (packChange !== undefined && isThemePackId(packChange.newValue)) {
+          set({ pack: packChange.newValue });
+        }
+        debugLog(ERROR_CODES.THEME_ON_CHANGED, 'theme storage change propagated', {
+          silent: true,
+          module: 'ThemeStore',
+        });
       }
-      const packChange = changes.np_theme_pack;
-      if (packChange !== undefined && isThemePackId(packChange.newValue)) {
-        set({ pack: packChange.newValue });
-      }
-      debugLog(ERROR_CODES.THEME_ON_CHANGED, 'theme storage change propagated', {
-        silent: true,
-        module: 'ThemeStore',
-      });
     };
     if (onChangedListener !== null) {
       chrome.storage.onChanged.removeListener(onChangedListener);
@@ -125,7 +138,9 @@ export const useThemeStore = create<ThemeState>()((set, get) => ({
 
   setMode: async (mode) => {
     try {
-      await chrome.storage.local.set({ np_theme: mode });
+      // D-15 rewire: sync-first through Setting; the shadow machinery handles
+      // quota/rate failure — the write must still never throw to the UI.
+      await settingWriteSync('np_theme', mode);
     } catch (err) {
       debugLog(ERROR_CODES.THEME_WRITE, 'failed to write np_theme', {
         error: err instanceof Error ? err : undefined,
@@ -137,7 +152,7 @@ export const useThemeStore = create<ThemeState>()((set, get) => ({
 
   setPack: async (pack) => {
     try {
-      await chrome.storage.local.set({ np_theme_pack: pack });
+      await settingWriteSync('np_theme_pack', pack);
     } catch (err) {
       debugLog(ERROR_CODES.THEME_WRITE, 'failed to write np_theme_pack', {
         error: err instanceof Error ? err : undefined,
