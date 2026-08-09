@@ -42,7 +42,11 @@ import {
   type Fact,
   type MemoryMessage,
 } from '@/core/storage/MemoryDB';
-import { loadPendingEntries, persistJournalEntry, recoverJournal } from '@/core/storage/WriteJournal';
+import {
+  loadPendingEntries,
+  persistJournalEntry,
+  recoverJournal,
+} from '@/core/storage/WriteJournal';
 import {
   buildCrossInstallFixture,
   buildRedactionFixture,
@@ -286,9 +290,11 @@ describe('per-group MERGE/upsert semantics (D-18 / T-2-09-02)', () => {
     expect((await getSession(db1, 's-other'))?.title).toBe('untouched'); // no wipe
     db1.close();
 
-    // overwrite:true → incoming replaces the existing record.
+    // overwrite:true → incoming wins everywhere: s-local replaced AND the
+    // already-present s-new re-upserted (both counted upserted); s-other
+    // (absent from the payload) stays untouched — still never a wipe.
     const overwriteResult = await mergeGroup('chat-history', incoming, { overwrite: true });
-    expect(overwriteResult).toEqual({ upserted: 1, kept: 1 }); // s-local replaced, s-new kept
+    expect(overwriteResult).toEqual({ upserted: 2, kept: 0 });
     const db2 = await openChatHistoryDB();
     expect((await getSession(db2, 's-local'))?.title).toBe('incoming title');
     db2.close();
@@ -429,7 +435,13 @@ async function seedChatHistoryWithContent(
   structured: Record<string, unknown>,
 ): Promise<void> {
   const db = await openChatHistoryDB();
-  await putSession(db, makeSession({ id: 's-secret', title: String(structured.apiKey ?? 'title') }));
-  await putMessage(db, makeMessage({ id: 'm-secret', sessionId: 's-secret', content: messageContent }));
+  await putSession(
+    db,
+    makeSession({ id: 's-secret', title: String(structured.apiKey ?? 'title') }),
+  );
+  await putMessage(
+    db,
+    makeMessage({ id: 'm-secret', sessionId: 's-secret', content: messageContent }),
+  );
   db.close();
 }
