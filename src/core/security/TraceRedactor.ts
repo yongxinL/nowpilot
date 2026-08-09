@@ -9,7 +9,11 @@
 // objects lives in ./redactSensitive.ts (D-16).
 const REDACTION_PATTERNS: RegExp[] = [
   /sk-[A-Za-z0-9_-]+/g,
-  /key-[A-Za-z0-9_-]+/g,
+  // IN-04: word-boundary/prefix guard — bare /key-…/ over-redacts words that
+  // merely CONTAIN the substring ('monkey-bars' → 'mon[REDACTED]'). The
+  // (?:\b|_|-|/) prefix anchors the match at a real key start ('api key=…',
+  // '…_key-…', '…/key-…') while leaving 'monkey-' untouched.
+  /(?:\b|_|-|\/)key-[A-Za-z0-9_-]+/g,
   /Bearer\s+[A-Za-z0-9._-]+/gi,
   /JSESSIONID=[^;\s]+/gi,
   /sysparm_ck[=:]\s*[^&\s]+/gi,
