@@ -136,10 +136,14 @@ export async function recordMigrationFailure(dbName: string, cause: string): Pro
       'IndexedDBMigrator',
     );
   } catch (err) {
-    debugLog(ERROR_CODES.IDB_MIGRATION_FAILED, 'ErrorStore unavailable — migration failure on console sink', {
-      error: err instanceof Error ? err : undefined,
-      module: 'ErrorStore',
-      extra: { dbName },
-    });
+    debugLog(
+      ERROR_CODES.IDB_MIGRATION_FAILED,
+      'ErrorStore unavailable — migration failure on console sink',
+      {
+        error: err instanceof Error ? err : undefined,
+        module: 'ErrorStore',
+        extra: { dbName },
+      },
+    );
   }
 }

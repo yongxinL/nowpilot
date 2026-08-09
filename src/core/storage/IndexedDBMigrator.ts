@@ -74,7 +74,9 @@ export class DegradedDBError extends Error {
   readonly dbName: string;
 
   constructor(dbName: string) {
-    super(`Storage failed to upgrade — data is read-only for '${dbName}'. Use Import/Export to back up.`);
+    super(
+      `Storage failed to upgrade — data is read-only for '${dbName}'. Use Import/Export to back up.`,
+    );
     this.name = 'DegradedDBError';
     this.dbName = dbName;
   }
@@ -110,10 +112,14 @@ export async function handleMigrationFailed(dbName: string, originalError: unkno
   if (!degradedDbs.some((d) => d.db === dbName)) {
     degradedDbs.push({ db: dbName, reason });
   }
-  debugLog(ERROR_CODES.IDB_MIGRATION_FAILED, 'IndexedDB migration failed — DB degraded to read-only', {
-    module: 'IndexedDBMigrator',
-    extra: { dbName, reason: redactSensitive(reason) as string },
-  });
+  debugLog(
+    ERROR_CODES.IDB_MIGRATION_FAILED,
+    'IndexedDB migration failed — DB degraded to read-only',
+    {
+      module: 'IndexedDBMigrator',
+      extra: { dbName, reason: redactSensitive(reason) as string },
+    },
+  );
   await recordMigrationFailure(dbName, reason);
 }
 
@@ -136,6 +142,14 @@ export function runMigrations<T extends DBSchema = DBSchema>(
     request.onupgradeneeded = (event: IDBVersionChangeEvent) => {
       const db = wrap(request.result); // idb-wrapped for the §20.4 interface
       const tx = wrap(request.transaction!);
+      // idb's wrap() registers a done-promise abort/error listener
+      // (cacheDonePromiseForTransaction, wrap-idb-value.js): when the upgrade
+      // aborts, that promise rejects — if unconsumed it leaks an unhandled
+      // rejection under fake-indexeddb and fails `vitest run` (RESEARCH
+      // Pitfall 1). The request.onerror path owns the real failure handling.
+      void tx.done.catch(() => {
+        /* consumed — the aborted upgrade surfaces via request.onerror */
+      });
       const fromVersion = event.oldVersion;
       const toVersion = event.newVersion ?? 0;
       try {
