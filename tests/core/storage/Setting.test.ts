@@ -232,6 +232,34 @@ describe('Setting — sync-shadow fallback (D-15, quota-shadow fixture)', () => 
     expect(local[fixture.key]).toBeUndefined();
   });
 
+  it('a sync READ rejection still consults the local shadow before returning fallback (WR-06)', async () => {
+    const fixture = buildQuotaShadowFixture();
+    // The sync area REJECTS the read entirely; a durable local shadow exists.
+    vi.spyOn(fakeBrowser.storage.sync, 'get').mockRejectedValue(fixture.syncRejectError);
+    await fakeBrowser.storage.local.set({ [fixture.key]: fixture.value });
+
+    const result = await settingReadSync(
+      fixture.key,
+      (v: unknown) => (typeof v === 'string' ? v : null),
+      'fallback',
+    );
+    // The shadow is visible to the UI despite the sync-read failure — the
+    // durable value is never hidden behind a broken sync read.
+    expect(result).toBe(fixture.value);
+  });
+
+  it('a sync READ rejection with NO shadow returns fallback (WR-06)', async () => {
+    const fixture = buildQuotaShadowFixture();
+    vi.spyOn(fakeBrowser.storage.sync, 'get').mockRejectedValue(fixture.syncRejectError);
+
+    const result = await settingReadSync(
+      fixture.key,
+      (v: unknown) => (typeof v === 'string' ? v : null),
+      'fallback',
+    );
+    expect(result).toBe('fallback');
+  });
+
   it('a successful sync write deletes any local shadow (reconciliation)', async () => {
     const fixture = buildQuotaShadowFixture();
     const syncSet = vi.spyOn(fakeBrowser.storage.sync, 'set');

@@ -310,14 +310,28 @@ export async function settingReadSync<T>(
   ) {
     return settingRead(key, sanitize, fallback);
   }
+  let syncRaw: unknown;
   try {
     const syncStored = await chrome.storage.sync.get(key);
-    const syncRaw = syncStored[key];
-    if (syncRaw !== undefined) {
-      const sanitized = sanitize(syncRaw);
-      return sanitized === null ? fallback : sanitized;
-    }
-    // Sync absent — the local shadow (D-15) wins and re-attempts sync.
+    syncRaw = syncStored[key];
+  } catch (err) {
+    // WR-06: a sync READ rejection (quota/area/transient) must NOT hide the
+    // durable local shadow — the D-15 contract is "a shadow wins reads". Log
+    // and fall through to the local read below instead of returning `fallback`
+    // immediately.
+    debugLog(ERROR_CODES.STORE_READ, 'sync read failed — consulting local shadow', {
+      error: err instanceof Error ? err : undefined,
+      module: 'Setting',
+      extra: { key },
+    });
+  }
+  if (syncRaw !== undefined) {
+    const sanitized = sanitize(syncRaw);
+    return sanitized === null ? fallback : sanitized;
+  }
+  // Sync absent or unreadable — the local shadow (D-15) wins and re-attempts
+  // sync (own catch: a failed shadow read is logged, never thrown).
+  try {
     const localStored = await chrome.storage.local.get(key);
     const localRaw = localStored[key];
     if (localRaw !== undefined) {
@@ -332,7 +346,7 @@ export async function settingReadSync<T>(
     }
     return fallback;
   } catch (err) {
-    debugLog(ERROR_CODES.STORE_READ, 'failed to read setting (sync-first, shadow fallback)', {
+    debugLog(ERROR_CODES.STORE_READ, 'failed to read local shadow', {
       error: err instanceof Error ? err : undefined,
       module: 'Setting',
       extra: { key },
