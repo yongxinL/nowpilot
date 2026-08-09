@@ -21,7 +21,12 @@ import {
   type ChatHistoryDBSchema,
 } from '@/core/storage/ChatHistoryDB';
 
-function makeSession(id: string, title: string, created = 1, updated = 1): ChatHistoryDBSchema['sessions']['value'] {
+function makeSession(
+  id: string,
+  title: string,
+  created = 1,
+  updated = 1,
+): ChatHistoryDBSchema['sessions']['value'] {
   return { id, title, created, updated, starred: false, preview: '' };
 }
 
