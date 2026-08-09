@@ -14,6 +14,10 @@ const REDACTION_PATTERNS: RegExp[] = [
   /JSESSIONID=[^;\s]+/gi,
   /sysparm_ck[=:]\s*[^&\s]+/gi,
   /g_ck[=:]\s*[^&\s]+/gi,
+  // WR-04: broader API-key shapes — non-sk-/key- prefixed keys (e.g. Google's
+  // AIza… 39-char key) previously survived redaction verbatim.
+  /AIza[0-9A-Za-z_-]{20,}/g,
+  /api[_-]?key[=:]\s*[A-Za-z0-9_-]{16,}/gi,
 ];
 
 export function redact(s: string): string {

@@ -16,6 +16,11 @@ import { redact } from '@/core/security/TraceRedactor';
  * normalization: lowercase + strip non-alphanumerics (e.g. 'API_KEY' → 'apikey').
  * Note: 'apikey' is intentionally NOT here — apiKey values are redacted inline
  * (value scrubbed to [REDACTED]), not dropped.
+ *
+ * WR-04: the DROP decision is made by isSensitiveFieldKey (suffix matching),
+ * not by exact membership in this set — exact names would miss composite keys
+ * like access_token / client_secret / secret_key (normalizeKey('access_token')
+ * → 'accesstoken', which is NOT a member).
  */
 export const SENSITIVE_FIELD_KEYS: ReadonlySet<string> = new Set([
   'password',
@@ -26,6 +31,31 @@ export const SENSITIVE_FIELD_KEYS: ReadonlySet<string> = new Set([
 
 function normalizeKey(key: string): string {
   return key.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+/**
+ * WR-04: true when a key's normalized form IS a sensitive field name or ENDS
+ * with a sensitive suffix — catching composite keys (access_token, auth_token,
+ * refresh_token, client_secret, secret_key, bearer_authorization, …) whose
+ * exact normalized names are not members of SENSITIVE_FIELD_KEYS. Values under
+ * these keys are DROPPED, never masked (A-05).
+ *
+ * Note 'secret_key' → normalizeKey → 'secretkey': it does NOT end with
+ * 'secret', so a compound rule (secret-root + 'key' suffix) catches it without
+ * broadening the drop to benign 'key'-suffixed names ('apikey' stays inline-
+ * redacted, not dropped).
+ */
+export function isSensitiveFieldKey(key: string): boolean {
+  const normalized = normalizeKey(key);
+  return (
+    SENSITIVE_FIELD_KEYS.has(normalized) ||
+    normalized.endsWith('token') ||
+    normalized.endsWith('secret') ||
+    normalized.endsWith('password') ||
+    normalized.endsWith('authorization') ||
+    (normalized.endsWith('key') &&
+      (normalized.includes('secret') || normalized.includes('password')))
+  );
 }
 
 function isByteArrayLike(value: unknown): boolean {
@@ -68,7 +98,7 @@ export function redactSensitive(value: unknown): unknown {
   if (isPlainObject(value)) {
     const out: Record<string, unknown> = {};
     for (const [key, nested] of Object.entries(value)) {
-      if (SENSITIVE_FIELD_KEYS.has(normalizeKey(key))) continue; // DROP, never mask
+      if (isSensitiveFieldKey(key)) continue; // DROP, never mask (WR-04: suffix match)
       out[key] = redactSensitive(nested);
     }
     return out;

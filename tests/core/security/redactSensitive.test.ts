@@ -8,6 +8,7 @@
 // default jsdom-align environment (no IDB, no chrome.* needed).
 import { describe, expect, it } from 'vitest';
 import { buildRedactionFixture } from '../../fixtures/index';
+import { redact } from '@/core/security/TraceRedactor';
 import {
   isVaultEnvelope,
   redactSensitive,
@@ -42,6 +43,25 @@ describe('redactSensitive — O.13 pattern scrubbing (T-2-02-01)', () => {
     expect(out).toContain('[REDACTED]');
     expect(out).not.toContain('key-abc123def456ghi789');
   });
+
+  it('scrubs broader API-key shapes — non-sk-/key- prefixed keys like AIza… (WR-04)', () => {
+    const googleKey = 'AIzaSyA1234567890abcdefghijklmnopqrstuvwxyz';
+    const out = redactSensitive(
+      `google maps key ${googleKey} and api_key=ABCDEFGHIJKLMNOPQRST123456 inline`,
+    );
+    expect(out).toContain('[REDACTED]');
+    expect(out).not.toContain(googleKey);
+    expect(out).not.toContain('ABCDEFGHIJKLMNOPQRST123456');
+  });
+
+  it('does NOT over-redact words merely containing "key-" — monkey-bars survives (IN-04)', () => {
+    expect(redact('monkey-bars are fun')).toBe('monkey-bars are fun');
+    // a REAL key start after a '-'-suffixed word still redacts (prefix guard)
+    expect(redact('monkey-key-abc123 chain')).toContain('[REDACTED]');
+    expect(redact('path/to/key-xyz789 end')).toContain('[REDACTED]');
+    // a real key start still redacts (boundary / prefix guard anchors the match)
+    expect(redact('api key=key-abc123def456ghi789 in trace body')).toContain('[REDACTED]');
+  });
 });
 
 describe('redactSensitive — field-level DROP contract (T-2-02-02 / A-05)', () => {
@@ -73,6 +93,37 @@ describe('redactSensitive — field-level DROP contract (T-2-02-02 / A-05)', () 
     expect((out.meta as Record<string, unknown>).trace).toBe('[REDACTED]');
     expect(out.list).toEqual(['[REDACTED]', 'plain']);
     expect(out).not.toHaveProperty('password');
+  });
+
+  it('drops COMPOSITE sensitive keys by suffix — access_token, auth_token, refresh_token, client_secret, secret_key (WR-04)', () => {
+    const out = redactSensitive({
+      access_token: 'at-live-1',
+      auth_token: 'auth-live-2',
+      refresh_token: 'rt-live-3',
+      client_secret: 'cs-live-4',
+      secret_key: 'sk-live-5',
+      accessToken: 'at-camel-6',
+      API_SECRET: 'up-secret-7',
+      // sibling non-sensitive keys survive untouched
+      sessionId: 's-1',
+      status: 'ok',
+      apiKey: 'sk-inline-8', // NOT dropped — scrubbed inline to [REDACTED]
+    }) as Record<string, unknown>;
+
+    for (const key of [
+      'access_token',
+      'auth_token',
+      'refresh_token',
+      'client_secret',
+      'secret_key',
+      'accessToken',
+      'API_SECRET',
+    ]) {
+      expect(out).not.toHaveProperty(key); // DROPPED, never masked
+    }
+    expect(out.sessionId).toBe('s-1');
+    expect(out.status).toBe('ok');
+    expect(out.apiKey).toBe('[REDACTED]'); // inline-scrubbed, not dropped
   });
 });
 
