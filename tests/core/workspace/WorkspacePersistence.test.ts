@@ -99,8 +99,11 @@ describe('WorkspacePersistence — journaled workspace durability (D-06/D-07)', 
     expect(stored.np_workspace?.activeSurface).toBe('standalone');
   });
 
-  it('recovers a crash-mid-write: replay converges np_workspace to the entry version; foreign/unknown-op entries skip', async () => {
-    // Seed a pre-crash np_workspace at version 4 for the fixture workspaceId.
+  it('recovers a crash-mid-write: replay restores the ENTRY payload (CR-01) and skips foreign/unknown-op entries', async () => {
+    // Seed a pre-crash np_workspace at version 4 for the fixture workspaceId —
+    // content that DIFFERS from the crash entry's snapshot (conv-fixture /
+    // sidepanel vs the entry's conv-restored-fixture / standalone), so the
+    // assertions below prove replay applies the entry's OWN snapshot.
     await fakeBrowser.storage.local.set({
       np_workspace: {
         workspaceId: 'ws-fixture-01',
@@ -125,10 +128,21 @@ describe('WorkspacePersistence — journaled workspace durability (D-06/D-07)', 
 
     expect(useWorkspaceStore.getState().workspace.workspaceId).toBe('ws-fixture-01');
     expect(useWorkspaceStore.getState().workspace.version).toBe(5);
+    // CR-01: replay restores the ENTRY's snapshot — the intended write — never
+    // a version-only fabrication of the stale local state (conv-fixture /
+    // sidepanel would be the fabricated content this fix eliminates).
+    expect(useWorkspaceStore.getState().workspace.conversationId).toBe(
+      fixture.restoredPayload.conversationId,
+    );
+    expect(useWorkspaceStore.getState().workspace.activeSurface).toBe(
+      fixture.restoredPayload.activeSurface,
+    );
     const stored = (await fakeBrowser.storage.local.get(NP_WORKSPACE_KEY)) as {
-      np_workspace?: { version?: number };
+      np_workspace?: { version?: number; conversationId?: string; activeSurface?: string };
     };
     expect(stored.np_workspace?.version).toBe(5);
+    expect(stored.np_workspace?.conversationId).toBe(fixture.restoredPayload.conversationId);
+    expect(stored.np_workspace?.activeSurface).toBe(fixture.restoredPayload.activeSurface);
 
     // Replayed entries are marked completed (replay-once — the next recovery
     // pass skips them); skipped entries keep their seeded status.

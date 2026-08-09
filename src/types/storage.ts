@@ -26,6 +26,13 @@ export interface WriteJournalEntry {
   updatedAt: number;
   attempts: number;
   targetIds: Record<string, string>;
+  /**
+   * JSON-safe snapshot of the write's payload, retained for crash recovery
+   * (CR-01/WR-02 review fix): replay applies the ENTRY's own snapshot rather
+   * than fabricating content from local state. Optional — legacy entries
+   * without a payload fall back to version-only convergence.
+   */
+  payload?: unknown;
   steps: Array<{
     name: string;
     status: 'pending' | 'completed' | 'failed';

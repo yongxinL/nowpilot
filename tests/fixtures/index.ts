@@ -95,6 +95,19 @@ export function buildCrossInstallFixture(
 export interface JournalRecoveryFixture {
   workspaceId: string;
   version: string;
+  /**
+   * The D-18 active-field snapshot the crash entry carries (CR-01): recovery
+   * must restore THIS content — a DIFFERENT conversationId/activeSurface than
+   * the pre-crash local state — proving replay applies the entry's snapshot,
+   * never a version-only fabrication from local state.
+   */
+  restoredPayload: {
+    workspaceId: string;
+    conversationId: string;
+    activeSurface: 'sidepanel' | 'standalone';
+    version: number;
+    updatedAt: number;
+  };
   entries: WriteJournalEntry[];
 }
 
@@ -108,6 +121,16 @@ export function buildJournalRecoveryFixture(
     updatedAt: 1100,
     attempts: 1,
   };
+  // CR-01: the crash entry carries the INTENDED write — content that differs
+  // from the pre-crash local np_workspace (conv-fixture / sidepanel) so replay
+  // tests can assert the entry's snapshot is restored, not local state.
+  const restoredPayload = overrides.restoredPayload ?? {
+    workspaceId,
+    conversationId: 'conv-restored-fixture',
+    activeSurface: 'standalone' as const,
+    version: Number(version),
+    updatedAt: 1200,
+  };
   const entries: WriteJournalEntry[] = [
     // completed entry — the normal terminal state (never replayed)
     {
@@ -116,6 +139,7 @@ export function buildJournalRecoveryFixture(
       status: 'completed',
       ...base,
       targetIds: { workspaceId, version },
+      payload: restoredPayload,
       steps: [{ name: 'write-workspace', status: 'completed' }],
     },
     // crash-before-completed: status 'applying' → must be replayed once
@@ -125,6 +149,7 @@ export function buildJournalRecoveryFixture(
       status: 'applying',
       ...base,
       targetIds: { workspaceId, version },
+      payload: restoredPayload,
       steps: [{ name: 'write-workspace', status: 'completed' }],
     },
     // pending entry — never started → also replayed
@@ -136,6 +161,7 @@ export function buildJournalRecoveryFixture(
       updatedAt: 1000,
       attempts: 0,
       targetIds: { workspaceId, version },
+      payload: restoredPayload,
       steps: [],
     },
     // different-workspaceId entry — replay must SKIP (workspace-scoped, WR-10)
@@ -160,7 +186,7 @@ export function buildJournalRecoveryFixture(
       steps: [],
     },
   ];
-  return { workspaceId, version, entries };
+  return { workspaceId, version, restoredPayload, entries };
 }
 
 // ---------------------------------------------------------------------------

@@ -127,6 +127,10 @@ async function journaledUpdateWorkspace(ws: WorkspaceState): Promise<void> {
     updatedAt: Date.now(),
     attempts: 0,
     targetIds: { workspaceId: ws.workspaceId, version: String(ws.version) },
+    // CR-01: the D-18 active-field snapshot is persisted IN the entry so crash
+    // recovery restores the INTENDED content — never a version-only fabrication
+    // built from whatever local state a fresh context happens to hold.
+    payload: pickActive(ws),
     steps: [],
   };
   const steps: JournalStep[] = [
@@ -357,16 +361,18 @@ export const useWorkspaceStore = create<WorkspaceStoreShape>()((set, get) => ({
           return;
         }
         // Re-apply the journaled write (idempotent versioned upsert, T-2-04-03):
-        // the versioned snapshot is re-written so np_workspace converges to the
-        // entry's version. If storage already carries >= the entry version the
-        // upsert is a no-op-by-key.
+        // the entry carries its OWN persisted snapshot (CR-01) — replay applies
+        // that content, shape-checked through sanitizeStored, instead of a
+        // version-only fabrication from local state. A legacy entry without a
+        // payload falls back to the version-bump convergence. If storage
+        // already carries >= the entry version the upsert is a no-op-by-key.
         const targetVersion = Number(entry.targetIds?.version);
         if (Number.isFinite(targetVersion) && targetVersion > local.version) {
-          const converged: WorkspaceState = {
-            ...local,
-            version: targetVersion,
-            updatedAt: Date.now(),
-          };
+          const snapshot = sanitizeStored(entry.payload);
+          const converged: WorkspaceState =
+            snapshot !== null
+              ? { ...local, ...snapshot }
+              : { ...local, version: targetVersion, updatedAt: Date.now() };
           set({ workspace: converged });
           await chrome.storage.local.set({ [NP_WORKSPACE_KEY]: pickActive(converged) });
           debugLog(ERROR_CODES.WORKSPACE_SYNC, 'journal entry replayed', {
