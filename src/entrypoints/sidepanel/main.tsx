@@ -22,6 +22,15 @@
 // literal call expressions in the header so the per-file call-site greps stay
 // unambiguous.
 //
+// 02-11 storage bootstrap: this mount ALSO runs the storage-layer init before
+// the workspace lifecycle resolves — KeyVault first-run (np_install_secret,
+// D-02), migrate-on-read (np_schema_version + per-key sanitizers, D-10), and
+// the IDB migrator over the real stores at their current versions (D-12/D-14).
+// Every step is wrapped: a failure degrades gracefully (debugLog + fall-
+// through) and never rejects the mount (Golden Rule 9). R-3: this is one of
+// the ONLY two surfaces (sidepanel + standalone) where vault/IDB init may run;
+// the background SW never does.
+//
 // Pitfall 4: this entrypoint imports NO content-script module and no UI library
 // beyond the locked antd/x stack. Entrypoints are the ONLY places that call
 // createRoot — everything upstream is tree-imported.
@@ -39,9 +48,109 @@ import { useThemeStore } from '@/core/theme/ThemeStore';
 import { useWorkspaceStore } from '@/core/workspace/WorkspaceStore';
 import { WorkspaceSync } from '@/core/workspace/WorkspaceSync';
 import { useAddonSettingsStore } from '@/core/registry/AddonSettingsStore';
+import { getKeyVault } from '@/core/security/KeyVault';
+import { openErrorStore } from '@/core/storage/ErrorStore';
+import * as Migrator from '@/core/storage/IndexedDBMigrator';
+import * as Setting from '@/core/storage/Setting';
+import {
+  DB_VERSION as CHAT_HISTORY_DB_VERSION,
+  openChatHistoryDB,
+} from '@/core/storage/ChatHistoryDB';
+import { DB_VERSION as MEMORY_DB_VERSION, openMemoryDB } from '@/core/storage/MemoryDB';
+import { DB_VERSION as NOTES_DB_VERSION, openNotesDB } from '@/core/storage/NotesDB';
+import { openWriteJournalDB } from '@/core/storage/WriteJournal';
 // The single provider reference on this surface (Appendix F: XProvider EXTENDS
 // antd's provider — exactly one provider per surface, grep fixture).
 export type { ConfigProviderProps } from 'antd';
+
+/**
+ * Storage-layer bootstrap (02-11): KeyVault first-run → migrate-on-read →
+ * IDB migrator + ErrorStore, fired at mount BEFORE the workspace init chain
+ * completes. Every step is wrapped — a broken vault/IDB degrades gracefully
+ * (debugLog with canonical §C.2 codes + fall-through) and never rejects the
+ * mount (Golden Rule 9). R-3: this function only ever runs on the
+ * sidepanel/standalone surfaces, never in the background SW.
+ */
+async function runStorageBootstrap(): Promise<void> {
+  // 1. KeyVault first-run (D-02): generate np_install_secret once via
+  // read-then-write-if-absent (immutable once set — never regenerated).
+  try {
+    await getKeyVault().getInstallSecret();
+  } catch (err) {
+    debugLog(ERROR_CODES.PROVIDER_KEY_UNREADABLE, 'KeyVault first-run failed at mount', {
+      error: err instanceof Error ? err : undefined,
+      module: 'storage-bootstrap',
+    });
+  }
+
+  // 2. Migrate-on-read (D-10): normalize old KV shapes (np_workspace /
+  // np_providers / np_addon_settings) before consumers read them.
+  try {
+    await Setting.runMigrateOnRead(Setting.DEFAULT_MIGRATE_SANITIZERS);
+  } catch (err) {
+    debugLog(ERROR_CODES.STORE_READ, 'migrate-on-read failed at mount', {
+      error: err instanceof Error ? err : undefined,
+      module: 'storage-bootstrap',
+    });
+  }
+
+  // 3. IDB migrator + ErrorStore (D-12/D-14): open the ErrorStore sink, then
+  // warm-open each real store through its canonical happy-path opener (the
+  // first run creates the v1 schema — never let the migrator create an EMPTY
+  // version-1 DB) and run the migrator over the registered spec at the store's
+  // current version. All specs are migration-free today; future phases (e.g.
+  // Phase 5a NotesDB v4) extend the registry and the runner executes their
+  // migrations at mount. A migration failure records IDB_MIGRATION_FAILED and
+  // the DB degrades to read-only — the state getDegradedDbs exposes for the
+  // Phase-7 banner (D-12) ships here.
+  try {
+    await openErrorStore();
+  } catch (err) {
+    debugLog(ERROR_CODES.STORE_READ, 'ErrorStore open failed at mount', {
+      error: err instanceof Error ? err : undefined,
+      module: 'storage-bootstrap',
+    });
+  }
+  const idbSpecs: Migrator.DBVersionMigration[] = [
+    { dbName: 'ChatHistoryDB', dbVersion: CHAT_HISTORY_DB_VERSION, migrations: [] },
+    { dbName: 'NotesDB', dbVersion: NOTES_DB_VERSION, migrations: [] },
+    { dbName: 'MemoryDB', dbVersion: MEMORY_DB_VERSION, migrations: [] },
+    // WriteJournalDB v1 (02-04) — WRITE_JOURNAL_DB_VERSION is module-private.
+    { dbName: 'WriteJournalDB', dbVersion: 1, migrations: [] },
+  ];
+  for (const spec of idbSpecs) {
+    try {
+      await warmOpenIdbStore(spec.dbName);
+      await Migrator.runMigrations(spec);
+    } catch (err) {
+      debugLog(ERROR_CODES.IDB_MIGRATION_FAILED, 'IDB migrator failed at mount', {
+        error: err instanceof Error ? err : undefined,
+        module: 'storage-bootstrap',
+        extra: { dbName: spec.dbName },
+      });
+    }
+  }
+}
+
+/** Warm-open a real store via its canonical opener (creates the v1 schema on first run). */
+async function warmOpenIdbStore(dbName: string): Promise<void> {
+  switch (dbName) {
+    case 'ChatHistoryDB':
+      (await openChatHistoryDB()).close();
+      break;
+    case 'NotesDB':
+      (await openNotesDB()).close();
+      break;
+    case 'MemoryDB':
+      (await openMemoryDB()).close();
+      break;
+    case 'WriteJournalDB':
+      (await openWriteJournalDB()).close();
+      break;
+    default:
+      break;
+  }
+}
 
 function SidePanelRoot() {
   const isReady = useThemeStore((s) => s.isReady);
@@ -100,6 +209,10 @@ if (typeof document !== 'undefined') {
   void useThemeStore.getState().init();
   // WR-02: hydrate np_addon_settings so onboarding.done persists across loads.
   void useAddonSettingsStore.getState().init();
+  // 02-11: storage-layer bootstrap — KeyVault first-run + migrate-on-read +
+  // IDB migrator fire BEFORE the workspace init chain; non-blocking and never
+  // rejecting (a storage failure degrades gracefully, Golden Rule 9).
+  void runStorageBootstrap();
   // WR-03: module-level sync ref (held for stop()); the constructor is
   // side-effect-free — only start() activates subscriptions/timers.
   workspaceSync = new WorkspaceSync('sidepanel');
