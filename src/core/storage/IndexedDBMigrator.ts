@@ -125,11 +125,14 @@ export async function handleMigrationFailed(dbName: string, originalError: unkno
 
 /**
  * D-14 runner: opens the DB at spec.dbVersion via RAW indexedDB.open (RESEARCH
- * Pattern 2) and dispatches each migration whose fromVersion matches the
- * version transition — called SYNCHRONOUSLY inside onupgradeneeded (never
- * awaited; a sync throw aborts atomically). On success, resolves with the
- * idb-wrapped DB. On a migration failure (AbortError), runs onMigrationFailed
- * with the ORIGINAL error (Pitfall 3) then rejects with the request error.
+ * Pattern 2) and dispatches the FULL migration chain from the current version
+ * to the target — every migration whose fromVersion is in [oldVersion,
+ * newVersion), sorted by fromVersion (WR-07: chained 1→2→3 upgrades and fresh
+ * installs 0→N run EVERY step, never just the exact-transition match). The
+ * dispatch is called SYNCHRONOUSLY inside onupgradeneeded (never awaited; a
+ * sync throw aborts atomically). On success, resolves with the idb-wrapped
+ * DB. On a migration failure (AbortError), runs onMigrationFailed with the
+ * ORIGINAL error (Pitfall 3) then rejects with the request error.
  */
 export function runMigrations<T extends DBSchema = DBSchema>(
   spec: DBVersionMigration,
@@ -153,29 +156,41 @@ export function runMigrations<T extends DBSchema = DBSchema>(
       const fromVersion = event.oldVersion;
       const toVersion = event.newVersion ?? 0;
       try {
-        for (const migration of spec.migrations) {
-          if (migration.fromVersion === fromVersion && migration.toVersion === toVersion) {
-            // SYNC dispatch — never await inside the upgrade callback (Pitfall 2:
-            // an awaited non-IDB promise closes the transaction mid-migration).
-            const result = migration.migrate(db, tx);
-            if (result !== null && typeof (result as Promise<void>).catch === 'function') {
-              // Async-rejection capture (Pitfall 3): record the original error so
-              // it is never an unhandled rejection. NO tx.abort() here — aborting
-              // a wrapped transaction leaks the same fake-indexeddb double-settle
-              // (empirically probed; the sync-throw path is the abort mechanism).
-              void (result as Promise<void>).catch((err: unknown) => {
-                if (capturedError === null) capturedError = err;
-                debugLog(ERROR_CODES.IDB_MIGRATION_FAILED, 'async migration rejected', {
-                  module: 'IndexedDBMigrator',
-                  extra: { dbName: spec.dbName, migration: migration.description },
-                });
+        // WR-07: run the FULL migration chain from oldVersion → newVersion —
+        // every migration whose fromVersion is in [oldVersion, newVersion),
+        // sorted by fromVersion so chained upgrades (1→2 then 2→3 opening at 3)
+        // execute BOTH steps, and a fresh install (oldVersion 0 → N) runs every
+        // registered step from 0 (including a fromVersion: 0 'create initial
+        // schema' migration when one is registered). The old exact-match
+        // dispatch silently skipped chained steps and ran nothing on fresh
+        // installs (the DB would open at version N with zero object stores).
+        const chain = spec.migrations
+          .filter(
+            (migration) => migration.fromVersion >= fromVersion && migration.fromVersion < toVersion,
+          )
+          .sort((a, b) => a.fromVersion - b.fromVersion);
+        for (const migration of chain) {
+          // SYNC dispatch — never await inside the upgrade callback (Pitfall 2:
+          // an awaited non-IDB promise closes the transaction mid-migration).
+          const result = migration.migrate(db, tx);
+          if (result != null && typeof (result as Promise<void>).catch === 'function') {
+            // Async-rejection capture (Pitfall 3): record the original error so
+            // it is never an unhandled rejection. NO tx.abort() here — aborting
+            // a wrapped transaction leaks the same fake-indexeddb double-settle
+            // (empirically probed; the sync-throw path is the abort mechanism).
+            void (result as Promise<void>).catch((err: unknown) => {
+              if (capturedError === null) capturedError = err;
+              debugLog(ERROR_CODES.IDB_MIGRATION_FAILED, 'async migration rejected', {
+                module: 'IndexedDBMigrator',
+                extra: { dbName: spec.dbName, migration: migration.description },
               });
-            }
+            });
           }
         }
       } catch (err) {
         // Pitfall 3: capture the ORIGINAL error BEFORE the abort swallows it.
         if (capturedError === null) capturedError = err;
+        // TEMP DEBUG
         throw err; // sync throw → upgrade aborts atomically → onerror(AbortError)
       }
     };
@@ -197,6 +212,7 @@ export function runMigrations<T extends DBSchema = DBSchema>(
     };
 
     request.onerror = () => {
+      // TEMP DEBUG
       const requestError = request.error ?? new Error(`indexedDB.open failed for ${spec.dbName}`);
       if (capturedError !== null || requestError.name === 'AbortError') {
         // A migration failure (sync throw, async rejection, or upgrade abort) →

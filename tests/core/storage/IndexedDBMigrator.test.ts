@@ -145,6 +145,70 @@ describe('IndexedDBMigrator — synthetic v1→v2 (D-13 fixture)', () => {
     expect(carried).toHaveLength(2); // no double-store
     second.close();
   });
+
+  it('runs the FULL migration chain on upgrade — chained 1→2→3 steps BOTH execute (WR-07)', async () => {
+    const fixture = buildMigrationFixture();
+    await seedV1(fixture.dbName); // v1 with 'legacy' + rows
+
+    // Chain: 1→2 (adds notes_v2 + index + data-carry, D-13) then 2→3 (adds
+    // another store). Opening at version 3 must run BOTH steps — the old
+    // exact-match dispatch would have run only 1→2 and left a version-3 DB
+    // without notes_v3.
+    const v2to3: IndexedDBMigration = {
+      fromVersion: 2,
+      toVersion: 3,
+      description: 'chained 2→3 step (WR-07): add another store',
+      migrate(db) {
+        db.createObjectStore('notes_v3', { keyPath: 'id' });
+        return Promise.resolve();
+      },
+    };
+
+    interface ChainedSchema extends MigrationDBSchema {
+      notes_v3: { key: string; value: LegacyRow };
+    }
+    const db = await runMigrations<ChainedSchema>({
+      dbName: fixture.dbName,
+      dbVersion: 3,
+      migrations: [buildV1ToV2Migration(fixture), v2to3],
+    });
+
+    expect(db.version).toBe(3);
+    // BOTH chained steps ran: the v2 store/index AND the v3 store.
+    expect(db.objectStoreNames.contains('notes_v2')).toBe(true);
+    expect(db.objectStoreNames.contains('notes_v3')).toBe(true);
+    // data carried through the whole chain into notes_v2
+    const carried = await db.getAll('notes_v2');
+    expect(carried).toHaveLength(2);
+    db.close();
+  });
+
+  it('fresh install (oldVersion 0) runs EVERY registered step — fromVersion: 0 initial schema included (WR-07)', async () => {
+    const fixture = buildMigrationFixture();
+    // NO seedV1 — a brand-new DB opens at oldVersion 0.
+    const initial: IndexedDBMigration = {
+      fromVersion: 0,
+      toVersion: 1,
+      description: 'fresh-install initial schema (WR-07)',
+      migrate(db) {
+        db.createObjectStore('legacy', { keyPath: 'id' });
+        return Promise.resolve();
+      },
+    };
+
+    const db = await runMigrations<MigrationDBSchema>({
+      dbName: 'fixture-fresh-db',
+      dbVersion: 2,
+      migrations: [initial, buildV1ToV2Migration(fixture)],
+    });
+
+    expect(db.version).toBe(2);
+    // The 0→1 initial step created the legacy store, then 1→2 added notes_v2 —
+    // a fresh install no longer opens a version-2 DB with zero object stores.
+    expect(db.objectStoreNames.contains('legacy')).toBe(true);
+    expect(db.objectStoreNames.contains('notes_v2')).toBe(true);
+    db.close();
+  });
 });
 
 describe('IndexedDBMigrator — throws→degraded (D-12)', () => {
