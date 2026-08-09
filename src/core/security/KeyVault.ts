@@ -207,6 +207,28 @@ export class KeyVault {
   }
 
   /**
+   * D-04 recovery completion (WR-01): re-entry overwrote the stale ciphertext —
+   * return the shared state to OK so the provider un-gates (enabled=true, the
+   * 'Key required — re-enter' surface clears). Called by the provider layer's
+   * key-re-entry write path (Phase 3). Without this the state machine could
+   * never leave PROVIDER_KEY_UNREADABLE and the recovery UX would be dead.
+   * `reason` is informational (the road being cleared), logged only — the
+   * diagnostic state itself resets to OK/null.
+   */
+  markProviderKeyOk(reason?: string): void {
+    if (this.providerKeyState === PROVIDER_KEY_STATE.OK && this.unreadableReason === null) return;
+    this.providerKeyState = PROVIDER_KEY_STATE.OK;
+    this.unreadableReason = null;
+    this.notify();
+    if (reason !== undefined) {
+      debugLog(ERROR_CODES.PROVIDER_KEY_UNREADABLE, 'provider key re-entered — state OK', {
+        module: 'KeyVault',
+        extra: { reason },
+      });
+    }
+  }
+
+  /**
    * USER-INITIATED wipe only (D-04): removes a provider's stored ciphertext.
    * Called by a future 'Remove provider' action — NEVER by any decrypt-failure
    * path. Re-entry overwrites stale ciphertext; nothing auto-wipes.

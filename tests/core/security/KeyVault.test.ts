@@ -186,4 +186,24 @@ describe('KeyVault — shared state + listener notifications (ProviderRegistry a
     vault.setProviderKeyUnreadable('tampered-ciphertext');
     expect(listener).toHaveBeenCalledTimes(1); // unsubscribed — no further notifications
   });
+
+  it('markProviderKeyOk returns the state to OK and notifies — the D-04 re-entry recovery completes (WR-01)', () => {
+    const vault = new KeyVault();
+    const listener = vi.fn();
+    vault.subscribe(listener);
+
+    // Unreadable → the recovery UX ('Key required — re-enter') is active.
+    vault.setProviderKeyUnreadable('tampered-ciphertext');
+    expect(vault.getProviderKeyState()).toBe(PROVIDER_KEY_STATE.PROVIDER_KEY_UNREADABLE);
+
+    // Re-entry succeeds → the state machine must be able to return to OK.
+    vault.markProviderKeyOk('re-entered provider key');
+    expect(vault.getProviderKeyState()).toBe(PROVIDER_KEY_STATE.OK);
+    expect(vault.getProviderKeyUnreadableReason()).toBeNull();
+    expect(listener).toHaveBeenCalledTimes(2); // unreadable + OK transitions
+
+    // Calling again while already OK is a no-op (no duplicate notifications).
+    vault.markProviderKeyOk();
+    expect(listener).toHaveBeenCalledTimes(2);
+  });
 });
