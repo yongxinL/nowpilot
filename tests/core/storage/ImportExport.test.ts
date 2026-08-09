@@ -217,7 +217,10 @@ describe('JSON canonical round-trip (D-17)', () => {
     const originalGetAll = IDBObjectStore.prototype.getAll;
     const getAllSpy = vi
       .spyOn(IDBObjectStore.prototype, 'getAll')
-      .mockImplementation(function (this: IDBObjectStore, ...args: unknown[]) {
+      .mockImplementation(function (
+        this: IDBObjectStore,
+        ...args: Parameters<typeof originalGetAll>
+      ) {
         if (this.name === 'sessions') {
           return Promise.reject(new Error('sessions read broken')) as never;
         }
