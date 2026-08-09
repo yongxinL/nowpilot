@@ -42,9 +42,7 @@ export function isVaultEnvelope(value: unknown): boolean {
   if (typeof value !== 'object' || value === null) return false;
   const record = value as Record<string, unknown>;
   return (
-    isByteArrayLike(record.salt) &&
-    isByteArrayLike(record.iv) &&
-    isByteArrayLike(record.ciphertext)
+    isByteArrayLike(record.salt) && isByteArrayLike(record.iv) && isByteArrayLike(record.ciphertext)
   );
 }
 
