@@ -530,32 +530,39 @@ buffer.flushNow();                                          // on 'done'
 | A5 | Browser `Response`/`Headers`/`Request` globals in the jsdom-align vitest env come from Node (undici), so mock-fetch tests construct responses from the global | Patterns / Testing | jsdom 30 ships its own fetch — if it shadows the globals differently, mock responses must be built from the same constructor the adapter calls; the live spike ran under plain Node. Tests should confirm the constructor identity once (setup.ts) |
 | A6 | The `fetch` test seam is added to `getAISDKModel`'s cfg (optional `fetch?: typeof globalThis.fetch`) | Standard Stack / Code Examples | The §10.1 `ILLMProvider.getAISDKModel(model)` signature has no cfg — the cfg param (with optional fetch) is the AI-SPEC's documented extension; if a stricter reading forbids it, tests construct adapters directly (still verified) or use msw |
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+All five questions are resolved by the phase plans; each item carries its carrying-plan pointer and the locked resolution below. No open question remains for execution.
 
 1. **runAgentTurn streaming seam (AI-03 vs D-20 verbatim).** Appendix I's `runAgentTurn` returns only the completed `streamedText`, but AI-03 requires live incremental rendering. The AI-SPEC Seam 3 + UI-SPEC stream state machine ("text grows via ChunkBuffer" during the stream) imply deltas must flow during generation.
    - What we know: `streamText` deltas are produced inside `RendererService`; the hook needs them live; `runAgentTurn` is the mandated entry (hooks may not call PlannerService directly).
    - What's unclear: whether to add an optional `onStreamDelta?: (delta: string) => void` parameter to `runAgentTurn` (minimal additive deviation from Appendix I, documented in the Phase-3 addendum like Phase-1/2 plan deviations) or have `RendererService.render` expose the chunk stream and `runAgentTurn` forward it.
    - Recommendation: add the optional `onStreamDelta` param to `runAgentTurn` (output struct stays verbatim — D-20 is about not leaking evidence machinery, not about forbidding a streaming callback). Planner should treat this as a documented deviation with a fixture test asserting deltas arrive before completion.
+   - **RESOLVED — carried by 03-06 (Task 2):** optional `onStreamDelta?: (delta: string) => void` added to `AgentTurnInput`; `AgentTurnOutput` stays verbatim (D-20 intact); deltas-before-completion fixture asserted (03-06 Task 2 Test 6).
 
 2. **`UserPreferences` home for Phase 3.** `resolvePersona` (Appendix N.2) and the D-02 context helper need a `UserPreferences`-shaped value, but `src/core/memory/types.ts` (its spec home) doesn't exist until Phase 5.
    - What we know: D-09 injects persona prefs as a config provider; only the `personaOverrides` slice is read in Phase 3.
    - What's unclear: declare a minimal `UserPreferences` (or `PersonaOverrides`-only) type in `src/core/ai/types.ts` as a Phase-5 move target, vs. a narrower `PersonaPrefsLike` param.
    - Recommendation: seed the full §3.5 `UserPreferences` interface (including `allowCloudFallbackFromLocal`, needed by D-13's `privacyModeFromPrefs`) in `src/core/ai/types.ts`, marked as the Phase-5 move target; `src/core/memory/types.ts` later re-exports it (R-1: single home at any time). Planner should pick the exact cut and record the deletion target.
+   - **RESOLVED — carried by 03-01 (Task 2):** full §3.5 `UserPreferences` (incl. `personaOverrides` + `allowCloudFallbackFromLocal`) seeded in `src/core/ai/types.ts`, header-marked as the Phase-5 move target; `src/core/memory/types.ts` re-exports later (R-1). Consumer: 03-07 (contextHelper).
 
 3. **RendererService `render` output shape.** Appendix I's `finish()` awaits `RendererService.render` and reads `rendered.text` — but streaming happens during render.
    - What we know: StreamAdapter produces `LLMStreamChunk`; ChunkBuffer is client-side.
    - What's unclear: whether `render` should (a) accept `onChunk`, (b) return `{ text, chunks }`, or (c) be driven by the orchestrator consuming an async generator.
    - Recommendation: `RendererService.render({ ..., onDelta })` mirrors the orchestrator's `onStreamDelta`; the returned `text` is the accumulated final string. Keep the adapter consumer inside RendererService only (AI-SPEC rule).
+   - **RESOLVED — carried by 03-06 (Task 1):** option (a) — `render({ ..., onDelta })`, returned `text` = accumulated final string; `streamText` consumed ONLY inside RendererService/StreamAdapter (Seam 3).
 
 4. **Gemini `cachedContent` reference usage.** `@ai-sdk/google` v1 exposes `cachedContent?: string` (a `cachedContents/{id}` reference), but creating the resource requires the CachedContent API which the adapter doesn't wrap.
    - What we know: Appendix K's gemini branch never engages below 32,768 tokens (dormant at Phase-3 sizes).
    - What's unclear: whether to implement the branch as spec-verbatim (returns `cachedContent: stable` sections shape that no Phase-3 caller consumes) or reduce to `prefix-only` with the enum value reserved.
    - Recommendation: implement Appendix K verbatim (the hash + strategy enum are what the tests assert); the `gemini-cachedContent` branch's resource creation is documented as a future phase. Planner: keep the constant + branch, don't build the CachedContent API client.
+   - **RESOLVED — carried by 03-03 (Task 2):** Appendix K VERBATIM (`applyCacheHints`, `hashStableSections` FNV-1a, `GEMINI_MIN_CACHED_TOKENS = 32_768`); `gemini-cachedContent` branch is hash/strategy only — no CachedContent API client (documented future phase, "Research RQ4" note in the file header).
 
 5. **Ollama `response_format` vs prompt mode.** Ollama's OpenAI-compat endpoint advertises `response_format` + JSON mode support (docs verified), but D-18 locks Ollama → `'prompt'` because support is model-dependent and `ProviderConfig` has no JSON-capability field.
    - What we know: `compatibility: 'compatible'` strips "newer fields" but `response_format` is standard OpenAI API; whether Ollama honors it depends on the model.
    - What's unclear: whether `generateObject({ mode: 'json' })` would work against Ollama for models that support `format: json` (llama3.2/qwen2.5 generally do).
    - Recommendation: keep the D-18 locked behavior ('prompt' + one repair) — deterministic and provider-agnostic; the native-JSON probe for Ollama is a future refinement. Planner should not add a JSON-capability field to ProviderConfig this phase.
+   - **RESOLVED — carried by 03-05 (Task 1):** D-18 locked — `callProviderJsonMode` resolves Ollama → `'prompt'`, openai/anthropic/gemini → `'native'`; native-JSON probe for Ollama deferred (no JSON-capability field added to ProviderConfig).
 
 ## Environment Availability
 
