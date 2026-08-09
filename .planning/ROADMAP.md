@@ -88,12 +88,12 @@ Plans:
   4. The database migrates from the v1 → v2 fixture without data loss.
   5. User can import/export sanitized JSON/ZIP and back up/restore their data.
 
-**Plans**: 11 plans
+**Plans**: 1/11 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 02-01-PLAN.md — foundation: deps (idb/fflate/fake-indexeddb), test harness, storage types, canonical error codes + spec C.2, i18n strings, fixture builders (wave 1)
+- [x] 02-01-PLAN.md — foundation: deps (idb/fflate/fake-indexeddb), test harness, storage types, canonical error codes + spec C.2, i18n strings, fixture builders (wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -381,7 +381,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. MV3/WXT Runtime + AntD Shells + Workspace | 11/11 | Complete    | 2026-08-08 |
-| 2. Storage, Security, WriteJournal, Workspace Persistence | 0/11 | Not started | - |
+| 2. Storage, Security, WriteJournal, Workspace Persistence | 1/11 | In Progress|  |
 | 3. Cost-Effective AI Runtime (+ Persona seed) | TBD | Not started | - |
 | 3a. Agent Reliability and Evidence | TBD | Not started | - |
 | 4. Context-Adaptive Execution | TBD | Not started | - |
