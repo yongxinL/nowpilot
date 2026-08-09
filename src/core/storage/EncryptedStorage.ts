@@ -53,9 +53,9 @@ export function encodeBase64Bytes(bytes: Uint8Array): string {
 }
 
 /** Decode base64 → raw bytes (inverse of encodeBase64Bytes). */
-export function decodeBase64Bytes(value: string): Uint8Array {
+export function decodeBase64Bytes(value: string): Uint8Array<ArrayBuffer> {
   const binary = atob(value);
-  const bytes = new Uint8Array(binary.length);
+  const bytes = new Uint8Array(new ArrayBuffer(binary.length));
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
   return bytes;
 }
