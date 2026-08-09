@@ -587,13 +587,20 @@ export async function restoreFullVault(
 ): Promise<MergeResult> {
   const { groups } = await parseImportPayload(payload);
   const entry: WriteJournalEntry = {
-    id: `restore-${Date.now()}`,
+    // IN-03: UUID entry id — Date.now() collisions between two restores in the
+    // same millisecond would overwrite each other's journal entry.
+    id: crypto.randomUUID(),
     operation: 'restore-notes-batch',
     status: 'pending',
     createdAt: Date.now(),
     updatedAt: Date.now(),
     attempts: 0,
     targetIds: { scope: 'full-vault' },
+    // WR-02: the parsed groups are RETAINED in the entry so crash recovery can
+    // re-run the merges with the actual payload — the D-18 journaled-restore
+    // guarantee is real, not header prose. persistJournalEntry routes this
+    // through redactSensitive (D-16) before the write.
+    payload: { groups },
     steps: [],
   };
   const totals: MergeResult = { upserted: 0, kept: 0 };
@@ -619,6 +626,29 @@ export async function restoreFullVault(
       extra: { entryId: entry.id },
     });
     throw err;
+  }
+  return totals;
+}
+
+/**
+ * WR-02: the production replay handler for a 'restore-notes-batch' entry left
+ * pending/applying by a mid-restore crash. Mirrors recoverWorkspaceJournal's
+ * replay: re-runs every retained per-group merge from the entry's OWN payload
+ * (additive + idempotent, existing-wins — D-18) and accumulates the totals.
+ * No-op for entries whose payload was never retained (legacy/foreign).
+ */
+export async function replayRestoreEntry(
+  entry: WriteJournalEntry,
+  opts: { overwrite?: boolean } = {},
+): Promise<MergeResult> {
+  const payload = entry.payload as { groups?: Record<string, unknown> } | undefined;
+  const groups = payload?.groups ?? {};
+  const totals: MergeResult = { upserted: 0, kept: 0 };
+  for (const group of EXPORT_GROUPS) {
+    if (groups[group] === undefined) continue;
+    const result = await mergeGroup(group, groups[group], opts);
+    totals.upserted += result.upserted;
+    totals.kept += result.kept;
   }
   return totals;
 }

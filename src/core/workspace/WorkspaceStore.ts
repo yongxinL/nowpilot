@@ -36,6 +36,12 @@ import {
   runJournaled,
   type JournalStep,
 } from '@/core/storage/WriteJournal';
+// WR-02: the restore-notes-batch replay handler lives in ImportExport (the
+// merge owner); the workspace recovery path dispatches to it. Circular-module
+// note: ImportExport imports NP_WORKSPACE_KEY from this module, but both sides
+// only READ the other's exports inside functions (runtime), never at module
+// top level, so the ESM cycle is safe.
+import { replayRestoreEntry } from '@/core/storage/ImportExport';
 import type { WriteJournalEntry } from '@/types/storage';
 import type { ActiveSurface, WorkspaceState } from '@/types/workspace';
 
@@ -340,21 +346,38 @@ export const useWorkspaceStore = create<WorkspaceStoreShape>()((set, get) => ({
       // the replay below applies the D-07 consumer gates (scope + known-op).
       await recoverJournal(loadPendingEntries, async (entry) => {
         const local = get().workspace;
-        // M.3 workspace scope gate (WR-10 / D-07) — a recovered write for a
-        // DIFFERENT workspaceId can never contaminate this workspace (T-2-04-01).
-        // Same guard as the onChanged handler: shape-check → scope gate → LWW.
-        if (entry.targetIds?.workspaceId !== local.workspaceId) {
-          debugLog(ERROR_CODES.STORE_SYNC, 'journal replay skipped (foreign workspace)', {
+        // D-07 forward-compat (T-2-04-02): an unknown operation value is
+        // skipped-and-logged, never thrown — a future-version entry cannot
+        // brick startup.
+        if (
+          entry.operation !== 'update-workspace' &&
+          entry.operation !== 'restore-notes-batch'
+        ) {
+          debugLog(ERROR_CODES.WRITE_JOURNAL_FAILED, 'journal replay skipped (unknown operation)', {
             silent: true,
             module: 'WorkspaceStore',
           });
           return;
         }
-        // D-07 forward-compat (T-2-04-02): an unknown operation value is
-        // skipped-and-logged, never thrown — a future-version entry cannot
-        // brick startup.
-        if (entry.operation !== 'update-workspace') {
-          debugLog(ERROR_CODES.WRITE_JOURNAL_FAILED, 'journal replay skipped (unknown operation)', {
+        if (entry.operation === 'restore-notes-batch') {
+          // WR-02: full-vault restore recovery — re-run the retained per-group
+          // merges from the entry's OWN payload (additive + idempotent, D-18),
+          // then mark completed (replay-once, mirroring the workspace path). A
+          // mid-restore crash can no longer silently drop un-merged groups.
+          await replayRestoreEntry(entry);
+          entry.status = 'completed';
+          await persistJournalEntry(entry);
+          debugLog(ERROR_CODES.WORKSPACE_SYNC, 'restore-notes-batch entry replayed', {
+            silent: true,
+            module: 'WorkspaceStore',
+          });
+          return;
+        }
+        // M.3 workspace scope gate (WR-10 / D-07) — a recovered write for a
+        // DIFFERENT workspaceId can never contaminate this workspace (T-2-04-01).
+        // Same guard as the onChanged handler: shape-check → scope gate → LWW.
+        if (entry.targetIds?.workspaceId !== local.workspaceId) {
+          debugLog(ERROR_CODES.STORE_SYNC, 'journal replay skipped (foreign workspace)', {
             silent: true,
             module: 'WorkspaceStore',
           });

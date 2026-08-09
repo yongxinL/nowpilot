@@ -22,6 +22,7 @@ import {
   exportZip,
   mergeGroup,
   parseImportPayload,
+  replayRestoreEntry,
   restoreFullVault,
   type MergeResult,
 } from '@/core/storage/ImportExport';
@@ -47,6 +48,7 @@ import {
   persistJournalEntry,
   recoverJournal,
 } from '@/core/storage/WriteJournal';
+import { useWorkspaceStore } from '@/core/workspace/WorkspaceStore';
 import {
   buildCrossInstallFixture,
   buildRedactionFixture,
@@ -322,6 +324,12 @@ describe('journaled full-vault restore (D-18 / A-20 / T-2-09-03)', () => {
     expect(restoreEntry?.status).toBe('completed');
     expect(restoreEntry?.targetIds.scope).toBe('full-vault');
     expect(restoreEntry?.steps.length).toBe(EXPORT_GROUPS.length); // one step per group
+    // WR-02: the parsed groups are RETAINED on the entry — crash recovery can
+    // re-run the merges with the actual payload (D-18 journaled restore).
+    expect(restoreEntry?.payload).toBeDefined();
+    const retainedGroups = (restoreEntry?.payload as { groups?: Record<string, unknown> }).groups;
+    expect(retainedGroups).toBeDefined();
+    expect(Object.keys(retainedGroups ?? {}).sort()).toEqual([...EXPORT_GROUPS].sort());
 
     // Data landed in the fresh stores.
     const chatDb = await openChatHistoryDB();
@@ -363,7 +371,7 @@ describe('journaled full-vault restore (D-18 / A-20 / T-2-09-03)', () => {
     notesDb.close();
   });
 
-  it('recoverJournal replays an applying restore entry to convergence (02-04 recovery harness)', async () => {
+  it('recoverJournal replays an applying restore entry via the PRODUCTION handler using the retained payload (WR-02)', async () => {
     await seedChatHistory();
     await seedNotes();
     const payload = await exportZip([...EXPORT_GROUPS]);
@@ -372,7 +380,9 @@ describe('journaled full-vault restore (D-18 / A-20 / T-2-09-03)', () => {
 
     // Crash simulation: chat-history step already merged (completed step marker)
     // but the entry was never finalized — persisted in the 'applying' state
-    // exactly as runJournaled leaves it after a hard crash (02-04 harness).
+    // exactly as runJournaled leaves it after a hard crash. The payload is
+    // RETAINED on the entry (the WR-02 production shape) — the replay must use
+    // the entry's OWN payload, never test-scope data.
     await mergeGroup('chat-history', parsed.groups['chat-history']);
     const crashEntry: WriteJournalEntry = {
       id: 'restore-crash-1',
@@ -382,22 +392,21 @@ describe('journaled full-vault restore (D-18 / A-20 / T-2-09-03)', () => {
       updatedAt: 1100,
       attempts: 1,
       targetIds: { scope: 'full-vault' },
+      payload: { groups: parsed.groups },
       steps: [{ name: 'merge-chat-history', status: 'completed' }],
     };
     await persistJournalEntry(crashEntry);
 
-    // Recovery replay: re-merge every group from the retained payload
-    // (idempotent — already-merged records are kept, D-18), then mark completed
-    // (replay-once, mirroring recoverWorkspaceJournal).
+    // Recovery replay through recoverJournal + the PRODUCTION merge handler
+    // (replayRestoreEntry — the same handler recoverWorkspaceJournal dispatches
+    // to). Idempotent: already-merged records are kept (existing-wins, D-18).
+    // The handler marks the entry completed (replay-once), mirroring the
+    // recoverWorkspaceJournal contract.
     let merges = 0;
     const replay = async (entry: WriteJournalEntry): Promise<void> => {
       expect(entry.operation).toBe('restore-notes-batch');
-      for (const group of EXPORT_GROUPS) {
-        if (parsed.groups[group] !== undefined) {
-          await mergeGroup(group, parsed.groups[group]);
-          merges++;
-        }
-      }
+      await replayRestoreEntry(entry);
+      merges++;
       entry.status = 'completed';
       await persistJournalEntry(entry);
     };
@@ -408,15 +417,68 @@ describe('journaled full-vault restore (D-18 / A-20 / T-2-09-03)', () => {
     const mergedEntries = await loadPendingEntries();
     const restoreEntry = mergedEntries.find((e) => e.id === 'restore-crash-1');
     expect(restoreEntry?.status).toBe('completed');
-    expect(merges).toBeGreaterThanOrEqual(EXPORT_GROUPS.length); // one full pass
+    expect(merges).toBe(1); // only the first pass replayed it — replay-once
 
-    // Both groups converged.
+    // Both groups converged from the ENTRY's retained payload.
     const chatDb = await openChatHistoryDB();
     expect(await getSession(chatDb, 's-1')).toEqual(makeSession());
     chatDb.close();
     const notesDb = await openNotesDB();
     expect(await getNote(notesDb, 'n-1')).toEqual(makeNote());
     notesDb.close();
+  });
+
+  it('the production recovery path (recoverWorkspaceJournal) dispatches restore-notes-batch to the merge handler (WR-02)', async () => {
+    await seedChatHistory();
+    await seedNotes();
+    const payload = await exportZip([...EXPORT_GROUPS]);
+    const parsed = await parseImportPayload(payload);
+    await wipeDBs('ChatHistoryDB', 'NotesDB', 'WriteJournalDB');
+
+    // A mid-restore crash leaves an 'applying' entry with its payload retained
+    // (the exact shape restoreFullVault now persists).
+    const crashEntry: WriteJournalEntry = {
+      id: 'restore-crash-2',
+      operation: 'restore-notes-batch',
+      status: 'applying',
+      createdAt: 1000,
+      updatedAt: 1100,
+      attempts: 1,
+      targetIds: { scope: 'full-vault' },
+      payload: { groups: parsed.groups },
+      steps: [],
+    };
+    await persistJournalEntry(crashEntry);
+
+    // init() runs recoverWorkspaceJournal, which must NOT skip the
+    // restore-notes-batch op (previously "unknown operation") — it re-runs the
+    // retained merges and marks the entry completed.
+    useWorkspaceStore.setState({
+      workspace: {
+        workspaceId: 'ws-restore-replay',
+        conversationId: 'conv-restore-replay',
+        pinnedTabs: [],
+        selectedNotes: [],
+        activeSurface: 'sidepanel',
+        version: 0,
+        updatedAt: 1000,
+      },
+      isReady: false,
+    });
+    await useWorkspaceStore.getState().init();
+
+    const mergedEntries = await loadPendingEntries();
+    const restoreEntry = mergedEntries.find((e) => e.id === 'restore-crash-2');
+    expect(restoreEntry?.status).toBe('completed'); // replayed + finalized
+
+    const chatDb = await openChatHistoryDB();
+    expect(await getSession(chatDb, 's-1')).toEqual(makeSession());
+    chatDb.close();
+    const notesDb = await openNotesDB();
+    expect(await getNote(notesDb, 'n-1')).toEqual(makeNote());
+    notesDb.close();
+
+    useWorkspaceStore.getState().stop();
   });
 });
 
