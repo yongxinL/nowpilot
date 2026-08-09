@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v0.1
 milestone_name: milestone
 current_phase: 3
-current_phase_name: + Persona seed
+current_phase_name: Cost-Effective AI Runtime (+ Persona seed)
 status: planning
-stopped_at: Phase 2 context gathered
+stopped_at: Phase 2 complete, ready to plan Phase 3
 last_updated: "2026-08-09T09:01:18.621Z"
 last_activity: 2026-08-09
 last_activity_desc: Phase 2 complete, transitioned to Phase 3
@@ -20,11 +20,11 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-08-04)
+See: .planning/PROJECT.md (updated 2026-08-09)
 
 **Core value:** A privacy-first, local-first AI assistant where chat, extracted page content, and a linked notes/knowledge layer combine into a persistent personal workspace — no data leaves the machine unless the user deliberately configures a cloud provider.
 
-**Current focus:** Phase 2 — Storage, Security, WriteJournal, Workspace Persistence
+**Current focus:** Phase 3 — Cost-Effective AI Runtime (+ Persona seed)
 
 ## Current Position
 
@@ -85,6 +85,14 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 4b]: Retrieved data is never instructions (`instructionAuthority: false`); every OptimizedContext carries a ContextProvenanceManifest
 - [Phase 5]: MiniSearch for retrieval (no embeddings); local-FS sync is one-way export-first (never bidirectional)
 - [All phases]: Human-verified continual evolution (never autonomous); every phase ends green via `verify:phase-N`; every catch uses a canonical §C.2 error code
+- [Phase 2]: Vault = at-rest AES-GCM obfuscation (PBKDF2 installSecret+extensionId, per-key salt/IV); secrets never exported; PROVIDER_KEY_UNREADABLE is the ONE shared state for restore-on-new-install / installSecret-cleared / tampered-ciphertext; wipe user-initiated only, never auto-regenerate
+- [Phase 2]: VaultEnvelope uses base64 serializeEnvelope/deserializeEnvelope wire form — raw Uint8Array/ArrayBuffer degrade under chrome.storage JSON round-trip (proven by fakeBrowser mock)
+- [Phase 2]: WriteJournal framework + update-workspace only; WorkspaceStore journaled; journal entry persists the workspace payload (replay restores it, not a version-only fabrication); workspace-scoped replay (WR-10); unknown-op skip-and-log
+- [Phase 2]: IndexedDBMigrator MUST use raw indexedDB.open + sync dispatch + idb wrap() — idb openDB with a throwing upgrade leaks an unhandled rejection in fake-indexeddb → vitest exit 1; run full migration chain oldVersion→newVersion
+- [Phase 2]: np_providers storage model = per-provider envelope keys (np_providers.<id>, encrypted) — aligns registry, Setting gate, and KeyVault; spec §15.1 note updated
+- [Phase 2]: D-15 sync-quota shadow — cosmetic sync keys fall back to local shadow (SYNC_QUOTA_EXCEEDED), sync-first reads, shadow wins + reconcile back; ThemeStore rewired sync-first through Setting.ts; APPR-03 reworded "sync is canonical, local is transient shadow"
+- [Phase 2]: ImportExport core at src/core/storage/ImportExport.ts (+1 documented to §18); JSON+ZIP fflate, scoped groups, manifest, merge/upsert, journaled full-vault restore (restore-notes-batch user-confirmed live consumer); UI panel deferred to Phase 7
+- [Phase 2]: Redaction real in Phase 2 — TraceRedactor O.13 body + redactSensitive field-level (suffix-match sensitive keys, password DROP not mask, base64 envelope passthrough); debugLog extra redacted
 - [Phase 01]: manualChunks applied via vite:build:extendConfig hook scoped to HTML multi-page groups (WXT 0.19 lib-mode IIFE builds reject top-level manualChunks); Appendix G isolation intent preserved via import restriction + isolation grep — Plan's verbatim-config and build-exit-0 acceptance criteria were mutually exclusive under WXT 0.19
 - [Phase 01-mv3-wxt-runtime-antd-shells-workspace]: Phase-1 debugLog error codes canonicalized into PRODUCT_SPEC Appendix C.2 (38-code Phase-1 block) — they were absent from the spec despite the plan's acceptance criteria; Golden Rule 9 codes are now spec-canonical for 01-04 errorCodes.ts — Plan acceptance criterion greps the spec for SIDEPANEL_BEHAVIOR/REGISTRY_INIT/THEME_WRITE/MSG_UNKNOWN_TYPE; 0 matches found before fix
 - [Phase 01-mv3-wxt-runtime-antd-shells-workspace]: STR Phase-1 additions sourced verbatim from the UI-SPEC Copywriting Contract (historyEmpty, onboarding.heading/body/configureProvider/configureLater, handoffFailed, cmdk.placeholder, newNote, options.noProvider, theme.saveFailed) — Plan claimed additions were already reconciled in Appendix B but they were absent; UI-SPEC Copywriting Contract is the canonical verbatim source the plan names
@@ -138,6 +146,6 @@ Items acknowledged and carried forward (v2 scope, tracked in REQUIREMENTS.md):
 
 ## Session Continuity
 
-Last session: 2026-08-09T01:33:10.211Z
-Stopped at: Phase 2 context gathered
-Resume file: .planning/phases/02-storage-security-writejournal-workspace-persistence/02-CONTEXT.md
+Last session: 2026-08-09T09:01:18Z
+Stopped at: Phase 2 complete, ready to plan Phase 3
+Resume file: None
