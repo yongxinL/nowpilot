@@ -14,10 +14,29 @@
 // WorkspaceState fields stay untouched by every mutation (D-18 / T-1-05). Every
 // error path calls debugLog with a canonical WORKSPACE_*/STORE_* code and never
 // throws (Golden Rule 9).
+//
+// D-06 rewire (Phase 2): every np_workspace write now flows EXCLUSIVELY through
+// the WriteJournal — journaledUpdateWorkspace builds an 'update-workspace' entry
+// and runs it through runJournaled (persistJournalEntry → WriteJournalDB), so a
+// mid-write crash leaves an 'applying' entry that recoverWorkspaceJournal replays
+// on the next init (atomic-on-recovery). Replay is workspace-scoped (D-07/WR-10)
+// and unknown operation values are skipped-and-logged, never thrown (forward
+// compat). The §20.3 step order is preserved: pending → write np_workspace →
+// BroadcastBus WORKSPACE_UPDATED → completed.
 import { create } from 'zustand';
 import { produce } from 'immer';
 import { debugLog } from '@/core/error/debugLog';
 import { ERROR_CODES } from '@/core/error/errorCodes';
+import { broadcastBus } from '@/core/runtime/BroadcastBus';
+import { MessageType } from '@/core/runtime/MessageType';
+import {
+  loadPendingEntries,
+  persistJournalEntry,
+  recoverJournal,
+  runJournaled,
+  type JournalStep,
+} from '@/core/storage/WriteJournal';
+import type { WriteJournalEntry } from '@/types/storage';
 import type { ActiveSurface, WorkspaceState } from '@/types/workspace';
 
 export const NP_WORKSPACE_KEY = 'np_workspace';
@@ -86,12 +105,60 @@ export function sanitizeStored(value: unknown): Partial<WorkspaceState> | null {
   return out;
 }
 
-/** Write the D-18 active fields through the storage adapter. Never throws. */
-async function writeStorage(ws: WorkspaceState): Promise<void> {
+/**
+ * D-06 rewire — the ONLY np_workspace write path. Builds an 'update-workspace'
+ * WriteJournalEntry (idempotency key = workspaceId + version, §20.2/D-07) and
+ * runs it through runJournaled with the §20.3 step order:
+ *   1. 'write-np-workspace' — idempotent chrome.storage.local.set of the
+ *      versioned active-fields snapshot (safe on replay: an upsert of the same
+ *      version is a no-op-by-key, T-2-04-03)
+ *   2. 'emit-workspace-updated' — BroadcastBus WORKSPACE_UPDATED (reuses the
+ *      WorkspaceSync.publishSnapshot shape: { state, from })
+ * Entry persistence lands in WriteJournalDB via persistJournalEntry. Never
+ * throws to the caller (Golden Rule 9) — runJournaled rethrows after rollback,
+ * so this catches and debugLogs.
+ */
+async function journaledUpdateWorkspace(ws: WorkspaceState): Promise<void> {
+  const entry: WriteJournalEntry = {
+    id: crypto.randomUUID(),
+    operation: 'update-workspace',
+    status: 'pending',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    attempts: 0,
+    targetIds: { workspaceId: ws.workspaceId, version: String(ws.version) },
+    steps: [],
+  };
+  const steps: JournalStep[] = [
+    {
+      name: 'write-np-workspace',
+      apply: async () => {
+        await chrome.storage.local.set({ [NP_WORKSPACE_KEY]: pickActive(ws) });
+      },
+      rollback: async () => {
+        // The prior snapshot is not stored in the journal; version-LWW governs
+        // convergence, so rollback is a no-op (the failed write never becomes
+        // the winning version).
+      },
+    },
+    {
+      name: 'emit-workspace-updated',
+      apply: async () => {
+        broadcastBus.emit(MessageType.WORKSPACE_UPDATED, {
+          state: ws,
+          from: ws.activeSurface,
+        });
+      },
+      rollback: async () => {
+        // Broadcast is fire-and-forget; a rolled-back write emits no further
+        // snapshots (receivers LWW-reject stale versions).
+      },
+    },
+  ];
   try {
-    await chrome.storage.local.set({ [NP_WORKSPACE_KEY]: pickActive(ws) });
+    await runJournaled(entry, steps, persistJournalEntry);
   } catch (err) {
-    debugLog(ERROR_CODES.STORE_WRITE, 'failed to write np_workspace', {
+    debugLog(ERROR_CODES.WRITE_JOURNAL_FAILED, 'journaled workspace write failed', {
       error: err instanceof Error ? err : undefined,
       module: 'WorkspaceStore',
     });
@@ -125,6 +192,14 @@ export interface WorkspaceStoreShape {
   setActiveSurface(surface: ActiveSurface): void;
   /** Set or clear the opened standalone tab id (D-18 active field). */
   setOpenedStandaloneTabId(id?: number): void;
+  /**
+   * D-07 crash recovery: replay WriteJournalDB entries left pending/applying by
+   * a mid-write crash. Workspace-scoped (WR-10) — a recovered write for a
+   * different workspaceId is skipped; unknown operation values are
+   * skipped-and-logged, never thrown (forward compat). Invoked at the end of
+   * init().
+   */
+  recoverWorkspaceJournal(): Promise<void>;
 }
 
 export const useWorkspaceStore = create<WorkspaceStoreShape>()((set, get) => ({
@@ -190,6 +265,11 @@ export const useWorkspaceStore = create<WorkspaceStoreShape>()((set, get) => ({
     }
     onChangedListener = handleChanged;
     chrome.storage.onChanged.addListener(handleChanged);
+
+    // D-07: replay any journal entry left pending/applying by a mid-write crash
+    // (atomic-on-recovery). Runs AFTER the listener is wired so a replayed write
+    // propagates like any other same-workspace write.
+    await get().recoverWorkspaceJournal();
   },
 
   start: async (surface) => {
@@ -200,7 +280,7 @@ export const useWorkspaceStore = create<WorkspaceStoreShape>()((set, get) => ({
       updatedAt: Date.now(),
     };
     set({ workspace: next, isReady: true });
-    await writeStorage(next);
+    await journaledUpdateWorkspace(next);
     debugLog(ERROR_CODES.WORKSPACE_START, `workspace started on ${surface}`, {
       silent: true,
       module: 'WorkspaceStore',
@@ -235,7 +315,7 @@ export const useWorkspaceStore = create<WorkspaceStoreShape>()((set, get) => ({
       updatedAt: Date.now(),
     };
     set({ workspace: bumped });
-    void writeStorage(bumped);
+    void journaledUpdateWorkspace(bumped);
   },
 
   setActiveSurface: (surface) => {
@@ -248,5 +328,61 @@ export const useWorkspaceStore = create<WorkspaceStoreShape>()((set, get) => ({
     get().update((draft) => {
       draft.openedStandaloneTabId = id;
     });
+  },
+
+  recoverWorkspaceJournal: async () => {
+    try {
+      // recoverJournal replays only 'pending'/'applying' entries (O.11 verbatim);
+      // the replay below applies the D-07 consumer gates (scope + known-op).
+      await recoverJournal(loadPendingEntries, async (entry) => {
+        const local = get().workspace;
+        // M.3 workspace scope gate (WR-10 / D-07) — a recovered write for a
+        // DIFFERENT workspaceId can never contaminate this workspace (T-2-04-01).
+        // Same guard as the onChanged handler: shape-check → scope gate → LWW.
+        if (entry.targetIds?.workspaceId !== local.workspaceId) {
+          debugLog(ERROR_CODES.STORE_SYNC, 'journal replay skipped (foreign workspace)', {
+            silent: true,
+            module: 'WorkspaceStore',
+          });
+          return;
+        }
+        // D-07 forward-compat (T-2-04-02): an unknown operation value is
+        // skipped-and-logged, never thrown — a future-version entry cannot
+        // brick startup.
+        if (entry.operation !== 'update-workspace') {
+          debugLog(ERROR_CODES.WRITE_JOURNAL_FAILED, 'journal replay skipped (unknown operation)', {
+            silent: true,
+            module: 'WorkspaceStore',
+          });
+          return;
+        }
+        // Re-apply the journaled write (idempotent versioned upsert, T-2-04-03):
+        // the versioned snapshot is re-written so np_workspace converges to the
+        // entry's version. If storage already carries >= the entry version the
+        // upsert is a no-op-by-key.
+        const targetVersion = Number(entry.targetIds?.version);
+        if (Number.isFinite(targetVersion) && targetVersion > local.version) {
+          const converged: WorkspaceState = {
+            ...local,
+            version: targetVersion,
+            updatedAt: Date.now(),
+          };
+          set({ workspace: converged });
+          await chrome.storage.local.set({ [NP_WORKSPACE_KEY]: pickActive(converged) });
+          debugLog(ERROR_CODES.WORKSPACE_SYNC, 'journal entry replayed', {
+            silent: true,
+            module: 'WorkspaceStore',
+          });
+        }
+        // Mark completed so the next recovery pass skips it (replay-once).
+        entry.status = 'completed';
+        await persistJournalEntry(entry);
+      });
+    } catch (err) {
+      debugLog(ERROR_CODES.WRITE_JOURNAL_FAILED, 'journal recovery failed', {
+        error: err instanceof Error ? err : undefined,
+        module: 'WorkspaceStore',
+      });
+    }
   },
 }));
