@@ -301,6 +301,41 @@ describe('per-group MERGE/upsert semantics (D-18 / T-2-09-02)', () => {
     expect((await getSession(db2, 's-local'))?.title).toBe('incoming title');
     db2.close();
   });
+
+  it('record-level shape validation: malformed records with valid ids are SKIPPED, never persisted (WR-08)', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    // A hostile/corrupted export: a session with only an id, a message missing
+    // its required fields, and a well-formed sibling that must still merge.
+    const incoming = {
+      sessions: [
+        { id: 's-bad' }, // missing title/created/starred/preview
+        makeSession({ id: 's-good', title: 'good session' }),
+      ],
+      messages: [
+        { id: 'm-bad' }, // missing sessionId/role/content/timestamp
+        makeMessage({ id: 'm-good', sessionId: 's-good' }),
+      ],
+    };
+
+    const result: MergeResult = await mergeGroup('chat-history', incoming);
+    expect(result).toEqual({ upserted: 2, kept: 0 });
+
+    const db = await openChatHistoryDB();
+    // The malformed records were NOT persisted…
+    expect(await getSession(db, 's-bad')).toBeUndefined();
+    expect(await db.get('messages', 'm-bad')).toBeUndefined();
+    // …while the valid siblings landed.
+    expect(await getSession(db, 's-good')).toEqual(makeSession({ id: 's-good', title: 'good session' }));
+    expect(await db.get('messages', 'm-good')).toEqual(makeMessage({ id: 'm-good', sessionId: 's-good' }));
+    db.close();
+    // The skip was logged, not silent.
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining('skipped malformed chat-session record'),
+      expect.any(String),
+      expect.objectContaining({ kind: 'chat-session', id: 's-bad' }),
+    );
+    consoleSpy.mockRestore();
+  });
 });
 
 describe('journaled full-vault restore (D-18 / A-20 / T-2-09-03)', () => {

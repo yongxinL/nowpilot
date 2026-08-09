@@ -346,6 +346,130 @@ export interface MergeResult {
   kept: number;
 }
 
+// ---------------------------------------------------------------------------
+// WR-08: record-level inbound shape gates (mirroring the sanitizeStored
+// pattern). Each guard validates the REQUIRED fields/types of one store record
+// so a hostile or corrupted export cannot persist malformed rows (e.g.
+// { id: 's-9' } with no title, or { id: 123 }) that later consumers
+// (getMessagesForSession sorting, chat rendering, MiniSearch indexing) crash
+// on. Malformed records are SKIPPED + logged (STORE_WRITE), never persisted.
+// ---------------------------------------------------------------------------
+
+const CHAT_ROLES = new Set(['system', 'user', 'assistant', 'tool']);
+
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null && !Array.isArray(v);
+}
+
+function isFiniteNumber(v: unknown): v is number {
+  return typeof v === 'number' && Number.isFinite(v);
+}
+
+function isStringArray(v: unknown): v is string[] {
+  return Array.isArray(v) && v.every((element) => typeof element === 'string');
+}
+
+function isChatSession(v: unknown): v is ChatSession {
+  return (
+    isRecord(v) &&
+    typeof v.id === 'string' &&
+    typeof v.title === 'string' &&
+    isFiniteNumber(v.created) &&
+    isFiniteNumber(v.updated) &&
+    typeof v.starred === 'boolean' &&
+    typeof v.preview === 'string'
+  );
+}
+
+function isChatMessage(v: unknown): v is ChatMessage {
+  return (
+    isRecord(v) &&
+    typeof v.id === 'string' &&
+    typeof v.sessionId === 'string' &&
+    typeof v.role === 'string' &&
+    CHAT_ROLES.has(v.role) &&
+    typeof v.content === 'string' &&
+    isFiniteNumber(v.timestamp)
+  );
+}
+
+function isNote(v: unknown): v is Note {
+  return (
+    isRecord(v) &&
+    typeof v.id === 'string' &&
+    typeof v.title === 'string' &&
+    typeof v.content === 'string' &&
+    isFiniteNumber(v.created) &&
+    isFiniteNumber(v.updated) &&
+    Array.isArray(v.tags) &&
+    Array.isArray(v.links) &&
+    Array.isArray(v.unresolvedLinks) &&
+    isRecord(v.source) &&
+    isRecord(v.aiMeta) &&
+    isFiniteNumber(v.version)
+  );
+}
+
+function isConcept(v: unknown): v is Concept {
+  return (
+    isRecord(v) &&
+    typeof v.slug === 'string' &&
+    typeof v.label === 'string' &&
+    typeof v.summary === 'string' &&
+    Array.isArray(v.noteIds) &&
+    Array.isArray(v.aliases) &&
+    isFiniteNumber(v.updatedAt)
+  );
+}
+
+function isMemoryMessage(v: unknown): v is MemoryMessage {
+  return (
+    isRecord(v) &&
+    typeof v.conversationId === 'string' &&
+    isFiniteNumber(v.seq) &&
+    typeof v.role === 'string' &&
+    CHAT_ROLES.has(v.role) &&
+    typeof v.content === 'string' &&
+    isFiniteNumber(v.timestamp)
+  );
+}
+
+function isFact(v: unknown): v is Fact {
+  return (
+    isRecord(v) &&
+    typeof v.id === 'string' &&
+    typeof v.content === 'string' &&
+    isFiniteNumber(v.confidence) &&
+    (v.source === 'extracted' || v.source === 'explicit') &&
+    isFiniteNumber(v.created)
+  );
+}
+
+function isConversationSummary(v: unknown): v is ConversationSummary {
+  return (
+    isRecord(v) &&
+    typeof v.conversationId === 'string' &&
+    typeof v.summary === 'string' &&
+    isFiniteNumber(v.updatedAt)
+  );
+}
+
+/** WR-08: log-and-skip a malformed incoming record (never persisted). */
+function skipMalformed(kind: string, record: unknown): void {
+  const id =
+    isRecord(record) && typeof record.id === 'string'
+      ? record.id
+      : isRecord(record) && typeof record.conversationId === 'string'
+        ? record.conversationId
+        : isRecord(record) && typeof record.slug === 'string'
+          ? record.slug
+          : '<unknown>';
+  debugLog(ERROR_CODES.STORE_WRITE, `skipped malformed ${kind} record on import`, {
+    module: 'ImportExport',
+    extra: { kind, id },
+  });
+}
+
 /**
  * Per-group MERGE/upsert by id (D-18 / T-2-09-02): for each incoming record,
  * if the local id exists → keep local unless overwrite:true; if absent →
@@ -382,6 +506,12 @@ async function mergeChatHistory(
   const db = await openChatHistoryDB();
   try {
     for (const session of data.sessions ?? []) {
+      // WR-08: record-level inbound gate — a malformed session is skipped +
+      // logged, never persisted (later consumers sort/render on these fields).
+      if (!isChatSession(session)) {
+        skipMalformed('chat-session', session);
+        continue;
+      }
       const existing = await getSession(db, session.id);
       if (existing !== undefined && opts.overwrite !== true) {
         kept++;
@@ -391,6 +521,10 @@ async function mergeChatHistory(
       upserted++;
     }
     for (const message of data.messages ?? []) {
+      if (!isChatMessage(message)) {
+        skipMalformed('chat-message', message);
+        continue;
+      }
       const existing = await db.get('messages', message.id);
       if (existing !== undefined && opts.overwrite !== true) {
         kept++;
@@ -418,6 +552,10 @@ async function mergeNotes(incoming: unknown, opts: { overwrite?: boolean }): Pro
   const db = await openNotesDB();
   try {
     for (const note of data.notes ?? []) {
+      if (!isNote(note)) {
+        skipMalformed('note', note);
+        continue;
+      }
       const existing = await getNote(db, note.id);
       if (existing !== undefined && opts.overwrite !== true) {
         kept++;
@@ -427,6 +565,10 @@ async function mergeNotes(incoming: unknown, opts: { overwrite?: boolean }): Pro
       upserted++;
     }
     for (const concept of data.concepts ?? []) {
+      if (!isConcept(concept)) {
+        skipMalformed('concept', concept);
+        continue;
+      }
       const existing = await getConcept(db, concept.slug);
       if (existing !== undefined && opts.overwrite !== true) {
         kept++;
@@ -458,6 +600,10 @@ async function mergeMemory(incoming: unknown, opts: { overwrite?: boolean }): Pr
   const db = await openMemoryDB();
   try {
     for (const message of data.messages ?? []) {
+      if (!isMemoryMessage(message)) {
+        skipMalformed('memory-message', message);
+        continue;
+      }
       // §20.2 idempotency key: composite [conversationId, seq] IS the record id.
       const existing = await db.get('messages', [message.conversationId, message.seq]);
       if (existing !== undefined && opts.overwrite !== true) {
@@ -468,6 +614,10 @@ async function mergeMemory(incoming: unknown, opts: { overwrite?: boolean }): Pr
       upserted++;
     }
     for (const fact of data.facts ?? []) {
+      if (!isFact(fact)) {
+        skipMalformed('fact', fact);
+        continue;
+      }
       const existing = await getFact(db, fact.id);
       if (existing !== undefined && opts.overwrite !== true) {
         kept++;
@@ -477,6 +627,10 @@ async function mergeMemory(incoming: unknown, opts: { overwrite?: boolean }): Pr
       upserted++;
     }
     for (const summary of data.conversationSummaries ?? []) {
+      if (!isConversationSummary(summary)) {
+        skipMalformed('conversation-summary', summary);
+        continue;
+      }
       const existing = await getConversationSummary(db, summary.conversationId);
       if (existing !== undefined && opts.overwrite !== true) {
         kept++;
