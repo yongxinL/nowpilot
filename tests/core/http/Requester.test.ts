@@ -31,13 +31,11 @@ afterEach(() => {
 
 describe('Requester — PROXY_FETCH wrapper', () => {
   it('passes a successful ProxyFetchResponse through unchanged', async () => {
-    const sendSpy = vi
-      .spyOn(fakeBrowser.runtime, 'sendMessage')
-      .mockResolvedValue({
-        ok: true,
-        status: 200,
-        body: '{"result":"ok"}',
-      } satisfies ProxyFetchResponse);
+    const sendSpy = vi.spyOn(fakeBrowser.runtime, 'sendMessage').mockResolvedValue({
+      ok: true,
+      status: 200,
+      body: '{"result":"ok"}',
+    } satisfies ProxyFetchResponse);
 
     const response = await request(makePayload());
 
@@ -115,14 +113,12 @@ describe('Requester — PROXY_FETCH wrapper', () => {
   });
 
   it('never retries without retrySafe even when the payload is retryable (Appendix C)', async () => {
-    const sendSpy = vi
-      .spyOn(fakeBrowser.runtime, 'sendMessage')
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 0,
-        body: '',
-        error: 'flaky',
-      } satisfies ProxyFetchResponse);
+    const sendSpy = vi.spyOn(fakeBrowser.runtime, 'sendMessage').mockResolvedValueOnce({
+      ok: false,
+      status: 0,
+      body: '',
+      error: 'flaky',
+    } satisfies ProxyFetchResponse);
 
     const response = await request(makePayload()); // no retrySafe
 
