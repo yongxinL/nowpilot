@@ -146,7 +146,7 @@ This phase delivers durable, crash-safe, encrypted persistence: an AES-GCM vault
 ## Deferred Ideas
 
 - **Primary-writer election (`np_workspace_primary` CAS + 3s heartbeat + promotion)** — deferred to Phase 3/5 when memory/notes/chat-body writers exist (D-08).
-- **Other WriteJournal ops** (append-memory-message, save-note-with-links, evict/archive/compact-conversation, update-user-memory, sync/delete-note-file, restore-notes-batch) — declared-but-unwired; consumers arrive Phase 3/5 (D-05).
+- **Other WriteJournal ops** (append-memory-message, save-note-with-links, evict/archive/compact-conversation, update-user-memory, sync/delete-note-file) — declared-but-unwired; consumers arrive Phase 3/5 (D-05). **Exception (user-confirmed 2026-08-09):** `restore-notes-batch` IS wired as a live Phase-2 journal consumer — locked D-18 ("full-vault ZIP restore runs journaled") supersedes the declared-but-unwired wording for this op.
 - **Session-token accessors** (np_jsessionid, np_sysparm_ck, np_token_ttl, np_active_stream) — Phase 8 ServiceNow add-on surface; Phase 2 declares keys only (D-11).
 - **Passphrase-wrapped portable vault** — possible v0.2 addition with no schema change since salt/IV are already stored; rejected for v0.1 (D-01).
 - **Import/ExportPanel UI** (Options → Advanced) — Phase 7 deliverable; Phase 2 ships core-only (D-19).

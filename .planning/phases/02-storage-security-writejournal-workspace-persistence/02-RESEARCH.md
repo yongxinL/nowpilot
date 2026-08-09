@@ -520,19 +520,25 @@ export async function recoverJournal(load: () => Promise<WriteJournalEntry[]>, r
 | A4 | The import/export core file (`src/core/storage/ImportExport.ts`) is an acceptable +1 to the §18 create-list | Open Questions Q2 | If the planner enforces a strict create-list, the module has no home — must be resolved in planning (recommend the +1 with a documented Rule-3 deviation note, same as Phase 1 did) |
 | A5 | fflate's ZIP output needs no compression options beyond `{ level: 6 }` | Import/Export | Cosmetic; any valid deflate level roundtrips (verified level 6) |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Where does the import/export core module live?** (D-17..D-19 require it; §18 create-list omits it)
+> All four questions were resolved during plan-phase authoring; each is answered below and its resolution is adopted in the 02-01..02-11 plan set.
+
+1. **Where does the import/export core module live?** (D-17..D-19 require it; §18 create-list omits it) — **RESOLVED:**
    - What we know: D-09's folding rule forbids *StorageLayer/StorageSession* names specifically; no spec path exists for import/export core (only Phase 7 UI paths: `ImportExportSection.tsx` line 2791, `ImportExportPanel.tsx` line 2905).
    - What's unclear: whether to add `src/core/storage/ImportExport.ts` (+1 file, documented deviation) or fold the functions into Setting.ts (bad fit).
    - Recommendation: **add `src/core/storage/ImportExport.ts`** with a Rule-3 deviation note (Phase 1 precedent: documented deviations in plan comments).
-2. **Phase 1 ThemeStore writes np_theme to chrome.storage.local (D-13); D-15 requires sync-first for np_theme/np_theme_pack/np_language.** Does Phase 2 rewire ThemeStore through Setting.ts?
+   - **Resolution:** adopted — plan 02-09 Task 1 creates `src/core/storage/ImportExport.ts` with the header Rule-3 deviation note.
+2. **Phase 1 ThemeStore writes np_theme to chrome.storage.local (D-13); D-15 requires sync-first for np_theme/np_theme_pack/np_language.** Does Phase 2 rewire ThemeStore through Setting.ts? — **RESOLVED:**
    - What we know: D-06 already rewires WorkspaceStore (Phase-1 file edit precedent); D-15 needs a live consumer; spec §15.1 places these keys in sync.
    - Recommendation: **rewire ThemeStore's persistence to Setting.ts** (sync-first + local shadow), keeping ThemeStore's read-validate pattern. Include the one-line APPR-03 spec touch.
-3. **Degraded-mode UI banner surfacing** — D-12 requires "persistent UI banner", but the Import/ExportPanel UI is Phase 7. Where does the banner state live in Phase 2?
+   - **Resolution:** adopted — plan 02-08 Task 2 rewires ThemeStore init/setMode/setPack/onChanged through Setting.ts sync-first; plan 02-08 Task 3 applies the APPR-03 one-line spec touch.
+3. **Degraded-mode UI banner surfacing** — D-12 requires "persistent UI banner", but the Import/ExportPanel UI is Phase 7. Where does the banner state live in Phase 2? — **RESOLVED:**
    - Recommendation: ship a `degraded: { db: string; reason }[]` state (module-level, e.g. from the migrator) + the canonical banner string in Appendix B / i18n strings.ts; the actual banner component renders in Phase 7 (same core-only split as import/export, D-19).
-4. **ErrorStore migration-failure recording during init ordering** — ErrorStore is itself an IndexedDB store; if a migration of ANOTHER DB fails before ErrorStore is open, can IDB_MIGRATION_FAILED still be recorded?
+   - **Resolution:** adopted — plan 02-06 Task 1 exports `getDegradedDbs()`/`isDbDegraded()`; the banner string ships in plan 02-01 Task 2 (`STR.storage.degradedBanner`); the component renders in Phase 7.
+4. **ErrorStore migration-failure recording during init ordering** — ErrorStore is itself an IndexedDB store; if a migration of ANOTHER DB fails before ErrorStore is open, can IDB_MIGRATION_FAILED still be recorded? — **RESOLVED:**
    - Recommendation: ErrorStore opens first (or with `readonly` open fallback); on IDB_MIGRATION_FAILED for any DB, open ErrorStore at its current version and record. Edge: if ErrorStore itself fails to migrate → log via debugLog (console sink, redacted) + degraded state in-memory.
+   - **Resolution:** adopted — plan 02-06 Task 2 ships `recordMigrationFailure(dbName, cause)` as the IDB_MIGRATION_FAILED sink with the debugLog + in-memory degraded fallback when ErrorStore itself cannot open.
 
 ## Environment Availability
 
