@@ -88,7 +88,7 @@ Plans:
   4. The database migrates from the v1 → v2 fixture without data loss.
   5. User can import/export sanitized JSON/ZIP and back up/restore their data.
 
-**Plans**: 10/11 plans executed
+**Plans**: 11/11 plans executed
 
 Plans:
 **Wave 1**
@@ -115,7 +115,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 02-11-PLAN.md — storage-layer entrypoint init + content-bundle isolation tokens + no-secrets privacy test + verify:phase-2 gate (wave 5)
+- [x] 02-11-PLAN.md — storage-layer entrypoint init + content-bundle isolation tokens + no-secrets privacy test + verify:phase-2 gate (wave 5)
 
 ### Phase 3: Cost-Effective AI Runtime (+ Persona seed)
 
@@ -381,7 +381,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. MV3/WXT Runtime + AntD Shells + Workspace | 11/11 | Complete    | 2026-08-08 |
-| 2. Storage, Security, WriteJournal, Workspace Persistence | 10/11 | In Progress|  |
+| 2. Storage, Security, WriteJournal, Workspace Persistence | 11/11 | In Progress|  |
 | 3. Cost-Effective AI Runtime (+ Persona seed) | TBD | Not started | - |
 | 3a. Agent Reliability and Evidence | TBD | Not started | - |
 | 4. Context-Adaptive Execution | TBD | Not started | - |
