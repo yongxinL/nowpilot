@@ -6,10 +6,14 @@
 // refuses raw np_providers values (test 3, A-11), runMigrateOnRead normalizes
 // old KV shapes via np_schema_version (test 4, D-10), and the five session keys
 // are declared-only with no accessors (test 5, D-11). Sync-shadow cases (D-15)
-// arrive in 02-08 with the quota-shadow fixture. Uses the wxt fakeBrowser
-// chrome.* stubs (all areas incl. session/sync) — same pattern as
-// WorkspaceStore.test.ts; runs in the default jsdom-align environment.
-import { afterEach, describe, expect, it, vi } from 'vitest';
+// land in 02-08 with the quota-shadow fixture: sync write failure falls back to
+// a same-key local shadow, a shadow wins reads and re-attempts sync, a
+// successful sync write deletes the shadow, and cosmetic writes are debounced.
+// Uses the wxt fakeBrowser chrome.* stubs (all areas incl. session/sync) — same
+// pattern as WorkspaceStore.test.ts; runs in the default jsdom-align
+// environment. fakeBrowser does NOT enforce sync quotas (A-17) — set()
+// rejections are mocked per the fixture.
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fakeBrowser } from 'wxt/testing';
 import * as SettingModule from '@/core/storage/Setting';
 import {
@@ -19,8 +23,11 @@ import {
   STORAGE_KEY_REGISTRY,
   runMigrateOnRead,
   settingRead,
+  settingReadSync,
   settingWrite,
+  settingWriteSync,
 } from '@/core/storage/Setting';
+import { buildQuotaShadowFixture } from '../../fixtures/index';
 
 const SESSION_KEYS = [
   'np_jsessionid',
@@ -171,5 +178,98 @@ describe('Setting — session keys declared-only (D-11)', () => {
     await expect(
       settingRead('np_jsessionid', (v: unknown) => v as string, 'fallback'),
     ).resolves.toBe('fallback');
+  });
+});
+
+describe('Setting — sync-shadow fallback (D-15, quota-shadow fixture)', () => {
+  // Cosmetic keys are debounced (100ms window, RESEARCH A1) so the tests drive
+  // the debounce deterministically with fake timers.
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers(); // discards any pending debounce timer (no cross-test leak)
+    vi.restoreAllMocks();
+  });
+
+  it('sync write failure falls back to a same-key local shadow and logs SYNC_QUOTA_EXCEEDED', async () => {
+    const fixture = buildQuotaShadowFixture();
+    vi.spyOn(fakeBrowser.storage.sync, 'set').mockRejectedValue(fixture.syncRejectError);
+    const logSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const p = settingWriteSync(fixture.key, fixture.value);
+    await vi.advanceTimersByTimeAsync(200); // fire the debounce → sync write → shadow
+    await p;
+
+    const local = await fakeBrowser.storage.local.get(fixture.key);
+    expect(local[fixture.key]).toBe(fixture.value); // shadow present
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.stringContaining('SYNC_QUOTA_EXCEEDED'),
+      expect.any(String),
+      expect.objectContaining({ key: fixture.key }),
+    );
+  });
+
+  it('a local shadow wins the read and triggers a re-attempt to write sync', async () => {
+    const fixture = buildQuotaShadowFixture();
+    const syncSet = vi.spyOn(fakeBrowser.storage.sync, 'set');
+    // Seed a local-only shadow; the sync area holds nothing.
+    await fakeBrowser.storage.local.set({ [fixture.key]: fixture.value });
+
+    const result = await settingReadSync(
+      fixture.key,
+      (v: unknown) => (typeof v === 'string' ? v : null),
+      'fallback',
+    );
+    expect(result).toBe(fixture.value); // shadow wins
+
+    await vi.advanceTimersByTimeAsync(200); // flush the debounced re-attempt
+    expect(syncSet).toHaveBeenCalledWith({ [fixture.key]: fixture.value });
+
+    // The successful re-attempt deletes the shadow — sync/local never diverge.
+    const local = await fakeBrowser.storage.local.get(fixture.key);
+    expect(local[fixture.key]).toBeUndefined();
+  });
+
+  it('a successful sync write deletes any local shadow (reconciliation)', async () => {
+    const fixture = buildQuotaShadowFixture();
+    const syncSet = vi.spyOn(fakeBrowser.storage.sync, 'set');
+    await fakeBrowser.storage.local.set({ [fixture.key]: fixture.value }); // stale shadow
+
+    const p = settingWriteSync(fixture.key, 'light');
+    await vi.advanceTimersByTimeAsync(200);
+    await p;
+
+    expect(syncSet).toHaveBeenCalledWith({ [fixture.key]: 'light' });
+    const local = await fakeBrowser.storage.local.get(fixture.key);
+    expect(local[fixture.key]).toBeUndefined();
+  });
+
+  it('a successful sync write never creates a local shadow (happy path)', async () => {
+    const fixture = buildQuotaShadowFixture();
+    const syncSet = vi.spyOn(fakeBrowser.storage.sync, 'set');
+    const localSet = vi.spyOn(fakeBrowser.storage.local, 'set');
+
+    const p = settingWriteSync(fixture.key, fixture.value);
+    await vi.advanceTimersByTimeAsync(200);
+    await p;
+
+    expect(syncSet).toHaveBeenCalledWith({ [fixture.key]: fixture.value });
+    expect(localSet).not.toHaveBeenCalled(); // no shadow write
+    const local = await fakeBrowser.storage.local.get(fixture.key);
+    expect(local[fixture.key]).toBeUndefined();
+  });
+
+  it('debounces cosmetic writes — a rapid burst lands only the last value in sync', async () => {
+    const syncSet = vi.spyOn(fakeBrowser.storage.sync, 'set');
+
+    const p1 = settingWriteSync('np_theme', 'light');
+    const p2 = settingWriteSync('np_theme', 'dark'); // supersedes p1 — last value wins
+    await vi.advanceTimersByTimeAsync(200);
+    await Promise.all([p1, p2]);
+
+    expect(syncSet).toHaveBeenCalledTimes(1);
+    expect(syncSet).toHaveBeenCalledWith({ np_theme: 'dark' });
   });
 });
