@@ -151,7 +151,7 @@ No sectoral regulation applies (no medical/legal/financial advice). Directly rel
 
 **Selected Framework:** Vercel AI SDK
 
-**Version:** `ai` ^4 + `@ai-sdk/openai` ^1, `@ai-sdk/anthropic` ^1, `@ai-sdk/google` ^1, `@ai-sdk/ollama` ^1
+**Version:** `ai` ^4 + `@ai-sdk/openai` ^1, `@ai-sdk/anthropic` ^1, `@ai-sdk/google` ^1 (no `@ai-sdk/ollama` — 404, Ollama rides the openai factory, §10.2)
 
 **Rationale:**
 The ai-sdk's per-provider LanguageModel adapters give the ProviderRouter exactly the thin unified invocation layer it needs for the four locked provider IDs (`openai` | `anthropic` | `gemini` | `ollama`) plus the OpenAI-compatible custom-baseURL variant (D-12), while leaving provider selection, fallback, circuit breaking, and per-provider `jsonMode` capability entirely under app control (D-18) — matching the spec's `ILLMProvider`/`getAISDKModel` contract verbatim. `streamText` delivers the SSE/text streaming AI-03 requires, and its first-class Zod integration (`generateObject`/`structuredOutput`) underpins Golden Rule 4's `requestJson` path. It is the only candidate that simultaneously satisfies TypeScript-only, model-agnostic, local-ollama support, and the AGENTS.md §7 approved-stack hard constraint. (Confirmed by `gsd-framework-selector`; alternatives table above.)
@@ -220,9 +220,10 @@ Self-contained: the §10.1 `getAISDKModel` factory switch (the only place provid
 import { createOpenAI } from '@ai-sdk/openai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { generateObject, streamText, type LanguageModel } from 'ai';
+import { generateObject, streamText, zodSchema, type LanguageModel } from 'ai';
 import { z } from 'zod';
 import { PROMPTS } from '@/core/prompts'; // Appendix A canonical constants (project module, byte-stable)
+import type { PromptSection } from '@/core/ai/types'; // D-07 seed (F-4: callback consumes sections, not a joined string)
 
 /** §10.1 getAISDKModel — one factory switch, shared by all four adapters + OpenAICompat (D-12). */
 export function getAISDKModel(
@@ -256,10 +257,15 @@ export async function examplePlannerTurn() {
   const model = getAISDKModel('anthropic', 'claude-haiku-4-latest', { apiKey: 'sk-…from-vault' });
   const { object } = await generateObject({
     model,
-    schema: PlannerDecisionSchema,                 // Zod → JSON schema; provider JSON mode enabled
+    schema: zodSchema(PlannerDecisionSchema),      // F-7: always zodSchema()-wrapped (never raw Zod)
     mode: 'auto',                                  // 'auto' | 'json' | 'tool' — resolved by the Router (D-18)
-    system: PROMPTS.planner.system,                // Appendix A, byte-stable, cached (§1.3)
-    prompt: 'Can you summarize this page?',
+    // F-5: cached [SYSTEM] travels as a CoreSystemMessage carrying the Anthropic cache hint —
+    // ai@4's `system: string` CANNOT carry cacheControl (silently dropped), so use messages[].
+    messages: [
+      { role: 'system', content: PROMPTS.planner.system,   // [SYSTEM: cached], byte-stable (§1.3)
+        providerOptions: { anthropic: { cacheControl: { type: 'ephemeral' } } } },
+      { role: 'user', content: 'Can you summarize this page?' },   // [USER INPUT] — never cached
+    ],
     maxTokens: 256,                                // §1.2 planner cap; explicit, never unbounded
     maxRetries: 0,                                 // CRITICAL: SDK default is 2; Router owns retries (D-17, R-2)
   });
@@ -271,8 +277,12 @@ export async function exampleRendererStream(abortSignal: AbortSignal, onDelta: (
   const model = getAISDKModel('gemini', 'gemini-2.5-flash', { apiKey: 'sk-…from-vault' });
   const result = streamText({
     model,
-    system: PROMPTS.renderer.system,               // Appendix A
-    prompt: '…',                                   // assembled OptimizedContext sections (D-02 helper, §1.3)
+    // F-5: same messages[]+providerOptions cache path (dormant on gemini; correct on an anthropic fallback).
+    messages: [
+      { role: 'system', content: PROMPTS.renderer.system,   // [SYSTEM: cached] (§1.3)
+        providerOptions: { anthropic: { cacheControl: { type: 'ephemeral' } } } },
+      { role: 'user', content: '…' },              // assembled OptimizedContext task sections (D-02 helper)
+    ],
     maxTokens: 512,                                // §1.2 renderer cap
     maxRetries: 0,
     abortSignal,
@@ -317,7 +327,7 @@ src/core/ai/
 ├── ILLMProvider.ts                 # §10.1 contract; getAISDKModel(model): LanguageModel ← ai
 ├── ProviderRegistry.ts             # extended in place (D-21): config presence + PROVIDER_KEY_UNREADABLE; stays dependency-free
 ├── providers/
-│   ├── OpenAIProvider.ts           # createOpenAI({ apiKey, baseURL, compatibility: 'strict' })
+│   ├── OpenAIProvider.ts           # createOpenAI({ apiKey, baseURL, compatibility: 'compatible' }) — F-1: 'compatible' everywhere (local/OpenAI-compatible only; official OpenAI endpoint not targeted)
 │   ├── AnthropicProvider.ts        # createAnthropic({ apiKey, baseURL })
 │   ├── GeminiProvider.ts           # createGoogleGenerativeAI({ apiKey, baseURL })
 │   ├── OllamaProvider.ts           # createOpenAI({ apiKey: 'ollama', baseURL: localhost:11434/v1, compatibility: 'compatible' }) — §10.2
@@ -395,33 +405,53 @@ export type JsonMode = 'native' | 'prompt';
  * new provider's JSON capability. Returns a Promise<string> per Appendix L.
  * `schema` is the Zod schema (native path); `jsonSchema` is used for the prompt path.
  */
+// F-4: PromptSection[] signature (NOT a pre-joined string) removes the fragile
+// `prompt.split('\n\n')[0]` [SYSTEM] recovery that mis-slices when a cached section
+// (persona block, tool schemas) contains a blank line. PromptSection is seeded in
+// src/core/ai/types.ts (D-07), so the Router already holds the type.
+const CACHED_KINDS: PromptSection['kind'][] = ['system', 'tool_schemas', 'preferences', 'memory'];
+const TASK_KINDS:   PromptSection['kind'][] = ['context', 'task', 'user_input'];
+const joinSections = (secs: PromptSection[], kinds: PromptSection['kind'][]) =>
+  secs.filter(s => kinds.includes(s.kind)).map(s => s.text).join('\n\n');
+
 export function buildCallProviderJsonMode(
   providerId: ProviderId,
   model: LanguageModel,
   jsonMode: JsonMode,
   schema: z.ZodType,
-): (prompt: string, jsonSchema: unknown, signal: AbortSignal) => Promise<string> {
-  return async (prompt: string, jsonSchema: unknown, signal: AbortSignal) => {
+): (sections: PromptSection[], jsonSchema: unknown, signal: AbortSignal) => Promise<string> {
+  return async (sections: PromptSection[], jsonSchema: unknown, signal: AbortSignal) => {
+    const systemText = joinSections(sections, CACHED_KINDS);   // deterministic [SYSTEM: cached]
+    const taskText   = joinSections(sections, TASK_KINDS);     // [CONTEXT]+[TASK]+[USER INPUT]
     if (jsonMode === 'native') {
       // SDK validates against the Zod schema internally; NoObjectGeneratedError on failure.
       const { object } = await generateObject({
         model,
-        schema: zodSchema(schema),   // Zod → SDK Schema<OBJECT> (verified export)
+        schema: zodSchema(schema),   // F-7: always zodSchema()-wrapped
         mode: 'auto',                // provider picks 'tool'/'json' best strategy
-        system: prompt.split('\n\n')[0],   // [SYSTEM: cached] — canonical section order (§1.3)
-        prompt: extractTaskSections(prompt), // [TASK] + [USER INPUT]
+        // F-5: cached [SYSTEM] travels as a CoreSystemMessage carrying the Anthropic cache hint —
+        // ai@4's `system: string` CANNOT carry cacheControl (silently dropped), so use messages[].
+        // The Router threads this exact shape; joinSections output goes into the messages, never `system:`.
+        messages: [
+          { role: 'system', content: systemText,   // [SYSTEM: cached] — built from sections, never string-split
+            providerOptions: { anthropic: { cacheControl: { type: 'ephemeral' } } } },
+          { role: 'user', content: taskText },     // [TASK] + [USER INPUT]
+        ],
         maxTokens: 256,
         maxRetries: 0,               // Router owns retries (D-17)
         abortSignal: signal,
       });
       return JSON.stringify(object); // guaranteed parseable — Appendix L's repair never fires here
     }
-    // 'prompt' — Ollama default (D-18): schema embedded in the prompt, raw text back.
+    // 'prompt' — Ollama default (D-18): schema embedded in [SYSTEM], raw text back.
     // Appendix L does prompt-only JSON coercion + exactly ONE repair (D-19).
     const { text } = await generateText({
       model,
-      system: 'Return JSON only, matching this schema exactly:\n' + JSON.stringify(jsonSchema),
-      prompt,
+      // F-5: same messages[]+providerOptions form (inert on ollama — no anthropic cache; consistent shape).
+      messages: [
+        { role: 'system', content: systemText + '\nReturn JSON only, matching this schema exactly:\n' + JSON.stringify(jsonSchema) },
+        { role: 'user', content: taskText },
+      ],
       maxTokens: 256,
       maxRetries: 0,
       abortSignal: signal,
@@ -432,8 +462,9 @@ export function buildCallProviderJsonMode(
 ```
 
 Notes on this seam:
-- **Schema handling:** native mode passes the **Zod schema** (via `zodSchema()`); `zodToJsonSchema` is used only for the prompt-mode `[SYSTEM]` text and the Appendix L repair prompt (`"Schema: <jsonSchema>"`). Never re-hydrate a JSON schema back into Zod.
-- **Why `system`/`prompt` split:** `generateObject`/`generateText` accept `Prompt` = `{ system?, prompt? }` or `{ messages }`. The §1.3 canonical section order maps: cached `[SYSTEM]`/`[TOOL SCHEMAS]` → `system`; compact sections + task + user input → `prompt`. The D-02 core helper builds this from Phase-3-available inputs (operationId, model, userInput, persona prefs, tool schema refs) — Phase 4's ContextOptimizer replaces it.
+- **Structured sections, not a joined string (F-4):** the callback signature is `(sections: PromptSection[], jsonSchema, signal)`. It maps cached kinds (`system`/`tool_schemas`/`preferences`/`memory`) → a `[SYSTEM]` CoreSystemMessage and task kinds (`context`/`task`/`user_input`) → the `[USER INPUT]` message via the pure `joinSections` helper — **replacing** the fragile `prompt.split('\n\n')[0]` recovery, which mis-sliced whenever a cached section (the multi-line persona block, tool schemas) contained a blank line. **Ripple (planner must thread):** Appendix L's `StructuredOutputContext.callProviderJsonMode` and `requestJson` pass the `PromptSection[]` through instead of a pre-joined prompt string; `PromptSection` is already seeded in `src/core/ai/types.ts` (D-07), so no new type is invented.
+- **Schema handling (F-7):** native mode passes the Zod schema **always via `zodSchema()`** (never raw Zod, for example-consistency); `zodToJsonSchema` is used only for the prompt-mode `[SYSTEM]` text and the Appendix L repair prompt (`"Schema: <jsonSchema>"`). Never re-hydrate a JSON schema back into Zod.
+- **Cache-hint wire path (F-5):** every constructed call uses the **`messages[]` form with a `CoreSystemMessage` carrying `providerOptions.anthropic.cacheControl`** — ai@4's `system: string` **cannot** carry the hint (silently dropped). `system:`/`prompt:` string keys are NOT used on any constructed call (the plans' verify greps assert no `system:` string literal). Below the model's cache minimum (Haiku 4.5 = 4,096 tok) the marker is ignored anyway, so Phase-3 prompts (~300–500 tok) never hit; **byte-stability + hint emission are the testable invariants**, live hits are a Phase-4+ payoff. This matches the F-5 mandate in plans 03-03/03-05/03-06 and the `examplePlannerTurn`/`exampleRendererStream` samples above — the earlier `system:`/`prompt:` seam sketch is superseded.
 - **Timeout:** Appendix L's `timeoutMs` AbortController wraps this callback; the SDK's own `abortSignal` is wired to the inner controller.
 
 **Seam 3 — RendererService streaming (AI-03).** `streamText` feeds StreamAdapter, which normalizes deltas to `LLMStreamChunk` before ChunkBuffer:
@@ -452,8 +483,13 @@ export async function* streamTextToLLMChunks(args: {
 }): AsyncIterable<LLMStreamChunk> {
   const result = streamText({
     model: args.model,
-    system: args.system,
-    prompt: args.task,
+    // F-5: cached [SYSTEM] as a CoreSystemMessage carrying the Anthropic cache hint —
+    // `system: string` cannot carry cacheControl; the person block must stay cacheable.
+    messages: [
+      { role: 'system', content: args.system,
+        providerOptions: { anthropic: { cacheControl: { type: 'ephemeral' } } } },
+      { role: 'user', content: args.task },
+    ],
     maxTokens: args.maxTokens,
     maxRetries: 0,
     abortSignal: args.abortSignal,
@@ -638,7 +674,7 @@ pnpm run verify:phase-3
 
 **Labeling:** **Automated + domain-expert authored** (no LLM judge). Expected values are hand-authored from the domain rubric — the §18 DONE-when criteria and Section 1b rubric ingredients — by the implementer (the developer-user practitioner is the domain expert, Section 1b). The privacy reviewer signs off the TraceRedactor/secrets fixtures (the "no unintended transmission" verdict); the cost watchdog reviews the call-count/retry fixtures (healthy = 2, ≤3 non-multiplying layers).
 
-**Creation timeline:** fixtures are built **during implementation** (D-08 is a Phase-3 create-list item), landing in the same wave as each consuming test file — never after the phase.
+**Creation timeline:** fixtures are built **during implementation** (`tests/fixtures/optimizedContext.ts` is a documented **+1** to the §18 create-list — it is not one of the literal 8 §18 test files; see 03-RESEARCH "documented extras"), landing in the same wave as each consuming test file — never after the phase.
 
 ---
 

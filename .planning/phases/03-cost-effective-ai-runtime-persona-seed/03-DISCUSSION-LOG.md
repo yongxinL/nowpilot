@@ -105,7 +105,7 @@
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| ProviderRouter constructs callProviderJsonMode | Router resolves per-provider jsonMode: 'native' | 'prompt' and builds the closure over resolved (providerId, model) | ✓ |
+| ProviderRouter constructs callProviderJsonMode | Router resolves per-provider jsonMode: 'native' \| 'prompt' and builds the closure over resolved (providerId, model) | ✓ |
 | PlannerService constructs it | Planner resolves from the provider it was routed to | |
 
 **User's choice:** ProviderRouter constructs callProviderJsonMode. Router owns selection/fallback + holds the ILLMProvider adapter that knows the native JSON flag. Ollama → 'prompt' (model-dependent, §10.2) unless the model advertises native JSON; OpenAI/Anthropic/Gemini → 'native'. 'prompt' fallback: prompt-only JSON coercion → one Appendix L repair → STRUCTURED_OUTPUT_FAILED (never nested). Consumers stay pure: PlannerService + RendererService just call requestJson(schema, prompt, ctx). Only the Router can hand out the matching callback after a failover. Boundary: Router = how to invoke JSON mode; StructuredOutput = validate + single repair.

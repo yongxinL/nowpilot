@@ -33,7 +33,7 @@ The critical findings the planner must encode: **(1) `maxRetries` silently defau
 - **D-14 [circuit-breaker state scope]:** `RouterAttemptState.circuitBreakerOpen` + `hasStreamedFirstToken` are **in-memory per-surface** for v0.1 (dies on panel close; no cross-surface race on the single-writer bus). Persistence/sharing revisited in a later phase. One-line ADR decision, not a new mechanism.
 - **D-15 [tier caps + routing now, monthly budget → Phase 6]:** Phase 3 enforces the cost governors the spec actually defines: **§1.4 tier caps at AgentOrchestrator** (plannerCap/toolCap/mcpChaining per context tier), **cheapest-capable routing + fallback + circuit breaker** (ProviderRouter §1.5 / TierResolver Appendix D), and the **three non-multiplying retry bounds** (§1.6.1 / R-2). These bound per-turn cost deterministically.
 - **D-16 [monthly aggregate deferred]:** The **monthly aggregate budget (AI-04) is deferred to Phase 6** — it is un-enforceable before AITransactionLog/TokenLedger exist and currently un-specified (no rate table, reset semantics, or ledger schema). **Reserve:** an optional **no-op `budgetGuard` hook on ProviderRouter** so Phase 6 wires the ledger pre-flight without a rebuild. **Doc:** Phase 6 ADR to define AI-04; mark AI-04 under-specified in REQUIREMENTS.md.
-- **D-17 [retry layering]:** ProviderRouter retry/circuit breaker (§1.5: retryable TIMEOUT/PROVIDER_5XX/NETWORK/RATE_LIMITED; non-retryable AUTH/MODEL_UNKNOWN/SCHEMA_INVALID/HOST_NOT_PERMITTED; breaker = 3 failures in 60s → open 5min) is the FIRST retry layer; never nested (exactly the three §1.6.1 layers).
+- **D-17 [retry layering]:** ProviderRouter retry/circuit breaker (§1.5: retryable TIMEOUT/PROVIDER_5XX/NETWORK/RATE_LIMITED; non-retryable AUTH/MODEL_UNKNOWN/SCHEMA_INVALID/HOST_NOT_PERMITTED; breaker = 3 failures in 60s → open 5min) is the FIRST retry layer; never nested (exactly the three §1.6.1 layers). **Code-name reconciliation (Golden Rule 9):** the §1.6.1 shorthand 'AUTH'/'MODEL_UNKNOWN' maps to the canonical C.2 codes `PROVIDER_AUTH` / `PROVIDER_MODEL_UNKNOWN` (see the Phase-3 error-code block below at line ~626) — never invent a third spelling.
 - **D-18 [callProviderJsonMode ownership]:** **ProviderRouter constructs `callProviderJsonMode`.** The Router owns provider selection/fallback and holds the ILLMProvider adapter that knows the native JSON flag, so it resolves a per-provider `jsonMode: 'native' | 'prompt'` capability and builds the `StructuredOutputContext` closure over the resolved (providerId, model). **Ollama → `'prompt'`** (model-dependent, §10.2) unless the model advertises native JSON; OpenAI/Anthropic/Gemini → `'native'`.
 - **D-19 [prompt-mode fallback]:** `'prompt'` path = prompt-only JSON coercion → **one Appendix L repair** → `STRUCTURED_OUTPUT_FAILED`. Never nested (§1.6.1 / R-2). Consumers stay pure: PlannerService + RendererService just call `requestJson(schema, prompt, ctx)`. Boundary: Router = *how to invoke* JSON mode; StructuredOutput = validate + single repair.
 - **D-20 [pre-evidence AgentOrchestrator]:** Phase 3 builds **Appendix I verbatim** — `runAgentTurn` returns the simple `AgentTurnOutput { operationId, streamedText, toolResults, reasonCode }`, no trajectory states, no `CompletionEvidence`, no OutcomeVerifier. **Phase 3a rewires it** with AGT-02 checkpointing / outcome verification. Do NOT build reliability into the Phase-3 orchestrator.
@@ -206,7 +206,7 @@ src/core/ai/
 ├── ILLMProvider.ts                 # §10.1 contract; getAISDKModel(model): LanguageModel
 ├── ProviderRegistry.ts             # EXTENDED IN PLACE (01-CONTEXT B3, D-21): config presence + PROVIDER_KEY_UNREADABLE emission; stays dependency-free (no zustand/react)
 ├── providers/
-│   ├── OpenAIProvider.ts           # createOpenAI({ apiKey, baseURL, compatibility: 'strict' })
+│   ├── OpenAIProvider.ts           # createOpenAI({ apiKey, baseURL, compatibility: 'compatible' }) — F-1: 'compatible' everywhere (local/OpenAI-compatible only)
 │   ├── AnthropicProvider.ts        # createAnthropic({ apiKey, baseURL })
 │   ├── GeminiProvider.ts           # createGoogleGenerativeAI({ apiKey, baseURL })
 │   ├── OllamaProvider.ts           # createOpenAI({ apiKey: 'ollama', baseURL: http://localhost:11434/v1, compatibility: 'compatible' }) — §10.2
@@ -283,7 +283,7 @@ export function getAISDKModel(
 // Every SDK call the Router constructs carries these (verified: maxRetries defaults to 2 in ai@4.3.19 dist):
 const CALL_SETTINGS = { maxRetries: 0, maxTokens: 256, temperature: 0 }; // planner/repair: 256; renderer: 512
 // Router classifies errors to canonical codes: APICallError.statusCode 429 → RATE_LIMITED (retryable),
-// 5xx → PROVIDER_5XX (retryable), 401/403 → AUTH (non-retryable), 404 → MODEL_UNKNOWN (non-retryable),
+// 5xx → PROVIDER_5XX (retryable), 401/403 → PROVIDER_AUTH (non-retryable), 404 → PROVIDER_MODEL_UNKNOWN (non-retryable),
 // fetch reject → NETWORK (retryable), NoObjectGeneratedError → SCHEMA_INVALID path (non-retryable).
 // RouterAttemptState { operationId, attempts, hasStreamedFirstToken, circuitBreakerOpen } — in-memory per-surface (D-14).
 // breaker: 3 failures within 60s for a provider → open 5 min. hasStreamedFirstToken → never switch mid-stream (§1.5).
@@ -433,7 +433,7 @@ import { createAnthropic } from '@ai-sdk/anthropic';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import type { LanguageModel } from 'ai'; // = LanguageModelV1 (type-only export — verified)
 
-const openaiModel: LanguageModel = createOpenAI({ apiKey, baseURL: 'https://api.openai.com/v1', compatibility: 'strict' })('gpt-4o-mini');
+const openaiModel: LanguageModel = createOpenAI({ apiKey, baseURL, compatibility: 'compatible' })('gpt-4o-mini'); // F-1: 'compatible' for all openai-id endpoints (compat/local)
 const anthropicModel: LanguageModel = createAnthropic({ apiKey })('claude-haiku-4-latest');
 const geminiModel: LanguageModel = createGoogleGenerativeAI({ apiKey })('gemini-2.5-flash');
 const ollamaModel: LanguageModel = createOpenAI({ apiKey: 'ollama', baseURL: 'http://localhost:11434/v1', compatibility: 'compatible' })('llama3.2:3b'); // §10.2

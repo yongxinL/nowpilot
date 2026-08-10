@@ -5806,40 +5806,62 @@ Rules:
 import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import type { ProviderId } from './types';
+// F-4: structured sections (NOT a pre-joined string). PromptSection is the §8.5/Appendix C type;
+// Phase 3 seeds it early in src/core/ai/types.ts (D-07) and Phase 4's ContextOptimizer imports it
+// from that AI home — same canonical declaration, no second copy (R-1).
+import type { PromptSection } from '../context/ContextOptimizer';
 import { PROMPTS } from '../prompts';
+
+// F-4: cached kinds → provider `system` (byte-stable, prompt-cached §1.3); task kinds → `prompt`.
+// The Router-supplied callback performs this mapping; requestJson only threads sections through.
+const TASK_KINDS: ReadonlyArray<PromptSection['kind']> = ['context', 'task', 'user_input'];
+
 export interface StructuredOutputContext {
   operationId: string;
   providerId: ProviderId;
   model: string;
   timeoutMs: number;
-  callProviderJsonMode: (prompt: string, jsonSchema: unknown, signal: AbortSignal) => Promise<string>;
+  // F-4: receives PromptSection[] rather than a joined string — removes the fragile
+  // `prompt.split('\n\n')[0]` [SYSTEM] recovery that mis-slices when a cached section
+  // (multi-line persona block, tool schemas) contains a blank line.
+  callProviderJsonMode: (sections: PromptSection[], jsonSchema: unknown, signal: AbortSignal) => Promise<string>;
   abortSignal: AbortSignal;
 }
 export async function requestJson<T>(
   schema: z.ZodSchema<T>,
-  prompt: string,
+  sections: PromptSection[],
   ctx: StructuredOutputContext,
 ): Promise<T> {
   const jsonSchema = zodToJsonSchema(schema);
-  const attempt = async (p: string): Promise<string> => {
+  const attempt = async (secs: PromptSection[]): Promise<string> => {
     const ac = new AbortController();
     const onAbort = () => ac.abort();
     ctx.abortSignal.addEventListener('abort', onAbort);
     const to = setTimeout(() => ac.abort(), ctx.timeoutMs);
     try {
-      return await ctx.callProviderJsonMode(p, jsonSchema, ac.signal);
+      return await ctx.callProviderJsonMode(secs, jsonSchema, ac.signal);
     } finally {
       clearTimeout(to);
       ctx.abortSignal.removeEventListener('abort', onAbort);
     }
   };
-  const first = await attempt(prompt);
+  const first = await attempt(sections);
   const parsedFirst = safeParse(schema, first);
   if (parsedFirst.ok) return parsedFirst.data;
-  const repairPrompt = `${PROMPTS.repairJson.system}
+  // F-4: keep the cached [SYSTEM] sections byte-stable across the repair (prompt-cache stability);
+  // append the repair instruction as a single task section instead of rebuilding a joined string.
+  const repairText = `${PROMPTS.repairJson.system}
 Schema: ${JSON.stringify(jsonSchema)}
 Broken: ${first}`;
-  const second = await attempt(repairPrompt);
+  const cached = sections.filter(sec => !TASK_KINDS.includes(sec.kind));
+  const repairSection: PromptSection = {
+    kind: 'user_input',
+    text: repairText,
+    tokens: Math.ceil(repairText.length / 4),
+    stable: false,
+    sourceId: 'structured-output-repair',
+  };
+  const second = await attempt([...cached, repairSection]);
   const parsedSecond = safeParse(schema, second);
   if (parsedSecond.ok) return parsedSecond.data;
   const err: any = new Error('STRUCTURED_OUTPUT_FAILED');
@@ -5871,6 +5893,7 @@ Rules:
 - Exactly one repair attempt. Further failures throw STRUCTURED_OUTPUT_FAILED.
 - PROMPTS.repairJson.system (Appendix A) is canonical. Do not paraphrase.
 - The provider adapter must set the provider's JSON mode flag natively.
+- **F-4 (signature):** `requestJson` and `callProviderJsonMode` take `PromptSection[]`, not a joined `prompt` string. Callers pass the OptimizedContext sections directly; the Router-supplied callback maps cached kinds (`system`/`tool_schemas`/`preferences`/`memory`) → provider `system` and task kinds (`context`/`task`/`user_input`) → `prompt`. This removes any `prompt.split()` `[SYSTEM]` recovery and keeps the cached `[SYSTEM]` block byte-stable across the repair.
 - **Note:** NoteTagResultSchema, NoteQAResultSchema, NoteDraftSchema (Appendix C) and the RICH `clarify`/`followUpSuggest` outputs all use this loop.
 
 ## Appendix M — WorkspaceStore Reference
