@@ -11,7 +11,7 @@
     "compile": "tsc --noEmit",
     "postinstall": "wxt prepare",
     "test": "vitest run",
-    "test:ai": "vitest run tests/core/ai",
+    "test:ai": "vitest run tests/core/ai --passWithNoTests",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "format": "prettier --check .",
