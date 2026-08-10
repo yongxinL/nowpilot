@@ -18,6 +18,7 @@
     "test:isolation": "vitest run tests/isolation",
     "verify:phase-1": "eslint . && prettier --check . && tsc --noEmit && wxt build && vitest run && node tests/isolation/check-content-bundle.mjs",
     "verify:phase-2": "eslint . && prettier --check . && tsc --noEmit && wxt build && vitest run && node tests/isolation/check-content-bundle.mjs",
+    "verify:phase-3": "eslint . && prettier --check . && tsc --noEmit && wxt build && vitest run && node tests/isolation/check-content-bundle.mjs",
     "verify:e2e-phase-1": "node tests/e2e/load-smoke.mjs",
     "verify:all": "tsc --noEmit && vitest run && pnpm run lint"
   },
