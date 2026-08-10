@@ -37,7 +37,11 @@ export function createOpenAIProvider(config: OpenAIProviderFactoryOptions = {}):
       // Structural validation only — never touches the network or the vault
       // (Pitfall 4). apiKey is optional: local/OpenAI-compatible endpoints
       // (F-1) may serve without one.
-      return candidate.id === 'openai' && typeof candidate.baseURL === 'string' && candidate.baseURL.length > 0;
+      return (
+        candidate.id === 'openai' &&
+        typeof candidate.baseURL === 'string' &&
+        candidate.baseURL.length > 0
+      );
     },
   };
 }

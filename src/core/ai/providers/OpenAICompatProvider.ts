@@ -16,7 +16,9 @@ export interface OpenAICompatProviderFactoryOptions {
   fetch?: typeof globalThis.fetch;
 }
 
-export function createOpenAICompatProvider(config: OpenAICompatProviderFactoryOptions): ILLMProvider {
+export function createOpenAICompatProvider(
+  config: OpenAICompatProviderFactoryOptions,
+): ILLMProvider {
   return {
     id: 'openai', // D-12: identity stays 'openai' — never a 5th ProviderId
     name: `OpenAI-compatible (${config.baseURL})`,

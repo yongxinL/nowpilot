@@ -12,7 +12,9 @@ export interface AnthropicProviderFactoryOptions {
   fetch?: typeof globalThis.fetch;
 }
 
-export function createAnthropicProvider(config: AnthropicProviderFactoryOptions = {}): ILLMProvider {
+export function createAnthropicProvider(
+  config: AnthropicProviderFactoryOptions = {},
+): ILLMProvider {
   return {
     id: 'anthropic',
     name: 'Anthropic',

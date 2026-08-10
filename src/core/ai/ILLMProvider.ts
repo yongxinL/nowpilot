@@ -10,7 +10,14 @@ import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOpenAI } from '@ai-sdk/openai';
 import type { LanguageModel } from 'ai';
 
-import type { LLMMessage, LLMOptions, LLMStreamChunk, ModelInfo, ProviderConfig, ProviderId } from './types';
+import type {
+  LLMMessage,
+  LLMOptions,
+  LLMStreamChunk,
+  ModelInfo,
+  ProviderConfig,
+  ProviderId,
+} from './types';
 
 export interface ILLMProvider {
   id: ProviderId;
@@ -41,17 +48,30 @@ export interface GetAISDKModelConfig {
  * factory). The returned LanguageModel is the only handle every
  * generateObject/streamText/generateText call takes.
  */
-export function getAISDKModel(providerId: ProviderId, model: string, cfg: GetAISDKModelConfig = {}): LanguageModel {
+export function getAISDKModel(
+  providerId: ProviderId,
+  model: string,
+  cfg: GetAISDKModelConfig = {},
+): LanguageModel {
   switch (providerId) {
     case 'openai':
       // F-1: compatibility 'compatible' everywhere — local/OpenAI-compatible
       // endpoints only; the official OpenAI endpoint is not targeted. 'strict'
       // is never used (03-02 grep gate asserts zero occurrences).
-      return createOpenAI({ apiKey: cfg.apiKey, baseURL: cfg.baseURL, compatibility: 'compatible', fetch: cfg.fetch })(model);
+      return createOpenAI({
+        apiKey: cfg.apiKey,
+        baseURL: cfg.baseURL,
+        compatibility: 'compatible',
+        fetch: cfg.fetch,
+      })(model);
     case 'anthropic':
       return createAnthropic({ apiKey: cfg.apiKey, baseURL: cfg.baseURL, fetch: cfg.fetch })(model);
     case 'gemini':
-      return createGoogleGenerativeAI({ apiKey: cfg.apiKey, baseURL: cfg.baseURL, fetch: cfg.fetch })(model);
+      return createGoogleGenerativeAI({
+        apiKey: cfg.apiKey,
+        baseURL: cfg.baseURL,
+        fetch: cfg.fetch,
+      })(model);
     case 'ollama':
       // §10.2: no @ai-sdk/ollama package exists (npm 404, RESEARCH-verified) —
       // Ollama rides the OpenAI-compatible endpoint.
