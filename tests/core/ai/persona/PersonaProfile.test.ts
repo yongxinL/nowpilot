@@ -16,11 +16,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fakeBrowser } from 'wxt/testing';
 
 import { DEFAULT_PERSONA, PersonaProfileSchema } from '@/core/ai/persona/PersonaProfile';
-import {
-  NP_PERSONA_KEY,
-  readPersona,
-  readPersonaPrefs,
-} from '@/core/ai/persona/personaConfig';
+import { NP_PERSONA_KEY, readPersona, readPersonaPrefs } from '@/core/ai/persona/personaConfig';
 import type { PersonaProfile } from '@/core/ai/persona/PersonaProfile';
 
 afterEach(() => {
