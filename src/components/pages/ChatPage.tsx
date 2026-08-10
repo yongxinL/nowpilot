@@ -3,11 +3,11 @@
 // streaming chat (D-01, UI-SPEC §17.5): Ant Design X Bubble/Bubble.List +
 // Sender with the 5-state stream machine (idle/streaming/completed/failed/
 // offline). Streamed text renders as PLAIN TEXT in the Bubble (no markdown/HTML
-// until Phase 7's DOMPurify pipeline — T-03-08-02, no dangerouslySetInnerHTML);
-// text grows via ChunkBuffer rAF flush (NEVER a spinner, never motion-driven
-// reveals §12.6). Assistant identity is always 'NowPilot' (name overrides are
-// prompt-side only — the identity header UI is fenced to Phase 7, D-03). RICH
-// fencing (D-03): the Phase-3 conversation surface ships ONLY
+// until Phase 7's DOMPurify pipeline — T-03-08-02, no HTML-string injection
+// into the DOM); text grows via ChunkBuffer rAF flush (NEVER a spinner, never
+// motion-driven reveals §12.6). Assistant identity is always 'NowPilot' (name
+// overrides are prompt-side only — the identity header UI is fenced to Phase 7,
+// D-03). RICH fencing (D-03): the Phase-3 conversation surface ships ONLY
 // Bubble/Bubble.List + Sender — no RICH-layer elements (the 03-CONTEXT D-03
 // fence list is grep-asserted absent in the test suite). Wrapped in
 // ErrorBoundary (01-04). No chrome API calls (Pitfall 4) — the streaming hook
@@ -111,6 +111,24 @@ export function ChatPage() {
         role: m.role,
         content: m.content,
         streaming: m.status === 'streaming',
+        // Streaming caret (UI-SPEC: colorPrimary @60%) — a static indicator
+        // appended to the growing text; NEVER a spinner, never motion-driven
+        // reveals (§12.6 — ChunkBuffer rAF is the only text animation).
+        ...(m.status === 'streaming'
+          ? {
+              contentRender: (content: React.ReactNode) => (
+                <>
+                  {content}
+                  <span
+                    aria-hidden
+                    style={{ color: token.colorPrimary, opacity: 0.6 }}
+                  >
+                    |
+                  </span>
+                </>
+              ),
+            }
+          : {}),
         footer:
           m.status === 'failed' || m.status === 'offline' ? (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
