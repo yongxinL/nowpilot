@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v0.1
 milestone_name: milestone
-current_phase: 3
-current_phase_name: Cost-Effective AI Runtime (+ Persona seed)
+current_phase: 03
+current_phase_name: cost-effective-ai-runtime-persona-seed
 status: executing
-stopped_at: Phase 3 UI-SPEC approved
-last_updated: "2026-08-09T22:52:05.097Z"
-last_activity: 2026-08-09
-last_activity_desc: Phase 2 complete, transitioned to Phase 3
+stopped_at: Completed 03-01-PLAN.md (types seed + ProviderId swap + C.2 canonicalization)
+last_updated: "2026-08-10T06:22:36.108Z"
+last_activity: 2026-08-10
+last_activity_desc: Phase 03 execution started
 progress:
   total_phases: 3
   completed_phases: 2
-  total_plans: 22
-  completed_plans: 22
+  total_plans: 31
+  completed_plans: 23
 ---
 
 # Project State
@@ -24,16 +24,16 @@ See: .planning/PROJECT.md (updated 2026-08-09)
 
 **Core value:** A privacy-first, local-first AI assistant where chat, extracted page content, and a linked notes/knowledge layer combine into a persistent personal workspace — no data leaves the machine unless the user deliberately configures a cloud provider.
 
-**Current focus:** Phase 3 — Cost-Effective AI Runtime (+ Persona seed)
+**Current focus:** Phase 03 — cost-effective-ai-runtime-persona-seed
 
 ## Current Position
 
-Phase: 3 — Cost-Effective AI Runtime (+ Persona seed)
-Plan: Not started
+Phase: 03 (cost-effective-ai-runtime-persona-seed) — EXECUTING
+Plan: 2 of 9
 Status: Ready to execute
-Last activity: 2026-08-09 — Phase 2 complete, transitioned to Phase 3
+Last activity: 2026-08-10 — Phase 03 execution started
 
-Progress: [██████████] 100%
+Progress: [███████░░░] 74%
 
 ## Performance Metrics
 
@@ -72,6 +72,7 @@ Progress: [██████████] 100%
 | Phase 01-mv3-wxt-runtime-antd-shells-workspace P09 | 20min | 5 tasks | 16 files |
 | Phase 01 P10 | 10min | 3 tasks | 5 files |
 | Phase 01-mv3-wxt-runtime-antd-shells-workspace P11 | 9 | 3 tasks | 8 files |
+| Phase 03-cost-effective-ai-runtime-persona-seed P01 | 38min | 11 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -118,6 +119,7 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 01]: Split init().then chain into a named const so the mandated per-file grep fixture survives prettier chain-breaking — same semantics, prettier-stable call-site literal — Prettier --check (part of verify:phase-1) failed on the chained call; acceptance criteria require useWorkspaceStore.getState().init == 1 per entrypoint file
 - [Phase 01]: Fresh-module persistence tests import the entrypoint module (not just the store) so the module-scope init() fires against seeded storage — Standalone hydration test initially imported only the store module; the init() wiring lives in the entrypoint, so seeding was never read
 - [Phase 01-mv3-wxt-runtime-antd-shells-workspace]: Adopted the err instanceof Error ? err : undefined narrowing in rewired catch bodies — the plan's literal { error: err } fails tsc under strict catch-variable typing (unknown vs Error); matches WorkspaceStore/ProviderRegistry precedent — Rule 1 type-correctness adaptation required for gate-green; identical runtime behavior
+- [Phase 03]: Phase 3 canonical type homes seeded at §8.5/Appendix-C paths (P-3b): ModelContextTier+classifyModelContext at src/core/context/ModelContextTier.ts, ContextProvenanceManifest at src/core/context/ContextProvenanceManifest.ts, UserPreferences+RetrievedMemory at src/core/memory/types.ts (C.1 note line 4775); src/core/ai/types.ts imports them (never re-declares). ToolSchemaRef canonical home is src/core/ai/toolSchemas.ts (Appendix C line 4571) — NOT types.ts; ai/types.ts imports it (R-1). provider_unconfigured stays a terminal reasonCode string (03-05 typed marker), NOT an error-code constant.
 
 ### Pending Todos
 
@@ -146,6 +148,6 @@ Items acknowledged and carried forward (v2 scope, tracked in REQUIREMENTS.md):
 
 ## Session Continuity
 
-Last session: 2026-08-09T11:46:48.202Z
-Stopped at: Phase 3 UI-SPEC approved
-Resume file: .planning/phases/03-cost-effective-ai-runtime-persona-seed/03-UI-SPEC.md
+Last session: 2026-08-10T06:18:22.879Z
+Stopped at: Completed 03-01-PLAN.md (types seed + ProviderId swap + C.2 canonicalization)
+Resume file: None
