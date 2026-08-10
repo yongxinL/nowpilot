@@ -4,10 +4,12 @@
 // active in Phase 1 — the rest are inert by type presence only, preventing type
 // churn in later phases (T-1-05).
 import type { PageContext, TabContext } from '@/core/content/PageContext';
-
-export type ProviderId = 'openai' | 'anthropic' | 'gemini' | 'ollama';
-// NOTE: Phase-1 local declaration. The canonical home is src/core/ai/types.ts
-// which lands in Phase 3 — swap the import then (flagged assumption).
+import type { ProviderId } from '@/core/ai/types';
+// P-3/R-1 (Phase 3): ProviderId's SINGLE canonical home is src/core/ai/types.ts.
+// The import above serves WorkspaceState.activeProvider; the re-export below
+// keeps OnboardingModal's `import type { ProviderId } from '@/types/workspace'`
+// (and any other '@/types/workspace' consumer) working — no second declaration.
+export type { ProviderId } from '@/core/ai/types';
 
 export type ActiveSurface = 'sidepanel' | 'standalone';
 
