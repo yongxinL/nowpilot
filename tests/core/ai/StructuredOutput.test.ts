@@ -56,9 +56,7 @@ function makeContext(
 
 const TASK_KINDS: ReadonlyArray<PromptSection['kind']> = ['context', 'task', 'user_input'];
 const cachedTexts = (sections: PromptSection[]): string[] =>
-  sections
-    .filter((s) => !TASK_KINDS.includes(s.kind))
-    .map((s) => s.text);
+  sections.filter((s) => !TASK_KINDS.includes(s.kind)).map((s) => s.text);
 
 describe('requestJson — F-4 sections-in signature', () => {
   it('threads PromptSection[] through unchanged and returns the parsed decision', async () => {
@@ -131,7 +129,9 @@ describe('requestJson — one byte-stable repair (F-4, T-03-04-01/02)', () => {
     let callCount = 0;
     const { ctx, calls } = makeContext(async () => {
       callCount += 1;
-      return callCount === 1 ? JSON.stringify({ action: 'run_tool', toolName: 42 }) : VALID_DECISION;
+      return callCount === 1
+        ? JSON.stringify({ action: 'run_tool', toolName: 42 })
+        : VALID_DECISION;
     });
 
     const result = await requestJson(DecisionSchema, fixture.sections, ctx);
@@ -209,4 +209,3 @@ describe('requestJson — abort re-parenting (Appendix L, T-03-04-04)', () => {
     expect(err).toMatchObject({ name: 'AbortError' });
   });
 });
-
