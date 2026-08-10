@@ -4310,6 +4310,16 @@ export interface ToolExecutionResult<T = unknown> {
   evidence?: import('@/types/harness').CompletionEvidence; // set for side-effecting tools (§28.2)
   durationMs: number;
 }
+// P-3: PromptSection's canonical home is src/core/ai/types.ts (moved here from the
+// §8.5 ContextOptimizer block; PromptCacheAdapter (Appendix K) is a Phase-3 consumer).
+// Phase-4 ContextOptimizer imports it via `import type { PromptSection } from '../ai/types'`.
+export interface PromptSection {
+  kind: 'system' | 'tool_schemas' | 'preferences' | 'memory' | 'context' | 'task' | 'user_input';
+  text: string;
+  tokens: number;
+  stable: boolean;
+  sourceId: string;
+}
 ```
 
 ```ts
@@ -4580,13 +4590,9 @@ export interface ToolSchemaRef {
 
 ```ts
 // src/core/context/ContextOptimizer.ts
-export interface PromptSection {
-  kind: 'system' | 'tool_schemas' | 'preferences' | 'memory' | 'context' | 'task' | 'user_input';
-  text: string;
-  tokens: number;
-  stable: boolean;
-  sourceId: string;
-}
+// P-3 re-export: PromptSection's canonical home is src/core/ai/types.ts (Appendix C,
+// seeded in Phase 3). This module imports it from the AI home — no second declaration (R-1).
+import type { PromptSection } from '../ai/types';
 ```
 
 ```ts
@@ -5105,6 +5111,24 @@ IDB_MIGRATION_FAILED
 SYNC_QUOTA_EXCEEDED
 WRITE_JOURNAL_FAILED
 WRITE_JOURNAL_ROLLBACK_FAILED
+# Phase 3 — AI runtime / provider / persona (canonical additions, 03-01 reconciliation)
+# Canonical 13-code Phase-3 block (03-RESEARCH line 626). Every debugLog(code, …) in the
+# Phase-3 AI layer uses one of these verbatim (Golden Rule 9). errorCodes.ts (03-01) exports
+# this phase subset; the W-1 scoped verify asserts each code as a /^CODE$/m line WITHIN
+# this C.2 block — a whole-file spec.includes() check is prohibited (it would false-pass).
+TOOL_REJECTED
+PERSONA_LOAD_FAILED
+STRUCTURED_OUTPUT_FAILED
+PLANNER_FAILED
+STREAM_FAILED
+NETWORK
+TIMEOUT
+RATE_LIMITED
+PROVIDER_5XX
+PROVIDER_AUTH
+PROVIDER_MODEL_UNKNOWN
+SCHEMA_INVALID
+HOST_NOT_PERMITTED
 ```
 
 ## Appendix D — Tier → Model Resolver Table
@@ -5721,7 +5745,8 @@ function pickTierCaps(_ctx: any) { return { plannerCap: 3, toolCap: 2, mcpChaini
 ```ts
 // src/core/ai/PromptCacheAdapter.ts
 import type { ProviderId } from './types';
-import type { PromptSection } from '../context/ContextOptimizer';
+// P-3: PromptSection's canonical home is ./types (Appendix C) — imported, never re-declared (R-1).
+import type { PromptSection } from './types';
 export interface CacheAdaptedPrompt {
   providerRequestSections: unknown;
   cacheKeyHash: string;
@@ -5806,10 +5831,11 @@ Rules:
 import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import type { ProviderId } from './types';
-// F-4: structured sections (NOT a pre-joined string). PromptSection is the §8.5/Appendix C type;
-// Phase 3 seeds it early in src/core/ai/types.ts (D-07) and Phase 4's ContextOptimizer imports it
-// from that AI home — same canonical declaration, no second copy (R-1).
-import type { PromptSection } from '../context/ContextOptimizer';
+// F-4: structured sections (NOT a pre-joined string). PromptSection is the Appendix C
+// type; its canonical home is src/core/ai/types.ts (P-3, seeded in Phase 3) and
+// Phase 4's ContextOptimizer imports it from that AI home — same canonical
+// declaration, no second copy (R-1).
+import type { PromptSection } from './types';
 import { PROMPTS } from '../prompts';
 
 // F-4: cached kinds → provider `system` (byte-stable, prompt-cached §1.3); task kinds → `prompt`.
