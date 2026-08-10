@@ -9,7 +9,12 @@
 // P-3b canonical homes: ModelContextTier/classifyModelContext,
 // ContextProvenanceManifest, UserPreferences, and RetrievedMemory are seeded at
 // their §8.5/Appendix-C homes and IMPORTED here — never re-declared (R-1).
-import type { z } from 'zod';
+//
+// 03-09 (T-03-09-04, V5 Input Validation): ProviderConfigSchema is the Zod
+// boundary gate the surface-mount wiring (runAIRuntimeInit) applies to every
+// decrypted np_providers.<id> envelope BEFORE registerProvider — a tampered or
+// non-config payload never reaches the registry as a raw provider.
+import { z } from 'zod';
 
 import type { ContextProvenanceManifest } from '../context/ContextProvenanceManifest';
 import type { ModelContextTier } from '../context/ModelContextTier';
@@ -71,6 +76,31 @@ export interface ProviderConfig {
   priority: number;
   lastValidated?: number;
 }
+
+/**
+ * T-03-09-04: the Zod boundary gate for decrypted np_providers.<id> envelopes.
+ * Mirrors ProviderConfig exactly (R-1 — the interface stays the canonical
+ * declaration; this schema is its runtime validator, co-located). The surface
+ * wiring (runAIRuntimeInit, 03-09) runs every decrypted envelope through
+ * safeParse BEFORE registerProvider — the four-ID rule, structural shape, and
+ * apiKey presence are all enforced at the vault→registry boundary (V5 Input
+ * Validation), never trusted from storage raw.
+ */
+export const ProviderConfigSchema = z.object({
+  id: z.enum(['openai', 'anthropic', 'gemini', 'ollama']),
+  label: z.string().min(1),
+  apiKey: z.string().optional(),
+  baseURL: z.string().min(1),
+  customBaseURL: z.string().optional(),
+  models: z.array(z.string().min(1)),
+  contextWindow: z.number().int().positive(),
+  supportsTools: z.boolean(),
+  enabled: z.boolean(),
+  priority: z.number().int().nonnegative(),
+  lastValidated: z.number().optional(),
+});
+
+export type ProviderConfigInput = z.infer<typeof ProviderConfigSchema>;
 
 // §21.4 Built-in Tool Descriptor (line 3427) — referenced by LLMOptions.tools.
 // Spec-verbatim; declared here as the only home (no second copy, R-1).

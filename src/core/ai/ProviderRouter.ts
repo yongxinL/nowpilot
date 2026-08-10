@@ -127,11 +127,13 @@ export interface RouterAttemptState {
 export interface CreateStageInvocationInput {
   operationId: string;
   tier: ModelTier;
-  privacyMode: PrivacyMode;
+  /** D-13: per-call override; falls back to the 03-09 wiring baseline (configure()). */
+  privacyMode?: PrivacyMode;
   /** §1.2 output cap — planner/repair 256, renderer 512; never unbounded. */
   maxTokens: number;
-  /** TierResolveInput.configuredProviders — cheapest-capable resolution input. */
-  configuredProviders: TierResolveInput['configuredProviders'];
+  /** TierResolveInput.configuredProviders — cheapest-capable resolution input.
+   *  Optional: falls back to the 03-09 wiring baseline (configure()). */
+  configuredProviders?: TierResolveInput['configuredProviders'];
   /**
    * Seam: per-provider SDK config (apiKey/baseURL/fetch). The Router NEVER
    * touches the vault (Pitfall 4) — the wiring layer (03-09) supplies this.
@@ -342,14 +344,30 @@ export class ProviderRouter {
 
   /** D-16: the cost pre-flight hook — pass-through this phase. */
   budgetGuard: BudgetGuard = DEFAULT_BUDGET_GUARD;
+  /** 03-09 wiring baseline: the surface's configured providers (registry → TierResolveInput shape). */
+  private configuredProviders: TierResolveInput['configuredProviders'] = [];
+  /** 03-09 wiring baseline: the D-13 privacy mode derived from persona prefs. */
+  private privacyMode: PrivacyMode = 'prefer-local';
 
   constructor(opts: { now?: () => number } = {}) {
     this.now = opts.now ?? Date.now;
   }
 
-  /** D-16: replace the no-op budgetGuard hook (Phase 6 wires the ledger pre-flight). */
-  configure(opts: { budgetGuard?: BudgetGuard }): void {
+  /**
+   * 03-09 wiring: establish the per-surface baseline BEFORE any send —
+   * budgetGuard (D-16, Phase 6 ledger), configuredProviders, and the D-13
+   * privacyMode (privacyModeFromPrefs: false → 'prefer-local', true →
+   * 'cloud-ok'). createStageInvocation falls back to these when a caller
+   * omits the per-call values (the hook 03-08 still passes them explicitly).
+   */
+  configure(opts: {
+    budgetGuard?: BudgetGuard;
+    configuredProviders?: TierResolveInput['configuredProviders'];
+    privacyMode?: PrivacyMode;
+  }): void {
     if (opts.budgetGuard) this.budgetGuard = opts.budgetGuard;
+    if (opts.configuredProviders) this.configuredProviders = opts.configuredProviders;
+    if (opts.privacyMode) this.privacyMode = opts.privacyMode;
   }
 
   /**
@@ -375,10 +393,14 @@ export class ProviderRouter {
       // R-2: the non-multiplying budget is spent — terminate, never re-enter.
       throw unavailable('no_candidate', undefined, 'router attempt budget exhausted');
     }
+    // 03-09 wiring baseline fallback: per-call values win; configure()'d
+    // baseline (surface providers + D-13 privacy mode) applies when omitted.
+    const configuredProviders = input.configuredProviders ?? this.configuredProviders;
+    const privacyMode = input.privacyMode ?? this.privacyMode;
     const resolved = resolveTier({
       tier: input.tier,
-      configuredProviders: input.configuredProviders,
-      privacyMode: input.privacyMode,
+      configuredProviders,
+      privacyMode,
     });
     if (!resolved) {
       // D-07: no configured+enabled provider matches the tier → unconfigured.
@@ -396,10 +418,7 @@ export class ProviderRouter {
     for (const cand of chain) {
       if (failed.has(cand.providerId)) continue; // already failed this operation — advance
       if (this.isBreakerOpen(cand.providerId)) continue; // §1.5 breaker — observability via accessors
-      if (
-        lastFailed &&
-        refusedByPrivacyGate(input.privacyMode, lastFailed.providerId, cand.providerId)
-      ) {
+      if (lastFailed && refusedByPrivacyGate(privacyMode, lastFailed.providerId, cand.providerId)) {
         // D-13: prefer-local + dead local → terminate in a visible provider-failure
         // state; the refusal is debugLogged (R-10 redacted via debugLog).
         debugLog(
@@ -411,7 +430,7 @@ export class ProviderRouter {
               operationId: input.operationId,
               fromProvider: lastFailed.providerId,
               toProvider: cand.providerId,
-              privacyMode: input.privacyMode,
+              privacyMode,
             },
           },
         );

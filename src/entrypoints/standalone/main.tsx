@@ -54,9 +54,19 @@ import {
 import { DB_VERSION as MEMORY_DB_VERSION, openMemoryDB } from '@/core/storage/MemoryDB';
 import { DB_VERSION as NOTES_DB_VERSION, openNotesDB } from '@/core/storage/NotesDB';
 import { openWriteJournalDB } from '@/core/storage/WriteJournal';
+import { deserializeEnvelope, isSerializedVaultEnvelope } from '@/core/storage/EncryptedStorage';
+import { getProviderRegistry } from '@/core/ai/ProviderRegistry';
+import { getProviderRouter } from '@/core/ai/ProviderRouter';
+import { ProviderConfigSchema } from '@/core/ai/types';
+import { privacyModeFromPrefs } from '@/core/ai/TierResolver';
+import type { TierResolveInput } from '@/core/ai/TierResolver';
+import { readPersonaPrefs } from '@/core/ai/persona/personaConfig';
 // The single provider reference on this surface (Appendix F: XProvider EXTENDS
 // antd's provider — exactly one provider per surface, grep fixture).
 export type { ConfigProviderProps } from 'antd';
+
+/** §0.2 four-ID rule — the only provider ids the wiring enumerates (R-1: matches ProviderId). */
+const AI_PROVIDER_IDS = ['openai', 'anthropic', 'gemini', 'ollama'] as const;
 
 /**
  * Storage-layer bootstrap (02-11): KeyVault first-run → migrate-on-read →
@@ -147,6 +157,91 @@ async function warmOpenIdbStore(dbName: string): Promise<void> {
   }
 }
 
+/**
+ * AI runtime bootstrap (03-09): the ONLY place the AI runtime/vault decrypt
+ * runs on this surface (R-3 — the background SW never imports the AI layer).
+ * At mount: resolve each configured provider's np_providers.<id> vault envelope
+ * (Setting.read → deserialize → KeyVault.decryptSecret) → register the provider
+ * or, on decrypt failure, mark it PROVIDER_KEY_UNREADABLE (enabled:false,
+ * treated as unconfigured — D-21, NO auto-wipe, NO auto-regenerate, 02-CONTEXT
+ * D-04); load np_persona via the D-09 accessor; then configure the Router
+ * baseline BEFORE any send (configuredProviders + D-13 privacyMode from prefs).
+ * Every step is wrapped (debugLog with canonical §C.2 codes + fall-through,
+ * Golden Rule 9) — a vault/router/persona failure degrades gracefully and never
+ * blocks the mount (T-03-09-03). API keys exist only inside this function scope
+ * (T-03-09-01); the registry stores apiKey-stripped snapshots (R-10).
+ */
+async function runAIRuntimeInit(): Promise<void> {
+  const registry = getProviderRegistry();
+  const vault = getKeyVault();
+  const configuredProviders: TierResolveInput['configuredProviders'] = [];
+
+  for (const providerId of AI_PROVIDER_IDS) {
+    const key = `np_providers.${providerId}`;
+    try {
+      // D-09 Setting.read — per-provider envelope key (WR-10 model: local,
+      // encrypted: true via resolveKeyPermission). Missing key = not configured.
+      const stored = await Setting.settingRead<unknown>(key, (v) => v, undefined);
+      if (stored === undefined) continue;
+      // T-03-09-04 (V5 Input Validation): the stored value MUST be a serialized
+      // §15.2 envelope; anything else (raw JSON, array) is refused here.
+      if (!isSerializedVaultEnvelope(stored)) {
+        registry.markProviderKeyUnreadable(providerId);
+        debugLog(ERROR_CODES.STORE_READ, 'provider envelope malformed — marked unreadable', {
+          module: 'ai-runtime-init',
+          extra: { providerId },
+        });
+        continue;
+      }
+      const plaintext = await vault.decryptSecret(deserializeEnvelope(stored));
+      const config = ProviderConfigSchema.safeParse(JSON.parse(plaintext));
+      if (!config.success) {
+        // Zod boundary gate — a non-ProviderConfig payload never registers.
+        registry.markProviderKeyUnreadable(providerId);
+        debugLog(ERROR_CODES.STORE_READ, 'provider config failed schema validation', {
+          module: 'ai-runtime-init',
+          extra: { providerId },
+        });
+        continue;
+      }
+      registry.registerProvider(config.data);
+      configuredProviders.push({
+        id: config.data.id,
+        models: config.data.models,
+        enabled: config.data.enabled,
+        priority: config.data.priority,
+      });
+    } catch (err) {
+      // Decrypt failure → the single PROVIDER_KEY_UNREADABLE state (D-04):
+      // mark disabled + typed emission; decryptSecret already debugLogged the
+      // VAULT_DECRYPT_FAILED/install-secret-cleared road. No wipe (D-04).
+      registry.markProviderKeyUnreadable(providerId);
+      debugLog(ERROR_CODES.PROVIDER_KEY_UNREADABLE, 'provider wiring failed at mount', {
+        error: err instanceof Error ? err : undefined,
+        module: 'ai-runtime-init',
+        extra: { providerId },
+      });
+    }
+  }
+
+  // Router baseline BEFORE any send (D-13): configuredProviders from the
+  // registry snapshot + privacyMode from prefs (false → 'prefer-local', true →
+  // 'cloud-ok'; 'local-only' reserved). A failure degrades gracefully — the
+  // per-call values in the hook (03-08) still win when supplied.
+  try {
+    const prefs = await readPersonaPrefs();
+    getProviderRouter().configure({
+      configuredProviders,
+      privacyMode: privacyModeFromPrefs(prefs),
+    });
+  } catch (err) {
+    debugLog(ERROR_CODES.STORE_READ, 'router configure failed at mount', {
+      error: err instanceof Error ? err : undefined,
+      module: 'ai-runtime-init',
+    });
+  }
+}
+
 function StandaloneRoot() {
   const isReady = useThemeStore((s) => s.isReady);
   const mode = useThemeStore((s) => s.mode);
@@ -207,7 +302,13 @@ if (typeof document !== 'undefined') {
   // 02-11: storage-layer bootstrap — KeyVault first-run + migrate-on-read +
   // IDB migrator fire BEFORE the workspace init chain; non-blocking and never
   // rejecting (a storage failure degrades gracefully, Golden Rule 9).
-  void runStorageBootstrap();
+  // 03-09 (R-3): the AI runtime bootstrap — vault provider envelopes →
+  // registry → Router.configure (baseline + D-13 privacyMode) — chains AFTER
+  // the vault first-run so decrypt has an installSecret; fire-and-forget, never
+  // blocking the mount (T-03-09-03).
+  void runStorageBootstrap().then(() => {
+    void runAIRuntimeInit();
+  });
   // WR-03: module-level sync ref (held for stop()); the constructor is
   // side-effect-free — only start() activates subscriptions/timers.
   workspaceSync = new WorkspaceSync('standalone');
