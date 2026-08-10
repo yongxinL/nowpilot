@@ -51,9 +51,13 @@ export function buildPersonaBlock(p: PersonaProfile): string {
   ].join('\n');
 }
 export const PersonaInjector = {
-  inject(stage: PipelineStage, baseSystem: string, opts?: { persona?: PersonaProfile; prefs?: UserPreferences }): string {
+  inject(
+    stage: PipelineStage,
+    baseSystem: string,
+    opts?: { persona?: PersonaProfile; prefs?: UserPreferences },
+  ): string {
     const persona = resolvePersona(opts?.persona ?? DEFAULT_PERSONA, opts?.prefs);
     const block = buildPersonaBlock(persona);
-    return `${block}\n\n${baseSystem}`;   // persona first (cacheable), then canonical stage system string (Appendix A)
+    return `${block}\n\n${baseSystem}`; // persona first (cacheable), then canonical stage system string (Appendix A)
   },
 };

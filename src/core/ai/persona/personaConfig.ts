@@ -49,10 +49,14 @@ async function loadPersona(): Promise<PersonaLoad> {
   }
   const parsed = PersonaProfileSchema.safeParse(stored);
   if (!parsed.success) {
-    debugLog(ERROR_CODES.PERSONA_LOAD_FAILED, 'np_persona failed PersonaProfileSchema validation — using DEFAULT_PERSONA', {
-      module: 'personaConfig',
-      extra: { issueCount: parsed.error.issues.length },
-    });
+    debugLog(
+      ERROR_CODES.PERSONA_LOAD_FAILED,
+      'np_persona failed PersonaProfileSchema validation — using DEFAULT_PERSONA',
+      {
+        module: 'personaConfig',
+        extra: { issueCount: parsed.error.issues.length },
+      },
+    );
     return { persona: DEFAULT_PERSONA, loaded: false };
   }
   return { persona: parsed.data, loaded: true };

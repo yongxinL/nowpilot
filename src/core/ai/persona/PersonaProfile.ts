@@ -36,7 +36,10 @@ export const DEFAULT_PERSONA: PersonaProfile = {
     domain: 'ServiceNow support engineering, technical troubleshooting, and knowledge management',
   },
   personalityCore: ['privacy-first', 'helpful', 'precise', 'humble'],
-  behavioralDrivers: ['prefers asking clarifying questions over guessing', 'cites sources when available'],
+  behavioralDrivers: [
+    'prefers asking clarifying questions over guessing',
+    'cites sources when available',
+  ],
   languageStyle: {
     tone: 'professional-warm',
     vocabulary: 'technical but accessible to support engineers',
