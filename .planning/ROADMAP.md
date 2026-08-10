@@ -130,7 +130,7 @@ Plans:
   4. Planner returns validated decisions with a closed toolName enum; Executor rejects unknown tools; Renderer respects output caps; structured output self-repairs once.
   5. User's persona overrides (name/tone/brevity) apply without a code change.
 
-**Plans**: 6/9 plans executed
+**Plans**: 7/9 plans executed
 
 Plans:
 **Wave 1**
@@ -150,7 +150,7 @@ Plans:
 **Wave 4** *(blocked on Wave 3 completion)*
 
 - [x] 03-06-PLAN.md — RendererService streaming (Seam 3) + AgentOrchestrator (Appendix I + onStreamDelta/invocation deviations, §1.4 caps) (wave 4)
-- [ ] 03-07-PLAN.md — persona pipeline: PersonaProfile (N.1), np_persona accessor (D-09), PersonaInjector (N.2), contextHelper (D-02) (wave 4)
+- [x] 03-07-PLAN.md — persona pipeline: PersonaProfile (N.1), np_persona accessor (D-09), PersonaInjector (N.2), contextHelper (D-02) (wave 4)
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
@@ -411,7 +411,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. MV3/WXT Runtime + AntD Shells + Workspace | 11/11 | Complete    | 2026-08-08 |
 | 2. Storage, Security, WriteJournal, Workspace Persistence | 11/11 | Complete    | 2026-08-09 |
-| 3. Cost-Effective AI Runtime (+ Persona seed) | 6/9 | In Progress|  |
+| 3. Cost-Effective AI Runtime (+ Persona seed) | 7/9 | In Progress|  |
 | 3a. Agent Reliability and Evidence | TBD | Not started | - |
 | 4. Context-Adaptive Execution | TBD | Not started | - |
 | 4a. PageContentService (Knowledge Acquisition) | TBD | Not started | - |
