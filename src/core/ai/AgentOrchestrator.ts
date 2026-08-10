@@ -202,5 +202,10 @@ async function planOnce(input: AgentTurnInput): Promise<PlannerDecision> {
 }
 
 function isAbortError(err: unknown): boolean {
-  return err instanceof Error && err.name === 'AbortError';
+  // DOMException does not extend Error in every environment — match the
+  // canonical AbortError name regardless of prototype chain (ai@4 aborts and
+  // the loop-top DOMException both carry name 'AbortError').
+  return (
+    typeof err === 'object' && err !== null && (err as { name?: unknown }).name === 'AbortError'
+  );
 }
