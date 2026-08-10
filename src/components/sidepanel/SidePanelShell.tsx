@@ -1,15 +1,17 @@
 // src/components/sidepanel/SidePanelShell.tsx — §17.1 chat-only side panel
 // shell (compact layout per UI-SPEC): header (title + theme indicator),
-// conversation area rendering the ChatPage (Task 3), and an input placeholder
-// bar (disabled Input with STR.chat.askPlaceholder — NO chat logic, chat lands
-// in its phase). When no provider is active the shell renders the DISABLED
-// surface per D-07 (STR.chat.noProvider banner, inputs disabled) — the D-07
-// gate is ProviderRegistry.hasActiveProvider(), not an onboarding flag (W-10).
-// Theme comes from useThemeStore (01-05) display-only (ConfigProvider wiring
-// happens at mount in 01-09); workspace activeSurface comes from
-// useWorkspaceStore (01-06). Cmd+K palette (Flow 10) is the §17.1 global
-// overlay. Wrapped in ErrorBoundary (01-04). No direct extension API calls —
-// all state flows through the stores (Pitfall 4/P5).
+// conversation area rendering the ChatPage (Task 3), and — when a provider is
+// ACTIVE — NO shell footer at all: the composer lives INSIDE ChatPage
+// (D-01: the Sender is ChatPage's, one composer per surface, no double
+// composer). When NO provider is active the shell renders the Phase-1 disabled
+// surface per D-07/D-21 (STR.chat.noProvider Alert + disabled Input footer) —
+// the gate is ProviderRegistry.hasActiveProvider(), not an onboarding flag
+// (W-10); PROVIDER_KEY_UNREADABLE-disabled providers collapse into the same
+// gate (D-21). Theme comes from useThemeStore (01-05) display-only
+// (ConfigProvider wiring happens at mount in 01-09); workspace activeSurface
+// comes from useWorkspaceStore (01-06). Cmd+K palette (Flow 10) is the §17.1
+// global overlay. Wrapped in ErrorBoundary (01-04). No direct extension API
+// calls — all state flows through the stores (Pitfall 4/P5).
 import { useSyncExternalStore } from 'react';
 import { Alert, Input, Layout, Typography } from 'antd';
 import { CmdKPicker } from '@/components/cmdk/CmdKPicker';
@@ -64,11 +66,20 @@ export function SidePanelShell({ pickerOpen, onPickerOpenChange }: SidePanelShel
           </Typography.Text>
         </Layout.Header>
         <Layout.Content style={contentStyle}>
-          {hasProvider ? <ChatPage /> : <Alert type="info" showIcon title={STR.chat.noProvider} />}
+          {hasProvider ? (
+            <ChatPage />
+          ) : (
+            <Alert type="info" showIcon title={STR.chat.noProvider} />
+          )}
         </Layout.Content>
-        <Layout.Footer style={composerStyle}>
-          <Input placeholder={STR.chat.askPlaceholder} disabled />
-        </Layout.Footer>
+        {/* D-01 single composer: the Sender lives INSIDE ChatPage — when a
+            provider is active there is NO shell footer (no double composer);
+            the Phase-1 disabled Input footer only renders unconfigured. */}
+        {hasProvider ? null : (
+          <Layout.Footer style={composerStyle}>
+            <Input placeholder={STR.chat.askPlaceholder} disabled />
+          </Layout.Footer>
+        )}
         <CmdKPicker open={pickerOpen} onOpenChange={onPickerOpenChange} />
       </Layout>
     </ErrorBoundary>
