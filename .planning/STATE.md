@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 03
 current_phase_name: cost-effective-ai-runtime-persona-seed
 status: executing
-stopped_at: Completed 03-01-PLAN.md (types seed + ProviderId swap + C.2 canonicalization)
-last_updated: "2026-08-10T06:22:36.108Z"
+stopped_at: Completed 03-02-PLAN.md (provider adapters + TierResolver + registry gate)
+last_updated: "2026-08-10T07:08:22.456Z"
 last_activity: 2026-08-10
 last_activity_desc: Phase 03 execution started
 progress:
   total_phases: 3
   completed_phases: 2
   total_plans: 31
-  completed_plans: 23
+  completed_plans: 24
 ---
 
 # Project State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-08-09)
 ## Current Position
 
 Phase: 03 (cost-effective-ai-runtime-persona-seed) — EXECUTING
-Plan: 2 of 9
+Plan: 3 of 9
 Status: Ready to execute
 Last activity: 2026-08-10 — Phase 03 execution started
 
-Progress: [███████░░░] 74%
+Progress: [████████░░] 77%
 
 ## Performance Metrics
 
@@ -73,6 +73,7 @@ Progress: [███████░░░] 74%
 | Phase 01 P10 | 10min | 3 tasks | 5 files |
 | Phase 01-mv3-wxt-runtime-antd-shells-workspace P11 | 9 | 3 tasks | 8 files |
 | Phase 03-cost-effective-ai-runtime-persona-seed P01 | 38min | 11 tasks | 9 files |
+| Phase 03 P02 | 17min | 10 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -120,6 +121,10 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 01]: Fresh-module persistence tests import the entrypoint module (not just the store) so the module-scope init() fires against seeded storage — Standalone hydration test initially imported only the store module; the init() wiring lives in the entrypoint, so seeding was never read
 - [Phase 01-mv3-wxt-runtime-antd-shells-workspace]: Adopted the err instanceof Error ? err : undefined narrowing in rewired catch bodies — the plan's literal { error: err } fails tsc under strict catch-variable typing (unknown vs Error); matches WorkspaceStore/ProviderRegistry precedent — Rule 1 type-correctness adaptation required for gate-green; identical runtime behavior
 - [Phase 03]: Phase 3 canonical type homes seeded at §8.5/Appendix-C paths (P-3b): ModelContextTier+classifyModelContext at src/core/context/ModelContextTier.ts, ContextProvenanceManifest at src/core/context/ContextProvenanceManifest.ts, UserPreferences+RetrievedMemory at src/core/memory/types.ts (C.1 note line 4775); src/core/ai/types.ts imports them (never re-declares). ToolSchemaRef canonical home is src/core/ai/toolSchemas.ts (Appendix C line 4571) — NOT types.ts; ai/types.ts imports it (R-1). provider_unconfigured stays a terminal reasonCode string (03-05 typed marker), NOT an error-code constant.
+- [Phase 03]: Adapter factories keep @ai-sdk/* imports OUT: each create*Provider({apiKey,baseURL,fetch}) binds its config into the shared getAISDKModel seam (Seam 1 holds, A6 fetch forwarded) — the plan's "createOpenAIProvider(config) via createOpenAI" semantics live in the switch, not per-adapter imports
+- [Phase 03]: ILLMProvider.chat/getModels ship as throwing @implementation-tier stubs (Golden Rule 10): streamText ownership is StreamAdapter's (03-03, Seam 3); the factories' real deliverable is getAISDKModel + structural validateConfig
+- [Phase 03]: Registry snapshots (RegistryProviderInfo) strip apiKey (R-10) and compute resolvedBaseURL = customBaseURL ?? baseURL once at registration (§10.2)
+- [Phase 03]: AI-01 checkbox stays PENDING — the requirement also names ProviderRouter (03-05); marking complete now would repeat the 03-01 mark-complete mistake
 
 ### Pending Todos
 
@@ -148,6 +153,6 @@ Items acknowledged and carried forward (v2 scope, tracked in REQUIREMENTS.md):
 
 ## Session Continuity
 
-Last session: 2026-08-10T06:18:22.879Z
-Stopped at: Completed 03-01-PLAN.md (types seed + ProviderId swap + C.2 canonicalization)
+Last session: 2026-08-10T07:08:22.418Z
+Stopped at: Completed 03-02-PLAN.md (provider adapters + TierResolver + registry gate)
 Resume file: None
