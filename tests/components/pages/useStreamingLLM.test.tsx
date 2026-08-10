@@ -16,19 +16,18 @@ import { FIXED_PREFERENCES } from '../../fixtures/optimizedContext';
 // ---------------------------------------------------------------------------
 
 const { runAgentTurnMock, routerMock, readPersonaPrefsMock } = vi.hoisted(() => {
-  const createStageInvocation = vi.fn(
-    (input: { tier?: string; maxTokens?: number }) => ({
-      providerId: 'anthropic',
-      model: { modelId: 'claude-3-5-haiku-latest' },
-      jsonMode: 'native',
-      callProviderJsonMode: vi.fn(async () => '{}'),
-      ...input,
-    }),
-  );
+  const createStageInvocation = vi.fn((input: { tier?: string; maxTokens?: number }) => ({
+    providerId: 'anthropic',
+    model: { modelId: 'claude-3-5-haiku-latest' },
+    jsonMode: 'native',
+    callProviderJsonMode: vi.fn(async () => '{}'),
+    ...input,
+  }));
   const classifyProviderError = vi.fn((e: unknown) => ({
-    code: e instanceof Error && /fetch failed|ECONNREFUSED|network/i.test(e.message)
-      ? 'NETWORK'
-      : 'UNKNOWN',
+    code:
+      e instanceof Error && /fetch failed|ECONNREFUSED|network/i.test(e.message)
+        ? 'NETWORK'
+        : 'UNKNOWN',
     retryable: false,
   }));
   return {
@@ -66,17 +65,15 @@ interface AgentTurnInputLike {
 }
 
 function resolveTurn(deltas: string[], streamedText: string, reasonCode = 'answer') {
-  runAgentTurnMock.mockImplementationOnce(
-    async (input: AgentTurnInputLike) => {
-      for (const d of deltas) input.onStreamDelta?.(d);
-      return {
-        operationId: input.operationId,
-        streamedText,
-        toolResults: [],
-        reasonCode,
-      };
-    },
-  );
+  runAgentTurnMock.mockImplementationOnce(async (input: AgentTurnInputLike) => {
+    for (const d of deltas) input.onStreamDelta?.(d);
+    return {
+      operationId: input.operationId,
+      streamedText,
+      toolResults: [],
+      reasonCode,
+    };
+  });
 }
 
 function rejectTurn(err: unknown) {
@@ -90,9 +87,10 @@ beforeEach(() => {
   routerMock.createStageInvocation.mockClear();
   routerMock.classifyProviderError.mockClear();
   routerMock.classifyProviderError.mockImplementation((e: unknown) => ({
-    code: e instanceof Error && /fetch failed|ECONNREFUSED|network/i.test(e.message)
-      ? 'NETWORK'
-      : 'UNKNOWN',
+    code:
+      e instanceof Error && /fetch failed|ECONNREFUSED|network/i.test(e.message)
+        ? 'NETWORK'
+        : 'UNKNOWN',
     retryable: false,
   }));
   readPersonaPrefsMock.mockReset();
@@ -285,9 +283,7 @@ describe('useStreamingLLM — abort + retry', () => {
     const firstOp = (runAgentTurnMock.mock.calls[0][0] as AgentTurnInputLike).operationId;
     const secondOp = (runAgentTurnMock.mock.calls[1][0] as AgentTurnInputLike).operationId;
     expect(secondOp).not.toBe(firstOp);
-    expect((runAgentTurnMock.mock.calls[1][0] as AgentTurnInputLike).userInput).toBe(
-      'please help',
-    );
+    expect((runAgentTurnMock.mock.calls[1][0] as AgentTurnInputLike).userInput).toBe('please help');
     await waitFor(() => expect(result.current.state.state).toBe('completed'));
   });
 });

@@ -119,10 +119,7 @@ export function ChatPage() {
               contentRender: (content: React.ReactNode) => (
                 <>
                   {content}
-                  <span
-                    aria-hidden
-                    style={{ color: token.colorPrimary, opacity: 0.6 }}
-                  >
+                  <span aria-hidden style={{ color: token.colorPrimary, opacity: 0.6 }}>
                     |
                   </span>
                 </>
@@ -137,7 +134,12 @@ export function ChatPage() {
                   {FAILED_PREFIX}
                 </Typography.Text>
               )}
-              <Button type="link" size="small" style={{ color: token.colorPrimary, padding: 0 }} onClick={handleRetry}>
+              <Button
+                type="link"
+                size="small"
+                style={{ color: token.colorPrimary, padding: 0 }}
+                onClick={handleRetry}
+              >
                 {STR.chat.retry}
               </Button>
             </span>
@@ -205,10 +207,7 @@ export function ChatPage() {
         </div>
         {state.state === 'offline' && (
           // offline: muted 12px notice above the Sender (UI-SPEC offline row)
-          <Typography.Text
-            type="secondary"
-            style={{ fontSize: 12, paddingInline: 4 }}
-          >
+          <Typography.Text type="secondary" style={{ fontSize: 12, paddingInline: 4 }}>
             {STR.chat.offline}
           </Typography.Text>
         )}

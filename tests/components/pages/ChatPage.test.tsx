@@ -106,9 +106,9 @@ describe('ChatPage — 5-state stream machine (UI-SPEC surface contract)', () =>
     forceUpdate();
     await waitFor(() => expect(screen.getByText('Hel')).toBeTruthy());
     // Sender + send button disabled during the stream (one stream per session §17.5).
-    expect((screen.getByPlaceholderText(STR.chat.askPlaceholder) as HTMLTextAreaElement).disabled).toBe(
-      true,
-    );
+    expect(
+      (screen.getByPlaceholderText(STR.chat.askPlaceholder) as HTMLTextAreaElement).disabled,
+    ).toBe(true);
   });
 
   it('completed: final text rendered, caret removed (streaming state flipped off)', async () => {

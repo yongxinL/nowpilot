@@ -66,11 +66,7 @@ export function SidePanelShell({ pickerOpen, onPickerOpenChange }: SidePanelShel
           </Typography.Text>
         </Layout.Header>
         <Layout.Content style={contentStyle}>
-          {hasProvider ? (
-            <ChatPage />
-          ) : (
-            <Alert type="info" showIcon title={STR.chat.noProvider} />
-          )}
+          {hasProvider ? <ChatPage /> : <Alert type="info" showIcon title={STR.chat.noProvider} />}
         </Layout.Content>
         {/* D-01 single composer: the Sender lives INSIDE ChatPage — when a
             provider is active there is NO shell footer (no double composer);
