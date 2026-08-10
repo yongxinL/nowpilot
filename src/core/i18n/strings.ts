@@ -17,6 +17,10 @@ export const STR = {
     historyEmpty: 'No conversations yet — say hello below.',
     // Phase-1 canonical addition (UI-SPEC §17.1 composer input placeholder, verbatim)
     askPlaceholder: 'Ask anything, @ models, / prompts',
+    // Phase-3 canonical additions (UI-SPEC Copywriting Contract, verbatim):
+    // Primary CTA + failed-bubble Retry action.
+    send: 'Send',
+    retry: 'Retry',
   },
   diagnostics: {
     title: 'Diagnostics',
