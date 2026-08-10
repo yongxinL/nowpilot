@@ -7,7 +7,7 @@
 // ILLMProvider.ts is the only import site. Default context is 2048 tokens — callers
 // must warn the user (Flow 5); supportsTools is model-dependent.
 import { getAISDKModel, type ILLMProvider } from '../ILLMProvider';
-import type { ProviderConfig } from '../types';
+import type { LLMStreamChunk, ProviderConfig } from '../types';
 
 export interface OllamaProviderFactoryOptions {
   baseURL?: string;
@@ -23,7 +23,7 @@ export function createOllamaProvider(config: OllamaProviderFactoryOptions = {}):
         baseURL: config.baseURL,
         fetch: config.fetch,
       }),
-    async *chat() {
+    chat(): AsyncIterable<LLMStreamChunk> {
       // @implementation-tier stub (Golden Rule 10): streamText consumption is
       // owned by StreamAdapter (03-03, Seam 3) — never callable from an adapter.
       throw new Error('ILLMProvider.chat is wired by StreamAdapter (03-03, Seam 3)');

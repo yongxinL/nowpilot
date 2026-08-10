@@ -7,7 +7,7 @@
 // getAISDKModel; Appendix D already maps 'deepseek-chat' → providerId: 'openai'.
 // @ai-sdk/* packages are NOT imported here (Seam 1).
 import { getAISDKModel, type ILLMProvider } from '../ILLMProvider';
-import type { ProviderConfig } from '../types';
+import type { LLMStreamChunk, ProviderConfig } from '../types';
 
 export interface OpenAICompatProviderFactoryOptions {
   /** Custom baseURL — the point of the variant (D-12); required. */
@@ -28,7 +28,7 @@ export function createOpenAICompatProvider(
         baseURL: config.baseURL,
         fetch: config.fetch,
       }),
-    async *chat() {
+    chat(): AsyncIterable<LLMStreamChunk> {
       // @implementation-tier stub (Golden Rule 10): streamText consumption is
       // owned by StreamAdapter (03-03, Seam 3) — never callable from an adapter.
       throw new Error('ILLMProvider.chat is wired by StreamAdapter (03-03, Seam 3)');

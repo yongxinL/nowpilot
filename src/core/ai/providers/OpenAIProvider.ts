@@ -5,7 +5,7 @@
 // official OpenAI endpoint is not targeted). The @ai-sdk/openai package is NOT
 // imported here (Seam 1): getAISDKModel in ILLMProvider.ts is the only import site.
 import { getAISDKModel, type ILLMProvider } from '../ILLMProvider';
-import type { ProviderConfig } from '../types';
+import type { LLMStreamChunk, ProviderConfig } from '../types';
 
 export interface OpenAIProviderFactoryOptions {
   apiKey?: string;
@@ -23,7 +23,7 @@ export function createOpenAIProvider(config: OpenAIProviderFactoryOptions = {}):
         baseURL: config.baseURL,
         fetch: config.fetch,
       }),
-    async *chat() {
+    chat(): AsyncIterable<LLMStreamChunk> {
       // @implementation-tier stub (Golden Rule 10): streamText consumption is
       // owned by StreamAdapter (03-03, Seam 3) — never callable from an adapter.
       throw new Error('ILLMProvider.chat is wired by StreamAdapter (03-03, Seam 3)');
