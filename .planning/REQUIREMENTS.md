@@ -35,7 +35,7 @@
 
 - [ ] **AI-01**: ProviderRegistry, ProviderRouter, and TierResolver support 'openai' | 'anthropic' | 'gemini' | 'ollama' with custom baseURL (OpenAI-compatible local)
 - [x] **AI-02**: Planner→Executor→Renderer loop runs with Zod-validated PlannerDecision; Planner requests, Executor validates+runs tools
-- [ ] **AI-03**: Streaming works end-to-end (SSE + text via ChunkBuffer + React UI)
+- [x] **AI-03**: Streaming works end-to-end (SSE + text via ChunkBuffer + React UI)
 - [ ] **AI-04**: Tier caps and monthly budget enforce cost guardrails (cheapest-capable routing)
 - [ ] **AI-05**: PersonaInjector and prompt pipeline ensure all AI calls consume an OptimizedContext
 - [ ] **AI-06**: RICH chat surfaces (Bubble, Sender, Prompts, Welcome, etc.) render streamed AI output

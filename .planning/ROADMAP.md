@@ -130,7 +130,7 @@ Plans:
   4. Planner returns validated decisions with a closed toolName enum; Executor rejects unknown tools; Renderer respects output caps; structured output self-repairs once.
   5. User's persona overrides (name/tone/brevity) apply without a code change.
 
-**Plans**: 7/9 plans executed
+**Plans**: 8/9 plans executed
 
 Plans:
 **Wave 1**
@@ -154,7 +154,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 03-08-PLAN.md — minimal streaming chat: STR keys, co-located useStreamingLLM hook (D-01), ChatPage Bubble/Sender, SidePanelShell composer reconciliation (wave 5)
+- [x] 03-08-PLAN.md — minimal streaming chat: STR keys, co-located useStreamingLLM hook (D-01), ChatPage Bubble/Sender, SidePanelShell composer reconciliation (wave 5)
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
@@ -411,7 +411,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. MV3/WXT Runtime + AntD Shells + Workspace | 11/11 | Complete    | 2026-08-08 |
 | 2. Storage, Security, WriteJournal, Workspace Persistence | 11/11 | Complete    | 2026-08-09 |
-| 3. Cost-Effective AI Runtime (+ Persona seed) | 7/9 | In Progress|  |
+| 3. Cost-Effective AI Runtime (+ Persona seed) | 8/9 | In Progress|  |
 | 3a. Agent Reliability and Evidence | TBD | Not started | - |
 | 4. Context-Adaptive Execution | TBD | Not started | - |
 | 4a. PageContentService (Knowledge Acquisition) | TBD | Not started | - |

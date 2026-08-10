@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 03
 current_phase_name: cost-effective-ai-runtime-persona-seed
 status: executing
-stopped_at: Completed 03-07-PLAN.md (PersonaInjector + contextHelper)
-last_updated: "2026-08-10T20:43:35.271Z"
+stopped_at: Completed 03-08-PLAN.md (useStreamingLLM + ChatPage + shell gates)
+last_updated: "2026-08-10T21:46:22.608Z"
 last_activity: 2026-08-10
 last_activity_desc: Phase 03 execution started
 progress:
   total_phases: 3
   completed_phases: 2
   total_plans: 31
-  completed_plans: 29
+  completed_plans: 30
 ---
 
 # Project State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-08-09)
 ## Current Position
 
 Phase: 03 (cost-effective-ai-runtime-persona-seed) — EXECUTING
-Plan: 8 of 9
+Plan: 9 of 9
 Status: Ready to execute
 Last activity: 2026-08-10 — Phase 03 execution started
 
-Progress: [█████████░] 94%
+Progress: [██████████] 97%
 
 ## Performance Metrics
 
@@ -79,6 +79,7 @@ Progress: [█████████░] 94%
 | Phase 03 P05 | 88 | 10 tasks | 2 files |
 | Phase 03-cost-effective-ai-runtime-persona-seed P06 | 12 min | 8 tasks | 4 files |
 | Phase 03-cost-effective-ai-runtime-persona-seed P07 | 12min | 7 tasks | 6 files |
+| Phase 03-cost-effective-ai-runtime-persona-seed P08 | 34min | 8 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -146,6 +147,11 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase ?]: StageResolver is defined in AgentOrchestrator over the 03-05 StageInvocation type: 03-05 exported the invocation bundle but no resolver type; the exported (stage: 'planner' | 'renderer') => StageInvocation seam is what the 03-08 hook builds over getProviderRouter().createStageInvocation
 - [Phase ?]: isAbortError matches by name ('AbortError'), not instanceof Error — DOMException does not extend Error in every runtime; an abort surfacing inside the planner must propagate as AbortError, never become planner_failed
 - [Phase 03-cost-effective-ai-runtime-persona-seed]: Persona pipeline ships as Appendix N.1/N.2 verbatim: PersonaProfileSchema + DEFAULT_PERSONA, the D-09 np_persona Setting-backed accessor (readPersona/readPersonaPrefs; empty/invalid → PERSONA_LOAD_FAILED → DEFAULT_PERSONA, never a crash), and PersonaInjector (resolvePersona deterministic personaOverrides merge, buildPersonaBlock fixed-template ordered joins → byte-stable per persona, inject() across all 4 stages incl. memoryExtractor D-11). contextHelper (D-02, Phase-4 deletion target) builds the §2.3 OptimizedContext emitting PromptSection[] per '@/core/ai/types' — persona block = stable:true system-kind (cache-eligible for 03-05's F-5 path), user input = stable:false user_input-kind; Golden Rule 3: only prompt builder on the UI path. 30 tests: byte-stability hash-equality across stages/turns, DEFAULT_PERSONA fallback, T-03-07-01 injection changes only [USER INPUT], §2.3 determinism. — Persona pipeline ships as Appendix N.1/N.2 verbatim: PersonaProfileSchema + DEFAULT_PERSONA, the D-09 np_persona Setting-backed accessor (readPersona/readPersonaPrefs; empty/invalid → PERSONA_LOAD_FAILED → DEFAULT_PERSONA, never a crash), and PersonaInjector (resolvePersona deterministic personaOverrides merge, buildPersonaBlock fixed-template ordered joins → byte-stable per persona, inject() across all 4 stages incl. memoryExtractor D-11). contextHelper (D-02, Phase-4 deletion target) builds the §2.3 OptimizedContext emitting PromptSection[] per '@/core/ai/types' — persona block = stable:true system-kind (cache-eligible for 03-05's F-5 path), user input = stable:false user_input-kind; Golden Rule 3: only prompt builder on the UI path. 30 tests: byte-stability hash-equality across stages/turns, DEFAULT_PERSONA fallback, T-03-07-01 injection changes only [USER INPUT], §2.3 determinism.
+- [Phase 03]: Phase-3 ChatPage FAILED_PREFIX derives 'Provider error.' as the verbatim errorRetry prefix (split on ' [') — the canonical errorRetry string stays untouched (Golden Rule 2); [Retry]/[Switch Provider] tokens are actions/Phase-7 — Failed-bubble copy must match the UI-SPEC error row without touching the canonical string (T-03-08-03)
+- [Phase 03]: The streaming caret is a static colorPrimary @60% indicator appended via Bubble contentRender — Bubble's own typing animation is motion-driven (forbidden §12.6); ChunkBuffer rAF is the only text animation — UI-SPEC streaming row requires a caret marking the streaming state; the library caret requires the forbidden typing animation
+- [Phase 03]: useStreamingLLM sets the streaming state synchronously BEFORE the first await so the assistant bubble appears immediately (UI-SPEC streaming row); a new send aborts the previous AbortController (one stream per session §17.5) — Immediate bubble append is the UI-SPEC contract; no orphaned request bills tokens
+- [Phase 03]: BubbleList's role prop is its RoleType item-mapping config (library API) — role='log' aria-live='polite' (spec §17.6) land on the message-list wrapper div — The streaming content must live in a polite live region per §17.6; the library consumes role for item mapping
+- [Phase 03]: AI-03 marked complete by 03-08 (the React-UI end of 'Streaming works end-to-end'); AI-06 stays pending — its full text names Prompts/Welcome etc fenced to Phase 7 (D-03); the minimal Bubble/Sender subset ships here — 03-01 mark-complete mistake precedent: a checkbox opens only when the FULL requirement text is realized
 
 ### Pending Todos
 
@@ -174,6 +180,6 @@ Items acknowledged and carried forward (v2 scope, tracked in REQUIREMENTS.md):
 
 ## Session Continuity
 
-Last session: 2026-08-10T20:43:35.252Z
-Stopped at: Completed 03-07-PLAN.md (PersonaInjector + contextHelper)
+Last session: 2026-08-10T21:46:22.571Z
+Stopped at: Completed 03-08-PLAN.md (useStreamingLLM + ChatPage + shell gates)
 Resume file: None
