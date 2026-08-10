@@ -173,3 +173,13 @@ None - no external service configuration required.
 ---
 *Phase: 03-cost-effective-ai-runtime-persona-seed*
 *Completed: 2026-08-10*
+
+## Self-Check: PASSED
+
+- All 6 created files exist on disk (verified via `[ -f ]`)
+- All 6 execution commits present in git log: 420e7f7, af76ac1, bbcee1b, 76ab62b, 35a0a89, 09018b3
+- tsc --noEmit exit 0 · eslint . exit 0 · prettier --check . clean · pnpm test 340/340 (49 files) · test:ai 60/60 (7 files, +19 from 03-04)
+- Grep gates: no `prompt.split(` code path in src/tests (2 matches are spec-derived comments only); PromptSection imported from '@/core/ai/types' (StructuredOutput.ts line 31); no ContextOptimizer PromptSection import; single PromptSection declaration (types.ts, R-1); no ProviderRouter import in the 3 services; no joined-string builder in the 3 services
+- Hash-equality invariant proven: `hashStableSections`(attempt-1 cached) === `hashStableSections`(repair cached) — cached [SYSTEM] byte-identical across the one repair
+- One-repair-max proven: call count = 2 in both StructuredOutput and PlannerService suites; STRUCTURED_OUTPUT_FAILED {retryable:false, raw:{first,second}} asserted
+- D-05 proven: zero-tools schema omits run_tool (stray run_tool fails); closed enum rejects invented tool names; ExecutorService TOOL_REJECTs unknown/stray toolName and rejects invalid input; get-provider-info runs via ProviderRegistry with apiKey-stripped output
