@@ -22,7 +22,7 @@
 // real budgeting/truncation/degradation is Phase 4 (§2.4, TokenBudget).
 import type { ModelContextTier } from '@/core/context/ModelContextTier';
 import type { ToolSchemaRef } from './toolSchemas';
-import type { OptimizedContext, PromptSection } from './types';
+import type { OptimizedContext, PromptSection } from '@/core/ai/types';
 
 /** Phase-3 seed token estimate: ~4 chars per token (English), pure + deterministic. */
 export function estimateTokens(text: string): number {
