@@ -130,7 +130,7 @@ Plans:
   4. Planner returns validated decisions with a closed toolName enum; Executor rejects unknown tools; Renderer respects output caps; structured output self-repairs once.
   5. User's persona overrides (name/tone/brevity) apply without a code change.
 
-**Plans**: 3/9 plans executed
+**Plans**: 4/9 plans executed
 
 Plans:
 **Wave 1**
@@ -144,7 +144,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 03-04-PLAN.md — decision validity: StructuredOutput (L), PlannerDecisionSchema + PlannerService, ExecutorService (TOOL_REJECTED) (wave 3)
+- [x] 03-04-PLAN.md — decision validity: StructuredOutput (L), PlannerDecisionSchema + PlannerService, ExecutorService (TOOL_REJECTED) (wave 3)
 - [ ] 03-05-PLAN.md — ProviderRouter: fallback + breaker + D-13 privacy gate + D-18 callProviderJsonMode + budgetGuard (D-16), injected-fetch eval suite (wave 3)
 
 **Wave 4** *(blocked on Wave 3 completion)*
@@ -411,7 +411,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. MV3/WXT Runtime + AntD Shells + Workspace | 11/11 | Complete    | 2026-08-08 |
 | 2. Storage, Security, WriteJournal, Workspace Persistence | 11/11 | Complete    | 2026-08-09 |
-| 3. Cost-Effective AI Runtime (+ Persona seed) | 3/9 | In Progress|  |
+| 3. Cost-Effective AI Runtime (+ Persona seed) | 4/9 | In Progress|  |
 | 3a. Agent Reliability and Evidence | TBD | Not started | - |
 | 4. Context-Adaptive Execution | TBD | Not started | - |
 | 4a. PageContentService (Knowledge Acquisition) | TBD | Not started | - |

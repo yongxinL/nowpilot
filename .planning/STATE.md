@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 03
 current_phase_name: cost-effective-ai-runtime-persona-seed
 status: executing
-stopped_at: Completed 03-03-PLAN.md (streaming kit + prompt cache + tool contract + fixtures)
-last_updated: "2026-08-10T07:46:37.608Z"
+stopped_at: Completed 03-04-PLAN.md (structured output + planner + executor)
+last_updated: "2026-08-10T08:16:55.487Z"
 last_activity: 2026-08-10
 last_activity_desc: Phase 03 execution started
 progress:
   total_phases: 3
   completed_phases: 2
   total_plans: 31
-  completed_plans: 25
+  completed_plans: 26
 ---
 
 # Project State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-08-09)
 ## Current Position
 
 Phase: 03 (cost-effective-ai-runtime-persona-seed) — EXECUTING
-Plan: 4 of 9
+Plan: 5 of 9
 Status: Ready to execute
 Last activity: 2026-08-10 — Phase 03 execution started
 
-Progress: [████████░░] 81%
+Progress: [████████░░] 84%
 
 ## Performance Metrics
 
@@ -75,6 +75,7 @@ Progress: [████████░░] 81%
 | Phase 03-cost-effective-ai-runtime-persona-seed P01 | 38min | 11 tasks | 9 files |
 | Phase 03 P02 | 17min | 10 tasks | 9 files |
 | Phase 03-cost-effective-ai-runtime-persona-seed P03 | 18min | 8 tasks | 9 files |
+| Phase 03 P04 | 17min | 8 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -131,6 +132,11 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 03]: PromptCacheManager implements §19.13 verbatim with an injectable clock (deterministic tests): 5 consecutive misses → hints disabled 60s; hit resets the counter; cascade re-arms
 - [Phase 03]: buildToolNameEnum returns null for an empty tool list (D-05) — the PlannerDecisionSchema builder omits run_tool rather than calling z.enum([])
 - [Phase 03]: No cache-specific C.2 code added for PromptCacheManager cascade observability — the 13-code Phase-3 block stays closed (03-01 decision); observability via hintsEnabled()/consecutiveMissCount() accessors
+- [Phase 03]: F-4 sections-in applied at both ends: requestJson + the Seam-2 callback take PromptSection[]; the one repair appends a user_input section (never a joined-string rebuild), so the cached [SYSTEM] is byte-identical attempt-1 vs repair — hash-equality proven via hashStableSections (prompt-cache stability, T-03-04-02) — F-4 sections-in applied at both ends: requestJson + the Seam-2 callback take PromptSection[]; the one repair appends a user_input section (never a joined-string rebuild), so the cached [SYSTEM] is byte-identical attempt-1 vs repair — hash-equality proven via hashStableSections (prompt-cache stability, T-03-04-02)
+- [Phase 03]: D-05 closed boundary in BOTH planner and executor: buildPlannerDecisionSchema omits run_tool when zero tools (stray run_tool fails the schema at the planner gate) and ExecutorService TOOL_REJECTs any unvalidated toolName — double-gated, deterministic (R-4) — D-05 closed boundary in BOTH planner and executor: buildPlannerDecisionSchema omits run_tool when zero tools (stray run_tool fails the schema at the planner gate) and ExecutorService TOOL_REJECTs any unvalidated toolName — double-gated, deterministic (R-4)
+- [Phase 03]: Executor input-schema gate kept minimal (T-03-04-03): Phase-3's single tool declares an empty-object schema so a structural check suffices; richer per-tool Zod validation ships with the Phase-8 tool suite (ToolCapabilityManifest §28.5) — no JSON-schema engine invented — Executor input-schema gate kept minimal (T-03-04-03): Phase-3's single tool declares an empty-object schema so a structural check suffices; richer per-tool Zod validation ships with the Phase-8 tool suite (ToolCapabilityManifest §28.5) — no JSON-schema engine invented
+- [Phase 03]: ask_clarification .default([]) kept spec-verbatim: the input/output shape asymmetry forces a one-line cast in plan() to PlannerDecision — the same boundary cast Appendix I performs ((decision as any)), now typed — ask_clarification .default([]) kept spec-verbatim: the input/output shape asymmetry forces a one-line cast in plan() to PlannerDecision — the same boundary cast Appendix I performs ((decision as any)), now typed
+- [Phase 03]: AI-02 stays PENDING in REQUIREMENTS.md — 03-04 ships Planner+Executor services; the requirement names the full Planner→Executor→Renderer loop (Renderer 03-06, Orchestrator 03-08) — AI-02 stays PENDING in REQUIREMENTS.md — 03-04 ships Planner+Executor services; the requirement names the full Planner→Executor→Renderer loop (Renderer 03-06, Orchestrator 03-08)
 
 ### Pending Todos
 
@@ -159,6 +165,6 @@ Items acknowledged and carried forward (v2 scope, tracked in REQUIREMENTS.md):
 
 ## Session Continuity
 
-Last session: 2026-08-10T07:45:43.126Z
-Stopped at: Completed 03-03-PLAN.md (streaming kit + prompt cache + tool contract + fixtures)
+Last session: 2026-08-10T08:16:55.456Z
+Stopped at: Completed 03-04-PLAN.md (structured output + planner + executor)
 Resume file: None
