@@ -60,6 +60,24 @@ export const ERROR_CODES = {
   SYNC_QUOTA_EXCEEDED: 'SYNC_QUOTA_EXCEEDED',
   WRITE_JOURNAL_FAILED: 'WRITE_JOURNAL_FAILED',
   WRITE_JOURNAL_ROLLBACK_FAILED: 'WRITE_JOURNAL_ROLLBACK_FAILED',
+  // --- AI runtime / provider / persona (Phase 3, canonical additions, 03-01 reconciliation) ---
+  // Canonical 13-code Phase-3 block (03-RESEARCH line 626). Every debugLog(code, …)
+  // in the Phase-3 AI layer uses one of these verbatim (Golden Rule 9). Canonical
+  // mirror: spec Appendix C.2 Phase-3 block — the scoped line-anchored verify (W-1)
+  // asserts each of these appears as a /^CODE$/m line inside the C.2 slice.
+  TOOL_REJECTED: 'TOOL_REJECTED',
+  PERSONA_LOAD_FAILED: 'PERSONA_LOAD_FAILED',
+  STRUCTURED_OUTPUT_FAILED: 'STRUCTURED_OUTPUT_FAILED',
+  PLANNER_FAILED: 'PLANNER_FAILED',
+  STREAM_FAILED: 'STREAM_FAILED',
+  NETWORK: 'NETWORK',
+  TIMEOUT: 'TIMEOUT',
+  RATE_LIMITED: 'RATE_LIMITED',
+  PROVIDER_5XX: 'PROVIDER_5XX',
+  PROVIDER_AUTH: 'PROVIDER_AUTH',
+  PROVIDER_MODEL_UNKNOWN: 'PROVIDER_MODEL_UNKNOWN',
+  SCHEMA_INVALID: 'SCHEMA_INVALID',
+  HOST_NOT_PERMITTED: 'HOST_NOT_PERMITTED',
   // --- Fallback ---
   UNKNOWN: 'UNKNOWN',
 } as const;
