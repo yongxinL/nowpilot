@@ -4,16 +4,16 @@ milestone: v0.1
 milestone_name: milestone
 current_phase: 03
 current_phase_name: cost-effective-ai-runtime-persona-seed
-status: executing
-stopped_at: Completed 03-08-PLAN.md (useStreamingLLM + ChatPage + shell gates)
-last_updated: "2026-08-10T21:46:22.608Z"
+status: verifying
+stopped_at: "Phase 03 complete — 9/9 plans, verify:phase-3 green"
+last_updated: "2026-08-10T22:44:09.585Z"
 last_activity: 2026-08-10
 last_activity_desc: Phase 03 execution started
 progress:
   total_phases: 3
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 31
-  completed_plans: 30
+  completed_plans: 31
 ---
 
 # Project State
@@ -30,10 +30,10 @@ See: .planning/PROJECT.md (updated 2026-08-09)
 
 Phase: 03 (cost-effective-ai-runtime-persona-seed) — EXECUTING
 Plan: 9 of 9
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-08-10 — Phase 03 execution started
 
-Progress: [██████████] 97%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -80,6 +80,7 @@ Progress: [██████████] 97%
 | Phase 03-cost-effective-ai-runtime-persona-seed P06 | 12 min | 8 tasks | 4 files |
 | Phase 03-cost-effective-ai-runtime-persona-seed P07 | 12min | 7 tasks | 6 files |
 | Phase 03-cost-effective-ai-runtime-persona-seed P08 | 34min | 8 tasks | 9 files |
+| Phase 03 P09 | 15 | 8 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -146,6 +147,11 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase ?]: planner_failed fallback covers NON-provider plan() rejections only: a ProviderUnavailableError (no_candidate/budget_blocked) or an AbortError propagates as the visible provider-failure state / AbortError — never converted to planner_failed (which would waste a re-resolution + re-render and mislabel a provider failure)
 - [Phase ?]: StageResolver is defined in AgentOrchestrator over the 03-05 StageInvocation type: 03-05 exported the invocation bundle but no resolver type; the exported (stage: 'planner' | 'renderer') => StageInvocation seam is what the 03-08 hook builds over getProviderRouter().createStageInvocation
 - [Phase ?]: isAbortError matches by name ('AbortError'), not instanceof Error — DOMException does not extend Error in every runtime; an abort surfacing inside the planner must propagate as AbortError, never become planner_failed
+- [Phase 03]: Surface AI wiring (03-09) is the ONLY vault-decrypt-for-AI site (R-3): runAIRuntimeInit() in both entrypoints reads np_providers.<id> envelopes (Setting.read → deserializeEnvelope → KeyVault.decryptSecret → ProviderConfigSchema.safeParse) then registerProvider / markProviderKeyUnreadable (enabled:false, no wipe D-04); it chains AFTER runStorageBootstrap so installSecret first-run precedes decrypt; API keys exist only inside that function scope (T-03-09-01)
+- [Phase 03]: Router baseline via configure() (03-09): getProviderRouter().configure({ configuredProviders, privacyMode }) at mount — createStageInvocation falls back to the baseline when a caller omits per-call values (D-13 privacyModeFromPrefs); the 03-08 hook still passes explicit values that win
+- [Phase 03]: verify:phase-3 = eslint + prettier --check + tsc --noEmit + wxt build + vitest run + isolation check, NO exact test-count-of-8 assertion (P-5 — '8 §18 test files' is a documentation subset marker, not a verify gate); the full tests/core/ai/** + tests/components/** suite runs
+- [Phase 03]: Background-SW isolation scan (03-09) uses a NARROWER token set than content-scripts: wxt's shared _virtual_wxt-plugins chunk legitimately pulls the react/antd chunk into background.js (build artifact, not a source import), so only the R-3 AI/vault tokens are asserted for the background
+- [Phase 03]: §18 Phase-3 addendum (03-09) is the single record for Phase 3a/4/5/7 planners (R-1): Appendix-I input-only seams (onStreamDelta + invocation), contextHelper as Phase-4 deletion target, +N files (contextHelper/personaConfig/useStreamingLLM) + D-08 fixture, P-3 PromptSection home, P-3b canonical type-home seeds, F-4/F-5 seam notes, P-5 count semantics
 - [Phase 03-cost-effective-ai-runtime-persona-seed]: Persona pipeline ships as Appendix N.1/N.2 verbatim: PersonaProfileSchema + DEFAULT_PERSONA, the D-09 np_persona Setting-backed accessor (readPersona/readPersonaPrefs; empty/invalid → PERSONA_LOAD_FAILED → DEFAULT_PERSONA, never a crash), and PersonaInjector (resolvePersona deterministic personaOverrides merge, buildPersonaBlock fixed-template ordered joins → byte-stable per persona, inject() across all 4 stages incl. memoryExtractor D-11). contextHelper (D-02, Phase-4 deletion target) builds the §2.3 OptimizedContext emitting PromptSection[] per '@/core/ai/types' — persona block = stable:true system-kind (cache-eligible for 03-05's F-5 path), user input = stable:false user_input-kind; Golden Rule 3: only prompt builder on the UI path. 30 tests: byte-stability hash-equality across stages/turns, DEFAULT_PERSONA fallback, T-03-07-01 injection changes only [USER INPUT], §2.3 determinism. — Persona pipeline ships as Appendix N.1/N.2 verbatim: PersonaProfileSchema + DEFAULT_PERSONA, the D-09 np_persona Setting-backed accessor (readPersona/readPersonaPrefs; empty/invalid → PERSONA_LOAD_FAILED → DEFAULT_PERSONA, never a crash), and PersonaInjector (resolvePersona deterministic personaOverrides merge, buildPersonaBlock fixed-template ordered joins → byte-stable per persona, inject() across all 4 stages incl. memoryExtractor D-11). contextHelper (D-02, Phase-4 deletion target) builds the §2.3 OptimizedContext emitting PromptSection[] per '@/core/ai/types' — persona block = stable:true system-kind (cache-eligible for 03-05's F-5 path), user input = stable:false user_input-kind; Golden Rule 3: only prompt builder on the UI path. 30 tests: byte-stability hash-equality across stages/turns, DEFAULT_PERSONA fallback, T-03-07-01 injection changes only [USER INPUT], §2.3 determinism.
 - [Phase 03]: Phase-3 ChatPage FAILED_PREFIX derives 'Provider error.' as the verbatim errorRetry prefix (split on ' [') — the canonical errorRetry string stays untouched (Golden Rule 2); [Retry]/[Switch Provider] tokens are actions/Phase-7 — Failed-bubble copy must match the UI-SPEC error row without touching the canonical string (T-03-08-03)
 - [Phase 03]: The streaming caret is a static colorPrimary @60% indicator appended via Bubble contentRender — Bubble's own typing animation is motion-driven (forbidden §12.6); ChunkBuffer rAF is the only text animation — UI-SPEC streaming row requires a caret marking the streaming state; the library caret requires the forbidden typing animation
@@ -180,6 +186,6 @@ Items acknowledged and carried forward (v2 scope, tracked in REQUIREMENTS.md):
 
 ## Session Continuity
 
-Last session: 2026-08-10T21:46:22.571Z
-Stopped at: Completed 03-08-PLAN.md (useStreamingLLM + ChatPage + shell gates)
+Last session: 2026-08-10T22:44:09.548Z
+Stopped at: Phase 03 complete — 9/9 plans, verify:phase-3 green
 Resume file: None
