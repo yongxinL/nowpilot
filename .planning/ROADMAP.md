@@ -130,7 +130,7 @@ Plans:
   4. Planner returns validated decisions with a closed toolName enum; Executor rejects unknown tools; Renderer respects output caps; structured output self-repairs once.
   5. User's persona overrides (name/tone/brevity) apply without a code change.
 
-**Plans**: 2/9 plans executed
+**Plans**: 3/9 plans executed
 
 Plans:
 **Wave 1**
@@ -140,7 +140,7 @@ Plans:
 **Wave 2** *(blocked on Wave 1 completion)*
 
 - [x] 03-02-PLAN.md — provider layer: ILLMProvider + getAISDKModel seam, 5 adapters (incl. OpenAICompat D-12), TierResolver + privacyModeFromPrefs (D-13), ProviderRegistry extension (D-21) (wave 2)
-- [ ] 03-03-PLAN.md — deterministic utilities: ChunkBuffer (J.1), StreamAdapter, PromptCacheAdapter/Manager (K), toolSchemas (D-04/D-05), optimizedContext fixture (D-08) (wave 2)
+- [x] 03-03-PLAN.md — deterministic utilities: ChunkBuffer (J.1), StreamAdapter, PromptCacheAdapter/Manager (K), toolSchemas (D-04/D-05), optimizedContext fixture (D-08) (wave 2)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -411,7 +411,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. MV3/WXT Runtime + AntD Shells + Workspace | 11/11 | Complete    | 2026-08-08 |
 | 2. Storage, Security, WriteJournal, Workspace Persistence | 11/11 | Complete    | 2026-08-09 |
-| 3. Cost-Effective AI Runtime (+ Persona seed) | 2/9 | In Progress|  |
+| 3. Cost-Effective AI Runtime (+ Persona seed) | 3/9 | In Progress|  |
 | 3a. Agent Reliability and Evidence | TBD | Not started | - |
 | 4. Context-Adaptive Execution | TBD | Not started | - |
 | 4a. PageContentService (Knowledge Acquisition) | TBD | Not started | - |

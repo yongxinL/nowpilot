@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 03
 current_phase_name: cost-effective-ai-runtime-persona-seed
 status: executing
-stopped_at: Completed 03-02-PLAN.md (provider adapters + TierResolver + registry gate)
-last_updated: "2026-08-10T07:08:22.456Z"
+stopped_at: Completed 03-03-PLAN.md (streaming kit + prompt cache + tool contract + fixtures)
+last_updated: "2026-08-10T07:46:37.608Z"
 last_activity: 2026-08-10
 last_activity_desc: Phase 03 execution started
 progress:
   total_phases: 3
   completed_phases: 2
   total_plans: 31
-  completed_plans: 24
+  completed_plans: 25
 ---
 
 # Project State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-08-09)
 ## Current Position
 
 Phase: 03 (cost-effective-ai-runtime-persona-seed) — EXECUTING
-Plan: 3 of 9
+Plan: 4 of 9
 Status: Ready to execute
 Last activity: 2026-08-10 — Phase 03 execution started
 
-Progress: [████████░░] 77%
+Progress: [████████░░] 81%
 
 ## Performance Metrics
 
@@ -74,6 +74,7 @@ Progress: [████████░░] 77%
 | Phase 01-mv3-wxt-runtime-antd-shells-workspace P11 | 9 | 3 tasks | 8 files |
 | Phase 03-cost-effective-ai-runtime-persona-seed P01 | 38min | 11 tasks | 9 files |
 | Phase 03 P02 | 17min | 10 tasks | 9 files |
+| Phase 03-cost-effective-ai-runtime-persona-seed P03 | 18min | 8 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -125,6 +126,11 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 03]: ILLMProvider.chat/getModels ship as throwing @implementation-tier stubs (Golden Rule 10): streamText ownership is StreamAdapter's (03-03, Seam 3); the factories' real deliverable is getAISDKModel + structural validateConfig
 - [Phase 03]: Registry snapshots (RegistryProviderInfo) strip apiKey (R-10) and compute resolvedBaseURL = customBaseURL ?? baseURL once at registration (§10.2)
 - [Phase 03]: AI-01 checkbox stays PENDING — the requirement also names ProviderRouter (03-05); marking complete now would repeat the 03-01 mark-complete mistake
+- [Phase 03]: F-5 pass-through boundary: StreamAdapter accepts providerOptions and applies them to the CoreSystemMessage UNCHANGED — it never computes cache strategy (applyCacheHints owns strategy, Router owns application); this is what lets the byte-stable [SYSTEM] persona block actually cache on anthropic
+- [Phase 03]: applyCacheHints extends Appendix K's CacheAdaptedPrompt with a providerOptions field — emitted only when ≥1 stable breakpoint is marked (anthropic); gemini/openai/ollama never emit an anthropic payload
+- [Phase 03]: PromptCacheManager implements §19.13 verbatim with an injectable clock (deterministic tests): 5 consecutive misses → hints disabled 60s; hit resets the counter; cascade re-arms
+- [Phase 03]: buildToolNameEnum returns null for an empty tool list (D-05) — the PlannerDecisionSchema builder omits run_tool rather than calling z.enum([])
+- [Phase 03]: No cache-specific C.2 code added for PromptCacheManager cascade observability — the 13-code Phase-3 block stays closed (03-01 decision); observability via hintsEnabled()/consecutiveMissCount() accessors
 
 ### Pending Todos
 
@@ -153,6 +159,6 @@ Items acknowledged and carried forward (v2 scope, tracked in REQUIREMENTS.md):
 
 ## Session Continuity
 
-Last session: 2026-08-10T07:08:22.418Z
-Stopped at: Completed 03-02-PLAN.md (provider adapters + TierResolver + registry gate)
+Last session: 2026-08-10T07:45:43.126Z
+Stopped at: Completed 03-03-PLAN.md (streaming kit + prompt cache + tool contract + fixtures)
 Resume file: None
