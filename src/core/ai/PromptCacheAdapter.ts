@@ -52,7 +52,9 @@ export function applyCacheHints(
         cacheKeyHash: hashStableSections(sections),
         strategy: 'anthropic-ephemeral',
         // F-5: only when at least one stable breakpoint was marked.
-        ...(marked > 0 ? { providerOptions: { anthropic: { cacheControl: { type: 'ephemeral' as const } } } } : {}),
+        ...(marked > 0
+          ? { providerOptions: { anthropic: { cacheControl: { type: 'ephemeral' as const } } } }
+          : {}),
       };
     }
     case 'gemini': {
@@ -100,7 +102,10 @@ function stableFirst(a: PromptSection, b: PromptSection) {
 export function hashStableSections(
   sections: Array<Pick<PromptSection, 'text' | 'stable'>>,
 ): string {
-  const stable = sections.filter((s) => s.stable).map((s) => s.text).join('\u0000');
+  const stable = sections
+    .filter((s) => s.stable)
+    .map((s) => s.text)
+    .join('\u0000');
   let h = 2166136261;
   for (let i = 0; i < stable.length; i++) {
     h ^= stable.charCodeAt(i);

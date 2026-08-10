@@ -16,7 +16,9 @@ import {
 } from '@/core/ai/PromptCacheAdapter';
 import type { ProviderId, PromptSection } from '@/core/ai/types';
 
-function section(partial: Partial<PromptSection> & Pick<PromptSection, 'kind' | 'text'>): PromptSection {
+function section(
+  partial: Partial<PromptSection> & Pick<PromptSection, 'kind' | 'text'>,
+): PromptSection {
   return {
     tokens: 10,
     stable: true,
@@ -49,7 +51,9 @@ describe('hashStableSections — FNV-1a byte-stability (AI-05)', () => {
     const stable = [section({ kind: 'system', text: 'stable-block' })];
     const unstableA = section({ kind: 'user_input', text: 'ask one', stable: false });
     const unstableB = section({ kind: 'user_input', text: 'ask two', stable: false });
-    expect(hashStableSections([...stable, unstableA])).toBe(hashStableSections([...stable, unstableB]));
+    expect(hashStableSections([...stable, unstableA])).toBe(
+      hashStableSections([...stable, unstableB]),
+    );
   });
 
   it('matches a known FNV-1a value for a fixed block', () => {
@@ -66,9 +70,9 @@ describe('applyCacheHints — anthropic branch (Appendix K + F-5)', () => {
     const result = applyCacheHints('anthropic', sections);
 
     expect(result.strategy).toBe('anthropic-ephemeral');
-    const marked = (result.providerRequestSections as Array<PromptSection & { cache_control?: unknown }>).filter(
-      (s) => s.cache_control !== undefined,
-    );
+    const marked = (
+      result.providerRequestSections as Array<PromptSection & { cache_control?: unknown }>
+    ).filter((s) => s.cache_control !== undefined);
     expect(marked).toHaveLength(ANTHROPIC_MAX_BREAKPOINTS); // 4 of the 6
     for (const m of marked) {
       expect(m.cache_control).toEqual({ type: 'ephemeral' });
