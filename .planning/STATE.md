@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 03
 current_phase_name: cost-effective-ai-runtime-persona-seed
 status: executing
-stopped_at: Completed 03-05-PLAN.md (ProviderRouter)
-last_updated: "2026-08-10T12:23:40.929Z"
+stopped_at: Completed 03-06-PLAN.md (RendererService + AgentOrchestrator)
+last_updated: "2026-08-10T20:23:14.201Z"
 last_activity: 2026-08-10
 last_activity_desc: Phase 03 execution started
 progress:
   total_phases: 3
   completed_phases: 2
   total_plans: 31
-  completed_plans: 27
+  completed_plans: 28
 ---
 
 # Project State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-08-09)
 ## Current Position
 
 Phase: 03 (cost-effective-ai-runtime-persona-seed) — EXECUTING
-Plan: 6 of 9
+Plan: 7 of 9
 Status: Ready to execute
 Last activity: 2026-08-10 — Phase 03 execution started
 
-Progress: [█████████░] 87%
+Progress: [█████████░] 90%
 
 ## Performance Metrics
 
@@ -77,6 +77,7 @@ Progress: [█████████░] 87%
 | Phase 03-cost-effective-ai-runtime-persona-seed P03 | 18min | 8 tasks | 9 files |
 | Phase 03 P04 | 17min | 8 tasks | 6 files |
 | Phase 03 P05 | 88 | 10 tasks | 2 files |
+| Phase 03-cost-effective-ai-runtime-persona-seed P06 | 12 min | 8 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -138,6 +139,11 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 03]: Executor input-schema gate kept minimal (T-03-04-03): Phase-3's single tool declares an empty-object schema so a structural check suffices; richer per-tool Zod validation ships with the Phase-8 tool suite (ToolCapabilityManifest §28.5) — no JSON-schema engine invented — Executor input-schema gate kept minimal (T-03-04-03): Phase-3's single tool declares an empty-object schema so a structural check suffices; richer per-tool Zod validation ships with the Phase-8 tool suite (ToolCapabilityManifest §28.5) — no JSON-schema engine invented
 - [Phase 03]: ask_clarification .default([]) kept spec-verbatim: the input/output shape asymmetry forces a one-line cast in plan() to PlannerDecision — the same boundary cast Appendix I performs ((decision as any)), now typed — ask_clarification .default([]) kept spec-verbatim: the input/output shape asymmetry forces a one-line cast in plan() to PlannerDecision — the same boundary cast Appendix I performs ((decision as any)), now typed
 - [Phase 03]: AI-02 stays PENDING in REQUIREMENTS.md — 03-04 ships Planner+Executor services; the requirement names the full Planner→Executor→Renderer loop (Renderer 03-06, Orchestrator 03-08) — AI-02 stays PENDING in REQUIREMENTS.md — 03-04 ships Planner+Executor services; the requirement names the full Planner→Executor→Renderer loop (Renderer 03-06, Orchestrator 03-08)
+- [Phase ?]: RendererService IS the second Seam-3 streamText consumer (direct construction, not a streamTextToLLMChunks call): the plan's verify grep 'RendererService streamText construction' + the AI-SPEC rule 'streamText is consumed ONLY inside RendererService/StreamAdapter' + the finishReason !== 'stop' honesty requirement jointly mandate direct construction; the renderer threads buildStageMessages' messages[]+providerOptions shape into streamText
+- [Phase ?]: The orchestrator's plan() call omits toolResults: 03-04's PlanInput never declared it (the D-19-pure PlannerService never joins tool results into the prompt — F-4 sections-in is the prompt source); the loop still accumulates toolResults and threads them into render() verbatim
+- [Phase ?]: planner_failed fallback covers NON-provider plan() rejections only: a ProviderUnavailableError (no_candidate/budget_blocked) or an AbortError propagates as the visible provider-failure state / AbortError — never converted to planner_failed (which would waste a re-resolution + re-render and mislabel a provider failure)
+- [Phase ?]: StageResolver is defined in AgentOrchestrator over the 03-05 StageInvocation type: 03-05 exported the invocation bundle but no resolver type; the exported (stage: 'planner' | 'renderer') => StageInvocation seam is what the 03-08 hook builds over getProviderRouter().createStageInvocation
+- [Phase ?]: isAbortError matches by name ('AbortError'), not instanceof Error — DOMException does not extend Error in every runtime; an abort surfacing inside the planner must propagate as AbortError, never become planner_failed
 
 ### Pending Todos
 
@@ -166,6 +172,6 @@ Items acknowledged and carried forward (v2 scope, tracked in REQUIREMENTS.md):
 
 ## Session Continuity
 
-Last session: 2026-08-10T12:23:40.468Z
-Stopped at: Completed 03-05-PLAN.md (ProviderRouter)
+Last session: 2026-08-10T20:23:14.174Z
+Stopped at: Completed 03-06-PLAN.md (RendererService + AgentOrchestrator)
 Resume file: None
