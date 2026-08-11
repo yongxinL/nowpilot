@@ -351,25 +351,52 @@ describe('ProviderRouter — retry + attempt budget (D-17 / R-2)', () => {
     expect(out).toBe('{"answer":"42"}');
   });
 
-  it('retries EXACTLY once on a TimeoutError carrier (WR-03, D-17) then succeeds', async () => {
+  it('retries EXACTLY once on a production timeout — abort with the carrier reason, SDK rejects AbortError (WR-03A, D-17)', async () => {
     mockResolveTier({ providerId: 'openai', model: 'deepseek-chat', fallbackChain: [] });
     const router = new ProviderRouter();
     const inv = router.createStageInvocation(makeInput());
+    // The PRODUCTION arrival pattern (WR-03A): the caller aborts its controller
+    // WITH the typed carrier as the reason (StructuredOutput's per-attempt
+    // timeout), and the SDK drops the reason — rejecting with a bare AbortError
+    // when the abort signal fires. Pre-fix this test fed timeoutError() as the
+    // SDK mock rejection, an arrival pattern production never produces.
+    const ac = new AbortController();
+    setTimeout(() => ac.abort(timeoutError(3_000)), 0);
     generateObjectMock
-      .mockRejectedValueOnce(timeoutError(3_000))
+      .mockImplementationOnce(
+        (args) =>
+          new Promise<GenObjectResult>((_resolve, reject) => {
+            const sig = (args as { abortSignal: AbortSignal }).abortSignal;
+            if (sig.aborted) {
+              reject(new DOMException('aborted', 'AbortError'));
+              return;
+            }
+            sig.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')));
+          }),
+      )
       .mockResolvedValueOnce({ object: { answer: '42' } } as unknown as GenObjectResult);
 
     const out = await inv.callProviderJsonMode(
       [section({ kind: 'user_input', text: 'ask', stable: false, sourceId: 'user-input' })],
       { type: 'object', properties: {} },
-      new AbortController().signal,
+      ac.signal,
     );
 
-    // WR-03: the typed TimeoutError maps to TIMEOUT/retryable → exactly ONE
-    // D-17 router retry (2 SDK calls, never 3+ — T-03-11-02).
+    // WR-03A: the abort-with-carrier → SDK bare AbortError → the closure
+    // recovers the carrier from signal.reason → TIMEOUT/retryable → exactly ONE
+    // D-17 router retry on a FRESH non-aborted derived signal (2 SDK calls,
+    // never 3+ — T-03-11-02). attempts[0] is the recovery-branch record (the
+    // failed TIMEOUT attempt is pushed before the rethrow); the retry's success
+    // is attempts[1].
     expect(generateObjectMock).toHaveBeenCalledTimes(2);
     expect(out).toBe('{"answer":"42"}');
     expect(router.getAttemptState('op-test-0001')?.attempts[0].errorCode).toBe('TIMEOUT');
+    expect(router.getAttemptState('op-test-0001')?.retryCount).toBe(1);
+    // The retried SDK call ran on a FRESH non-aborted signal — pre-fix it was
+    // the same already-aborted signal (a futile retry by construction).
+    expect(
+      (generateObjectMock.mock.calls[1][0] as { abortSignal: AbortSignal }).abortSignal.aborted,
+    ).toBe(false);
   });
 
   it('never retries a non-retryable code (PROVIDER_AUTH) — 1 call, terminal failure', async () => {
