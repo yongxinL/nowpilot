@@ -183,9 +183,27 @@ Plans:
   2. A failed run can roll back one step via CheckpointRecorder.
   3. Side-effecting tools are marked done only with matching CompletionEvidence; cap exhaustion is reported as `partial`, never `completed`.
   4. Replanning is bounded by tier caps and never nested; abort works cleanly.
-  5. User confirms before irreversible actions via the commit-confirm barrier; false-completion tests pass.
+  5. Evidence/false-completion tests pass (commit-confirm barrier UI deferred to Phase 8 — D-3a-01).
 
-**Plans**: TBD
+**Plans**: 0/5 plans executed
+
+Plans:
+**Wave 1**
+
+- [ ] 03a-01-PLAN.md — foundation: C.1 harness types (AgentTrajectoryState/AgentTurnOutcome) + transition table + Zod boundary schemas, harness error codes (GR-9), PromptSection 'tool_result' kind + TASK_KINDS (both files), trajectory/evidence fixtures (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 03a-02-PLAN.md — OutcomeVerifier (O.2 verbatim buildOutcome) + CheckpointRecorder + evidence/partial/cap tests (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 03a-03-PLAN.md — orchestrator rewire: AgentTurnOutcome return (D-20 inversion), trajectory transitions, checkpoint seam, replan-on-tool-failure, pause seam, buildOutcome terminal + renderer evidence guard (wave 3)
+- [ ] 03a-04-PLAN.md — consumer migration (O3): hook D-3a-19 status mapping, D-20 fence inversion, AgentTurnOutput→AgentTurnOutcome test flips, budget status semantics (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 03a-05-PLAN.md — phase gate: verify:phase-3a script (§24), REQUIREMENTS.md AGT re-map notes (D-3a-01/02), ROADMAP criterion #5 reduction, full-suite green seal (wave 4)
 
 ### Phase 4: Context-Adaptive Execution
 
