@@ -507,27 +507,33 @@ export interface AgentTurnInput {
 
 **If this table is empty:** n/a — 5 assumptions flagged; all are small, plan-level decisions with safe defaults, none require user confirmation beyond the planner choosing the documented option.
 
-## Open Questions
+## Open Questions (RESOLVED — 2026-08-11, plan-phase)
+
+All four open questions were resolved by the plans (03a-01..04). Each carries an inline RESOLVED marker below.
 
 1. **C.1 status union vs D-3a-05 decision vocabulary — how does `verification_failed` surface?**
    - What we know: D-3a-05 says the orchestrator decides `completed | verification_failed | waiting_for_permission | partial | aborted`; C.1 `AgentTurnOutcome.status` is only `'completed' | 'partial' | 'failed' | 'aborted'`.
    - What's unclear: whether `verification_failed` maps to `status:'failed'` + `reasonCode:'verification_failed'` (recommended, keeps C.1 verbatim) or the outcome status union is extended.
    - Recommendation: keep C.1 verbatim; `verification_failed → status 'failed'`, `reasonCode 'verification_failed'`; `waiting_for_permission` is a trajectory phase (the turn pauses), never a terminal outcome. State this in the plan.
+   - **RESOLVED (03a-03 task 6):** `verification_failed → status:'failed'` + `reasonCode:'verification_failed'`; `waiting_for_permission` is a trajectory phase, never a terminal outcome status. The AgentTurnOutcomeSchema keeps the 4-value C.1 union (03a-01).
 
 2. **Where do the new boundary Zod schemas live?** (`AgentTrajectoryState`/`AgentTurnOutcome`/`CompletionEvidence`)
    - What we know: D-3a-20 says types in `harness.ts` + Zod at the public boundary (GR-4).
    - What's unclear: a co-located `harness.schema.ts` vs schemas inline in `harness.ts` vs in the test fixtures only.
    - Recommendation: co-locate boundary schemas with the types (single `harness.ts` or a sibling `harnessSchemas.ts`), exercised by `tests/fixtures/` Zod fixture tests — consistent with `ProviderConfigSchema` co-located in `ai/types.ts` (Phase-3 precedent).
+   - **RESOLVED (03a-01 task 1):** schemas co-located inline in `src/types/harness.ts` (`AgentTrajectoryPhaseSchema`, `AgentTrajectoryStateSchema`, `CompletionEvidenceSchema`, `AgentTurnOutcomeSchema`), exercised by `tests/core/ai/trajectory/transition.test.ts`.
 
 3. **How does the renderer receive the evidence set?** (`RenderInput` extension)
    - What we know: D-3a-17 — renderer receives terminal verdict + verified evidence; today `RenderInput` has only `toolResults` (`RendererService.ts` L40-54).
    - What's unclear: add `evidence: CompletionEvidence[]` + `verdict` to `RenderInput`, or pass the whole `AgentTurnOutcome` before it's built.
    - Recommendation: extend `RenderInput` with the verdict + evidence set (renderer stays a pure consumer; it never re-verifies).
+   - **RESOLVED (03a-03 task 7):** `RenderInput` gains `verdict` + `evidence: CompletionEvidence[]`; the renderer is display-only and never re-verifies (D-3a-17).
 
 4. **Trajectory transition observability — callback or post-turn read?**
    - What we know: agent's discretion (C5) — either is fine as long as transitions are observable to tests; the Phase-3 precedent is the `onStreamDelta` input-only callback (D-20).
    - What's unclear: callback (`onTransition?`) vs a per-turn in-memory log object the tests read after `runAgentTurn` resolves.
    - Recommendation: the callback (mirrors the proven `onStreamDelta` seam, keeps the orchestrator side-effect-free) — but post-turn read is equally valid; pick one in the plan.
+   - **RESOLVED (03a-03 task 2):** the `onTransition?: (state: AgentTrajectoryState) => void` input-only callback, mirroring `onStreamDelta` (Open Q4).
 
 ## Environment Availability
 

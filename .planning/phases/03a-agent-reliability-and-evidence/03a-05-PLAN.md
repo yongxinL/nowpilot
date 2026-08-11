@@ -2,48 +2,48 @@
 phase: 03a-agent-reliability-and-evidence
 plan: 05
 type: verify
-wave: 4
+wave: 5
 depends_on: ["03a-01", "03a-02", "03a-03", "03a-04"]
 files_modified:
-- package.json
-- .planning/REQUIREMENTS.md
-- .planning/ROADMAP.md
+  - package.json
+  - .planning/REQUIREMENTS.md
+  - .planning/ROADMAP.md
 autonomous: true
 requirements: [AGT-01, AGT-02, AGT-03, AGT-04, AGT-05]
+must_haves:
+  truths:
+    - "package.json gains `verify:phase-3a` = the §24 pattern chain: `eslint . && prettier --check . && tsc --noEmit && wxt build && vitest run && node tests/isolation/check-content-bundle.mjs` (mirrors verify:phase-1/2/3, L19-21)."
+    - ".planning/REQUIREMENTS.md AGT rows updated per D-3a-01 with an AI-07-style note: AGT-02's description gains 'CheckpointRecorder enables one-step rollback'; AGT-05's row carries a Phase-8 re-map note (commit-confirm barrier → TOL-03 PermissionDialog / ToolCapabilityManifest, 03a ships only the waiting-for-permission state + pause seam). Traceability row maps AGT-01..05 to Phase 3a."
+    - ".planning/ROADMAP.md Phase 3a criterion #5 is reduced per D-3a-01: 'User confirms before irreversible actions via the commit-confirm barrier' → 'evidence/false-completion tests pass' (the commit-confirm UI is Phase 8; 3a proves the seam + the false-completion guard)."
+    - "verify:phase-3a passes green: eslint, prettier --check, tsc --noEmit, wxt build, the full vitest suite (tests/core/ai/** incl. trajectory/** + OutcomeVerifier.test.ts, tests/components/**, tests/fixtures/**), and the content-bundle isolation check (R-3: no AI/vault tokens in the background/content bundles beyond the narrow allowed set)."
+    - "The R-3 isolation scan still passes: the rewire adds NO new imports to the background SW or content scripts (AI runtime stays in Side Panel/Standalone)."
+    - "Every new error code shipped in 3a (AGENT_STATE_INVALID, TOOL_POSTCONDITION_FAILED, COMPLETION_EVIDENCE_MISSING) is present in src/core/error/errorCodes.ts AND canonical in spec Appendix C.2 (GR-9) — the C.2 canonicalization was part of 03a-01; this plan re-verifies."
+    - "§18 'DONE when' for Phase 3a is satisfied: transitions, evidence, partial/cap behaviour, abort, and false-completion tests all pass (spec L2674)."
+  artifacts:
+    - "package.json"
+    - ".planning/REQUIREMENTS.md"
+    - ".planning/ROADMAP.md"
+  key_links:
+    - "verify:phase-3a mirrors verify:phase-3 (package.json L21) + the isolation check (tests/isolation/check-content-bundle.mjs)."
+    - "The AGT-02/AGT-05 re-map notes follow the AI-07 precedent (REQUIREMENTS.md, D-06 in Phase 3) — §18 remains authoritative over the REQUIREMENTS.md rows."
+    - "ROADMAP Phase 3a block (L175-189) carries the criterion list; the §18 master phase order (L418) is untouched."
+  flagged_assumptions:
+    - "AGT-01..05 [manual review — gate]: all six spec-less probe edges are surfaced across 03a-01..04 and proven by the shipped suites; this plan's verify:phase-3a run is the aggregate seal."
+    - "Open Q4 [research]: trajectory observability via the onTransition callback (03a-03) is final."
+    - "A5 [research]: the zod-3 API surface is used throughout (tsc --noEmit + vitest green prove it)."
+    - "P-5 [Phase-3 precedent]: verify:phase-3a runs the FULL suite — no exact test-count assertion (documentation subset markers only)."
+  prohibitions:
+    - "No verify:phase-3a without the isolation check (R-3 — the rewire must not leak AI/vault into background/content bundles)."
+    - "No new REQUIREMENTS.md AGT id (D-3a-02 — CheckpointRecorder folds into AGT-02; AGT-05 stays the requirement, re-mapped to Phase 8)."
+    - "No §18 master phase-order change (line 418 — canonical order untouched)."
+    - "No exact test-count assertions in the gate (P-5)."
+    - "No skip of eslint/prettier/tsc/wxt-build/vitest/isolation in the chain (§24 pattern)."
+---
 
 <!-- 03a-05 (2026-08-11): the phase gate. verify:phase-3a script (§24 pattern), the
      REQUIREMENTS.md AGT re-map notes (D-3a-01 — CheckpointRecorder folds into AGT-02;
      AGT-05 commit-confirm re-maps to Phase 8), the ROADMAP criterion #5 reduction, and the
      full-suite green seal. A phase is not done until verify:phase-3a passes (Golden Rule 10). -->
-
-must_haves:
-truths:
-- "package.json gains `verify:phase-3a` = the §24 pattern chain: `eslint . && prettier --check . && tsc --noEmit && wxt build && vitest run && node tests/isolation/check-content-bundle.mjs` (mirrors verify:phase-1/2/3, L19-21)."
-- ".planning/REQUIREMENTS.md AGT rows updated per D-3a-01 with an AI-07-style note: AGT-02's description gains 'CheckpointRecorder enables one-step rollback'; AGT-05's row carries a Phase-8 re-map note (commit-confirm barrier → TOL-03 PermissionDialog / ToolCapabilityManifest, 03a ships only the waiting-for-permission state + pause seam). Traceability row maps AGT-01..05 to Phase 3a."
-- ".planning/ROADMAP.md Phase 3a criterion #5 is reduced per D-3a-01: 'User confirms before irreversible actions via the commit-confirm barrier' → 'evidence/false-completion tests pass' (the commit-confirm UI is Phase 8; 3a proves the seam + the false-completion guard)."
-- "verify:phase-3a passes green: eslint, prettier --check, tsc --noEmit, wxt build, the full vitest suite (tests/core/ai/** incl. trajectory/** + OutcomeVerifier.test.ts, tests/components/**, tests/fixtures/**), and the content-bundle isolation check (R-3: no AI/vault tokens in the background/content bundles beyond the narrow allowed set)."
-- "The R-3 isolation scan still passes: the rewire adds NO new imports to the background SW or content scripts (AI runtime stays in Side Panel/Standalone)."
-- "Every new error code shipped in 3a (AGENT_STATE_INVALID, TOOL_POSTCONDITION_FAILED, COMPLETION_EVIDENCE_MISSING) is present in src/core/error/errorCodes.ts AND canonical in spec Appendix C.2 (GR-9) — the C.2 canonicalization was part of 03a-01; this plan re-verifies."
-- "§18 'DONE when' for Phase 3a is satisfied: transitions, evidence, partial/cap behaviour, abort, and false-completion tests all pass (spec L2674)."
-artifacts:
-- package.json
-- .planning/REQUIREMENTS.md
-- .planning/ROADMAP.md
-key_links:
-- "verify:phase-3a mirrors verify:phase-3 (package.json L21) + the isolation check (tests/isolation/check-content-bundle.mjs)."
-- "The AGT-02/AGT-05 re-map notes follow the AI-07 precedent (REQUIREMENTS.md, D-06 in Phase 3) — §18 remains authoritative over the REQUIREMENTS.md rows."
-- "ROADMAP Phase 3a block (L175-189) carries the criterion list; the §18 master phase order (L418) is untouched."
-flagged_assumptions:
-- "AGT-01..05 [manual review — gate]: all six spec-less probe edges are surfaced across 03a-01..04 and proven by the shipped suites; this plan's verify:phase-3a run is the aggregate seal."
-- "Open Q4 [research]: trajectory observability via the onTransition callback (03a-03) is final."
-- "A5 [research]: the zod-3 API surface is used throughout (tsc --noEmit + vitest green prove it)."
-- "P-5 [Phase-3 precedent]: verify:phase-3a runs the FULL suite — no exact test-count assertion (documentation subset markers only)."
-prohibitions:
-- "No verify:phase-3a without the isolation check (R-3 — the rewire must not leak AI/vault into background/content bundles)."
-- "No new REQUIREMENTS.md AGT id (D-3a-02 — CheckpointRecorder folds into AGT-02; AGT-05 stays the requirement, re-mapped to Phase 8)."
-- "No §18 master phase-order change (line 418 — canonical order untouched)."
-- "No exact test-count assertions in the gate (P-5)."
-- "No skip of eslint/prettier/tsc/wxt-build/vitest/isolation in the chain (§24 pattern)."
 
 Purpose: A phase is not done until its gate passes (Golden Rule 10). This plan seals Phase 3a: the verify:phase-3a script is the §24 gate every executor task reports into; the REQUIREMENTS.md/ROADMAP.md updates record the scope reconciliation (D-3a-01/02) so the planning record matches what was built; the full-suite green run proves the rewire (03a-03) plus the migrations (03a-04) left zero regressions and the reliability machinery is isolated to the Side Panel/Standalone AI runtime (R-3).
 Output: verify:phase-3a script, REQUIREMENTS.md/ROADMAP.md reconciliation notes, and a green full-suite gate seal — Phase 3a DONE per §18.

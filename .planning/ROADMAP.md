@@ -185,7 +185,7 @@ Plans:
   4. Replanning is bounded by tier caps and never nested; abort works cleanly.
   5. Evidence/false-completion tests pass (commit-confirm barrier UI deferred to Phase 8 — D-3a-01).
 
-**Plans**: 0/5 plans executed
+**Plans**: 0/5 plans executed — planned 2026-08-11
 
 Plans:
 **Wave 1**
@@ -199,11 +199,14 @@ Plans:
 **Wave 3** *(blocked on Wave 2 completion)*
 
 - [ ] 03a-03-PLAN.md — orchestrator rewire: AgentTurnOutcome return (D-20 inversion), trajectory transitions, checkpoint seam, replan-on-tool-failure, pause seam, buildOutcome terminal + renderer evidence guard (wave 3)
-- [ ] 03a-04-PLAN.md — consumer migration (O3): hook D-3a-19 status mapping, D-20 fence inversion, AgentTurnOutput→AgentTurnOutcome test flips, budget status semantics (wave 3)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 03a-05-PLAN.md — phase gate: verify:phase-3a script (§24), REQUIREMENTS.md AGT re-map notes (D-3a-01/02), ROADMAP criterion #5 reduction, full-suite green seal (wave 4)
+- [ ] 03a-04-PLAN.md — consumer migration (O3): hook D-3a-19 status mapping, D-20 fence inversion, AgentTurnOutput→AgentTurnOutcome test flips, budget status semantics (wave 4)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 03a-05-PLAN.md — phase gate: verify:phase-3a script (§24), REQUIREMENTS.md AGT re-map notes (D-3a-01/02), ROADMAP criterion #5 reduction, full-suite green seal (wave 5)
 
 ### Phase 4: Context-Adaptive Execution
 

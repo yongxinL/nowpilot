@@ -5,52 +5,52 @@ type: execute
 wave: 2
 depends_on: ["03a-01"]
 files_modified:
-- src/core/ai/OutcomeVerifier.ts
-- src/core/ai/CheckpointRecorder.ts
-- tests/core/ai/OutcomeVerifier.test.ts
-- tests/core/ai/trajectory/CheckpointRecorder.test.ts
+  - src/core/ai/OutcomeVerifier.ts
+  - src/core/ai/CheckpointRecorder.ts
+  - tests/core/ai/OutcomeVerifier.test.ts
+  - tests/core/ai/trajectory/CheckpointRecorder.test.ts
 autonomous: true
 requirements: [AGT-02, AGT-03]
+must_haves:
+  truths:
+    - "src/core/ai/OutcomeVerifier.ts ships the O.2 VERBATIM Verifier interface + buildOutcome (spec Appendix O.2 L6362-6393): `Verifier { postconditionId: string; verify(result: ToolExecutionResult<unknown>): Promise<{ ok: boolean; detail?: string }> }` and `buildOutcome(operationId, results, verifiers, caps) → Promise<AgentTurnOutcome>` — copy, do not re-derive (D-3a-03, R-1 imports CompletionEvidence/AgentTurnOutcome from '@/types/harness')."
+    - "buildOutcome is deterministic — zero model calls, no verifier PipelineStage, no extra tier cap, no persona injection (D-3a-03): read-only tools (no verifier registered) are SKIPPED (`if (!v) continue`), so a pure-answer turn is `completed` with `evidence: []` (D-3a-04)."
+    - "Cap exhaustion maps to `status 'partial'` + `reasonCode 'cap_exhausted'` — never `completed` (D-3a-07, AGT-03, O.2 L6387-6391: `caps.capHit ? 'partial' : sideEffectFailed ? 'failed' : 'completed'`). Any `!ok` evidence maps to `status 'failed'` + `reasonCode 'postcondition_failed'` (fail-closed, D-3a-06)."
+    - "Evidence entries record `{ toolName, operationId, postconditionId: v.postconditionId, ok: outcome.ok, verifiedAt, detail }` — `verifiedAt` uses an injectable clock (`now: () => number = Date.now`) so tests stay deterministic (Pitfall 6, fixtures/index.ts determinism rule); the production default is Date.now."
+    - "src/core/ai/CheckpointRecorder.ts ships an opId-keyed pre-tool loop-state store (D-3a-08): `capture(operationId, state)` / `restore(operationId)` over a Map, copying the captured LoopState (no shared references). LoopState = { toolResults, plannerCalls, toolCalls, phase } (D-3a-09). Rollback = restore that state + the orchestrator discards the failed tool's result — NO side-effect compensation/inverse (Phase 8 TOL-05, explicitly out of scope)."
+    - "tests/core/ai/OutcomeVerifier.test.ts proves: (a) pure-answer turn (no tools) → status 'completed', evidence []; (b) side-effecting tool with matching ok:true evidence → 'completed'; (c) absent/!ok evidence for a side-effecting tool → 'failed' + reasonCode 'postcondition_failed'; (d) caps.capHit true → 'partial' + 'cap_exhausted' (never 'completed'); (e) read-only tool with no verifier registered → skipped, no evidence; (f) deterministic clock injection."
+    - "tests/core/ai/trajectory/CheckpointRecorder.test.ts proves: capture/restore round-trip preserves the full LoopState (deep-copied — mutating the returned restore does not mutate the stored state); restore of a never-captured opId returns undefined; capture is keyed by operationId (two opIds do not collide)."
+  artifacts:
+    - "src/core/ai/OutcomeVerifier.ts"
+    - "src/core/ai/CheckpointRecorder.ts"
+    - "tests/core/ai/OutcomeVerifier.test.ts"
+    - "tests/core/ai/trajectory/CheckpointRecorder.test.ts"
+  key_links:
+    - "OutcomeVerifier imports CompletionEvidence + AgentTurnOutcome from '@/types/harness' (R-1 — never re-declares; O.2 L6364)."
+    - "buildOutcome's Verifier is keyed by toolName (O.2 L6380) — the same boundary the ExecutorService's ToolExecutionResult.toolName feeds (src/core/ai/types.ts L118-125); the mock dangerous tool's verifier fixture comes from tests/fixtures/trajectory.ts (03a-01)."
+    - "CheckpointRecorder composes ProviderRouter's lazy Map pattern (L361/L769-786) + WriteJournal rollback machinery (WriteJournal.ts L28-33/L62-79) — opId-keyed, in-memory per-turn (C4, §17.7.7)."
+    - "The orchestrator (03a-03) is the only runtime caller: capture before ExecutorService.execute, restore on retryable tool failure."
+  flagged_assumptions:
+    - "AGT-02 [unclassified — manual review]: the evidence gate applies to tool-turns only; this plan proves it via the buildOutcome 'read-only tools skipped' path and the empty-evidence pure-answer turn."
+    - "AGT-03 [boundary — manual review]: status union is the 4-value C.1 enum; 'verification_failed' is NOT a status member — orchestrator maps it to status:'failed' + reasonCode (D-3a-05, Open Q1; proven at the orchestrator in 03a-03)."
+    - "A1 [research]: verification_failed → status 'failed' + reasonCode 'verification_failed' (kept C.1 verbatim)."
+    - "Open Q1 [spec gap]: the O.2 buildOutcome reference returns 'postcondition_failed' as reasonCode for !ok evidence — this is kept verbatim; the D-3a-06 vocabulary names it 'verification_failed' in prose; the reasonCode string in the OUTCOME is the O.2 value 'postcondition_failed'."
+    - "Pitfall 6 [determinism]: the injectable `now` clock is the only deviation from O.2's verbatim body (default Date.now preserves production behavior)."
+  prohibitions:
+    - "No model calls / no verifier PipelineStage / no extra tier cap / no persona injection inside OutcomeVerifier (D-3a-03 — the 2-call/healthy-turn cost truth)."
+    - "No cap-exhaustion → 'completed' mapping (D-3a-07, AGT-03 — must be 'partial')."
+    - "No evidence for pure-answer turns (D-3a-04 — evidence only for turns that ran tools)."
+    - "No side-effect compensation/inverse in CheckpointRecorder (D-3a-09 — Phase 8 TOL-05; rollback is loop-state rewind only)."
+    - "No durable/session checkpoint persistence (C4, §17.7.7 — in-memory per-turn only)."
+    - "No free-form error strings (GR-9): verifier failures surface via buildOutcome's structured verdict; the orchestrator (03a-03) logs the canonical codes."
+    - "No real Date.now in test fixtures (Pitfall 6, fixtures determinism rule)."
+---
 
 <!-- 03a-02 (2026-08-11): OutcomeVerifier (O.2 verbatim buildOutcome) + CheckpointRecorder
      (D-3a-08/09). Deterministic verifier — zero model calls (D-3a-03); evidence gates
      tool-turns only (D-3a-04); cap exhaustion = partial, never completed (D-3a-07, AGT-03).
      CheckpointRecorder: opId-keyed pre-tool loop-state capture/restore, loop-state rewind only,
      no side-effect compensation (Phase 8 TOL-05). -->
-
-must_haves:
-truths:
-- "src/core/ai/OutcomeVerifier.ts ships the O.2 VERBATIM Verifier interface + buildOutcome (spec Appendix O.2 L6362-6393): `Verifier { postconditionId: string; verify(result: ToolExecutionResult<unknown>): Promise<{ ok: boolean; detail?: string }> }` and `buildOutcome(operationId, results, verifiers, caps) → Promise<AgentTurnOutcome>` — copy, do not re-derive (D-3a-03, R-1 imports CompletionEvidence/AgentTurnOutcome from '@/types/harness')."
-- "buildOutcome is deterministic — zero model calls, no verifier PipelineStage, no extra tier cap, no persona injection (D-3a-03): read-only tools (no verifier registered) are SKIPPED (`if (!v) continue`), so a pure-answer turn is `completed` with `evidence: []` (D-3a-04)."
-- "Cap exhaustion maps to `status 'partial'` + `reasonCode 'cap_exhausted'` — never `completed` (D-3a-07, AGT-03, O.2 L6387-6391: `caps.capHit ? 'partial' : sideEffectFailed ? 'failed' : 'completed'`). Any `!ok` evidence maps to `status 'failed'` + `reasonCode 'postcondition_failed'` (fail-closed, D-3a-06)."
-- "Evidence entries record `{ toolName, operationId, postconditionId: v.postconditionId, ok: outcome.ok, verifiedAt, detail }` — `verifiedAt` uses an injectable clock (`now: () => number = Date.now`) so tests stay deterministic (Pitfall 6, fixtures/index.ts determinism rule); the production default is Date.now."
-- "src/core/ai/CheckpointRecorder.ts ships an opId-keyed pre-tool loop-state store (D-3a-08): `capture(operationId, state)` / `restore(operationId)` over a Map, copying the captured LoopState (no shared references). LoopState = { toolResults, plannerCalls, toolCalls, phase } (D-3a-09). Rollback = restore that state + the orchestrator discards the failed tool's result — NO side-effect compensation/inverse (Phase 8 TOL-05, explicitly out of scope)."
-- "tests/core/ai/OutcomeVerifier.test.ts proves: (a) pure-answer turn (no tools) → status 'completed', evidence []; (b) side-effecting tool with matching ok:true evidence → 'completed'; (c) absent/!ok evidence for a side-effecting tool → 'failed' + reasonCode 'postcondition_failed'; (d) caps.capHit true → 'partial' + 'cap_exhausted' (never 'completed'); (e) read-only tool with no verifier registered → skipped, no evidence; (f) deterministic clock injection."
-- "tests/core/ai/trajectory/CheckpointRecorder.test.ts proves: capture/restore round-trip preserves the full LoopState (deep-copied — mutating the returned restore does not mutate the stored state); restore of a never-captured opId returns undefined; capture is keyed by operationId (two opIds do not collide)."
-artifacts:
-- src/core/ai/OutcomeVerifier.ts
-- src/core/ai/CheckpointRecorder.ts
-- tests/core/ai/OutcomeVerifier.test.ts
-- tests/core/ai/trajectory/CheckpointRecorder.test.ts
-key_links:
-- "OutcomeVerifier imports CompletionEvidence + AgentTurnOutcome from '@/types/harness' (R-1 — never re-declares; O.2 L6364)."
-- "buildOutcome's Verifier is keyed by toolName (O.2 L6380) — the same boundary the ExecutorService's ToolExecutionResult.toolName feeds (src/core/ai/types.ts L118-125); the mock dangerous tool's verifier fixture comes from tests/fixtures/trajectory.ts (03a-01)."
-- "CheckpointRecorder composes ProviderRouter's lazy Map pattern (L361/L769-786) + WriteJournal rollback machinery (WriteJournal.ts L28-33/L62-79) — opId-keyed, in-memory per-turn (C4, §17.7.7)."
-- "The orchestrator (03a-03) is the only runtime caller: capture before ExecutorService.execute, restore on retryable tool failure."
-flagged_assumptions:
-- "AGT-02 [unclassified — manual review]: the evidence gate applies to tool-turns only; this plan proves it via the buildOutcome 'read-only tools skipped' path and the empty-evidence pure-answer turn."
-- "AGT-03 [boundary — manual review]: status union is the 4-value C.1 enum; 'verification_failed' is NOT a status member — orchestrator maps it to status:'failed' + reasonCode (D-3a-05, Open Q1; proven at the orchestrator in 03a-03)."
-- "A1 [research]: verification_failed → status 'failed' + reasonCode 'verification_failed' (kept C.1 verbatim)."
-- "Open Q1 [spec gap]: the O.2 buildOutcome reference returns 'postcondition_failed' as reasonCode for !ok evidence — this is kept verbatim; the D-3a-06 vocabulary names it 'verification_failed' in prose; the reasonCode string in the OUTCOME is the O.2 value 'postcondition_failed'."
-- "Pitfall 6 [determinism]: the injectable `now` clock is the only deviation from O.2's verbatim body (default Date.now preserves production behavior)."
-prohibitions:
-- "No model calls / no verifier PipelineStage / no extra tier cap / no persona injection inside OutcomeVerifier (D-3a-03 — the 2-call/healthy-turn cost truth)."
-- "No cap-exhaustion → 'completed' mapping (D-3a-07, AGT-03 — must be 'partial')."
-- "No evidence for pure-answer turns (D-3a-04 — evidence only for turns that ran tools)."
-- "No side-effect compensation/inverse in CheckpointRecorder (D-3a-09 — Phase 8 TOL-05; rollback is loop-state rewind only)."
-- "No durable/session checkpoint persistence (C4, §17.7.7 — in-memory per-turn only)."
-- "No free-form error strings (GR-9): verifier failures surface via buildOutcome's structured verdict; the orchestrator (03a-03) logs the canonical codes."
-- "No real Date.now in test fixtures (Pitfall 6, fixtures determinism rule)."
 
 Purpose: AGT-02/AGT-03 are realized here as the deterministic evidence machinery. buildOutcome is the single, spec-verbatim place where a turn's tool results become CompletionEvidence and a terminal status — keeping cap exhaustion honest ('partial' never 'completed') and side-effecting success evidence-gated (fail-closed). CheckpointRecorder delivers the one-step rollback capability (D-3a-09) the orchestrator rewires around in 03a-03.
 Output: OutcomeVerifier.ts (O.2 verbatim buildOutcome + injectable clock), CheckpointRecorder.ts (opId-keyed LoopState capture/restore), and their unit tests green — proving the evidence/partial/cap/fail-closed behavior and the rollback round-trip independently of the orchestrator.

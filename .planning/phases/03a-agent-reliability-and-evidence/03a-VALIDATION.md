@@ -40,15 +40,15 @@ created: 2026-08-11
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 03a-01-01 | 01 | 1 | AGT-01 | T-03a-01 / — | Legal trajectory transitions; illegal transition throws `AGENT_STATE_INVALID` | unit | `npx vitest run tests/core/ai/trajectory` | ❌ W0 | ⬜ pending |
-| 03a-01-02 | 01 | 1 | AGT-02 | T-03a-01 | CheckpointRecorder captures/restores pre-tool loop state; rollback discards failed result | unit | `npx vitest run tests/core/ai/trajectory` | ❌ W0 | ⬜ pending |
-| 03a-02-01 | 02 | 2 | AGT-02 | T-03a-01 | Side-effecting tool with matching evidence → completed; absent evidence → `verification_failed` | unit | `npx vitest run tests/core/ai/OutcomeVerifier.test.ts` | ❌ W0 | ⬜ pending |
-| 03a-02-02 | 02 | 2 | AGT-03 | T-03a-01 | Cap exhaustion → `status:'partial'`, `reasonCode:'cap_exhausted'`, never `completed` | unit | `npx vitest run tests/core/ai/OutcomeVerifier.test.ts` | ❌ W0 | ⬜ pending |
-| 03a-03-01 | 03 | 3 | AGT-04 | T-03a-01 | Replan fires once on retryable tool failure; repeated-identical failure terminal; never nested; plannerCalls under plannerCap | unit | `npx vitest run tests/core/ai/trajectory` | ❌ W0 | ⬜ pending |
-| 03a-03-02 | 03 | 3 | AGT-04 | T-03a-01 | Abort mid-verify/mid-replan wins (AbortError propagates) | unit | `npx vitest run tests/core/ai/trajectory` | ❌ W0 | ⬜ pending |
-| 03a-04-01 | 04 | 4 | AGT-05 | T-03a-01 | `waiting-for-permission` phase reachable via pause seam; abort cancels the wait | unit | `npx vitest run tests/core/ai/trajectory` | ❌ W0 | ⬜ pending |
-| 03a-05-01 | 05 | 5 | AGT-03 | — | Hook maps partial/failed → failed ChatStreamState; aborted → idle (D-3a-19) | unit (component) | `npx vitest run tests/components` | ❌ W0 | ⬜ pending |
-| 03a-06-01 | 06 | 6 | AGT-01..05 | — | verify:phase-3a gate: eslint + prettier + tsc + wxt build + vitest + isolation | suite | `pnpm run verify:phase-3a` | ❌ W0 | ⬜ pending |
+| 03a-01-06 | 01 | 1 | AGT-01 | T-03a-01-01 | Legal trajectory transitions; illegal transition throws `AGENT_STATE_INVALID`; Zod boundary schemas reject malformed shapes | unit | `npx vitest run tests/core/ai/trajectory/transition.test.ts` | ❌ W0 | ⬜ pending |
+| 03a-02-01 | 02 | 2 | AGT-02 | T-03a-02-01 | Side-effecting tool with matching evidence → completed; absent/!ok evidence → `failed`/`verification_failed` (fail-closed) | unit | `npx vitest run tests/core/ai/OutcomeVerifier.test.ts` | ❌ W0 | ⬜ pending |
+| 03a-02-02 | 02 | 2 | AGT-02 | T-03a-02-03 | CheckpointRecorder captures/restores pre-tool loop state; rollback discards failed result (opId-keyed, deep-copied) | unit | `npx vitest run tests/core/ai/trajectory/CheckpointRecorder.test.ts` | ❌ W0 | ⬜ pending |
+| 03a-02-03 | 02 | 2 | AGT-03 | T-03a-02-01 | Cap exhaustion → `status:'partial'`, `reasonCode:'cap_exhausted'`, never `completed`; pure-answer → `completed`, `evidence: []` | unit | `npx vitest run tests/core/ai/OutcomeVerifier.test.ts` | ❌ W0 | ⬜ pending |
+| 03a-03-08 | 03 | 3 | AGT-01/05 | T-03a-03-01 | Healthy-turn transitions + trajectory cap force-terminates partial; pause seam reaches waiting-for-permission; abort wins | unit | `npx vitest run tests/core/ai/trajectory/AgentOrchestrator.trajectory.test.ts` | ❌ W0 | ⬜ pending |
+| 03a-03-09 | 03 | 3 | AGT-04 | T-03a-03-02 | Replan fires once per failed tool; repeated-identical failure terminal; never nested; plannerCalls under plannerCap; abort mid-replan wins | unit | `npx vitest run tests/core/ai/trajectory/AgentOrchestrator.replan.test.ts` | ❌ W0 | ⬜ pending |
+| 03a-03-10 | 03 | 3 | AGT-02 | T-03a-03-04 | Renderer never narrates a side-effecting tool as done without matching ok:true evidence | unit | `npx vitest run tests/core/ai/RendererService.evidence.test.ts` | ❌ W0 | ⬜ pending |
+| 03a-04-05 | 04 | 4 | AGT-03 | T-03a-04-01 | Hook maps partial/failed → failed ChatStreamState; aborted → idle (D-3a-19) | unit (component) | `npx vitest run tests/components/pages/useStreamingLLM.test.tsx` | ❌ W0 | ⬜ pending |
+| 03a-05-04 | 05 | 5 | AGT-01..05 | — | verify:phase-3a gate: eslint + prettier + tsc + wxt build + vitest + isolation | suite | `pnpm run verify:phase-3a` | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 

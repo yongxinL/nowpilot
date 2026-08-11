@@ -5,64 +5,64 @@ type: execute
 wave: 3
 depends_on: ["03a-01", "03a-02"]
 files_modified:
-- src/core/ai/AgentOrchestrator.ts
-- src/core/ai/RendererService.ts
-- tests/core/ai/trajectory/AgentOrchestrator.trajectory.test.ts
-- tests/core/ai/trajectory/AgentOrchestrator.replan.test.ts
-- tests/core/ai/RendererService.evidence.test.ts
+  - src/core/ai/AgentOrchestrator.ts
+  - src/core/ai/RendererService.ts
+  - tests/core/ai/trajectory/AgentOrchestrator.trajectory.test.ts
+  - tests/core/ai/trajectory/AgentOrchestrator.replan.test.ts
+  - tests/core/ai/RendererService.evidence.test.ts
 autonomous: true
 requirements: [AGT-01, AGT-02, AGT-03, AGT-04, AGT-05]
+must_haves:
+  truths:
+    - "src/core/ai/AgentOrchestrator.ts: `runAgentTurn` returns `AgentTurnOutcome` (C.1) — NOT the Phase-3 `AgentTurnOutput`. The D-20 fence comment inverts: the orchestrator now owns the reliability machinery (trajectory transitions + OutcomeVerifier + CheckpointRecorder). `streamedText` is no longer in the output struct — it travels via `onStreamDelta` (D-3a-18)."
+    - "Trajectory transitions (AGT-01): the loop emits a transition at each stage boundary via the LEGAL_TRANSITIONS/transitionPhase table from harness.ts (03a-01); an illegal transition throws AGENT_STATE_INVALID (C5). The trajectory recorder is an optional `onTransition?: (state: AgentTrajectoryState) => void` input-only callback on AgentTurnInput (D-3a-16 precedent mirrors onStreamDelta) — direct calls, not an event bus (L1)."
+    - "Trajectory cap (D-3a-10): a hard ceiling `trajectoryCapFor(tier) = plannerCap + toolCap + 1` (research A3 slack) force-terminates with status 'partial' + reasonCode 'trajectory_cap_exceeded' on exceed — guards pathological loops; deterministic and tested."
+    - "Replan-on-tool-failure (D-3a-11, AGT-04): when `result.ok === false && result.error?.retryable === true`, the loop re-invokes the planner ONCE with failure feedback appended as an F-4 sections-in `tool_result` PromptSection (`{ kind:'tool_result', stable:false }`) — NEVER a joined-string rebuild (Pitfall 7). Planner-side failures keep the existing planner_failed fallback (no re-invocation). Replan is retry layer 2 of exactly three, never nested (R-2, L3)."
+    - "Repeated-identical terminal (D-3a-12): identical failure = same toolName + same error code (D-3a-12). After one replan, an identical failure is terminal ⇒ status 'failed' + reasonCode 'replan_identical_failure' (or 'partial' under cap) — never a silent success. The replan guard is keyed per toolName (a `Set<string>` — 'one replan per failed tool', not a turn-level boolean). Each replan consumes `plannerCalls++` bounded by `input.tier.plannerCap` (D-3a-13)."
+    - "Checkpoint seam (D-3a-09): before each ExecutorService.execute, `checkpoint.capture(opId, { toolResults, plannerCalls, toolCalls, phase })`; on a retryable tool failure the loop restores the captured state (discarding the failed result) before replanning. Loop-state rewind only — no side-effect compensation (Phase 8 TOL-05)."
+    - "Pause seam (D-3a-15/16, AGT-05 core seam): AgentTurnInput gains optional `onInputRequired?: (q: { roleId; question; options?; reason: 'clarification' | 'permission' }) => void`. A stage emitting 'input-required' surfaces the trajectory phase 'waiting-for-permission' and pauses the turn WITHOUT terminating; abort cancels the wait (abort wins mid-wait). No UI, no gated tools (zero dangerous tools in 3a) — Phase 8 ships PermissionDialog + ToolCapabilityManifest (TOL-02/03)."
+    - "Terminal authority (D-3a-05): the ORCHESTRATOR computes the terminal status via buildOutcome (03a-02) + the replan/trajectory/pause policy. OutcomeVerifier returns verdicts only ({ok, detail}); the renderer never independently re-verifies. verification_failed → status 'failed' + reasonCode 'verification_failed' (Open Q1 mapping, keeps C.1 4-value union). abort → AbortError propagates (O4, abort wins mid-verify/mid-replan)."
+    - "Cap exhaustion (D-3a-07, AGT-03): caps.capHit ⇒ status 'partial' + reasonCode 'cap_exhausted' via buildOutcome — never 'completed'."
+    - "Renderer evidence guard (D-3a-17): `RenderInput` gains `verdict` (the terminal status) + `evidence: CompletionEvidence[]`; RendererService never claims a side-effecting tool is 'done' without a matching ok:true evidence entry in the received set. Renderer is display-only — it never re-verifies or changes status."
+    - "New test suites (required by §18): tests/core/ai/trajectory/AgentOrchestrator.trajectory.test.ts (healthy-turn transitions assembling→planning→rendering→completed + trajectory cap + illegal-transition + pause seam) and tests/core/ai/trajectory/AgentOrchestrator.replan.test.ts (replan fires once on retryable failure, repeated-identical terminal, plannerCap bound, never nested, abort mid-replan wins) + tests/core/ai/RendererService.evidence.test.ts (renderer never narrates done without ok:true evidence)."
+  artifacts:
+    - "src/core/ai/AgentOrchestrator.ts"
+    - "src/core/ai/RendererService.ts"
+    - "tests/core/ai/trajectory/AgentOrchestrator.trajectory.test.ts"
+    - "tests/core/ai/trajectory/AgentOrchestrator.replan.test.ts"
+    - "tests/core/ai/RendererService.evidence.test.ts"
+  key_links:
+    - "AgentOrchestrator imports AgentTurnOutcome/AgentTrajectoryState from '@/types/harness' (R-1), buildOutcome/Verifier from './OutcomeVerifier', CheckpointRecorder from './CheckpointRecorder', LEGAL_TRANSITIONS/transitionPhase from '@/types/harness'."
+    - "runAgentTurn call sites migrate in 03a-04: useStreamingLLM.ts (hook) + tests/core/ai/AgentOrchestrator.test.ts + .budget.test.ts (O3 enumerated, NOT blanket rewrites). This plan changes the contract; 03a-04 fixes the consumers."
+    - "The F-4 tool_result section is built via the contextHelper section-builder pattern (contextHelper.ts L60-85) or an orchestrator-local section — stable:false, sourceId e.g. 'replan-feedback'. It must survive ProviderRouter.joinSections (TASK_KINDS includes 'tool_result', 03a-01)."
+    - "onStreamDelta + invocation remain the Phase-3 seams; onInputRequired + onTransition are the two new input-only seams (mirrors D-20 deviation precedent)."
+  flagged_assumptions:
+    - "AGT-01 [unclassified — manual review]: the healthy-turn transition sequence is assembled→planning→rendering→completed (2 model calls); the trajectory phase is carried to a terminal phase (completed/failed/partial/aborted) at finish — asserted by the trajectory test."
+    - "AGT-02 [unclassified — manual review]: the evidence gate lives in the terminal buildOutcome path; a turn that executed a side-effecting tool WITHOUT evidence reaches verification_failed→'failed' (D-3a-06) — proven via a mock dangerous tool with no verifier registered in the replan/trajectory suite."
+    - "AGT-04 [unclassified — manual review]: 'repeated identical failure' is identified by (toolName, error.code) tuple equality across the pre/post-replan executions (D-3a-12); 'never nested' is enforced by the per-tool replan Set guard + plannerCap bound."
+    - "AGT-05 [unclassified — manual review]: the pause seam is a core seam only — the 'waiting-for-permission' trajectory phase is reachable via onInputRequired and the turn stays open; Phase 8 wires the UI dialog (D-3a-15/16)."
+    - "A1 [research]: verification_failed → status 'failed' + reasonCode 'verification_failed' (C.1 union kept verbatim)."
+    - "A2 [research]: the F-4 tool_result section lands in TASK_KINDS (both ProviderRouter + StructuredOutput) — proven green in 03a-01."
+    - "A3 [research]: trajectory cap = plannerCap + toolCap + 1."
+    - "Open Q3 [research]: RenderInput gains verdict + evidence (renderer stays a pure consumer)."
+    - "Open Q4 [research]: trajectory observability = the onTransition input-only callback (mirrors onStreamDelta)."
+  prohibitions:
+    - "No AgentTurnOutput in the return type (D-3a-18 — AgentTurnOutcome only; streamedText via onStreamDelta)."
+    - "No event bus / emitter for trajectory transitions (L1 — direct calls only; StageEvent is a TYPE)."
+    - "No nested replan (R-2/L3): no replan on planner failure; at most one replan per failed tool; replan consumes plannerCalls++ under plannerCap."
+    - "No joined-string replan feedback (Pitfall 7 — F-4 tool_result PromptSection, stable:false)."
+    - "No side-effect compensation in rollback (D-3a-09 — Phase 8 TOL-05)."
+    - "No renderer double-verification (D-3a-05/17 — display-only; never changes status)."
+    - "No durable checkpoint/trajectory persistence (§17.7.7 — in-memory per-turn)."
+    - "No free-form error strings (GR-9) — every catch logs via debugLog with a canonical code (AGENT_STATE_INVALID / TOOL_POSTCONDITION_FAILED / COMPLETION_EVIDENCE_MISSING / PLANNER_FAILED / STREAM_FAILED)."
+    - "No gated tools / permission UI in 3a (zero dangerous tools — Phase 8 TOL-02/03)."
+---
 
 <!-- 03a-03 (2026-08-11): THE REWIRE. runAgentTurn returns AgentTurnOutcome (D-3a-18, D-20
      fence inversion), embeds trajectory transitions (AGT-01), the checkpoint seam (D-3a-09),
      replan-on-tool-failure with an F-4 tool_result section (D-3a-11/12/13, AGT-04), the pause
      seam (D-3a-15/16, AGT-05), and the buildOutcome terminal (D-3a-05/06/07). Renderer gains
      the evidence-aware guard (D-3a-17). Enumerated test migration is in 03a-04 (O3). -->
-
-must_haves:
-truths:
-- "src/core/ai/AgentOrchestrator.ts: `runAgentTurn` returns `AgentTurnOutcome` (C.1) — NOT the Phase-3 `AgentTurnOutput`. The D-20 fence comment inverts: the orchestrator now owns the reliability machinery (trajectory transitions + OutcomeVerifier + CheckpointRecorder). `streamedText` is no longer in the output struct — it travels via `onStreamDelta` (D-3a-18)."
-- "Trajectory transitions (AGT-01): the loop emits a transition at each stage boundary via the LEGAL_TRANSITIONS/transitionPhase table from harness.ts (03a-01); an illegal transition throws AGENT_STATE_INVALID (C5). The trajectory recorder is an optional `onTransition?: (state: AgentTrajectoryState) => void` input-only callback on AgentTurnInput (D-3a-16 precedent mirrors onStreamDelta) — direct calls, not an event bus (L1)."
-- "Trajectory cap (D-3a-10): a hard ceiling `trajectoryCapFor(tier) = plannerCap + toolCap + 1` (research A3 slack) force-terminates with status 'partial' + reasonCode 'trajectory_cap_exceeded' on exceed — guards pathological loops; deterministic and tested."
-- "Replan-on-tool-failure (D-3a-11, AGT-04): when `result.ok === false && result.error?.retryable === true`, the loop re-invokes the planner ONCE with failure feedback appended as an F-4 sections-in `tool_result` PromptSection (`{ kind:'tool_result', stable:false }`) — NEVER a joined-string rebuild (Pitfall 7). Planner-side failures keep the existing planner_failed fallback (no re-invocation). Replan is retry layer 2 of exactly three, never nested (R-2, L3)."
-- "Repeated-identical terminal (D-3a-12): identical failure = same toolName + same error code (D-3a-12). After one replan, an identical failure is terminal ⇒ status 'failed' + reasonCode 'replan_identical_failure' (or 'partial' under cap) — never a silent success. Each replan consumes `plannerCalls++` bounded by `input.tier.plannerCap` (D-3a-13)."
-- "Checkpoint seam (D-3a-09): before each ExecutorService.execute, `checkpoint.capture(opId, { toolResults, plannerCalls, toolCalls, phase })`; on a retryable tool failure the loop restores the captured state (discarding the failed result) before replanning. Loop-state rewind only — no side-effect compensation (Phase 8 TOL-05)."
-- "Pause seam (D-3a-15/16, AGT-05 core seam): AgentTurnInput gains optional `onInputRequired?: (q: { roleId; question; options?; reason: 'clarification' | 'permission' }) => void`. A stage emitting 'input-required' surfaces the trajectory phase 'waiting-for-permission' and pauses the turn WITHOUT terminating; abort cancels the wait (abort wins mid-wait). No UI, no gated tools (zero dangerous tools in 3a) — Phase 8 ships PermissionDialog + ToolCapabilityManifest (TOL-02/03)."
-- "Terminal authority (D-3a-05): the ORCHESTRATOR computes the terminal status via buildOutcome (03a-02) + the replan/trajectory/pause policy. OutcomeVerifier returns verdicts only ({ok, detail}); the renderer never independently re-verifies. verification_failed → status 'failed' + reasonCode 'verification_failed' (Open Q1 mapping, keeps C.1 4-value union). abort → AbortError propagates (O4, abort wins mid-verify/mid-replan)."
-- "Cap exhaustion (D-3a-07, AGT-03): caps.capHit ⇒ status 'partial' + reasonCode 'cap_exhausted' via buildOutcome — never 'completed'."
-- "Renderer evidence guard (D-3a-17): `RenderInput` gains `verdict` (the terminal status) + `evidence: CompletionEvidence[]`; RendererService never claims a side-effecting tool is 'done' without a matching ok:true evidence entry in the received set. Renderer is display-only — it never re-verifies or changes status."
-- "New test suites (required by §18): tests/core/ai/trajectory/AgentOrchestrator.trajectory.test.ts (healthy-turn transitions assembling→planning→rendering→completed + trajectory cap + illegal-transition + pause seam) and tests/core/ai/trajectory/AgentOrchestrator.replan.test.ts (replan fires once on retryable failure, repeated-identical terminal, plannerCap bound, never nested, abort mid-replan wins) + tests/core/ai/RendererService.evidence.test.ts (renderer never narrates done without ok:true evidence)."
-artifacts:
-- src/core/ai/AgentOrchestrator.ts
-- src/core/ai/RendererService.ts
-- tests/core/ai/trajectory/AgentOrchestrator.trajectory.test.ts
-- tests/core/ai/trajectory/AgentOrchestrator.replan.test.ts
-- tests/core/ai/RendererService.evidence.test.ts
-key_links:
-- "AgentOrchestrator imports AgentTurnOutcome/AgentTrajectoryState from '@/types/harness' (R-1), buildOutcome/Verifier from './OutcomeVerifier', CheckpointRecorder from './CheckpointRecorder', LEGAL_TRANSITIONS/transitionPhase from '@/types/harness'."
-- "runAgentTurn call sites migrate in 03a-04: useStreamingLLM.ts (hook) + tests/core/ai/AgentOrchestrator.test.ts + .budget.test.ts (O3 enumerated, NOT blanket rewrites). This plan changes the contract; 03a-04 fixes the consumers."
-- "The F-4 tool_result section is built via the contextHelper section-builder pattern (contextHelper.ts L60-85) or an orchestrator-local section — stable:false, sourceId e.g. 'replan-feedback'. It must survive ProviderRouter.joinSections (TASK_KINDS includes 'tool_result', 03a-01)."
-- "onStreamDelta + invocation remain the Phase-3 seams; onInputRequired + onTransition are the two new input-only seams (mirrors D-20 deviation precedent)."
-flagged_assumptions:
-- "AGT-01 [unclassified — manual review]: the healthy-turn transition sequence is assembled→planning→rendering→completed (2 model calls); the trajectory phase is carried to a terminal phase (completed/failed/partial/aborted) at finish — asserted by the trajectory test."
-- "AGT-02 [unclassified — manual review]: the evidence gate lives in the terminal buildOutcome path; a turn that executed a side-effecting tool WITHOUT evidence reaches verification_failed→'failed' (D-3a-06) — proven via a mock dangerous tool with no verifier registered in the replan/trajectory suite."
-- "AGT-04 [unclassified — manual review]: 'repeated identical failure' is identified by (toolName, error.code) tuple equality across the pre/post-replan executions (D-3a-12); 'never nested' is enforced by the single replannedThisTool guard + plannerCap bound."
-- "AGT-05 [unclassified — manual review]: the pause seam is a core seam only — the 'waiting-for-permission' trajectory phase is reachable via onInputRequired and the turn stays open; Phase 8 wires the UI dialog (D-3a-15/16)."
-- "A1 [research]: verification_failed → status 'failed' + reasonCode 'verification_failed' (C.1 union kept verbatim)."
-- "A2 [research]: the F-4 tool_result section lands in TASK_KINDS (both ProviderRouter + StructuredOutput) — proven green in 03a-01."
-- "A3 [research]: trajectory cap = plannerCap + toolCap + 1."
-- "Open Q3 [research]: RenderInput gains verdict + evidence (renderer stays a pure consumer)."
-- "Open Q4 [research]: trajectory observability = the onTransition input-only callback (mirrors onStreamDelta)."
-prohibitions:
-- "No AgentTurnOutput in the return type (D-3a-18 — AgentTurnOutcome only; streamedText via onStreamDelta)."
-- "No event bus / emitter for trajectory transitions (L1 — direct calls only; StageEvent is a TYPE)."
-- "No nested replan (R-2/L3): no replan on planner failure; at most one replan per failed tool; replan consumes plannerCalls++ under plannerCap."
-- "No joined-string replan feedback (Pitfall 7 — F-4 tool_result PromptSection, stable:false)."
-- "No side-effect compensation in rollback (D-3a-09 — Phase 8 TOL-05)."
-- "No renderer double-verification (D-3a-05/17 — display-only; never changes status)."
-- "No durable checkpoint/trajectory persistence (§17.7.7 — in-memory per-turn)."
-- "No free-form error strings (GR-9) — every catch logs via debugLog with a canonical code (AGENT_STATE_INVALID / TOOL_POSTCONDITION_FAILED / COMPLETION_EVIDENCE_MISSING / PLANNER_FAILED / STREAM_FAILED)."
-- "No gated tools / permission UI in 3a (zero dangerous tools — Phase 8 TOL-02/03)."
 
 Purpose: This is the §18 'AgentOrchestrator integration' + 'Renderer completion guard' deliverable. It rewires the Phase-3 Appendix-I loop (D-20 fence inversion) so every agent run is budgeted (trajectory cap), rollback-capable (CheckpointRecorder), evidence-gated (buildOutcome terminal), and bounded-replanning (AGT-04) — while preserving the 2-call/healthy-turn cost truth (verifier is deterministic, replan only on tool failure). The pause seam is the core of the AGT-05 commit-confirm barrier; the renderer guard closes the false-completion hole (R-8).
 Output: Rewired runAgentTurn (AgentTurnOutcome return, trajectory transitions, checkpoint seam, replan policy, pause seam, buildOutcome terminal), evidence-aware RendererService, and the three new test suites green. The existing consumer tests break by design here — their enumerated migration is 03a-04 (O3).
@@ -75,7 +75,7 @@ Output: Rewired runAgentTurn (AgentTurnOutcome return, trajectory transitions, c
 1. **Swap the return type to AgentTurnOutcome + invert the D-20 fence.** Read src/core/ai/AgentOrchestrator.ts (current, L1-211) + PRODUCT_SPEC_v0_1.md C.1 AgentTurnOutcome (L4830-4837) + 03-CONTEXT.md D-20 (spec addendum ~L2657). Replace `AgentTurnOutput` with `AgentTurnOutcome` in the interface + return type; delete the `streamedText` field from the output path (deltas flow through onStreamDelta only). Update the file-header D-20 comment to the inverted fence (orchestrator OWNS the reliability machinery now). Import AgentTurnOutcome/AgentTrajectoryState from '@/types/harness'.
 2. **Add the trajectory recorder seam + transitions.** Add `onTransition?: (state: AgentTrajectoryState) => void` to AgentTurnInput. At each stage boundary (assembling-context → planning → executing → verifying → rendering → terminal) emit `transitionPhase(prev, next)` + `input.onTransition?.({ operationId, phase: next, plannerCalls, toolCalls, updatedAt: Date.now() })`. Keep an in-loop `phase` variable. An illegal transition throws AGENT_STATE_INVALID (C5).
 3. **Add the trajectory cap.** Implement `export function trajectoryCapFor(tier: TurnCaps): number { return tier.plannerCap + tier.toolCap + 1 }` in AgentOrchestrator.ts (D-3a-10, A3). At loop top, if `plannerCalls + toolCalls >= trajectoryCapFor(input.tier)` force-terminate with status 'partial' + reasonCode 'trajectory_cap_exceeded' (after rendering once with accumulated toolResults).
-4. **Add the checkpoint seam + replan-on-tool-failure.** Import CheckpointRecorder. Before each ExecutorService.execute: `checkpoint.capture(input.operationId, { toolResults: [...toolResults], plannerCalls, toolCalls, phase })`. On `result.ok === false && result.error?.retryable === true && !replannedThisTool`: restore the captured state (discard the failed result), append an F-4 `tool_result` PromptSection (`{ kind: 'tool_result', text: '<toolName> failed: <error.code>', tokens, stable: false, sourceId: 'replan-feedback' }`) to the planner input sections, set `replannedThisTool = true`, plannerCalls++, and re-invoke planOnce. On an identical failure (same toolName + same error.code) after the replan → terminal status 'failed' + reasonCode 'replan_identical_failure'. Planner-side failures keep the existing planner_failed fallback — no replan (D-3a-11, R-2).
+4. **Add the checkpoint seam + replan-on-tool-failure.** Import CheckpointRecorder. Before each ExecutorService.execute: `checkpoint.capture(input.operationId, { toolResults: [...toolResults], plannerCalls, toolCalls, phase })`. Track replans per tool in a `const replannedTools = new Set<string>()` keyed by toolName (D-3a-12 tuple identity — "at most one replan per failed tool", not a turn-level boolean). On `result.ok === false && result.error?.retryable === true && !replannedTools.has(result.toolName)`: restore the captured state (discard the failed result), append an F-4 `tool_result` PromptSection (`{ kind: 'tool_result', text: '<toolName> failed: <error.code>', tokens, stable: false, sourceId: 'replan-feedback' }`) to the planner input sections, `replannedTools.add(result.toolName)`, plannerCalls++, and re-invoke planOnce. On an identical failure (same toolName + same error.code) after that tool's replan → terminal status 'failed' + reasonCode 'replan_identical_failure'. Planner-side failures keep the existing planner_failed fallback — no replan (D-3a-11, R-2).
 5. **Add the pause seam (AGT-05 core).** Add `onInputRequired?: (q: { roleId: string; question: string; options?: string[]; reason: 'clarification' | 'permission' }) => void` to AgentTurnInput. When a planner decision is `ask_clarification` OR a stage emits an input-required event, transition phase to 'waiting-for-permission', call `input.onInputRequired?.({ roleId: 'user', question, options, reason: 'clarification' })`, and WAIT (the turn stays open) — abort cancels the wait (abort wins mid-wait, O4). Do NOT terminate the turn on pause.
 6. **Terminal via buildOutcome + the orchestrator decision authority.** At finish(): build the `caps` object `{ plannerCalls, toolCalls, capHit: <planner/tool/trajectory cap hit> }`, call `buildOutcome(input.operationId, toolResults, verifiers, caps, now)` (03a-02; verifiers keyed by toolName — the mock dangerous tool's verifier from tests/fixtures/trajectory.ts in tests, empty in production since 3a has zero dangerous tools), and map: buildOutcome status 'partial' → partial; 'failed' → if reasonCode 'postcondition_failed' then status 'failed' + reasonCode 'verification_failed' (Open Q1 mapping); else status 'failed' + the O.2 reasonCode. Replan-identical and trajectory-cap overrides as defined above. Return the AgentTurnOutcome. AbortError propagates from any stage (abort wins mid-verify/mid-replan).
 7. **Extend RendererService with the evidence guard.** Read src/core/ai/RendererService.ts RenderInput (L40-54) + render() (L95-160). Add `verdict: string` + `evidence: CompletionEvidence[]` to RenderInput (Open Q3). Pass them into render(); assert in the render path that the renderer never narrates a side-effecting tool as 'done' without a matching `ok:true` evidence entry in the received set (display-only — it never re-verifies or changes status, D-3a-17). Thread verdict + evidence from the orchestrator's finish() call site.

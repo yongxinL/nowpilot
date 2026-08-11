@@ -2,49 +2,49 @@
 phase: 03a-agent-reliability-and-evidence
 plan: 04
 type: execute
-wave: 3
+wave: 4
 depends_on: ["03a-03"]
 files_modified:
-- src/components/pages/useStreamingLLM.ts
-- tests/components/pages/useStreamingLLM.test.tsx
-- tests/core/ai/AgentOrchestrator.test.ts
-- tests/core/ai/AgentOrchestrator.budget.test.ts
+  - src/components/pages/useStreamingLLM.ts
+  - tests/components/pages/useStreamingLLM.test.tsx
+  - tests/core/ai/AgentOrchestrator.test.ts
+  - tests/core/ai/AgentOrchestrator.budget.test.ts
 autonomous: true
 requirements: [AGT-03]
+must_haves:
+  truths:
+    - "src/components/pages/useStreamingLLM.ts consumes `runAgentTurn`'s new `AgentTurnOutcome` (D-3a-18): it reads `result.status` instead of `result.reasonCode`-as-terminal. The honest partial mapping (D-3a-19): `completed → { state:'completed' }`; `partial → { state:'failed' }` (partial text retained + Retry); `failed → { state:'failed' }`; `aborted → { state:'idle' }`. `provider_unconfigured` stays a failed terminal (unchanged UX)."
+    - "The D-20 fence test (tests/core/ai/AgentOrchestrator.test.ts L358-362, `expect(src).not.toMatch(/CompletionEvidence|OutcomeVerifier|trajectory/)`) is INVERTED: it now asserts the orchestrator source DOES reference the reliability machinery (the fence 3a inverts) — or is replaced by the new behavior tests. It must NOT silently rot (Pitfall 1)."
+    - "tests/core/ai/AgentOrchestrator.test.ts shape assertions migrate from `AgentTurnOutput` to `AgentTurnOutcome`: `output.streamedText` reads removed (text arrives via onStreamDelta), `output.toolResults` removed from the output struct, `output.reasonCode` assertions replaced by `output.status` (+ reasonCode where meaningful). Enumerated deltas only — no blanket rewrite (O3)."
+    - "tests/core/ai/AgentOrchestrator.budget.test.ts reasonCode assertions migrate to status semantics: `{ reasonCode: 'success' }` → `{ status: 'completed' }` (the CR-01 regression the suite guards stays — a legitimate medium-tier 2-tool turn completes with an answer, renderer runs, retry budget intact)."
+    - "tests/components/pages/useStreamingLLM.test.tsx covers D-3a-19 explicitly: a cap-exhausted turn (partial) surfaces as 'failed' (partial text retained) — never 'completed'; an aborted turn surfaces as 'idle'; a completed turn surfaces as 'completed'."
+  artifacts:
+    - "src/components/pages/useStreamingLLM.ts"
+    - "tests/components/pages/useStreamingLLM.test.tsx"
+    - "tests/core/ai/AgentOrchestrator.test.ts"
+    - "tests/core/ai/AgentOrchestrator.budget.test.ts"
+  key_links:
+    - "useStreamingLLM.ts L152-192 currently maps result.reasonCode → ChatStreamState; the rewire reads result.status (D-3a-19). ChatStreamState (idle/streaming/completed/failed/offline, L55-60) is unchanged — only the mapping source changes."
+    - "AgentOrchestrator.test.ts asserts AgentTurnOutput at L127-132/245-250 (shape) + L358-362 (D-20 fence); budget.test.ts asserts reasonCode at L139-145/168-173/207-210 — these are the enumerated deltas."
+    - "The D-17 provider-error classification path (budget suite) is untouched by 3a — only the outcome-shape assertions change."
+  flagged_assumptions:
+    - "AGT-03 [boundary — manual review]: the hook surfaces 'partial' as failed (honest non-completion, partial text + Retry) — no new UI surface in 3a (RICH stage indicators are Phase 7); the mapping is wired now, the rich presentation later."
+    - "A1 [research]: verification_failed → status 'failed' + reasonCode 'verification_failed' — the hook treats it as failed (covered by the 'failed' branch of D-3a-19)."
+    - "O3 [research]: the three existing test files are migrated as ENUMERATED deltas (shape flip, fence inversion, status semantics) — never blanket-rewritten; every other assertion in those files is preserved."
+    - "Pitfall 3 [research]: the budget suite's cap assertions flip from reasonCode 'planner_cap_reached'/'tool_cap_reached' to status 'partial' + 'cap_exhausted' where the suite exercises cap exhaustion."
+  prohibitions:
+    - "No new UI surface / no stage indicators (RICH is Phase 7 — the mapping is status→state only, D-3a-19)."
+    - "No blanket rewrite of the three test files (O3 — only the enumerated shape/fence/status assertions change)."
+    - "No silent removal of the D-20 fence test (Pitfall 1 — it must be inverted or replaced, never left asserting the old contract)."
+    - "No 'completed' surfacing for a partial turn (AGT-03 honesty — partial must map to failed)."
+    - "No free-form error strings (GR-9) — the hook's debugLog uses classifyProviderError codes as today."
+    - "No streamedText re-added to any output struct (D-3a-18 — text travels via onStreamDelta)."
+---
 
 <!-- 03a-04 (2026-08-11): the enumerated consumer migration (O3) + the honest partial mapping
      (D-3a-19). AgentTurnOutput→AgentTurnOutcome shape flip in the hook and the two existing
      orchestrator suites; the D-20 fence test INVERTED; reasonCode→status semantics in the
      budget suite. Never blanket rewrites — enumerated deltas only. -->
-
-must_haves:
-truths:
-- "src/components/pages/useStreamingLLM.ts consumes `runAgentTurn`'s new `AgentTurnOutcome` (D-3a-18): it reads `result.status` instead of `result.reasonCode`-as-terminal. The honest partial mapping (D-3a-19): `completed → { state:'completed' }`; `partial → { state:'failed' }` (partial text retained + Retry); `failed → { state:'failed' }`; `aborted → { state:'idle' }`. `provider_unconfigured` stays a failed terminal (unchanged UX)."
-- "The D-20 fence test (tests/core/ai/AgentOrchestrator.test.ts L358-362, `expect(src).not.toMatch(/CompletionEvidence|OutcomeVerifier|trajectory/)`) is INVERTED: it now asserts the orchestrator source DOES reference the reliability machinery (the fence 3a inverts) — or is replaced by the new behavior tests. It must NOT silently rot (Pitfall 1)."
-- "tests/core/ai/AgentOrchestrator.test.ts shape assertions migrate from `AgentTurnOutput` to `AgentTurnOutcome`: `output.streamedText` reads removed (text arrives via onStreamDelta), `output.toolResults` removed from the output struct, `output.reasonCode` assertions replaced by `output.status` (+ reasonCode where meaningful). Enumerated deltas only — no blanket rewrite (O3)."
-- "tests/core/ai/AgentOrchestrator.budget.test.ts reasonCode assertions migrate to status semantics: `{ reasonCode: 'success' }` → `{ status: 'completed' }` (the CR-01 regression the suite guards stays — a legitimate medium-tier 2-tool turn completes with an answer, renderer runs, retry budget intact)."
-- "tests/components/pages/useStreamingLLM.test.tsx covers D-3a-19 explicitly: a cap-exhausted turn (partial) surfaces as 'failed' (partial text retained) — never 'completed'; an aborted turn surfaces as 'idle'; a completed turn surfaces as 'completed'."
-artifacts:
-- src/components/pages/useStreamingLLM.ts
-- tests/components/pages/useStreamingLLM.test.tsx
-- tests/core/ai/AgentOrchestrator.test.ts
-- tests/core/ai/AgentOrchestrator.budget.test.ts
-key_links:
-- "useStreamingLLM.ts L152-192 currently maps result.reasonCode → ChatStreamState; the rewire reads result.status (D-3a-19). ChatStreamState (idle/streaming/completed/failed/offline, L55-60) is unchanged — only the mapping source changes."
-- "AgentOrchestrator.test.ts asserts AgentTurnOutput at L127-132/245-250 (shape) + L358-362 (D-20 fence); budget.test.ts asserts reasonCode at L139-145/168-173/207-210 — these are the enumerated deltas."
-- "The D-17 provider-error classification path (budget suite) is untouched by 3a — only the outcome-shape assertions change."
-flagged_assumptions:
-- "AGT-03 [boundary — manual review]: the hook surfaces 'partial' as failed (honest non-completion, partial text + Retry) — no new UI surface in 3a (RICH stage indicators are Phase 7); the mapping is wired now, the rich presentation later."
-- "A1 [research]: verification_failed → status 'failed' + reasonCode 'verification_failed' — the hook treats it as failed (covered by the 'failed' branch of D-3a-19)."
-- "O3 [research]: the three existing test files are migrated as ENUMERATED deltas (shape flip, fence inversion, status semantics) — never blanket-rewritten; every other assertion in those files is preserved."
-- "Pitfall 3 [research]: the budget suite's cap assertions flip from reasonCode 'planner_cap_reached'/'tool_cap_reached' to status 'partial' + 'cap_exhausted' where the suite exercises cap exhaustion."
-prohibitions:
-- "No new UI surface / no stage indicators (RICH is Phase 7 — the mapping is status→state only, D-3a-19)."
-- "No blanket rewrite of the three test files (O3 — only the enumerated shape/fence/status assertions change)."
-- "No silent removal of the D-20 fence test (Pitfall 1 — it must be inverted or replaced, never left asserting the old contract)."
-- "No 'completed' surfacing for a partial turn (AGT-03 honesty — partial must map to failed)."
-- "No free-form error strings (GR-9) — the hook's debugLog uses classifyProviderError codes as today."
-- "No streamedText re-added to any output struct (D-3a-18 — text travels via onStreamDelta)."
 
 Purpose: 03a-03 changed the contract; this plan fixes every consumer with enumerated deltas so the phase stays honest end-to-end. The hook's D-3a-19 mapping is the user-visible half of AGT-03 (partial is surfaced as failed, never completed). The D-20 fence inversion and the AgentTurnOutput→AgentTurnOutcome shape flips keep the two existing orchestrator suites meaningful — they are migrated, not discarded (O3, Pitfall 1).
 Output: useStreamingLLM.ts reads AgentTurnOutcome.status; the three existing test files migrated to the new contract with the D-20 fence inverted and the honest partial mapping tested; full tests/core/ai/** + tests/components/** green again.
