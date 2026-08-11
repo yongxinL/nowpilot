@@ -39,7 +39,7 @@
 - [x] **AI-04**: Tier caps and monthly budget enforce cost guardrails (cheapest-capable routing)
 - [x] **AI-05**: PersonaInjector and prompt pipeline ensure all AI calls consume an OptimizedContext
 - [x] **AI-06**: RICH chat surfaces (Bubble, Sender, Prompts, Welcome, etc.) render streamed AI output
-- [ ] **AI-07**: MCP client (StreamableHTTP) + NowPilotMainServer (12 tools) + MCPRegistry work
+- [x] **AI-07**: MCP client (StreamableHTTP) + NowPilotMainServer (12 tools) + MCPRegistry work
 
 > **AI-07 → Phase 8 (D-06, 03-01):** MCP is dependency-blocked (PageContentService → 4a, NotesDB → 5, ClipboardHelper → 8) and must ship WITH `ToolCapabilityManifest`/verifiers (Phase 8a, TOL-01…05), never governance-less. §18 is authoritative over this row — the Phase-3 AI-07 bullet is NOT a Phase-3 deliverable.
 >
@@ -185,7 +185,7 @@ Deferred to a future release. Tracked but not in the current roadmap.
 | WSPC-01…05 | Phase 1 | Done |
 | STORAGE-01…05 | Phase 2 | Pending |
 | AI-01…06 | Phase 3 | Done |
-| AI-07 | Phase 8 (re-mapped per D-06 — MCP dependency-blocked to Phase 8/8a) | Pending |
+| AI-07 | Phase 8 (re-mapped per D-06 — MCP dependency-blocked to Phase 8/8a) | Complete |
 | AGT-01…05 | Phase 3a | Pending |
 | CTX-01…04 | Phase 4 | Pending |
 | CAT-01…05 | Phase 4a | Pending |
