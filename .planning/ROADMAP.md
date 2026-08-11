@@ -185,7 +185,7 @@ Plans:
   4. Replanning is bounded by tier caps and never nested; abort works cleanly.
   5. Evidence/false-completion tests pass (commit-confirm barrier UI deferred to Phase 8 — D-3a-01).
 
-**Plans**: 1/5 plans executed
+**Plans**: 2/5 plans executed
 
 Plans:
 **Wave 1**
@@ -194,7 +194,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 03a-02-PLAN.md — OutcomeVerifier (O.2 verbatim buildOutcome) + CheckpointRecorder + evidence/partial/cap tests (wave 2)
+- [x] 03a-02-PLAN.md — OutcomeVerifier (O.2 verbatim buildOutcome) + CheckpointRecorder + evidence/partial/cap tests (wave 2)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -443,7 +443,7 @@ Plans:
 | 1. MV3/WXT Runtime + AntD Shells + Workspace | 11/11 | Complete    | 2026-08-08 |
 | 2. Storage, Security, WriteJournal, Workspace Persistence | 11/11 | Complete    | 2026-08-09 |
 | 3. Cost-Effective AI Runtime (+ Persona seed) | 16/16 | Complete    | 2026-08-11 |
-| 3a. Agent Reliability and Evidence | 1/5 | In Progress|  |
+| 3a. Agent Reliability and Evidence | 2/5 | In Progress|  |
 | 4. Context-Adaptive Execution | TBD | Not started | - |
 | 4a. PageContentService (Knowledge Acquisition) | TBD | Not started | - |
 | 4b. Trust-Aware Context and Receipts | TBD | Not started | - |

@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 03a
 current_phase_name: agent-reliability-and-evidence
 status: executing
-stopped_at: Completed 03a-01-PLAN.md
-last_updated: "2026-08-11T21:36:41.892Z"
+stopped_at: Completed 03a-02-PLAN.md
+last_updated: "2026-08-11T21:53:00.535Z"
 last_activity: 2026-08-11
 last_activity_desc: Phase 03a execution started
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 43
-  completed_plans: 39
+  completed_plans: 40
 ---
 
 # Project State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-08-09)
 ## Current Position
 
 Phase: 03a (agent-reliability-and-evidence) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-08-11 — Phase 03a execution started
 
-Progress: [█████████░] 91%
+Progress: [█████████░] 93%
 
 ## Performance Metrics
 
@@ -85,6 +85,7 @@ Progress: [█████████░] 91%
 | Phase 03 P15 | 20min | 3 tasks | 4 files |
 | Phase 03-cost-effective-ai-runtime-persona-seed P16 | 13min | 3 tasks | 5 files |
 | Phase 03a P01 | 11min | 7 tasks | 8 files |
+| Phase 03a P02 | 8 | 5 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -169,6 +170,10 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 03a]: Zod boundary schemas co-located inline in src/types/harness.ts (D-3a-20, GR-4), zod 3 API only — mirrors ProviderConfigSchema precedent
 - [Phase 03a]: 'tool_result' maps to TASK_KINDS (provider prompt side) in BOTH ProviderRouter.ts and StructuredOutput.ts and never enters CACHED_KINDS (cache-stability, Pitfall 2/7)
 - [Phase 03a]: ContextProvenanceManifest.sections[].kind mirrors PromptSection['kind'] and must track its extensions (03a-01 Rule 3: 'tool_result' added in lockstep)
+- [Phase ?]: buildOutcome is Appendix O.2 VERBATIM (L6362-6393) with ONE documented deviation: injectable now clock for verifiedAt (Pitfall 6; production default Date.now unchanged) — D-3a-03 determinism — flagged_assumptions 03a-02
+- [Phase ?]: Cap exhaustion => status 'partial' + reasonCode 'cap_exhausted' regardless of side-effect failure; capHit wins the O.2 ternary (D-3a-07, AGT-03) — O.2 L6387-6391 verbatim
+- [Phase ?]: Absent/!ok evidence for a side-effecting tool => 'failed' + reasonCode 'postcondition_failed' (fail-closed, D-3a-06; O.2 string kept verbatim per Open Q1) — R-8 safety invariant; reasonCode vocabulary split resolved
+- [Phase ?]: CheckpointRecorder uses structuredClone on BOTH capture and restore; in-memory per-turn only (C4, §17.7.7); no side-effect compensation (Phase 8 TOL-05) — D-3a-08/09 truth 4 no-shared-references + deep-copied-restore contract
 
 ### Pending Todos
 
@@ -197,6 +202,6 @@ Items acknowledged and carried forward (v2 scope, tracked in REQUIREMENTS.md):
 
 ## Session Continuity
 
-Last session: 2026-08-11T21:36:27.545Z
-Stopped at: Completed 03a-01-PLAN.md
+Last session: 2026-08-11T21:52:50.001Z
+Stopped at: Completed 03a-02-PLAN.md
 Resume file: None
