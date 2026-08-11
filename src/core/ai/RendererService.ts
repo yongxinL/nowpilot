@@ -16,11 +16,18 @@
 // silently returned as a 'complete' text (done XOR error). The caller's
 // abortSignal is threaded unchanged into the constructed call so cancel stops
 // generation — no orphaned request bills tokens (T-03-06-04).
+//
+// Breaker/stream-freeze wiring (WR-02, 03-12): provider-originated failures —
+// the mid-stream catch and the non-'stop' finish branch — vote the provider's
+// breaker through the Router singleton (T-03-12-01); the isAbortError guard
+// keeps a user abort from ever voting. The first streamed delta freezes the
+// operation (exactly once per render) so the D-14/§1.5 stream_frozen guard in
+// createStageInvocation is reachable (T-03-12-02).
 import { streamText } from 'ai';
 
 import { debugLog } from '@/core/error/debugLog';
 import { ERROR_CODES } from '@/core/error/errorCodes';
-import { buildStageMessages } from '@/core/ai/ProviderRouter';
+import { buildStageMessages, getProviderRouter } from '@/core/ai/ProviderRouter';
 import type { StageInvocation } from '@/core/ai/ProviderRouter';
 import type { OptimizedContext, ToolExecutionResult } from '@/core/ai/types';
 
@@ -65,6 +72,16 @@ function streamFailed(message: string, partialText: string): StreamFailedError {
   return err;
 }
 
+/**
+ * User-abort guard (WR-02, T-03-12-01): name-match pattern (ProviderRouter /
+ * AgentOrchestrator precedent) — a user abort is NOT a provider failure and
+ * must never vote the breaker. DOMException does not extend Error in every
+ * runtime, so match by name, never by instanceof alone.
+ */
+function isAbortError(err: unknown): boolean {
+  return err instanceof Error && err.name === 'AbortError';
+}
+
 export const RendererService = {
   render,
 };
@@ -85,15 +102,28 @@ export async function render(input: RenderInput): Promise<RenderOutput> {
 
   let accumulated = '';
   let finishReason: string;
+  let firstTokenMarked = false; // WR-02: exactly ONE freeze mark per render (D-14)
   try {
     for await (const delta of result.textStream) {
       accumulated += delta;
       input.onDelta?.(delta);
+      // WR-02 (§1.5 / D-14): the first streamed token freezes the provider —
+      // from here on createStageInvocation refuses to switch (stream_frozen).
+      if (!firstTokenMarked) {
+        getProviderRouter().markStreamedFirstToken(input.operationId);
+        firstTokenMarked = true;
+      }
     }
     // Pitfall 5: ALWAYS await the terminal member — never return un-await-verified text.
     finishReason = await result.finishReason;
   } catch (e) {
     const err = e instanceof Error ? e : new Error(String(e));
+    // WR-02 (T-03-12-01): a provider-originated mid-stream failure votes the
+    // provider's breaker — a user abort (AbortError) is not a provider failure
+    // and must never vote.
+    if (!isAbortError(e)) {
+      getProviderRouter().recordFailure(input.invocation.providerId, ERROR_CODES.STREAM_FAILED, err);
+    }
     debugLog(ERROR_CODES.STREAM_FAILED, 'renderer stream aborted mid-generation', {
       module: 'RendererService',
       error: err,
@@ -104,6 +134,9 @@ export async function render(input: RenderInput): Promise<RenderOutput> {
   if (finishReason !== 'stop') {
     // Streaming honesty: a truncated/aborted finish is a FAILED terminal, never
     // a silently-truncated 'complete' text (the UI renders the failed state).
+    // WR-02 (T-03-12-01): a content-filter/length finish is a provider behavior,
+    // never a user abort — it votes the breaker (no isAbortError guard needed).
+    getProviderRouter().recordFailure(input.invocation.providerId, ERROR_CODES.STREAM_FAILED);
     debugLog(
       ERROR_CODES.STREAM_FAILED,
       `renderer finished with ${finishReason} — failed terminal`,
