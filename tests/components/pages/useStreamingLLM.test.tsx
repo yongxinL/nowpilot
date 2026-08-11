@@ -141,8 +141,10 @@ describe('useStreamingLLM — send path (Golden Rule 3 + D-02)', () => {
     // Have the mock invoke the resolver for the planner stage to prove the
     // hook wired the Router seam (per-stage maxTokens 256 planner / 512 renderer).
     runAgentTurnMock.mockImplementationOnce(async (input: AgentTurnInputLike) => {
-      const planner = input.invocation?.('planner');
-      const renderer = input.invocation?.('renderer');
+      // Prove the hook wired the Router seam: invoke the resolver for both
+      // stages (the per-stage maxTokens are asserted from the call args below).
+      input.invocation?.('planner');
+      input.invocation?.('renderer');
       return {
         operationId: input.operationId,
         status: 'completed',

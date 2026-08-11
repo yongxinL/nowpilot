@@ -148,9 +148,7 @@ describe('runAgentTurn — healthy turn costs EXACTLY 2 model calls (AI-SPEC cos
     // Phase 8). The 03a-03 trajectory suite proves the pause; this legacy
     // consumer asserts the payload + abort-wins behavior instead of the
     // removed terminal reasonCode.
-    const turn = runAgentTurn(
-      baseInput({ onInputRequired, abortSignal: controller.signal }),
-    );
+    const turn = runAgentTurn(baseInput({ onInputRequired, abortSignal: controller.signal }));
     await vi.waitFor(() => expect(onInputRequired).toHaveBeenCalledTimes(1));
     expect(onInputRequired).toHaveBeenCalledWith({
       roleId: 'user',
@@ -334,7 +332,7 @@ describe('runAgentTurn — onStreamDelta seam (AI-03): deltas BEFORE completion'
       return { text: 'd1', finishReason: 'stop' };
     });
 
-    const output = await runAgentTurn(baseInput({ onStreamDelta }));
+    await runAgentTurn(baseInput({ onStreamDelta }));
     order.push('completed');
 
     // streamedText left the output struct (D-3a-18) — the seam claim is
