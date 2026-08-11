@@ -173,6 +173,91 @@ describe('ChatPage — 5-state stream machine (UI-SPEC surface contract)', () =>
   });
 });
 
+describe('ChatPage — WR-04 retry targeting regression (stale-bubble retry cannot wipe the newest message)', () => {
+  beforeEach(() => {
+    setStream('idle');
+    hookMock.send.mockClear();
+    hookMock.retry.mockClear();
+  });
+
+  it('Retry is NOT offered on a stale failed bubble after a newer completed send', async () => {
+    const { forceUpdate } = renderSurface();
+    const input = screen.getByPlaceholderText(STR.chat.askPlaceholder);
+
+    // Turn 1 fails → bubble A ('Partial answer', failed) is the latest.
+    fireEvent.change(input, { target: { value: 'first' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    await waitFor(() => expect(hookMock.send).toHaveBeenCalledWith('first'));
+    setStream('failed', 'Partial answer');
+    forceUpdate();
+    await waitFor(() => expect(screen.getByText('Partial answer')).toBeTruthy());
+    // Latest failed bubble → Retry offered (precondition for the regression).
+    expect(screen.getByText(STR.chat.retry)).toBeTruthy();
+
+    // Turn 2 completes → bubble B ('new answer', completed) becomes the latest.
+    fireEvent.change(input, { target: { value: 'second' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    await waitFor(() => expect(hookMock.send).toHaveBeenCalledWith('second'));
+    setStream('completed', 'new answer');
+    forceUpdate();
+    await waitFor(() => expect(screen.getByText('new answer')).toBeTruthy());
+
+    // The OLD failed bubble A is inert: NO Retry footer anywhere (the latest
+    // is completed), and the newest answer text is intact.
+    expect(screen.queryAllByText(STR.chat.retry)).toHaveLength(0);
+    expect(screen.getByText('new answer')).toBeTruthy();
+  });
+
+  it('clicking Retry on the latest failed bubble still works', async () => {
+    const { forceUpdate } = renderSurface();
+    const input = screen.getByPlaceholderText(STR.chat.askPlaceholder);
+    fireEvent.change(input, { target: { value: 'hello' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    await waitFor(() => expect(hookMock.send).toHaveBeenCalledWith('hello'));
+
+    setStream('failed', 'Partial answer');
+    forceUpdate();
+    await waitFor(() => expect(screen.getByText('Partial answer')).toBeTruthy());
+    // The lone failed bubble IS the latest → Retry present and clickable.
+    expect(screen.getByText(STR.chat.retry)).toBeTruthy();
+    fireEvent.click(screen.getByText(STR.chat.retry));
+
+    await waitFor(() => expect(hookMock.retry).toHaveBeenCalledTimes(1));
+  });
+
+  it('Retry on the latest bubble replaces only the latest content', async () => {
+    const { forceUpdate } = renderSurface();
+    const input = screen.getByPlaceholderText(STR.chat.askPlaceholder);
+
+    // Turn 1 fails → bubble A ('Partial answer', failed).
+    fireEvent.change(input, { target: { value: 'first' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    await waitFor(() => expect(hookMock.send).toHaveBeenCalledWith('first'));
+    setStream('failed', 'Partial answer');
+    forceUpdate();
+    await waitFor(() => expect(screen.getByText('Partial answer')).toBeTruthy());
+
+    // Turn 2 fails → bubble B ('Second partial', failed) becomes the latest.
+    fireEvent.change(input, { target: { value: 'second' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    await waitFor(() => expect(hookMock.send).toHaveBeenCalledWith('second'));
+    setStream('failed', 'Second partial');
+    forceUpdate();
+    await waitFor(() => expect(screen.getByText('Second partial')).toBeTruthy());
+
+    // Two assistant bubbles; the Retry footer appears EXACTLY once — on B.
+    expect(screen.getByText('Partial answer')).toBeTruthy();
+    expect(screen.getByText('Second partial')).toBeTruthy();
+    expect(screen.queryAllByText(STR.chat.retry)).toHaveLength(1);
+
+    // Clicking Retry wipes ONLY the latest bubble's content — the first
+    // answer is never destroyed.
+    fireEvent.click(screen.getByText(STR.chat.retry));
+    await waitFor(() => expect(hookMock.retry).toHaveBeenCalledTimes(1));
+    expect(screen.getByText('Partial answer')).toBeTruthy();
+  });
+});
+
 describe('ChatPage — plain text + RICH fencing (source invariants)', () => {
   const source = readFileSync(join(process.cwd(), 'src/components/pages/ChatPage.tsx'), 'utf8');
 
