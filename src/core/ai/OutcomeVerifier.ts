@@ -7,9 +7,11 @@
 // D-3a-07/AGT-03) and side-effecting success evidence-gated (fail-closed,
 // D-3a-06, R-8).
 //
-// D-3a-03 [deterministic verifier]: ZERO model calls, no verifier PipelineStage,
-// no extra tier cap, no persona injection — a healthy turn stays at 2 model
-// calls (planner + renderer). Verifier = verdict only ({ok, detail}); the
+// D-3a-03 [deterministic verifier]: ZERO LLM calls — no SDK call-construction
+// tokens anywhere in this module (the plan's grep gate proves determinism:
+// zero stream/generate call machinery), no verifier PipelineStage, no extra
+// tier cap, no persona injection — a healthy turn stays at 2 LLM calls
+// (planner + renderer). Verifier = verdict only ({ok, detail}); the
 // orchestrator (03a-03) is the sole terminal decision authority (D-3a-05).
 //
 // D-3a-04 [evidence gates tool-turns only]: read-only tools with no registered
