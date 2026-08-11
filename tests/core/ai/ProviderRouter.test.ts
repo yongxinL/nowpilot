@@ -367,22 +367,39 @@ describe('ProviderRouter — retry + attempt budget (D-17 / R-2)', () => {
     expect(generateObjectMock).toHaveBeenCalledTimes(1);
   });
 
-  it('terminates with no_candidate when the R-2 attempt budget is exhausted', async () => {
-    mockResolveTier({ providerId: 'openai', model: 'deepseek-chat', fallbackChain: [] });
+  it('terminates with no_candidate ONLY after 3 router-owned retries exhaust the R-2 budget (CR-01)', async () => {
+    // CR-01: the R-2 budget counts ONLY D-17 router-owned retried calls —
+    // never legitimate sequential stage calls or repairs. A 3-provider chain
+    // (all native jsonMode — no ollama prompt-mode generateText path) keeps
+    // each retry cycle on a fresh provider (the previous cycle's failed
+    // ledger entry advances the fallback chain), so the BUDGET GATE — not
+    // chain exhaustion — is what terminates the 4th stage resolution.
+    mockResolveTier({
+      providerId: 'openai',
+      model: 'deepseek-chat',
+      fallbackChain: [
+        { providerId: 'anthropic', model: 'claude-haiku-4-latest' },
+        { providerId: 'gemini', model: 'gemini-2.0-flash' },
+      ],
+    });
     const router = new ProviderRouter();
-    const inv = router.createStageInvocation(makeInput());
-    generateObjectMock.mockRejectedValue(apiError(500)); // retryable → attempt + retry
-
-    await expect(
-      inv.callProviderJsonMode(
+    // 3 retry cycles: each callProviderJsonMode = 1 retryable failure + the D-17 retry.
+    for (let cycle = 0; cycle < 3; cycle++) {
+      const inv = router.createStageInvocation(makeInput());
+      generateObjectMock
+        .mockRejectedValueOnce(apiError(500))
+        .mockResolvedValueOnce({ object: { answer: '42' } } as unknown as GenObjectResult);
+      const out = await inv.callProviderJsonMode(
         [section({ kind: 'user_input', text: 'ask', stable: false, sourceId: 'user-input' })],
         { type: 'object', properties: {} },
         new AbortController().signal,
-      ),
-    ).rejects.toMatchObject({ statusCode: 500 });
-    expect(generateObjectMock).toHaveBeenCalledTimes(2); // ≤2 SDK calls, never 3
+      );
+      expect(out).toBe('{"answer":"42"}');
+    }
+    expect(router.getAttemptState('op-test-0001')?.retryCount).toBe(3);
 
-    // The budget is spent: the next createStageInvocation for this operation refuses.
+    // The retry budget is spent: the next createStageInvocation for this
+    // operation refuses at the R-2 gate — no_candidate with the budget detail.
     let caught: unknown;
     try {
       router.createStageInvocation(makeInput());
@@ -390,6 +407,26 @@ describe('ProviderRouter — retry + attempt budget (D-17 / R-2)', () => {
       caught = e;
     }
     expect((caught as ProviderUnavailableError).reason).toBe('no_candidate');
+    expect((caught as ProviderUnavailableError).detail).toBe('router attempt budget exhausted');
+  });
+
+  it('a legitimate FIRST call of a stage never consumes the R-2 retry budget (CR-01)', async () => {
+    mockResolveTier({ providerId: 'openai', model: 'deepseek-chat', fallbackChain: [] });
+    const router = new ProviderRouter();
+    const inv = router.createStageInvocation(makeInput());
+    generateObjectMock.mockResolvedValueOnce({
+      object: { answer: '42' },
+    } as unknown as GenObjectResult);
+
+    await inv.callProviderJsonMode(
+      [section({ kind: 'user_input', text: 'ask', stable: false, sourceId: 'user-input' })],
+      { type: 'object', properties: {} },
+      new AbortController().signal,
+    );
+
+    expect(generateObjectMock).toHaveBeenCalledTimes(1);
+    // A successful first call leaves the router-owned retry budget untouched.
+    expect(router.getAttemptState('op-test-0001')?.retryCount).toBe(0);
   });
 });
 

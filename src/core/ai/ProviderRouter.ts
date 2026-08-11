@@ -116,10 +116,18 @@ export interface ProviderAttempt {
  * dies on panel close; no cross-surface sharing in v0.1 (AI-04 flagged
  * assumption). `circuitBreakerOpen` snapshots the provider breaker state
  * (providerId → reopen epoch ms; absent = closed).
+ *
+ * CR-01 (03-10): `attempts` is the OBSERVABILITY ledger (every SDK call);
+ * `retryCount` is the R-2 router-owned RETRY budget (D-17) — it counts ONLY
+ * the exactly-one retried SDK call per retryable pre-first-token failure,
+ * never a stage's first invocation and never a structured-output repair
+ * (legitimate sequential stage calls and repairs must not consume the budget).
  */
 export interface RouterAttemptState {
   operationId: string;
   attempts: ProviderAttempt[];
+  /** R-2 (CR-01): only D-17 router-owned retried SDK calls increment this. */
+  retryCount: number;
   hasStreamedFirstToken: boolean;
   circuitBreakerOpen: Partial<Record<ProviderId, number>>;
 }
@@ -389,8 +397,10 @@ export class ProviderRouter {
         'provider frozen after the first streamed token',
       );
     }
-    if (this.attemptCount(input.operationId) >= ROUTER_MAX_ATTEMPTS) {
-      // R-2: the non-multiplying budget is spent — terminate, never re-enter.
+    if (this.retryCount(input.operationId) >= ROUTER_MAX_ATTEMPTS) {
+      // R-2 (CR-01): the router-owned RETRY budget is spent — terminate, never
+      // re-enter. Legitimate sequential stage calls (planner loop iterations,
+      // the renderer resolution) NEVER consume this budget.
       throw unavailable('no_candidate', undefined, 'router attempt budget exhausted');
     }
     // 03-09 wiring baseline fallback: per-call values win; configure()'d
@@ -583,8 +593,11 @@ export class ProviderRouter {
           guard.reason ?? 'budget guard refused',
         );
       }
-      const attempt = async (): Promise<string> => {
-        if (this.attemptCount(input.operationId) >= ROUTER_MAX_ATTEMPTS) {
+      // CR-01: the inner attempt takes `isRetry` — the FIRST call per
+      // stage/repair passes false (never consumes the R-2 budget); only the
+      // D-17 retried call (below, L616-619) passes true.
+      const attempt = async (isRetry: boolean): Promise<string> => {
+        if (this.retryCount(input.operationId) >= ROUTER_MAX_ATTEMPTS) {
           throw unavailable('no_candidate', cand.providerId, 'router attempt budget exhausted');
         }
         try {
@@ -597,25 +610,40 @@ export class ProviderRouter {
             jsonSchema,
             signal,
           );
-          this.recordAttempt(input.operationId, cand.providerId, cand.model, 'success');
+          this.recordAttempt(
+            input.operationId,
+            cand.providerId,
+            cand.model,
+            'success',
+            undefined,
+            isRetry,
+          );
           return out;
         } catch (e) {
           const cls = this.classifyProviderError(e);
-          this.recordAttempt(input.operationId, cand.providerId, cand.model, 'failed', cls.code);
+          this.recordAttempt(
+            input.operationId,
+            cand.providerId,
+            cand.model,
+            'failed',
+            cls.code,
+            isRetry,
+          );
           this.voteBreaker(cand.providerId, cls.code, e);
           throw e;
         }
       };
       try {
-        return await attempt();
+        return await attempt(false);
       } catch (e) {
         const cls = this.classifyProviderError(e);
         // D-17: exactly ONE router retry per retryable pre-first-token code;
         // non-retryable (PROVIDER_AUTH/MODEL_UNKNOWN/SCHEMA_INVALID/
-        // HOST_NOT_PERMITTED) never retry (R-2 — never a nested loop).
+        // HOST_NOT_PERMITTED) never retry (R-2 — never a nested loop). The
+        // retried call is the ONLY one that increments retryCount (CR-01).
         if (cls.retryable && !retried) {
           retried = true;
-          return await attempt();
+          return await attempt(true);
         }
         throw e;
       }
@@ -674,7 +702,13 @@ export class ProviderRouter {
   private operationState(operationId: string): RouterAttemptState {
     let state = this.operations.get(operationId);
     if (!state) {
-      state = { operationId, attempts: [], hasStreamedFirstToken: false, circuitBreakerOpen: {} };
+      state = {
+        operationId,
+        attempts: [],
+        retryCount: 0,
+        hasStreamedFirstToken: false,
+        circuitBreakerOpen: {},
+      };
       this.operations.set(operationId, state);
     }
     // Keep the snapshot's breaker map current — the class map is the source of truth.
@@ -684,8 +718,9 @@ export class ProviderRouter {
     return state;
   }
 
-  private attemptCount(operationId: string): number {
-    return this.operationState(operationId).attempts.length;
+  /** CR-01: the R-2 router-owned retry budget (only D-17 retried calls count). */
+  private retryCount(operationId: string): number {
+    return this.operationState(operationId).retryCount;
   }
 
   private recordAttempt(
@@ -694,9 +729,12 @@ export class ProviderRouter {
     model: string,
     outcome: ProviderAttempt['outcome'],
     errorCode?: ErrorCode,
+    isRetry = false,
   ): void {
     const state = this.operationState(operationId);
     state.attempts.push({ providerId, model, at: this.now(), outcome, errorCode });
+    // CR-01: only the D-17 router-owned retried call consumes the R-2 budget.
+    if (isRetry) state.retryCount += 1;
     // Consecutive-failure semantics (§1.5): a success clears the provider's votes.
     if (outcome === 'success') this.failureVotes.delete(providerId);
   }
