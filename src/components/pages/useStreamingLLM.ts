@@ -160,13 +160,29 @@ export function useStreamingLLM(): UseStreamingLLMResult {
         });
         if (operationIdRef.current !== operationId) return; // superseded by a new send
         bufferRef.current?.flushNow();
-        // D-07 gate is the shell's job; a defensively-surfaced
-        // provider_unconfigured reasonCode is an honest failed terminal here.
+        // D-3a-19 (AGT-03): map the honest AgentTurnOutcome.status to the
+        // surface state machine — completed → completed; partial|failed →
+        // failed (partial text retained + Retry, NEVER 'completed' — a capped
+        // turn is honest non-completion); aborted → idle. ChatStreamState is
+        // unchanged (idle/streaming/completed/failed/offline) — only the
+        // mapping source changed from reasonCode-as-terminal to status.
         if (result.reasonCode === 'provider_unconfigured') {
+          // D-07 gate is the shell's job; a defensively-surfaced
+          // provider_unconfigured reasonCode is an honest failed terminal
+          // (status 'failed' — unchanged UX, D-3a-19).
           setState({ state: 'failed', operationId });
           return;
         }
-        setState({ state: 'completed', operationId });
+        if (result.status === 'completed') {
+          setState({ state: 'completed', operationId });
+          return;
+        }
+        if (result.status === 'aborted') {
+          setState({ state: 'idle' });
+          return;
+        }
+        // partial | failed (incl. provider_unconfigured) → the failed bubble.
+        setState({ state: 'failed', operationId });
       } catch (e) {
         if (operationIdRef.current !== operationId) return; // superseded by a new send
         bufferRef.current?.flushNow(); // retain partial text for the failed bubble
