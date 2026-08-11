@@ -355,9 +355,12 @@ describe('capsForTier — §1.4 verbatim caps shape (never ModelContextTier)', (
   });
 });
 
-describe('AgentOrchestrator — D-20 source invariant', () => {
-  it('the orchestrator source carries zero evidence-machinery tokens (Phase 3a owns that machinery)', () => {
+describe('AgentOrchestrator — D-20 source invariant (INVERTED by 3a, D-3a-18)', () => {
+  it('the orchestrator source OWNS the reliability machinery (the Phase-3 fence is inverted)', () => {
     const src = readFileSync(join(process.cwd(), 'src/core/ai/AgentOrchestrator.ts'), 'utf8');
-    expect(src).not.toMatch(/CompletionEvidence|OutcomeVerifier|trajectory/);
+    // Phase 3a inverted the D-20 fence: the orchestrator now embeds
+    // trajectory transitions, buildOutcome, and the AgentTurnOutcome return
+    // (03a-03). Asserting the OLD absence contract would silently rot (Pitfall 1).
+    expect(src).toMatch(/AgentTurnOutcome|OutcomeVerifier|trajectory/);
   });
 });
