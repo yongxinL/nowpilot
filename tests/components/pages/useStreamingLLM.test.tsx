@@ -9,6 +9,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useStreamingLLM } from '@/components/pages/useStreamingLLM';
+import type { AgentTurnOutcome } from '@/types/harness';
 import { FIXED_PREFERENCES } from '../../fixtures/optimizedContext';
 
 // ---------------------------------------------------------------------------
@@ -64,14 +65,22 @@ interface AgentTurnInputLike {
   invocation?: (stage: 'planner' | 'renderer') => unknown;
 }
 
-function resolveTurn(deltas: string[], streamedText: string, reasonCode = 'answer') {
+function resolveTurn(
+  deltas: string[],
+  outcome: { status: AgentTurnOutcome['status']; reasonCode?: string } = {
+    status: 'completed',
+    reasonCode: 'ok',
+  },
+) {
   runAgentTurnMock.mockImplementationOnce(async (input: AgentTurnInputLike) => {
     for (const d of deltas) input.onStreamDelta?.(d);
     return {
       operationId: input.operationId,
-      streamedText,
-      toolResults: [],
-      reasonCode,
+      status: outcome.status,
+      reasonCode: outcome.reasonCode ?? 'ok',
+      evidence: [],
+      plannerCalls: 1,
+      toolCalls: 0,
     };
   });
 }
@@ -99,7 +108,7 @@ beforeEach(() => {
 
 describe('useStreamingLLM — send path (Golden Rule 3 + D-02)', () => {
   it('sends through runAgentTurn with a contextHelper-built OptimizedContext (never React-assembled prompts)', async () => {
-    resolveTurn(['Hel'], 'Hello');
+    resolveTurn(['Hel']);
     const { result } = renderHook(() => useStreamingLLM());
 
     await act(async () => {
@@ -117,7 +126,7 @@ describe('useStreamingLLM — send path (Golden Rule 3 + D-02)', () => {
   });
 
   it('streams deltas through the ChunkBuffer into the growing text (rAF flush)', async () => {
-    resolveTurn(['Hel', 'lo, ', 'world'], 'Hello, world');
+    resolveTurn(['Hel', 'lo, ', 'world']);
     const { result } = renderHook(() => useStreamingLLM());
 
     await act(async () => {
@@ -136,11 +145,11 @@ describe('useStreamingLLM — send path (Golden Rule 3 + D-02)', () => {
       const renderer = input.invocation?.('renderer');
       return {
         operationId: input.operationId,
-        streamedText: 'ok',
-        toolResults: [],
-        reasonCode: 'answer',
-        plannerResolved: !!planner,
-        rendererResolved: !!renderer,
+        status: 'completed',
+        reasonCode: 'ok',
+        evidence: [],
+        plannerCalls: 1,
+        toolCalls: 0,
       };
     });
     const { result } = renderHook(() => useStreamingLLM());
@@ -173,7 +182,7 @@ describe('useStreamingLLM — 5-state machine', () => {
   });
 
   it('goes streaming immediately, then completed with the final text', async () => {
-    resolveTurn(['a'], 'a');
+    resolveTurn(['a']);
     const { result } = renderHook(() => useStreamingLLM());
 
     // Gate the persona read so the streaming state is observable BEFORE the
@@ -219,13 +228,71 @@ describe('useStreamingLLM — 5-state machine', () => {
   });
 
   it('does NOT write the D-11 session stream key (in-memory per surface)', async () => {
-    resolveTurn(['x'], 'x');
+    resolveTurn(['x']);
     const { result } = renderHook(() => useStreamingLLM());
     await act(async () => {
       await result.current.send('hi');
     });
     // No chrome.storage.session writes at all on the send path (D-03/D-14).
     expect(result.current.state.state).toBe('completed');
+  });
+});
+
+describe('useStreamingLLM — D-3a-19 honest status mapping (AGT-03)', () => {
+  it('a cap-exhausted partial turn surfaces as failed with partial text retained — NEVER completed', async () => {
+    resolveTurn(['Partial ', 'answer'], { status: 'partial', reasonCode: 'cap_exhausted' });
+    const { result } = renderHook(() => useStreamingLLM());
+
+    await act(async () => {
+      await result.current.send('hi');
+    });
+
+    // D-3a-19: partial → failed (honest non-completion — the capped turn keeps
+    // its partial text and offers Retry; it must never read as 'completed').
+    expect(result.current.text).toBe('Partial answer');
+    expect(result.current.state).toEqual({
+      state: 'failed',
+      operationId: (runAgentTurnMock.mock.calls[0][0] as AgentTurnInputLike).operationId,
+    });
+  });
+
+  it('a failed turn surfaces as failed', async () => {
+    resolveTurn([], { status: 'failed', reasonCode: 'planner_failed' });
+    const { result } = renderHook(() => useStreamingLLM());
+
+    await act(async () => {
+      await result.current.send('hi');
+    });
+
+    expect(result.current.state).toEqual({
+      state: 'failed',
+      operationId: (runAgentTurnMock.mock.calls[0][0] as AgentTurnInputLike).operationId,
+    });
+  });
+
+  it('an aborted turn surfaces as idle', async () => {
+    resolveTurn([], { status: 'aborted' });
+    const { result } = renderHook(() => useStreamingLLM());
+
+    await act(async () => {
+      await result.current.send('hi');
+    });
+
+    expect(result.current.state).toEqual({ state: 'idle' });
+  });
+
+  it('a completed turn surfaces as completed', async () => {
+    resolveTurn(['done'], { status: 'completed', reasonCode: 'ok' });
+    const { result } = renderHook(() => useStreamingLLM());
+
+    await act(async () => {
+      await result.current.send('hi');
+    });
+
+    expect(result.current.state).toEqual({
+      state: 'completed',
+      operationId: (runAgentTurnMock.mock.calls[0][0] as AgentTurnInputLike).operationId,
+    });
   });
 });
 
@@ -267,7 +334,7 @@ describe('useStreamingLLM — abort + retry', () => {
   it('retry() re-sends the last input with a NEW operationId', async () => {
     // First send fails; the retry succeeds.
     rejectTurn(new Error('provider exploded'));
-    resolveTurn(['ok'], 'ok');
+    resolveTurn(['ok']);
     const { result } = renderHook(() => useStreamingLLM());
 
     await act(async () => {
