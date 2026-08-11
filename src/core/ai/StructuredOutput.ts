@@ -18,7 +18,11 @@
 //     (hash-equality test) — a joined-string rebuild would silently drift the
 //     cached prefix and kill the provider prompt cache.
 //   T-03-04-04 — per-attempt AbortController with ctx.timeoutMs; the outer
-//     abortSignal propagates (Appendix L).
+//     abortSignal propagates (Appendix L). WR-03 (03-11): the per-attempt
+//     timeout sets a timedOut flag BEFORE ac.abort() and the catch rethrows a
+//     typed TimeoutError (shared carrier from @/core/error/TimeoutError) for
+//     timeout-origin failures — classified TIMEOUT/retryable upstream; user
+//     aborts still propagate as AbortError (never conflated, T-03-11-01).
 //   T-03-04-05 — the terminal failure is logged via debugLog with the canonical
 //     STRUCTURED_OUTPUT_FAILED code + module only — NEVER raw model output
 //     bodies (R-10; debugLog auto-routes through TraceRedactor).
@@ -27,6 +31,7 @@ import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import { debugLog } from '@/core/error/debugLog';
 import { ERROR_CODES } from '@/core/error/errorCodes';
+import { timeoutError } from '@/core/error/TimeoutError';
 import { PROMPTS } from '@/core/prompts';
 import type { ProviderId, PromptSection } from '@/core/ai/types';
 
@@ -77,13 +82,24 @@ export async function requestJson<T>(
   const jsonSchema = zodToJsonSchema(schema);
   // T-03-04-04 (Appendix L): per-attempt AbortController with ctx.timeoutMs; the
   // outer abortSignal propagates into the attempt and is cleaned up in finally.
+  // WR-03 (03-11): the timedOut flag is set by the setTimeout callback BEFORE
+  // ac.abort() fires, so a timeout-origin rejection is distinguishable from a
+  // user abort — the catch rethrows the typed TimeoutError carrier for
+  // timeout-origin failures, never a bare AbortError (T-03-11-01).
   const attempt = async (secs: PromptSection[]): Promise<string> => {
     const ac = new AbortController();
     const onAbort = () => ac.abort();
     ctx.abortSignal.addEventListener('abort', onAbort);
-    const to = setTimeout(() => ac.abort(), ctx.timeoutMs);
+    let timedOut = false;
+    const to = setTimeout(() => {
+      timedOut = true;
+      ac.abort();
+    }, ctx.timeoutMs);
     try {
       return await ctx.callProviderJsonMode(secs, jsonSchema, ac.signal);
+    } catch (e) {
+      if (timedOut) throw timeoutError(ctx.timeoutMs);
+      throw e;
     } finally {
       clearTimeout(to);
       ctx.abortSignal.removeEventListener('abort', onAbort);
