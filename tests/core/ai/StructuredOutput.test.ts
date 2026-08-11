@@ -16,6 +16,7 @@ import { z } from 'zod';
 import { hashStableSections } from '@/core/ai/PromptCacheAdapter';
 import { isStructuredOutputFailed, requestJson } from '@/core/ai/StructuredOutput';
 import type { StructuredOutputContext } from '@/core/ai/StructuredOutput';
+import { isTimeoutError } from '@/core/error/TimeoutError';
 import { PROMPTS } from '@/core/prompts';
 import type { PromptSection } from '@/core/ai/types';
 import { buildOptimizedContextFixture } from '../../fixtures/optimizedContext';
@@ -169,7 +170,7 @@ describe('requestJson — one byte-stable repair (F-4, T-03-04-01/02)', () => {
 });
 
 describe('requestJson — abort re-parenting (Appendix L, T-03-04-04)', () => {
-  it('aborts the per-attempt call after ctx.timeoutMs', async () => {
+  it('aborts the per-attempt call after ctx.timeoutMs with a typed TimeoutError (WR-03)', async () => {
     const fixture = buildOptimizedContextFixture();
     const { ctx } = makeContext(
       (record) =>
@@ -181,9 +182,18 @@ describe('requestJson — abort re-parenting (Appendix L, T-03-04-04)', () => {
       { timeoutMs: 10 },
     );
 
-    await expect(requestJson(DecisionSchema, fixture.sections, ctx)).rejects.toMatchObject({
-      name: 'AbortError',
-    });
+    let caught: unknown;
+    try {
+      await requestJson(DecisionSchema, fixture.sections, ctx);
+    } catch (e) {
+      caught = e;
+    }
+
+    // WR-03: a timeout-origin abort surfaces as the typed TimeoutError carrier —
+    // NEVER a bare AbortError (which used to be swallowed to a silent idle).
+    expect(caught).toMatchObject({ name: 'TimeoutError' });
+    expect(isTimeoutError(caught)).toBe(true);
+    if (isTimeoutError(caught)) expect(caught.timeoutMs).toBe(10);
   });
 
   it('re-parents the outer abortSignal into the per-attempt call', async () => {
@@ -207,5 +217,34 @@ describe('requestJson — abort re-parenting (Appendix L, T-03-04-04)', () => {
 
     expect(sawAbortedSignal).toBe(true);
     expect(err).toMatchObject({ name: 'AbortError' });
+    // WR-03: a user abort is NEVER a timeout-origin error — the two are not conflated.
+    expect(isTimeoutError(err)).toBe(false);
+  });
+
+  it('a never-resolving responder hits the per-attempt timeout: TimeoutError + signal aborted (WR-03)', async () => {
+    const fixture = buildOptimizedContextFixture();
+    const { ctx, calls } = makeContext(
+      (record) =>
+        new Promise<string>((_resolve, reject) => {
+          // Never resolves with a value; the per-attempt abort is what ends the call.
+          record.signal.addEventListener('abort', () =>
+            reject(new DOMException('aborted', 'AbortError')),
+          );
+        }),
+      { timeoutMs: 10 },
+    );
+
+    let caught: unknown;
+    try {
+      await requestJson(DecisionSchema, fixture.sections, ctx);
+    } catch (e) {
+      caught = e;
+    }
+
+    // The timeout fired → TimeoutError, and the per-attempt signal WAS aborted.
+    expect(isTimeoutError(caught)).toBe(true);
+    if (isTimeoutError(caught)) expect(caught.timeoutMs).toBe(10);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].signal.aborted).toBe(true);
   });
 });

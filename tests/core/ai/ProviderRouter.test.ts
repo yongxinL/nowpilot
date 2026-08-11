@@ -36,6 +36,7 @@ import type {
 import type { TierResolveResult } from '@/core/ai/TierResolver';
 import { resolveTier } from '@/core/ai/TierResolver';
 import { getPromptCacheManager } from '@/core/ai/PromptCacheManager';
+import { timeoutError } from '@/core/error/TimeoutError';
 import { buildOptimizedContextFixture } from '../../fixtures/optimizedContext';
 import type { PromptSection } from '@/core/ai/types';
 
@@ -350,6 +351,27 @@ describe('ProviderRouter — retry + attempt budget (D-17 / R-2)', () => {
     expect(out).toBe('{"answer":"42"}');
   });
 
+  it('retries EXACTLY once on a TimeoutError carrier (WR-03, D-17) then succeeds', async () => {
+    mockResolveTier({ providerId: 'openai', model: 'deepseek-chat', fallbackChain: [] });
+    const router = new ProviderRouter();
+    const inv = router.createStageInvocation(makeInput());
+    generateObjectMock
+      .mockRejectedValueOnce(timeoutError(3_000))
+      .mockResolvedValueOnce({ object: { answer: '42' } } as unknown as GenObjectResult);
+
+    const out = await inv.callProviderJsonMode(
+      [section({ kind: 'user_input', text: 'ask', stable: false, sourceId: 'user-input' })],
+      { type: 'object', properties: {} },
+      new AbortController().signal,
+    );
+
+    // WR-03: the typed TimeoutError maps to TIMEOUT/retryable → exactly ONE
+    // D-17 router retry (2 SDK calls, never 3+ — T-03-11-02).
+    expect(generateObjectMock).toHaveBeenCalledTimes(2);
+    expect(out).toBe('{"answer":"42"}');
+    expect(router.getAttemptState('op-test-0001')?.attempts[0].errorCode).toBe('TIMEOUT');
+  });
+
   it('never retries a non-retryable code (PROVIDER_AUTH) — 1 call, terminal failure', async () => {
     mockResolveTier({ providerId: 'openai', model: 'deepseek-chat', fallbackChain: [] });
     const router = new ProviderRouter();
@@ -448,6 +470,22 @@ describe('ProviderRouter — classifyProviderError (D-17 canonical mapping)', ()
     expect(router.classifyProviderError(new Error('request timed out'))).toEqual({
       code: 'TIMEOUT',
       retryable: true,
+    });
+  });
+
+  it('classifies the typed TimeoutError carrier as TIMEOUT/retryable (WR-03)', () => {
+    const router = new ProviderRouter();
+    expect(router.classifyProviderError(timeoutError(5_000))).toEqual({
+      code: 'TIMEOUT',
+      retryable: true,
+    });
+  });
+
+  it('a user cancel (AbortError) stays UNKNOWN/never-retried (WR-03)', () => {
+    const router = new ProviderRouter();
+    expect(router.classifyProviderError(new DOMException('aborted', 'AbortError'))).toEqual({
+      code: 'UNKNOWN',
+      retryable: false,
     });
   });
 
