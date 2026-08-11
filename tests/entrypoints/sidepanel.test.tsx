@@ -22,6 +22,21 @@ import { getProviderRegistry } from '@/core/ai/ProviderRegistry';
 import { STR } from '@/core/i18n/strings';
 import { useAddonSettingsStore } from '@/core/registry/AddonSettingsStore';
 import { useWorkspaceStore } from '@/core/workspace/WorkspaceStore';
+import type { ProviderId } from '@/core/ai/types';
+
+/** Register a REAL usable entry so the D-07 any-usable gate opens (WR-01). */
+function registerTestProvider(id: ProviderId): void {
+  getProviderRegistry().registerProvider({
+    id,
+    label: id,
+    baseURL: 'https://api.example.com/v1',
+    models: ['test-model'],
+    contextWindow: 65536,
+    supportsTools: true,
+    enabled: true,
+    priority: 1,
+  });
+}
 
 beforeEach(() => {
   getProviderRegistry().clear();
@@ -38,14 +53,14 @@ describe('sidepanel entrypoint mount', () => {
   });
 
   it('renders the enabled shell header once a provider is registered (D-07)', async () => {
-    getProviderRegistry().registerActiveProvider('openai');
+    registerTestProvider('openai');
     render(createSidePanelApp());
     expect(await screen.findByText('NowPilot')).toBeTruthy();
     expect(screen.queryByText(STR.onboarding.heading)).toBeNull();
   });
 
   it('renders exactly one provider wrapper (single XProvider, Appendix F)', async () => {
-    getProviderRegistry().registerActiveProvider('anthropic');
+    registerTestProvider('anthropic');
     const { container } = render(createSidePanelApp());
     await screen.findByText('NowPilot');
     // AntdApp renders one `.ant-app`; a nested/double provider tree would
@@ -54,7 +69,7 @@ describe('sidepanel entrypoint mount', () => {
   });
 
   it('opens the Cmd+K palette via the lifted global mod+k capture (controlled picker)', async () => {
-    getProviderRegistry().registerActiveProvider('gemini');
+    registerTestProvider('gemini');
     render(createSidePanelApp());
     await screen.findByText('NowPilot');
     fireEvent.keyDown(window, { key: 'k', metaKey: true });

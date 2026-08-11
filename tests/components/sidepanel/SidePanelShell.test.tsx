@@ -16,6 +16,21 @@ import { SidePanelShell } from '@/components/sidepanel/SidePanelShell';
 import { getProviderRegistry } from '@/core/ai/ProviderRegistry';
 import { STR } from '@/core/i18n/strings';
 import { useAddonSettingsStore } from '@/core/registry/AddonSettingsStore';
+import type { ProviderId } from '@/core/ai/types';
+
+/** Register a REAL usable entry so the D-07 any-usable gate opens (WR-01). */
+function registerTestProvider(id: ProviderId): void {
+  getProviderRegistry().registerProvider({
+    id,
+    label: id,
+    baseURL: 'https://api.example.com/v1',
+    models: ['test-model'],
+    contextWindow: 65536,
+    supportsTools: true,
+    enabled: true,
+    priority: 1,
+  });
+}
 
 // BubbleList (rendered by ChatPage once a provider is active) needs
 // IntersectionObserver/ResizeObserver — jsdom lacks them; minimal no-op stubs.
@@ -67,7 +82,7 @@ describe('SidePanelShell', () => {
   });
 
   it('D-01 single composer: with a provider active, ChatPage Sender REPLACES the shell footer (no double composer)', () => {
-    getProviderRegistry().registerActiveProvider('openai');
+    registerTestProvider('openai');
     render(<SidePanelShell />);
     expect(screen.queryByText(STR.chat.noProvider)).toBeNull();
     expect(screen.getByText(STR.chat.empty)).toBeTruthy();
@@ -92,7 +107,7 @@ describe('SidePanelRouter (D-07 gate)', () => {
   });
 
   it('shows the enabled chat shell when a provider is registered (W-10: provider gate, not onboarding flag)', () => {
-    getProviderRegistry().registerActiveProvider('anthropic');
+    registerTestProvider('anthropic');
     render(<SidePanelRouter />);
     expect(screen.queryByText(STR.chat.noProvider)).toBeNull();
     expect(screen.queryByText(STR.onboarding.heading)).toBeNull();

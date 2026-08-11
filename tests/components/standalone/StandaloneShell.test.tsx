@@ -14,6 +14,21 @@ import { StandaloneShell } from '@/components/standalone/StandaloneShell';
 import { useStandaloneNav } from '@/components/standalone/standaloneNav';
 import { getProviderRegistry } from '@/core/ai/ProviderRegistry';
 import { STR } from '@/core/i18n/strings';
+import type { ProviderId } from '@/core/ai/types';
+
+/** Register a REAL usable entry so the D-07 any-usable gate opens (WR-01). */
+function registerTestProvider(id: ProviderId): void {
+  getProviderRegistry().registerProvider({
+    id,
+    label: id,
+    baseURL: 'https://api.example.com/v1',
+    models: ['test-model'],
+    contextWindow: 65536,
+    supportsTools: true,
+    enabled: true,
+    priority: 1,
+  });
+}
 
 // ChatPage renders BubbleList + Sender when a provider is active — jsdom lacks
 // IntersectionObserver/ResizeObserver; minimal no-op stubs keep them alive.
@@ -59,7 +74,7 @@ describe('StandaloneShell', () => {
   });
 
   it('renders the Chat page surface once a provider is registered', () => {
-    getProviderRegistry().registerActiveProvider('openai');
+    registerTestProvider('openai');
     render(<StandaloneShell activePageId="chat" />);
     expect(screen.queryByText(STR.chat.noProvider)).toBeNull();
     expect(screen.getByText(STR.chat.empty)).toBeTruthy();
@@ -83,7 +98,7 @@ describe('StandaloneRouter', () => {
   });
 
   it('renders the Chat page for the default registry id once a provider is registered', () => {
-    getProviderRegistry().registerActiveProvider('anthropic');
+    registerTestProvider('anthropic');
     render(<StandaloneRouter />);
     expect(screen.getByText(STR.chat.empty)).toBeTruthy();
   });
