@@ -176,16 +176,21 @@ export class ProviderRegistry {
   }
 
   /**
-   * D-07 gate predicate — true once any USABLE provider is configured. D-21:
-   * a provider whose entry is keyUnreadable or user-disabled is treated as
-   * unconfigured, so the gate closes and the router never calls a broken
-   * provider (T-03-02-03).
+   * D-07 gate predicate — true once ANY USABLE provider is configured. WR-01:
+   * the gate iterates ALL provider entries and returns true on the FIRST entry
+   * that is `enabled && !keyUnreadable` (any-usable semantics). The fixed
+   * openai→anthropic→gemini→ollama registration order (last registration wins
+   * on activeProviderId) can no longer close the gate when an EARLIER provider
+   * is usable. D-21: a provider whose entry is keyUnreadable or user-disabled
+   * is treated as unconfigured, so the gate closes and the router never calls a
+   * broken provider (T-03-02-03). Entry-based: a legacy `registerActiveProvider`
+   * with no registry entry no longer opens the gate.
    */
   hasActiveProvider(): boolean {
-    if (this.activeProviderId === undefined) return false;
-    const entry = this.providers.get(this.activeProviderId);
-    if (entry && (entry.keyUnreadable || !entry.enabled)) return false;
-    return true;
+    for (const entry of this.providers.values()) {
+      if (entry.enabled && !entry.keyUnreadable) return true;
+    }
+    return false;
   }
 
   getActiveProvider(): string | undefined {
