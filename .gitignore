@@ -187,3 +187,5 @@ dist/
 
 # Repo-local tool caches (Chrome for Testing downloads etc.)
 .cache/
+# GSD transient artifacts (probe outputs, temp state) — never commit
+.planning/tmp/

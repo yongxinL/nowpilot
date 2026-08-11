@@ -130,7 +130,7 @@ Plans:
   4. Planner returns validated decisions with a closed toolName enum; Executor rejects unknown tools; Renderer respects output caps; structured output self-repairs once.
   5. User's persona overrides (name/tone/brevity) apply without a code change.
 
-**Plans**: 14/16 plans executed (03-15, 03-16 WR-02A/WR-03A gap closure pending)
+**Plans**: 15/16 plans executed
 
 Plans:
 **Wave 1**
@@ -167,7 +167,7 @@ Plans:
 - [x] 03-12-PLAN.md — [WR-02] wire recordFailure + markStreamedFirstToken into RendererService.render (breaker + stream-freeze live on the streaming path), abort-guarded (wave 7)
 - [x] 03-13-PLAN.md — [WR-01] hasActiveProvider() = any usable provider (iterate all entries), legacy registerActiveProvider behavior pinned (wave 7)
 - [x] 03-14-PLAN.md — [WR-04] Retry footer scoped to the latest assistant bubble; stale-bubble retry cannot wipe the newest message (wave 7)
-- [ ] 03-15-PLAN.md — [WR-02A] streaming breaker vote live: BREAKER_VOTES gains STREAM_FAILED: 1 + RendererService catch votes the classifier's mapped code + real-Router streamBreakdown regression (wave 9)
+- [x] 03-15-PLAN.md — [WR-02A] streaming breaker vote live: BREAKER_VOTES gains STREAM_FAILED: 1 + RendererService catch votes the classifier's mapped code + real-Router streamBreakdown regression (wave 9)
 - [ ] 03-16-PLAN.md — [WR-03A] timeout-origin carrier as abort reason (ac.abort(timeoutError)) + router closure isTimeoutError(signal.reason) recovery + fresh-signal D-17 retry + end-to-end timeoutRetry regression (wave 10, file-ordered after 03-15 — shared ProviderRouter.ts)
 
 **UI hint**: yes
@@ -421,7 +421,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. MV3/WXT Runtime + AntD Shells + Workspace | 11/11 | Complete    | 2026-08-08 |
 | 2. Storage, Security, WriteJournal, Workspace Persistence | 11/11 | Complete    | 2026-08-09 |
-| 3. Cost-Effective AI Runtime (+ Persona seed) | 14/14 | In Progress|  |
+| 3. Cost-Effective AI Runtime (+ Persona seed) | 15/16 | In Progress|  |
 | 3a. Agent Reliability and Evidence | TBD | Not started | - |
 | 4. Context-Adaptive Execution | TBD | Not started | - |
 | 4a. PageContentService (Knowledge Acquisition) | TBD | Not started | - |
