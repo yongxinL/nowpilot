@@ -13,7 +13,7 @@
 // cancel stops generation — no orphaned request bills tokens.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { streamText } from 'ai';
+import { APICallError, streamText } from 'ai';
 import type { CoreMessage, LanguageModel } from 'ai';
 
 import {
@@ -22,7 +22,7 @@ import {
   isStreamFailedError,
 } from '@/core/ai/RendererService';
 import type { RenderInput, StreamFailedError } from '@/core/ai/RendererService';
-import { CACHED_KINDS, joinSections } from '@/core/ai/ProviderRouter';
+import { CACHED_KINDS, ProviderRouter, joinSections } from '@/core/ai/ProviderRouter';
 import type { StageInvocation } from '@/core/ai/ProviderRouter';
 import { getPromptCacheManager } from '@/core/ai/PromptCacheManager';
 import { buildOptimizedContextFixture } from '../../fixtures/optimizedContext';
@@ -36,8 +36,16 @@ const { routerMock } = vi.hoisted(() => ({
   routerMock: {
     recordFailure: vi.fn(),
     markStreamedFirstToken: vi.fn(),
+    classifyProviderError: vi.fn(),
   },
 }));
+
+// WR-02A (03-15): delegate the stub to the REAL classifier — the method is
+// `this`-free (reads no instance state), so the unbound reference is safe and
+// the mid-stream vote test asserts the mapped code (PROVIDER_5XX), not a
+// hardcoded STREAM_FAILED. vi.fn(fn) wraps the real method while keeping the
+// call-recording Mock surface the WR-02 assertions rely on.
+routerMock.classifyProviderError = vi.fn(new ProviderRouter().classifyProviderError);
 
 vi.mock('@/core/ai/ProviderRouter', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/core/ai/ProviderRouter')>();
@@ -261,8 +269,24 @@ describe('RendererService.render — F-5 call shape (messages[]+providerOptions,
 });
 
 describe('RendererService.render — breaker votes + stream-freeze (WR-02, 03-12)', () => {
-  it('a mid-stream rejection votes the breaker with the provider id + STREAM_FAILED, and the first delta froze the operation', async () => {
-    mockStream({ streamThrows: new Error('boom') });
+  // WR-02 (03-12): provider-originated failures vote the breaker through the
+  // routerMock; a user abort never votes (isAbortError guard). WR-02A (03-15):
+  // the mid-stream catch votes the REAL classifier's mapped code — a 500 maps
+  // to PROVIDER_5XX (a 1-vote code), so the wiring assertion detects a 0-vote
+  // regression again.
+  it('a mid-stream provider error votes the breaker with the classifier-mapped code, and the first delta froze the operation', async () => {
+    // WR-02A: throw a CLASSIFIABLE provider error (real APICallError, 500) —
+    // the catch routes it through the delegated real classifier → PROVIDER_5XX
+    // (1-vote). A hardcoded STREAM_FAILED/UNKNOWN would leave the breaker
+    // inert (0 votes) — the mapped-code assertion pins the wiring.
+    mockStream({
+      streamThrows: new APICallError({
+        message: 'upstream 500',
+        url: 'https://fixture.example/v1/responses',
+        requestBodyValues: {},
+        statusCode: 500,
+      }),
+    });
 
     let caught: unknown;
     try {
@@ -275,11 +299,14 @@ describe('RendererService.render — breaker votes + stream-freeze (WR-02, 03-12
     // Deltas 'Hel','lo' streamed before the throw — the first delta froze the op.
     expect(routerMock.markStreamedFirstToken).toHaveBeenCalledTimes(1);
     expect(routerMock.markStreamedFirstToken).toHaveBeenCalledWith('op-render-0001');
-    // Provider-originated failure votes the breaker (baseInput providerId 'anthropic').
+    // WR-02A: the catch classifies the underlying error through the real
+    // classifier (once), then votes the MAPPED code — never a hardcoded
+    // STREAM_FAILED double-count (03-12 intent).
+    expect(routerMock.classifyProviderError).toHaveBeenCalledTimes(1);
     expect(routerMock.recordFailure).toHaveBeenCalledTimes(1);
     expect(routerMock.recordFailure).toHaveBeenCalledWith(
       'anthropic',
-      'STREAM_FAILED',
+      'PROVIDER_5XX',
       expect.any(Error),
     );
   });
