@@ -27,6 +27,23 @@ import type { StageInvocation } from '@/core/ai/ProviderRouter';
 import { getPromptCacheManager } from '@/core/ai/PromptCacheManager';
 import { buildOptimizedContextFixture } from '../../fixtures/optimizedContext';
 
+// WR-02 (03-12): hoisted mock of the Router singleton. RendererService imports
+// buildStageMessages + getProviderRouter from ProviderRouter — a WHOLE-module
+// mock would break the F-5 shape, so use the importOriginal spread (real
+// exports preserved) and stub ONLY getProviderRouter (ProviderRouter.test.ts
+// L46-53 pattern).
+const { routerMock } = vi.hoisted(() => ({
+  routerMock: {
+    recordFailure: vi.fn(),
+    markStreamedFirstToken: vi.fn(),
+  },
+}));
+
+vi.mock('@/core/ai/ProviderRouter', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/core/ai/ProviderRouter')>();
+  return { ...actual, getProviderRouter: () => routerMock };
+});
+
 // 'ai' module mock: keep the real exports (ProviderRouter's buildStageMessages
 // chain imports the SDK), stub ONLY streamText — the renderer's single SDK seam.
 vi.mock('ai', async (importOriginal) => {
@@ -90,6 +107,8 @@ function mockStream(
 
 beforeEach(() => {
   vi.clearAllMocks();
+  routerMock.recordFailure.mockClear();
+  routerMock.markStreamedFirstToken.mockClear();
   getPromptCacheManager().reset(); // hints enabled — the F-5 fixture asserts emission
 });
 
@@ -238,5 +257,71 @@ describe('RendererService.render — F-5 call shape (messages[]+providerOptions,
 
     const args = streamTextMock.mock.calls[0][0];
     expect(args.model).toBe(model);
+  });
+});
+
+describe('RendererService.render — breaker votes + stream-freeze (WR-02, 03-12)', () => {
+  it('a mid-stream rejection votes the breaker with the provider id + STREAM_FAILED, and the first delta froze the operation', async () => {
+    mockStream({ streamThrows: new Error('boom') });
+
+    let caught: unknown;
+    try {
+      await RendererService.render(baseInput({}));
+    } catch (e) {
+      caught = e;
+    }
+    expect(isStreamFailedError(caught)).toBe(true);
+
+    // Deltas 'Hel','lo' streamed before the throw — the first delta froze the op.
+    expect(routerMock.markStreamedFirstToken).toHaveBeenCalledTimes(1);
+    expect(routerMock.markStreamedFirstToken).toHaveBeenCalledWith('op-render-0001');
+    // Provider-originated failure votes the breaker (baseInput providerId 'anthropic').
+    expect(routerMock.recordFailure).toHaveBeenCalledTimes(1);
+    expect(routerMock.recordFailure).toHaveBeenCalledWith(
+      'anthropic',
+      'STREAM_FAILED',
+      expect.any(Error),
+    );
+  });
+
+  it('the first streamed delta marks the provider frozen (never switches) — clean stop path does not vote', async () => {
+    mockStream({ deltas: ['a'], finishReason: 'stop' });
+
+    const output = await RendererService.render(baseInput({}));
+
+    expect(output).toEqual({ text: 'a', finishReason: 'stop' });
+    expect(routerMock.markStreamedFirstToken).toHaveBeenCalledTimes(1);
+    expect(routerMock.markStreamedFirstToken).toHaveBeenCalledWith('op-render-0001');
+    expect(routerMock.recordFailure).not.toHaveBeenCalled();
+  });
+
+  it('a user abort does NOT vote the breaker (isAbortError guard), but the first token still froze the op', async () => {
+    mockStream({ streamThrows: new DOMException('aborted', 'AbortError') });
+
+    let caught: unknown;
+    try {
+      await RendererService.render(baseInput({}));
+    } catch (e) {
+      caught = e;
+    }
+    expect(isStreamFailedError(caught)).toBe(true);
+    // The first token legitimately streamed before the abort — freeze marked once.
+    expect(routerMock.markStreamedFirstToken).toHaveBeenCalledTimes(1);
+    // A user abort is NOT a provider failure — never a breaker vote (T-03-12-01).
+    expect(routerMock.recordFailure).not.toHaveBeenCalled();
+  });
+
+  it('a non-stop finish (content-filter/length) votes the breaker — a provider behavior, never a user abort', async () => {
+    mockStream({ deltas: ['x'], finishReason: 'length' });
+
+    let caught: unknown;
+    try {
+      await RendererService.render(baseInput({}));
+    } catch (e) {
+      caught = e;
+    }
+    expect(isStreamFailedError(caught)).toBe(true);
+    expect(routerMock.recordFailure).toHaveBeenCalledTimes(1);
+    expect(routerMock.recordFailure).toHaveBeenCalledWith('anthropic', 'STREAM_FAILED');
   });
 });
