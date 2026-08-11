@@ -23,6 +23,9 @@
 // keeps a user abort from ever voting. The first streamed delta freezes the
 // operation (exactly once per render) so the D-14/§1.5 stream_frozen guard in
 // createStageInvocation is reachable (T-03-12-02).
+// WR-02A (03-15): the catch votes the classifier's mapped code (03-12 intent —
+// never a hardcoded double-count); the non-stop branch votes STREAM_FAILED
+// (now a real 1-vote entry in BREAKER_VOTES, so both branches accrue votes).
 import { streamText } from 'ai';
 
 import { debugLog } from '@/core/error/debugLog';
@@ -123,13 +126,12 @@ export async function render(input: RenderInput): Promise<RenderOutput> {
     const err = e instanceof Error ? e : new Error(String(e));
     // WR-02 (T-03-12-01): a provider-originated mid-stream failure votes the
     // provider's breaker — a user abort (AbortError) is not a provider failure
-    // and must never vote.
+    // and must never vote. WR-02A (03-15): the vote uses the classifier's
+    // mapped code (PROVIDER_5XX/NETWORK/TIMEOUT → 1 vote; UNKNOWN → 0 by
+    // design) — honoring 03-12's "never a hardcoded double-count".
     if (!isAbortError(e)) {
-      getProviderRouter().recordFailure(
-        input.invocation.providerId,
-        ERROR_CODES.STREAM_FAILED,
-        err,
-      );
+      const cls = getProviderRouter().classifyProviderError(err);
+      getProviderRouter().recordFailure(input.invocation.providerId, cls.code, err);
     }
     debugLog(ERROR_CODES.STREAM_FAILED, 'renderer stream aborted mid-generation', {
       module: 'RendererService',

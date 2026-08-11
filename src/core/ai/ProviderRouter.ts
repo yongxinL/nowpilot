@@ -15,6 +15,11 @@
 // applyCacheHints — NEVER `system: string`, which ai@4 silently drops the
 // breakpoint on).
 //
+// WR-02A (03-15): the streaming-path breaker vote is LIVE — BREAKER_VOTES
+// carries STREAM_FAILED and the renderer's mid-stream catch votes the
+// classifier's mapped code (a provider failing mid-stream now accrues real
+// votes; voteBreaker no longer early-returns 0 on a streaming failure).
+//
 // D-16: the budgetGuard hook is a no-op pass-through this phase — Phase 6 wires
 // the monthly ledger pre-flight here without a rebuild.
 //
@@ -182,11 +187,14 @@ export const RETRYABLE_CODES: ReadonlyArray<ErrorCode> = [
  * §20.10 circuit-breaker votes. RATE_LIMITED votes 0 (retryable with jitter —
  * never opens), PROVIDER_AUTH votes 3 (opens immediately), the other
  * non-retryables (MODEL_UNKNOWN/SCHEMA_INVALID/HOST_NOT_PERMITTED) vote 0.
+ * WR-02A: STREAM_FAILED votes 1 — mid-stream failures open the breaker after 3
+ * within the window; the renderer's catch votes the classifier's mapped code.
  */
 export const BREAKER_VOTES: Readonly<Partial<Record<ErrorCode, number>>> = {
   TIMEOUT: 1,
   PROVIDER_5XX: 1,
   NETWORK: 1,
+  STREAM_FAILED: 1,
   RATE_LIMITED: 0,
   PROVIDER_AUTH: 3,
   PROVIDER_MODEL_UNKNOWN: 0,
