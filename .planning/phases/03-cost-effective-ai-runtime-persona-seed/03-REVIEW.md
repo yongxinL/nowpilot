@@ -1,218 +1,102 @@
 ---
 phase: 03-cost-effective-ai-runtime-persona-seed
-reviewed: 2026-08-10T23:05:00Z
+reviewed: 2026-08-11T02:30:00Z
 depth: standard
-files_reviewed: 38
+files_reviewed: 14
 files_reviewed_list:
-  - src/core/ai/types.ts
-  - src/core/ai/toolSchemas.ts
-  - src/core/ai/ILLMProvider.ts
-  - src/core/ai/TierResolver.ts
-  - src/core/ai/ProviderRegistry.ts
-  - src/core/ai/ChunkBuffer.ts
-  - src/core/ai/StreamAdapter.ts
-  - src/core/ai/PromptCacheAdapter.ts
-  - src/core/ai/PromptCacheManager.ts
-  - src/core/ai/StructuredOutput.ts
-  - src/core/ai/PlannerService.ts
-  - src/core/ai/ExecutorService.ts
   - src/core/ai/ProviderRouter.ts
+  - src/core/ai/StructuredOutput.ts
   - src/core/ai/RendererService.ts
-  - src/core/ai/AgentOrchestrator.ts
-  - src/core/ai/persona/PersonaProfile.ts
-  - src/core/ai/persona/personaConfig.ts
-  - src/core/ai/persona/PersonaInjector.ts
-  - src/core/ai/contextHelper.ts
-  - src/core/ai/providers/OpenAIProvider.ts
-  - src/core/ai/providers/AnthropicProvider.ts
-  - src/core/ai/providers/GeminiProvider.ts
-  - src/core/ai/providers/OllamaProvider.ts
-  - src/core/ai/providers/OpenAICompatProvider.ts
-  - src/core/context/ModelContextTier.ts
-  - src/core/context/ContextProvenanceManifest.ts
-  - src/core/memory/types.ts
-  - src/core/error/errorCodes.ts
-  - src/core/i18n/strings.ts
-  - src/components/pages/useStreamingLLM.ts
+  - src/core/ai/ProviderRegistry.ts
   - src/components/pages/ChatPage.tsx
-  - src/components/sidepanel/SidePanelShell.tsx
-  - src/components/standalone/StandaloneShell.tsx
-  - src/entrypoints/sidepanel/main.tsx
-  - src/entrypoints/standalone/main.tsx
-  - src/types/workspace.ts
-  - tests/isolation/check-content-bundle.mjs
-  - package.json
+  - src/core/error/TimeoutError.ts
+  - tests/core/ai/ProviderRouter.test.ts
+  - tests/core/ai/AgentOrchestrator.budget.test.ts
+  - tests/core/ai/StructuredOutput.test.ts
+  - tests/core/ai/RendererService.test.ts
+  - tests/core/ai/ProviderRegistry.test.ts
+  - tests/components/pages/ChatPage.test.tsx
+  - tests/components/sidepanel/SidePanelShell.test.tsx
+  - tests/components/standalone/StandaloneShell.test.tsx
 findings:
-  critical: 1
-  warning: 7
-  info: 5
-  total: 13
+  critical: 0
+  warning: 5
+  info: 7
+  total: 12
 status: issues_found
 ---
 
-# Phase 3: Code Review Report
+# Phase 3: Code Review Report — Gap-Closure Fixes (03-10 .. 03-14)
 
-**Reviewed:** 2026-08-10T23:05:00Z
+**Reviewed:** 2026-08-11T02:30:00Z
 **Depth:** standard
-**Files Reviewed:** 38
+**Files Reviewed:** 14 (6 src + 8 test; plus cross-checked AgentOrchestrator/PlannerService/useStreamingLLM/ChunkBuffer/entrypoints)
 **Status:** issues_found
 
 ## Summary
 
-Reviewed the full Phase-3 AI runtime delivery (plans 03-01 → 03-09): canonical types, four provider adapters + Seam-1 factory, TierResolver/ProviderRegistry, ChunkBuffer/StreamAdapter/PromptCache*, StructuredOutput/Planner/Executor, the 746-line ProviderRouter (retry/breaker/privacy/F-4/F-5), RendererService/AgentOrchestrator, persona pipeline, contextHelper, the streaming hook + ChatPage, shell gates, and both surface entrypoints' AI-runtime wiring.
+This review covers the five gap-closure plans that close the pre-fix findings of the prior 03-REVIEW.md: **CR-01** (03-10, retry-scoped R-2 budget), **WR-01** (03-13, any-usable D-07 gate), **WR-02** (03-12, breaker/stream-freeze wiring), **WR-03** (03-11, timeout-origin classification), **WR-04** (03-14, retry footer gating). All 108 tests across the changed suites pass (83 core + 25 shell/entrypoint), the `verify:phase-3` gate is green per the summaries, no new dependencies were added (all five plans: `tech-stack added: []`), no debug artifacts (`console.log`/`debugger`/`TODO` — 0 matches in changed files), R-10 discipline holds (TimeoutError carries only `timeoutMs`; debugLog payloads are redacted), and Golden Rule 9 holds on the new catch surfaces.
 
-The architecture is disciplined and unusually well-documented (Seam boundaries, R-1 single declarations, Golden Rule 9 debugLog discipline, F-4/F-5 section threading all check out in code). However, cross-module tracing surfaced **one critical integration bug**: the R-2 per-operation attempt budget (`ROUTER_MAX_ATTEMPTS = 3`) counts *every* stage call — including legitimate sequential planner calls in a tool loop and the final renderer resolution — so a turn that uses the medium tier's allowed `toolCap = 2` always terminates with `no_candidate` at the renderer resolution, after all work succeeded. Several documented invariants are also dead code (`recordFailure`/`markStreamedFirstToken` are never invoked by the streaming path; the per-attempt timeout aborts the shared controller so `TIMEOUT` can never be classified or retried).
+**Verdict per fix:**
 
-## Critical Issues
+- **CR-01 — correctly and completely closed.** `retryCount` increments only on the D-17 retried call (`isRetry=true`); both budget gates (`createStageInvocation` + inner `attempt()`) read `retryCount`; legitimate sequential stage calls and structured-output repairs never consume the budget; `attemptCount` removal leaves no stale references (grep-verified). The permanent orchestrator regression (real Router + real budget + real tier resolver) proves a medium-tier 2-tool turn completes with `reasonCode: 'success'`, the renderer runs, and `retryCount === 0`; the D-17 retry case consumes exactly 1. The unit budget test correctly terminates on the budget gate (not chain exhaustion).
+- **WR-01 — correctly and completely closed.** `hasActiveProvider()` is any-usable (`enabled && !keyUnreadable` over all entries); `registerActiveProvider` has **zero production callers** (grep-verified — only the definition in ProviderRegistry.ts), so the entry-based behavior change is safe; the 4 new gate cases + re-asserted legacy test pin it; the 7 shell-gate fixtures were converted to real `registerProvider` entries (25/25 shell tests pass).
+- **WR-04 — correctly and completely closed.** The footer gate (`m.id === messages[messages.length - 1]?.id && (m.status === 'failed' || m.status === 'offline')`) renders Retry only on the current turn's bubble; `handleRetry`'s last-message targeting is now sound; the 3 regression tests pin stale-bubble inertness, latest-bubble recovery, and replace-only-latest. No state hazard (gate lives in the `useMemo` with `messages` in deps; empty-list `?.` is safe).
+- **WR-02 — partially closed (freeze ✓, breaker effect ✗).** The first-token freeze is correctly wired exactly once per render (`firstTokenMarked`), making the §1.5 `stream_frozen` guard reachable; the catch/non-stop branches are mutually exclusive (no double-vote); the `isAbortError` name-match guard (prototype-chain-agnostic) correctly excludes user aborts. **However, the breaker vote is inert** — see **WR-02A**.
+- **WR-03 — partially closed (silent-idle ✓, D-17 retry ✗).** The `TimeoutError` carrier is correctly produced (timedOut flag set before `ac.abort()`), the classifier maps it to `TIMEOUT`/retryable before the abort branch, user cancels stay `AbortError`/UNKNOWN (never conflated), and a planner timeout now surfaces the visible `planner_failed` fallback answer instead of a silent idle. **However, the D-17 retry on timeout never fires on the production path** — see **WR-03A**.
 
-### CR-01: R-2 attempt budget starves the renderer stage — allowed tool-loop turns always fail with `no_candidate`
-
-**File:** `src/core/ai/ProviderRouter.ts:392-394` (+ `src/core/ai/AgentOrchestrator.ts:114-155`)
-
-**Issue:** `ROUTER_MAX_ATTEMPTS = 3` is enforced as a **total per-operation call counter** (`attemptCount` counts every `recordAttempt`, including `'success'`), but the orchestrator's §1.4 tier caps permit up to `plannerCap` sequential planner invocations *plus* a final renderer stage. On the default tier (`medium`, caps 3/2, set in `useStreamingLLM.ts:45`), a turn that uses the allowed 2 tool calls consumes 3 attempts on the planner loop alone:
-
-1. `planOnce` #1 → `createStageInvocation` (attemptCount 0) → `plan()` → `requestJson` → `callProviderJsonMode` → `invokeJsonMode` success → `recordAttempt` (count=1).
-2. `run_tool` → executor → `planOnce` #2 → attempt (count=2).
-3. `run_tool` → executor → `planOnce` #3 → attempt (count=3).
-4. `answer` → `finish()` → `resolveStage('renderer')` → `createStageInvocation` → **`attemptCount(3) >= ROUTER_MAX_ATTEMPTS(3)` → throws `no_candidate`**.
-
-The renderer never runs; the turn surfaces as a provider-failure state (`failed` bubble) even though every provider call succeeded. The problem is aggravated by the structured-output repair (`StructuredOutput.ts:111` calls `callProviderJsonMode` a second time — each call is a separate counted attempt) and by the router's own one retry (D-17): a single planner call needing a repair or a retry consumes 2 attempts, so **even a 1-tool turn breaks** (2 planner attempts + 1 renderer attempt = 3, then a second planner call would be attempt 4 → blocked). The §1.4 caps (plannerCap up to 5 on `large`) are unreachable.
-
-The intent of R-2 is that *retries don't multiply* (§1.6.1) — the budget should bound retry layers, not the total count of legitimate sequential stage invocations.
-
-**Fix:** Track retries separately from the per-stage call ledger, or scope the budget check to retries only:
-
-```ts
-// In RouterAttemptState, distinguish legitimate stage calls from retries:
-//   attempts: ProviderAttempt[]          // every SDK call (observability)
-//   retryCount: number                  // only router-owned retries
-// Budget check (createStageInvocation + attempt()):
-//   if (this.retryCount(input.operationId) >= ROUTER_MAX_ATTEMPTS) { ... }
-// recordAttempt() increments retryCount ONLY for the D-17 retried call,
-// never for the first invocation of a stage or a structured-output repair.
-```
+**Carry-forward:** WR-05/WR-06/WR-07 and IN-01..IN-05 from the prior review were **not** part of the five gap-closure plans and remain open; they are carried forward below so they are not lost in this overwrite.
 
 ## Warnings
 
-### WR-01: `hasActiveProvider()` gate only inspects the LAST registered provider — multi-provider configs close the D-07 gate wrongly
+### WR-02A: The breaker vote is inert — `STREAM_FAILED` is absent from `BREAKER_VOTES`, so streaming failures still never open the breaker
 
-**File:** `src/core/ai/ProviderRegistry.ts:184-189`
+**File:** `src/core/ai/ProviderRouter.ts:186-195` (`BREAKER_VOTES`) + `src/core/ai/RendererService.ts:128-132,146` (call sites)
 
-**Issue:** The gate reads only `this.providers.get(this.activeProviderId)`, where `activeProviderId` is "last registration wins" (`registerProvider` line 118). `runAIRuntimeInit` registers providers in the fixed order `openai → anthropic → gemini → ollama` (`main.tsx:74`). If the last-registered provider in that order is disabled (`enabled: false` from a stored envelope) or later marked `keyUnreadable`, the gate returns `false` even though an earlier provider (e.g. `openai`) is enabled and fully usable — the whole chat surface renders `STR.chat.noProvider` and is unreachable. The converse also holds via the legacy `registerActiveProvider` path: setting an active id without a registry entry makes the gate return `true` with zero usable configs.
+**Issue:** `RendererService` now calls `getProviderRouter().recordFailure(providerId, ERROR_CODES.STREAM_FAILED, ...)` on every provider-originated streaming failure — but `voteBreaker` computes `BREAKER_VOTES[code] ?? 0` and **early-returns on 0**. `STREAM_FAILED` has no entry in `BREAKER_VOTES` (which only covers the §20.10 pre-first-token codes), so every streaming failure votes **0** and the provider's breaker can never open from mid-stream failures. The VERIFICATION.md WR-02 observable consequence — "a provider failing mid-stream accrues no breaker votes and is retried every turn" — is unchanged after the fix. The regression tests do not catch this: `RendererService.test.ts` mocks the Router (`routerMock.recordFailure`) and asserts only that `recordFailure` **was invoked**, never that a vote accrued or the breaker state changed. The `recordFailure` JSDoc ("a mid-stream/stream failure votes the provider's breaker") and the 03-12 SUMMARY claim ("a provider failing mid-stream now accrues breaker votes") assert an effect the implementation does not produce.
 
-**Fix:** The gate must be "any usable provider exists", not "the active one is usable":
+**Fix:** Give streaming failures a real vote. Either (a) add `STREAM_FAILED: 1` to `BREAKER_VOTES`, or (b) classify the underlying error in the catch branch and pass its code (e.g. `NETWORK`/`PROVIDER_5XX` → vote 1) while keeping `STREAM_FAILED` for the no-error non-stop branch. Then extend `RendererService.test.ts` with a test that drives a real `ProviderRouter` (not the mock) through 3 `STREAM_FAILED` failures and asserts `isBreakerOpen(providerId) === true`.
 
-```ts
-hasActiveProvider(): boolean {
-  for (const entry of this.providers.values()) {
-    if (entry.enabled && !entry.keyUnreadable) return true;
-  }
-  return false;
-}
-```
+### WR-03A: The D-17 retry on TIMEOUT never fires on the production path — the carrier is born after the router's retry decision
 
-### WR-02: `recordFailure()` and `markStreamedFirstToken()` are never called — the §1.5 circuit breaker and stream-freeze guard are dead code on the streaming path
+**File:** `src/core/ai/StructuredOutput.ts:89-107` + `src/core/ai/ProviderRouter.ts:611-661` + `tests/core/ai/ProviderRouter.test.ts:354-373`
 
-**File:** `src/core/ai/RendererService.ts:72-117` (missing calls); `src/core/ai/ProviderRouter.ts:475-477, 521-523`
+**Issue:** The WR-03 summary claims "the D-17 retry fires exactly once" on a timeout (T-03-11-02), but the production timeout flow cannot reach the retry:
 
-**Issue:** `ProviderRouter.recordFailure()` documents itself as "the public breaker entry for the streaming path (03-06): a mid-stream/stream failure votes the provider's breaker" — but grep confirms no production caller; `RendererService.render()` throws `STREAM_FAILED` without recording a failure, so a provider that consistently fails mid-stream never accrues breaker votes and is retried every turn. Similarly, `markStreamedFirstToken()` (the §1.5 "never switch providers after the first token" invariant) is never invoked — `hasStreamedFirstToken` stays `false` forever in production, so the `stream_frozen` guard in `createStageInvocation` can never fire. Both are tested in isolation (`ProviderRouter.test.ts`) but unwired from the only production path that needs them.
+1. `StructuredOutput.attempt` fires the per-attempt `setTimeout` → `timedOut = true; ac.abort()`.
+2. Inside the router closure, the SDK rejects with a **bare `AbortError`** (the per-attempt signal aborted). `classifyProviderError` maps it to `{ code: 'UNKNOWN', retryable: false }` — not retryable, no breaker vote (UNKNOWN votes 0). The D-17 branch is never taken.
+3. The `TimeoutError` carrier is only created **after** the closure's retry decision, in `attempt`'s catch (`if (timedOut) throw timeoutError(...)`).
 
-**Fix:** In `RendererService.render()`'s catch / non-`stop` finish branches, call the router:
+The unit test "retries EXACTLY once on a TimeoutError carrier" passes `timeoutError(3_000)` as the **`generateObject` mock rejection** — an arrival pattern production never produces (`timeoutError()` is the only TimeoutError creation site, and it runs outside the router closure). Additionally, even if a TimeoutError did reach the closure, the D-17 retry would call `attempt(true)` with the **same already-aborted per-attempt signal** — the retried call would reject immediately with AbortError, i.e. a futile retry that still consumes `retryCount` and can never succeed by construction. So the timeout path still consumes zero retries and never votes the breaker (`BREAKER_VOTES.TIMEOUT = 1` is equally unreachable). The primary WR-03 goal **is** achieved (timeout → `planner_failed` fallback answer via `planOnce`, never a silent idle; user cancels stay `AbortError`/idle), but the D-17-retry-on-timeout claim is satisfied only by test injection.
 
-```ts
-catch (e) {
-  getProviderRouter().recordFailure(input.invocation.providerId, ERROR_CODES.STREAM_FAILED, e);
-  ...
-}
-// and after the first streamed delta:
-if (!firstTokenMarked) {
-  getProviderRouter().markStreamedFirstToken(input.operationId);
-  firstTokenMarked = true;
-}
-```
+**Fix:** Either (a) accept the fallback-answer semantics and correct the summary/test framing (rename the unit test to document that the carrier's production path bypasses the router retry), or (b) make the router closure timeout-aware — wrap the incoming signal in the closure so a timeout-origin rejection surfaces as the carrier *inside* the retry decision point (and give the retried call a fresh, non-aborted signal), then assert the retry end-to-end through `StructuredOutput.attempt` + real Router.
 
-### WR-03: Per-attempt timeout aborts the shared controller — `TIMEOUT` is never classified and never retried; it surfaces as a silent `idle`
+### WR-05 (carry-forward, not closed by these plans): `useStreamingLLM` never aborts on unmount — in-flight turns keep billing after navigation
 
-**File:** `src/core/ai/StructuredOutput.ts:80-91` + `src/core/ai/ProviderRouter.ts:493-496`
+**File:** `src/components/pages/useStreamingLLM.ts:105-108`
 
-**Issue:** The per-attempt timeout (`setTimeout(() => ac.abort(), ctx.timeoutMs)`) aborts the *same* AbortController used for user/surface aborts. When the timeout fires, the SDK rejects with an `AbortError`, which `classifyProviderError` maps to `{ code: 'UNKNOWN', retryable: false }` (ProviderRouter.ts:493-496). Consequences:
-1. `TIMEOUT` — explicitly listed in `RETRYABLE_CODES` (ProviderRouter.ts:166) — can never be produced, so the D-17 retry policy never fires on timeouts (the retryable case it was designed for).
-2. `planOnce` sees an AbortError and rethrows it (AgentOrchestrator.ts:189); `useStreamingLLM`'s catch maps AbortError to `setState({ state: 'idle' })` (useStreamingLLM.ts:173-177) — a planner timeout is silently swallowed with **no error surface and no retry**, indistinguishable from a user cancel.
-
-**Fix:** Separate the timeout abort from the user abort signal:
-
-```ts
-const attempt = async (secs: PromptSection[]): Promise<string> => {
-  const ac = new AbortController();
-  const onAbort = () => ac.abort();
-  ctx.abortSignal.addEventListener('abort', onAbort);
-  let timedOut = false;
-  const to = setTimeout(() => { timedOut = true; ac.abort(); }, ctx.timeoutMs);
-  try {
-    return await ctx.callProviderJsonMode(secs, jsonSchema, ac.signal);
-  } catch (e) {
-    if (timedOut) throw new TimeoutError(ctx.timeoutMs); // or an error the classifier maps to TIMEOUT
-    throw e;
-  } finally {
-    clearTimeout(to);
-    ctx.abortSignal.removeEventListener('abort', onAbort);
-  }
-};
-```
-
-### WR-04: Retry button on any failed bubble rewrites the NEWEST message, not the failed one
-
-**File:** `src/components/pages/ChatPage.tsx:77-85`
-
-**Issue:** `handleRetry` always operates on `prev[prev.length - 1]` and calls `retry()` which re-sends `lastUserInputRef`. After a failure the user can send a new message (Sender is enabled — `isStreaming` is false), so an older failed bubble keeps its Retry footer (`items` renders it for every failed/offline bubble). Clicking Retry on that stale failed bubble replaces the **newest** assistant message's content with `''` + streaming and re-runs the **newest** user input — the wrong turn is retried and the current answer is wiped.
-
-**Fix:** Track which message a retry belongs to, and only offer/execute retry on the latest assistant bubble:
-
-```ts
-const handleRetry = useCallback(() => {
-  if (isStreaming) return;
-  setMessages((prev) => {
-    const last = prev[prev.length - 1];
-    if (!last || last.role !== 'assistant') return prev;
-    return [...prev.slice(0, -1), { ...last, content: '', status: 'streaming' }];
-  });
-  retry();
-}, [isStreaming, retry]);
-// Optionally: only render the footer when m is the last message:
-// footer: (m.id === messages[messages.length - 1]?.id && (m.status === 'failed' || m.status === 'offline')) ? ...
-```
-
-### WR-05: `useStreamingLLM` never aborts on unmount — in-flight turns keep billing after navigation
-
-**File:** `src/components/pages/useStreamingLLM.ts:93-108`
-
-**Issue:** The only `useEffect` (line 105) wires the ChunkBuffer flush listener; there is no cleanup that calls `abortRef.current?.abort()`. In the standalone shell, switching away from the Chat page (or closing the side panel) unmounts ChatPage while `runAgentTurn` continues executing — the provider request keeps running to completion and tokens keep billing (the opposite of the documented "abort() cancels generation so no orphaned request bills tokens", and of T-03-06-04's abort-cancels-billing intent). The comment at line 115 only covers new-send supersession, not unmount.
+**Issue:** Still open. The only `useEffect` wires the ChunkBuffer flush listener and returns its unsubscribe; nothing calls `abortRef.current?.abort()` on cleanup. Closing the panel / navigating away unmounts ChatPage while `runAgentTurn` continues to completion and tokens keep billing. Not in the five gap-closure plans' scope.
 
 **Fix:**
-
 ```ts
 useEffect(() => {
   if (!bufferRef.current) bufferRef.current = createChunkBuffer();
   const unsubscribe = bufferRef.current.onFlush(setText);
   return () => {
     unsubscribe();
-    abortRef.current?.abort(); // cancel in-flight generation on unmount
+    abortRef.current?.abort();
   };
 }, []);
 ```
 
-### WR-06: ChunkBuffer `flushNow()`/`reset()` call `cancelAnimationFrame` on a `setTimeout` id in degraded mode — stale/duplicate flushes across turns
+### WR-06 (carry-forward, not closed by these plans): ChunkBuffer `flushNow()`/`reset()` cancel a `setTimeout` id with `cancelAnimationFrame` in degraded mode
 
-**File:** `src/core/ai/ChunkBuffer.ts:40-46, 55-71`
+**File:** `src/core/ai/ChunkBuffer.ts:33-41,55-71`
 
-**Issue:** When the 8,000 B/s throttle engages, `rafId` holds a `setTimeout` id (line 41), but `flushNow()` and `reset()` cancel it with `cancelAnimationFrame(rafId)` (lines 57, 68) — a no-op for timeout ids. The pending 33 ms timer is not cancelled, and because the callback reads the module-closure `pending`/`full` variables, it will fire *after* `reset()` and flush whatever the **next** turn has buffered (or emit a duplicate/empty flush). Cross-turn text contamination in the degraded path.
+**Issue:** Still open (verified in current source). When the 8,000 B/s throttle engages, `rafId` holds a `setTimeout` id, but `flushNow()`/`reset()` call `cancelAnimationFrame(rafId)` — a no-op for timeout ids — so the pending 33 ms timer can fire after `reset()` and flush the next turn's buffer (cross-turn text contamination). Not in the five gap-closure plans' scope.
 
-**Fix:** Track the timer kind or cancel both:
-
+**Fix:** Track the timer kind, or cancel both:
 ```ts
-let timerIsRaf = true;
-// setTimeout path: timerIsRaf = false; rafId = setTimeout(...)
-// flushNow/reset:
 if (rafId !== null) {
   if (timerIsRaf) cancelAnimationFrame(rafId as number);
   else clearTimeout(rafId as number);
@@ -220,48 +104,64 @@ if (rafId !== null) {
 }
 ```
 
-### WR-07: ~300 lines of bootstrap/AI-runtime wiring duplicated verbatim across the two entrypoints
+### WR-07 (carry-forward, not closed by these plans): ~300 lines of bootstrap/AI-runtime wiring duplicated verbatim across the two entrypoints
 
 **File:** `src/entrypoints/sidepanel/main.tsx:74-248` and `src/entrypoints/standalone/main.tsx:68-243`
 
-**Issue:** `AI_PROVIDER_IDS`, `runStorageBootstrap()`, `warmOpenIdbStore()`, and `runAIRuntimeInit()` are copy-pasted nearly identically across both entrypoints. Any future change (new provider id, new wiring step, changed error code) must be applied in two places; the duplication already shows drift risk (both are currently identical, but the R-3 isolation guarantees rely on them staying in lockstep).
+**Issue:** Still open — `AI_PROVIDER_IDS`, `runStorageBootstrap()`, `warmOpenIdbStore()`, and `runAIRuntimeInit()` remain copy-pasted across both entrypoints. Not in the five gap-closure plans' scope.
 
-**Fix:** Extract a shared module (e.g. `src/entrypoints/shared/aiRuntimeInit.ts`) exporting `runAIRuntimeInit(registry, vault, surface)` and the bootstrap chain; each entrypoint keeps only its mount-specific root component.
+**Fix:** Extract a shared module (e.g. `src/entrypoints/shared/aiRuntimeInit.ts`); each entrypoint keeps only its mount-specific root component.
 
 ## Info
 
-### IN-01: `streamTextToLLMChunks` (StreamAdapter) is dead code — no production callers
+### IN-01 (carry-forward): `streamTextToLLMChunks` (StreamAdapter) is dead code — no production callers
 
-**File:** `src/core/ai/StreamAdapter.ts:49`
+**File:** `src/core/ai/StreamAdapter.ts:49` — still no importer in `src/`. Either wire it or mark it `@implementation-tier`.
 
-**Issue:** Grep confirms no importer of `streamTextToLLMChunks` anywhere in `src/` — the 03-03 summary's "Seam 3 consumer" claim is not realized; `RendererService` builds `streamText` directly. The module's comment block and the 03-03 SUMMARY describe a consumer boundary that does not exist in code. Either wire it (renderer consumes the adapter) or mark it `@implementation-tier` until a consumer lands.
+### IN-02 (carry-forward): `ILLMProvider.validateConfig()`/`chat()`/`getModels()` have no callers
 
-### IN-02: `ILLMProvider.validateConfig()`/`chat()`/`getModels()` have no callers — the adapter contract is unimplemented
+**File:** `src/core/ai/ILLMProvider.ts:22-29` — `validateConfig` is never invoked; `chat()`/`getModels()` are throwing stubs. A comment documenting the dormant contract would prevent future implementers from assuming the wiring calls them.
 
-**File:** `src/core/ai/ILLMProvider.ts:22-29`; all five `src/core/ai/providers/*.ts`
+### IN-03 (carry-forward): `PersonaInjector.inject()` has no production callers
 
-**Issue:** `chat()` and `getModels()` are throwing stubs and `validateConfig()` is never invoked anywhere (the 03-09 wiring validates with `ProviderConfigSchema` instead). The `ILLMProvider` interface is thus a contract with two dead methods and one unused one. Acceptable as `@implementation-tier` stubs, but worth a comment on the interface documenting that no Phase-3 consumer exists, so future implementers don't assume the wiring calls `validateConfig`.
+**File:** `src/core/ai/persona/PersonaInjector.ts:53-62` — the hook uses `resolvePersona` + `buildPersonaBlock` directly; the stage-aware composition is dormant (Phase-5 seam).
 
-### IN-03: `PersonaInjector.inject()` has no production callers
+### IN-04 (carry-forward): `get-provider-info` returns ALL providers, not the "Active provider" (§10.5 row 8)
 
-**File:** `src/core/ai/persona/PersonaInjector.ts:53-62`
+**File:** `src/core/ai/ExecutorService.ts:67-72` — semantic mismatch only (apiKey correctly stripped); either narrow to the active provider or widen the tool description.
 
-**Issue:** The hook uses `resolvePersona` + `buildPersonaBlock` directly (`useStreamingLLM.ts:128-129`); `PersonaInjector.inject` is exported and tested but never invoked. Since `contextHelper` receives a pre-built block, the injector's stage-aware composition is dormant. Fine as a Phase-5 seam, but the "persona-first prepend INSIDE the cached [SYSTEM]" claim in the 03-07 SUMMARY is not exercised on the Phase-3 path.
+### IN-05 (carry-forward): `ProviderRegistry.getProviderInfo()` (singular) is unused
 
-### IN-04: `get-provider-info` returns ALL providers, not the "Active provider" (§10.5 row 8)
+**File:** `src/core/ai/ProviderRegistry.ts:169-171` — all consumers use `getProviderInfos()` (plural); dead export or a future Phase-7 consumer.
 
-**File:** `src/core/ai/ExecutorService.ts:67-72`
+### IN-06 (new): inconsistent `isAbortError` implementations — ProviderRouter still uses the `instanceof` form the 03-12 plan itself flagged as broken in the test realm
 
-**Issue:** The tool's declared semantics are "Active provider + model + limits" (§10.5 row 8), but it returns `getProviderInfos()` — the full registry snapshot including disabled/unreadable entries and `resolvedBaseURL` for every provider. apiKey is correctly stripped (R-10), so this is a semantic mismatch, not a leak. Either narrow to the active provider or widen the tool description.
+**File:** `src/core/ai/ProviderRouter.ts:782-784`
 
-### IN-05: `ProviderRegistry.getProviderInfo()` (singular) is unused
+**Issue:** `classifyProviderError`'s abort branch is `err instanceof Error && err.name === 'AbortError'`, while the WR-02 fix (and AgentOrchestrator/useStreamingLLM) deliberately use the prototype-chain-agnostic name-match because DOMException is not `instanceof Error` in the jsdom realm. The test `'a user cancel (AbortError) stays UNKNOWN/never-retried'` passes only because the jsdom DOMException falls *through* the abort branch to the UNKNOWN fallthrough — so the test cannot distinguish the abort branch from the fallthrough. Production (Chrome, where DOMException IS `instanceof Error`) is correct, but the branch is untested-as-written. Align it with the canonical name-match:
+```ts
+return typeof err === 'object' && err !== null && (err as { name?: unknown }).name === 'AbortError';
+```
 
-**File:** `src/core/ai/ProviderRegistry.ts:169-171`
+### IN-07 (new): plan-doc drift — WR-03 is attributed to 03-14 in the 03-13 SUMMARY and 03-14 SUMMARY
 
-**Issue:** All production consumers use `getProviderInfos()` (plural). The singular accessor has no callers — dead export (or a future Phase-7 settings-UI consumer).
+**File:** `.planning/phases/03-cost-effective-ai-runtime-persona-seed/03-13-SUMMARY.md:149`, `03-14-SUMMARY.md` tags
+
+**Issue:** 03-13's "Next Phase Readiness" and 03-14's metadata describe 03-14 as covering "WR-03 TIMEOUT classification + WR-04 retry targeting"; WR-03 was actually closed by 03-11. Documentation-only drift; the implementation trail (commits `86fe69b`/`93dabfa`/`5548c3e`/`87f460a`) is unambiguous.
 
 ---
 
-_Reviewed: 2026-08-10T23:05:00Z_
-_Reviewer: gsd-code-reviewer agent (adversarial review)_
+## Verified-Open Checks (positive results)
+
+- **CR-01 regression:** `AgentOrchestrator.budget.test.ts` runs a real Router + real budget + real stage services (only the three ai-sdk call sites stubbed, real error classes kept) — the 2-tool medium turn resolves `reasonCode: 'success'` with the renderer actually invoked (`streamText` × 1) and `retryCount === 0`; the repair turn and the D-17-retry turn both answer. This directly reproduces the pre-fix `no_candidate (router attempt budget exhausted)` failure mode and proves it gone.
+- **No new deps:** all five summaries `tech-stack added: []`; package.json untouched by these plans.
+- **R-10:** `TimeoutError` carries only `timeoutMs`; RendererService debugLog payloads are code/operationId/partialToken-count only; the redaction test (`sk-super-secret-token-123` absent from captured logs) passes.
+- **Golden Rule 9:** new catches debugLog canonical codes (`STREAM_FAILED`, `PLANNER_FAILED`); the `attempt` catch in StructuredOutput rethrows (no swallowing) with the terminal failure logged via `STRUCTURED_OUTPUT_FAILED`; no empty catches introduced.
+- **No double-voting (WR-02):** the mid-stream catch and the non-stop-finish branch are mutually exclusive — no path votes twice for one failure.
+- **Test gate:** 83/83 core tests + 25/25 shell/entrypoint tests pass in this review run.
+
+---
+
+_Reviewed: 2026-08-11T02:30:00Z_
+_Reviewer: gsd-code-reviewer agent (adversarial review of gap-closure fixes)_
 _Depth: standard_
