@@ -130,7 +130,7 @@ Plans:
   4. Planner returns validated decisions with a closed toolName enum; Executor rejects unknown tools; Renderer respects output caps; structured output self-repairs once.
   5. User's persona overrides (name/tone/brevity) apply without a code change.
 
-**Plans**: 13/14 plans executed
+**Plans**: 14/14 plans executed
 
 Plans:
 **Wave 1**
@@ -163,7 +163,7 @@ Plans:
 **Gap Closure** *(wave 7 — VERIFICATION.md gaps_found: 4/5 truths; wave 8 for 03-11)*
 
 - [x] 03-10-PLAN.md — [CR-01] R-2 budget scoped to router-owned retries (retryCount in RouterAttemptState), permanent orchestrator-level regression (real Router + real budget), housekeeping: zz-verify-cr01.test.ts removal (wave 7)
-- [ ] 03-11-PLAN.md — [WR-03] timeout-origin separation in StructuredOutput + shared TimeoutError carrier + classifyProviderError maps TIMEOUT retryable (wave 8, depends on 03-10's ProviderRouter changes)
+- [x] 03-11-PLAN.md — [WR-03] timeout-origin separation in StructuredOutput + shared TimeoutError carrier + classifyProviderError maps TIMEOUT retryable (wave 8, depends on 03-10's ProviderRouter changes)
 - [x] 03-12-PLAN.md — [WR-02] wire recordFailure + markStreamedFirstToken into RendererService.render (breaker + stream-freeze live on the streaming path), abort-guarded (wave 7)
 - [x] 03-13-PLAN.md — [WR-01] hasActiveProvider() = any usable provider (iterate all entries), legacy registerActiveProvider behavior pinned (wave 7)
 - [x] 03-14-PLAN.md — [WR-04] Retry footer scoped to the latest assistant bubble; stale-bubble retry cannot wipe the newest message (wave 7)
@@ -419,7 +419,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. MV3/WXT Runtime + AntD Shells + Workspace | 11/11 | Complete    | 2026-08-08 |
 | 2. Storage, Security, WriteJournal, Workspace Persistence | 11/11 | Complete    | 2026-08-09 |
-| 3. Cost-Effective AI Runtime (+ Persona seed) | 13/14 | In Progress|  |
+| 3. Cost-Effective AI Runtime (+ Persona seed) | 14/14 | In Progress|  |
 | 3a. Agent Reliability and Evidence | TBD | Not started | - |
 | 4. Context-Adaptive Execution | TBD | Not started | - |
 | 4a. PageContentService (Knowledge Acquisition) | TBD | Not started | - |
