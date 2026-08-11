@@ -130,7 +130,7 @@ Plans:
   4. Planner returns validated decisions with a closed toolName enum; Executor rejects unknown tools; Renderer respects output caps; structured output self-repairs once.
   5. User's persona overrides (name/tone/brevity) apply without a code change.
 
-**Plans**: 9/9 plans executed
+**Plans**: 9/9 executed + 5 gap-closure plans (03-10..03-14, from VERIFICATION.md gaps_found)
 
 Plans:
 **Wave 1**
@@ -159,6 +159,14 @@ Plans:
 **Wave 6** *(blocked on Wave 5 completion)*
 
 - [x] 03-09-PLAN.md — runAIRuntimeInit wiring (vault→registry→persona→router, R-3), verify:phase-3 gate + isolation extension, §18 addendum (wave 6)
+
+**Gap Closure** *(wave 7 — VERIFICATION.md gaps_found: 4/5 truths; wave 8 for 03-11)*
+
+- [ ] 03-10-PLAN.md — [CR-01] R-2 budget scoped to router-owned retries (retryCount in RouterAttemptState), permanent orchestrator-level regression (real Router + real budget), housekeeping: zz-verify-cr01.test.ts removal (wave 7)
+- [ ] 03-11-PLAN.md — [WR-03] timeout-origin separation in StructuredOutput + shared TimeoutError carrier + classifyProviderError maps TIMEOUT retryable (wave 8, depends on 03-10's ProviderRouter changes)
+- [ ] 03-12-PLAN.md — [WR-02] wire recordFailure + markStreamedFirstToken into RendererService.render (breaker + stream-freeze live on the streaming path), abort-guarded (wave 7)
+- [ ] 03-13-PLAN.md — [WR-01] hasActiveProvider() = any usable provider (iterate all entries), legacy registerActiveProvider behavior pinned (wave 7)
+- [ ] 03-14-PLAN.md — [WR-04] Retry footer scoped to the latest assistant bubble; stale-bubble retry cannot wipe the newest message (wave 7)
 
 **UI hint**: yes
 
