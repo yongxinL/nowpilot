@@ -37,8 +37,16 @@ import type { ProviderId, PromptSection } from '@/core/ai/types';
 
 // F-4: cached kinds → provider `system` (byte-stable, prompt-cached §1.3); task
 // kinds → `prompt`. The Router-supplied callback performs this mapping;
-// requestJson only threads sections through (never string-splits).
-const TASK_KINDS: ReadonlyArray<PromptSection['kind']> = ['context', 'task', 'user_input'];
+// requestJson only threads sections through (never string-splits). 03a-01:
+// 'tool_result' (D-3a-11 F-4 replan feedback) maps to the prompt side — it is
+// NEVER part of the cached set (Pitfall 2/7 — both TASK_KINDS copies must list
+// it or joinSections/filter silently drops the section).
+const TASK_KINDS: ReadonlyArray<PromptSection['kind']> = [
+  'context',
+  'task',
+  'user_input',
+  'tool_result',
+];
 
 export interface StructuredOutputContext {
   operationId: string;

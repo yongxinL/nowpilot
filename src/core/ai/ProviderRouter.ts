@@ -69,8 +69,17 @@ export const CACHED_KINDS: ReadonlyArray<PromptSection['kind']> = [
   'memory',
 ];
 
-/** Task kinds → provider `prompt` ([CONTEXT]+[TASK]+[USER INPUT]). */
-export const TASK_KINDS: ReadonlyArray<PromptSection['kind']> = ['context', 'task', 'user_input'];
+/**
+ * Task kinds → provider `prompt` ([CONTEXT]+[TASK]+[USER INPUT]). 03a-01:
+ * 'tool_result' (D-3a-11 F-4 replan feedback) maps to `prompt` — NEVER into
+ * CACHED_KINDS (per-turn, stable:false — cache-stability, Pitfall 7).
+ */
+export const TASK_KINDS: ReadonlyArray<PromptSection['kind']> = [
+  'context',
+  'task',
+  'user_input',
+  'tool_result',
+];
 
 /**
  * F-4: pure kind→string mapping. NEVER a `prompt.split(...)` recovery — a
