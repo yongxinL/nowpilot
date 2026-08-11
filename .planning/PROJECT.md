@@ -18,11 +18,13 @@ A privacy-first, local-first AI assistant where chat, extracted page content, an
   *Validated in Phase 01 (foundation): WorkspaceStore init/start wired at both mounts, WorkspaceSync live via BroadcastBus, M.3 workspaceId scope gate on both inbound paths*
 - **Persistence & storage** — IndexedDB (idb) stores, AES-GCM encrypted vault, WriteJournal crash-safe writes, per-key permissioned storage layer, migrate-on-read, sync-quota shadow, import/export core
   *Validated in Phase 02: Storage, Security, WriteJournal, Workspace Persistence (11/11 plans, 10/10 must-haves verified; STORAGE-01…05; code review clean — 2 critical + 10 warning findings resolved)*
+- **Cost-effective AI runtime** — Vercel AI SDK, OpenAI/Anthropic/Gemini/Ollama adapters, Planner→Executor→Renderer orchestration, streaming, cost guardrails (tier caps, monthly budget), persona from day one, live circuit breaker + D-17 retry
+  *Validated in Phase 03: Cost-Effective AI Runtime + Persona seed (16/16 plans, 5/5 must-haves verified; AI-01…07; includes gap-closure cycle 03-10..03-16 closing CR-01/WR-01/WR-02/WR-03/WR-04, verified passed 5/5)*
 
 ### Active
 
 v1 scope, derived from the canonical product spec (`.planning/PRODUCT_SPEC_v0_1.md`) and detailed in `.planning/REQUIREMENTS.md`. Top-level capability areas:
-- [ ] **Cost-effective AI runtime** — Vercel AI SDK, Anthropic/SDK provider integrations, Planner→Executor→Renderer orchestration, streaming (SSE + text), cost guardrails (tier caps, monthly budget)
+- [x] **Cost-effective AI runtime** — Vercel AI SDK, Anthropic/SDK provider integrations, Planner→Executor→Renderer orchestration, streaming (SSE + text), cost guardrails (tier caps, monthly budget) — *Phase 03 complete*
 - [ ] **Agent reliability & evidence** — agent-level token budget, CheckpointRecorder, evidence (probe + path), commit-confirm barrier, fallback/recovery
 - [ ] **Context-adaptive execution** — context windows, ContextUpdate events, context-aware selection, phase-aware prompting
 - [ ] **PageContentService** — content-script extraction (defuddle main content), schema `{title, url, text, metadata}`, TraceRedactor in DOMElems
@@ -89,4 +91,4 @@ v1 scope, derived from the canonical product spec (`.planning/PRODUCT_SPEC_v0_1.
 | ServiceNow, Write, TeamGQM as first-party add-ons | P1 add-ons; architecture supports third-party add-on SDK later | ✓ Spec §25 |
 
 ---
-*Last updated: 2026-08-09 after Phase 02 completion (/gsd-execute-phase 2 → verification passed, code review clean)*
+*Last updated: 2026-08-11 after Phase 03 completion (/gsd-execute-phase 3 → verification passed 5/5, gap-closure cycle closed WR-02A/WR-03A)*
