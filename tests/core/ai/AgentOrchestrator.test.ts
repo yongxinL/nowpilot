@@ -1,20 +1,22 @@
 // tests/core/ai/AgentOrchestrator.test.ts — orchestrator contract (03-06,
-// Appendix I VERBATIM, D-20). runAgentTurn is the bounded Planner→Executor→
-// Renderer loop with the output struct verbatim; the stage services are mocked
-// so the ORCHESTRATOR's own invariants are exercised in isolation:
+// Appendix I VERBATIM, D-20 FENCE INVERTED by 3a). runAgentTurn is the bounded
+// Planner→Executor→Renderer loop returning the C.1 AgentTurnOutcome (03a-03,
+// D-3a-18); the stage services are mocked so the ORCHESTRATOR's own invariants
+// are exercised in isolation:
 //   - a healthy turn is EXACTLY 2 model calls (one planner + one renderer) —
 //     the AI-SPEC "Cost discipline" dimension (executed tools are deterministic,
 //     never model calls);
-//   - every path terminates in a bounded terminal reasonCode: planner failure →
-//     deterministic 'planner_failed' (no re-invocation), provider_unconfigured
-//     resolution → 'provider_unconfigured' (no model call), abort → AbortError,
-//     caps → planner_cap_reached / tool_cap_reached, success → the planner's
-//     reasonCode or 'ask_clarification'; provider-level failures propagate as
+//   - every path terminates in a bounded terminal STATUS: planner failure →
+//     'failed'/'planner_failed' (no re-invocation), provider_unconfigured
+//     resolution → 'failed'/'provider_unconfigured' (no model call), abort →
+//     AbortError, caps → 'partial'/'cap_exhausted' (AGT-03 — never
+//     'completed'), success → 'completed'; provider-level failures propagate as
 //     the visible provider-failure state;
 //   - §1.4 caps are enforced ONLY here (Appendix I rule) — capsForTier maps the
 //     ModelContextTier to the verbatim {plannerCap, toolCap, mcpChaining} shape;
 //   - the onStreamDelta seam streams deltas BEFORE completion (AI-03);
-//   - D-20: the orchestrator source carries zero evidence-machinery tokens.
+//   - D-20 inverted (D-3a-18): the orchestrator source OWNS the reliability
+//     machinery (AgentTurnOutcome, trajectory, buildOutcome).
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -124,21 +126,41 @@ describe('runAgentTurn — healthy turn costs EXACTLY 2 model calls (AI-SPEC cos
     expect(planMock).toHaveBeenCalledTimes(1);
     expect(executeMock).not.toHaveBeenCalled();
     expect(renderMock).toHaveBeenCalledTimes(1); // 1 planner + 1 renderer = exactly 2 model calls
+    // D-3a-18: the output struct is AgentTurnOutcome — streamedText/toolResults
+    // left it (text travels via onStreamDelta; tools flow into the render input).
     expect(output).toEqual({
       operationId: 'op-turn-0001',
-      streamedText: 'final answer',
-      toolResults: [],
-      reasonCode: 'success',
+      status: 'completed',
+      reasonCode: 'ok', // buildOutcome: no capHit, no failed side effect
+      evidence: [],
+      plannerCalls: 1,
+      toolCalls: 0,
     });
   });
 
-  it('ask_clarification terminates with the ask_clarification reasonCode (RICH-C-01 substrate)', async () => {
+  it('ask_clarification pauses the turn: onInputRequired fires with the clarification, abort cancels the wait (D-3a-15/16)', async () => {
     planMock.mockResolvedValue(CLARIFY);
-    const output = await runAgentTurn(baseInput());
+    const onInputRequired = vi.fn();
+    const controller = new AbortController();
 
-    expect(planMock).toHaveBeenCalledTimes(1);
-    expect(renderMock).toHaveBeenCalledTimes(1);
-    expect(output.reasonCode).toBe('ask_clarification');
+    // 3a rewire: ask_clarification is no longer a terminal — the turn pauses
+    // at waiting-for-permission and stays OPEN (AGT-05 seam; resume UI is
+    // Phase 8). The 03a-03 trajectory suite proves the pause; this legacy
+    // consumer asserts the payload + abort-wins behavior instead of the
+    // removed terminal reasonCode.
+    const turn = runAgentTurn(
+      baseInput({ onInputRequired, abortSignal: controller.signal }),
+    );
+    await vi.waitFor(() => expect(onInputRequired).toHaveBeenCalledTimes(1));
+    expect(onInputRequired).toHaveBeenCalledWith({
+      roleId: 'user',
+      question: 'Which note?',
+      options: [],
+      reason: 'clarification',
+    });
+    controller.abort();
+    await expect(turn).rejects.toMatchObject({ name: 'AbortError' }); // abort wins mid-wait (O4)
+    expect(renderMock).not.toHaveBeenCalled(); // the turn never reached the renderer
   });
 
   it('threads the planner-stage invocation into plan() — providerId/model/callProviderJsonMode/timeout', async () => {
@@ -171,14 +193,17 @@ describe('runAgentTurn — run_tool loop (Planner requests, Executor validates+r
     expect(planMock).toHaveBeenCalledTimes(2);
     expect(executeMock).toHaveBeenCalledTimes(1);
     expect(renderMock).toHaveBeenCalledTimes(1);
-    expect(output.toolResults).toHaveLength(1);
-    expect(output.toolResults[0].toolName).toBe('get-provider-info');
-    expect(output.reasonCode).toBe('success');
+    expect(output.status).toBe('completed');
+    expect(output.reasonCode).toBe('ok');
+    // toolResults left the output struct (D-3a-18) — the tool result still
+    // lands in the render input where the renderer narrates it.
+    expect(renderMock.mock.calls[0][0].toolResults).toHaveLength(1);
+    expect(renderMock.mock.calls[0][0].toolResults[0].toolName).toBe('get-provider-info');
     // The Executor receives the decision's toolName/input with the abort signal threaded.
     expect(executeMock.mock.calls[0][0]).toMatchObject({ toolName: 'get-provider-info' });
   });
 
-  it('planner_cap_reached: cap exhaustion terminates before the next planner call', async () => {
+  it('planner cap exhaustion: capHit terminates before the next planner call (partial/cap_exhausted, AGT-03)', async () => {
     planMock.mockResolvedValue(RUN_TOOL);
     executeMock.mockResolvedValue({
       toolName: 'get-provider-info',
@@ -194,10 +219,11 @@ describe('runAgentTurn — run_tool loop (Planner requests, Executor validates+r
     expect(planMock).toHaveBeenCalledTimes(1); // cap checked BEFORE the 2nd plan
     expect(executeMock).toHaveBeenCalledTimes(1);
     expect(renderMock).toHaveBeenCalledTimes(1);
-    expect(output.reasonCode).toBe('planner_cap_reached');
+    expect(output.status).toBe('partial'); // AGT-03: cap exhaustion is honest non-completion
+    expect(output.reasonCode).toBe('cap_exhausted');
   });
 
-  it('tool_cap_reached: cap exhaustion terminates before the next tool run', async () => {
+  it('tool cap exhaustion: capHit terminates before the next tool run (partial/cap_exhausted, AGT-03)', async () => {
     planMock.mockResolvedValue(RUN_TOOL);
     executeMock.mockResolvedValue({
       toolName: 'get-provider-info',
@@ -212,7 +238,8 @@ describe('runAgentTurn — run_tool loop (Planner requests, Executor validates+r
 
     expect(planMock).toHaveBeenCalledTimes(2);
     expect(executeMock).toHaveBeenCalledTimes(1); // tool cap checked BEFORE the 2nd run
-    expect(output.reasonCode).toBe('tool_cap_reached');
+    expect(output.status).toBe('partial'); // AGT-03: never 'completed'
+    expect(output.reasonCode).toBe('cap_exhausted');
   });
 });
 
@@ -225,8 +252,10 @@ describe('runAgentTurn — bounded terminal reasonCodes on every path', () => {
 
     expect(planMock).toHaveBeenCalledTimes(1); // never a second planner call
     expect(renderMock).toHaveBeenCalledTimes(1); // the visible fallback answer still renders
+    expect(output.status).toBe('failed');
     expect(output.reasonCode).toBe('planner_failed');
-    expect(output.streamedText).toBe('I could not answer that.');
+    // streamedText left the output struct (D-3a-18) — the fallback text
+    // travels via onStreamDelta; render-ran is the evidence it was produced.
   });
 
   it('provider_unconfigured resolution → provider_unconfigured reasonCode with NO model call', async () => {
@@ -242,11 +271,15 @@ describe('runAgentTurn — bounded terminal reasonCodes on every path', () => {
     expect(planMock).not.toHaveBeenCalled();
     expect(executeMock).not.toHaveBeenCalled();
     expect(renderMock).not.toHaveBeenCalled();
+    // D-3a-19: provider_unconfigured stays a FAILED terminal (status 'failed'
+    // + reasonCode — unchanged UX); no model call ever started.
     expect(output).toEqual({
       operationId: 'op-turn-0001',
-      streamedText: '',
-      toolResults: [],
+      status: 'failed',
       reasonCode: 'provider_unconfigured',
+      evidence: [],
+      plannerCalls: 0,
+      toolCalls: 0,
     });
   });
 
@@ -304,7 +337,9 @@ describe('runAgentTurn — onStreamDelta seam (AI-03): deltas BEFORE completion'
     const output = await runAgentTurn(baseInput({ onStreamDelta }));
     order.push('completed');
 
-    expect(output.streamedText).toBe('d1');
+    // streamedText left the output struct (D-3a-18) — the seam claim is
+    // proven by the delta order (strictly before completion) + the render
+    // receiving the caller's seam.
     expect(order).toEqual(['delta:d1', 'completed']); // deltas strictly before completion
     expect(renderMock.mock.calls[0][0].onDelta).toBe(onStreamDelta); // the caller's seam
   });
@@ -318,7 +353,7 @@ describe('capsForTier — §1.4 verbatim caps shape (never ModelContextTier)', (
     expect(capsForTier('large')).toEqual({ plannerCap: 5, toolCap: 3, mcpChaining: true });
   });
 
-  it('large caps bound the loop: 5 planner / 3 tool caps — run_tool decisions terminate in tool_cap_reached', async () => {
+  it('large caps bound the loop: 5 planner / 3 tool caps — run_tool decisions terminate in partial/cap_exhausted', async () => {
     planMock.mockResolvedValue(RUN_TOOL);
     executeMock.mockResolvedValue({
       toolName: 'get-provider-info',
@@ -333,10 +368,11 @@ describe('capsForTier — §1.4 verbatim caps shape (never ModelContextTier)', (
 
     expect(planMock).toHaveBeenCalledTimes(4); // the 4th plan hits the 3-tool cap
     expect(executeMock).toHaveBeenCalledTimes(3); // never beyond toolCap 3
-    expect(output.reasonCode).toBe('tool_cap_reached');
+    expect(output.status).toBe('partial');
+    expect(output.reasonCode).toBe('cap_exhausted');
   });
 
-  it('planner_cap_reached fires when toolCap outlasts plannerCap (verbatim loop check at the top)', async () => {
+  it('planner cap fires when toolCap outlasts plannerCap (verbatim loop check at the top) — partial/cap_exhausted', async () => {
     planMock.mockResolvedValue(RUN_TOOL);
     executeMock.mockResolvedValue({
       toolName: 'get-provider-info',
@@ -351,7 +387,8 @@ describe('capsForTier — §1.4 verbatim caps shape (never ModelContextTier)', (
 
     expect(planMock).toHaveBeenCalledTimes(2); // never beyond plannerCap 2
     expect(executeMock).toHaveBeenCalledTimes(2);
-    expect(output.reasonCode).toBe('planner_cap_reached');
+    expect(output.status).toBe('partial');
+    expect(output.reasonCode).toBe('cap_exhausted');
   });
 });
 
