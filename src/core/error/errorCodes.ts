@@ -67,6 +67,12 @@ export const ERROR_CODES = {
   // asserts each of these appears as a /^CODE$/m line inside the C.2 slice.
   TOOL_REJECTED: 'TOOL_REJECTED',
   PERSONA_LOAD_FAILED: 'PERSONA_LOAD_FAILED',
+  // --- Agent harness (Phase 3a, canonical additions — spec Appendix C.2
+  // harness block L5051-5053, 03a-01 reconciliation). Every debugLog in the
+  // 3a reliability layer uses one of these verbatim (Golden Rule 9).
+  AGENT_STATE_INVALID: 'AGENT_STATE_INVALID',
+  TOOL_POSTCONDITION_FAILED: 'TOOL_POSTCONDITION_FAILED',
+  COMPLETION_EVIDENCE_MISSING: 'COMPLETION_EVIDENCE_MISSING',
   STRUCTURED_OUTPUT_FAILED: 'STRUCTURED_OUTPUT_FAILED',
   PLANNER_FAILED: 'PLANNER_FAILED',
   STREAM_FAILED: 'STREAM_FAILED',
