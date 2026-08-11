@@ -37,6 +37,7 @@ import type { CoreMessage, LanguageModel, ProviderMetadata } from 'ai';
 import { debugLog } from '@/core/error/debugLog';
 import { ERROR_CODES } from '@/core/error/errorCodes';
 import type { ErrorCode } from '@/core/error/errorCodes';
+import { isTimeoutError } from '@/core/error/TimeoutError';
 import { getAISDKModel } from '@/core/ai/ILLMProvider';
 import type { GetAISDKModelConfig } from '@/core/ai/ILLMProvider';
 import { applyCacheHints } from '@/core/ai/PromptCacheAdapter';
@@ -491,8 +492,19 @@ export class ProviderRouter {
    * flag. Retryable pre-first-token codes: TIMEOUT, PROVIDER_5XX, NETWORK,
    * RATE_LIMITED. Non-retryable: PROVIDER_AUTH, PROVIDER_MODEL_UNKNOWN,
    * SCHEMA_INVALID, HOST_NOT_PERMITTED. Aborts are never provider failures.
+   *
+   * WR-03 (03-11): the typed TimeoutError carrier (thrown by
+   * StructuredOutput.attempt for timeout-origin aborts) is checked FIRST —
+   * before the isAbortError branch — mapping timeout-origin failures to
+   * TIMEOUT/retryable. Genuine user cancels (AbortError, no carrier) still
+   * land on UNKNOWN and are never retried (T-03-11-01/02).
    */
   classifyProviderError(err: unknown): ClassifiedProviderError {
+    if (isTimeoutError(err)) {
+      // WR-03: timeout-origin failure — retryable (TIMEOUT ∈ RETRYABLE_CODES),
+      // and BREAKER_VOTES.TIMEOUT = 1 keeps the §1.5 breaker honest.
+      return { code: 'TIMEOUT', retryable: true };
+    }
     if (NoObjectGeneratedError.isInstance(err)) {
       // Native path: the model output failed the schema at the SDK boundary.
       return { code: 'SCHEMA_INVALID', retryable: false };
