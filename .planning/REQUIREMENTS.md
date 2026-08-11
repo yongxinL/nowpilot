@@ -50,8 +50,8 @@
 - [x] **AGT-01**: Agent-level token budget bounds a single agent run
 - [x] **AGT-02**: CheckpointRecorder enables one-step rollback on failure
 - [x] **AGT-03**: Side-effecting tools require CompletionEvidence (probe + path); cap exhaustion = `partial`, never `completed`
-- [ ] **AGT-04**: Replan path is bounded by tier caps and never nested
-- [ ] **AGT-05**: Commit-confirm barrier requires user confirmation before irreversible actions
+- [x] **AGT-04**: Replan path is bounded by tier caps and never nested
+- [x] **AGT-05**: Commit-confirm barrier requires user confirmation before irreversible actions
 
 ### Context-Adaptive Execution (Phase 4)
 

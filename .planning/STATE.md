@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 03a
 current_phase_name: agent-reliability-and-evidence
 status: executing
-stopped_at: Completed 03a-02-PLAN.md
-last_updated: "2026-08-11T21:53:00.535Z"
+stopped_at: Completed 03a-03-PLAN.md
+last_updated: "2026-08-11T23:31:21.374Z"
 last_activity: 2026-08-11
 last_activity_desc: Phase 03a execution started
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 43
-  completed_plans: 40
+  completed_plans: 41
 ---
 
 # Project State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-08-09)
 ## Current Position
 
 Phase: 03a (agent-reliability-and-evidence) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
 Last activity: 2026-08-11 — Phase 03a execution started
 
-Progress: [█████████░] 93%
+Progress: [██████████] 95%
 
 ## Performance Metrics
 
@@ -86,6 +86,7 @@ Progress: [█████████░] 93%
 | Phase 03-cost-effective-ai-runtime-persona-seed P16 | 13min | 3 tasks | 5 files |
 | Phase 03a P01 | 11min | 7 tasks | 8 files |
 | Phase 03a P02 | 8 | 5 tasks | 4 files |
+| Phase 03a P03 | 96 | 11 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -174,6 +175,9 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase ?]: Cap exhaustion => status 'partial' + reasonCode 'cap_exhausted' regardless of side-effect failure; capHit wins the O.2 ternary (D-3a-07, AGT-03) — O.2 L6387-6391 verbatim
 - [Phase ?]: Absent/!ok evidence for a side-effecting tool => 'failed' + reasonCode 'postcondition_failed' (fail-closed, D-3a-06; O.2 string kept verbatim per Open Q1) — R-8 safety invariant; reasonCode vocabulary split resolved
 - [Phase ?]: CheckpointRecorder uses structuredClone on BOTH capture and restore; in-memory per-turn only (C4, §17.7.7); no side-effect compensation (Phase 8 TOL-05) — D-3a-08/09 truth 4 no-shared-references + deep-copied-restore contract
+- [Phase 03a]: D-3a-18/D-20 fence inverted: runAgentTurn returns AgentTurnOutcome (C.1) — AgentTurnOutput deleted; streamedText travels via onStreamDelta; trajectory recorder is an input-only onTransition callback (direct calls, never an event bus, L1); trajectory cap = plannerCap+toolCap+1 checked FIRST at loop top fires 'partial'/'trajectory_cap_exceeded' on pathological replan loops — D-3a-18/D-20 fence inverted: runAgentTurn returns AgentTurnOutcome (C.1) — AgentTurnOutput deleted; streamedText travels via onStreamDelta; trajectory recorder is an input-only onTransition callback (direct calls, never an event bus, L1); trajectory cap = plannerCap+toolCap+1 checked FIRST at loop top fires 'partial'/'trajectory_cap_exceeded' on pathological replan loops
+- [Phase 03a]: Replan-on-tool-failure (D-3a-11/12/13): retryable tool failure restores the pre-tool checkpoint, consumes a plannerCalls++ slot, appends an F-4 tool_result PromptSection (stable:false, sourceId replan-feedback), re-invokes planner once; repeated-identical (same tool+code) is terminal 'failed'/'replan_identical_failure'; planner-side failures keep planner_failed (no replan, R-2) — Replan-on-tool-failure (D-3a-11/12/13): retryable tool failure restores the pre-tool checkpoint, consumes a plannerCalls++ slot, appends an F-4 tool_result PromptSection (stable:false, sourceId replan-feedback), re-invokes planner once; repeated-identical (same tool+code) is terminal 'failed'/'replan_identical_failure'; planner-side failures keep planner_failed (no replan, R-2)
+- [Phase 03a]: RenderInput verdict/evidence optional for Phase-3 compat (legacy RendererService.test.ts untouchable); orchestrator always supplies them; renderer evidence guard (D-3a-17) marks only ok:true-evidenced tools 'done' — display-only, never re-verifies — RenderInput verdict/evidence optional for Phase-3 compat (legacy RendererService.test.ts untouchable); orchestrator always supplies them; renderer evidence guard (D-3a-17) marks only ok:true-evidenced tools 'done' — display-only, never re-verifies
 
 ### Pending Todos
 
@@ -202,6 +206,6 @@ Items acknowledged and carried forward (v2 scope, tracked in REQUIREMENTS.md):
 
 ## Session Continuity
 
-Last session: 2026-08-11T21:52:50.001Z
-Stopped at: Completed 03a-02-PLAN.md
+Last session: 2026-08-11T23:30:52.842Z
+Stopped at: Completed 03a-03-PLAN.md
 Resume file: None

@@ -185,7 +185,7 @@ Plans:
   4. Replanning is bounded by tier caps and never nested; abort works cleanly.
   5. Evidence/false-completion tests pass (commit-confirm barrier UI deferred to Phase 8 — D-3a-01).
 
-**Plans**: 2/5 plans executed
+**Plans**: 3/5 plans executed
 
 Plans:
 **Wave 1**
@@ -198,7 +198,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 03a-03-PLAN.md — orchestrator rewire: AgentTurnOutcome return (D-20 inversion), trajectory transitions, checkpoint seam, replan-on-tool-failure, pause seam, buildOutcome terminal + renderer evidence guard (wave 3)
+- [x] 03a-03-PLAN.md — orchestrator rewire: AgentTurnOutcome return (D-20 inversion), trajectory transitions, checkpoint seam, replan-on-tool-failure, pause seam, buildOutcome terminal + renderer evidence guard (wave 3)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -443,7 +443,7 @@ Plans:
 | 1. MV3/WXT Runtime + AntD Shells + Workspace | 11/11 | Complete    | 2026-08-08 |
 | 2. Storage, Security, WriteJournal, Workspace Persistence | 11/11 | Complete    | 2026-08-09 |
 | 3. Cost-Effective AI Runtime (+ Persona seed) | 16/16 | Complete    | 2026-08-11 |
-| 3a. Agent Reliability and Evidence | 2/5 | In Progress|  |
+| 3a. Agent Reliability and Evidence | 3/5 | In Progress|  |
 | 4. Context-Adaptive Execution | TBD | Not started | - |
 | 4a. PageContentService (Knowledge Acquisition) | TBD | Not started | - |
 | 4b. Trust-Aware Context and Receipts | TBD | Not started | - |
