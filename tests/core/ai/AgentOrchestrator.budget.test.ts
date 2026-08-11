@@ -135,9 +135,9 @@ describe('CR-01 regression — the R-2 budget never starves legitimate stage cal
 
     // Pre-fix this rejects with PROVIDER_UNAVAILABLE: no_candidate (router
     // attempt budget exhausted) at the renderer resolution after 3
-    // planner-loop attempts. Post-fix the turn resolves.
+    // planner-loop attempts. Post-fix the turn resolves 'completed' (CR-01).
     await expect(runAgentTurn(makeTurnInput(router))).resolves.toMatchObject({
-      reasonCode: 'success',
+      status: 'completed',
     });
     expect(streamTextMock).toHaveBeenCalledTimes(1); // the renderer stage actually ran
     expect(generateObjectMock).toHaveBeenCalledTimes(3); // 2 run_tool plans + 1 answer plan
@@ -164,9 +164,9 @@ describe('CR-01 regression — the R-2 budget never starves legitimate stage cal
 
     // Pre-fix: the repair's extra attempt (2 on one planner call) + the second
     // planner call = 3 total, so the renderer resolution was blocked with
-    // no_candidate. Post-fix the turn completes with an answer.
+    // no_candidate. Post-fix the turn completes with an answer (status 'completed').
     await expect(runAgentTurn(makeTurnInput(router))).resolves.toMatchObject({
-      reasonCode: 'success',
+      status: 'completed',
     });
     expect(streamTextMock).toHaveBeenCalledTimes(1);
     expect(router.getAttemptState(OPERATION_ID)?.retryCount).toBe(0); // a repair is NOT a retry
@@ -201,10 +201,10 @@ describe('CR-01 regression — the R-2 budget never starves legitimate stage cal
     // Pre-fix: 2 attempts on one planner call + the 2nd planner call = 3 →
     // the renderer resolution was blocked with the budget no_candidate.
     // Post-fix the retry consumes retryCount=1 (well under the 3-cap) and the
-    // turn completes with an answer.
+    // turn completes with an answer (status 'completed').
     await expect(
       runAgentTurn(makeTurnInput(router, { invocation: twoProviderResolver })),
-    ).resolves.toMatchObject({ reasonCode: 'success' });
+    ).resolves.toMatchObject({ status: 'completed' });
     expect(streamTextMock).toHaveBeenCalledTimes(1);
     expect(generateObjectMock).toHaveBeenCalledTimes(3); // fail + retry + answer
     expect(router.getAttemptState(OPERATION_ID)?.retryCount).toBe(1); // exactly the D-17 retry
