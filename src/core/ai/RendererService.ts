@@ -73,13 +73,16 @@ function streamFailed(message: string, partialText: string): StreamFailedError {
 }
 
 /**
- * User-abort guard (WR-02, T-03-12-01): name-match pattern (ProviderRouter /
- * AgentOrchestrator precedent) — a user abort is NOT a provider failure and
- * must never vote the breaker. DOMException does not extend Error in every
- * runtime, so match by name, never by instanceof alone.
+ * User-abort guard (WR-02, T-03-12-01): name-match pattern (AgentOrchestrator
+ * L204-211 / PATTERNS.md shared pattern) — a user abort is NOT a provider
+ * failure and must never vote the breaker. DOMException does not extend Error
+ * in every environment (jsdom realm), so match the canonical 'AbortError' name
+ * regardless of prototype chain.
  */
 function isAbortError(err: unknown): boolean {
-  return err instanceof Error && err.name === 'AbortError';
+  return (
+    typeof err === 'object' && err !== null && (err as { name?: unknown }).name === 'AbortError'
+  );
 }
 
 export const RendererService = {
@@ -122,7 +125,11 @@ export async function render(input: RenderInput): Promise<RenderOutput> {
     // provider's breaker — a user abort (AbortError) is not a provider failure
     // and must never vote.
     if (!isAbortError(e)) {
-      getProviderRouter().recordFailure(input.invocation.providerId, ERROR_CODES.STREAM_FAILED, err);
+      getProviderRouter().recordFailure(
+        input.invocation.providerId,
+        ERROR_CODES.STREAM_FAILED,
+        err,
+      );
     }
     debugLog(ERROR_CODES.STREAM_FAILED, 'renderer stream aborted mid-generation', {
       module: 'RendererService',
