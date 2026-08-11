@@ -73,6 +73,11 @@ export function ChatPage() {
    * Retry re-sends the LAST user input through the same runAgentTurn path with
    * a NEW operationId (the hook's retry) — the failed bubble's partial text is
    * replaced by the new attempt's stream (UI-SPEC Retry semantics).
+   *
+   * (WR-04) Last-message targeting is sound BECAUSE the footer gate below
+   * (`m.id === messages[messages.length - 1]?.id`) renders Retry only on the
+   * latest failed/offline assistant bubble — a stale-bubble click can never
+   * wipe the newest message or re-run a stale input.
    */
   const handleRetry = useCallback(() => {
     if (isStreaming) return;
@@ -126,8 +131,12 @@ export function ChatPage() {
               ),
             }
           : {}),
+        // (WR-04) Retry is a recovery action for the CURRENT turn only
+        // (UI-SPEC failed-row semantics) — gate the footer to the latest
+        // assistant bubble; older failed bubbles are inert history.
         footer:
-          m.status === 'failed' || m.status === 'offline' ? (
+          m.id === messages[messages.length - 1]?.id &&
+          (m.status === 'failed' || m.status === 'offline') ? (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
               {m.status === 'failed' && (
                 <Typography.Text type="danger" style={{ fontSize: 12 }}>
