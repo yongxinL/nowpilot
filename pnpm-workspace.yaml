@@ -1,2 +1,6 @@
+allowBuilds:
+  esbuild: set this to true or false
+  msw: set this to true or false
+  spawn-sync: set this to true or false
 minimumReleaseAgeExclude:
   - eslint@10.8.1

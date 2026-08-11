@@ -61,6 +61,29 @@ const FORBIDDEN_TOKENS = [
   'generateObject',
 ];
 
+// R-3 forbidden tokens for the BACKGROUND SW (checked as plain substrings).
+// The background is PROXY_FETCH / alarms / context menus / CORS proxy ONLY —
+// it must never import the AI runtime (@ai-sdk + the Phase-3 orchestrator
+// services) or touch the vault (KeyVault/EncryptedStorage). This set is
+// intentionally NARROWER than FORBIDDEN_TOKENS: wxt's shared
+// _virtual_wxt-plugins chunk legitimately pulls the react/antd chunk into the
+// background entry (a build-system artifact, not a source import), so UI tokens
+// are NOT asserted here — only the R-3 AI/vault boundary (Pitfall 6).
+const BACKGROUND_FORBIDDEN_TOKENS = [
+  'ProviderRouter',
+  'PlannerService',
+  'ExecutorService',
+  'RendererService',
+  'AgentOrchestrator',
+  'streamText',
+  'generateText',
+  'generateObject',
+  'KeyVault',
+  'EncryptedStorage',
+  'idb',
+  'fflate',
+];
+
 async function walk(dir) {
   const entries = [];
   let items;
@@ -118,15 +141,17 @@ for (const file of contentBundles) {
 }
 
 // 03-09 (R-3, Pitfall 6): the background SW must never import the AI runtime
-// or the vault — scan every <browser>/background.js bundle with the SAME
-// extended forbidden set (ai + storage/vault/UI). The background is
-// PROXY_FETCH / alarms / context menus / CORS proxy only.
+// or the vault — scan every <browser>/background.js bundle for the R-3 AI/vault
+// token set. The background is PROXY_FETCH / alarms / context menus / CORS
+// proxy only.
 const backgroundBundles = allFiles.filter((f) => /background\.js$/.test(f));
 for (const file of backgroundBundles) {
   const content = await readFile(file, 'utf8');
-  for (const token of FORBIDDEN_TOKENS) {
+  for (const token of BACKGROUND_FORBIDDEN_TOKENS) {
     if (content.includes(token)) {
-      violations.push(`${relative(outDir, file)} (background SW) contains forbidden token: ${token}`);
+      violations.push(
+        `${relative(outDir, file)} (background SW) contains forbidden token: ${token}`,
+      );
     }
   }
 }
