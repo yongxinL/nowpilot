@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 03a
 current_phase_name: agent-reliability-and-evidence
 status: executing
-stopped_at: Completed 03a-03-PLAN.md
-last_updated: "2026-08-11T23:31:21.374Z"
+stopped_at: Completed 03a-04-PLAN.md
+last_updated: "2026-08-11T23:53:34.917Z"
 last_activity: 2026-08-11
 last_activity_desc: Phase 03a execution started
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 43
-  completed_plans: 41
+  completed_plans: 42
 ---
 
 # Project State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-08-09)
 ## Current Position
 
 Phase: 03a (agent-reliability-and-evidence) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-08-11 — Phase 03a execution started
 
-Progress: [██████████] 95%
+Progress: [██████████] 98%
 
 ## Performance Metrics
 
@@ -87,6 +87,7 @@ Progress: [██████████] 95%
 | Phase 03a P01 | 11min | 7 tasks | 8 files |
 | Phase 03a P02 | 8 | 5 tasks | 4 files |
 | Phase 03a P03 | 96 | 11 tasks | 5 files |
+| Phase 03a P04 | 17min | 6 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -178,6 +179,7 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 03a]: D-3a-18/D-20 fence inverted: runAgentTurn returns AgentTurnOutcome (C.1) — AgentTurnOutput deleted; streamedText travels via onStreamDelta; trajectory recorder is an input-only onTransition callback (direct calls, never an event bus, L1); trajectory cap = plannerCap+toolCap+1 checked FIRST at loop top fires 'partial'/'trajectory_cap_exceeded' on pathological replan loops — D-3a-18/D-20 fence inverted: runAgentTurn returns AgentTurnOutcome (C.1) — AgentTurnOutput deleted; streamedText travels via onStreamDelta; trajectory recorder is an input-only onTransition callback (direct calls, never an event bus, L1); trajectory cap = plannerCap+toolCap+1 checked FIRST at loop top fires 'partial'/'trajectory_cap_exceeded' on pathological replan loops
 - [Phase 03a]: Replan-on-tool-failure (D-3a-11/12/13): retryable tool failure restores the pre-tool checkpoint, consumes a plannerCalls++ slot, appends an F-4 tool_result PromptSection (stable:false, sourceId replan-feedback), re-invokes planner once; repeated-identical (same tool+code) is terminal 'failed'/'replan_identical_failure'; planner-side failures keep planner_failed (no replan, R-2) — Replan-on-tool-failure (D-3a-11/12/13): retryable tool failure restores the pre-tool checkpoint, consumes a plannerCalls++ slot, appends an F-4 tool_result PromptSection (stable:false, sourceId replan-feedback), re-invokes planner once; repeated-identical (same tool+code) is terminal 'failed'/'replan_identical_failure'; planner-side failures keep planner_failed (no replan, R-2)
 - [Phase 03a]: RenderInput verdict/evidence optional for Phase-3 compat (legacy RendererService.test.ts untouchable); orchestrator always supplies them; renderer evidence guard (D-3a-17) marks only ok:true-evidenced tools 'done' — display-only, never re-verifies — RenderInput verdict/evidence optional for Phase-3 compat (legacy RendererService.test.ts untouchable); orchestrator always supplies them; renderer evidence guard (D-3a-17) marks only ok:true-evidenced tools 'done' — display-only, never re-verifies
+- [Phase 03a]: useStreamingLLM.ts maps AgentTurnOutcome.status per D-3a-19 (completed->completed, partial/failed->failed with partial text + Retry, aborted->idle; provider_unconfigured stays failed) — D-20 fence test INVERTED (Pitfall 1): the orchestrator source must reference AgentTurnOutcome|OutcomeVerifier|trajectory - never the stale zero-tokens contract
 
 ### Pending Todos
 
@@ -206,6 +208,6 @@ Items acknowledged and carried forward (v2 scope, tracked in REQUIREMENTS.md):
 
 ## Session Continuity
 
-Last session: 2026-08-11T23:30:52.842Z
-Stopped at: Completed 03a-03-PLAN.md
+Last session: 2026-08-11T23:53:04.784Z
+Stopped at: Completed 03a-04-PLAN.md
 Resume file: None

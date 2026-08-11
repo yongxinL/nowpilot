@@ -202,7 +202,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 03a-04-PLAN.md — consumer migration (O3): hook D-3a-19 status mapping, D-20 fence inversion, AgentTurnOutput→AgentTurnOutcome test flips, budget status semantics (wave 4)
+- [x] 03a-04-PLAN.md — consumer migration (O3): hook D-3a-19 status mapping, D-20 fence inversion, AgentTurnOutput→AgentTurnOutcome test flips, budget status semantics (wave 4)
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
