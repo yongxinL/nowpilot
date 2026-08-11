@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v0.1
 milestone_name: milestone
-current_phase: 3a
-current_phase_name: Agent Reliability and Evidence
+current_phase: 03a
+current_phase_name: agent-reliability-and-evidence
 status: executing
-stopped_at: Phase 3a context gathered
-last_updated: "2026-08-11T12:48:02.669Z"
+stopped_at: Completed 03a-01-PLAN.md
+last_updated: "2026-08-11T21:36:41.892Z"
 last_activity: 2026-08-11
-last_activity_desc: Phase 03 complete, transitioned to Phase 3a
+last_activity_desc: Phase 03a execution started
 progress:
   total_phases: 4
   completed_phases: 3
-  total_plans: 38
-  completed_plans: 38
+  total_plans: 43
+  completed_plans: 39
 ---
 
 # Project State
@@ -24,16 +24,16 @@ See: .planning/PROJECT.md (updated 2026-08-09)
 
 **Core value:** A privacy-first, local-first AI assistant where chat, extracted page content, and a linked notes/knowledge layer combine into a persistent personal workspace — no data leaves the machine unless the user deliberately configures a cloud provider.
 
-**Current focus:** Phase 03 — cost-effective-ai-runtime-persona-seed
+**Current focus:** Phase 03a — agent-reliability-and-evidence
 
 ## Current Position
 
-Phase: 3a — Agent Reliability and Evidence
-Plan: Not started
+Phase: 03a (agent-reliability-and-evidence) — EXECUTING
+Plan: 2 of 5
 Status: Ready to execute
-Last activity: 2026-08-11 — Phase 03 complete, transitioned to Phase 3a
+Last activity: 2026-08-11 — Phase 03a execution started
 
-Progress: [██████████] 100%
+Progress: [█████████░] 91%
 
 ## Performance Metrics
 
@@ -84,6 +84,7 @@ Progress: [██████████] 100%
 | Phase 03 P09 | 15 | 8 tasks | 7 files |
 | Phase 03 P15 | 20min | 3 tasks | 4 files |
 | Phase 03-cost-effective-ai-runtime-persona-seed P16 | 13min | 3 tasks | 5 files |
+| Phase 03a P01 | 11min | 7 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -164,6 +165,10 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase ?]: [Phase 03-cost-effective-ai-runtime-persona-seed]: WR-02A test delegation implemented as vi.fn(new ProviderRouter().classifyProviderError) instead of a bare method reference — strict tsc rejects assigning a plain (err: unknown) => ClassifiedProviderError to the vi.fn() Mock field (TS2322), and the double-cast alternative spanned two lines (breaking the plan grep=3 acceptance count); vi.fn(realMethod) preserves the call-recording Mock surface AND the real this-free classifier delegation (Rule 3 auto-fix, committed in 80b64a7)
 - [Phase ?]: [Phase 03-cost-effective-ai-runtime-persona-seed]: RendererService.streamBreakdown.test.ts uses unique per-render operationIds (op-stream-breakdown-${++opSeq}) so router operation state stays fully isolated across renders; the router itself is also fresh per test via the vi.hoisted holder (only the ai-sdk streamText call site is stubbed — never the Router singleton)
 - [Phase 03-cost-effective-ai-runtime-persona-seed]: WR-03A closed: the D-17 retry on TIMEOUT now fires on the production path — the timeout-origin abort carries the typed TimeoutError carrier as signal.reason (abort-with-carrier), and the router closure recovers it with the SINGLE environment-independent isTimeoutError(signal.reason) guard (no instanceof conjunct on the SDK rejection — production Chrome rejects a DOMException, NOT instanceof Error), records the failed TIMEOUT attempt + votes the breaker BEFORE rethrowing (ledger attempts[0] = TIMEOUT), and runs each attempt on a fresh derived controller (the retry never reuses the aborted signal). Pinned end-to-end by StructuredOutput.timeoutRetry.test.ts (25 ms timeout, real Router). — Locked fix option (b) from VERIFICATION.md gap 3 / REVIEW WR-03A; planner_failed fallback semantics unchanged.
+- [Phase 03a]: C.1 AgentTrajectoryPhase kept verbatim (10 states, R-1): 'partial' is an outcome status on AgentTurnOutcome, never a trajectory phase — LEGAL_TRANSITIONS terminal states are completed/failed/aborted (plan literal fixed per RESEARCH C5 note; 03a-01 Rule 3 deviation)
+- [Phase 03a]: Zod boundary schemas co-located inline in src/types/harness.ts (D-3a-20, GR-4), zod 3 API only — mirrors ProviderConfigSchema precedent
+- [Phase 03a]: 'tool_result' maps to TASK_KINDS (provider prompt side) in BOTH ProviderRouter.ts and StructuredOutput.ts and never enters CACHED_KINDS (cache-stability, Pitfall 2/7)
+- [Phase 03a]: ContextProvenanceManifest.sections[].kind mirrors PromptSection['kind'] and must track its extensions (03a-01 Rule 3: 'tool_result' added in lockstep)
 
 ### Pending Todos
 
@@ -192,6 +197,6 @@ Items acknowledged and carried forward (v2 scope, tracked in REQUIREMENTS.md):
 
 ## Session Continuity
 
-Last session: 2026-08-11T11:18:00.953Z
-Stopped at: Phase 3a context gathered
-Resume file: .planning/phases/03a-agent-reliability-and-evidence/03a-CONTEXT.md
+Last session: 2026-08-11T21:36:27.545Z
+Stopped at: Completed 03a-01-PLAN.md
+Resume file: None

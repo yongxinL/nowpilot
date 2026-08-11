@@ -185,12 +185,12 @@ Plans:
   4. Replanning is bounded by tier caps and never nested; abort works cleanly.
   5. Evidence/false-completion tests pass (commit-confirm barrier UI deferred to Phase 8 — D-3a-01).
 
-**Plans**: 0/5 plans executed — planned 2026-08-11
+**Plans**: 1/5 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 03a-01-PLAN.md — foundation: C.1 harness types (AgentTrajectoryState/AgentTurnOutcome) + transition table + Zod boundary schemas, harness error codes (GR-9), PromptSection 'tool_result' kind + TASK_KINDS (both files), trajectory/evidence fixtures (wave 1)
+- [x] 03a-01-PLAN.md — foundation: C.1 harness types (AgentTrajectoryState/AgentTurnOutcome) + transition table + Zod boundary schemas, harness error codes (GR-9), PromptSection 'tool_result' kind + TASK_KINDS (both files), trajectory/evidence fixtures (wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -443,7 +443,7 @@ Plans:
 | 1. MV3/WXT Runtime + AntD Shells + Workspace | 11/11 | Complete    | 2026-08-08 |
 | 2. Storage, Security, WriteJournal, Workspace Persistence | 11/11 | Complete    | 2026-08-09 |
 | 3. Cost-Effective AI Runtime (+ Persona seed) | 16/16 | Complete    | 2026-08-11 |
-| 3a. Agent Reliability and Evidence | TBD | Not started | - |
+| 3a. Agent Reliability and Evidence | 1/5 | In Progress|  |
 | 4. Context-Adaptive Execution | TBD | Not started | - |
 | 4a. PageContentService (Knowledge Acquisition) | TBD | Not started | - |
 | 4b. Trust-Aware Context and Receipts | TBD | Not started | - |
