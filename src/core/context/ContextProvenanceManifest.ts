@@ -6,7 +6,10 @@
 
 export interface ContextProvenanceManifest {
   sections: Array<{
-    kind: 'system' | 'tool_schemas' | 'preferences' | 'memory' | 'context' | 'task' | 'user_input';
+    // 03a-01: mirrors PromptSection['kind'] (src/core/ai/types.ts) — gained
+    // 'tool_result' with the F-4 replan-feedback section kind (D-3a-11) so the
+    // manifest stays a faithful provenance record of every emitted section.
+    kind: 'system' | 'tool_schemas' | 'preferences' | 'memory' | 'context' | 'task' | 'user_input' | 'tool_result';
     sourceId: string;
     tokens: number;
     truncated: boolean;

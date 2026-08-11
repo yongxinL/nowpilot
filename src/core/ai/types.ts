@@ -127,8 +127,12 @@ export interface ToolExecutionResult<T = unknown> {
 // P-3: PromptSection's canonical home is THIS file (moved here from the §8.5
 // ContextOptimizer block; PromptCacheAdapter is a Phase-3 consumer). Phase-4
 // ContextOptimizer imports it via `import type { PromptSection } from '../ai/types'`.
+// 03a-01 (D-3a-11): the kind union gained 'tool_result' — the F-4 sections-in
+// replan-feedback section kind (stable:false, per-turn). It maps to the provider
+// `prompt` side via TASK_KINDS (BOTH ProviderRouter.ts and StructuredOutput.ts
+// must list it — Pitfall 2) and NEVER enters CACHED_KINDS (cache-stability, F-4).
 export interface PromptSection {
-  kind: 'system' | 'tool_schemas' | 'preferences' | 'memory' | 'context' | 'task' | 'user_input';
+  kind: 'system' | 'tool_schemas' | 'preferences' | 'memory' | 'context' | 'task' | 'user_input' | 'tool_result';
   text: string;
   tokens: number;
   stable: boolean;
