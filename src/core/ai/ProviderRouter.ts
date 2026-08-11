@@ -20,6 +20,12 @@
 // classifier's mapped code (a provider failing mid-stream now accrues real
 // votes; voteBreaker no longer early-returns 0 on a streaming failure).
 //
+// WR-03A (03-16): timeout-origin aborts are recovered from the incoming
+// signal's reason INSIDE the closure (the SDK drops the reason and rejects a
+// bare AbortError) — the recovery branch records the failed TIMEOUT attempt +
+// votes the breaker BEFORE rethrowing the carrier, and each attempt derives a
+// fresh controller so the D-17 retry never runs on the already-aborted signal.
+//
 // D-16: the budgetGuard hook is a no-op pass-through this phase — Phase 6 wires
 // the monthly ledger pre-flight here without a rebuild.
 //
@@ -590,6 +596,11 @@ export class ProviderRouter {
    * F-5 call shape via buildStageMessages. Wraps the invocation with the D-17
    * retry policy: exactly ONE router retry per retryable pre-first-token code,
    * never a nested loop (R-2), never beyond the attempt budget.
+   *
+   * WR-03A (03-16): timeout-origin aborts are recovered from the incoming
+   * signal's reason inside the closure (the SDK drops the reason and rejects a
+   * bare AbortError); each attempt derives its own controller so the retried
+   * call runs on a fresh non-aborted signal — never the aborted one.
    */
   private buildCallProviderJsonMode(
     input: CreateStageInvocationInput,
@@ -620,6 +631,14 @@ export class ProviderRouter {
         if (this.retryCount(input.operationId) >= ROUTER_MAX_ATTEMPTS) {
           throw unavailable('no_candidate', cand.providerId, 'router attempt budget exhausted');
         }
+        // WR-03A: each attempt derives its OWN controller, re-parented to the
+        // incoming signal — the D-17 retry runs on a FRESH non-aborted derived
+        // signal (the parent is already aborted at retry time, so its 'abort'
+        // event never re-fires — a retry on the same aborted signal would be
+        // futile by construction). The listener is cleaned up in the finally.
+        const derived = new AbortController();
+        const onParentAbort = () => derived.abort(signal.reason);
+        signal.addEventListener('abort', onParentAbort);
         try {
           const out = await this.invokeJsonMode(
             cand.providerId,
@@ -628,7 +647,7 @@ export class ProviderRouter {
             input.maxTokens,
             sections,
             jsonSchema,
-            signal,
+            derived.signal,
           );
           this.recordAttempt(
             input.operationId,
@@ -640,6 +659,32 @@ export class ProviderRouter {
           );
           return out;
         } catch (e) {
+          // WR-03A: the SDK drops the abort reason and rejects with a bare
+          // AbortError — the timeout-origin carrier must be recovered from the
+          // incoming signal's reason. Environment-independent SINGLE guard (no
+          // instanceof conjunct on the rejection object: in production Chrome
+          // the abort-origin rejection is a DOMException, NOT instanceof Error,
+          // which would silently dead-end the recovery in production while
+          // passing in jsdom — the exact test-realm-only failure WR-03A closes).
+          // signal.reason is ONLY ever the carrier from StructuredOutput's own
+          // timeout abort, or a user-abort reason (name 'AbortError' —
+          // isTimeoutError false), so the single guard is sufficient.
+          if (isTimeoutError(signal.reason)) {
+            // Ledger-correctness: record + vote BEFORE the rethrow — throwing
+            // first bypasses this catch's recordAttempt entirely, so the failed
+            // attempt would be missing from the ledger and the retry's success
+            // would land as attempts[0] with errorCode undefined.
+            this.recordAttempt(
+              input.operationId,
+              cand.providerId,
+              cand.model,
+              'failed',
+              'TIMEOUT',
+              isRetry,
+            );
+            this.voteBreaker(cand.providerId, 'TIMEOUT', signal.reason);
+            throw signal.reason;
+          }
           const cls = this.classifyProviderError(e);
           this.recordAttempt(
             input.operationId,
@@ -651,6 +696,8 @@ export class ProviderRouter {
           );
           this.voteBreaker(cand.providerId, cls.code, e);
           throw e;
+        } finally {
+          signal.removeEventListener('abort', onParentAbort);
         }
       };
       try {

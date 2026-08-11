@@ -86,6 +86,9 @@ export async function requestJson<T>(
   // ac.abort() fires, so a timeout-origin rejection is distinguishable from a
   // user abort — the catch rethrows the typed TimeoutError carrier for
   // timeout-origin failures, never a bare AbortError (T-03-11-01).
+  // WR-03A (03-16): the timeout-origin abort carries the typed carrier as the
+  // abort reason (it rides ac.signal.reason), so the router closure can recover
+  // it inside its retry decision point (WR-03A — the D-17 retry on TIMEOUT).
   const attempt = async (secs: PromptSection[]): Promise<string> => {
     const ac = new AbortController();
     const onAbort = () => ac.abort();
@@ -93,7 +96,10 @@ export async function requestJson<T>(
     let timedOut = false;
     const to = setTimeout(() => {
       timedOut = true;
-      ac.abort();
+      // WR-03A: abort WITH the typed carrier as the reason — the SDK drops it
+      // and rejects bare AbortError, but the closure recovers the carrier from
+      // ac.signal.reason inside its retry decision point.
+      ac.abort(timeoutError(ctx.timeoutMs));
     }, ctx.timeoutMs);
     try {
       return await ctx.callProviderJsonMode(secs, jsonSchema, ac.signal);
