@@ -33,6 +33,7 @@ import { ERROR_CODES } from '@/core/error/errorCodes';
 import { buildStageMessages, getProviderRouter } from '@/core/ai/ProviderRouter';
 import type { StageInvocation } from '@/core/ai/ProviderRouter';
 import type { OptimizedContext, ToolExecutionResult } from '@/core/ai/types';
+import type { CompletionEvidence } from '@/types/harness';
 
 /** §1.2 — renderer output cap (512 for normal answers; never unbounded). */
 export const RENDERER_MAX_TOKENS = 512;
@@ -51,6 +52,19 @@ export interface RenderInput {
   invocation: StageInvocation;
   /** Documented Phase-3 input-only deviation (D-20): live deltas for the hook's ChunkBuffer (03-08). */
   onDelta?: (delta: string) => void;
+  /**
+   * D-3a-17 (Phase 3a): the ORCHESTRATOR's terminal status (completed | partial
+   * | failed | aborted). Display-only — the renderer never re-verifies or
+   * changes it; it only reflects the received verdict in the render context.
+   * Optional for backward compatibility with the Phase-3 RenderInput shape;
+   * the orchestrator (03a-03) always supplies it.
+   */
+  verdict?: string;
+  /**
+   * D-3a-17 (Phase 3a): the verified CompletionEvidence set from buildOutcome.
+   * Optional for the same reason; the orchestrator always supplies it.
+   */
+  evidence?: CompletionEvidence[];
 }
 
 export interface RenderOutput {
@@ -92,15 +106,55 @@ export const RendererService = {
   render,
 };
 
+/**
+ * D-3a-17 (R-8): evidence-aware done-narration guard. Returns the set of tool
+ * names that carry a matching ok:true CompletionEvidence entry in the received
+ * set — the ONLY tools the renderer may describe as 'done'. Display-only: the
+ * renderer never re-verifies or changes the orchestrator's verdict/status.
+ */
+export function evidenceDoneTools(evidence: readonly CompletionEvidence[]): Set<string> {
+  return new Set(evidence.filter((e) => e.ok).map((e) => e.toolName));
+}
+
+/**
+ * D-3a-17: true when a side-effecting tool result (a tool that ran) has NO
+ * matching ok:true evidence entry in the received set — the renderer must not
+ * narrate it as 'done'. Used to strip unverified tools from the done-claims.
+ */
+export function hasUnverifiedSideEffects(
+  toolResults: readonly ToolExecutionResult<unknown>[],
+  evidence: readonly CompletionEvidence[],
+): boolean {
+  const done = evidenceDoneTools(evidence);
+  return toolResults.some((r) => r.ok && !done.has(r.toolName));
+}
+
 export async function render(input: RenderInput): Promise<RenderOutput> {
   // F-5 (P-4): the messages[]+providerOptions shape comes from the Router's
   // F-5 builder for the invocation's provider — the byte-stable [SYSTEM]
   // persona block travels as the CoreSystemMessage and the anthropic
   // cacheControl breakpoint reaches the wire. Never the `system` string form.
   const built = buildStageMessages(input.invocation.providerId, input.context.sections);
+  const messages = built.messages;
+  // D-3a-17 (R-8): evidence-aware done-narration guard. When the orchestrator
+  // supplies verdict + evidence, reflect the honest per-tool completion status
+  // into the render context — a side-effecting tool is only ever presented as
+  // 'done' when a matching ok:true evidence entry is in the received set.
+  // Display-only: the verdict is never recomputed or changed here.
+  if (input.verdict !== undefined && input.evidence !== undefined) {
+    const done = evidenceDoneTools(input.evidence);
+    const statusLines = input.toolResults.map((r) => {
+      const verified = done.has(r.toolName);
+      return `${r.toolName}: ${verified ? 'done' : 'not-confirmed'}`;
+    });
+    messages.push({
+      role: 'user',
+      content: `Turn verdict: ${input.verdict}\nTool completion status:\n${statusLines.join('\n')}`,
+    });
+  }
   const result = streamText({
     model: input.invocation.model,
-    messages: built.messages,
+    messages,
     maxTokens: RENDERER_MAX_TOKENS,
     maxRetries: 0, // Pitfall 1 — the Router owns retries (D-17)
     abortSignal: input.abortSignal,

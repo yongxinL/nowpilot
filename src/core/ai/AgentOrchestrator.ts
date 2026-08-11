@@ -1,27 +1,23 @@
-// src/core/ai/AgentOrchestrator.ts — Source: PRODUCT_SPEC Appendix I VERBATIM
-// (lines 5537-5619). D-20 (03-CONTEXT): runAgentTurn returns the simple
-// AgentTurnOutput { operationId, streamedText, toolResults, reasonCode } — the
-// output struct stays verbatim; the reliability machinery that later rewires
-// this loop belongs to Phase 3a and is NOT built here (never jump ahead).
-// AgentTurnInput.tier is VERBATIM the Appendix-I caps shape
-// { plannerCap, toolCap, mcpChaining } (spec lines 5551-5555) — NOT
-// ModelContextTier; the hook (03-08) populates that verbatim field via
-// capsForTier(context.tier) (tiny 1/1, small 2/1, medium 3/2, large 5/3, §1.4).
-//
-// Documented Phase-3 input-only deviations (D-20): the optional onStreamDelta?
-// carries live renderer deltas to the hook's ChunkBuffer (AI-03); the optional
-// invocation? (StageResolver) supplies the per-stage StageInvocation bundles
-// from 03-05 createStageInvocation — PlannerService ctx + RendererService model
-// + the F-5 call shape. The OUTPUT struct is unchanged (D-20 intact).
+// src/core/ai/AgentOrchestrator.ts — Source: PRODUCT_SPEC Appendix I
+// (lines 5537-5619) + Phase 3a rewire. D-20 FENCE INVERTED (D-3a-18): this
+// module now OWNS the reliability machinery — runAgentTurn returns the C.1
+// AgentTurnOutcome (NOT the Phase-3 AgentTurnOutput), embeds trajectory
+// transitions (AGT-01), the trajectory cap (D-3a-10), the CheckpointRecorder
+// rollback seam (D-3a-09), bounded replan-on-tool-failure with an F-4
+// `tool_result` section (D-3a-11/12/13, AGT-04), the pause seam
+// (D-3a-15/16, AGT-05), and the buildOutcome terminal (D-3a-05/06/07).
+// streamedText left the output struct — it travels via onStreamDelta (D-3a-18).
 //
 // §1.4 tier caps are enforced ONLY here (Appendix I rule): cap exhaustion
-// terminates with planner_cap_reached / tool_cap_reached. Every path terminates
-// in a bounded terminal reasonCode: planner failure → deterministic
-// 'planner_failed' fallback (§1.2 — no re-invocation); provider-unconfigured
-// invocation resolution → 'provider_unconfigured' (no model call); abort →
-// AbortError; success → the planner's reasonCode or 'ask_clarification'.
-// Provider-level failures (the typed ProviderUnavailableError from 03-05)
-// propagate as the visible provider-failure state for the hook's failed UI.
+// maps to status 'partial' + reasonCode 'cap_exhausted' via buildOutcome
+// (AGT-03, D-3a-07 — NEVER 'completed'); the trajectory cap force-terminates
+// 'partial' + 'trajectory_cap_exceeded' (D-3a-10). Every path terminates in a
+// bounded terminal: planner failure → deterministic 'planner_failed' fallback
+// (§1.2 — no re-invocation, R-2); provider-unconfigured resolution →
+// 'provider_unconfigured' (no model call); repeated-identical tool failure →
+// 'failed' + 'replan_identical_failure' (D-3a-12); abort → AbortError (O4);
+// success → buildOutcome 'completed'. The renderer runs once at finish with
+// verdict + evidence (display-only, D-3a-17).
 import { debugLog } from '@/core/error/debugLog';
 import { ERROR_CODES } from '@/core/error/errorCodes';
 import { isProviderUnconfiguredError } from '@/core/ai/ProviderRouter';
@@ -30,8 +26,19 @@ import { ExecutorService } from '@/core/ai/ExecutorService';
 import { PlannerService } from '@/core/ai/PlannerService';
 import type { PlannerDecision } from '@/core/ai/PlannerService';
 import { RendererService } from '@/core/ai/RendererService';
+import { buildOutcome } from '@/core/ai/OutcomeVerifier';
+import type { Verifier } from '@/core/ai/OutcomeVerifier';
+import { CheckpointRecorder } from '@/core/ai/CheckpointRecorder';
+import type { LoopState } from '@/core/ai/CheckpointRecorder';
+import { estimateTokens } from '@/core/ai/contextHelper';
+import { transitionPhase } from '@/types/harness';
+import type {
+  AgentTrajectoryPhase,
+  AgentTrajectoryState,
+  AgentTurnOutcome,
+} from '@/types/harness';
 import type { ModelContextTier } from '@/core/context/ModelContextTier';
-import type { OptimizedContext, ToolExecutionResult } from '@/core/ai/types';
+import type { OptimizedContext, PromptSection, ToolExecutionResult } from '@/core/ai/types';
 
 /** §1.2 — planner timeout (Appendix L timeoutMs: planner 3s / renderer 5s). */
 export const PLANNER_TIMEOUT_MS = 3_000;
@@ -57,6 +64,17 @@ export function capsForTier(tier: ModelContextTier): TurnCaps {
 }
 
 /**
+ * D-3a-10 (research A3): the hard trajectory-length ceiling = plannerCap +
+ * toolCap + 1 (slack constant 1). Guards pathological loops (a planner that
+ * never answers + a tool that keeps failing retryably with fresh identities
+ * would otherwise spin past the individual caps via replans). Deterministic
+ * and testable.
+ */
+export function trajectoryCapFor(tier: TurnCaps): number {
+  return tier.plannerCap + tier.toolCap + 1;
+}
+
+/**
  * The per-stage invocation resolver seam: given a stage, returns the
  * StageInvocation bundle 03-05's createStageInvocation produces (providerId,
  * model, jsonMode, callProviderJsonMode). The hook (03-08) builds this closure
@@ -76,67 +94,246 @@ export interface AgentTurnInput {
   onStreamDelta?: (delta: string) => void;
   /** Documented Phase-3 input-only deviation: per-stage StageInvocation bundles (03-05). */
   invocation?: StageResolver;
+  /**
+   * D-3a-16 (Phase 3a): input-only trajectory recorder — mirrors onStreamDelta.
+   * Direct calls, never an event bus (L1). Records each reached trajectory
+   * phase (assembling-context → … → terminal) with the loop counters.
+   */
+  onTransition?: (state: AgentTrajectoryState) => void;
+  /**
+   * D-3a-15/16 (Phase 3a, AGT-05 core seam): input-only pause seam. When the
+   * planner emits ask_clarification (or a stage emits an input-required event)
+   * the turn surfaces 'waiting-for-permission' and pauses WITHOUT terminating;
+   * abort cancels the wait (abort wins, O4). No UI / no gated tools in 3a —
+   * Phase 8 ships PermissionDialog + ToolCapabilityManifest (TOL-02/03).
+   */
+  onInputRequired?: (q: {
+    roleId: string;
+    question: string;
+    options?: string[];
+    reason: 'clarification' | 'permission';
+  }) => void;
+  /**
+   * D-3a-05 (Phase 3a): postcondition verifiers keyed by toolName fed to
+   * buildOutcome. Empty in production (3a ships zero dangerous tools); tests
+   * inject the mock dangerous tool's verifier (tests/fixtures/trajectory.ts).
+   */
+  verifiers?: Record<string, Verifier>;
 }
 
-export interface AgentTurnOutput {
-  operationId: string;
-  streamedText: string;
-  toolResults: ToolExecutionResult<unknown>[];
-  reasonCode: string;
-}
-
-export async function runAgentTurn(input: AgentTurnInput): Promise<AgentTurnOutput> {
+/**
+ * C.1 (L4830-4837): the structured turn outcome. The orchestrator is the SOLE
+ * terminal decision authority (D-3a-05) — buildOutcome returns verdicts only,
+ * the renderer never re-verifies (display-only, D-3a-17).
+ */
+export async function runAgentTurn(input: AgentTurnInput): Promise<AgentTurnOutcome> {
   const toolResults: ToolExecutionResult<unknown>[] = [];
   try {
     return await runTurn(input, toolResults);
   } catch (e) {
     if (isProviderUnconfiguredError(e)) {
       // D-07 gate: no configured+enabled provider matches the tier — terminate
-      // with the provider_unconfigured reasonCode and NO model call.
+      // with the provider_unconfigured terminal and NO model call. Kept as a
+      // failed terminal (D-3a-19 / unchanged UX, 03a-04 hook mapping).
       return {
         operationId: input.operationId,
-        streamedText: '',
-        toolResults,
+        status: 'failed',
         reasonCode: 'provider_unconfigured',
+        evidence: [],
+        plannerCalls: 0,
+        toolCalls: 0,
       };
     }
     throw e;
   }
 }
 
-/** The Appendix-I bounded loop (verbatim shape). */
+/**
+ * The Phase-3a bounded loop. Every iteration: trajectory-cap check → plannerCap
+ * check → planOnce → decision dispatch (answer / ask_clarification / run_tool).
+ * Tool failures either replan ONCE per failed tool (retryable, D-3a-11/12/13)
+ * or fall through to the buildOutcome terminal (fail-closed, D-3a-06).
+ */
 async function runTurn(
   input: AgentTurnInput,
   toolResults: ToolExecutionResult<unknown>[],
-): Promise<AgentTurnOutput> {
+): Promise<AgentTurnOutcome> {
   let plannerCalls = 0;
   let toolCalls = 0;
+  let phase: AgentTrajectoryPhase = 'assembling-context';
+  const checkpoint = new CheckpointRecorder();
+  const replannedTools = new Set<string>();
+  let replanSections: PromptSection[] = [];
+  const verifiers = input.verifiers ?? {};
+
+  // D-3a-16: record the initial trajectory state, then transition to planning.
+  input.onTransition?.({
+    operationId: input.operationId,
+    phase: 'assembling-context',
+    plannerCalls: 0,
+    toolCalls: 0,
+    updatedAt: Date.now(),
+  });
+  const emit = (next: AgentTrajectoryPhase): void => {
+    // C5: an illegal transition throws AGENT_STATE_INVALID (GR-9).
+    transitionPhase(phase, next);
+    phase = next;
+    input.onTransition?.({
+      operationId: input.operationId,
+      phase: next,
+      plannerCalls,
+      toolCalls,
+      updatedAt: Date.now(),
+    });
+  };
+  emit('planning'); // assembling-context → planning
+
   while (true) {
     if (input.abortSignal.aborted) throw new DOMException('aborted', 'AbortError');
-    if (plannerCalls >= input.tier.plannerCap) return await finish('planner_cap_reached');
-    plannerCalls++;
-    const decision = await planOnce(input);
-    if (decision.action === 'answer' || decision.action === 'ask_clarification') {
-      return await finish(
-        decision.action === 'answer'
-          ? (decision as { reasonCode: string }).reasonCode
-          : 'ask_clarification',
-      );
+
+    // D-3a-10 trajectory cap: force-terminate BEFORE the individual caps so a
+    // pathological replan loop (plannerCalls pushed past plannerCap by replans)
+    // is caught by the sum ceiling, not silently capped as cap_exhausted.
+    if (plannerCalls + toolCalls >= trajectoryCapFor(input.tier)) {
+      return await finish({ reasonCode: 'trajectory_cap_exceeded', capHit: true });
     }
-    if (toolCalls >= input.tier.toolCap) return await finish('tool_cap_reached');
+    if (plannerCalls >= input.tier.plannerCap) {
+      // planner_cap_reached → buildOutcome 'partial' + 'cap_exhausted' (AGT-03).
+      return await finish({ capHit: true });
+    }
+    plannerCalls++;
+    const decision = await planOnce(input, replanSections);
+
+    if (decision.action === 'answer') {
+      // planner_failed fallback is a FAILED terminal (never a silent success).
+      if (decision.reasonCode === 'planner_failed') {
+        return await finish({ status: 'failed', reasonCode: 'planner_failed' });
+      }
+      return await finish({});
+    }
+    if (decision.action === 'ask_clarification') {
+      // D-3a-15/16 pause seam: waiting-for-permission, turn stays open.
+      emit('waiting-for-permission'); // planning → waiting-for-permission
+      input.onInputRequired?.({
+        roleId: 'user',
+        question: decision.question,
+        options: decision.options,
+        reason: 'clarification',
+      });
+      await waitForAbortOrResume(input);
+      emit('planning'); // waiting-for-permission → planning (resumed)
+      continue;
+    }
+
+    // run_tool
+    if (toolCalls >= input.tier.toolCap) {
+      // tool_cap_reached → buildOutcome 'partial' + 'cap_exhausted' (AGT-03).
+      return await finish({ capHit: true });
+    }
+    emit('executing'); // planning → executing
     toolCalls++;
+    checkpoint.capture(input.operationId, {
+      toolResults: [...toolResults],
+      plannerCalls,
+      toolCalls,
+      phase: 'executing',
+    });
     const result = await ExecutorService.execute({
       operationId: input.operationId,
       toolName: (decision as { toolName: string }).toolName,
       input: (decision as { input: unknown }).input,
       abortSignal: input.abortSignal,
     });
+    emit('verifying'); // executing → verifying
+
+    if (result.ok) {
+      toolResults.push(result);
+      emit('planning'); // verifying → planning (loop continues)
+      continue;
+    }
+
+    // Tool failure.
+    const toolName = result.toolName;
+    const retryable = result.error?.retryable === true;
+    if (retryable && !replannedTools.has(toolName)) {
+      // D-3a-09 checkpoint rollback: discard the failed result, rewind counters.
+      const restored = checkpoint.restore(input.operationId);
+      if (restored) {
+        toolResults = restored.toolResults;
+        plannerCalls = restored.plannerCalls;
+        toolCalls = restored.toolCalls;
+        phase = (restored as LoopState).phase as AgentTrajectoryPhase;
+      }
+      // D-3a-13: each replan consumes one plannerCalls++ slot (the replan's
+      // planOnce consumes the next loop-top slot). At most one replan per
+      // failed tool (D-3a-12); the trajectory cap bounds the cascade.
+      replannedTools.add(toolName);
+      plannerCalls++;
+      // D-3a-11 (F-4, Pitfall 7): failure feedback as a sections-in
+      // tool_result PromptSection — NEVER a joined-string rebuild.
+      const feedbackText = `${toolName} failed: ${result.error?.code ?? 'unknown'}`;
+      replanSections.push({
+        kind: 'tool_result',
+        text: feedbackText,
+        tokens: estimateTokens(feedbackText),
+        stable: false,
+        sourceId: 'replan-feedback',
+      });
+      emit('replanning'); // verifying → replanning
+      continue; // loop top re-invokes planOnce with the replan feedback
+    }
+
+    // D-3a-12 repeated-identical terminal (or non-retryable fail-closed).
     toolResults.push(result);
+    if (replannedTools.has(toolName)) {
+      return await finish({ status: 'failed', reasonCode: 'replan_identical_failure' });
+    }
+    // Non-retryable tool failure → fail-closed: verification_failed (D-3a-06),
+    // never a silent success (R-8).
+    return await finish({ status: 'failed', reasonCode: 'verification_failed' });
   }
 
-  async function finish(reasonCode: string): Promise<AgentTurnOutput> {
+  /**
+   * Terminal authority (D-3a-05): buildOutcome computes the base outcome from
+   * the turn's evidence + caps; the orchestrator applies the policy overrides
+   * (trajectory-cap / replan-identical / planner-failed / fail-closed tool
+   * failure). buildOutcome stays authoritative for the evidence gate — a
+   * side-effecting tool without ok:true evidence is never 'completed'. Renders
+   * once at finish with the verdict + evidence (display-only renderer, D-3a-17).
+   */
+  async function finish(overrides: {
+    status?: AgentTurnOutcome['status'];
+    reasonCode?: string;
+    capHit?: boolean;
+  } = {}): Promise<AgentTurnOutcome> {
+    emit('rendering'); // planning/verifying/replanning → rendering (legal edges)
+    const built = await buildOutcome(
+      input.operationId,
+      toolResults,
+      verifiers,
+      { plannerCalls, toolCalls, capHit: overrides.capHit ?? false },
+      Date.now,
+    );
+    let terminalStatus: AgentTurnOutcome['status'] = built.status;
+    let terminalReasonCode = built.reasonCode;
+    if (overrides.status === 'failed') {
+      terminalStatus = 'failed';
+      terminalReasonCode = overrides.reasonCode ?? terminalReasonCode;
+    } else if (overrides.reasonCode === 'trajectory_cap_exceeded') {
+      terminalStatus = 'partial';
+      terminalReasonCode = 'trajectory_cap_exceeded';
+    }
+    if (terminalStatus === 'failed' && terminalReasonCode === 'postcondition_failed') {
+      // Open Q1: O.2's reasonCode → the verification_failed vocabulary.
+      terminalReasonCode = 'verification_failed';
+    }
+    if (terminalStatus === 'completed' && toolResults.some((r) => !r.ok)) {
+      // Fail-closed (R-8): a turn that ran a failed tool is never 'completed'.
+      terminalStatus = 'failed';
+      terminalReasonCode = 'verification_failed';
+    }
     const rendererInvocation = resolveStage(input, 'renderer');
-    const rendered = await RendererService.render({
+    await RendererService.render({
       operationId: input.operationId,
       context: input.context,
       userInput: input.userInput,
@@ -144,12 +341,21 @@ async function runTurn(
       abortSignal: input.abortSignal,
       invocation: rendererInvocation,
       onDelta: input.onStreamDelta,
+      verdict: terminalStatus,
+      evidence: built.evidence,
     });
+    // Terminal trajectory phase — partial is an outcome status, not a phase
+    // (03a-01 note): completed/failed reach a terminal trajectory phase;
+    // partial stops at rendering.
+    if (terminalStatus === 'completed') emit('completed'); // rendering → completed
+    else if (terminalStatus === 'failed') emit('failed'); // rendering → failed
     return {
       operationId: input.operationId,
-      streamedText: rendered.text,
-      toolResults,
-      reasonCode,
+      status: terminalStatus,
+      reasonCode: terminalReasonCode,
+      evidence: built.evidence,
+      plannerCalls,
+      toolCalls,
     };
   }
 }
@@ -172,12 +378,14 @@ function resolveStage(input: AgentTurnInput, stage: 'planner' | 'renderer'): Sta
  * 'planner_failed' fallback decision — NEVER a re-invocation (R-2), and the
  * renderer still produces the visible fallback answer.
  */
-async function planOnce(input: AgentTurnInput): Promise<PlannerDecision> {
+async function planOnce(input: AgentTurnInput, replanSections: PromptSection[]): Promise<PlannerDecision> {
   const invocation = resolveStage(input, 'planner');
   try {
+    const sections =
+      replanSections.length > 0 ? [...input.context.sections, ...replanSections] : input.context.sections;
     return await PlannerService.plan({
       operationId: input.operationId,
-      context: input.context,
+      context: { ...input.context, sections },
       userInput: input.userInput,
       abortSignal: input.abortSignal,
       timeoutMs: PLANNER_TIMEOUT_MS,
@@ -199,6 +407,28 @@ async function planOnce(input: AgentTurnInput): Promise<PlannerDecision> {
     );
     return { action: 'answer', reasonCode: 'planner_failed' };
   }
+}
+
+/**
+ * D-3a-15/16 pause-seam wait. The turn stays OPEN (no terminal, no return)
+ * until resumed or aborted; abort wins mid-wait (O4) and propagates AbortError.
+ * 3a ships the seam only (no resume UI) — the promise rejects on abort and
+ * never resolves until Phase 8 wires PermissionDialog resume.
+ */
+function waitForAbortOrResume(input: AgentTurnInput): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (input.abortSignal.aborted) {
+      reject(new DOMException('aborted', 'AbortError'));
+      return;
+    }
+    input.abortSignal.addEventListener(
+      'abort',
+      () => reject(new DOMException('aborted', 'AbortError')),
+      { once: true },
+    );
+    // Phase 8: a resume signal resolves this promise (PermissionDialog).
+    void resolve;
+  });
 }
 
 function isAbortError(err: unknown): boolean {
