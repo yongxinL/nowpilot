@@ -4,9 +4,12 @@
 // rule rejects unknown ids (§0.2); markProviderKeyUnreadable is the single
 // PROVIDER_KEY_UNREADABLE transition → enabled:false + keyUnreadable:true with NO
 // auto-wipe / NO auto-regenerate (02-CONTEXT D-04) and closes the gate
-// (T-03-02-03); the Phase-1 registerActiveProvider primitive keeps working; the
-// module stays dependency-free (Pitfall 4 — no zustand/react imports, grep-
-// asserted). Runs in the default jsdom-align environment like the other core tests.
+// (T-03-02-03); WR-01: the D-07 gate is any-usable (true iff ANY entry is
+// enabled && !keyUnreadable) — a disabled/unreadable LAST provider can no
+// longer close the gate, and the Phase-1 registerActiveProvider primitive sets
+// the active id but does NOT open the entry-based gate; the module stays
+// dependency-free (Pitfall 4 — no zustand/react imports, grep-asserted). Runs
+// in the default jsdom-align environment like the other core tests.
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -76,12 +79,59 @@ describe('ProviderRegistry D-07 gate', () => {
     expect(registry.getProviderInfo('openai')?.resolvedBaseURL).toBe('https://api.openai.com/v1');
   });
 
-  it('keeps the Phase-1 registerActiveProvider primitive working (backward compat)', () => {
+  it('legacy registerActiveProvider sets the active id but does NOT open the entry-based D-07 gate (WR-01)', () => {
     const registry = getProviderRegistry();
     registry.registerActiveProvider('openai');
 
-    expect(registry.hasActiveProvider()).toBe(true);
+    // Entry-based gate: a bare activeProviderId without a registry entry is
+    // "no usable provider configured" — the gate stays closed.
+    expect(registry.hasActiveProvider()).toBe(false);
     expect(registry.getActiveProvider()).toBe('openai');
+  });
+
+  it('an EARLIER usable provider keeps the gate open when the LAST registered is disabled (WR-01)', () => {
+    const registry = getProviderRegistry();
+    registry.registerProvider(freshConfig({ id: 'openai', enabled: true }));
+    registry.registerProvider(freshConfig({ id: 'ollama', enabled: false }));
+
+    // openai is usable; the last-registered ollama (fixed registration order)
+    // is disabled — the chat surface must stay reachable via openai.
+    expect(registry.getActiveProvider()).toBe('ollama');
+    expect(registry.hasActiveProvider()).toBe(true);
+  });
+
+  it('a keyUnreadable LAST provider does not close the gate when an earlier one is usable (WR-01)', () => {
+    const registry = getProviderRegistry();
+    registry.registerProvider(freshConfig({ id: 'openai' }));
+    registry.registerProvider(freshConfig({ id: 'anthropic' }));
+    registry.markProviderKeyUnreadable('anthropic');
+
+    // Last-registered anthropic is keyUnreadable; the earlier openai entry
+    // remains enabled && !keyUnreadable — the gate stays open.
+    expect(registry.getActiveProvider()).toBe('anthropic');
+    expect(registry.hasActiveProvider()).toBe(true);
+  });
+
+  it('all providers disabled/unreadable closes the gate (WR-01)', () => {
+    const registry = getProviderRegistry();
+    registry.registerProvider(freshConfig({ id: 'openai' }));
+    registry.registerProvider(freshConfig({ id: 'anthropic' }));
+    registry.markProviderKeyUnreadable('openai');
+    registry.markProviderKeyUnreadable('anthropic');
+
+    expect(registry.hasActiveProvider()).toBe(false);
+  });
+
+  it('any-usable survives the D-21 transition on a NON-last provider (WR-01)', () => {
+    const registry = getProviderRegistry();
+    registry.registerProvider(freshConfig({ id: 'openai' }));
+    registry.registerProvider(freshConfig({ id: 'anthropic' }));
+    registry.markProviderKeyUnreadable('openai');
+
+    // openai (non-last) becomes unreadable; the gate stays open via the
+    // still-usable anthropic entry.
+    expect(registry.getActiveProvider()).toBe('anthropic');
+    expect(registry.hasActiveProvider()).toBe(true);
   });
 });
 
