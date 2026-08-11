@@ -40,7 +40,13 @@ created: 2026-08-10
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 03-10-01 | 10 | 1 | AI-04 | T-03-10 / — | R-2 budget scoped to router-owned retries only; legitimate stage calls never consume retry budget | unit | `pnpm vitest run tests/core/ai --passWithNoTests` | ✅ | ⬜ pending |
+| 03-10-01 | 10 | 1 | AI-04 | T-03-10 / — | R-2 budget scoped to router-owned retries only; legitimate stage calls never consume retry budget | unit | `pnpm vitest run tests/core/ai --passWithNoTests` | ✅ | ✅ green |
+| 03-15-01 | 15 | 9 | AI-04 | T-03-15-01 / T-03-15-02 | BREAKER_VOTES.STREAM_FAILED = 1 + classifier-mapped catch voting — streaming failures accrue real breaker votes (3 within 60 s open); user aborts never vote | unit | `pnpm vitest run tests/core/ai/ProviderRouter.test.ts tests/core/ai/RendererService.test.ts` | ✅ | ✅ green |
+| 03-15-02 | 15 | 9 | AI-04 | T-03-15-03 | WR-02 wiring tests: routerMock.classifyProviderError delegates to the real classifier; the mid-stream vote test asserts the mapped code (PROVIDER_5XX) | unit | `pnpm vitest run tests/core/ai/RendererService.test.ts` | ✅ | ✅ green |
+| 03-15-03 | 15 | 9 | AI-04 | T-03-15-01 | Permanent real-Router regression asserting breaker STATE (isBreakerOpen) — only ai-sdk streamText stubbed, fresh real Router per test | unit | `pnpm vitest run tests/core/ai/RendererService.streamBreakdown.test.ts` | ✅ | ✅ green |
+| 03-16-01 | 16 | 10 | AI-04 | T-03-16-01 / T-03-16-02 / T-03-16-04 | Timeout-origin carrier rides the abort reason (signal.reason); the closure recovers it with the environment-independent single guard, records the failed TIMEOUT attempt + votes the breaker BEFORE the rethrow, and runs each attempt on a fresh derived controller (the D-17 retry never reuses the aborted signal) | unit | `pnpm vitest run tests/core/ai/StructuredOutput.test.ts tests/core/ai/ProviderRouter.test.ts` | ✅ | ✅ green |
+| 03-16-02 | 16 | 10 | AI-04 | T-03-16-01 | The defective carrier-injection unit test reframed to the production arrival pattern (abort with carrier reason → SDK rejects AbortError → closure recovers → retry on a fresh signal; asserts retryCount 1 + non-aborted retry signal) | unit | `pnpm vitest run tests/core/ai/ProviderRouter.test.ts` | ✅ | ✅ green |
+| 03-16-03 | 16 | 10 | AI-04 | T-03-16-02 / T-03-16-04 | NEW end-to-end regression (requestJson + REAL Router, 25 ms timeout): generateObject 2×, retryCount 1, ledger attempts[0].errorCode TIMEOUT, fresh retry signal; retry-also-fails → carrier (planner_failed source intact); healthy call never retries | unit | `pnpm vitest run tests/core/ai/StructuredOutput.timeoutRetry.test.ts` | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
