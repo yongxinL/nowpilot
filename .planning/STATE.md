@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 04a
 current_phase_name: PageContentService (Knowledge Acquisition
 status: executing
-stopped_at: Completed 04a-05-PLAN.md
-last_updated: "2026-08-12T20:47:11.918Z"
+stopped_at: Completed 04a-04-PLAN.md
+last_updated: "2026-08-12T21:17:32.109Z"
 last_activity: 2026-08-12
 last_activity_desc: Phase 04a execution started
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 60
-  completed_plans: 54
+  completed_plans: 55
 ---
 
 # Project State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-08-09)
 ## Current Position
 
 Phase: 04a (PageContentService (Knowledge Acquisition)) — EXECUTING
-Plan: 5 of 10
+Plan: 6 of 10
 Status: Ready to execute
 Last activity: 2026-08-12 — Phase 04a execution started
 
-Progress: [█████████░] 90%
+Progress: [█████████░] 92%
 
 ## Performance Metrics
 
@@ -102,6 +102,7 @@ Progress: [█████████░] 90%
 | Phase 04a P01 | 6min | 3 tasks | 3 files |
 | Phase 04a-pagecontentservice-knowledge-acquisition P03 | 8 | 3 tasks | 4 files |
 | Phase 04a-pagecontentservice-knowledge-acquisition P05 | 25min | 2 tasks | 4 files |
+| Phase 04a-pagecontentservice-knowledge-acquisition P04 | 9min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -212,6 +213,9 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase ?]: [Phase 04a]: The 'servicenow-api' strategy id is reserved in the StrategyResult source union but NOT implemented (D-4a-17) — the ServiceNow add-on registers its strategy in Phase 8; RawNode type-import added to IExtractionStrategy (spec block references it without importing — compile-blocking, Rule 3)
 - [Phase 04a-pagecontentservice-knowledge-acquisition]: PageContentCache/PageIndexBuilder (04a-05): LRU eviction skips in-flight+subscribed entirely, pinned eviction-last; set() preserves marks on re-upsert; sub-chunks greedily grouped under INDEX_CHUNK_MAX_TOKENS=500; cache holds value/recency, service owns promise map (D-4a-03) — D-4a-04/16 locked decisions; cache-level primitives proven now, service-driven suite deferred to 04a-08 by design
 - [Phase 04a-pagecontentservice-knowledge-acquisition]: Plan verify commands use '-x' (unknown in vitest 4.1.10) — executed with --bail=1 (same stop-on-first-failure semantics) — Rule 3 blocking deviation; command-line only, no source impact
+- [Phase 04a-pagecontentservice-knowledge-acquisition]: A5 ACTIVE (user deviation): defuddle installed at 0.19.2 where useAsync EXISTS and DEFAULTS TO TRUE — DefuddleStrategy constructs with useAsync: false explicitly + sync parse() only (R-10 zero-network-call guarantee); verified markdown conversion still wired ONLY in dist/node.js (Pitfall 1 holds, turndown stays the single converter); recorded in plan threat model T-4a-05 + flagged_assumptions A5
+- [Phase 04a-pagecontentservice-knowledge-acquisition]: Base-URL stamp source is input.url: the R-1 verbatim StrategyInput (C.1 L4680) has NO baseUrl field — PATTERNS' input.baseUrl ?? input.url sketch referenced a nonexistent property; root-relative fixture hrefs resolve identically against the page URL (A2 test); 04a-07 supplies the effective base via the url field
+- [Phase 04a-pagecontentservice-knowledge-acquisition]: Defuddle 0.19.2 standardize dedups an h1 equal to <title> into result.title — plan Test 1 literal 'markdown contains the article title text' unsatisfiable; retargeted to heading + body prose in markdown with the title asserted via meta.title (D-4a-21 provenance)
 
 ### Pending Todos
 
@@ -240,6 +244,6 @@ Items acknowledged and carried forward (v2 scope, tracked in REQUIREMENTS.md):
 
 ## Session Continuity
 
-Last session: 2026-08-12T20:46:59.365Z
-Stopped at: Completed 04a-05-PLAN.md
+Last session: 2026-08-12T21:17:11.386Z
+Stopped at: Completed 04a-04-PLAN.md
 Resume file: None

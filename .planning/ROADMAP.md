@@ -271,7 +271,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 04a-04-PLAN.md — strategies: DefuddleStrategy (threshold + Readability fallback) + ApcLiteStrategy + tests (wave 3)
+- [x] 04a-04-PLAN.md — strategies: DefuddleStrategy (threshold + Readability fallback) + ApcLiteStrategy + tests (wave 3)
 - [x] 04a-05-PLAN.md — PageContentCache (LRU-20, D-4a-04) + PageIndexBuilder (ephemeral MiniSearch, D-4a-16) + test (wave 3)
 - [ ] 04a-06-PLAN.md — content-side: AxDomWalker (password at capture) + SPANavigationWatcher (namespaced wxt:locationchange) + tests (wave 3)
 
