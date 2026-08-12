@@ -483,6 +483,38 @@ describe('useStreamingLLM — abort + retry', () => {
     expect(release).toBeTypeOf('function');
   });
 
+  it('WR-05: unmount aborts any in-flight generation — no orphaned paid request after a surface switch', async () => {
+    let capturedSignal: AbortSignal | undefined;
+    runAgentTurnMock.mockImplementationOnce(
+      (input: AgentTurnInputLike) =>
+        new Promise((_resolve, reject) => {
+          capturedSignal = input.abortSignal;
+          input.abortSignal.addEventListener('abort', () =>
+            reject(new DOMException('aborted', 'AbortError')),
+          );
+        }),
+    );
+    const { result, unmount } = renderHook(() => useStreamingLLM());
+
+    let sendPromise: Promise<void> | undefined;
+    await act(async () => {
+      sendPromise = result.current.send('hi');
+      await Promise.resolve();
+    });
+    expect(capturedSignal?.aborted).toBe(false);
+
+    // Switching side-panel tabs unmounts the chat page — the in-flight turn
+    // must be cancelled (the SDK call stops billing, §17.5).
+    act(() => unmount());
+    expect(capturedSignal?.aborted).toBe(true);
+
+    // The send settles quietly — the abort maps to the idle transition (a
+    // setState on the unmounted hook is a no-op), never a failed surface.
+    await act(async () => {
+      await sendPromise;
+    });
+  });
+
   it('retry() re-sends the last input with a NEW operationId', async () => {
     // First send fails; the retry succeeds.
     rejectTurn(new Error('provider exploded'));

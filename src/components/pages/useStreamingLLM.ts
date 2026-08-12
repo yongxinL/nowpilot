@@ -116,10 +116,20 @@ export function useStreamingLLM(): UseStreamingLLMResult {
   const activeSurface = useWorkspaceStore((s) => s.workspace.activeSurface);
 
   // Appendix J.1: deltas accumulate in the buffer and flush to the text state
-  // on the next animation frame (≤16 ms; 8 kB/s → 33 ms rule).
+  // on the next animation frame (≤16 ms; 8 kB/s → 33 ms rule). WR-05 (04): the
+  // cleanup ALSO aborts any in-flight generation — switching side-panel tabs
+  // (Chat → Notes → Options) unmounts this component while send()'s
+  // runAgentTurn continues; without the abort the renderer stream keeps
+  // running to completion and the SDK call bills tokens (no orphaned paid
+  // request, §17.5). The only other abort triggers are a new send() or an
+  // explicit abort().
   useEffect(() => {
     if (!bufferRef.current) bufferRef.current = createChunkBuffer();
-    return bufferRef.current.onFlush(setText);
+    const unsubscribe = bufferRef.current.onFlush(setText);
+    return () => {
+      unsubscribe();
+      abortRef.current?.abort(); // cancel in-flight generation on unmount
+    };
   }, []);
 
   const send = useCallback(
