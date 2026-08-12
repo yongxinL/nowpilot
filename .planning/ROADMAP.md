@@ -267,7 +267,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 04a-03-PLAN.md — spec-verbatim types: apcLite.types.ts + IExtractionStrategy + PageContentSerializer (turndown) (wave 2)
+- [x] 04a-03-PLAN.md — spec-verbatim types: apcLite.types.ts + IExtractionStrategy + PageContentSerializer (turndown) (wave 2)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
