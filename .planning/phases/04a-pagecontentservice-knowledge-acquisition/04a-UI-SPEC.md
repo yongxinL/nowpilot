@@ -1,10 +1,11 @@
 ---
 phase: 4a
 slug: pagecontentservice-knowledge-acquisition
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-08-12
+reviewed_at: 2026-08-12
 ---
 
 # Phase 4a — UI Design Contract
@@ -63,6 +64,8 @@ Borders are `border-width`/`outline-width`, not spacing tokens.
 ## Typography
 
 Phase 4a declares the locked **2-weight cap** — 400 (body, captions) and 600 (headings, identity). No 500-weight role is introduced (AntD `Button.fontWeight` overridden to 400/600 in `NOWPILOT_COMPONENTS` — DESIGN_SYSTEM.md §13). Base sizes: Side Panel **13 px** (compact); Standalone **14 px** (default). Steps: 12 / 13 / 14 / 16 / 20 / 24 / 30. Body line-height 1.5; headings 1.3. Never below 12 px. Captions use `colorTextTertiary`.
+
+**Phase-assignable size scoping (checker FLAG-4 closure):** only the four role rows below are **assignable in Phase 4a** — 12 px (label), 13/14 px (body), 16 px (heading), 20 px (display). 24 px and 30 px are **inherited token-scale values** (DESIGN_SYSTEM.md §5) that are NOT assignable in this phase; the executor must not introduce a 5th–7th size. Phase 4a renders no new typography — only existing body 13/14 px + the existing card heading 16 px.
 
 | Role | Size | Weight | Line Height | Usage in Phase 4a |
 |------|------|--------|-------------|-------------------|
@@ -216,14 +219,14 @@ Safety Gate column (timestamped evidence):
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS
-- [ ] Dimension 2 Visuals: PASS
-- [ ] Dimension 3 Color: PASS
-- [ ] Dimension 4 Typography: PASS
-- [ ] Dimension 5 Spacing: PASS
-- [ ] Dimension 6 Registry Safety: PASS
+- [x] Dimension 1 Copywriting: PASS
+- [x] Dimension 2 Visuals: PASS
+- [x] Dimension 3 Color: PASS
+- [x] Dimension 4 Typography: FLAG (non-blocking — resolved above: phase-assignable sizes scoped to the 4 role rows)
+- [x] Dimension 5 Spacing: PASS
+- [x] Dimension 6 Registry Safety: PASS
 
-**Approval:** {pending / approved YYYY-MM-DD}
+**Approval:** approved 2026-08-12 (gsd-ui-checker — APPROVED, 1 non-blocking FLAG)
 
 ---
 
@@ -250,5 +253,5 @@ Pre-population source map (this contract is not exploratory; every field is boun
 
 *Phase: 4a-PageContentService (Knowledge Acquisition) — UI Design Contract*
 *Generated: 2026-08-12 by gsd-ui-researcher*
-*Status: **draft** (awaiting gsd-ui-checker verification)*
+*Status: **approved** (gsd-ui-checker, 2026-08-12 — APPROVED, 1 non-blocking FLAG closed inline)*
 *UI Considerations: 15 considered (9 covered, 6 dismissed, 0 backstop, 0 unresolved) — non-UI phase; state coverage declared directly by the researcher for the two touched surfaces.*
