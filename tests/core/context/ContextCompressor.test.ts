@@ -37,7 +37,7 @@ import { CACHED_KINDS, TASK_KINDS } from '@/core/ai/ProviderRouter';
 import type { PromptSection } from '@/core/ai/types';
 import { GET_PROVIDER_INFO_TOOL } from '@/core/ai/toolSchemas';
 import { FIXED_PERSONA_BLOCK } from '../../fixtures/optimizedContext';
-import { OVER_BUDGET_SECTIONS } from '../../fixtures/optimizedContext';
+import { buildOptimizedContextFixture, OVER_BUDGET_SECTIONS } from '../../fixtures/optimizedContext';
 
 /** A synthetic debug-metadata section (ladder trigger — not fixture data). */
 const DEBUG_SECTION: PromptSection = {
@@ -273,5 +273,82 @@ describe('LADDER_STEPS registry (04-02 Task 2 — the D-04-12 ordered step regis
 
   it('is a readonly array — the optimizer iterates a frozen registry, never a free-form list', () => {
     expect(Object.isFrozen(LADDER_STEPS) || Array.isArray(LADDER_STEPS)).toBe(true);
+  });
+});
+
+describe('section-granularity invariant (04-02 Task 3 — D-04-13, never truncate mid-structure)', () => {
+  it('every section every step returns is byte-identical to a source section text (no slice anywhere)', () => {
+    const input = [...TWO_TOOL_SCHEMAS, ...OVER_BUDGET_SECTIONS, DEBUG_SECTION];
+    const inputTexts = new Set(input.map((s) => s.text));
+    const results: CompressionResult[] = [
+      dropDebugOnly(input),
+      trimToolSchemas(input, (s) => s.text.startsWith('get-provider-info')),
+      summariseOlderHistory(input),
+      dropSecondaryNotes(input),
+      compressPageContext(input),
+      reduceMemoryTopK(input),
+      enterMinimalMode(input),
+    ];
+    for (const result of results) {
+      expect(result.sections.length).toBeLessThanOrEqual(input.length);
+      for (const section of result.sections) {
+        expect(inputTexts.has(section.text)).toBe(true);
+        expect(section.text).toBe(input.find((src) => src.text === section.text)?.text);
+      }
+    }
+  });
+
+  it('drops report WHOLE sections — a dropped sourceId never survives as a partial text', () => {
+    const input = [...TWO_TOOL_SCHEMAS, ...OVER_BUDGET_SECTIONS, DEBUG_SECTION];
+    const droppedResult = dropDebugOnly(input);
+    const inputBySourceId = new Map(input.map((s) => [s.sourceId, s.text]));
+    for (const sourceId of droppedResult.dropped) {
+      const wholeText = inputBySourceId.get(sourceId);
+      expect(wholeText).toBeDefined();
+      expect(droppedResult.sections.some((s) => s.text === wholeText)).toBe(false);
+    }
+  });
+
+  it('runs the full deterministic D-08 fixture shape through every step without corrupting a section', () => {
+    const fixture = buildOptimizedContextFixture({ tier: 'medium', inputBudget: 16_384 });
+    const inputTexts = new Set(fixture.sections.map((s) => s.text));
+    const results = [
+      dropDebugOnly(fixture.sections),
+      trimToolSchemas(fixture.sections, () => false),
+      summariseOlderHistory(fixture.sections),
+      compressPageContext(fixture.sections),
+      reduceMemoryTopK(fixture.sections),
+      enterMinimalMode(fixture.sections),
+    ];
+    for (const result of results) {
+      for (const section of result.sections) {
+        expect(inputTexts.has(section.text)).toBe(true);
+      }
+    }
+  });
+});
+
+describe('history reservation (04-02 Task 3 — D-04-16, never a new PromptSection kind)', () => {
+  it("no 'history' kind appears in any packSections output, even with every input filled", () => {
+    for (const section of packSections(FULL_INPUT)) {
+      expect(section.kind).not.toBe('history');
+    }
+  });
+
+  it("no 'history' kind appears in any compressor step output", () => {
+    const input = [...TWO_TOOL_SCHEMAS, ...OVER_BUDGET_SECTIONS, DEBUG_SECTION];
+    const results = [
+      dropDebugOnly(input),
+      trimToolSchemas(input, () => true),
+      summariseOlderHistory(input),
+      compressPageContext(input),
+      reduceMemoryTopK(input),
+      enterMinimalMode(input),
+    ];
+    for (const result of results) {
+      for (const section of result.sections) {
+        expect(section.kind).not.toBe('history');
+      }
+    }
   });
 });
