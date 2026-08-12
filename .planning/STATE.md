@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 04
 current_phase_name: context-adaptive-execution
 status: executing
-stopped_at: Completed 04-02-PLAN.md
-last_updated: "2026-08-12T05:49:42.527Z"
+stopped_at: Completed 04-03-PLAN.md
+last_updated: "2026-08-12T06:01:12.643Z"
 last_activity: 2026-08-12
 last_activity_desc: Phase 04 execution started
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 50
-  completed_plans: 45
+  completed_plans: 46
 ---
 
 # Project State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-08-09)
 ## Current Position
 
 Phase: 04 (context-adaptive-execution) — EXECUTING
-Plan: 3 of 7
+Plan: 4 of 7
 Status: Ready to execute
 Last activity: 2026-08-12 — Phase 04 execution started
 
-Progress: [█████████░] 90%
+Progress: [█████████░] 92%
 
 ## Performance Metrics
 
@@ -92,6 +92,7 @@ Progress: [█████████░] 90%
 | Phase 03a-agent-reliability-and-evidence P05 | 21min | 6 tasks | 14 files |
 | Phase 04-context-adaptive-execution P01 | 11min | 3 tasks | 4 files |
 | Phase 04-context-adaptive-execution P02 | 9min | 3 tasks | 3 files |
+| Phase 04-context-adaptive-execution P03 | 5min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -188,6 +189,7 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 04-context-adaptive-execution]: ModelContextTier = no-change (assumption-delta): tier is DERIVED from the resolved model window (D-04-04); ROADMAP criterion 1 selectable = follow-the-model, no user-facing tier override setting (second source of truth could mismatch the actual window) — 04-01 assumption-delta decision recorded in plan header
 - [Phase 04-context-adaptive-execution]: Unknown models resolve to conservative tiny 4096 + windowKnown:false (D-04-06) - never assume large; map values flagged [ASSUMED] A2..A6 behind user confirmation gates — Wrong window mis-sizes every downstream budget; smallest is the safe unknown
 - [Phase 04-context-adaptive-execution]: History distribution column maps to [] (reserved-unfilled, D-04-16) - never a new PromptSection kind (R-1/R-2); tool_result uncapped-but-counted in totalTokens (Pitfall 3) — Column-to-kind mapping is the planner's Pitfall-3 resolution, encoded as tested constant
+- [Phase 04-context-adaptive-execution]: FIXED_MODEL retargeted from 'claude-3-5-haiku-latest' to the canonical 'claude-haiku-4-latest' (Rule 3): the plan's deep-link FIXED_MODEL_CONTEXT_WINDOWS[FIXED_MODEL] resolves to undefined for the old value (not a map key; TokenBudget.test.ts pins exactly 5 keys) — retargeting keeps the deep-link deterministic and the fixture consistent with the canonical window map — The plan's literal window deep-link requires FIXED_MODEL to be a key of FIXED_MODEL_CONTEXT_WINDOWS; 'claude-haiku-4-latest' is the canonical haiku key (200K) matching the fixture's haiku-tier persona
 
 ### Pending Todos
 
@@ -216,6 +218,6 @@ Items acknowledged and carried forward (v2 scope, tracked in REQUIREMENTS.md):
 
 ## Session Continuity
 
-Last session: 2026-08-12T05:49:42.488Z
-Stopped at: Completed 04-02-PLAN.md
+Last session: 2026-08-12T06:00:55.635Z
+Stopped at: Completed 04-03-PLAN.md
 Resume file: None
