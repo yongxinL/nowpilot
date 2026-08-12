@@ -185,7 +185,7 @@ Plans:
   4. Replanning is bounded by tier caps and never nested; abort works cleanly.
   5. Evidence/false-completion tests pass (commit-confirm barrier UI deferred to Phase 8 — D-3a-01).
 
-**Plans**: 3/5 plans executed
+**Plans**: 5/5 plans executed
 
 Plans:
 **Wave 1**
@@ -206,7 +206,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 03a-05-PLAN.md — phase gate: verify:phase-3a script (§24), REQUIREMENTS.md AGT re-map notes (D-3a-01/02), ROADMAP criterion #5 reduction, full-suite green seal (wave 5)
+- [x] 03a-05-PLAN.md — phase gate: verify:phase-3a script (§24), REQUIREMENTS.md AGT re-map notes (D-3a-01/02), ROADMAP criterion #5 reduction, full-suite green seal (wave 5)
 
 ### Phase 4: Context-Adaptive Execution
 
