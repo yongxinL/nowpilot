@@ -16,9 +16,10 @@
 //   3. Drop-in identity + cache-stability: the default (non-minimal) path is
 //      byte-identical to the Phase-3 contextHelper.buildOptimizedContext output
 //      for equivalent inputs — same section texts, same byte-stable [SYSTEM]
-//      (D-04-07/P4-8). NOTE: the live buildOptimizedContext import below is the
-//      04-04 Task-3 handoff — 04-06 Task 3 replaces it with a hardcoded
-//      Phase-3 snapshot BEFORE the module is deleted.
+//      (D-04-07/P4-8). 04-06 Task 3 (Pitfall 1): the live buildOptimizedContext
+//      import was replaced with the hardcoded Phase-3 snapshot BELOW (captured
+//      while the module still existed) so the byte-identity regression survives
+//      the contextHelper deletion.
 //   4. CTX-02 seam (D-04-02): contextUpdate is a typed input-only re-pack
 //      signal with NO consumer in P4 — output is identical with/without it.
 //
@@ -35,7 +36,6 @@ import { computeBudgets } from '@/core/context/TokenBudget';
 import { packSections } from '@/core/context/ContextPack';
 import { ContextProvenanceManifestSchema } from '@/core/context/ContextProvenanceManifest';
 import { PROMPTS } from '@/core/prompts';
-import { buildOptimizedContext } from '@/core/ai/contextHelper';
 import type { ContextOptimizerInput, OptimizedContext, PromptSection } from '@/core/ai/types';
 import type { ToolSchemaRef } from '@/core/ai/toolSchemas';
 import { GET_PROVIDER_INFO_TOOL } from '@/core/ai/toolSchemas';
@@ -262,30 +262,45 @@ describe('optimize — §2.4 ladder order + degradation (04-04 Task 3, D-04-12)'
 });
 
 describe('optimize — drop-in identity + cache-stability (04-04 Task 3, D-04-07/P4-8)', () => {
-  it('default path deep-equals contextHelper.buildOptimizedContext for equivalent inputs', () => {
-    // NOTE (04-04 → 04-06 handoff): this live import of the Phase-3 module is
-    // replaced with a hardcoded Phase-3 snapshot in 04-06 Task 3 BEFORE
-    // src/core/ai/contextHelper.ts is deleted — the byte-identity regression
-    // must survive the deletion (D-04-07/P4-8 prompt-cache stability).
+  // 04-06 Task 3 (Pitfall 1 seal): the Phase-3 buildOptimizedContext output
+  // for THIS exact input, captured while src/core/ai/contextHelper.ts still
+  // existed (04-06 execution). Replaces the live import so the byte-identity
+  // regression survives the deletion (D-04-07/P4-8 prompt-cache stability).
+  // Texts: FIXED_PERSONA_BLOCK + buildToolSchemasText([GET_PROVIDER_INFO_TOOL])
+  // + the fixed userInput; tokens = the Phase-3 ceil(chars/4) counter.
+  const PHASE3_SNAPSHOT_SECTIONS: PromptSection[] = [
+    {
+      kind: 'system',
+      text: 'persona.name=Fixture Persona\npersona.tone=professional-warm\npersona.brevity=balanced',
+      tokens: 21,
+      stable: true,
+      sourceId: 'system',
+    },
+    {
+      kind: 'tool_schemas',
+      text: 'get-provider-info: Active provider + model + limits',
+      tokens: 13,
+      stable: true,
+      sourceId: 'tool-schemas',
+    },
+    {
+      kind: 'user_input',
+      text: 'Summarize the current page.',
+      tokens: 7,
+      stable: false,
+      sourceId: 'user-input',
+    },
+  ];
+
+  it('default path deep-equals the hardcoded Phase-3 snapshot (byte-identity survives the deletion)', () => {
     const optimizerOut = optimize(baseInput({ modelContextWindow: 200_000 }));
-    const helperOut = buildOptimizedContext({
-      operationId: FIXED_OPERATION_ID,
-      tier: 'large',
-      inputBudget: Math.floor(200_000 * 0.7),
-      outputBudget: Math.floor(200_000 * 0.2),
-      userInput: 'Summarize the current page.',
-      personaBlock: FIXED_PERSONA_BLOCK,
-      toolSchemaRefs: [GET_PROVIDER_INFO_TOOL],
-      workspaceId: FIXED_WORKSPACE_ID,
-      activeSurface: 'sidepanel',
-    });
     // Same section texts, same byte-stable [SYSTEM] (the persona block), same
     // token counts (English-equivalent inputs — the 04-01 CJK counting rule is
     // a deliberate change, not a drop-in regression).
-    expect(optimizerOut.sections).toEqual(helperOut.sections);
-    expect(optimizerOut.tier).toBe(helperOut.tier);
-    expect(optimizerOut.inputBudget).toBe(helperOut.inputBudget);
-    expect(optimizerOut.outputBudget).toBe(helperOut.outputBudget);
+    expect(optimizerOut.sections).toEqual(PHASE3_SNAPSHOT_SECTIONS);
+    expect(optimizerOut.tier).toBe('large');
+    expect(optimizerOut.inputBudget).toBe(Math.floor(200_000 * 0.7));
+    expect(optimizerOut.outputBudget).toBe(Math.floor(200_000 * 0.2));
     const system = optimizerOut.sections.find((s) => s.kind === 'system');
     expect(system?.text).toBe(FIXED_PERSONA_BLOCK);
   });

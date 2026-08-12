@@ -402,9 +402,7 @@ async function planOnce(
     // D-04-05: the planner-stage section base resolves from the input-only
     // seam; default (no seam) keeps input.context.sections (drop-in). Replan
     // feedback sections still append AFTER the base either way.
-    const baseContext = input.contextForStage
-      ? input.contextForStage('planner')
-      : input.context;
+    const baseContext = input.contextForStage ? input.contextForStage('planner') : input.context;
     const sections =
       replanSections.length > 0
         ? [...baseContext.sections, ...replanSections]

@@ -1,10 +1,12 @@
 // tests/components/pages/useStreamingLLM.test.tsx — the D-01 co-located
 // streaming hook contract (Phase-7 promotion target): send() threads a
-// contextHelper-built OptimizedContext (Golden Rule 3 — never PROMPTS) through
-// the createStageInvocation StageResolver into runAgentTurn, streaming deltas
-// into the ChunkBuffer (text grows via flush); abort() cancels generation; the
-// 5-state machine maps NETWORK-class failures to offline and everything else
-// to failed; retry() re-sends the last input with a NEW operationId.
+// per-stage ContextOptimizer-built OptimizedContext (04-06 rewire, D-04-04/05 —
+// Golden Rule 3, never PROMPTS) through the createStageInvocation StageResolver
+// into runAgentTurn, streaming deltas into the ChunkBuffer (text grows via
+// flush); abort() cancels generation; the 5-state machine maps NETWORK-class
+// failures to offline, a ContextTooLargeError to failed (D-04-15 honest
+// terminal — never truncation), and everything else to failed; retry() re-sends
+// the last input with a NEW operationId.
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -14,6 +16,10 @@ import {
   FALLBACK_MODEL_CONTEXT_WINDOW,
 } from '@/components/pages/useStreamingLLM';
 import { classifyModelContext } from '@/core/context/ModelContextTier';
+import { estimateTokens } from '@/core/context/TokenBudget';
+import { buildPersonaBlock, resolvePersona } from '@/core/ai/persona/PersonaInjector';
+import { DEFAULT_PERSONA } from '@/core/ai/persona/PersonaProfile';
+import type { PromptSection } from '@/core/ai/types';
 import type { AgentTurnOutcome } from '@/types/harness';
 import { FIXED_PREFERENCES } from '../../fixtures/optimizedContext';
 
@@ -21,7 +27,8 @@ import { FIXED_PREFERENCES } from '../../fixtures/optimizedContext';
 // Module mocks (the hook's I/O boundaries — the hook itself stays real)
 // ---------------------------------------------------------------------------
 
-const { runAgentTurnMock, routerMock, readPersonaPrefsMock } = vi.hoisted(() => {
+const { runAgentTurnMock, routerMock, readPersonaPrefsMock, capsTierCalls } = vi.hoisted(() => {
+  const capsTierCalls: string[] = [];
   const createStageInvocation = vi.fn((input: { tier?: string; maxTokens?: number }) => ({
     providerId: 'anthropic',
     model: { modelId: 'claude-3-5-haiku-latest' },
@@ -42,12 +49,18 @@ const { runAgentTurnMock, routerMock, readPersonaPrefsMock } = vi.hoisted(() => 
     runAgentTurnMock: vi.fn(),
     routerMock: { createStageInvocation, classifyProviderError },
     readPersonaPrefsMock: vi.fn(async () => FIXED_PREFERENCES),
+    capsTierCalls,
   };
 });
 
 vi.mock('@/core/ai/AgentOrchestrator', () => ({
   runAgentTurn: runAgentTurnMock,
-  capsForTier: () => ({ plannerCap: 3, toolCap: 2, mcpChaining: true }),
+  // Records the tier argument (D-04-05 — the PLANNER-stage tier governs loop
+  // caps) while returning the constant caps shape the Phase-3 tests assert.
+  capsForTier: (tier: string) => {
+    capsTierCalls.push(tier);
+    return { plannerCap: 3, toolCap: 2, mcpChaining: true };
+  },
 }));
 
 vi.mock('@/core/ai/ProviderRouter', () => ({
@@ -70,6 +83,8 @@ interface AgentTurnInputLike {
   tier: { plannerCap: number; toolCap: number; mcpChaining: boolean };
   onStreamDelta?: (delta: string) => void;
   invocation?: (stage: 'planner' | 'renderer') => unknown;
+  // D-04-05 seam (04-06): the per-stage optimizer packs the hook threads in.
+  contextForStage?: (stage: 'planner' | 'renderer') => unknown;
 }
 
 function resolveTurn(
@@ -100,7 +115,19 @@ function rejectTurn(err: unknown) {
 
 beforeEach(() => {
   runAgentTurnMock.mockReset();
-  routerMock.createStageInvocation.mockClear();
+  routerMock.createStageInvocation.mockReset();
+  // Re-establish the default 200_000 fixture window (mockReset clears the
+  // implementation, so per-test overrides cannot leak into later tests).
+  routerMock.createStageInvocation.mockImplementation(
+    (input: { tier?: string; maxTokens?: number }) => ({
+      providerId: 'anthropic',
+      model: { modelId: 'claude-3-5-haiku-latest' },
+      jsonMode: 'native',
+      callProviderJsonMode: vi.fn(async () => '{}'),
+      modelContextWindow: 200_000,
+      ...input,
+    }),
+  );
   routerMock.classifyProviderError.mockClear();
   routerMock.classifyProviderError.mockImplementation((e: unknown) => ({
     code:
@@ -111,6 +138,7 @@ beforeEach(() => {
   }));
   readPersonaPrefsMock.mockReset();
   readPersonaPrefsMock.mockImplementation(async () => FIXED_PREFERENCES);
+  capsTierCalls.length = 0;
 });
 
 describe('useStreamingLLM — send path (Golden Rule 3 + D-02)', () => {
@@ -174,11 +202,123 @@ describe('useStreamingLLM — send path (Golden Rule 3 + D-02)', () => {
   });
 });
 
+describe('useStreamingLLM — per-stage optimizer contexts (04-06 rewire, D-04-04/05)', () => {
+  it('runs optimize per stage: two createStageInvocation calls, capsForTier(planner tier) + contextForStage threaded', async () => {
+    resolveTurn(['ok']);
+    const { result } = renderHook(() => useStreamingLLM());
+
+    await act(async () => {
+      await result.current.send('hi');
+    });
+
+    // both stages resolved upfront via the Router seam (the window source)
+    expect(routerMock.createStageInvocation).toHaveBeenCalledTimes(2);
+    const input = runAgentTurnMock.mock.calls[0][0] as AgentTurnInputLike;
+    // 200_000 mock window → 'large' for both stages (D-04-04 derivation)
+    expect(input.context).toMatchObject({ tier: 'large' });
+    // capsForTier was invoked with the PLANNER-stage tier, not the renderer's
+    expect(capsTierCalls).toEqual(['large']);
+    // the loop-cap shape comes from the mocked capsForTier (constant caps)
+    expect(input.tier).toEqual({ plannerCap: 3, toolCap: 2, mcpChaining: true });
+    // the input-only seam exposes the per-stage packs
+    const rendererCtx = input.contextForStage?.('renderer') as { tier?: string };
+    expect(rendererCtx).toBeDefined();
+    expect(rendererCtx.tier).toBe('large');
+  });
+
+  it('per-stage tier divergence: planner tiny / renderer large — capsForTier receives the PLANNER tier (D-04-05, T-04-27)', async () => {
+    routerMock.createStageInvocation.mockImplementation((input: { maxTokens?: number }) => ({
+      providerId: 'anthropic',
+      model: { modelId: 'claude-3-5-haiku-latest' },
+      jsonMode: 'native',
+      callProviderJsonMode: vi.fn(async () => '{}'),
+      // planner stage (maxTokens 256) → tiny window; renderer (512) → large
+      modelContextWindow: input?.maxTokens === 256 ? 4096 : 200_000,
+      ...input,
+    }));
+    resolveTurn(['ok']);
+    const { result } = renderHook(() => useStreamingLLM());
+
+    await act(async () => {
+      await result.current.send('hi');
+    });
+
+    const input = runAgentTurnMock.mock.calls[0][0] as AgentTurnInputLike;
+    // planner context: tiny → mandatory minimal mode
+    expect(input.context).toMatchObject({ tier: 'tiny', minimalMode: true });
+    // renderer context: large, no minimal mode — the stages DIFFER
+    const rendererCtx = input.contextForStage?.('renderer') as {
+      tier?: string;
+      minimalMode?: boolean;
+    };
+    expect(rendererCtx.tier).toBe('large');
+    expect(rendererCtx.minimalMode).toBe(false);
+    // loop caps come from the PLANNER-stage tier (tiny), never the renderer's
+    expect(capsTierCalls).toEqual(['tiny']);
+  });
+});
+
 describe('useStreamingLLM — D-04-04 fallback-constant consistency', () => {
   it('FALLBACK_MODEL_CONTEXT_WINDOW derives the DEFAULT_CONTEXT_TIER — the constants cannot disagree', () => {
     // A 16_384 fallback would derive 'small' and contradict the retained
     // 'medium' tier constant; the 131_072 window keeps the pair consistent.
     expect(classifyModelContext(FALLBACK_MODEL_CONTEXT_WINDOW)).toBe(DEFAULT_CONTEXT_TIER);
+  });
+});
+
+describe('useStreamingLLM — drop-in identity + honest terminal (04-06 rewire)', () => {
+  it('drop-in regression: the default-path section bytes equal the pre-04-06 snapshot (D-04-07/P4-8)', async () => {
+    resolveTurn(['ok']);
+    const { result } = renderHook(() => useStreamingLLM());
+
+    await act(async () => {
+      await result.current.send('hi');
+    });
+
+    const input = runAgentTurnMock.mock.calls[0][0] as AgentTurnInputLike;
+    // Pre-04-06 the hook built exactly [SYSTEM: personaBlock][USER INPUT: trimmed]
+    // via the Phase-3 context-helper; the optimizer's default path (200_000 →
+    // large, non-minimal) is byte-identical — the section bytes prove the
+    // drop-in (prompt-cache stability, D-04-07).
+    const personaBlock = buildPersonaBlock(resolvePersona(DEFAULT_PERSONA, FIXED_PREFERENCES));
+    expect((input.context as { sections: PromptSection[] }).sections).toEqual([
+      {
+        kind: 'system',
+        text: personaBlock,
+        tokens: estimateTokens(personaBlock),
+        stable: true,
+        sourceId: 'system',
+      },
+      {
+        kind: 'user_input',
+        text: 'hi',
+        tokens: estimateTokens('hi'),
+        stable: false,
+        sourceId: 'user-input',
+      },
+    ]);
+  });
+
+  it('a ContextTooLargeError (over-cap input even in minimal mode) → failed — never offline/completed (D-04-15, T-04-25)', async () => {
+    routerMock.createStageInvocation.mockImplementation((input: { maxTokens?: number }) => ({
+      providerId: 'anthropic',
+      model: { modelId: 'claude-3-5-haiku-latest' },
+      jsonMode: 'native',
+      callProviderJsonMode: vi.fn(async () => '{}'),
+      modelContextWindow: 4096, // tiny — a 12k-char input exceeds even minimal mode
+      ...input,
+    }));
+    const { result } = renderHook(() => useStreamingLLM());
+
+    await act(async () => {
+      await result.current.send('a'.repeat(12_000));
+    });
+
+    // The optimizer threw BEFORE runAgentTurn — the hook maps the typed
+    // terminal to the honest failed state with the messageTooLong surface
+    // (never a truncated prompt sent, never 'offline', never 'completed').
+    expect(runAgentTurnMock).not.toHaveBeenCalled();
+    expect(result.current.state.state).toBe('failed');
   });
 });
 
