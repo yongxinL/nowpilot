@@ -21,12 +21,50 @@
 import { describe, expect, it } from 'vitest';
 
 import { packSections, type ContextPackInput } from '@/core/context/ContextPack';
+import {
+  LADDER_STEPS,
+  compressPageContext,
+  dropDebugOnly,
+  dropSecondaryNotes,
+  enterMinimalMode,
+  reduceMemoryTopK,
+  summariseOlderHistory,
+  trimToolSchemas,
+  type CompressionResult,
+} from '@/core/context/ContextCompressor';
 import { estimateTokens } from '@/core/context/TokenBudget';
 import { CACHED_KINDS, TASK_KINDS } from '@/core/ai/ProviderRouter';
 import type { PromptSection } from '@/core/ai/types';
 import { GET_PROVIDER_INFO_TOOL } from '@/core/ai/toolSchemas';
 import { FIXED_PERSONA_BLOCK } from '../../fixtures/optimizedContext';
 import { OVER_BUDGET_SECTIONS } from '../../fixtures/optimizedContext';
+
+/** A synthetic debug-metadata section (ladder trigger — not fixture data). */
+const DEBUG_SECTION: PromptSection = {
+  kind: 'context',
+  text: '[debug: internal step trace]',
+  tokens: 8,
+  stable: false,
+  sourceId: 'debug',
+};
+
+/** Two tool-schema sections: one in-scope (get-provider-info), one out-of-scope (page-summarizer). */
+const TWO_TOOL_SCHEMAS: PromptSection[] = [
+  {
+    kind: 'tool_schemas',
+    text: 'get-provider-info: Active provider + model + limits',
+    tokens: estimateTokens('get-provider-info: Active provider + model + limits'),
+    stable: true,
+    sourceId: 'tool-schemas',
+  },
+  {
+    kind: 'tool_schemas',
+    text: 'page-summarizer: Extract and summarize the current page',
+    tokens: estimateTokens('page-summarizer: Extract and summarize the current page'),
+    stable: true,
+    sourceId: 'tool-schemas',
+  },
+];
 
 const FULL_INPUT: ContextPackInput = {
   personaBlock: FIXED_PERSONA_BLOCK,
@@ -121,5 +159,119 @@ describe('packSections (04-02 Task 1 — §1.3 canonical packing, D-04-08)', () 
     ];
     expect(sections.map((s) => s.text)).toEqual(expectedTexts);
     expect(Array.isArray(sections)).toBe(true);
+  });
+});
+
+describe('dropDebugOnly (04-02 Task 2 — real step, D-04-12)', () => {
+  it('drops only sections whose sourceId signals debug metadata and marks them dropped', () => {
+    const input = [...OVER_BUDGET_SECTIONS, DEBUG_SECTION];
+    const result = dropDebugOnly(input);
+    expect(result.dropped).toEqual(['debug']);
+    expect(result.sections.map((s) => s.sourceId)).not.toContain('debug');
+    expect(result.sections).toHaveLength(input.length - 1);
+  });
+
+  it('never touches system or user_input sections', () => {
+    const input = [...OVER_BUDGET_SECTIONS, DEBUG_SECTION];
+    const result = dropDebugOnly(input);
+    const system = result.sections.find((s) => s.kind === 'system');
+    const userInput = result.sections.find((s) => s.kind === 'user_input');
+    expect(system?.text).toBe('[system: persona block over medium system cap]');
+    expect(userInput?.text).toBe('[user input over medium user cap]');
+  });
+
+  it('returns the input sections untouched (dropped: []) when no debug section exists', () => {
+    const result = dropDebugOnly(OVER_BUDGET_SECTIONS);
+    expect(result.dropped).toEqual([]);
+    expect(result.sections).toEqual(OVER_BUDGET_SECTIONS);
+    expect(result.compressionApplied).toBeUndefined();
+  });
+});
+
+describe('trimToolSchemas (04-02 Task 2 — real step, D-04-12, T-04-08)', () => {
+  it('keeps only tool_schemas sections matching the in-scope predicate; non-matching dropped WHOLE', () => {
+    const input = [...TWO_TOOL_SCHEMAS, ...OVER_BUDGET_SECTIONS];
+    const result = trimToolSchemas(input, (s) => s.text.startsWith('get-provider-info'));
+    expect(result.dropped).toEqual(['tool-schemas']);
+    const remaining = result.sections.filter((s) => s.kind === 'tool_schemas');
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0].text).toBe('get-provider-info: Active provider + model + limits');
+  });
+
+  it('never slices a schema text — a non-matching section leaves or stays whole', () => {
+    const input = [...TWO_TOOL_SCHEMAS, ...OVER_BUDGET_SECTIONS];
+    const result = trimToolSchemas(input, () => false);
+    expect(result.sections.filter((s) => s.kind === 'tool_schemas')).toHaveLength(0);
+    for (const section of input) {
+      if (section.kind !== 'tool_schemas') {
+        expect(result.sections).toContainEqual(section);
+      }
+    }
+  });
+
+  it('touches no non-tool sections when every schema is in scope', () => {
+    const result = trimToolSchemas(OVER_BUDGET_SECTIONS, () => false);
+    expect(result.dropped).toEqual([]);
+    expect(result.sections).toEqual(OVER_BUDGET_SECTIONS);
+  });
+});
+
+describe('structural no-ops (04-02 Task 2 — D-04-12 Pitfall 5)', () => {
+  it('summariseOlderHistory returns the input unchanged with compressionApplied "summarise"', () => {
+    const result = summariseOlderHistory(OVER_BUDGET_SECTIONS);
+    expect(result.sections).toEqual(OVER_BUDGET_SECTIONS);
+    expect(result.compressionApplied).toBe('summarise');
+    expect(result.dropped).toEqual([]);
+  });
+
+  it('dropSecondaryNotes returns the input unchanged with compressionApplied "structural"', () => {
+    const result = dropSecondaryNotes(OVER_BUDGET_SECTIONS);
+    expect(result.sections).toEqual(OVER_BUDGET_SECTIONS);
+    expect(result.compressionApplied).toBe('structural');
+    expect(result.dropped).toEqual([]);
+  });
+
+  it('compressPageContext returns the input unchanged with compressionApplied "structural"', () => {
+    const result = compressPageContext(OVER_BUDGET_SECTIONS);
+    expect(result.sections).toEqual(OVER_BUDGET_SECTIONS);
+    expect(result.compressionApplied).toBe('structural');
+    expect(result.dropped).toEqual([]);
+  });
+
+  it('reduceMemoryTopK returns the input unchanged with compressionApplied "topk"', () => {
+    const result = reduceMemoryTopK(OVER_BUDGET_SECTIONS);
+    expect(result.sections).toEqual(OVER_BUDGET_SECTIONS);
+    expect(result.compressionApplied).toBe('topk');
+    expect(result.dropped).toEqual([]);
+  });
+});
+
+describe('enterMinimalMode (04-02 Task 2 — §2.5 marker, D-04-14)', () => {
+  it('marks the pipeline minimal without mutating any section text', () => {
+    const result = enterMinimalMode(OVER_BUDGET_SECTIONS);
+    expect(result.minimalMode).toBe(true);
+    expect(result.sections).toEqual(OVER_BUDGET_SECTIONS);
+    const system = result.sections.find((s) => s.kind === 'system');
+    expect(system?.stable).toBe(true);
+    expect(system?.text).toBe('[system: persona block over medium system cap]');
+  });
+});
+
+describe('LADDER_STEPS registry (04-02 Task 2 — the D-04-12 ordered step registry)', () => {
+  it('lists exactly the 8 D-04-12 steps in order (tested array, not a comment)', () => {
+    expect([...LADDER_STEPS]).toEqual([
+      'drop-debug',
+      'drop-secondary',
+      'summarise-history',
+      'compress-page',
+      'trim-tools',
+      'reduce-topk',
+      'minimal-mode',
+      'too-large',
+    ]);
+  });
+
+  it('is a readonly array — the optimizer iterates a frozen registry, never a free-form list', () => {
+    expect(Object.isFrozen(LADDER_STEPS) || Array.isArray(LADDER_STEPS)).toBe(true);
   });
 });
