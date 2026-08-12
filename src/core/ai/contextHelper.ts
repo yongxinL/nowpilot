@@ -103,6 +103,13 @@ export function buildOptimizedContext(input: ContextHelperInput): OptimizedConte
       minimalMode,
       workspaceId: input.workspaceId,
       activeSurface: input.activeSurface,
+      // placeholder values — contextHelper is DELETED in 04-06 (D-04-08); the
+      // optimizer (04-04) stamps the real D-04-17 enumeration on every manifest
+      tier: input.tier,
+      model: '',
+      window: 0,
+      counterMethod: 'heuristic',
+      stepsFired: [],
     },
     minimalMode,
   };

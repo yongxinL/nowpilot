@@ -18,7 +18,10 @@ import type { OptimizedContext, PromptSection } from '@/core/ai/types';
 export const FIXED_OPERATION_ID = 'op-fixture-0001';
 export const FIXED_WORKSPACE_ID = 'ws-fixture-0001';
 export const FIXED_CONVERSATION_ID = 'conv-fixture-0001';
-export const FIXED_MODEL = 'claude-3-5-haiku-latest';
+// 04-03: MUST be a key of FIXED_MODEL_CONTEXT_WINDOWS (below) — the manifest's
+// `window` field deep-links FIXED_MODEL_CONTEXT_WINDOWS[FIXED_MODEL], so the
+// fixture's model is the canonical haiku key (claude-haiku-4-latest, 200K).
+export const FIXED_MODEL = 'claude-haiku-4-latest';
 
 /** Fixed persona block template (AI-05 byte-stability: ordered joins only). */
 export const FIXED_PERSONA_BLOCK =
@@ -213,6 +216,13 @@ export function buildOptimizedContextFixture(
     minimalMode,
     workspaceId,
     activeSurface,
+    // 04-03 (D-04-17): deterministic provenance enumeration — the window
+    // deep-links the fixture's own model-window map (never a second value).
+    tier,
+    model: FIXED_MODEL,
+    window: FIXED_MODEL_CONTEXT_WINDOWS[FIXED_MODEL],
+    counterMethod: 'heuristic', // D-04-10: provider-native counter absent in ai@4.3.19
+    stepsFired: [], // no degradation in the default fixture
   };
 
   return {
