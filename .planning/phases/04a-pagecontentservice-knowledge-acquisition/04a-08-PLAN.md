@@ -7,6 +7,7 @@ depends_on: ["04a-04", "04a-05", "04a-07"]
 files_modified:
   - src/core/extraction/PageContentService.ts
   - tests/core/extraction/PageContentService.test.ts
+  - tests/fixtures/pageContent.ts
 autonomous: true
 requirements: [CAT-01, CAT-02, CAT-03, CAT-05]
 must_haves:
