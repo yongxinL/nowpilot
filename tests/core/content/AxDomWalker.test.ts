@@ -30,6 +30,11 @@ function flatten(nodes: RawNode[]): RawNode[] {
   return out;
 }
 
+/** All nodes (any depth) in the subtree matching `pred`. */
+function findAll(nodes: RawNode[], pred: (n: RawNode) => boolean): RawNode[] {
+  return flatten(nodes).filter(pred);
+}
+
 function setBody(html: string): void {
   document.body.innerHTML = html;
 }
@@ -108,9 +113,13 @@ describe('AxDomWalker (D-4a-12/13/20)', () => {
 
     const table = findNode(nodes, (n) => n.role === 'table');
     expect(table).toBeDefined();
-    const rows = table!.children?.filter((c) => c.role === 'row') ?? [];
+    // HTML parsing wraps <tr>s in an implicit <tbody> — the walker emits it as an
+    // ARIA 'rowgroup', so rows are found at any depth under the table.
+    const rows = findAll(table!.children ?? [], (c) => c.role === 'row');
     expect(rows.length).toBe(2);
-    expect(rows[0]!.children?.some((c) => c.role === 'columnheader' && c.text === 'Name')).toBe(true);
+    expect(rows[0]!.children?.some((c) => c.role === 'columnheader' && c.text === 'Name')).toBe(
+      true,
+    );
     expect(rows[1]!.children?.some((c) => c.role === 'cell' && c.text === 'Ada')).toBe(true);
   });
 });
