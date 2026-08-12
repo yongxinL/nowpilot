@@ -191,3 +191,10 @@ None - no external service configuration required.
 ---
 *Phase: 03a-agent-reliability-and-evidence*
 *Completed: 2026-08-12*
+
+## Self-Check: PASSED
+
+- Created/modified files verified on disk: package.json, .planning/REQUIREMENTS.md, .planning/ROADMAP.md, 03a-05-SUMMARY.md
+- Commits verified in git log: 2b9c108 (chore: verify:phase-3a script), e27f3d9 (docs: AGT re-map notes), 9aa6e23 (docs: ROADMAP closeout), 9c37bc3 (fix: lint/format gate fixes), 673c80c (chore: pnpm allowBuilds), e0db7ae (docs: SUMMARY)
+- `pnpm run verify:phase-3a` exit 0 end-to-end: eslint 0, prettier all-pass, tsc --noEmit 0, wxt build finished, vitest 65 files / 527 tests, isolation check 1 content + 1 background SW clean
+- Grep gates: spec C.2 harness block L5051-5053 contains AGENT_STATE_INVALID/TOOL_POSTCONDITION_FAILED/COMPLETION_EVIDENCE_MISSING; errorCodes.ts L73-75 mirrors them; REQUIREMENTS.md carries the AGT-02/AGT-05 re-map notes + traceability 'AGT-01…05 | Phase 3a | Done'; ROADMAP criterion #5 reduced + §18 order intact; zero 03a commits touched background/content entrypoints

@@ -4,16 +4,16 @@ milestone: v0.1
 milestone_name: milestone
 current_phase: 03a
 current_phase_name: agent-reliability-and-evidence
-status: executing
-stopped_at: Completed 03a-04-PLAN.md
-last_updated: "2026-08-11T23:53:34.917Z"
+status: verifying
+stopped_at: "Completed 03a-05-PLAN.md (Phase 3a sealed — verify:phase-3a green)"
+last_updated: "2026-08-12T00:23:19.815Z"
 last_activity: 2026-08-11
 last_activity_desc: Phase 03a execution started
 progress:
   total_phases: 4
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 43
-  completed_plans: 42
+  completed_plans: 43
 ---
 
 # Project State
@@ -30,10 +30,10 @@ See: .planning/PROJECT.md (updated 2026-08-09)
 
 Phase: 03a (agent-reliability-and-evidence) — EXECUTING
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-08-11 — Phase 03a execution started
 
-Progress: [██████████] 98%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -88,6 +88,7 @@ Progress: [██████████] 98%
 | Phase 03a P02 | 8 | 5 tasks | 4 files |
 | Phase 03a P03 | 96 | 11 tasks | 5 files |
 | Phase 03a P04 | 17min | 6 tasks | 4 files |
+| Phase 03a-agent-reliability-and-evidence P05 | 21min | 6 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -180,6 +181,7 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 03a]: Replan-on-tool-failure (D-3a-11/12/13): retryable tool failure restores the pre-tool checkpoint, consumes a plannerCalls++ slot, appends an F-4 tool_result PromptSection (stable:false, sourceId replan-feedback), re-invokes planner once; repeated-identical (same tool+code) is terminal 'failed'/'replan_identical_failure'; planner-side failures keep planner_failed (no replan, R-2) — Replan-on-tool-failure (D-3a-11/12/13): retryable tool failure restores the pre-tool checkpoint, consumes a plannerCalls++ slot, appends an F-4 tool_result PromptSection (stable:false, sourceId replan-feedback), re-invokes planner once; repeated-identical (same tool+code) is terminal 'failed'/'replan_identical_failure'; planner-side failures keep planner_failed (no replan, R-2)
 - [Phase 03a]: RenderInput verdict/evidence optional for Phase-3 compat (legacy RendererService.test.ts untouchable); orchestrator always supplies them; renderer evidence guard (D-3a-17) marks only ok:true-evidenced tools 'done' — display-only, never re-verifies — RenderInput verdict/evidence optional for Phase-3 compat (legacy RendererService.test.ts untouchable); orchestrator always supplies them; renderer evidence guard (D-3a-17) marks only ok:true-evidenced tools 'done' — display-only, never re-verifies
 - [Phase 03a]: useStreamingLLM.ts maps AgentTurnOutcome.status per D-3a-19 (completed->completed, partial/failed->failed with partial text + Retry, aborted->idle; provider_unconfigured stays failed) — D-20 fence test INVERTED (Pitfall 1): the orchestrator source must reference AgentTurnOutcome|OutcomeVerifier|trajectory - never the stale zero-tokens contract
+- [Phase 03a-agent-reliability-and-evidence]: The verify:phase-3a gate is the §24 chain verbatim (eslint + prettier --check + tsc --noEmit + wxt build + vitest run + isolation check) with the R-3 isolation check non-optional and NO exact test-count assertions (P-5); Phase 3a sealed per Golden Rule 10 when it passes green — REQUIREMENTS.md records the D-3a-01/02 reconciliation in the AI-07 note style: CheckpointRecorder folds into AGT-02 (no new AGT id invented); AGT-05 commit-confirm barrier re-maps to Phase 8 TOL-03 (03a ships only waiting-for-permission + pause seam); §18 remains authoritative over the rows
 
 ### Pending Todos
 
@@ -208,6 +210,6 @@ Items acknowledged and carried forward (v2 scope, tracked in REQUIREMENTS.md):
 
 ## Session Continuity
 
-Last session: 2026-08-11T23:53:04.784Z
-Stopped at: Completed 03a-04-PLAN.md
+Last session: 2026-08-12T00:23:19.776Z
+Stopped at: Completed 03a-05-PLAN.md (Phase 3a sealed — verify:phase-3a green)
 Resume file: None

@@ -443,7 +443,7 @@ Plans:
 | 1. MV3/WXT Runtime + AntD Shells + Workspace | 11/11 | Complete    | 2026-08-08 |
 | 2. Storage, Security, WriteJournal, Workspace Persistence | 11/11 | Complete    | 2026-08-09 |
 | 3. Cost-Effective AI Runtime (+ Persona seed) | 16/16 | Complete    | 2026-08-11 |
-| 3a. Agent Reliability and Evidence | 3/5 | In Progress|  |
+| 3a. Agent Reliability and Evidence | 5/5 | In Progress|  |
 | 4. Context-Adaptive Execution | TBD | Not started | - |
 | 4a. PageContentService (Knowledge Acquisition) | TBD | Not started | - |
 | 4b. Trust-Aware Context and Receipts | TBD | Not started | - |
