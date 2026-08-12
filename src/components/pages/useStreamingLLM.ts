@@ -1,15 +1,17 @@
 // src/components/pages/useStreamingLLM.ts — D-01 co-located streaming hook
 // (Phase-7 promotion target: src/hooks/useStreamingLLM.ts, Appendix J.2
-// reference). Golden Rule 3: the ONLY prompt assembly on the UI path is
-// contextHelper (D-02) — this hook imports contextHelper, never builds prompts.
+// reference). Golden Rule 3: the ONLY prompt assembly on the UI path is the
+// context layer (04-04 ContextOptimizer, D-04-08 — it replaced the deleted
+// Phase-3 context-helper module) — this hook imports ContextOptimizer, never
+// builds prompts.
 //
-// send() threads the §2.3 OptimizedContext (contextHelper, 03-07) through the
-// 03-05 createStageInvocation StageResolver closure into 03-06 runAgentTurn,
-// streaming renderer deltas into the Appendix J.1 ChunkBuffer (rAF flush → the
-// growing assistant Bubble text). abort() cancels generation so no orphaned
-// request bills tokens (§17.5 one stream per session — a new send aborts the
-// previous). Phase-3 stream state is IN-MEMORY per surface (D-03/D-14): the
-// session stream key stays writeAllowed:false in Setting.ts (D-11) — nothing
+// send() threads the §2.3 OptimizedContext (per-stage ContextOptimizer, 04-06
+// rewire) through the 03-05 createStageInvocation StageResolver closure into
+// 03-06 runAgentTurn, streaming renderer deltas into the Appendix J.1 ChunkBuffer
+// (rAF flush → the growing assistant Bubble text). abort() cancels generation so
+// no orphaned request bills tokens (§17.5 one stream per session — a new send
+// aborts the previous). Phase-3 stream state is IN-MEMORY per surface (D-03/D-14):
+// the session stream key stays writeAllowed:false in Setting.ts (D-11) — nothing
 // is written to chrome.storage.session here; J.2's np_* persistence is the
 // Phase-7 full-hook behavior.
 //
@@ -25,7 +27,7 @@ import { capsForTier, runAgentTurn } from '@/core/ai/AgentOrchestrator';
 import type { StageResolver } from '@/core/ai/AgentOrchestrator';
 import { getProviderRouter } from '@/core/ai/ProviderRouter';
 import { RENDERER_MAX_TOKENS } from '@/core/ai/RendererService';
-import { buildOptimizedContext } from '@/core/ai/contextHelper';
+import { optimize, isContextTooLargeError } from '@/core/context/ContextOptimizer';
 import { privacyModeFromPrefs } from '@/core/ai/TierResolver';
 import type { ModelTier } from '@/core/ai/TierResolver';
 import { buildPersonaBlock, resolvePersona } from '@/core/ai/persona/PersonaInjector';
@@ -41,11 +43,19 @@ import { useWorkspaceStore } from '@/core/workspace/WorkspaceStore';
 /** §1.2 — planner/repair output cap (256); renderer rides RENDERER_MAX_TOKENS. */
 const PLANNER_MAX_TOKENS = 256;
 
-/** §2.1 chat default: balanced context tier (medium caps 3/2 per §1.4). */
-const DEFAULT_CONTEXT_TIER: ModelContextTier = 'medium';
-/** §2.2 medium-tier budgets (fixture TIER_BUDGETS.medium). */
-const DEFAULT_INPUT_BUDGET = 16_384;
-const DEFAULT_OUTPUT_BUDGET = 1_024;
+/**
+ * D-04-04 pre-resolution fallback ONLY — never the primary source: per-stage
+ * budgets derive from each StageInvocation's modelContextWindow (04-05 stamp)
+ * via ContextOptimizer, so the fallback tier/window are contract documentation.
+ * The pair is internally consistent: classifyModelContext(131_072) === 'medium'
+ * === DEFAULT_CONTEXT_TIER (a 16_384 fallback would derive 'small' and
+ * contradict the retained 'medium' constant — the fallback window and the
+ * fallback tier must never disagree). Exported for the consistency assertion
+ * (04-06 Task-2 vitest); budgets come from TokenBudget now — the Phase-3
+ * DEFAULT_INPUT/OUTPUT_BUDGET constants are removed.
+ */
+export const DEFAULT_CONTEXT_TIER: ModelContextTier = 'medium';
+export const FALLBACK_MODEL_CONTEXT_WINDOW = 131_072;
 
 /**
  * The UI-SPEC surface state machine (D-01): idle / streaming / completed /
@@ -64,7 +74,7 @@ export interface UseStreamingLLMResult {
   /** The current streamed text (grows via ChunkBuffer flush). */
   text: string;
   /**
-   * Start a turn: contextHelper (03-07) → StageResolver over
+   * Start a turn: per-stage ContextOptimizer (04-06) → StageResolver over
    * createStageInvocation (03-05) → runAgentTurn (03-06) with onStreamDelta →
    * ChunkBuffer. Golden Rule 3: the hook assembles NO prompts itself.
    */
@@ -123,22 +133,10 @@ export function useStreamingLLM(): UseStreamingLLMResult {
       setState({ state: 'streaming', operationId });
       try {
         // D-02 / D-09: the persona pipeline (np_persona → schema gate →
-        // DEFAULT_PERSONA fallback) feeds contextHelper's byte-stable block.
+        // DEFAULT_PERSONA fallback) feeds the optimizer's byte-stable block.
         const prefs = await readPersonaPrefs();
         const persona = resolvePersona(DEFAULT_PERSONA, prefs);
         const personaBlock = buildPersonaBlock(persona);
-        // Golden Rule 3: contextHelper is the ONLY prompt builder on this path.
-        const context = buildOptimizedContext({
-          operationId,
-          tier: DEFAULT_CONTEXT_TIER,
-          inputBudget: DEFAULT_INPUT_BUDGET,
-          outputBudget: DEFAULT_OUTPUT_BUDGET,
-          userInput: trimmed,
-          personaBlock,
-          toolSchemaRefs: [],
-          workspaceId,
-          activeSurface,
-        });
         // 03-05 seam: per-stage invocations (planner haiku 256 / renderer flash
         // 512 — §1.2) from the Router's createStageInvocation.
         const invocation: StageResolver = (stage) =>
@@ -149,14 +147,50 @@ export function useStreamingLLM(): UseStreamingLLMResult {
             maxTokens: stage === 'planner' ? PLANNER_MAX_TOKENS : RENDERER_MAX_TOKENS,
             configuredProviders: configuredFromRegistry(),
           });
+        // D-04-04/05: resolve BOTH stages upfront, read each StageInvocation's
+        // modelContextWindow (04-05 stamp), and run ContextOptimizer.optimize
+        // once per stage — tier + §2.2 budgets derive from the resolved window,
+        // never the pre-resolution fallback. Golden Rule 3 (Pitfall 7): the hook
+        // imports ContextOptimizer + capsForTier — it NEVER assembles prompts or
+        // computes budget math; compact prompt text lives only in
+        // src/core/prompts/index.ts (04-04).
+        const plannerInv = invocation('planner');
+        const rendererInv = invocation('renderer');
+        const optimizerBase = {
+          operationId,
+          userInput: trimmed,
+          personaBlock,
+          conversationId: 'default', // A11 (04-04): no conversation store until Phase 7
+          workspaceId,
+          activeSurface,
+          selectedToolSchemas: [],
+          memoryHints: [],
+          preferences: prefs,
+          pageContext: undefined,
+        };
+        const plannerCtx = optimize({
+          ...optimizerBase,
+          model: plannerInv.model.modelId,
+          modelContextWindow: plannerInv.modelContextWindow,
+          stage: 'planner',
+        });
+        const rendererCtx = optimize({
+          ...optimizerBase,
+          model: rendererInv.model.modelId,
+          modelContextWindow: rendererInv.modelContextWindow,
+          stage: 'renderer',
+        });
         const result = await runAgentTurn({
           operationId,
           userInput: trimmed,
-          context,
+          context: plannerCtx,
           abortSignal: controller.signal,
-          tier: capsForTier(context.tier),
+          // D-04-05 (locked): the PLANNER-stage tier governs the loop caps —
+          // planner and renderer may resolve DIFFERENT tiers (T-04-27).
+          tier: capsForTier(plannerCtx.tier),
           onStreamDelta: (delta) => bufferRef.current?.enqueue(delta),
           invocation,
+          contextForStage: (stage) => (stage === 'planner' ? plannerCtx : rendererCtx),
         });
         if (operationIdRef.current !== operationId) return; // superseded by a new send
         bufferRef.current?.flushNow();
@@ -190,6 +224,14 @@ export function useStreamingLLM(): UseStreamingLLMResult {
           // Surface-initiated cancel (no stop control this phase — a new send
           // or an unmount) — not a provider failure, no error surface.
           setState({ state: 'idle' });
+          return;
+        }
+        if (isContextTooLargeError(e)) {
+          // D-04-15 honest terminal (T-04-25): the turn cannot fit the model's
+          // window even in minimal mode — surface the messageTooLong failed
+          // state, NEVER silently truncate the user's input (P4-10). Returns
+          // BEFORE classifyProviderError (T-04-28: no section/user text logged).
+          setState({ state: 'failed', operationId });
           return;
         }
         const cls = getProviderRouter().classifyProviderError(e);

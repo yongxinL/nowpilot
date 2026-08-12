@@ -10,6 +10,9 @@ export const STR = {
     errorRetry: 'Provider error. [Retry] [Switch Provider]',
     offline: 'No network. Retrying when back online.',
     contextReduced: 'Some context was compressed to fit the selected model.',
+    // Phase-4 canonical addition (D-04-15 honest CONTEXT_TOO_LARGE surface,
+    // verbatim draft — the W-1 gate mirrors it into spec Appendix B in 04-07):
+    messageTooLong: 'This message is too long for the selected model.',
     noProvider: 'Configure an AI provider in Settings first.',
     maxPinnedTabs: 'Maximum 10 pinned tabs. Remove one first.',
     cannotPin: 'Cannot pin this page. Try a regular web page.',

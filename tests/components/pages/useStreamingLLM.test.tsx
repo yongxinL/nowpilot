@@ -9,6 +9,11 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useStreamingLLM } from '@/components/pages/useStreamingLLM';
+import {
+  DEFAULT_CONTEXT_TIER,
+  FALLBACK_MODEL_CONTEXT_WINDOW,
+} from '@/components/pages/useStreamingLLM';
+import { classifyModelContext } from '@/core/context/ModelContextTier';
 import type { AgentTurnOutcome } from '@/types/harness';
 import { FIXED_PREFERENCES } from '../../fixtures/optimizedContext';
 
@@ -166,6 +171,14 @@ describe('useStreamingLLM — send path (Golden Rule 3 + D-02)', () => {
     expect(plannerCall.maxTokens).toBe(256);
     expect(rendererCall.tier).toBe('flash');
     expect(rendererCall.maxTokens).toBe(512);
+  });
+});
+
+describe('useStreamingLLM — D-04-04 fallback-constant consistency', () => {
+  it('FALLBACK_MODEL_CONTEXT_WINDOW derives the DEFAULT_CONTEXT_TIER — the constants cannot disagree', () => {
+    // A 16_384 fallback would derive 'small' and contradict the retained
+    // 'medium' tier constant; the 131_072 window keeps the pair consistent.
+    expect(classifyModelContext(FALLBACK_MODEL_CONTEXT_WINDOW)).toBe(DEFAULT_CONTEXT_TIER);
   });
 });
 
