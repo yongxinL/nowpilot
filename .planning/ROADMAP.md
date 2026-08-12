@@ -222,12 +222,26 @@ Plans:
 
 **Plans**: 7 plans
 Plans:
+**Wave 1**
+
 - [ ] 04-01-PLAN.md — context foundation: MODEL_CONTEXT_WINDOWS map + TokenBudget (70/20/10 + caps) + fixture extension (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 04-02-PLAN.md — degradation primitives: ContextPack + ContextCompressor (§2.4 ladder, section-granular) (wave 2)
 - [ ] 04-03-PLAN.md — provenance manifest extension + Zod schema + kind-lockstep guard (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 04-04-PLAN.md — ContextOptimizer: tier/budget derivation, ladder orchestration, minimal mode + compact prompts, CONTEXT_TOO_LARGE terminal, CTX-02 seam (wave 3)
 - [ ] 04-05-PLAN.md — Router: StageInvocation.modelContextWindow stamp + fixture updates (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 04-06-PLAN.md — hook rewire: per-stage optimization + contextForStage seam + contextHelper deletion (Pitfall 1) + STR (wave 4)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
 - [ ] 04-07-PLAN.md — phase gate: verify:phase-4 script + CTX re-map notes + W-1 spec canonicalizations + full green seal (wave 5)
 
 ### Phase 4a: PageContentService (Knowledge Acquisition)
