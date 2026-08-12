@@ -167,8 +167,7 @@ export function optimize(input: ContextOptimizerInput): OptimizedContext {
   // schemas, so the step stays inert today, but a future caller injecting an
   // out-of-scope tool section will be trimmed (whole-section drop, T-04-08).
   const inScope = (s: PromptSection): boolean =>
-    s.kind !== 'tool_schemas' ||
-    input.selectedToolSchemas.some((t) => s.text.includes(t.name));
+    s.kind !== 'tool_schemas' || input.selectedToolSchemas.some((t) => s.text.includes(t.name));
 
   // Per-kind compression markers for the manifest (WR-03 "honor their
   // markers"): a REAL step that drops/compresses records its compression kind

@@ -259,9 +259,7 @@ describe('optimize — §2.4 ladder order + degradation (04-04 Task 3, D-04-12)'
     // 10_000 ASCII chars ≈ 2500 tokens — blows the user cap while the
     // aggregate (2500 + system + tool ≈ 2550) stays well under 14000. Pre-fix
     // this fired nothing (the ladder reacted ONLY to the aggregate total).
-    const out = optimize(
-      baseInput({ modelContextWindow: 20_000, userInput: 'x'.repeat(10_000) }),
-    );
+    const out = optimize(baseInput({ modelContextWindow: 20_000, userInput: 'x'.repeat(10_000) }));
     expect(out.provenance.totalTokens).toBeLessThan(out.inputBudget); // aggregate headroom
     expect(out.minimalMode).toBe(true); // WR-02: the per-kind cap drove degradation
     expect(out.provenance.stepsFired).toContain('minimal-mode');

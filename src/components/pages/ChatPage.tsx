@@ -115,7 +115,12 @@ export function ChatPage() {
               : 'streaming';
       return [
         ...prev.slice(0, -1),
-        { ...last, content: text, status, reason: state.state === 'failed' ? state.reason : undefined },
+        {
+          ...last,
+          content: text,
+          status,
+          reason: state.state === 'failed' ? state.reason : undefined,
+        },
       ];
     });
   }, [state, text]);
