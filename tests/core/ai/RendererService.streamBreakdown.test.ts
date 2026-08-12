@@ -162,10 +162,14 @@ describe('RendererService.render — breaker STATE on the streaming path (WR-02A
     expect(holder.current.isBreakerOpen('anthropic')).toBe(true);
   });
 
-  it('user aborts never open the breaker — the isAbortError guard runs before any vote', async () => {
+  it('user aborts never open the breaker — the isAbortError guard runs before any vote; the abort propagates (WR-06)', async () => {
     for (let i = 0; i < 3; i += 1) {
       mockStream({ streamThrows: new DOMException('aborted', 'AbortError') });
-      await expect(RendererService.render(baseInput())).rejects.toSatisfy(isStreamFailedError);
+      // WR-06: the original AbortError propagates (the hook maps it to idle),
+      // never the typed STREAM_FAILED wrapper.
+      await expect(RendererService.render(baseInput())).rejects.toMatchObject({
+        name: 'AbortError',
+      });
     }
     // 3 aborts, zero provider votes — the breaker stays closed.
     expect(holder.current.isBreakerOpen('anthropic')).toBe(false);

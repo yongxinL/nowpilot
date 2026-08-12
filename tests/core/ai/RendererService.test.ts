@@ -200,7 +200,7 @@ describe('RendererService.render — abort cancels generation (T-03-06-04)', () 
     expect(args.abortSignal).toBe(abort.signal); // Appendix I rule: unchanged pass-through
   });
 
-  it('an aborted stream never returns a complete text — it terminates in STREAM_FAILED', async () => {
+  it('a user abort propagates the original AbortError — never wrapped in STREAM_FAILED (WR-06: the hook maps it to idle)', async () => {
     const abortError = new DOMException('aborted', 'AbortError');
     mockStream({ deltas: ['half'], streamThrows: abortError });
 
@@ -210,7 +210,10 @@ describe('RendererService.render — abort cancels generation (T-03-06-04)', () 
     } catch (e) {
       caught = e;
     }
-    expect(isStreamFailedError(caught)).toBe(true);
+    // WR-06: the renderer rethrows the ORIGINAL abort — the hook's isAbortError
+    // branch (name-based) maps it to the idle surface, never a failed+Retry.
+    expect((caught as Error).name).toBe('AbortError');
+    expect(isStreamFailedError(caught)).toBe(false);
   });
 });
 
@@ -324,7 +327,7 @@ describe('RendererService.render — breaker votes + stream-freeze (WR-02, 03-12
     expect(routerMock.recordFailure).not.toHaveBeenCalled();
   });
 
-  it('a user abort does NOT vote the breaker (isAbortError guard), but the first token still froze the op', async () => {
+  it('a user abort does NOT vote the breaker (isAbortError guard), but the first token still froze the op — and the abort propagates (WR-06)', async () => {
     mockStream({ streamThrows: new DOMException('aborted', 'AbortError') });
 
     let caught: unknown;
@@ -333,7 +336,9 @@ describe('RendererService.render — breaker votes + stream-freeze (WR-02, 03-12
     } catch (e) {
       caught = e;
     }
-    expect(isStreamFailedError(caught)).toBe(true);
+    // WR-06: the original AbortError propagates (the hook maps it to idle).
+    expect((caught as Error).name).toBe('AbortError');
+    expect(isStreamFailedError(caught)).toBe(false);
     // The first token legitimately streamed before the abort — freeze marked once.
     expect(routerMock.markStreamedFirstToken).toHaveBeenCalledTimes(1);
     // A user abort is NOT a provider failure — never a breaker vote (T-03-12-01).

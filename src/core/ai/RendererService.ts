@@ -177,6 +177,13 @@ export async function render(input: RenderInput): Promise<RenderOutput> {
     // Pitfall 5: ALWAYS await the terminal member — never return un-await-verified text.
     finishReason = await result.finishReason;
   } catch (e) {
+    // WR-06 (04): a USER abort is not a stream failure — rethrow the original
+    // AbortError instead of wrapping it in the typed StreamFailedError. The
+    // hook's isAbortError branch (name-based) maps it to the idle surface
+    // (abort → idle contract); wrapping it made a render-phase abort surface
+    // as 'failed' with a Retry (the renderer is the ONLY abort path the hook
+    // could not classify — planner aborts already propagate as AbortError).
+    if (isAbortError(e)) throw e;
     const err = e instanceof Error ? e : new Error(String(e));
     // WR-02 (T-03-12-01): a provider-originated mid-stream failure votes the
     // provider's breaker — a user abort (AbortError) is not a provider failure
