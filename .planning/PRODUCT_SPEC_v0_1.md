@@ -4076,11 +4076,28 @@ Parallel worker execution is deferred until Phase 6c is stable and evaluated. It
 export const PROMPTS = {
   planner: {
     system: 'Select exactly one action: answer, run_tool, or ask_clarification. Return JSON only. Do not explain.',
+    // D-04-11: canonical COMPACT sibling (04-04) — the §2.5 "compact system
+    // prompt" selected by ContextOptimizer in minimal mode (tiny tier or ladder
+    // escalation). Drafted in Appendix A style (short, directive, JSON-only);
+    // the ONLY consumer is ContextOptimizer — the default path above stays
+    // byte-identical (prompt-cache stability, D-04-07/P4-8).
+    compact: {
+      system: 'Select one action: answer, run_tool, or ask_clarification. JSON only.',
+      cacheable: true,
+      tier: 'haiku',
+    },
     cacheable: true,
     tier: 'haiku',
   },
   renderer: {
     system: 'Answer using only the provided context and tool result. Be concise. If data is missing, say what is missing. Do not invent facts.',
+    // D-04-11: canonical COMPACT sibling (04-04) — concise-context-only variant
+    // for renderer minimal mode; consumed ONLY by ContextOptimizer (04-04).
+    compact: {
+      system: 'Answer from context only. Be concise. Do not invent facts.',
+      cacheable: true,
+      tier: 'flash',
+    },
     cacheable: true,
     tier: 'flash',
   },
@@ -4135,6 +4152,8 @@ export const PROMPTS = {
 ```
 
 > **Note:** the persona block (RICH-R-02) is prepended to the `planner`, `renderer`, `memoryExtractor`, `noteTagger`, `noteQA`, and `noteChatConvert` system strings by `PersonaInjector.inject()` at request time. Do **not** hard-code persona text into these constants — keep them byte-stable for prompt caching (§1.3).
+>
+> **Note (D-04-11, W-1 — 04-07):** the compact per-role constants `PROMPTS.planner.compact.system` / `PROMPTS.renderer.compact.system` (§2.5 minimal mode) mirror `src/core/prompts/index.ts` verbatim; the ONLY consumer is `ContextOptimizer` (04-04) — the default path stays byte-identical (prompt-cache stability, D-04-07/P4-8).
 
 ## Appendix B — Canonical User Strings
 
@@ -4147,6 +4166,10 @@ export const STR = {
     errorRetry: 'Provider error. [Retry] [Switch Provider]',
     offline: 'No network. Retrying when back online.',
     contextReduced: 'Some context was compressed to fit the selected model.',
+    // D-04-15 (04-04/04-06, W-1 — 04-07): honest CONTEXT_TOO_LARGE surface —
+    // mirrors src/core/i18n/strings.ts verbatim; an over-cap turn fails with
+    // this message, never a silent truncation (P4-10).
+    messageTooLong: 'This message is too long for the selected model.',
     minimalMode: 'Minimal mode enabled for this model context size.',
     noProvider: 'Configure an AI provider in Settings first.',
     maxPinnedTabs: 'Maximum 10 pinned tabs. Remove one first.',
