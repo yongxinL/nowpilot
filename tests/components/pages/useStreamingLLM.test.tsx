@@ -22,6 +22,8 @@ const { runAgentTurnMock, routerMock, readPersonaPrefsMock } = vi.hoisted(() => 
     model: { modelId: 'claude-3-5-haiku-latest' },
     jsonMode: 'native',
     callProviderJsonMode: vi.fn(async () => '{}'),
+    // 04-05 (D-04-04): required field — deterministic fixture window.
+    modelContextWindow: 200_000,
     ...input,
   }));
   const classifyProviderError = vi.fn((e: unknown) => ({

@@ -58,6 +58,8 @@ function stageInvocation(overrides: Partial<StageInvocation> = {}): StageInvocat
     model: fakeModel,
     jsonMode: 'native',
     callProviderJsonMode: vi.fn(async () => '{}'),
+    // 04-05 (D-04-04): required field — deterministic window, overridable per-test.
+    modelContextWindow: 200_000,
     ...overrides,
   };
 }
