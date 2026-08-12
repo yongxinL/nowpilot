@@ -167,3 +167,9 @@ None - no external service configuration required.
 ---
 *Phase: 04a-pagecontentservice-knowledge-acquisition*
 *Completed: 2026-08-12*
+
+## Self-Check: PASSED
+
+- All 4 key-files exist on disk (verified with `[ -f ]`).
+- All 6 commits exist in git history (c3c7da5, 9cbd2d9, f895ff4, 6aa1ab9, 5cf6127, f51bc09).
+- `pnpm tsc --noEmit` → exit 0 · `pnpm vitest run tests/core/extraction/PageContentSerializer.test.ts --bail=1` → 2 passed · `npx prettier --check .` → all green · eslint on the 4 new files → exit 0.
