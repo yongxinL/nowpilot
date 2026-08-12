@@ -29,6 +29,14 @@
 // D-16: the budgetGuard hook is a no-op pass-through this phase — Phase 6 wires
 // the monthly ledger pre-flight here without a rebuild.
 //
+// 04-05 (D-04-04/06): StageInvocation carries the REQUIRED modelContextWindow
+// (Pitfall 2 — optionality would silently degrade to the pre-resolution
+// fallback tier forever, inverting D-04-04), stamped by buildInvocation from
+// resolveModelContextWindow — the canonical map is the SINGLE window source
+// (R-1, zero model calls; getModels is a throwing stub). The hook (04-06)
+// reads each stage's resolved window from its invocation for per-stage
+// optimization.
+//
 // P-3: PromptSection is imported from '@/core/ai/types' (D-07 canonical home) —
 // never re-declared (R-1). Error vocabulary is the canonical 13-code Phase-3
 // block from errorCodes.ts (Golden Rule 9 — no invented codes; the spec §1.6.1
@@ -55,6 +63,7 @@ import { applyCacheHints } from '@/core/ai/PromptCacheAdapter';
 import { getPromptCacheManager } from '@/core/ai/PromptCacheManager';
 import { resolveTier } from '@/core/ai/TierResolver';
 import type { ModelTier, PrivacyMode, TierResolveInput } from '@/core/ai/TierResolver';
+import { resolveModelContextWindow } from '@/core/context/ModelContextTier';
 import type { ProviderId, PromptSection } from '@/core/ai/types';
 
 // ---------------------------------------------------------------------------
@@ -115,12 +124,25 @@ export type CallProviderJsonMode = (
   signal: AbortSignal,
 ) => Promise<string>;
 
-/** The bundle createStageInvocation returns — the seam 03-06/03-08 consume. */
+/**
+ * The bundle createStageInvocation returns — the seam 03-06/03-08 consume.
+ *
+ * 04-05 (D-04-04/06): `modelContextWindow` is a REQUIRED field (Pitfall 2 — an
+ * optional field would silently degrade to the pre-resolution fallback tier
+ * forever, inverting D-04-04). buildInvocation stamps it from the canonical
+ * map via resolveModelContextWindow (R-1 — the single window source, never
+ * re-declared here); the stamp is synchronous and pure — ZERO model calls
+ * (getModels is a throwing stub; the map IS the window source). The hook
+ * (04-06) reads each stage's resolved window from its StageInvocation to run
+ * per-stage optimization.
+ */
 export interface StageInvocation {
   providerId: ProviderId;
   model: LanguageModel;
   jsonMode: JsonMode;
   callProviderJsonMode: CallProviderJsonMode;
+  /** D-04-04: the resolved model's window from the canonical map — REQUIRED. */
+  modelContextWindow: number;
 }
 
 /** One provider attempt in the per-operation ledger (D-14). */
@@ -594,6 +616,11 @@ export class ProviderRouter {
       providerId,
       model,
       jsonMode,
+      // 04-05 (D-04-04/06): the resolved candidate's window from the canonical
+      // map — synchronous + pure (zero model calls); the hook reads it from the
+      // StageInvocation for per-stage optimization. Unknown models resolve
+      // conservatively (4096, windowKnown:false — never assume large, T-04-21).
+      modelContextWindow: resolveModelContextWindow(cand.model).contextWindow,
       callProviderJsonMode: this.buildCallProviderJsonMode(input, cand, model, jsonMode),
     };
   }
