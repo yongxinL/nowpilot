@@ -45,7 +45,7 @@ import {
   summariseOlderHistory,
   trimToolSchemas,
 } from './ContextCompressor';
-import type { CompressionKind, CompressionResult } from './ContextCompressor';
+import type { CompressionKind } from './ContextCompressor';
 import { ContextProvenanceManifestSchema } from './ContextProvenanceManifest';
 import type { ContextProvenanceManifest, LadderStepName } from './ContextProvenanceManifest';
 import { PROMPTS } from '@/core/prompts';
