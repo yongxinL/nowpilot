@@ -30,6 +30,7 @@ import { describe, expect, it } from 'vitest';
 import { optimize, isContextTooLargeError } from '@/core/context/ContextOptimizer';
 import type { ContextTooLargeError } from '@/core/context/ContextOptimizer';
 import { classifyModelContext } from '@/core/context/ModelContextTier';
+import type { ModelContextTier } from '@/core/context/ModelContextTier';
 import { computeBudgets } from '@/core/context/TokenBudget';
 import { packSections } from '@/core/context/ContextPack';
 import { ContextProvenanceManifestSchema } from '@/core/context/ContextProvenanceManifest';
@@ -164,5 +165,155 @@ describe('optimize — CTX-02 typed input-only seam (04-04 Task 2, D-04-02)', ()
     const withMemory = optimize(baseInput({ contextUpdate: { type: 'memory' } }));
     expect(withPage).toEqual(without);
     expect(withMemory).toEqual(without);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 04-04 Task 3 — the completed suite (extended in place; Task 2 owns the
+// behavior cases above, this block adds the exact boundaries, the ladder
+// order, the drop-in identity regression, the granularity invariants, and the
+// manifest-validity guarantee on every return).
+// ---------------------------------------------------------------------------
+
+/** Eight long safe tool schemas — the §2.4 ladder trigger material for a small window. */
+const EIGHT_LONG_TOOLS: ToolSchemaRef[] = Array.from({ length: 8 }, (_, i) => ({
+  name: `long-tool-${i}`,
+  description: 'd'.repeat(5800), // ~1453 tokens per schema at divisor 4 (English)
+  jsonSchema: {},
+  dangerous: false,
+  source: 'builtin',
+}));
+
+describe('optimize — exact §2.1/§2.2 boundaries (04-04 Task 3)', () => {
+  it('classifies every boundary window exactly with the §2.2 floored budgets', () => {
+    const cases: Array<[number, ModelContextTier]> = [
+      [4096, 'tiny'],
+      [16_384, 'small'],
+      [131_072, 'medium'],
+      [200_000, 'large'],
+    ];
+    for (const [window, tier] of cases) {
+      const out = optimize(baseInput({ modelContextWindow: window }));
+      expect(out.tier).toBe(tier);
+      expect(out.inputBudget).toBe(Math.floor(window * 0.7));
+      expect(out.outputBudget).toBe(Math.floor(window * 0.2));
+    }
+  });
+
+  it('stamps a Zod-valid ContextProvenanceManifest on every return (D-04-17/GR-4, T-04-19)', () => {
+    for (const window of [4096, 16_384, 131_072, 200_000]) {
+      expectValidManifest(optimize(baseInput({ modelContextWindow: window })));
+    }
+    // a ladder-fired turn and a minimal-mode renderer turn must stay valid too
+    expectValidManifest(
+      optimize(
+        baseInput({
+          modelContextWindow: 16_384,
+          selectedToolSchemas: EIGHT_LONG_TOOLS,
+          userInput: 'hi',
+        }),
+      ),
+    );
+    expectValidManifest(optimize(baseInput({ modelContextWindow: 4096, stage: 'renderer' })));
+  });
+});
+
+describe('optimize — §2.4 ladder order + degradation (04-04 Task 3, D-04-12)', () => {
+  it('an over-budget small-window turn steps the ladder: stepsFired + totalTokens dropping', () => {
+    const inputBudget = Math.floor(16_384 * 0.7); // 11_468
+    // The pre-ladder §1.3 pack (non-minimal — small tier starts NOT minimal):
+    const before = sumTokens(
+      packSections({
+        personaBlock: FIXED_PERSONA_BLOCK,
+        userInput: 'hi',
+        toolSchemaRefs: EIGHT_LONG_TOOLS,
+      }),
+    );
+    expect(before).toBeGreaterThan(inputBudget); // ladder must fire
+
+    const out = optimize(
+      baseInput({
+        modelContextWindow: 16_384,
+        selectedToolSchemas: EIGHT_LONG_TOOLS,
+        userInput: 'hi',
+      }),
+    );
+    expect(out.minimalMode).toBe(true); // escalated by the ladder (small tier)
+    expect([...out.provenance.stepsFired]).toEqual(['minimal-mode']); // D-04-12 order — the only real P4 step that fires here
+    expect(out.provenance.totalTokens).toBeLessThan(before); // degradation dropped tokens
+    expect(out.provenance.totalTokens).toBeLessThan(inputBudget); // back under budget
+    expect(out.sections.filter((s) => s.kind === 'tool_schemas')).toHaveLength(1); // ≤1 safe tool after minimal
+    const system = out.sections.find((s) => s.kind === 'system');
+    expect(system?.text).toBe(`${PROMPTS.planner.compact.system}\n\n${FIXED_PERSONA_BLOCK}`);
+  });
+
+  it('an under-budget turn fires no ladder steps (stepsFired empty — no degradation)', () => {
+    const out = optimize(baseInput({ modelContextWindow: 200_000 }));
+    expect([...out.provenance.stepsFired]).toEqual([]);
+    expect(out.minimalMode).toBe(false);
+    expectValidManifest(out);
+  });
+
+  it('tiny-mode [SYSTEM] starts with the compact constant text (D-04-11 selection)', () => {
+    const out = optimize(baseInput({ modelContextWindow: 4096 }));
+    const system = out.sections.find((s) => s.kind === 'system');
+    expect(system?.text.startsWith(PROMPTS.planner.compact.system)).toBe(true);
+  });
+});
+
+describe('optimize — drop-in identity + cache-stability (04-04 Task 3, D-04-07/P4-8)', () => {
+  it('default path deep-equals contextHelper.buildOptimizedContext for equivalent inputs', () => {
+    // NOTE (04-04 → 04-06 handoff): this live import of the Phase-3 module is
+    // replaced with a hardcoded Phase-3 snapshot in 04-06 Task 3 BEFORE
+    // src/core/ai/contextHelper.ts is deleted — the byte-identity regression
+    // must survive the deletion (D-04-07/P4-8 prompt-cache stability).
+    const optimizerOut = optimize(baseInput({ modelContextWindow: 200_000 }));
+    const helperOut = buildOptimizedContext({
+      operationId: FIXED_OPERATION_ID,
+      tier: 'large',
+      inputBudget: Math.floor(200_000 * 0.7),
+      outputBudget: Math.floor(200_000 * 0.2),
+      userInput: 'Summarize the current page.',
+      personaBlock: FIXED_PERSONA_BLOCK,
+      toolSchemaRefs: [GET_PROVIDER_INFO_TOOL],
+      workspaceId: FIXED_WORKSPACE_ID,
+      activeSurface: 'sidepanel',
+    });
+    // Same section texts, same byte-stable [SYSTEM] (the persona block), same
+    // token counts (English-equivalent inputs — the 04-01 CJK counting rule is
+    // a deliberate change, not a drop-in regression).
+    expect(optimizerOut.sections).toEqual(helperOut.sections);
+    expect(optimizerOut.tier).toBe(helperOut.tier);
+    expect(optimizerOut.inputBudget).toBe(helperOut.inputBudget);
+    expect(optimizerOut.outputBudget).toBe(helperOut.outputBudget);
+    const system = optimizerOut.sections.find((s) => s.kind === 'system');
+    expect(system?.text).toBe(FIXED_PERSONA_BLOCK);
+  });
+
+  it('cache-stability: identical inputs produce deep-equal outputs (deterministic, no Date.now/crypto)', () => {
+    expect(optimize(baseInput())).toEqual(optimize(baseInput()));
+    expect(optimize(baseInput({ modelContextWindow: 4096 }))).toEqual(
+      optimize(baseInput({ modelContextWindow: 4096 })),
+    );
+  });
+});
+
+describe('optimize — section-granularity invariants (04-04 Task 3, D-04-13/D-04-15)', () => {
+  it('never modifies user_input and emits only byte-identical known texts across tiers', () => {
+    const compactPlannerSystem = `${PROMPTS.planner.compact.system}\n\n${FIXED_PERSONA_BLOCK}`;
+    const knownTexts = new Set([
+      FIXED_PERSONA_BLOCK,
+      compactPlannerSystem,
+      'get-provider-info: Active provider + model + limits',
+      'Summarize the current page.',
+    ]);
+    for (const window of [4096, 16_384, 200_000]) {
+      const out = optimize(baseInput({ modelContextWindow: window }));
+      const userInputSection = out.sections.find((s) => s.kind === 'user_input');
+      expect(userInputSection?.text).toBe('Summarize the current page.'); // never touched (P4-10)
+      for (const section of out.sections) {
+        expect(knownTexts.has(section.text)).toBe(true); // no slice/substring anywhere (D-04-13)
+      }
+    }
   });
 });
