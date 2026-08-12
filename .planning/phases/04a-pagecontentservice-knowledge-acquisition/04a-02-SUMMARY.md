@@ -99,6 +99,7 @@ Each task was committed atomically:
 ## Decisions Made
 - **D-4a-22 applied:** `CONTENT_EXTRACT_FAILED` is the single canonical extraction code in source AND spec C.2, landed in one atomic commit so every later 4a debugLog call sites the canonical key (GR-9). `TIMEOUT` was not re-added (already registered, errorCodes.ts L80); `UNSUPPORTED_URL` is TabExtractionState state-code vocabulary (spec L3262-3270), not a registry key.
 - **RawNode fixture type inlined** (spec Appendix C L4414-4425 verbatim) because `src/core/extraction/apcLite.types.ts` doesn't exist yet — no type-only src import possible; structural typing verifies compatibility automatically when the ApcLiteStrategy plan creates the real type (R-1).
+- **CAT-01 / CAT-03 NOT marked complete** (deviation from mechanical `requirements mark-complete`): the plan frontmatter lists `requirements: [CAT-03, CAT-01]`, but this plan delivers only the error-code reconciliation + fixtures — CAT-01's full text ("content scripts extract via defuddle…") and CAT-03 (TraceRedactor) are realized by later plans in the phase, and the plan itself flags CAT-03 `[unresolved — spec-less probe]`. Marking them complete repeats the documented 03-01 mark-complete mistake (AI-01/AI-03 precedent: "a checkbox opens only when the FULL requirement text is realized"). REQUIREMENTS.md checkboxes reverted to `[ ]`; traceability row stays `Pending` until the phase completes.
 
 ## Deviations from Plan
 
@@ -139,3 +140,12 @@ None - no external service configuration required.
 ---
 *Phase: 04a-pagecontentservice-knowledge-acquisition*
 *Completed: 2026-08-12*
+
+## Self-Check: PASSED
+
+- [x] `tests/fixtures/pageContent.ts` exists on disk
+- [x] `.planning/phases/04a-pagecontentservice-knowledge-acquisition/04a-02-SUMMARY.md` exists on disk
+- [x] Task 1 commit `5e84ce1` (fix) in git log
+- [x] Task 2 commit `9cd81f4` (feat) in git log
+- [x] SUMMARY commit `89b8e5d` (docs) in git log
+

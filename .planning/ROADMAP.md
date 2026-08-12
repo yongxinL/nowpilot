@@ -257,13 +257,13 @@ Plans:
   4. SPA navigation and tab updates trigger cache invalidation and re-extraction.
   5. Extracted content is searchable via an ephemeral per-tab MiniSearch index (never persisted).
 
-**Plans**: 10 plans
+**Plans**: 1/10 plans executed
 
 Plans:
 **Wave 1**
 
 - [ ] 04a-01-PLAN.md — deps install (defuddle/readability/turndown/minisearch + @types/turndown, defuddle checkpoint) + verify:phase-4a script (wave 1)
-- [ ] 04a-02-PLAN.md — CONTENT_EXTRACT→CONTENT_EXTRACT_FAILED reconcile (D-4a-22 W-1) + shared golden fixtures (D-4a-24) (wave 1)
+- [x] 04a-02-PLAN.md — CONTENT_EXTRACT→CONTENT_EXTRACT_FAILED reconcile (D-4a-22 W-1) + shared golden fixtures (D-4a-24) (wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -496,7 +496,7 @@ Plans:
 | 3. Cost-Effective AI Runtime (+ Persona seed) | 16/16 | Complete    | 2026-08-11 |
 | 3a. Agent Reliability and Evidence | 5/5 | Complete    | 2026-08-12 |
 | 4. Context-Adaptive Execution | 7/7 | Complete    | 2026-08-12 |
-| 4a. PageContentService (Knowledge Acquisition) | TBD | Not started | - |
+| 4a. PageContentService (Knowledge Acquisition) | 1/10 | In Progress|  |
 | 4b. Trust-Aware Context and Receipts | TBD | Not started | - |
 | 5. Knowledge Base (Memory + MiniSearch + Notes) | TBD | Not started | - |
 | 5a. LLM-Wiki & Filesystem Sync | TBD | Not started | - |
