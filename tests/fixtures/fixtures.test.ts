@@ -6,6 +6,16 @@
 // no chrome.* needed — pure data builders).
 import { describe, expect, it } from 'vitest';
 import {
+  buildArticleFixture,
+  buildBoilerplateFixture,
+  buildLargeArticleFixture,
+  buildNoHeadingFixture,
+  buildRawNodeFixture,
+  FIXED_TIMESTAMP,
+  FIXED_TITLE,
+  FIXED_URL,
+} from './pageContent';
+import {
   buildCrossInstallFixture,
   buildJournalRecoveryFixture,
   buildMigrationFixture,
@@ -123,3 +133,97 @@ describe('tests/fixtures — determinism (D-20/D-21)', () => {
     expect(a.structured).toHaveProperty('apiKey');
   });
 });
+
+describe('tests/fixtures/pageContent — shared golden HTML fixtures (D-4a-24)', () => {
+  it('every HTML builder is deterministic — two calls with identical args deep-equal', () => {
+    expect(buildArticleFixture()).toEqual(buildArticleFixture());
+    expect(buildBoilerplateFixture()).toEqual(buildBoilerplateFixture());
+    expect(buildNoHeadingFixture()).toEqual(buildNoHeadingFixture());
+    expect(buildLargeArticleFixture()).toEqual(buildLargeArticleFixture());
+    expect(buildRawNodeFixture()).toEqual(buildRawNodeFixture());
+  });
+
+  it('builders honor overrides deterministically', () => {
+    const a = buildArticleFixture({ title: 'Custom Title' });
+    const b = buildArticleFixture({ title: 'Custom Title' });
+    expect(a).toEqual(b);
+    expect(a.title).toBe('Custom Title');
+    // fixed constants unchanged across override paths
+    expect(buildArticleFixture().url).toBe(FIXED_URL);
+    expect(buildRawNodeFixture().extractedAt).toBe(FIXED_TIMESTAMP);
+  });
+
+  it('fixed constants are stable and non-empty', () => {
+    expect(FIXED_URL.length).toBeGreaterThan(0);
+    expect(FIXED_TITLE.length).toBeGreaterThan(0);
+    expect(Number.isFinite(FIXED_TIMESTAMP)).toBe(true);
+  });
+
+  it('article fixture carries the password-omission + base-URL-stamp shapes (D-4a-08/20)', () => {
+    const { html, title, url } = buildArticleFixture();
+    expect(title).toBe(FIXED_TITLE);
+    expect(url).toBe(FIXED_URL);
+    // a password input is present with NO value attribute (never captured, D-4a-20)
+    expect(html).toMatch(/<input type="password" name="password">/);
+    expect(html).toMatch(/<input type="text" name="username" value="alice">/);
+    // the fixture must exercise relative + absolute links (base-URL stamp, D-4a-08)
+    expect(html).toContain('href="/guide/quickstart"');
+    expect(html).toContain('href="https://docs.example.com/article/how-nowpilot-extracts"');
+  });
+
+  it('boilerplate fixture is nav/footer heavy with a minimal main (D-4a-18 fallback)', () => {
+    const { html } = buildBoilerplateFixture();
+    // dense nav + footer link lists dominate; the main content is a single short paragraph
+    const navLinks = html.match(/<a href/g) ?? [];
+    expect(navLinks.length).toBeGreaterThanOrEqual(10);
+    expect(html).toMatch(/<main>\s*<p>Welcome to Acme Corporation\.<\/p>\s*<\/main>/);
+  });
+
+  it('no-heading fixture has zero h1-h6 and multiple paragraph blocks (D-4a-16 fallback)', () => {
+    const { html } = buildNoHeadingFixture();
+    expect(html).not.toMatch(/<h[1-6][\s>]/i);
+    const paragraphs = html.match(/<p>/g) ?? [];
+    expect(paragraphs.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it('large-article fixture has multiple long sections exceeding the ~500-token chunk budget', () => {
+    const { html } = buildLargeArticleFixture();
+    const headings = html.match(/<h2>/g) ?? [];
+    expect(headings.length).toBeGreaterThanOrEqual(3);
+    // each section body (~1,400 chars) exceeds the ~2,000-char / ~500-token budget
+    const body = html.match(/<h2>Layered Strategy Order<\/h2>([\s\S]*?)<h2>Ephemeral/);
+    expect(body).not.toBeNull();
+    if (body) {
+      expect(body[1].length).toBeGreaterThan(2000);
+    }
+  });
+
+  it('raw-node fixture enforces the password invariant shape (isPassword true, no value key)', () => {
+    const { root } = buildRawNodeFixture();
+    // the D-4a-20 invariant: the password control carries isPassword: true and NO value field
+    const passControl = findFormControl(root, 'password');
+    expect(passControl).toBeDefined();
+    expect(passControl?.isPassword).toBe(true);
+    expect(passControl).not.toHaveProperty('value');
+    // the text control MAY carry a value (only passwords are omitted)
+    const userControl = findFormControl(root, 'username');
+    expect(userControl?.value).toBe('alice');
+    expect(userControl?.isPassword).toBe(false);
+  });
+});
+
+/** Depth-first search for a form control by fieldName inside a RawNode tree. */
+function findFormControl(
+  node: {
+    form?: { control?: { fieldName?: string; isPassword?: boolean; value?: string } };
+    children?: unknown[];
+  },
+  fieldName: string,
+): { fieldName?: string; isPassword?: boolean; value?: string } | undefined {
+  if (node.form?.control?.fieldName === fieldName) return node.form.control;
+  for (const child of node.children ?? []) {
+    const found = findFormControl(child as Parameters<typeof findFormControl>[0], fieldName);
+    if (found) return found;
+  }
+  return undefined;
+}
