@@ -425,29 +425,31 @@ export function computeBudgets(contextWindow: number) {
 | A11 | `conversationId` for `ContextOptimizerInput` uses a constant (e.g. `'default'`) in P4 — no conversation store exists | Hook rewire | Harmless now; Phase 7 must thread the real id (spec §2.3 requires the field) |
 | A12 | `StructuredOutput.ts` L137's inline `Math.ceil(chars/4)` stays as-is (English-only repair text) | Pitfall 1 | Cosmetically inconsistent with TokenBudget; correct behavior — do not churn |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Unknown-model window: consult `RegistryProviderInfo.contextWindow` (user-declared per-provider) before the tiny fallback?**
+> All five open questions are RESOLVED in the Phase-4 plans (04-01..04-07). Each is annotated with its resolution below; the corresponding `flagged_assumptions` entries in the plans carry the same disposition.
+
+1. **Unknown-model window: consult `RegistryProviderInfo.contextWindow` (user-declared per-provider) before the tiny fallback?** — **RESOLVED (04-01):** keep D-04-06 verbatim — canonical map → tiny fallback (4096) + `windowKnown: false`, never large. No `providerDeclaredWindow` read in P4 (04-01 flagged_assumption A7; revisit when Settings owns per-model windows).
    - What we know: D-04-06 says unknown → smallest safe tier; the registry holds a per-provider `contextWindow` that is user-asserted but currently unused in resolution.
    - What's unclear: whether "user-asserted provider window" is more accurate than the conservative fallback for a custom Ollama model (e.g., a user who set 32K for their setup).
    - Recommendation: keep D-04-06 verbatim (map → tiny + flag) for P4; revisit when the Settings UI owns per-model windows. Planner may add a `providerDeclaredWindow` read as a stretch if the user confirms.
 
-2. **Should the non-minimal path start consuming `PROMPTS.planner.system`/`PROMPTS.renderer.system` (currently unused in the runtime)?**
+2. **Should the non-minimal path start consuming `PROMPTS.planner.system`/`PROMPTS.renderer.system` (currently unused in the runtime)?** — **RESOLVED (04-04):** P4 leaves the default path byte-identical (cache-stability, D-04-07); only minimal mode selects the compact constants (`planner.compact.system`/`renderer.compact.system` added in 04-04, canonicalized into spec Appendix A in 04-07). Wiring the default path is a Phase-4.1-style decision, not §18 (04-07 flagged_assumption "Open Q2").
    - What we know: only `PROMPTS.repairJson.system` is consumed today; the [SYSTEM] section carries the persona block only.
    - What's unclear: appending the canonical stage prompt to the default path changes the cache bytes of every normal turn (D-04-07's drop-in/cache-stability constraint).
    - Recommendation: P4 leaves the default path byte-identical; only minimal mode selects the compact constants. Flag for the discuss-phase if the user wants the canonical prompts wired into the default path (a Phase-4.1-style decision, not required by §18).
 
-3. **Budget-column mapping for `preferences`/`task`/`tool_result` (A9)**
+3. **Budget-column mapping for `preferences`/`task`/`tool_result` (A9)** — **RESOLVED (04-01):** the Pitfall-3 mapping is encoded as the TESTED `SECTION_CAP_MAPPING` constant in `TokenBudget` (System→system+preferences, Tools→tool_schemas, Memory→memory, Context→context, History→reserved-unfilled, User→user_input+task; `tool_result` uncapped-but-counted in totalTokens).
    - What we know: 6 budget columns vs 8 section kinds.
    - What's unclear: exact allocation of preferences/task into System/User columns and where replan `tool_result` tokens count.
    - Recommendation: adopt the Pitfall-3 mapping; encode it as a tested constant in `TokenBudget`.
 
-4. **`ContextPack` exact contract**
+4. **`ContextPack` exact contract** — **RESOLVED (04-02):** ContextPack is the pure section-packing module (§1.3 order, stability flags, sourceIds, token counts via `TokenBudget.estimateTokens`), consumed by ContextOptimizer — NOT a manifest wrapper (the optimizer stamps the manifest separately, 04-03/04-04).
    - What we know: §18 create-list names it; the spec describes no shape; CONTEXT.md says the section-packing shape is the seed.
    - What's unclear: whether it is the packing module (sections→PromptSection[] with §1.3 order + stability flags) or a wrapper around the manifest.
    - Recommendation: ContextPack = pure section-packing (order, stability flags, sourceIds, text joins) that ContextOptimizer consumes — the natural home for contextHelper's migrated packing logic.
 
-5. **CONTEXT_TOO_LARGE hook surfacing copy**
+5. **CONTEXT_TOO_LARGE hook surfacing copy** — **RESOLVED (04-06/04-07):** `chat.messageTooLong: 'This message is too long for the selected model.'` (D-04-15 verbatim) lands in `STR.chat` (04-06) and is canonicalized into spec Appendix B (04-07 W-1 gate).
    - What we know: D-04-15 requires a "message too long" surface; STR is canonical (Appendix B / Copywriting Contract).
    - What's unclear: the exact verbatim copy.
    - Recommendation: add `chat.messageTooLong` to `STR.chat` + spec Appendix B (planner drafts copy; do not paraphrase).
