@@ -56,7 +56,7 @@ import type { CoreMessage, LanguageModel, ProviderMetadata } from 'ai';
 import { debugLog } from '@/core/error/debugLog';
 import { ERROR_CODES } from '@/core/error/errorCodes';
 import type { ErrorCode } from '@/core/error/errorCodes';
-import { isTimeoutError } from '@/core/error/TimeoutError';
+import { isTimeoutError, timeoutError } from '@/core/error/TimeoutError';
 import { getAISDKModel } from '@/core/ai/ILLMProvider';
 import type { GetAISDKModelConfig } from '@/core/ai/ILLMProvider';
 import { applyCacheHints } from '@/core/ai/PromptCacheAdapter';
@@ -205,6 +205,15 @@ export interface ClassifiedProviderError {
 
 /** R-2: the Router's non-multiplying attempt budget per operation (≤3 — never 4-6 paid calls). */
 export const ROUTER_MAX_ATTEMPTS = 3;
+/**
+ * CR-01 (04): the D-17 retried call must be bounded by ITS OWN timer — the
+ * per-attempt timeout lives in StructuredOutput's one-shot setTimeout, which is
+ * already consumed at retry time (timeout origin) or shared with the parent
+ * (NETWORK/5XX). A hung provider on the retry would otherwise hang indefinitely
+ * and bill tokens when it lands. Mirrors the §1.2 planner timeout (Appendix L
+ * timeoutMs: planner 3s).
+ */
+export const RETRY_TIMEOUT_MS = 3_000;
 /** §1.5: after this many failure-votes within the window the provider opens. */
 export const BREAKER_FAILURE_THRESHOLD = 3;
 /** §1.5: the vote window (3 failures within 60 s). */
@@ -675,6 +684,18 @@ export class ProviderRouter {
         const derived = new AbortController();
         const onParentAbort = () => derived.abort(signal.reason);
         signal.addEventListener('abort', onParentAbort);
+        // CR-01 (04): the RETRIED call must be bounded by ITS OWN timer — the
+        // first attempt is already timed by StructuredOutput's per-attempt
+        // one-shot setTimeout (T-03-04-04), so arming a second timer on it
+        // would race the parent's ctx.timeoutMs. The retried call (isRetry)
+        // has NO timer of its own (StructuredOutput's is consumed / shared
+        // with the parent), so arm one on `derived`: a hung provider on the
+        // retry terminates in RETRY_TIMEOUT_MS with the carrier as the abort
+        // reason, never an untimed orphaned request that bills when it lands
+        // (§17.5). Cleared in the finally.
+        const retryTimer = isRetry
+          ? setTimeout(() => derived.abort(timeoutError(RETRY_TIMEOUT_MS)), RETRY_TIMEOUT_MS)
+          : undefined;
         try {
           const out = await this.invokeJsonMode(
             cand.providerId,
@@ -705,7 +726,12 @@ export class ProviderRouter {
           // signal.reason is ONLY ever the carrier from StructuredOutput's own
           // timeout abort, or a user-abort reason (name 'AbortError' —
           // isTimeoutError false), so the single guard is sufficient.
-          if (isTimeoutError(signal.reason)) {
+          // CR-01 (04): the derived controller's OWN reason is ALSO checked —
+          // the retry's per-attempt timer (RETRY_TIMEOUT_MS) aborts `derived`
+          // with the carrier, and the SDK drops it the same way; without this
+          // conjunct a retry-timeout would misclassify as UNKNOWN.
+          if (isTimeoutError(signal.reason) || isTimeoutError(derived.signal.reason)) {
+            const carrier = isTimeoutError(signal.reason) ? signal.reason : derived.signal.reason;
             // Ledger-correctness: record + vote BEFORE the rethrow — throwing
             // first bypasses this catch's recordAttempt entirely, so the failed
             // attempt would be missing from the ledger and the retry's success
@@ -718,8 +744,8 @@ export class ProviderRouter {
               'TIMEOUT',
               isRetry,
             );
-            this.voteBreaker(cand.providerId, 'TIMEOUT', signal.reason);
-            throw signal.reason;
+            this.voteBreaker(cand.providerId, 'TIMEOUT', carrier);
+            throw carrier;
           }
           const cls = this.classifyProviderError(e);
           this.recordAttempt(
@@ -734,6 +760,7 @@ export class ProviderRouter {
           throw e;
         } finally {
           signal.removeEventListener('abort', onParentAbort);
+          if (retryTimer !== undefined) clearTimeout(retryTimer);
         }
       };
       try {
@@ -745,6 +772,15 @@ export class ProviderRouter {
         // HOST_NOT_PERMITTED) never retry (R-2 — never a nested loop). The
         // retried call is the ONLY one that increments retryCount (CR-01).
         if (cls.retryable && !retried) {
+          // CR-01 (04): never retry on a dead parent signal — a TIMEOUT-origin
+          // failure has already consumed StructuredOutput's one-shot timer and
+          // aborted the parent, so re-parenting is dead code and the retried
+          // call would be untimed AND un-cancellable (an orphaned paid request
+          // that bills when it lands, §17.5). The guard makes the timeout
+          // failure an honest bounded terminal (the carrier propagates to the
+          // planner_failed fallback); NETWORK/5XX parents are alive, so those
+          // retries still run — now bounded by the per-attempt retry timer.
+          if (signal.aborted) throw e;
           retried = true;
           return await attempt(true);
         }

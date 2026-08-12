@@ -36,7 +36,7 @@ import type {
 import type { TierResolveResult } from '@/core/ai/TierResolver';
 import { resolveTier } from '@/core/ai/TierResolver';
 import { getPromptCacheManager } from '@/core/ai/PromptCacheManager';
-import { timeoutError } from '@/core/error/TimeoutError';
+import { isTimeoutError, timeoutError } from '@/core/error/TimeoutError';
 import { buildOptimizedContextFixture } from '../../fixtures/optimizedContext';
 import type { PromptSection } from '@/core/ai/types';
 
@@ -351,52 +351,45 @@ describe('ProviderRouter — retry + attempt budget (D-17 / R-2)', () => {
     expect(out).toBe('{"answer":"42"}');
   });
 
-  it('retries EXACTLY once on a production timeout — abort with the carrier reason, SDK rejects AbortError (WR-03A, D-17)', async () => {
+  it('NEVER retries a TIMEOUT-origin failure on a dead parent signal — bounded terminal, carrier propagates (CR-01, 04)', async () => {
     mockResolveTier({ providerId: 'openai', model: 'deepseek-chat', fallbackChain: [] });
     const router = new ProviderRouter();
     const inv = router.createStageInvocation(makeInput());
-    // The PRODUCTION arrival pattern (WR-03A): the caller aborts its controller
+    // The PRODUCTION arrival pattern (CR-01): the caller aborts its controller
     // WITH the typed carrier as the reason (StructuredOutput's per-attempt
-    // timeout), and the SDK drops the reason — rejecting with a bare AbortError
-    // when the abort signal fires. Pre-fix this test fed timeoutError() as the
-    // SDK mock rejection, an arrival pattern production never produces.
+    // one-shot timer) — the parent signal is DEAD at retry-decision time, so
+    // re-parenting is dead code and a retry would be untimed AND
+    // un-cancellable (an orphaned paid request, §17.5). Pre-fix this test
+    // pinned the retry firing (2 SDK calls); the 04 review (CR-01) re-scoped
+    // it: a timeout-origin failure is an honest bounded terminal.
     const ac = new AbortController();
     setTimeout(() => ac.abort(timeoutError(3_000)), 0);
-    generateObjectMock
-      .mockImplementationOnce(
-        (args) =>
-          new Promise<GenObjectResult>((_resolve, reject) => {
-            const sig = (args as { abortSignal: AbortSignal }).abortSignal;
-            if (sig.aborted) {
-              reject(new DOMException('aborted', 'AbortError'));
-              return;
-            }
-            sig.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')));
-          }),
-      )
-      .mockResolvedValueOnce({ object: { answer: '42' } } as unknown as GenObjectResult);
-
-    const out = await inv.callProviderJsonMode(
-      [section({ kind: 'user_input', text: 'ask', stable: false, sourceId: 'user-input' })],
-      { type: 'object', properties: {} },
-      ac.signal,
+    generateObjectMock.mockImplementationOnce(
+      (args) =>
+        new Promise<GenObjectResult>((_resolve, reject) => {
+          const sig = (args as { abortSignal: AbortSignal }).abortSignal;
+          if (sig.aborted) {
+            reject(new DOMException('aborted', 'AbortError'));
+            return;
+          }
+          sig.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')));
+        }),
     );
 
-    // WR-03A: the abort-with-carrier → SDK bare AbortError → the closure
-    // recovers the carrier from signal.reason → TIMEOUT/retryable → exactly ONE
-    // D-17 router retry on a FRESH non-aborted derived signal (2 SDK calls,
-    // never 3+ — T-03-11-02). attempts[0] is the recovery-branch record (the
-    // failed TIMEOUT attempt is pushed before the rethrow); the retry's success
-    // is attempts[1].
-    expect(generateObjectMock).toHaveBeenCalledTimes(2);
-    expect(out).toBe('{"answer":"42"}');
+    // The closure recovers the carrier from signal.reason → records the failed
+    // TIMEOUT attempt → the dead-signal guard throws instead of retrying — the
+    // carrier (TimeoutError) propagates as the bounded terminal.
+    await expect(
+      inv.callProviderJsonMode(
+        [section({ kind: 'user_input', text: 'ask', stable: false, sourceId: 'user-input' })],
+        { type: 'object', properties: {} },
+        ac.signal,
+      ),
+    ).rejects.toSatisfy(isTimeoutError);
+
+    expect(generateObjectMock).toHaveBeenCalledTimes(1); // NO retry on a dead signal (CR-01)
     expect(router.getAttemptState('op-test-0001')?.attempts[0].errorCode).toBe('TIMEOUT');
-    expect(router.getAttemptState('op-test-0001')?.retryCount).toBe(1);
-    // The retried SDK call ran on a FRESH non-aborted signal — pre-fix it was
-    // the same already-aborted signal (a futile retry by construction).
-    expect(
-      (generateObjectMock.mock.calls[1][0] as { abortSignal: AbortSignal }).abortSignal.aborted,
-    ).toBe(false);
+    expect(router.getAttemptState('op-test-0001')?.retryCount).toBe(0); // dead-signal guard consumes nothing
   });
 
   it('never retries a non-retryable code (PROVIDER_AUTH) — 1 call, terminal failure', async () => {

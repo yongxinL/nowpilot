@@ -1,24 +1,29 @@
 // tests/core/ai/StructuredOutput.timeoutRetry.test.ts — WR-03A permanent
-// END-TO-END regression (03-16). Reproduces VERIFICATION.md gap 3 / WR-03A
-// EXACTLY: the empirical probe ran REAL requestJson + REAL Router closure with
-// a 25 ms timeout and observed generateObject 1×, retryCount 0, ledger
-// 'UNKNOWN' — the D-17 retry never fired on the production timeout path
-// (pre-fix, the per-attempt abort produced a bare AbortError inside the router
-// closure, classified UNKNOWN before the TimeoutError carrier was born).
+// END-TO-END regression (03-16) + CR-01 re-scope (04). Reproduces
+// VERIFICATION.md gap 3 / WR-03A EXACTLY: the empirical probe ran REAL
+// requestJson + REAL Router closure with a 25 ms timeout and observed
+// generateObject 1×, retryCount 0, ledger 'UNKNOWN' — the D-17 retry never
+// fired on the production timeout path (pre-fix, the per-attempt abort produced
+// a bare AbortError inside the router closure, classified UNKNOWN before the
+// TimeoutError carrier was born).
 //
-// This file pins the post-fix contract through the FULL production path: a
+// This file pins the post-WR-03A contract through the FULL production path: a
 // 25 ms timeout aborts the per-attempt signal WITH the typed carrier as its
 // reason → the closure recovers the carrier from signal.reason (the SDK drops
-// the reason and rejects a bare AbortError) → TIMEOUT/retryable → exactly ONE
-// D-17 retry on a FRESH non-aborted derived signal → generateObject 2×,
-// retryCount 1, ledger attempts[0] = { outcome: 'failed', errorCode: 'TIMEOUT' }.
+// the reason and rejects a bare AbortError) → TIMEOUT recorded in the ledger
+// → the CR-01 dead-signal guard (the parent's abort event already fired — the
+// timeout origin leaves NO live parent to re-parent to) makes the failure an
+// HONEST BOUNDED TERMINAL: exactly ONE SDK call, retryCount 0, and the
+// TimeoutError carrier propagates to the caller (planOnce converts it to the
+// deterministic planner_failed fallback — never a silent idle, never an
+// untimed/un-cancellable orphaned retry, §17.5).
 //
 // Only the ai-sdk call sites are stubbed (real error classes kept via the
 // importOriginal spread) — NEVER a mocked callProviderJsonMode, NEVER a mocked
 // Router: the REAL resolveTier + REAL closure run (AgentOrchestrator.budget
-// .test.ts precedent). A regression to the pre-fix behavior (1 call, retryCount
-// 0, ledger UNKNOWN) fails this suite immediately.
-import { APICallError, generateObject } from 'ai';
+// .test.ts precedent). A regression to the pre-fix behavior (retry firing on a
+// dead signal, or 1 call with ledger UNKNOWN) fails this suite immediately.
+import { generateObject } from 'ai';
 import type { LanguageModel } from 'ai';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -125,48 +130,50 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('WR-03A — the D-17 timeout retry END-TO-END through requestJson + a REAL Router (03-16)', () => {
-  it('the D-17 retry fires END-TO-END on a production timeout — 2 SDK calls, retryCount 1, ledger TIMEOUT, fresh retry signal', async () => {
+describe('CR-01 — a timeout-origin failure is a bounded terminal (no retry on a dead signal)', () => {
+  it('a production timeout NEVER retries — 1 SDK call, retryCount 0, ledger TIMEOUT, the TimeoutError carrier propagates', async () => {
     const operationId = `op-timeout-retry-${(opSeq += 1)}`;
     const { router, inv } = buildRealInvocation(operationId);
-    generateObjectMock.mockImplementationOnce(abortSensitiveReject()).mockResolvedValueOnce({
-      object: { action: 'answer', reasonCode: 'ok', confidence: 0.9 },
-    } as unknown as GenObjectResult);
+    // The first SDK call is abort-sensitive and REJECTS on the timeout abort
+    // (a bare AbortError — the SDK drops the carrier reason). With CR-01, the
+    // dead-signal guard means the D-17 retry NEVER fires for a timeout origin,
+    // so no success mock is ever consumed.
+    generateObjectMock.mockImplementationOnce(abortSensitiveReject());
 
-    const result = await requestJson(
-      DecisionSchema,
-      buildOptimizedContextFixture().sections,
-      requestJsonContext(operationId, inv),
-    );
+    let caught: unknown;
+    try {
+      await requestJson(
+        DecisionSchema,
+        buildOptimizedContextFixture().sections,
+        requestJsonContext(operationId, inv),
+      );
+    } catch (e) {
+      caught = e;
+    }
 
-    expect(result).toEqual({ action: 'answer', reasonCode: 'ok', confidence: 0.9 });
-    // initial + exactly ONE D-17 retry — never 3+ (T-03-11-02)
-    expect(generateObjectMock).toHaveBeenCalledTimes(2);
-    expect(router.getAttemptState(operationId)?.retryCount).toBe(1);
-    // the recovery-branch record lands FIRST (recordAttempt pushes in call
-    // order — the failed TIMEOUT attempt is recorded before the rethrow)
+    // The bounded terminal: the TimeoutError carrier surfaces (via the
+    // closure's recovery rethrow OR StructuredOutput's timedOut rethrow — both
+    // produce a TimeoutError, which planOnce converts to the deterministic
+    // planner_failed fallback — never a silent idle, never a re-invocation,
+    // R-2).
+    expect(isTimeoutError(caught)).toBe(true);
+    // CR-01: the dead parent signal excludes the retry — exactly ONE SDK call,
+    // never 2+ (pre-04 the retry fired on the dead signal and was untimed +
+    // un-cancellable, an orphaned paid request).
+    expect(generateObjectMock).toHaveBeenCalledTimes(1);
+    expect(router.getAttemptState(operationId)?.retryCount).toBe(0);
+    // The recovery-branch record still lands FIRST (the failed TIMEOUT attempt
+    // is recorded before the rethrow).
     expect(router.getAttemptState(operationId)?.attempts[0]).toMatchObject({
       outcome: 'failed',
       errorCode: 'TIMEOUT',
     });
-    // the retried call ran on a FRESH non-aborted signal — pre-fix it was the
-    // same already-aborted signal (a futile retry by construction)
-    expect(
-      (generateObjectMock.mock.calls[1][0] as { abortSignal: AbortSignal }).abortSignal.aborted,
-    ).toBe(false);
   });
 
-  it('when the D-17 retry ALSO fails, requestJson rejects with the TimeoutError carrier — the planner_failed fallback source is intact', async () => {
+  it('a timeout-origin failure surfaces the TimeoutError carrier — the planner_failed fallback source is intact', async () => {
     const operationId = `op-timeout-retry-${(opSeq += 1)}`;
     const { inv } = buildRealInvocation(operationId);
-    generateObjectMock.mockImplementationOnce(abortSensitiveReject()).mockRejectedValueOnce(
-      new APICallError({
-        message: 'upstream 500',
-        url: 'https://fixture.example/v1/responses',
-        requestBodyValues: {},
-        statusCode: 500,
-      }),
-    );
+    generateObjectMock.mockImplementationOnce(abortSensitiveReject());
 
     let caught: unknown;
     try {
@@ -180,14 +187,13 @@ describe('WR-03A — the D-17 timeout retry END-TO-END through requestJson + a R
     }
 
     // The carrier surfaces — via the closure's recovery rethrow (the parent
-    // signal is permanently aborted-with-carrier, so the retry's failure is
-    // also recovered) OR via StructuredOutput's timedOut rethrow; both produce
-    // a TimeoutError carrier, which is what planOnce converts to the visible
-    // planner_failed answer (AgentOrchestrator L188-201) — never a silent
-    // idle, never a re-invocation (R-2).
+    // signal is permanently aborted-with-carrier) OR via StructuredOutput's
+    // timedOut rethrow; both produce a TimeoutError carrier, which is what
+    // planOnce converts to the visible planner_failed answer (AgentOrchestrator
+    // L188-201) — never a silent idle, never a re-invocation (R-2).
     expect(isTimeoutError(caught)).toBe(true);
-    // The retry is bounded — never 3+
-    expect(generateObjectMock).toHaveBeenCalledTimes(2);
+    // The timeout is bounded — exactly ONE SDK call (CR-01 dead-signal guard).
+    expect(generateObjectMock).toHaveBeenCalledTimes(1);
   });
 
   it('a healthy first call never retries — 1 SDK call, retryCount 0', async () => {
