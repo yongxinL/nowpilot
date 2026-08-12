@@ -176,6 +176,37 @@ describe('runAgentTurn — healthy turn costs EXACTLY 2 model calls (AI-SPEC cos
   });
 });
 
+describe('runAgentTurn — contextForStage input-only seam (D-04-05, L1 direct call)', () => {
+  it('default path (no contextForStage) keeps input.context for BOTH stages (RESEARCH Pattern 1)', async () => {
+    planMock.mockResolvedValue(ANSWER);
+    const ctx = buildOptimizedContextFixture({ userInput: 'default context input' });
+    await runAgentTurn(baseInput({ context: ctx }));
+
+    // planner: planOnce's section base resolves to input.context…
+    expect(planMock.mock.calls[0][0].context.sections).toEqual(ctx.sections);
+    // …and the renderer receives the same input.context at finish.
+    expect(renderMock.mock.calls[0][0].context).toEqual(ctx);
+  });
+
+  it('with contextForStage: planner base resolves from the seam, renderer receives the seam context', async () => {
+    planMock.mockResolvedValue(ANSWER);
+    const plannerCtx = buildOptimizedContextFixture({ userInput: 'planner stage input' });
+    const rendererCtx = buildOptimizedContextFixture({ userInput: 'renderer stage input' });
+    const contextForStage = vi.fn((stage: 'planner' | 'renderer') =>
+      stage === 'planner' ? plannerCtx : rendererCtx,
+    );
+
+    await runAgentTurn(baseInput({ contextForStage }));
+
+    // planOnce (L384-418): the section base is contextForStage('planner'), NOT input.context
+    expect(contextForStage).toHaveBeenCalledWith('planner');
+    expect(planMock.mock.calls[0][0].context.sections).toEqual(plannerCtx.sections);
+    // finish (L337-348): RendererService.render receives contextForStage('renderer')
+    expect(contextForStage).toHaveBeenCalledWith('renderer');
+    expect(renderMock.mock.calls[0][0].context).toEqual(rendererCtx);
+  });
+});
+
 describe('runAgentTurn — run_tool loop (Planner requests, Executor validates+runs)', () => {
   it('run_tool → execute → replan → answer: tool result lands in toolResults, render once', async () => {
     planMock
