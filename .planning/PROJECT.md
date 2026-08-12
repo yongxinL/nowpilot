@@ -20,12 +20,14 @@ A privacy-first, local-first AI assistant where chat, extracted page content, an
   *Validated in Phase 02: Storage, Security, WriteJournal, Workspace Persistence (11/11 plans, 10/10 must-haves verified; STORAGE-01…05; code review clean — 2 critical + 10 warning findings resolved)*
 - **Cost-effective AI runtime** — Vercel AI SDK, OpenAI/Anthropic/Gemini/Ollama adapters, Planner→Executor→Renderer orchestration, streaming, cost guardrails (tier caps, monthly budget), persona from day one, live circuit breaker + D-17 retry
   *Validated in Phase 03: Cost-Effective AI Runtime + Persona seed (16/16 plans, 5/5 must-haves verified; AI-01…07; includes gap-closure cycle 03-10..03-16 closing CR-01/WR-01/WR-02/WR-03/WR-04, verified passed 5/5)*
+- **Agent reliability & evidence** — trajectory state machine (AgentTrajectoryPhase/State/Outcome in `@/types/harness`, C.1 verbatim), legal-transition table + trajectory cap, CheckpointRecorder one-step rollback, O.2-verbatim buildOutcome (evidence-gated completion; cap ⇒ partial never completed), bounded non-nested replan-on-tool-failure, commit-confirm pause seam (waiting-for-permission; UI deferred to Phase 8), renderer evidence guard
+  *Validated in Phase 3a: Agent Reliability and Evidence (5/5 plans, 5/5 must-haves verified; AGT-01…05; `verify:phase-3a` green — 65 files / 527 tests)*
 
 ### Active
 
 v1 scope, derived from the canonical product spec (`.planning/PRODUCT_SPEC_v0_1.md`) and detailed in `.planning/REQUIREMENTS.md`. Top-level capability areas:
 - [x] **Cost-effective AI runtime** — Vercel AI SDK, Anthropic/SDK provider integrations, Planner→Executor→Renderer orchestration, streaming (SSE + text), cost guardrails (tier caps, monthly budget) — *Phase 03 complete*
-- [ ] **Agent reliability & evidence** — agent-level token budget, CheckpointRecorder, evidence (probe + path), commit-confirm barrier, fallback/recovery
+- [x] **Agent reliability & evidence** — trajectory state machine (10-state, legal-transition table, trajectory cap), CheckpointRecorder one-step rollback, CompletionEvidence-gated completion (partial never completed), bounded non-nested replan, commit-confirm pause seam (UI deferred to Phase 8), renderer evidence guard — *Phase 3a complete*
 - [ ] **Context-adaptive execution** — context windows, ContextUpdate events, context-aware selection, phase-aware prompting
 - [ ] **PageContentService** — content-script extraction (defuddle main content), schema `{title, url, text, metadata}`, TraceRedactor in DOMElems
 - [ ] **Trust-aware context** — content-classification, XSS risk screening, prompt-injection quarantine, content trust controls
@@ -91,4 +93,4 @@ v1 scope, derived from the canonical product spec (`.planning/PRODUCT_SPEC_v0_1.
 | ServiceNow, Write, TeamGQM as first-party add-ons | P1 add-ons; architecture supports third-party add-on SDK later | ✓ Spec §25 |
 
 ---
-*Last updated: 2026-08-11 after Phase 03 completion (/gsd-execute-phase 3 → verification passed 5/5, gap-closure cycle closed WR-02A/WR-03A)*
+*Last updated: 2026-08-12 after Phase 3a completion (/gsd-execute-phase 3a → verification passed 5/5, code review advisory findings logged)*
