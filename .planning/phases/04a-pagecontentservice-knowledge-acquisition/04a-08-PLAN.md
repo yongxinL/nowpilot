@@ -17,7 +17,7 @@ must_haves:
     - "Redaction-before-index/log (D-4a-10, CAT-03, R-10): TraceRedactor runs PANEL-SIDE on the extraction result BEFORE any index build / cache write / debugLog persist — the content script never imports it (Appendix G)."
     - "Delivery (D-4a-05/06): extraction results land in PageContentCache + the ephemeral PageIndexBuilder index + `WorkspaceStore.currentPageContext` via the existing primary-writer election (§13 — the primary surface writes, the secondary mirrors via BroadcastBus WORKSPACE_UPDATED; the draft write uses `useWorkspaceStore.getState().update(draft => { draft.currentPageContext = ctx })` — the inert field is never journaled/serialized per D-18/§21.5, matching RESEARCH Q3). The model-facing `ContextOptimizerInput.pageContext` feed stays UNPLUGGED → Phase 4b (D-4a-06)."
     - "Invalidation (D-4a-01/04): the service subscribes to the bridge's navigation signal (SPANavigationWatcher→host→bridge, 04a-07) + chrome.tabs.onUpdated/onRemoved (panel-side listener, R-3 forward-only — background never extracts): subscribed tabs re-extract (coalesced), unsubscribed tabs mark-stale only; onRemoved drops cache + index together."
-    - "`tests/core/extraction/PageContentService.test.ts` (NEW, §18 required) proves: coalescing (two concurrent same-tab extracts → ONE bridge request), stale-safe read (invalidate → read awaits in-flight, never stale — Pitfall 7), 5 s timeout → typed CONTENT_EXTRACT_FAILED carrier with fallbacksTried, LRU eviction cap + deterministic order + pinned/in-flight never evicted (P4a-1, D-4a-04), sourceUsed/fallbacksTried recorded (D-4a-19), the currentPageContext draft write (D-4a-05), and the empty-page fixture → typed failure (CAT-01 empty probe)."
+    - "`tests/core/extraction/PageContentService.test.ts` (NEW, §18 required) proves: the defuddle-success outcome (sourceUsed 'defuddle', fallbacksTried []), the readability-fallback record (boilerplate fixture → sourceUsed 'readability', fallbacksTried ['defuddle'] — D-4a-19), the empty-page fixture → typed CONTENT_EXTRACT_FAILED (CAT-01 empty probe), coalescing (two concurrent same-tab extracts → ONE bridge request), stale-safe read (invalidate → read awaits in-flight, never stale — Pitfall 7), the 5 s timeout → typed CONTENT_EXTRACT_FAILED carrier with fallbacksTried, LRU eviction cap + deterministic order + pinned/in-flight never evicted (P4a-1, D-4a-04), the currentPageContext draft write (D-4a-05), and the redaction assertion (a secret-shaped string in a fixture page is absent from the served content — D-4a-10, CAT-03)."
     - "UI-SPEC covered-row truth (delivery boundary): the ONLY store mutation 4a adds is the currentPageContext inert-field draft write (D-18 — never journaled/serialized); the WorkspacePageSkeleton card (Phase-1 existing, display-only) renders ONLY when `currentPageContext !== undefined` (existing conditional), shows `currentPageContext.title` only via `Typography.Text ellipsis` + tooltip (single-line, never wraps), and its presence is binary (undefined → absent; defined → present) — the 4a delivery path populates the existing card, it does NOT modify the component (UI-SPEC E2 covered rows; no new UI in 4a)."
     - "On extraction failure (typed CONTENT_EXTRACT_FAILED / timeout), the workspace write does NOT occur — the card retains the previous successful context (or stays absent); never a silent-empty or half-styled card (UI-SPEC E2 error row — stale-safe, D-4a-03)."
     - "In-flight extraction is silent by contract: 5 s AbortController cap + per-tab coalescing, no spinner/skeleton/stage indicator anywhere in 4a (UI-SPEC E1 loading row; STR.rich.stageReading is canonical-but-unrendered — Phase 7)."
@@ -52,7 +52,7 @@ must_haves:
      test file carries the cap/order/eviction suite (P4a-1) per the research test map. -->
 
 <objective>
-Build the extraction orchestrator: `extractLayered` (Appendix O.12 verbatim, D-4a-22 canonical code) and the `PageContentService` class implementing D-4a-03 coalescing + 5 s single-AbortController cap + stale-safe reads, D-4a-04 eviction orchestration, D-4a-10 redaction-before-index, D-4a-05 primary-writer currentPageContext delivery, and D-4a-01 invalidation wiring — plus the §18-required service test (coalescing, timeout, fallback record, eviction cap/order, currentPageContext write, empty-page typed failure).
+Build the extraction orchestrator: `extractLayered` (Appendix O.12 verbatim, D-4a-22 canonical code) and the `PageContentService` class implementing D-4a-03 coalescing + 5 s single-AbortController cap + stale-safe reads, D-4a-04 eviction orchestration, D-4a-10 redaction-before-index, D-4a-05 primary-writer currentPageContext delivery, and D-4a-01 invalidation wiring — plus the §18-required service test (defuddle-success, fallback record, empty-typed failure, coalescing, timeout, eviction cap/order, currentPageContext write, redaction).
 
 Purpose: CAT-01/02/03/05 converge here — the service is the single extraction owner for every surface (Chat/Summarize/agent/add-ons, §26.1), delivering to cache + bridge + workspace + ephemeral index only (D-4a-06), never silent, never stale, never persisted.
 
@@ -87,14 +87,17 @@ Output: PageContentService + its test.
 <tasks>
 
 <task type="auto" tdd="true">
-  <name>Task 1: extractLayered (O.12 verbatim, D-4a-22) + PageContentService class (D-4a-03/04/05/06/10)</name>
-  <files>src/core/extraction/PageContentService.ts</files>
+  <name>Task 1: extractLayered (O.12 verbatim, D-4a-22) + PageContentService class + the §18 orchestrator suite (P4a-1, D-4a-04)</name>
+  <files>src/core/extraction/PageContentService.ts, tests/core/extraction/PageContentService.test.ts</files>
   <read_first>
     - .planning/PRODUCT_SPEC_v0_1.md Appendix O.12 L6736-6768 (the verbatim extractLayered to adapt) + §20.7 TabExtractionState (L3262-3270 — the state vocabulary)
     - .planning/phases/04a-pagecontentservice-knowledge-acquisition/04a-PATTERNS.md (PageContentService section L33-115 — O.12 pattern + typed-error carrier + timeout pattern from StructuredOutput L79-118)
     - src/core/ai/StructuredOutput.ts L79-118 (typed-error carrier + AbortController precedent)
     - src/core/security/TraceRedactor.ts (redactSensitive — the panel-side redaction seam)
     - src/core/workspace/WorkspaceStore.ts (update(draft) — the D-18 inert-field write path, RESEARCH Q3)
+    - tests/core/ai/StructuredOutput.timeoutRetry.test.ts (timeout/abort test pattern)
+    - tests/core/content/ContentScriptHost.test.ts L27-30 (flushRuntime pattern)
+    - tests/fixtures/pageContent.ts (buildArticleFixture, buildBoilerplateFixture, buildEmptyPageFixture — ADD the empty-page fixture to tests/fixtures/pageContent.ts if absent (04a-02 extension — the fixtures module is owned by 04a-02), per D-4a-24 shared-guard)
   </read_first>
   <behavior>
     - Test 1: extractLayered with a Defuddle-success fixture → ExtractionOutcome {sourceUsed: 'defuddle', fallbacksTried: []}.
@@ -102,60 +105,33 @@ Output: PageContentService + its test.
     - Test 3: a totally-empty page → extractLayered throws an error whose code === ERROR_CODES.CONTENT_EXTRACT_FAILED with fallbacksTried populated (D-4a-19/22 — never silent empty).
     - Test 4 (class): two concurrent extract(tabId) calls → ONE bridge request (coalesced per tab, D-4a-03).
     - Test 5: invalidate(tabId) then getContent(tabId) → awaits the in-flight extraction, never returns stale (Pitfall 7).
-    - Test 6: a bridge request that never resolves → after 5 s the typed CONTENT_EXTRACT_FAILED carrier surfaces (EXTRACTION_TIMEOUT_MS = 5000, §22.1).
+    - Test 6: a bridge request that never resolves → after EXTRACTION_TIMEOUT_MS the typed CONTENT_EXTRACT_FAILED carrier surfaces (5 s hard cap, §22.1; injected short timeout for the test — D-4a-03).
+    - Test 7 (eviction, P4a-1): PAGE_CACHE_MAX_TABS+1 extractions → least-recently-served evicted; pinned + in-flight never evicted; deterministic order (D-4a-04; injectable clock).
+    - Test 8 (delivery): a successful extraction writes currentPageContext via the store draft (D-4a-05 primary-writer).
+    - Test 9 (redaction): a fixture page containing a secret-shaped string (e.g. 'JSESSIONID=abc') → the index/cache does NOT contain it after extraction (D-4a-10, CAT-03).
   </behavior>
   <action>
     Implement per the must_haves truths:
     1) `extractLayered(input, strategies)` — copy O.12 VERBATIM (PATTERNS L37-72) with the D-4a-22 adaptation: debugLog uses ERROR_CODES.CONTENT_EXTRACT_FAILED and the throw uses `code: ERROR_CODES.CONTENT_EXTRACT_FAILED` + `fallbacksTried`; import path `@/core/error/debugLog`.
     2) `PageContentService` class: constructor takes { bridge, cache, strategies, deliverContext? } (injectable seams for tests); `extract(tabId, mode)` — per-tab in-flight promise map (D-4a-03 dedup; cache.setInFlight), single AbortController + EXTRACTION_TIMEOUT_MS timer, bridge.requestExtraction(tabId, mode, {timeoutMs: EXTRACTION_TIMEOUT_MS}), DOMParser + `<base href>` stamp (D-4a-08 — panel injects the sibling baseUrl field), extractLayered over the ordered strategies, TraceRedactor on the result BEFORE index/cache/log (D-4a-10), cache.set + lazy index memo (D-4a-15), deliverContext → the default writes WorkspaceStore.currentPageContext via `useWorkspaceStore.getState().update(draft => { draft.currentPageContext = ctx })` (D-4a-05 inert-field draft — never journaled/serialized; RESEARCH Q3); `getContent(tabId)` — stale-safe (await in-flight when invalidated); `invalidate(tabId)`; subscribe to bridge nav signals + chrome.tabs.onUpdated/onRemoved (D-4a-01/04 — subscribed re-extract, unsubscribed mark-stale, onRemoved evicts cache+index).
     Export `EXTRACTION_TIMEOUT_MS = 5000`. Header comment: §26.1 core infrastructure; model feed unplugged (D-4a-06).
+    3) Write `tests/core/extraction/PageContentService.test.ts` per the behavior block: fakeBrowser + flushRuntime for chrome.* paths (tabs.onUpdated/onRemoved stubs), injectable seams (mock bridge with controllable request latency, mock strategies or the real ones from 04a-04 with fixtures), injectable clock for LRU determinism (04a-05 pattern). If the 04a-02 builders don't cover the empty page, extend tests/fixtures/pageContent.ts with the empty-page fixture (extend the shared module — D-4a-24; never per-test HTML). Wire every catch through debugLog with the canonical code (GR-9) where the code under test throws.
   </action>
   <acceptance_criteria>
-    - All six behavior tests pass via `pnpm vitest run tests/core/extraction/PageContentService.test.ts -x` (test file written in Task 2).
+    - All nine behavior tests pass via `pnpm vitest run tests/core/extraction/PageContentService.test.ts -x`.
     - extractLayered throws the typed carrier with code === ERROR_CODES.CONTENT_EXTRACT_FAILED on total failure (assert).
     - EXTRACTION_TIMEOUT_MS exported and === 5000.
+    - The eviction test asserts deterministic LRU order + pin/in-flight protection (P4a-1/D-4a-04).
+    - The redaction test asserts the secret-shaped string is absent from the served content (CAT-03).
     - The default deliverContext uses WorkspaceStore.update(draft) (grep 'currentPageContext' in PageContentService.ts).
     - TraceRedactor import panel-side only; no storage/IDB import; no ContextOptimizer/ai import (D-4a-06 unplugged — grep).
+    - No per-test fixture HTML — everything from the shared module (D-4a-24).
     - tsc --noEmit green.
   </acceptance_criteria>
   <verify>
     <automated>pnpm vitest run tests/core/extraction/PageContentService.test.ts -x</automated>
   </verify>
-  <done>extractLayered + service class implemented with coalescing/timeout/stale-safe/redaction/delivery; six behavior tests green.</done>
-</task>
-
-<task type="auto" tdd="true">
-  <name>Task 2: PageContentService.test.ts — the §18 orchestrator suite (P4a-1, D-4a-04)</name>
-  <files>tests/core/extraction/PageContentService.test.ts</files>
-  <read_first>
-    - tests/core/ai/StructuredOutput.timeoutRetry.test.ts (timeout/abort test pattern)
-    - tests/core/content/ContentScriptHost.test.ts L27-30 (flushRuntime pattern)
-    - tests/fixtures/pageContent.ts (buildArticleFixture, buildBoilerplateFixture, buildEmptyPageFixture — ADD the empty-page fixture to tests/fixtures/pageContent.ts if absent (04a-01 extension), per D-4a-24 shared-guard)
-  </read_first>
-  <behavior>
-    - Test 1 (coalescing): two concurrent extract(42) → one bridge request (D-4a-03).
-    - Test 2 (stale-safe): invalidate(42) then getContent(42) → awaits the in-flight extraction; the stale entry is never returned (Pitfall 7).
-    - Test 3 (timeout): bridge never replies → typed CONTENT_EXTRACT_FAILED carrier after EXTRACTION_TIMEOUT_MS (injected short timeout for the test — D-4a-03).
-    - Test 4 (eviction, P4a-1): PAGE_CACHE_MAX_TABS+1 extractions → least-recently-served evicted; pinned + in-flight never evicted; deterministic order (D-4a-04).
-    - Test 5 (fallback record): boilerplate fixture → sourceUsed 'readability', fallbacksTried contains 'defuddle' (D-4a-19).
-    - Test 6 (delivery): a successful extraction writes currentPageContext via the store draft (D-4a-05 primary-writer).
-    - Test 7 (empty → typed): empty-page fixture → extractLayered throws CONTENT_EXTRACT_FAILED (CAT-01 empty probe).
-    - Test 8 (redaction): a fixture page containing a secret-shaped string (e.g. 'JSESSIONID=abc') → the index/cache does NOT contain it after extraction (D-4a-10, CAT-03).
-  </behavior>
-  <action>
-    Write `tests/core/extraction/PageContentService.test.ts` per the behavior block: fakeBrowser + flushRuntime for chrome.* paths (tabs.onUpdated/onRemoved stubs), injectable seams (mock bridge with controllable request latency, mock strategies or the real ones from 04a-04 with fixtures), injectable clock for LRU determinism (04a-05 pattern). Add the empty-page fixture to tests/fixtures/pageContent.ts if the 04a-01 builders don't cover it (extend the shared module — D-4a-24; never per-test HTML).
-    Wire every catch through debugLog with the canonical code (GR-9) where the code under test throws.
-  </action>
-  <acceptance_criteria>
-    - All eight behavior tests pass via `pnpm vitest run tests/core/extraction/PageContentService.test.ts -x`.
-    - The eviction test asserts deterministic LRU order + pin/in-flight protection (P4a-1/D-4a-04).
-    - The redaction test asserts the secret-shaped string is absent from the served content (CAT-03).
-    - No per-test fixture HTML — everything from the shared module (D-4a-24).
-  </acceptance_criteria>
-  <verify>
-    <automated>pnpm vitest run tests/core/extraction/PageContentService.test.ts -x</automated>
-  </verify>
-  <done>Full §18 orchestrator suite green: coalescing, stale-safe, timeout, eviction, fallback record, delivery, empty-typed, redaction.</done>
+  <done>PageContentService (extractLayered + class) implemented with coalescing/timeout/stale-safe/redaction/delivery; the full §18 orchestrator suite green (9 tests: defuddle-success, fallback record, empty-typed, coalescing, stale-safe, timeout, eviction, delivery, redaction).</done>
 </task>
 
 </tasks>
@@ -173,7 +149,7 @@ Output: PageContentService + its test.
 
 | Threat ID | Category | Component | Severity | Disposition | Mitigation Plan |
 |-----------|----------|-----------|----------|-------------|-----------------|
-| T-4a-02 | Information Disclosure | DOM-embedded secrets leaking to index/log | high | mitigate | TraceRedactor runs panel-side BEFORE any index/cache/log (D-4a-10, CAT-03); the redaction test pins secret absence (Test 8); the content script never imports TraceRedactor (Appendix G) |
+| T-4a-02 | Information Disclosure | DOM-embedded secrets leaking to index/log | high | mitigate | TraceRedactor runs panel-side BEFORE any index/cache/log (D-4a-10, CAT-03); the redaction test pins secret absence (Test 9); the content script never imports TraceRedactor (Appendix G) |
 | T-4a-03 | Spoofing | malicious page content reaching the model (prompt injection) | high | accept | OUT OF SCOPE for 4a (D-4a-06) — the model feed stays unplugged; trust/authority labeling + quarantine is Phase 4b (TRUST-01/02); the service delivers to cache/index/workspace only |
 | T-4a-22 | Tampering | stale/wrong-page content served post-navigation | high | mitigate | D-4a-03 stale-safe reads (await in-flight, never stale — Pitfall 7) + D-4a-01 invalidation wiring; the stale-read test pins it |
 | T-4a-23 | Tampering | cache poisoning via id-spoofed bridge reply | medium | mitigate | requestExtraction correlates by opId (04a-07); MessageBus whitelist (Pitfall 5) |
@@ -182,7 +158,7 @@ Output: PageContentService + its test.
 </threat_model>
 
 <verification>
-- `pnpm vitest run tests/core/extraction -x` — service suite green (8 tests).
+- `pnpm vitest run tests/core/extraction -x` — service suite green (9 tests).
 - tsc --noEmit green.
 - Grep: no ai/ContextOptimizer import (D-4a-06 unplugged), no storage/IDB import, no content-side TraceRedactor.
 - EXTRACTION_TIMEOUT_MS === 5000 pinned.
@@ -201,5 +177,5 @@ Create `.planning/phases/04a-pagecontentservice-knowledge-acquisition/04a-08-SUM
 ## Artifacts this phase produces
 
 - src/core/extraction/PageContentService.ts — `EXTRACTION_TIMEOUT_MS` (5000), `ExtractionOutcome` interface, `extractLayered()`, `isContentExtractFailed()` guard (typed carrier, D-4a-22), `PageContentService` class (extract/getContent/invalidate + bridge/tabs wiring + deliverContext default → WorkspaceStore)
-- tests/core/extraction/PageContentService.test.ts — 8 tests (coalescing, stale-safe, timeout, eviction, fallback record, delivery, empty-typed, redaction)
+- tests/core/extraction/PageContentService.test.ts — 9 tests (defuddle-success, readability-fallback record, empty-typed, coalescing, stale-safe, timeout, eviction, delivery, redaction)
 - tests/fixtures/pageContent.ts — extended with the empty-page fixture (D-4a-24 shared guard)

@@ -601,27 +601,31 @@ export default defineContentScript({
 
 **If this table is empty:** N/A — 6 assumed claims documented above.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Exact D-4a-18 fallback threshold constants**
    - What we know: min extracted-text char floor + content/boilerplate density ratio, evaluated after Defuddle; Readability's `charThreshold` default is 500 chars.
    - What's unclear: the exact floor (500? 1000?) and the density-ratio formula (text chars / total chars? link-text ratio?).
    - Recommendation: pin `MIN_EXTRACTED_CHARS = 500` (Readability parity) + a simple `textLength / htmlLength` ratio ≥ ~0.2, exported constants + unit test (agent discretion area).
+   - **RESOLVED → pinned by 04a-04:** `MIN_EXTRACTED_CHARS = 500` + `MIN_CONTENT_DENSITY = 0.2` are exported from `DefuddleStrategy.ts` and vitest-pinned (D-4a-18) — the boilerplate fixture test asserts the fallback fires.
 
 2. **Base-URL stamp shape (D-4a-08)**
    - What we know: either an absolute `<base href>` injected panel-side, or a sibling field in the payload envelope.
    - What's unclear: which shape; whether the content script injects `<base>` into the serialized HTML string itself (string-level `insertBefore`) or sends a separate `baseUrl` field.
    - Recommendation: sibling `baseUrl` field in the payload + panel-side `<base>` injection (keeps the content bundle pure string manipulation; panel owns DOM). Planner pins in the bridge payload contract.
+   - **RESOLVED → pinned by 04a-07:** `ExtractionPayload { html, baseUrl, truncated }` carries the sibling `baseUrl` field; the panel injects the `<base href>` into its detached DOMParser doc (`parseDetached`, 04a-04).
 
 3. **How `WorkspaceStore.currentPageContext` write flows through primary-writer election**
    - What we know: D-4a-05 reuses Phase-1 §13 election (`np_workspace_primary` CAS in chrome.storage.session); `currentPageContext` is an inert field on WorkspaceState with no setter yet (verified — no `setCurrentPageContext` in WorkspaceStore).
    - What's unclear: whether the write uses `get().update(draft => { draft.currentPageContext = ctx })` (inert field, no storage serialize — D-18 active-fields list excludes it) and how the primary surface learns it IS primary.
    - Recommendation: primary surface calls `update()` with the draft write (inert, never journaled — matches D-18/§21.5); the extraction request itself arrives via PageContextBridge only on the subscribed surface. Planner details in a task.
+   - **RESOLVED → pinned by 04a-08:** the default deliverContext writes via `useWorkspaceStore.getState().update(draft => { draft.currentPageContext = ctx })` — inert-field draft, never journaled/serialized (D-18/§21.5, D-4a-05); the delivery test asserts the draft write.
 
 4. **`check-content-bundle.mjs` fold mechanics (D-4a-23)**
    - What we know: retire the `.mjs` name; logic folds into `no-content-script-ui.test.ts` (rename vs inline = agent discretion).
    - What's unclear: keep `execFileSync` wrapper over a renamed helper, or move the bundle-scan into the vitest test body.
    - Recommendation: rename the helper to `tests/isolation/content-bundle-scan.ts` (or inline) so the §24 verify chain + vitest both exercise one implementation; keep the size assertion sourcemap-stripped (Pitfall 3).
+   - **RESOLVED → pinned by 04a-09:** inline the walker + FORBIDDEN_TOKENS/BACKGROUND_FORBIDDEN_TOKENS into the canonical `tests/isolation/no-content-script-ui.test.ts` body (single enforcement point); the `.mjs` name is retired and all six verify scripts drop its call.
 
 ## Environment Availability
 

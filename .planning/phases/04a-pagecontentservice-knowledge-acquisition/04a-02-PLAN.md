@@ -26,7 +26,7 @@ must_haves:
     - "Every 4a catch/debugLog uses ERROR_CODES.CONTENT_EXTRACT_FAILED (GR-9) — the reconciliation lands BEFORE the strategies/service plans so they code against the canonical key from day one."
     - "The fixture HTML shapes are the regression contract every extraction test asserts against (D-4a-24 shared-guard) — strategies/index tests import from the fixtures module, never re-declare HTML."
   flagged_assumptions:
-    - "CAT-03 [unresolved — spec-less probe, unclassified]: the reconciliation is the D-4a-22 disposition — CONTENT_EXTRACT_FAILED is the single canonical code; UNSUPPORTED_URL/TIMEOUT (§20.7 siblings) already exist in the registry and are not re-added."
+    - "CAT-03 [unresolved — spec-less probe, unclassified]: the reconciliation is the D-4a-22 disposition — CONTENT_EXTRACT_FAILED is the single canonical code; `TIMEOUT` is already a registered key (errorCodes.ts L80) and is not re-added, while `UNSUPPORTED_URL` is §20.7 TabExtractionState state-code vocabulary (spec L3262-3270), NOT an errorCodes.ts registry key."
     - "W-1 mechanics: the spec C.2 Phase-1 block edit is a scoped, line-anchored replace (Phase-1/03-01 precedent) — the 'CONTENT_EXTRACT' literal at spec L5108 is replaced; the canonical L3510 entry is untouched."
   prohibitions:
     - "No new error code invented for extraction beyond CONTENT_EXTRACT_FAILED (D-4a-22 — O.12's EXTRACTION_FAILED is non-canonical and must never appear)."

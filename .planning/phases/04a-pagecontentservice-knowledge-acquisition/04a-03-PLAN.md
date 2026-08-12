@@ -8,6 +8,7 @@ files_modified:
   - src/core/extraction/apcLite.types.ts
   - src/core/extraction/strategies/IExtractionStrategy.ts
   - src/core/extraction/PageContentSerializer.ts
+  - tests/core/extraction/PageContentSerializer.test.ts
 autonomous: true
 requirements: [CAT-01]
 must_haves:
@@ -15,12 +16,14 @@ must_haves:
     - "`src/core/extraction/apcLite.types.ts` (NEW, R-1 canonical home) declares the Appendix C.1 types VERBATIM (spec L4411-4464): `RawNode`, `GeometrySchema`, `InteractionSchema`, `FormControlSchema` (with the `isPassword ⇒ value omitted` refine — D-4a-20), `APCLiteNode`, `APCLiteNodeSchema` (z.lazy recursion), `APCLiteDocumentSchema` (source enum incl. 'defuddle'/'readability'/'servicenow-api'), `APCLiteDocument` — zero schema rework when 4b/5/8 or v2 automation lands (D-4a-11)."
     - "`src/core/extraction/strategies/IExtractionStrategy.ts` (NEW) declares the strategy contract VERBATIM per Appendix C.1 (L4680-4700) + §26.3 (L3772-3778): `StrategyInput {url, title, mode: 'default'|'actionable', html?, raw?}`, `StrategyResult {source: 'defuddle'|'readability'|'apc-lite'|'servicenow-api', markdown?, root?, meta?, approxTokens, truncated}`, `IExtractionStrategy {id, canHandle, run}` — the `'servicenow-api'` id is RESERVED in the union but NOT implemented (D-4a-17 ordered + reserved seam)."
     - "`src/core/extraction/PageContentSerializer.ts` (NEW) exports the turndown singleton with the verified config parity (`TURNDOWN_OPTIONS`: headingStyle atx, hr ---, bulletListMarker -, codeBlockStyle fenced, emDelimiter *, preformattedCode true — byte-identical to defuddle's own markdown.js) and `htmlToMarkdown(html): string` — the ONLY HTML→markdown converter for the Defuddle and APC-lite prose paths (RESEARCH finding: defuddle's browser-bundle `markdown:true` is a NO-OP — turndown is the real converter)."
+    - "`tests/core/extraction/PageContentSerializer.test.ts` (NEW) pins the serializer behavior at runtime: `htmlToMarkdown('<h1>Hello</h1>') === '# Hello'` and the `TURNDOWN_OPTIONS` constant is exported (A6 parity + A1 @types/turndown compat gate)."
     - "All three files carry the R-1 spec-verbatim header convention (`// Source: PRODUCT_SPEC Appendix C.1 (verbatim, lines …). R-1 canonical home — consumers import, never re-declare.`) mirroring src/core/content/PageContext.ts L1-3 and ContextProvenanceManifest.ts L1-18."
     - "FormControlSchema's password refine (D-4a-20) is intact verbatim: `z.object({...}).refine(c => !(c.isPassword && c.value !== undefined), 'password value must be omitted')` — never loosened; it is the boundary re-validation gate the content-side AxDomWalker (04a-06) and the panel-side ApcLiteStrategy (04a-04) both honor."
   artifacts:
     - "src/core/extraction/apcLite.types.ts"
     - "src/core/extraction/strategies/IExtractionStrategy.ts"
     - "src/core/extraction/PageContentSerializer.ts"
+    - "tests/core/extraction/PageContentSerializer.test.ts"
   key_links:
     - "StrategyInput.raw references RawNode from apcLite.types.ts (same-package import) — the IExtractionStrategy import path is `./apcLite.types` relative (PATTERNS L161)."
     - "PageContentSerializer's TURNDOWN_OPTIONS parity is the A6 guard: consistent markdown across Defuddle/Readability/APC-lite paths keeps the heading chunker (04a-05) reliable on every path."
@@ -116,28 +119,34 @@ Output: the three R-1 type/contract homes.
   <done>Strategy contract verbatim with the reserved servicenow-api seam; tsc green.</done>
 </task>
 
-<task type="auto">
+<task type="auto" tdd="true">
   <name>Task 3: PageContentSerializer.ts — the single turndown converter (RESEARCH Pitfall 1)</name>
-  <files>src/core/extraction/PageContentSerializer.ts</files>
+  <files>src/core/extraction/PageContentSerializer.ts, tests/core/extraction/PageContentSerializer.test.ts</files>
   <read_first>
     - .planning/phases/04a-pagecontentservice-knowledge-acquisition/04a-RESEARCH.md (Pattern 4 — TURNDOWN_OPTIONS verified against defuddle's markdown.js) + Pitfall 1 (defuddle markdown no-op)
     - src/core/security/TraceRedactor.ts L10-29 (module-level singleton + exported pure function pattern)
   </read_first>
+  <behavior>
+    - Test 1: htmlToMarkdown('<h1>Hello</h1>') === '# Hello' (atx heading conversion works at the pinned TURNDOWN_OPTIONS).
+    - Test 2: TURNDOWN_OPTIONS is exported and carries the verified parity keys (headingStyle atx, hr '---', bulletListMarker '-', codeBlockStyle 'fenced', emDelimiter '*', preformattedCode true — A6).
+  </behavior>
   <action>
     Create `src/core/extraction/PageContentSerializer.ts`: a module-level turndown singleton created once with the verified `TURNDOWN_OPTIONS` (headingStyle 'atx', hr '---', bulletListMarker '-', codeBlockStyle 'fenced', emDelimiter '*', preformattedCode true — byte-identical to defuddle's own markdown.js config, RESEARCH Pattern 4) and an exported pure `htmlToMarkdown(html: string): string` that calls `turndownService.turndown(html)`.
 
     Also export `TURNDOWN_OPTIONS` (testable parity constant). Header comment: `// src/core/extraction/PageContentSerializer.ts — the single HTML→markdown converter (RESEARCH: defuddle@0.6.6 browser-bundle markdown:true is a NO-OP — turndown is the approved-stack converter every prose path routes through). TURNDOWN_OPTIONS verified byte-identical to defuddle's own markdown.js (A6).` Do NOT import defuddle here — the serializer converts, defuddle extracts (04a-04).
+
+    Write `tests/core/extraction/PageContentSerializer.test.ts` per the behavior block — a real unit test pinning `htmlToMarkdown('<h1>Hello</h1>') === '# Hello'` and the TURNDOWN_OPTIONS parity keys (replaces the previous always-passing inline node-import sanity check).
   </action>
   <acceptance_criteria>
     - File exists exporting `htmlToMarkdown` and `TURNDOWN_OPTIONS`.
     - `grep -c "TurndownService" src/core/extraction/PageContentSerializer.ts` >= 1.
-    - A quick sanity check in the verify command: `htmlToMarkdown('<h1>Hello</h1>') === '# Hello'`.
+    - The unit test asserts `htmlToMarkdown('<h1>Hello</h1>') === '# Hello'` and the TURNDOWN_OPTIONS parity keys (A6) via `pnpm vitest run tests/core/extraction/PageContentSerializer.test.ts -x`.
     - `pnpm tsc --noEmit` passes (proves @types/turndown@5 matches v7 API — A1 gate).
   </acceptance_criteria>
   <verify>
-    <automated>pnpm tsc --noEmit && pnpm vitest run tests/core/extraction 2>/dev/null; node -e "import('./src/core/extraction/PageContentSerializer.ts').then(()=>{})" 2>/dev/null || true</automated>
+    <automated>pnpm tsc --noEmit && pnpm vitest run tests/core/extraction/PageContentSerializer.test.ts -x</automated>
   </verify>
-  <done>Turndown singleton + htmlToMarkdown exported; typecheck proves the @types/turndown@5↔v7 API compat (A1).</done>
+  <done>Turndown singleton + htmlToMarkdown exported; the behavior unit test pins the '<h1>'→'# ' conversion and TURNDOWN_OPTIONS parity; typecheck proves the @types/turndown@5↔v7 API compat (A1).</done>
 </task>
 
 </tasks>
@@ -162,7 +171,7 @@ Output: the three R-1 type/contract homes.
 - tsc --noEmit green (all three files typecheck — the A1 @types/turndown compat gate).
 - apcLite.types.ts contains the FormControlSchema password refine + the full source enum.
 - IExtractionStrategy carries the reserved 'servicenow-api' union member.
-- htmlToMarkdown('<h1>Hello</h1>') === '# Hello' behavior verified.
+- htmlToMarkdown('<h1>Hello</h1>') === '# Hello' pinned by the PageContentSerializer.test.ts unit test.
 </verification>
 
 <success_criteria>
@@ -181,3 +190,4 @@ Create `.planning/phases/04a-pagecontentservice-knowledge-acquisition/04a-03-SUM
 - src/core/extraction/apcLite.types.ts — `RawNode`, `GeometrySchema`, `InteractionSchema`, `FormControlSchema` (password refine), `APCLiteNode`, `APCLiteNodeSchema`, `APCLiteDocumentSchema`, `APCLiteDocument`
 - src/core/extraction/strategies/IExtractionStrategy.ts — `StrategyInput`, `StrategyResult`, `IExtractionStrategy` (source union incl. reserved 'servicenow-api')
 - src/core/extraction/PageContentSerializer.ts — `TURNDOWN_OPTIONS`, `htmlToMarkdown(html)`
+- tests/core/extraction/PageContentSerializer.test.ts — `htmlToMarkdown('<h1>Hello</h1>') === '# Hello'` + TURNDOWN_OPTIONS parity pin

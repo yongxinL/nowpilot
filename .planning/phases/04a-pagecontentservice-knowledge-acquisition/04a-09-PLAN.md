@@ -14,7 +14,7 @@ must_haves:
   truths:
     - "`tests/isolation/no-content-script-ui.test.ts` (EXTENDED per D-4a-23 — the §18/§24-named canonical test) now carries the FULL isolation gate: forbidden-token scan over the built content bundles (FORBIDDEN_TOKENS extended with `turndown`, `minisearch`, `readability` — RESEARCH Pitfall 6: bundle stays dependency-free; `defuddle`/`yaml` already listed) AND the **< 50 KB assertion with the inline sourcemap STRIPPED** (RESEARCH Pitfall 3: wxt sets sourcemap:'inline' → a 21 KB payload reads 174 KB raw; the assertion strips the `//# sourceMappingURL=data:...` comment before measuring — payload < 50 KB, §22.1/ROADMAP criterion 3)."
     - "The `.mjs` helper (`tests/isolation/check-content-bundle.mjs`) is RETIRED per D-4a-23 — its walker + token-scan logic folds INTO the canonical vitest test (exact mechanics = agent discretion: inline the scan as a helper function inside the .ts test, or rename the helper — the canonical test file is the single enforcement point)."
-    - "`verify:phase-1..4` package.json scripts drop their trailing `node tests/isolation/check-content-bundle.mjs` call (the retired helper) — the isolation gate now runs inside `vitest run` via the extended test; `verify:phase-4a` keeps the same chain shape (isolation included in vitest run)."
+    - "ALL SIX verify scripts — the five existing at L19-23 (`verify:phase-1` L19, `verify:phase-2` L20, `verify:phase-3` L21, `verify:phase-3a` L22, `verify:phase-4` L23) plus `verify:phase-4a` (created by 04a-01 with the same chain shape) — drop their trailing `node tests/isolation/check-content-bundle.mjs` call (the retired helper) — the isolation gate now runs inside `vitest run` via the extended test; no verify script may reference the deleted file."
     - "The isolation test ALSO asserts the D-4a-20 password-omission INVARIANT at the schema level (P4a-4: the invariant test lives in tests/isolation/): `FormControlSchema.safeParse({isPassword:true, value:'x'}).success === false` and `safeParse({isPassword:true}).success === true` — the boundary gate never loosened."
     - "The content-bundle scan still passes with the Phase-1/2/3 token sets intact (antd/React/defuddle/yaml/idb/fflate/KeyVault/AI tokens + the new turndown/minisearch/readability) — CAT-04 (ISOLATED world, no UI code) + CAT-05 (< 50 KB, dependency-free bundle) proven."
   artifacts:
@@ -41,11 +41,11 @@ must_haves:
      no-content-script-ui.test.ts (D-4a-23): folds in the retired check-content-bundle.mjs
      walker, extends FORBIDDEN_TOKENS (turndown/minisearch/readability), adds the
      sourcemap-stripped < 50 KB payload assertion (Pitfall 3), adds the D-4a-20 password
-     invariant at the schema level (P4a-4), and updates verify:phase-1..4 to drop the
-     retired .mjs call. -->
+     invariant at the schema level (P4a-4), and updates ALL SIX verify scripts
+     (verify:phase-1..4 + verify:phase-4a) to drop the retired .mjs call. -->
 
 <objective>
-Extend the content-bundle isolation suite (D-4a-23): fold the retired `check-content-bundle.mjs` walker into the canonical `no-content-script-ui.test.ts`, extend FORBIDDEN_TOKENS (turndown/minisearch/readability), add the **sourcemap-stripped < 50 KB payload assertion** (RESEARCH Pitfall 3), add the D-4a-20 password-omission invariant at the schema level (P4a-4), and update the verify:phase-1..4 scripts to drop the retired `.mjs` call.
+Extend the content-bundle isolation suite (D-4a-23): fold the retired `check-content-bundle.mjs` walker into the canonical `no-content-script-ui.test.ts`, extend FORBIDDEN_TOKENS (turndown/minisearch/readability), add the **sourcemap-stripped < 50 KB payload assertion** (RESEARCH Pitfall 3), add the D-4a-20 password-omission invariant at the schema level (P4a-4), and update ALL SIX verify scripts (verify:phase-1, verify:phase-2, verify:phase-3, verify:phase-3a, verify:phase-4 — the five existing at L19-23 — plus verify:phase-4a from 04a-01) to drop the retired `.mjs` call.
 
 Purpose: CAT-04 (ISOLATED, no UI code) + CAT-05 (< 50 KB, dependency-free bundle) are PROVEN by this gate — the phase's only hard size/isolation proof. Retiring the `.mjs` name honors D-4a-23 (one canonical test file).
 
@@ -88,14 +88,14 @@ Output: the extended isolation test, the deleted `.mjs`, updated verify scripts.
   </behavior>
   <action>
     Extend `tests/isolation/no-content-script-ui.test.ts` per D-4a-23: fold the `.mjs` walker in (inline the FORBIDDEN_TOKENS/BACKGROUND_FORBIDDEN_TOKENS arrays + the recursive walk + isContentBundle logic into the test file as local helpers, or rename the helper — the canonical .ts test is the single enforcement point). Extend FORBIDDEN_TOKENS with `turndown`, `minisearch`, `readability` (RESEARCH Pitfall 6 — new content-side code must stay dependency-free; do NOT remove existing tokens). Add the sourcemap-stripped < 50 KB payload assertion: strip `//# sourceMappingURL=data:...` (regex or indexOf) from each content bundle's text BEFORE measuring bytes — assert Buffer.byteLength(payload) < 50 * 1024 (Pitfall 3 — never measure the raw file). Add the D-4a-20 invariant tests (Test 3) importing FormControlSchema from '@/core/extraction/apcLite.types'.
-    Then DELETE `tests/isolation/check-content-bundle.mjs` (the name is retired per D-4a-23) and update package.json verify:phase-1..4 to remove the trailing `&& node tests/isolation/check-content-bundle.mjs` (the isolation gate now runs inside `vitest run` via this test).
+    Then DELETE `tests/isolation/check-content-bundle.mjs` (the name is retired per D-4a-23) and update ALL SIX verify scripts in package.json — verify:phase-1 (L19), verify:phase-2 (L20), verify:phase-3 (L21), verify:phase-3a (L22), verify:phase-4 (L23), AND verify:phase-4a (created by 04a-01 with the same chain shape) — to remove the trailing `&& node tests/isolation/check-content-bundle.mjs` (the isolation gate now runs inside `vitest run` via this test). The deletion and the script updates happen in the SAME task so no verify script ever references a deleted file — the intermediate state must not leave verify:phase-3a or verify:phase-4a pointing at the retired path.
   </action>
   <acceptance_criteria>
     - All three behavior tests pass via `pnpm vitest run tests/isolation -x` (after `pnpm wxt build`).
     - FORBIDDEN_TOKENS contains turndown, minisearch, readability AND the original Phase-1/2/3 tokens.
     - The size assertion strips the sourcemap comment before measuring (grep the test for sourceMappingURL).
     - check-content-bundle.mjs no longer exists (git rm); no package.json script references it.
-    - verify:phase-1..4 chains end at `vitest run` (isolation covered by the suite).
+    - All six verify chains (verify:phase-1..4 + verify:phase-4a) end at `vitest run` (isolation covered by the suite); `grep -rn "check-content-bundle" package.json` returns nothing.
   </acceptance_criteria>
   <verify>
     <automated>pnpm wxt build && pnpm vitest run tests/isolation -x</automated>
@@ -130,7 +130,7 @@ Output: the extended isolation test, the deleted `.mjs`, updated verify scripts.
 
 <success_criteria>
 - The canonical isolation test enforces tokens (extended set) + payload size (< 50 KB, sourcemap-stripped) + the password invariant (D-4a-23/20, Pitfall 3, P4a-4).
-- The `.mjs` name is retired; verify:phase-1..4 updated.
+- The `.mjs` name is retired; all six verify scripts (verify:phase-1..4 + verify:phase-4a) updated.
 </success_criteria>
 
 <output>
@@ -141,4 +141,4 @@ Create `.planning/phases/04a-pagecontentservice-knowledge-acquisition/04a-09-SUM
 
 - tests/isolation/no-content-script-ui.test.ts — extended: folded walker + extended FORBIDDEN_TOKENS (turndown/minisearch/readability) + sourcemap-stripped < 50 KB payload assertion + FormControlSchema password-invariant tests
 - tests/isolation/check-content-bundle.mjs — DELETED (D-4a-23)
-- package.json — verify:phase-1..4 trailing `.mjs` calls removed
+- package.json — all six verify scripts (verify:phase-1..4 + verify:phase-4a) trailing `.mjs` calls removed

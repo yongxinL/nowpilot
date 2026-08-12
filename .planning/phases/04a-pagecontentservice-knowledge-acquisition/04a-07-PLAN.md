@@ -10,6 +10,7 @@ files_modified:
   - src/core/content/ContentScriptHost.ts
   - src/entrypoints/core.content.ts
   - tests/core/content/ContentScriptHost.test.ts
+  - tests/core/content/PageContextBridge.test.ts
 autonomous: true
 requirements: [CAT-01, CAT-02, CAT-04]
 must_haves:
@@ -21,12 +22,14 @@ must_haves:
     - "ContentScriptHost wires SPANavigationWatcher (D-4a-01): on wxt:locationchange it rebuilds the live context + upserts the registry + publishes the lightweight live-context update (mark-stale signal); full re-extraction happens only when a surface requests it (subscribed-only, D-4a-01 hybrid trigger)."
     - "`src/entrypoints/core.content.ts` passes the wxt `ctx` into the host wiring so the watcher uses ctx.addEventListener (auto-clean on invalidation — RESEARCH Common Op 5); the entrypoint stays ISOLATED / document_idle / <all_urls> (CAT-04)."
     - "`tests/core/content/ContentScriptHost.test.ts` (EXTENDED) proves: EXTRACT_PAGE_CONTENT (default mode) → serialized HTML reply (contains the page markup, baseUrl stamped, truncated flag false on a small doc); actionable mode → RawNode reply; a password input inside the serialized HTML is present in the MARKUP (strip-only — the VALUE omission is enforced by AxDomWalker/walker path, not by stripping) but the actionable walk reply has no password value (D-4a-20); PAGE_HTML_MAX_BYTES truncation sets truncated:true at an element boundary."
+    - "`tests/core/content/PageContextBridge.test.ts` (NEW) proves: requestExtraction publishes EXTRACT_PAGE_CONTENT and resolves on the matching PAGE_CONTENT_EXTRACTED reply (fakeBrowser + flushRuntime — L27-30 precedent), the timeout path rejects with a typed error carrying code === ERROR_CODES.CONTENT_EXTRACT_FAILED (D-4a-03/19 — never an unhandled rejection), and an id-mismatched PAGE_CONTENT_EXTRACTED reply is ignored (opId correlation — L57-58 precedent)."
   artifacts:
     - "src/core/runtime/MessageType.ts"
     - "src/core/content/PageContextBridge.ts"
     - "src/core/content/ContentScriptHost.ts"
     - "src/entrypoints/core.content.ts"
     - "tests/core/content/ContentScriptHost.test.ts"
+    - "tests/core/content/PageContextBridge.test.ts"
   key_links:
     - "The bridge request/reply is the transport seam PageContentService (04a-08) consumes — the ExtractionPayload shape {html, baseUrl, truncated} is the interface contract both sides compile against (interface-first ordering)."
     - "serializeForExtraction's PAGE_HTML_MAX_BYTES + truncated flag feed the D-4a-09 provenance (§22.2 semantics) — the service records truncated into StrategyResult/APCLiteDocument stats (D-4a-21)."
@@ -34,7 +37,7 @@ must_haves:
   flagged_assumptions:
     - "Open Q2 [research, resolved by planner]: the base-URL stamp shape is the SIBLING `baseUrl` field in ExtractionPayload (keeps the content bundle pure string manipulation; the panel owns DOM injection — RESEARCH recommendation)."
     - "D-4a-09 [discretion]: PAGE_HTML_MAX_BYTES = 2_097_152 (~2 MB) exported + pinned; truncation at element boundary (walk back to the last safe closing tag before the cap — implementation detail at executor discretion, must not split a tag)."
-    - "CAT-02 [unresolved — spec-less probe, unclassified]: the bridge roundtrip is covered by the extended ContentScriptHost.test.ts (fakeBrowser + flushRuntime pattern, L27-30 precedent); the background forward of tabs.onUpdated is R-3 forward-only and wired at the service layer (04a-08) — NOT a new background file (create-list is fixed)."
+    - "CAT-02 [unresolved — spec-less probe, unclassified]: the bridge roundtrip is covered by the NEW PageContextBridge.test.ts (fakeBrowser + flushRuntime pattern, L27-30 precedent) plus the extended ContentScriptHost.test.ts; the background forward of tabs.onUpdated is R-3 forward-only and wired at the service layer (04a-08) — NOT a new background file (create-list is fixed)."
     - "Pitfall 5 discipline: PAGE_CONTENT_EXTRACTED is the ONLY MessageType addition; the reply reuses EXTRACT_PAGE_CONTENT's request envelope + id correlation — no throwaway contract."
   prohibitions:
     - "No new content-side import of defuddle/turndown/minisearch/zod runtime (Appendix G, R-3) — the host serializes + walks with type-only imports only."
@@ -56,7 +59,7 @@ Extend the content-side transport: add the canonical `PAGE_CONTENT_EXTRACTED` Me
 
 Purpose: CAT-01/CAT-02's delivery path — the content script serializes one HTML string (never parses — R-5, §26.4) and the panel owns DOMParser + extraction. This plan is the bridge contract the service plan compiles against.
 
-Output: extended MessageType/bridge/host/entrypoint + extended ContentScriptHost test.
+Output: extended MessageType/bridge/host/entrypoint + PageContextBridge.test.ts + extended ContentScriptHost test.
 </objective>
 
 <execution_context>
@@ -84,10 +87,11 @@ Output: extended MessageType/bridge/host/entrypoint + extended ContentScriptHost
 
 <task type="auto" tdd="true">
   <name>Task 1: MessageType addition + PageContextBridge request/reply contract (Pitfall 5)</name>
-  <files>src/core/runtime/MessageType.ts, src/core/content/PageContextBridge.ts</files>
+  <files>src/core/runtime/MessageType.ts, src/core/content/PageContextBridge.ts, tests/core/content/PageContextBridge.test.ts</files>
   <read_first>
     - src/core/runtime/MessageType.ts (L25-30 D-17 additions block — the in-place extension precedent; EXTRACT_PAGE_CONTENT at L11)
     - src/core/content/PageContextBridge.ts (getCapabilities L53-72 bounded-wait + sanitizeCapabilities L105-113 validation + replyPong L75-83 ResponseEnvelope shape)
+    - tests/core/content/ContentScriptHost.test.ts L27-30 (fakeBrowser + flushRuntime test pattern)
   </read_first>
   <behavior>
     - Test 1 (fakeBrowser, flushRuntime): requestExtraction(tabId, 'default') publishes EXTRACT_PAGE_CONTENT with {tabId, mode}; the matching PAGE_CONTENT_EXTRACTED ResponseEnvelope reply resolves to the ExtractionPayload {html, baseUrl, truncated}.
@@ -100,17 +104,19 @@ Output: extended MessageType/bridge/host/entrypoint + extended ContentScriptHost
     Extend PageContextBridge: export `interface ExtractionPayload { html: string; baseUrl: string; truncated: boolean }`; add `requestExtraction(tabId: number, mode: 'default' | 'actionable', options?: { timeoutMs?: number }): Promise<ExtractionPayload>` — publishes an EXTRACT_PAGE_CONTENT envelope with payload `{tabId, mode}` and opId, subscribes for the PAGE_CONTENT_EXTRACTED reply matching the opId, validates the reply payload shape (ExtractionPayload guard — sanitizeCapabilities precedent; malformed → reject with the CONTENT_EXTRACT_FAILED typed error), and rejects on timeout with a typed carrier (code: ERROR_CODES.CONTENT_EXTRACT_FAILED — the D-4a-22 canonical key, never the non-canonical string); the timeout listener is ALWAYS cleared (T-1-14 bounded wait). Also add `replyExtracted(requestId, payload)` publishing the PAGE_CONTENT_EXTRACTED ResponseEnvelope `{id: requestId, ok: true, data: payload}` (replyPong shape).
 
     Header comment: keep the dependency-free convention; note the single canonical addition + the ExtractionPayload contract.
+
+    Write `tests/core/content/PageContextBridge.test.ts` (NEW) per the behavior block — fakeBrowser + flushRuntime pattern (ContentScriptHost.test.ts L27-30 precedent): the roundtrip resolves on the matching opId reply, the injected-short-timeout path rejects typed with code === ERROR_CODES.CONTENT_EXTRACT_FAILED (assert the code — D-4a-22), and an id-mismatched reply is ignored (the pending promise only settles on the matching opId).
   </action>
   <acceptance_criteria>
     - MessageType.ts contains PAGE_CONTENT_EXTRACTED; EXTRACT_PAGE_CONTENT unchanged; MessageTypeValues auto-includes it.
     - PageContextBridge exports ExtractionPayload + requestExtraction + replyExtracted.
     - The timeout path rejects with a typed error carrying code === ERROR_CODES.CONTENT_EXTRACT_FAILED (assert in test).
-    - `pnpm vitest run tests/core/content -x` green + `pnpm tsc --noEmit` green.
+    - All three behavior tests pass via `pnpm vitest run tests/core/content/PageContextBridge.test.ts -x`; `pnpm tsc --noEmit` green.
   </acceptance_criteria>
   <verify>
-    <automated>pnpm vitest run tests/core/content/PageContextBridge.test.ts -x 2>/dev/null || pnpm vitest run tests/core/content -x</automated>
+    <automated>pnpm vitest run tests/core/content/PageContextBridge.test.ts -x</automated>
   </verify>
-  <done>MessageType + bridge contract in place; roundtrip, correlation, and typed-timeout proven; tsc green.</done>
+  <done>MessageType + bridge contract in place; roundtrip, opId correlation, and typed-timeout proven by the bridge suite; tsc green.</done>
 </task>
 
 <task type="auto" tdd="true">
@@ -187,4 +193,5 @@ Create `.planning/phases/04a-pagecontentservice-knowledge-acquisition/04a-07-SUM
 - src/core/content/PageContextBridge.ts — `ExtractionPayload` interface, `requestExtraction()`, `replyExtracted()`
 - src/core/content/ContentScriptHost.ts — `PAGE_HTML_MAX_BYTES` (2,097,152), `serializeForExtraction()`, EXTRACT_PAGE_CONTENT mode-discriminated reply, SPANavigationWatcher wiring
 - src/entrypoints/core.content.ts — ctx passed into host wiring
+- tests/core/content/PageContextBridge.test.ts — 3 tests (roundtrip, typed timeout, opId correlation)
 - tests/core/content/ContentScriptHost.test.ts — extended: roundtrip, truncation, strip-set, actionable password omission

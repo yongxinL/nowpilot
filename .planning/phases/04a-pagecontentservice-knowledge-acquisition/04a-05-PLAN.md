@@ -8,6 +8,7 @@ files_modified:
   - src/core/extraction/PageContentCache.ts
   - src/core/extraction/PageIndexBuilder.ts
   - tests/core/extraction/PageIndexBuilder.test.ts
+  - tests/core/extraction/PageContentCache.test.ts
 autonomous: true
 requirements: [CAT-01, CAT-05]
 must_haves:
@@ -18,10 +19,12 @@ must_haves:
     - "`src/core/extraction/PageIndexBuilder.ts` (NEW, greenfield — D-4a-15/16) builds an EPHEMERAL per-tab MiniSearch index: chunk Defuddle markdown by heading boundaries (h1-h6), each doc `{id, title, url, headingPath, sectionText}` (headingPath = breadcrumb e.g. 'Work KB > ServiceNow > Incident'), a synthetic '(preamble)' doc covers pre-first-heading text, no-heading pages fall back to paragraph-block chunks (blank-line separated) under the page title, and sections over the exported `INDEX_CHUNK_MAX_TOKENS = 500` split into paragraph sub-chunks inheriting the same headingPath (D-4a-16)."
     - "PageIndexBuilder's index build is LAZY — `buildPageIndex(chunks)` pure builder + the per-tab memoization lives in the cache/service layer (D-4a-15: built on first query(), evicted with the extraction, never persisted §26.5)."
     - "`tests/core/extraction/PageIndexBuilder.test.ts` (NEW, §18 required) drives the shared golden fixtures (D-4a-24): buildLargeArticleFixture → heading-chunked docs with correct headingPath breadcrumbs + sub-chunking over 500 tokens; buildNoHeadingFixture → paragraph-block fallback chunks; the '(preamble)' synthetic chunk covers the pre-heading text; buildArticleFixture → MiniSearch search('keyword') returns the right section doc."
+    - "`tests/core/extraction/PageContentCache.test.ts` (NEW — the cache smoke file, created with the source) proves the deterministic LRU behavior at the cache level with the injectable clock: N+1 upserts evict the least-recently-served entry, `invalidate(tabId)` drops the entry, and a pinned tab is eviction-last; the full cap/order/pin integration suite (service-driven) lands in 04a-08."
   artifacts:
     - "src/core/extraction/PageContentCache.ts"
     - "src/core/extraction/PageIndexBuilder.ts"
     - "tests/core/extraction/PageIndexBuilder.test.ts"
+    - "tests/core/extraction/PageContentCache.test.ts"
   key_links:
     - "PageContentCache stores the extraction result (markdown/PageContext/sourceUsed) + the PageIndexBuilder-built index handle together — eviction drops both (D-4a-04); PageContentService (04a-08) is the only consumer."
     - "PageIndexBuilder's heading chunking depends on the TURNDOWN_OPTIONS markdown parity (A6 — consistent '#' headings across paths) — the golden-fixture heading-boundary test is the A6 guard."
@@ -73,7 +76,7 @@ Output: the cache + index builder + their test.
 
 <task type="auto" tdd="true">
   <name>Task 1: PageContentCache — per-tab LRU + eviction discipline (D-4a-02/04)</name>
-  <files>src/core/extraction/PageContentCache.ts</files>
+  <files>src/core/extraction/PageContentCache.ts, tests/core/extraction/PageContentCache.test.ts</files>
   <read_first>
     - src/core/registry/PageRegistry.ts L10-33 (tab-keyed Map CRUD pattern — the D-4a-02 distinction is content+index vs live title/url)
     - .planning/phases/04a-pagecontentservice-knowledge-acquisition/04a-PATTERNS.md (PageContentCache section L293-319 — pinned-constant + in-flight map patterns)
@@ -87,17 +90,17 @@ Output: the cache + index builder + their test.
   </behavior>
   <action>
     Implement `PageContentCache` per the must_haves truth: export `PAGE_CACHE_MAX_TABS = 20`; an injectable `now` clock (constructor option, Phase-4 PromptCacheManager precedent — production default Date.now); `Map<number, CacheEntry>` where CacheEntry holds { pageContext, markdown, sourceUsed, indexHandle, recency, pinned, subscribed, inFlight }; methods `set(tabId, entry)`, `get(tabId)` (bumps recency), `invalidate(tabId)` (drops entry — the SERVICE also evicts the index together), `remove(tabId)`, `setPinned(tabId, pinned)`, `setSubscribed(tabId, subscribed)`, `setInFlight(tabId, promise)` (D-4a-03 promise-map primitive), `clear()`; LRU eviction on set() when size > PAGE_CACHE_MAX_TABS — NEVER evict in-flight/subscribed entries, pinned eviction-last (D-4a-04). Header comment: dependency-free core (no React/antd/zustand), in-memory only (never persisted §26.5).
-    The behavior tests live in the SERVICE test (04a-08) per the research test map (eviction/cap asserted via PageContentService.test.ts) — Task 1 here creates the file + a minimal node-env smoke (deterministic eviction via injectable clock) so the task is Nyquist-green; the full cap/order/pin suite is written in 04a-08 where the service drives it. Note this split in the test file header.
+    Write `tests/core/extraction/PageContentCache.test.ts` (NEW — the smoke file) proving behavior tests 1-3 at the cache level with the injectable clock (deterministic LRU eviction order, invalidate drop, pinned eviction-last); behavior test 4 (in-flight/subscribed mark semantics) needs the service promise-map and is asserted in the 04a-08 service suite — the full cap/order/pin suite is written there where the service drives it. Note this split in the test file header.
   </action>
   <acceptance_criteria>
     - PAGE_CACHE_MAX_TABS exported; PageContentCache class with the six methods + injectable clock.
-    - Deterministic LRU smoke passes (node env): N+1 upserts evict the least-recently-served entry; pinned entry survives eviction pressure.
+    - tests/core/extraction/PageContentCache.test.ts exists and is green via `pnpm vitest run tests/core/extraction/PageContentCache.test.ts -x`: N+1 upserts evict the least-recently-served entry; invalidate drops; pinned entry survives eviction pressure (node env).
     - tsc --noEmit green; no storage/IDB import in the file (grep).
   </acceptance_criteria>
   <verify>
-    <automated>pnpm vitest run tests/core/extraction/PageContentCache.test.ts -x 2>/dev/null || node -e "console.log('cache smoke pending 04a-08 service test')"</automated>
+    <automated>pnpm vitest run tests/core/extraction/PageContentCache.test.ts -x</automated>
   </verify>
-  <done>PageContentCache exists with LRU-20 + pin/in-flight protection + injectable clock; smoke green; full eviction suite deferred to 04a-08 by design.</done>
+  <done>PageContentCache exists with LRU-20 + pin/in-flight protection + injectable clock; the cache-level smoke test (eviction order + invalidate + pinned) is green; the full eviction suite (service-driven) is deferred to 04a-08 by design.</done>
 </task>
 
 <task type="auto" tdd="true">
@@ -150,8 +153,8 @@ Output: the cache + index builder + their test.
 
 <verification>
 - `pnpm vitest run tests/core/extraction/PageIndexBuilder.test.ts -x` green.
-- PageContentCache smoke (node env) green; full eviction/cap/pin suite lands with 04a-08.
-- tsc --noEmit green; no storage/IDB imports in either file.
+- `pnpm vitest run tests/core/extraction/PageContentCache.test.ts -x` green (cache-level LRU smoke); the full eviction/cap/pin suite lands with 04a-08.
+- tsc --noEmit green; no storage/IDB imports in either source file.
 </verification>
 
 <success_criteria>

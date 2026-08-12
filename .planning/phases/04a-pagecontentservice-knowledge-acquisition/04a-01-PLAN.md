@@ -12,8 +12,8 @@ requirements: [CAT-01]
 must_haves:
   truths:
     - "package.json gains `defuddle@^0.6.6`, `@mozilla/readability@^0.5.0`, `turndown@^7.2.4`, `minisearch@^7.2.0` under dependencies and `@types/turndown@^5.0.6` under devDependencies — the four spec-§7-approved-but-uninstalled libs (R-9) plus the turndown type declarations (RESEARCH: turndown 7 ships no bundled .d.ts — strict tsc fails without them)."
-    - "`package.json` gains `verify:phase-4a` = the §24 chain: `eslint . && prettier --check . && tsc --noEmit && wxt build && vitest run && node tests/isolation/check-content-bundle.mjs` (mirrors verify:phase-1..4, L19-22) — the isolation step keeps the `.mjs` call until the 04a-09 isolation plan retires it (D-4a-23)."
-    - "The §24 chain is the SAME shape as verify:phase-4 (L22) — eslint, prettier --check, tsc --noEmit, wxt build, full vitest run, isolation check; no exact test-count assertions (P-5)."
+    - "`package.json` gains `verify:phase-4a` = the §24 chain: `eslint . && prettier --check . && tsc --noEmit && wxt build && vitest run && node tests/isolation/check-content-bundle.mjs` (mirrors verify:phase-1..4, L19-23 — five existing scripts incl. verify:phase-3a at L22) — the isolation step keeps the `.mjs` call until the 04a-09 isolation plan retires it from ALL SIX verify scripts incl. this one (D-4a-23)."
+    - "The §24 chain is the SAME shape as verify:phase-4 (L23) — eslint, prettier --check, tsc --noEmit, wxt build, full vitest run, isolation check; no exact test-count assertions (P-5)."
     - "defuddle resolves to exactly 0.6.6 (spec ^0.6 pin — RESEARCH: latest is 0.19.2; the pinned version is the privacy-safe one with NO useAsync, zero network calls)."
   artifacts:
     - "package.json"
@@ -30,7 +30,7 @@ must_haves:
     - "No version drift: install the pinned ranges exactly (`@^0.6`, `@^0.5`, `@^7`, `@^7`, `@types/turndown@^5`) — never latest (RESEARCH: defuddle latest 0.19.2 adds useAsync network behavior, breaking R-10)."
     - "No import of the new libs into content-side code — defuddle/readability/turndown/minisearch live panel-side only (R-3, Appendix G isolation — enforced by the 04a-09 isolation scan)."
     - "No package outside the approved stack §7 (R-9) and no `@types/turndown@^6`/`^7` — only ^5 exists (RESEARCH verified)."
-    - "No modification of the existing verify:phase-1..4 keys in this plan — only the new verify:phase-4a key is added (the `.mjs` retirement touches them in 04a-09)."
+    - "No modification of the existing verify:phase-1..4 keys in this plan — only the new verify:phase-4a key is added (the `.mjs` retirement in 04a-09 touches ALL SIX verify keys incl. this new one)."
 ---
 
 <!-- 04a-01 (2026-08-12): Wave-1 foundation. The four spec-§7-approved-but-uninstalled
@@ -108,10 +108,10 @@ Output: package.json + pnpm-lock.yaml with the pinned four libraries + @types/tu
   <name>Task 3: Add verify:phase-4a script (§24 chain)</name>
   <files>package.json</files>
   <read_first>
-    - package.json scripts block (verify:phase-1..4 at L19-22 — the §24 chain shape to mirror)
+    - package.json scripts block (verify:phase-1..4 at L19-23 — the five §24-chain scripts to mirror)
   </read_first>
   <action>
-    Add to package.json scripts: `"verify:phase-4a": "eslint . && prettier --check . && tsc --noEmit && wxt build && vitest run && node tests/isolation/check-content-bundle.mjs"` — byte-identical chain shape to verify:phase-4 (L22). Do NOT add test-count assertions. Do NOT modify the existing verify:phase-1..4 keys (the `.mjs` retirement in 04a-09 will adjust them).
+    Add to package.json scripts: `"verify:phase-4a": "eslint . && prettier --check . && tsc --noEmit && wxt build && vitest run && node tests/isolation/check-content-bundle.mjs"` — byte-identical chain shape to verify:phase-4 (L23). Do NOT add test-count assertions. Do NOT modify the existing verify:phase-1..4 keys (the `.mjs` retirement in 04a-09 will adjust all six verify keys incl. this one).
   </action>
   <acceptance_criteria>
     - `node -e "const p=require('./package.json'); console.log(p.scripts['verify:phase-4a'])"` prints the full §24 chain including `eslint .`, `prettier --check .`, `tsc --noEmit`, `wxt build`, `vitest run`, and `node tests/isolation/check-content-bundle.mjs`.
@@ -144,12 +144,12 @@ Output: package.json + pnpm-lock.yaml with the pinned four libraries + @types/tu
 <verification>
 - `pnpm ls defuddle @mozilla/readability turndown minisearch @types/turndown` shows the four pinned majors + the type declarations.
 - `node -p "require('defuddle/package.json').version"` == 0.6.6 exactly.
-- `pnpm vitest run tests/fixtures -x` green (fixture determinism smoke).
+- `pnpm vitest run tests/fixtures -x` green — fixture determinism smoke; **owned by 04a-02** (the same-wave fixture plan), listed here as the shared-fixture dependency note, not a 04a-01 gate.
 </verification>
 
 <success_criteria>
 - The four approved libraries are installed at the spec-pinned majors (R-9); defuddle is verified at exactly 0.6.6 (privacy-safe).
-- tests/fixtures/pageContent.ts provides the D-4a-24 shared golden fixtures with deterministic builders.
+- tests/fixtures/pageContent.ts provides the D-4a-24 shared golden fixtures with deterministic builders — **owned by 04a-02** (same-wave); listed here for the phase view, not produced here.
 - The checkpoint gate ran before the install (blocking, not auto-approvable — workflow.auto_advance ignored per protocol).
 </success_criteria>
 
@@ -162,5 +162,5 @@ Create `.planning/phases/04a-pagecontentservice-knowledge-acquisition/04a-01-SUM
 - package.json deps: `defuddle@^0.6`, `@mozilla/readability@^0.5`, `turndown@^7`, `minisearch@^7`
 - package.json devDeps: `@types/turndown@^5`
 - pnpm-lock.yaml (updated)
-- tests/fixtures/pageContent.ts — `buildArticleFixture`, `buildBoilerplateFixture`, `buildNoHeadingFixture`, `buildLargeArticleFixture`, `buildRawNodeFixture` + fixed constants (FIXED_URL, FIXED_TITLE, FIXED_TIMESTAMP)
-- tests/fixtures/fixtures.test.ts (extended — pageContent determinism smoke block)
+- tests/fixtures/pageContent.ts — `buildArticleFixture`, `buildBoilerplateFixture`, `buildNoHeadingFixture`, `buildLargeArticleFixture`, `buildRawNodeFixture` + fixed constants (FIXED_URL, FIXED_TITLE, FIXED_TIMESTAMP) — **owned by 04a-02** (same-wave plan; this plan owns package.json only)
+- tests/fixtures/fixtures.test.ts (extended — pageContent determinism smoke block) — **owned by 04a-02**
