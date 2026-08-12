@@ -6,13 +6,16 @@
 // anywhere else (single source of truth).
 export const ERROR_CODES = {
   // --- Runtime / messaging ---
+  // 4a W-1 reconciliation (D-4a-22): CONTENT_EXTRACT → CONTENT_EXTRACT_FAILED —
+  // canonical §16/§20.7 code; spec Appendix C.2 Phase-1 mirror updated in the
+  // same commit (single source of truth). O.12's EXTRACTION_FAILED never added.
   MSG_UNKNOWN_TYPE: 'MSG_UNKNOWN_TYPE',
   MSG_DESERIALIZE: 'MSG_DESERIALIZE',
   MSG_SERIALIZE: 'MSG_SERIALIZE',
   PORT_DISCONNECTED: 'PORT_DISCONNECTED',
   CONNECT_FAILED: 'CONNECT_FAILED',
   TABS_QUERY: 'TABS_QUERY',
-  CONTENT_EXTRACT: 'CONTENT_EXTRACT',
+  CONTENT_EXTRACT_FAILED: 'CONTENT_EXTRACT_FAILED',
   CONTENT_CAPABILITIES: 'CONTENT_CAPABILITIES',
   // --- Storage ---
   STORE_READ: 'STORE_READ',
