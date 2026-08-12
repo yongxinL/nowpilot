@@ -109,7 +109,7 @@ beforeEach(() => {
 });
 
 describe('useStreamingLLM — send path (Golden Rule 3 + D-02)', () => {
-  it('sends through runAgentTurn with a contextHelper-built OptimizedContext (never React-assembled prompts)', async () => {
+  it('sends through runAgentTurn with an optimizer-built OptimizedContext (never React-assembled prompts)', async () => {
     resolveTurn(['Hel']);
     const { result } = renderHook(() => useStreamingLLM());
 
@@ -119,9 +119,11 @@ describe('useStreamingLLM — send path (Golden Rule 3 + D-02)', () => {
 
     expect(runAgentTurnMock).toHaveBeenCalledTimes(1);
     const input = runAgentTurnMock.mock.calls[0][0] as AgentTurnInputLike;
-    // The context is a §2.3 OptimizedContext shape (contextHelper output) —
-    // the hook imports contextHelper, it never builds the prompt itself.
-    expect(input.context).toMatchObject({ tier: 'medium', sections: expect.any(Array) });
+    // The context is a §2.3 OptimizedContext shape — the hook imports
+    // ContextOptimizer, it never builds the prompt itself. The tier is DERIVED
+    // from the hoisted mock's modelContextWindow (200_000, 04-05 T2) via
+    // classifyModelContext → 'large' (D-04-04 — never the 'medium' constant).
+    expect(input.context).toMatchObject({ tier: 'large', sections: expect.any(Array) });
     expect(input.userInput).toBe('hi');
     expect(input.tier).toEqual({ plannerCap: 3, toolCap: 2, mcpChaining: true });
     expect(result.current.state).toEqual({ state: 'completed', operationId: input.operationId });
@@ -139,23 +141,11 @@ describe('useStreamingLLM — send path (Golden Rule 3 + D-02)', () => {
     expect(result.current.state.state).toBe('completed');
   });
 
-  it('exposes the StageResolver over createStageInvocation (03-05 seam)', async () => {
-    // Have the mock invoke the resolver for the planner stage to prove the
-    // hook wired the Router seam (per-stage maxTokens 256 planner / 512 renderer).
-    runAgentTurnMock.mockImplementationOnce(async (input: AgentTurnInputLike) => {
-      // Prove the hook wired the Router seam: invoke the resolver for both
-      // stages (the per-stage maxTokens are asserted from the call args below).
-      input.invocation?.('planner');
-      input.invocation?.('renderer');
-      return {
-        operationId: input.operationId,
-        status: 'completed',
-        reasonCode: 'ok',
-        evidence: [],
-        plannerCalls: 1,
-        toolCalls: 0,
-      };
-    });
+  it('exposes the StageResolver over createStageInvocation — both stages resolved upfront (04-06 rewire)', async () => {
+    // D-04-04/05: the hook resolves BOTH stages upfront to read each
+    // StageInvocation's modelContextWindow for the per-stage optimizer calls
+    // (no longer resolved lazily inside runAgentTurn).
+    resolveTurn(['ok']);
     const { result } = renderHook(() => useStreamingLLM());
 
     await act(async () => {
