@@ -193,7 +193,7 @@ Deferred to a future release. Tracked but not in the current roadmap.
 | AI-01…06 | Phase 3 | Done |
 | AI-07 | Phase 8 (re-mapped per D-06 — MCP dependency-blocked to Phase 8/8a) | Complete |
 | AGT-01…05 | Phase 3a | Done |
-| CTX-01…04 | Phase 4 | CTX-01 Done (04-01), CTX-02…04 Pending |
+| CTX-01…04 | Phase 4 | Done |
 | CAT-01…05 | Phase 4a | Pending |
 | TRUST-01…03 | Phase 4b | Pending |
 | KNW-01…05 | Phase 5 | Pending |
