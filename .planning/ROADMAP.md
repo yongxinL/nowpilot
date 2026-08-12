@@ -220,7 +220,15 @@ Plans:
   3. Minimal mode blocks MCP chaining and LLM-Wiki RAG synthesis for small local models.
   4. Every OptimizedContext carries a ContextProvenanceManifest.
 
-**Plans**: TBD
+**Plans**: 7 plans
+Plans:
+- [ ] 04-01-PLAN.md — context foundation: MODEL_CONTEXT_WINDOWS map + TokenBudget (70/20/10 + caps) + fixture extension (wave 1)
+- [ ] 04-02-PLAN.md — degradation primitives: ContextPack + ContextCompressor (§2.4 ladder, section-granular) (wave 2)
+- [ ] 04-03-PLAN.md — provenance manifest extension + Zod schema + kind-lockstep guard (wave 2)
+- [ ] 04-04-PLAN.md — ContextOptimizer: tier/budget derivation, ladder orchestration, minimal mode + compact prompts, CONTEXT_TOO_LARGE terminal, CTX-02 seam (wave 3)
+- [ ] 04-05-PLAN.md — Router: StageInvocation.modelContextWindow stamp + fixture updates (wave 3)
+- [ ] 04-06-PLAN.md — hook rewire: per-stage optimization + contextForStage seam + contextHelper deletion (Pitfall 1) + STR (wave 4)
+- [ ] 04-07-PLAN.md — phase gate: verify:phase-4 script + CTX re-map notes + W-1 spec canonicalizations + full green seal (wave 5)
 
 ### Phase 4a: PageContentService (Knowledge Acquisition)
 
