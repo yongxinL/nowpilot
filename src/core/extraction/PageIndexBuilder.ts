@@ -75,7 +75,13 @@ export function chunkMarkdown(
   // (preamble) — content before the first heading (no orphaned lead text).
   const preambleText = lines.slice(0, headings[0].lineIndex).join('\n').trim();
   if (preambleText.length > 0) {
-    chunks.push({ id: `${tabId}:(preamble):0`, title, url, headingPath: '', sectionText: preambleText });
+    chunks.push({
+      id: `${tabId}:(preamble):0`,
+      title,
+      url,
+      headingPath: '',
+      sectionText: preambleText,
+    });
   }
 
   // Breadcrumb stack (h1 > h2 > h3) — pop siblings/deeper levels per heading level.
@@ -94,7 +100,13 @@ export function chunkMarkdown(
     if (estimateTokens(body) > INDEX_CHUNK_MAX_TOKENS) {
       // D-4a-16 sub-chunking: paragraph sub-chunks inheriting the same headingPath.
       splitParagraphBlocks(body).forEach((para, chunkIndex) => {
-        chunks.push({ id: `${tabId}:${headingPath}:${chunkIndex}`, title, url, headingPath, sectionText: para });
+        chunks.push({
+          id: `${tabId}:${headingPath}:${chunkIndex}`,
+          title,
+          url,
+          headingPath,
+          sectionText: para,
+        });
       });
     } else {
       chunks.push({ id: `${tabId}:${headingPath}:0`, title, url, headingPath, sectionText: body });

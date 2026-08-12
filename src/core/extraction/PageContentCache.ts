@@ -37,7 +37,10 @@ export interface PageCacheEntry {
  * Input for {@link PageContentCache.set} — content + index handle; the cache
  * stamps recency and preserves/derives the eviction marks.
  */
-export type PageCacheEntryInput = Omit<PageCacheEntry, 'recency' | 'pinned' | 'subscribed' | 'inFlight'>;
+export type PageCacheEntryInput = Omit<
+  PageCacheEntry,
+  'recency' | 'pinned' | 'subscribed' | 'inFlight'
+>;
 
 export class PageContentCache {
   private readonly entries = new Map<number, PageCacheEntry>();

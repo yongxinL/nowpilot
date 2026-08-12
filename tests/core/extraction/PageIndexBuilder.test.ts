@@ -12,8 +12,16 @@ import { describe, expect, it } from 'vitest';
 
 import { estimateTokens } from '@/core/context/TokenBudget';
 import { htmlToMarkdown } from '@/core/extraction/PageContentSerializer';
-import { INDEX_CHUNK_MAX_TOKENS, buildPageIndex, chunkMarkdown } from '@/core/extraction/PageIndexBuilder';
-import { buildArticleFixture, buildLargeArticleFixture, buildNoHeadingFixture } from '../../fixtures/pageContent';
+import {
+  INDEX_CHUNK_MAX_TOKENS,
+  buildPageIndex,
+  chunkMarkdown,
+} from '@/core/extraction/PageIndexBuilder';
+import {
+  buildArticleFixture,
+  buildLargeArticleFixture,
+  buildNoHeadingFixture,
+} from '../../fixtures/pageContent';
 
 describe('PageIndexBuilder (04a-05 — heading chunking + (preamble) + headingPath, D-4a-16)', () => {
   it('exports the pinned INDEX_CHUNK_MAX_TOKENS = 500 constant', () => {
@@ -41,8 +49,16 @@ describe('PageIndexBuilder (04a-05 — heading chunking + (preamble) + headingPa
       expect(estimateTokens(c.sectionText)).toBeLessThanOrEqual(INDEX_CHUNK_MAX_TOKENS);
     }
     // The other two h2 sections exist with the same breadcrumb shape.
-    expect(chunks.some((c) => c.headingPath === 'Deep Dive: Extraction Internals > Layered Strategy Order')).toBe(true);
-    expect(chunks.some((c) => c.headingPath === 'Deep Dive: Extraction Internals > Ephemeral Index Lifecycle')).toBe(true);
+    expect(
+      chunks.some(
+        (c) => c.headingPath === 'Deep Dive: Extraction Internals > Layered Strategy Order',
+      ),
+    ).toBe(true);
+    expect(
+      chunks.some(
+        (c) => c.headingPath === 'Deep Dive: Extraction Internals > Ephemeral Index Lifecycle',
+      ),
+    ).toBe(true);
   });
 
   it('falls back to paragraph-block chunks under the page title for no-heading markdown', () => {
@@ -71,7 +87,9 @@ describe('PageIndexBuilder (04a-05 — heading chunking + (preamble) + headingPa
     expect(results.length).toBeGreaterThan(0);
     const hit = results[0];
     expect(hit.sectionText).toContain('quickstart');
-    expect(hit.headingPath).toBe('How NowPilot Extracts Page Content > Architecture > Detached parsing');
+    expect(hit.headingPath).toBe(
+      'How NowPilot Extracts Page Content > Architecture > Detached parsing',
+    );
     // storeFields are populated on results (title/url/headingPath/sectionText).
     expect(hit.title).toBe(title);
     expect(hit.url).toBe(url);
