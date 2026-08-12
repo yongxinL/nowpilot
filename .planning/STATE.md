@@ -6,7 +6,7 @@ current_phase: 04a
 current_phase_name: PageContentService (Knowledge Acquisition
 status: executing
 stopped_at: Completed 04a-03-PLAN.md
-last_updated: "2026-08-12T20:17:31.144Z"
+last_updated: "2026-08-12T20:18:59.418Z"
 last_activity: 2026-08-12
 last_activity_desc: Phase 04a execution started
 progress:
@@ -206,6 +206,9 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 04a]: CONTENT_EXTRACT_FAILED is the single canonical extraction error code (D-4a-22 W-1 gate): errorCodes.ts L18 + spec Appendix C.2 Phase-1 block L5108 renamed in one atomic commit; O.12's EXTRACTION_FAILED never added
 - [Phase 04a]: RawNode fixture type inlined in tests/fixtures/pageContent.ts (spec Appendix C L4414-4425 verbatim) since apcLite.types.ts does not exist yet; structural typing verifies compatibility when the ApcLiteStrategy plan lands the real type (R-1)
 - [Phase ?]: defuddle installed at ^0.19 -> 0.19.2 (USER DEVIATION from spec ^0.6/0.6.6 pin, approved at the Task 1 blocking-human gate); 0.19.2 adds useAsync (verified in dist/types.d.ts + README third-party fetch section) — 04a-04 DefuddleStrategy MUST set useAsync:false to preserve the R-10 zero-network-call privacy guarantee (research A5 now ACTIVE)
+- [Phase ?]: [Phase 04a]: apcLite.types.ts + strategies/IExtractionStrategy.ts are R-1 canonical homes per Appendix C.1 verbatim (D-4a-11 full-schema-now; zero rework when 4b/5/8 or v2 automation lands) — prettier-normalized for the phase gate with zero semantic drift; the D-4a-20 password refine reads .refine((c) => !(c.isPassword && c.value !== undefined), ...) (arrow-paren normalized, never loosened)
+- [Phase ?]: [Phase 04a]: PageContentSerializer locks the RESEARCH-critical pipeline correction — defuddle@0.6.6's browser-bundle markdown option is a NO-OP, so turndown (approved stack) is the ONE HTML→markdown converter every prose path routes through (Pitfall 1); TURNDOWN_OPTIONS parity constant verified byte-identical to defuddle's own markdown.js (A6)
+- [Phase ?]: [Phase 04a]: The 'servicenow-api' strategy id is reserved in the StrategyResult source union but NOT implemented (D-4a-17) — the ServiceNow add-on registers its strategy in Phase 8; RawNode type-import added to IExtractionStrategy (spec block references it without importing — compile-blocking, Rule 3)
 
 ### Pending Todos
 
