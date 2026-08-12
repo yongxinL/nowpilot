@@ -1,26 +1,12 @@
 ---
 phase: 04-context-adaptive-execution
 verified: 2026-08-12T08:00:00Z
-status: human_needed
+re-verified: 2026-08-12T09:42:00Z
+status: passed
 score: 4/4 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
-human_verification:
-  - test: "Review CR-01 (critical, UNFIXED): in src/core/ai/ProviderRouter.ts buildCallProviderJsonMode, a D-17 timeout-origin retry runs on a derived controller re-parented to an ALREADY-ABORTED parent signal — the abort event never re-fires, so the retried SDK call has no timeout and cannot be cancelled; an orphaned paid request can survive user cancellation (violates spec §17.5 abort/billing invariant). Decision: fix now (skip retry on dead signal + per-retry timeout, per reviewer patch) or accept a tracked deferral with an explicit override."
-    expected: "Human decides whether CR-01 blocks progression or is deferred with a tracked override; a fix commit exists if fix-now is chosen."
-    why_human: "CR-01 is a real-time abort/timing behavior involving paid-request billing impact that no static check or test suite exercises (the budget tests all use 5XX parents, so the dead-signal retry path is invisible); the phase gate does not cover it."
-  - test: "Review WR-01 (UNFIXED): three catch paths return without GR-9 debugLog — useStreamingLLM.ts isContextTooLargeError branch (L229-236), AgentOrchestrator.ts provider_unconfigured terminal (L140-152), ProviderRouter.ts unavailable site (L461-464)."
-    expected: "Human decides whether to add canonical debugLog calls (no user/provider text) or accept the observability gap as a tracked item."
-    why_human: "GR-9 is a project Golden Rule ('Every catch calls debugLog(code, …)'); whether the isContextTooLargeError branch's missing log is a blocker for a privacy-first extension is a judgment call."
-  - test: "Review WR-02 (UNFIXED): TokenBudget.computeSectionCaps / PER_TIER_DISTRIBUTION / SECTION_CAP_MAPPING have zero runtime consumers — the optimizer's ladder reacts only to aggregate totalTokens > inputBudget, so a single section exceeding its per-kind cap triggers no degradation (contradicts the 'caps DRIVE the ladder' module contract)."
-    expected: "Human decides between (a) wiring per-kind caps into the ladder, or (b) deleting computeSectionCaps from the runtime surface and re-scoping tests — the half-wired state will silently rot."
-    why_human: "CTX-01's 'budget enforcement' is met at the aggregate level (proven by tests), but whether per-kind cap enforcement is required for the phase's intent is an architectural judgment."
-  - test: "Review WR-03 (UNFIXED): ContextOptimizer bypasses ContextCompressor's no-op step functions (dropSecondaryNotes/summariseOlderHistory/compressPageContext/reduceMemoryTopK) and enterMinimalMode — the exports are tested but dead in the runtime path; the optimizer re-implements minimal-mode assembly inline."
-    expected: "Human decides whether to call the module functions (honoring their markers) or delete the unused exports — resolving the dual-source-of-truth."
-    why_human: "Runtime behavior is identical either way (sections pass through), so no test can fail on this; it is a maintainability/structure decision."
-  - test: "Review WR-04 (UNFIXED): STR.chat.messageTooLong (strings.ts L15) has no runtime consumer — verified by grep; the CONTEXT_TOO_LARGE branch sets the same generic { state: 'failed' } as every other failure, so the user sees the provider-error/Retry bubble for an input that can never succeed via Retry (Retry re-sends the same oversized input)."
-    expected: "Human decides whether to add a failed-state discriminator (e.g. reason: 'too_long') and render messageTooLong (suppressing Retry), or accept the generic surface."
-    why_human: "This is an error-message-clarity / UX-surface judgment that grep cannot settle; the T-04-25 test pins only the failed state, making the gap invisible to CI."
+human_verification: []
 gaps: []
 behavior_unverified_items: []
 ---
@@ -29,8 +15,8 @@ behavior_unverified_items: []
 
 **Phase Goal:** AI execution adapts to model context — tiered windows with budget enforcement, graceful degradation on overflow, minimal-mode limits, and a provenance manifest on every context pack.
 **Verified:** 2026-08-12T08:00:00Z
-**Status:** human_needed
-**Re-verification:** No — initial verification
+**Status:** passed (re-verified after review fixes)
+**Re-verification:** Yes — all REVIEW.md findings (CR-01 + WR-01..07) fixed and sealed; `verify:phase-4` green (69 files / 615 tests, isolation clean)
 
 ## Goal Achievement
 
@@ -132,53 +118,27 @@ All 4 requirement IDs claimed by plans are accounted for — no orphaned require
 | — | — | TBD/FIXME/XXX markers | ℹ️ none found | — |
 | — | — | text.slice/substring on section text | ℹ️ none found (only comments mention the prohibition) | — |
 | — | — | Placeholder/stub returns | ℹ️ none found | — |
-| src/core/ai/ProviderRouter.ts | 666-752 | CR-01: D-17 timeout-origin retry untimed + un-cancellable (parent signal already aborted; re-parented derived controller can never fire) | 🛑 CRITICAL (review-recorded, UNFIXED) | Orphaned paid request can survive user cancellation; violates §17.5 'abort() cancels generation so no orphaned request bills tokens'. Pre-existing from Phase 3's WR-03A fix (d03dacd), surfaced by the Phase-4 review. Not a Phase-4 SC failure — surfaced here for human decision |
-| useStreamingLLM.ts L229-236 / AgentOrchestrator.ts L140-152 / ProviderRouter.ts L461-464 | — | WR-01: GR-9 catch paths return without debugLog | ⚠️ WARNING (review-recorded, UNFIXED) | Observability gaps on 3 error paths (verified: hook isContextTooLargeError branch has 0 debugLog) |
-| TokenBudget.ts L100-117 | — | WR-02: computeSectionCaps dead in runtime path (zero src/ consumers; ladder is aggregate-only) | ⚠️ WARNING (review-recorded, UNFIXED) | Per-kind cap overruns silently accepted; module contract 'caps DRIVE the ladder' half-wired |
-| ContextOptimizer.ts L143-187 | — | WR-03: ContextCompressor no-op exports + enterMinimalMode bypassed (bare `break`) | ⚠️ WARNING (review-recorded, UNFIXED) | Dual-source-of-truth; exports tested but dead at runtime |
-| useStreamingLLM.ts L229-236 + strings.ts L15 | — | WR-04: messageTooLong surface unwired (0 runtime consumers — grep-verified; only a comment references it) | ⚠️ WARNING (review-recorded, UNFIXED) | User sees generic failed/Retry bubble for an input that can never succeed via Retry |
+| src/core/ai/ProviderRouter.ts | 666-752 | CR-01: D-17 timeout-origin retry untimed + un-cancellable (parent signal already aborted; re-parented derived controller can never fire) | ✅ FIXED (`cd45e75`) | Retry refused on dead signal (`if (signal.aborted) throw e;`) + per-attempt retry timer (`RETRY_TIMEOUT_MS = 3_000`) with clearTimeout in finally; timeout-origin retry now a bounded terminal, carrier propagates to planner_failed |
+| useStreamingLLM.ts L229-236 / AgentOrchestrator.ts L140-152 / ProviderRouter.ts L461-464 | — | WR-01: GR-9 catch paths return without debugLog | ✅ FIXED (`a413f90`) | Canonical-code debugLog (module + operationId only, R-10) added to all three sites; abort branch stays silent by design |
+| TokenBudget.ts L100-117 | — | WR-02: computeSectionCaps dead in runtime path (zero src/ consumers; ladder is aggregate-only) | ✅ FIXED (`12a9c3d`) | `optimize` computes computeSectionCaps and the ladder fires on aggregate OR per-kind overrun; regression test: user_input over its cap fires minimal-mode under-aggregate |
+| ContextOptimizer.ts L143-187 | — | WR-03: ContextCompressor no-op exports + enterMinimalMode bypassed (bare `break`) | ✅ FIXED (`12a9c3d`) | All 8 registry steps call their module functions (markers in stepsFired); enterMinimalMode marks the §2.5 pipeline; trim-tools got a real in-scope predicate |
+| useStreamingLLM.ts L229-236 + strings.ts L15 | — | WR-04: messageTooLong surface unwired (0 runtime consumers — grep-verified; only a comment references it) | ✅ FIXED (`da7256c`) | failed state gains `reason: 'too_long'` discriminator; ChatPage renders STR.chat.messageTooLong and suppresses Retry (T-04-25 + ChatPage test pin it) |
 
 ### Human Verification Required
 
-The phase goal is **achieved** (4/4 success criteria behaviorally verified), but the phase's own code-review report (04-REVIEW.md, status `issues_found`, committed last — no fix commits follow) records 1 critical + 4 warnings that remain **unfixed** and involve judgment only a human can settle. These must not be silently absorbed into a passed verdict.
+N/A — the initial report's `human_needed` items (CR-01 + WR-01..04) were resolved by the phase's code-review fix report (04-REVIEW-FIX.md): all fixed and committed (`cd45e75`, `a413f90`, `12a9c3d`, `da7256c`), plus three additional fixes WR-05 (unmount abort, `d9c420b`), WR-06 (render-phase abort → idle, `e6cb361`), WR-07 (single token counter, `cda1926`).
 
-### 1. CR-01 — D-17 timeout-origin retry is untimed and cannot be aborted (orphaned paid request)
-
-**Test:** In `src/core/ai/ProviderRouter.ts` buildCallProviderJsonMode, trigger a D-17 retry from a timeout-origin failure, then cancel the turn. Observe that the retried `invokeJsonMode` call has no timer of its own and its derived controller is re-parented to a signal whose 'abort' event already fired — the user cancel is a no-op and the call keeps running (and can bill).
-**Expected:** Human decides: fix now (skip the retry on a dead signal + arm a per-retry timeout, per the reviewer's patch) or accept a tracked deferral with an explicit override. A fix commit exists if fix-now is chosen.
-**Why human:** Real-time abort/timing behavior with billing impact; the test suite only exercises 5XX-origin retries (live parent), so the dead-signal path is invisible to CI; the phase gate does not cover it.
-
-### 2. WR-01 — Golden Rule 9 gaps (three catch paths without debugLog)
-
-**Test:** Read useStreamingLLM.ts L229-236 (isContextTooLargeError branch — verified 0 debugLog), AgentOrchestrator.ts L140-152 (provider_unconfigured), ProviderRouter.ts L461-464 (unavailable site).
-**Expected:** Human decides whether to add canonical-code debugLog calls (no user/provider text) or accept the observability gap as tracked debt.
-**Why human:** GR-9 is a project Golden Rule; whether the missing log is a blocker for a privacy-first extension (the T-04-28 'never log user text' rationale is compatible with logging the code only) is a judgment call.
-
-### 3. WR-02 — Per-kind section caps never drive the ladder
-
-**Test:** Send a turn whose single `user_input` section exceeds its per-kind cap while aggregate stays under inputBudget; observe zero degradation fires.
-**Expected:** Human decides (a) wire per-kind caps into the ladder (fire trim-tools/minimal-mode on per-kind overrun), or (b) delete computeSectionCaps/SECTION_CAP_MAPPING/PER_TIER_DISTRIBUTION from the runtime surface and re-scope tests — the half-wired state will silently rot.
-**Why human:** Aggregate budget enforcement (CTX-01) is proven; whether per-kind column-budget semantics are required for the phase intent is an architectural decision no grep settles.
-
-### 4. WR-03 — ContextCompressor no-op steps bypassed at runtime
-
-**Test:** Trace the optimizer's LADDER_STEPS loop — 'drop-secondary'/'summarise-history'/'compress-page'/'reduce-topk' hit bare `break`; the module's exported functions and enterMinimalMode are never called.
-**Expected:** Human decides whether to call the module functions (honoring markers into stepsFired) or delete the unused exports — one or the other, ending the dual-source-of-truth.
-**Why human:** Runtime output is identical either way (sections pass through), so no test can fail; it is a structure/maintainability decision.
-
-### 5. WR-04 — messageTooLong surface unwired
-
-**Test:** Trigger the CONTEXT_TOO_LARGE terminal in the UI; observe the generic provider-error/Retry bubble — STR.chat.messageTooLong (strings.ts L15) is never rendered (0 runtime consumers, grep-verified).
-**Expected:** Human decides whether to add a failed-state discriminator (e.g. reason:'too_long') rendering messageTooLong and suppressing Retry (Retry re-sends the same oversized input into the same terminal), or accept the generic surface.
-**Why human:** Error-message clarity / UX-surface judgment; the T-04-25 test pins only state 'failed', so the gap is invisible to CI.
+**Re-verification evidence (seal):**
+- WR-06 abort→idle across the hook/renderer boundary (the one item the fix report asked to confirm end-to-end): `RendererService.test.ts` + `RendererService.streamBreakdown.test.ts` + `useStreamingLLM.test.tsx` → 3 files / 37 tests pass (AbortError propagates, breaker never votes on it, hook maps abort→idle).
+- `pnpm run verify:phase-4` (full §24 chain: eslint + prettier --check + tsc --noEmit + wxt build + vitest run + isolation check) → **green**: 69 test files / 615 tests passed, content-scripts + background SW bundles clean.
+- Prettier formatting of the three WR-touched files (ChatPage.tsx, ContextOptimizer.ts, ContextOptimizer.test.ts) fixed to make `prettier --check` pass.
 
 ### Gaps Summary
 
-No success-criterion truth failed: 4/4 verified with behavioral test evidence, all artifacts substantive + wired, all key links connected, all 4 CTX requirements satisfied per the documented re-maps. The phase goal is achieved.
-
-The status is `human_needed`, not `passed`, because the phase's own REVIEW.md records 1 critical (CR-01 — abort/billing invariant violation in the D-17 retry) and 4 warnings (WR-01..04) that are **unfixed and require human decision** (fix-now vs. tracked deferral). These are judgment-tier items — not silent-pass material. CR-01 also warrants an explicit decision because it violates the spec §17.5 abort invariant and involves paid-request billing (impact extends to later phases' bounded-run guarantees). If the human accepts the review findings as deferred with overrides, the status can be re-verified as passed.
+**Status: passed (sealed).** No success-criterion truth failed: 4/4 verified with behavioral test evidence, all artifacts substantive + wired, all key links connected, all 4 CTX requirements satisfied per the documented re-maps. All REVIEW.md findings (1 critical + 4 warnings) plus WR-05..07 were fixed and committed; `verify:phase-4` is green on the fixed tree. Phase 4 is complete per Golden Rule 10.
 
 ---
 
 _Verified: 2026-08-12T08:00:00Z_
+_Re-verified: 2026-08-12T09:42:00Z_
 _Verifier: the agent (gsd-verifier)_
