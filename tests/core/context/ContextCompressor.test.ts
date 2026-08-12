@@ -37,7 +37,10 @@ import { CACHED_KINDS, TASK_KINDS } from '@/core/ai/ProviderRouter';
 import type { PromptSection } from '@/core/ai/types';
 import { GET_PROVIDER_INFO_TOOL } from '@/core/ai/toolSchemas';
 import { FIXED_PERSONA_BLOCK } from '../../fixtures/optimizedContext';
-import { buildOptimizedContextFixture, OVER_BUDGET_SECTIONS } from '../../fixtures/optimizedContext';
+import {
+  buildOptimizedContextFixture,
+  OVER_BUDGET_SECTIONS,
+} from '../../fixtures/optimizedContext';
 
 /** A synthetic debug-metadata section (ladder trigger — not fixture data). */
 const DEBUG_SECTION: PromptSection = {
@@ -143,7 +146,9 @@ describe('packSections (04-02 Task 1 — §1.3 canonical packing, D-04-08)', () 
     const sections = packSections(FULL_INPUT);
     const schemas = sections.find((s) => s.kind === 'tool_schemas');
     expect(schemas?.text).toBe('get-provider-info: Active provider + model + limits');
-    expect(schemas?.tokens).toBe(estimateTokens('get-provider-info: Active provider + model + limits'));
+    expect(schemas?.tokens).toBe(
+      estimateTokens('get-provider-info: Active provider + model + limits'),
+    );
   });
 
   it('returns sections whose text is byte-identical to the input text (never a joined string, F-4)', () => {
