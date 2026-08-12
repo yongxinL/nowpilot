@@ -59,7 +59,10 @@ function parseDetached(html: string, baseUrl: string): Document {
  * per-page calibration).
  */
 function extractedTextLength(html: string): number {
-  return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length;
+  return html
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim().length;
 }
 
 /**

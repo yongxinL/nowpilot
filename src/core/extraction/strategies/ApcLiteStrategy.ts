@@ -48,10 +48,7 @@ function countNodes(node: APCLiteNode): number {
 
 /** Concatenated text of the tree — the approxTokens estimate source. */
 function collectText(node: APCLiteNode): string {
-  return [
-    node.text ?? '',
-    ...(node.children?.flatMap((child) => [collectText(child)]) ?? []),
-  ]
+  return [node.text ?? '', ...(node.children?.flatMap((child) => [collectText(child)]) ?? [])]
     .filter(Boolean)
     .join(' ');
 }

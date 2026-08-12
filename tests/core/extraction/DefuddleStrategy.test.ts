@@ -18,7 +18,11 @@
 //   4. canHandle({mode:'actionable'}) → false (D-4a-14 mode gating).
 import { describe, expect, it } from 'vitest';
 
-import { DefuddleStrategy, MIN_CONTENT_DENSITY, MIN_EXTRACTED_CHARS } from '@/core/extraction/strategies/DefuddleStrategy';
+import {
+  DefuddleStrategy,
+  MIN_CONTENT_DENSITY,
+  MIN_EXTRACTED_CHARS,
+} from '@/core/extraction/strategies/DefuddleStrategy';
 import {
   FIXED_TITLE,
   buildArticleFixture,
