@@ -23,10 +23,14 @@ export const MessageType = {
   WORKSPACE_UPDATED: 'WORKSPACE_UPDATED', //
   WORKSPACE_HEARTBEAT: 'WORKSPACE_HEARTBEAT', //
   // D-17 additions — content bridge minimum subset (extensions to the canonical
-  // enum per RESEARCH reconciliation #2, NOT a phase-local contract)
+  // enum per RESEARCH reconciliation #2, NOT a phase-local contract). 04a-07
+  // adds PAGE_CONTENT_EXTRACTED — the extraction REPLY (EXTRACT_PAGE_CONTENT
+  // above is the request; the reply reuses its request envelope + opId, Pitfall
+  // 5) — the ONLY Phase-4a canonical addition.
   PING: 'PING', PONG: 'PONG',
   GET_CONTENT_CAPABILITIES: 'GET_CONTENT_CAPABILITIES',
   CONTENT_CAPABILITIES: 'CONTENT_CAPABILITIES',
+  PAGE_CONTENT_EXTRACTED: 'PAGE_CONTENT_EXTRACTED',
 } as const;
 export type MessageTypeValue = (typeof MessageType)[keyof typeof MessageType];
 export const MessageTypeValues = Object.values(MessageType) as MessageTypeValue[];
