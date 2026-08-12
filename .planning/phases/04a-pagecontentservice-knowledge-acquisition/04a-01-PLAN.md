@@ -14,7 +14,7 @@ must_haves:
     - "package.json gains `defuddle@^0.6.6`, `@mozilla/readability@^0.5.0`, `turndown@^7.2.4`, `minisearch@^7.2.0` under dependencies and `@types/turndown@^5.0.6` under devDependencies — the four spec-§7-approved-but-uninstalled libs (R-9) plus the turndown type declarations (RESEARCH: turndown 7 ships no bundled .d.ts — strict tsc fails without them)."
     - "`package.json` gains `verify:phase-4a` = the §24 chain: `eslint . && prettier --check . && tsc --noEmit && wxt build && vitest run && node tests/isolation/check-content-bundle.mjs` (mirrors verify:phase-1..4, L19-23 — five existing scripts incl. verify:phase-3a at L22) — the isolation step keeps the `.mjs` call until the 04a-09 isolation plan retires it from ALL SIX verify scripts incl. this one (D-4a-23)."
     - "The §24 chain is the SAME shape as verify:phase-4 (L23) — eslint, prettier --check, tsc --noEmit, wxt build, full vitest run, isolation check; no exact test-count assertions (P-5)."
-    - "defuddle resolves to exactly 0.6.6 (spec ^0.6 pin — RESEARCH: latest is 0.19.2; the pinned version is the privacy-safe one with NO useAsync, zero network calls)."
+    - "defuddle resolves to exactly 0.19.2 — USER DEVIATION from the spec ^0.6 pin → 0.6.6 (approved 2026-08-12; RESEARCH: 0.19.2 adds useAsync network behavior, so 04a-04 MUST set useAsync:false — see flagged_assumptions A5 deviation note)."
   artifacts:
     - "package.json"
     - "pnpm-lock.yaml"
@@ -23,11 +23,11 @@ must_haves:
     - "verify:phase-4a is the phase gate every later plan's final wave seals against (04a-10); the isolation step is meaningful only after the content-side plans add real bundle content."
   flagged_assumptions:
     - "A1 [research, ASSUMED]: turndown@7.2.4 API matches @types/turndown@5.0.6 types (TurndownService/options/addRule/keep/remove/use) — verified stable across v7 releases; the 04a-03 typecheck gate proves it."
-    - "A5 [research, ASSUMED]: defuddle@0.6.6 site-specific extractors perform zero network calls (no useAsync at this version) — privacy-safe (R-10); any future upgrade MUST set useAsync:false (documented in DefuddleStrategy)."
+    - "A5 [research, DEVIATION — user-approved 2026-08-12]: defuddle installs at ^0.19 → resolves 0.19.2 (user decision overriding the spec-§7 ^0.6 pin; checkpoint Task 1 gate approved with this modified scope). 0.19.2 adds the `useAsync` option with a third-party fetch fallback — 04a-04's DefuddleStrategy MUST construct with `useAsync: false` to keep the zero-network-call privacy guarantee (R-10; RESEARCH A5 — the upgrade requirement is now ACTIVE, not future). Threat rows T-4a-SC/T-4a-05 dispositions unchanged: the blocking human gate covered 0.19.2 legitimacy at the user's direction. Recorded in 04a-01-SUMMARY.md Deviations."
     - "CAT-01 [unresolved — spec-less probe]: empty/single-element/null input → all strategies produce no usable content → extractLayered throws typed CONTENT_EXTRACT_FAILED with fallbacksTried (D-4a-19) — the service plan (04a-08) pins this with an empty-fixture test."
     - "CAT-01 [unresolved — spec-less probe]: length/equality semantics = JavaScript string length (UTF-16 code units) for PAGE_HTML_MAX_BYTES truncation; token counts via the canonical estimateTokens heuristic (CJK ratio) — no byte-level custom counting (04a-03/04a-08)."
   prohibitions:
-    - "No version drift: install the pinned ranges exactly (`@^0.6`, `@^0.5`, `@^7`, `@^7`, `@types/turndown@^5`) — never latest (RESEARCH: defuddle latest 0.19.2 adds useAsync network behavior, breaking R-10)."
+    - "No version drift: install the pinned ranges exactly (`@^0.19` for defuddle — USER DEVIATION superseding the spec's `@^0.6` pin, approved 2026-08-12; `@^0.5`, `@^7`, `@^7`, `@types/turndown@^5` unchanged) — never blind `latest` outside the approved scope."
     - "No import of the new libs into content-side code — defuddle/readability/turndown/minisearch live panel-side only (R-3, Appendix G isolation — enforced by the 04a-09 isolation scan)."
     - "No package outside the approved stack §7 (R-9) and no `@types/turndown@^6`/`^7` — only ^5 exists (RESEARCH verified)."
     - "No modification of the existing verify:phase-1..4 keys in this plan — only the new verify:phase-4a key is added (the `.mjs` retirement in 04a-09 touches ALL SIX verify keys incl. this new one)."
@@ -86,22 +86,22 @@ Output: package.json + pnpm-lock.yaml with the pinned four libraries + @types/tu
     - .planning/phases/04a-pagecontentservice-knowledge-acquisition/04a-RESEARCH.md (Standard Stack + Package Legitimacy Audit rows)
   </read_first>
   <action>
-    Run exactly (R-9 approved stack, spec §7 pins): `pnpm add defuddle@^0.6 @mozilla/readability@^0.5 turndown@^7 minisearch@^7` then `pnpm add -D @types/turndown@^5`.
+    Run (R-9 approved stack, spec §7 pins; USER DEVIATION — install defuddle@^0.19 not ^0.6, see the <deviation> note in flagged_assumptions): `pnpm add defuddle@^0.19 @mozilla/readability@^0.5 turndown@^7 minisearch@^7` then `pnpm add -D @types/turndown@^5`.
 
-    After install, verify resolution with `pnpm why defuddle` / `node -p "require('defuddle/package.json').version"` — assert defuddle resolves to 0.6.6 (NOT 0.19.2 — RESEARCH: newer versions add useAsync network behavior that breaks R-10 privacy), readability 0.5.0, turndown 7.2.4, minisearch 7.2.0, @types/turndown 5.x.
+    After install, verify resolution with `pnpm why defuddle` / `node -p "require('defuddle/package.json').version"` — assert defuddle resolves to 0.19.2 (user-approved latest, NOT the spec-pinned 0.6.6), readability 0.5.0, turndown 7.2.4, minisearch 7.2.0, @types/turndown 5.x. Confirm the 0.19.2 API surface exposes the `useAsync` option (added in later versions) so 04a-04's DefuddleStrategy can set `useAsync: false` — preserving the zero-network-call privacy guarantee (R-10, RESEARCH A5, threat T-4a-05).
 
     Do NOT import any of them yet — this plan only installs. Do NOT touch wxt.config.ts (manualChunks already lists defuddle/yaml for HTML groups; content-bundle isolation is enforced by the import restriction + the 04a-09 scan, per the Phase-1 deviation note). Do NOT run a full build here.
   </action>
   <acceptance_criteria>
-    - `pnpm why defuddle` reports defuddle@0.6.6 (exactly, not 0.19.2) under dependencies.
-    - package.json lists: dependencies += { defuddle: ^0.6, @mozilla/readability: ^0.5, turndown: ^7, minisearch: ^7 }, devDependencies += { @types/turndown: ^5 }.
+    - `pnpm why defuddle` reports defuddle@0.19.2 (user-approved latest, NOT the spec-pinned 0.6.6) under dependencies.
+    - package.json lists: dependencies += { defuddle: ^0.19, @mozilla/readability: ^0.5, turndown: ^7, minisearch: ^7 }, devDependencies += { @types/turndown: ^5 }.
     - `pnpm ls @mozilla/readability turndown minisearch @types/turndown` lists all four with the expected majors.
     - pnpm-lock.yaml is updated and committed with package.json.
   </acceptance_criteria>
   <verify>
-    <automated>node -p "require('defuddle/package.json').version" | grep -x "0.6.6"</automated>
+    <automated>node -p "require('defuddle/package.json').version" | grep -x "0.19.2"</automated>
   </verify>
-  <done>All four libraries + @types/turndown installed at the pinned majors; defuddle verified at exactly 0.6.6; package.json + pnpm-lock.yaml committed.</done>
+  <done>All four libraries + @types/turndown installed at the pinned majors; defuddle verified at exactly 0.19.2 (user deviation from 0.6.6); useAsync option confirmed present; package.json + pnpm-lock.yaml committed.</done>
 </task>
 
 <task type="auto">
@@ -137,18 +137,18 @@ Output: package.json + pnpm-lock.yaml with the pinned four libraries + @types/tu
 | Threat ID | Category | Component | Severity | Disposition | Mitigation Plan |
 |-----------|----------|-----------|----------|-------------|-----------------|
 | T-4a-SC | Tampering | npm/pip installs (defuddle) | high | mitigate | Blocking human checkpoint (Task 1) verified defuddle@0.6.6 legitimacy before install — spec §7 pre-approves ^0.6; research verified no postinstall script, kepano repo, 411 K/wk; the pinned 0.6.6 (not 0.19.2) is privacy-safe (no useAsync network calls, R-10) |
-| T-4a-05 | Information Disclosure | defuddle@0.6.6 extraction engine | high | mitigate | At the pinned version defuddle performs zero network calls (no useAsync — verified in dist source); any future upgrade MUST set `useAsync: false` (A5) — documented in the DefuddleStrategy task (04a-04) |
+| T-4a-05 | Information Disclosure | defuddle@0.19.2 extraction engine | high | mitigate | USER DEVIATION: installed at ^0.19 → 0.19.2 (approved 2026-08-12) — 0.19.2 adds the `useAsync` option with a third-party fetch fallback; DefuddleStrategy (04a-04) MUST set `useAsync: false` to keep the zero-network-call guarantee (R-10, RESEARCH A5 — now ACTIVE) |
 | T-4a-06 | Tampering / Spoofing | content-bundle smuggling via new deps | high | mitigate | New libs are panel-side only (R-3); the 04a-09 isolation scan extends FORBIDDEN_TOKENS (turndown/minisearch/readability) + keeps the < 50 KB sourcemap-stripped assertion (Pitfall 3) |
 </threat_model>
 
 <verification>
 - `pnpm ls defuddle @mozilla/readability turndown minisearch @types/turndown` shows the four pinned majors + the type declarations.
-- `node -p "require('defuddle/package.json').version"` == 0.6.6 exactly.
+- `node -p "require('defuddle/package.json').version"` == 0.19.2 exactly (user deviation from the spec-pinned 0.6.6).
 - `pnpm vitest run tests/fixtures -x` green — fixture determinism smoke; **owned by 04a-02** (the same-wave fixture plan), listed here as the shared-fixture dependency note, not a 04a-01 gate.
 </verification>
 
 <success_criteria>
-- The four approved libraries are installed at the spec-pinned majors (R-9); defuddle is verified at exactly 0.6.6 (privacy-safe).
+- The four approved libraries are installed at the spec-pinned majors (R-9); defuddle is verified at exactly 0.19.2 (user deviation — `useAsync: false` required in 04a-04 to preserve privacy).
 - tests/fixtures/pageContent.ts provides the D-4a-24 shared golden fixtures with deterministic builders — **owned by 04a-02** (same-wave); listed here for the phase view, not produced here.
 - The checkpoint gate ran before the install (blocking, not auto-approvable — workflow.auto_advance ignored per protocol).
 </success_criteria>
