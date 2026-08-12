@@ -34,6 +34,13 @@ import { ERROR_CODES } from '@/core/error/errorCodes';
 import { timeoutError } from '@/core/error/TimeoutError';
 import { PROMPTS } from '@/core/prompts';
 import type { ProviderId, PromptSection } from '@/core/ai/types';
+// Pitfall 1 (WR-07, 04): estimateTokens is the ONLY token counter — the
+// repair section's count must come from the same CJK-aware heuristic as every
+// other section (the phase's own invariant, AgentOrchestrator L33-35 re-points
+// here). The pre-fix hardcoded ceil(len/4) diverged from estimateTokens for
+// CJK-heavy output (the repair embeds the raw first model output) and quietly
+// re-introduced the "two counters" trap.
+import { estimateTokens } from '@/core/context/TokenBudget';
 
 // F-4: cached kinds → provider `system` (byte-stable, prompt-cached §1.3); task
 // kinds → `prompt`. The Router-supplied callback performs this mapping;
@@ -134,7 +141,12 @@ Broken: ${first}`;
   const repairSection: PromptSection = {
     kind: 'user_input',
     text: repairText,
-    tokens: Math.ceil(repairText.length / 4),
+    // WR-07 (04): the repair section's tokens come from estimateTokens — the
+    // ONLY token counter (Pitfall 1). The pre-fix hardcoded Math.ceil(len/4)
+    // diverged on CJK-heavy output (the repair embeds the raw first model
+    // output) and under-counted it, silently re-introducing the two-counter
+    // trap the phase sealed.
+    tokens: estimateTokens(repairText),
     stable: false,
     sourceId: 'structured-output-repair',
   };

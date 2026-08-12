@@ -17,6 +17,7 @@ import { hashStableSections } from '@/core/ai/PromptCacheAdapter';
 import { isStructuredOutputFailed, requestJson } from '@/core/ai/StructuredOutput';
 import type { StructuredOutputContext } from '@/core/ai/StructuredOutput';
 import { isTimeoutError } from '@/core/error/TimeoutError';
+import { estimateTokens } from '@/core/context/TokenBudget';
 import { PROMPTS } from '@/core/prompts';
 import type { PromptSection } from '@/core/ai/types';
 import { buildOptimizedContextFixture } from '../../fixtures/optimizedContext';
@@ -117,7 +118,9 @@ describe('requestJson — one byte-stable repair (F-4, T-03-04-01/02)', () => {
     expect(repair.text).toBe(
       `${PROMPTS.repairJson.system}\nSchema: ${JSON.stringify(calls[0].jsonSchema)}\nBroken: ${broken}`,
     );
-    expect(repair.tokens).toBe(Math.ceil(repair.text.length / 4));
+    // WR-07 (04): the repair section's count comes from estimateTokens — the
+    // ONLY token counter (Pitfall 1) — never a second hardcoded ceil(len/4).
+    expect(repair.tokens).toBe(estimateTokens(repair.text));
     // the attempt-2 section list = cached (task kinds removed) + the repair
     expect(secondSections.map((s) => s.sourceId)).toEqual([
       ...firstSections.filter((s) => !TASK_KINDS.includes(s.kind)).map((s) => s.sourceId),
