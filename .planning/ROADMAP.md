@@ -257,7 +257,36 @@ Plans:
   4. SPA navigation and tab updates trigger cache invalidation and re-extraction.
   5. Extracted content is searchable via an ephemeral per-tab MiniSearch index (never persisted).
 
-**Plans**: TBD
+**Plans**: 10 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 04a-01-PLAN.md — deps install (defuddle/readability/turndown/minisearch + @types/turndown, defuddle checkpoint) + verify:phase-4a script (wave 1)
+- [ ] 04a-02-PLAN.md — CONTENT_EXTRACT→CONTENT_EXTRACT_FAILED reconcile (D-4a-22 W-1) + shared golden fixtures (D-4a-24) (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 04a-03-PLAN.md — spec-verbatim types: apcLite.types.ts + IExtractionStrategy + PageContentSerializer (turndown) (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 04a-04-PLAN.md — strategies: DefuddleStrategy (threshold + Readability fallback) + ApcLiteStrategy + tests (wave 3)
+- [ ] 04a-05-PLAN.md — PageContentCache (LRU-20, D-4a-04) + PageIndexBuilder (ephemeral MiniSearch, D-4a-16) + test (wave 3)
+- [ ] 04a-06-PLAN.md — content-side: AxDomWalker (password at capture) + SPANavigationWatcher (namespaced wxt:locationchange) + tests (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 04a-07-PLAN.md — bridge+host: PAGE_CONTENT_EXTRACTED MessageType, requestExtraction roundtrip, serializeForExtraction (D-4a-07/08/09) + tests (wave 4)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 04a-08-PLAN.md — PageContentService: O.12 extractLayered + coalescing + 5 s cap + stale-safe + eviction + currentPageContext delivery + test (wave 5)
+- [ ] 04a-09-PLAN.md — isolation suite: extended tokens + < 50 KB sourcemap-stripped + password invariant; retire check-content-bundle.mjs (D-4a-23) (wave 5)
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 04a-10-PLAN.md — phase gate: verify:phase-4a green + CAT marks + ROADMAP list + W-1 constants (wave 6)
 
 ### Phase 4b: Trust-Aware Context and Receipts
 
