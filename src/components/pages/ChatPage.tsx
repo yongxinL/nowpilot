@@ -31,6 +31,13 @@ interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   status: 'streaming' | 'completed' | 'failed' | 'offline';
+  /**
+   * WR-04 (04): the D-04-15 CONTEXT_TOO_LARGE terminal discriminator — set when
+   * the hook surfaced { state: 'failed', reason: 'too_long' }. The bubble then
+   * renders STR.chat.messageTooLong and SUPPRESSES Retry: re-sending the same
+   * oversized input lands in the same terminal (a Retry here is a lie).
+   */
+  reason?: 'too_long';
 }
 
 /**
@@ -91,7 +98,8 @@ export function ChatPage() {
 
   // Drive the live assistant bubble from the hook's ChunkBuffer text + state
   // machine: streaming caret → growing text; completed → final text; failed →
-  // partial text retained; offline → partial text retained + muted notice.
+  // partial text retained; failed+too_long → the messageTooLong terminal
+  // (WR-04); offline → partial text retained + muted notice.
   useEffect(() => {
     if (state.state === 'idle') return;
     setMessages((prev) => {
@@ -105,7 +113,10 @@ export function ChatPage() {
             : state.state === 'offline'
               ? 'offline'
               : 'streaming';
-      return [...prev.slice(0, -1), { ...last, content: text, status }];
+      return [
+        ...prev.slice(0, -1),
+        { ...last, content: text, status, reason: state.state === 'failed' ? state.reason : undefined },
+      ];
     });
   }, [state, text]);
 
@@ -133,24 +144,34 @@ export function ChatPage() {
           : {}),
         // (WR-04) Retry is a recovery action for the CURRENT turn only
         // (UI-SPEC failed-row semantics) — gate the footer to the latest
-        // assistant bubble; older failed bubbles are inert history.
+        // assistant bubble; older failed bubbles are inert history. A
+        // 'too_long' terminal (D-04-15) renders STR.chat.messageTooLong and
+        // SUPPRESSES Retry — re-sending the same oversized input lands in the
+        // same terminal, so a Retry button there would be a lie (WR-04).
         footer:
           m.id === messages[messages.length - 1]?.id &&
           (m.status === 'failed' || m.status === 'offline') ? (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              {m.status === 'failed' && (
-                <Typography.Text type="danger" style={{ fontSize: 12 }}>
-                  {FAILED_PREFIX}
-                </Typography.Text>
+              {m.status === 'failed' &&
+                (m.reason === 'too_long' ? (
+                  <Typography.Text type="danger" style={{ fontSize: 12 }}>
+                    {STR.chat.messageTooLong}
+                  </Typography.Text>
+                ) : (
+                  <Typography.Text type="danger" style={{ fontSize: 12 }}>
+                    {FAILED_PREFIX}
+                  </Typography.Text>
+                ))}
+              {!(m.status === 'failed' && m.reason === 'too_long') && (
+                <Button
+                  type="link"
+                  size="small"
+                  style={{ color: token.colorPrimary, padding: 0 }}
+                  onClick={handleRetry}
+                >
+                  {STR.chat.retry}
+                </Button>
               )}
-              <Button
-                type="link"
-                size="small"
-                style={{ color: token.colorPrimary, padding: 0 }}
-                onClick={handleRetry}
-              >
-                {STR.chat.retry}
-              </Button>
             </span>
           ) : undefined,
       })),

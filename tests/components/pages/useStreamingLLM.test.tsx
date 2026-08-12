@@ -299,7 +299,7 @@ describe('useStreamingLLM — drop-in identity + honest terminal (04-06 rewire)'
     ]);
   });
 
-  it('a ContextTooLargeError (over-cap input even in minimal mode) → failed — never offline/completed (D-04-15, T-04-25)', async () => {
+  it('a ContextTooLargeError (over-cap input even in minimal mode) → failed with the too_long discriminator — never offline/completed (D-04-15, T-04-25, WR-04)', async () => {
     routerMock.createStageInvocation.mockImplementation((input: { maxTokens?: number }) => ({
       providerId: 'anthropic',
       model: { modelId: 'claude-3-5-haiku-latest' },
@@ -317,8 +317,13 @@ describe('useStreamingLLM — drop-in identity + honest terminal (04-06 rewire)'
     // The optimizer threw BEFORE runAgentTurn — the hook maps the typed
     // terminal to the honest failed state with the messageTooLong surface
     // (never a truncated prompt sent, never 'offline', never 'completed').
+    // WR-04: the reason discriminator is what the surface renders
+    // STR.chat.messageTooLong from (and suppresses Retry on).
     expect(runAgentTurnMock).not.toHaveBeenCalled();
-    expect(result.current.state.state).toBe('failed');
+    expect(result.current.state).toMatchObject({
+      state: 'failed',
+      reason: 'too_long',
+    });
   });
 });
 

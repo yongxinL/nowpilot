@@ -59,8 +59,16 @@ vi.mock('@/components/pages/useStreamingLLM', () => ({
   useStreamingLLM: () => hookMock,
 }));
 
-function setStream(state: 'idle' | 'streaming' | 'completed' | 'failed' | 'offline', text = '') {
-  hookMock.state = { state, ...(state === 'idle' ? {} : { operationId: 'op-test-1' }) };
+function setStream(
+  state: 'idle' | 'streaming' | 'completed' | 'failed' | 'offline',
+  text = '',
+  reason?: 'too_long',
+) {
+  hookMock.state = {
+    state,
+    ...(state === 'idle' ? {} : { operationId: 'op-test-1' }),
+    ...(reason ? { reason } : {}),
+  };
   hookMock.text = text;
 }
 
@@ -140,6 +148,24 @@ describe('ChatPage — 5-state stream machine (UI-SPEC surface contract)', () =>
     // The failed bubble retains partial text + the error prefix + Retry.
     expect(screen.getByText('Provider error.')).toBeTruthy();
     expect(screen.getByText(STR.chat.retry)).toBeTruthy();
+  });
+
+  it('WR-04: a failed+too_long terminal renders STR.chat.messageTooLong and SUPPRESSES Retry (re-send lands in the same terminal)', async () => {
+    const { forceUpdate } = renderSurface();
+    const input = screen.getByPlaceholderText(STR.chat.askPlaceholder);
+    fireEvent.change(input, { target: { value: 'hello' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    await waitFor(() => expect(hookMock.send).toHaveBeenCalled());
+
+    // D-04-15 CONTEXT_TOO_LARGE terminal: the hook surfaces
+    // { state: 'failed', reason: 'too_long' } — the messageTooLong surface.
+    setStream('failed', '', 'too_long');
+    forceUpdate();
+    await waitFor(() => expect(screen.getByText(STR.chat.messageTooLong)).toBeTruthy());
+    // The generic "Provider error." prefix is NOT shown for this terminal.
+    expect(screen.queryByText('Provider error.')).toBeNull();
+    // Retry is suppressed — re-sending the same oversized input is a lie.
+    expect(screen.queryByText(STR.chat.retry)).toBeNull();
   });
 
   it('Retry re-sends the last input through the hook (NEW operationId) — partial text replaced', async () => {

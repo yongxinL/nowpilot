@@ -61,12 +61,17 @@ export const FALLBACK_MODEL_CONTEXT_WINDOW = 131_072;
  * The UI-SPEC surface state machine (D-01): idle / streaming / completed /
  * failed / offline, each carrying the turn's operationId. Phase-3 stream state
  * is in-memory per-surface (D-03/D-14) — no persistence, no session key.
+ *
+ * WR-04 (04): the failed terminal carries an optional `reason` discriminator —
+ * 'too_long' marks the D-04-15 CONTEXT_TOO_LARGE honest terminal so the surface
+ * can render STR.chat.messageTooLong and suppress Retry (re-sending the same
+ * oversized input lands in the same terminal). Any other failure has no reason.
  */
 export type ChatStreamState =
   | { state: 'idle' }
   | { state: 'streaming'; operationId: string }
   | { state: 'completed'; operationId: string }
-  | { state: 'failed'; operationId: string }
+  | { state: 'failed'; operationId: string; reason?: 'too_long' }
   | { state: 'offline'; operationId: string };
 
 export interface UseStreamingLLMResult {
@@ -232,12 +237,15 @@ export function useStreamingLLM(): UseStreamingLLMResult {
           // state, NEVER silently truncate the user's input (P4-10). Returns
           // BEFORE classifyProviderError (T-04-28: no section/user text logged).
           // WR-01 (04): GR-9 mandates the canonical code on this real error
-          // path — module + operationId only, no user text (R-10).
+          // path — module + operationId only, no user text (R-10). WR-04 (04):
+          // the reason discriminator lets the surface render
+          // STR.chat.messageTooLong and suppress Retry (the same oversized
+          // input can never succeed via a re-send).
           debugLog(ERROR_CODES.CONTEXT_TOO_LARGE, 'context too large — minimal mode exceeded', {
             module: 'useStreamingLLM',
             extra: { operationId },
           });
-          setState({ state: 'failed', operationId });
+          setState({ state: 'failed', operationId, reason: 'too_long' });
           return;
         }
         const cls = getProviderRouter().classifyProviderError(e);
