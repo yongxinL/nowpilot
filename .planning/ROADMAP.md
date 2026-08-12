@@ -242,7 +242,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 04-07-PLAN.md — phase gate: verify:phase-4 script + CTX re-map notes + W-1 spec canonicalizations + full green seal (wave 5)
+- [ ] 04-07-PLAN.md — 04-07 phase gate: verify:phase-4 script + CTX re-map notes + W-1 spec canonicalizations + full green seal (wave 5)
 
 ### Phase 4a: PageContentService (Knowledge Acquisition)
 

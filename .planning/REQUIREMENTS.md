@@ -64,6 +64,8 @@
 - [x] **CTX-03**: Phase-aware prompting applies per-context-role guidance
 - [x] **CTX-04**: OptimizedContext degrades gracefully per §2.4 without mid-structure truncation
 
+> **CTX re-map (D-04-01, 04-07):** CTX-02 = typed input-only re-pack seam on the optimizer/runAgentTurn path (contextForStage/contextUpdate precedents), NO consumer in P4 — page/state-change triggers land with Phase 4a/7. CTX-03 = minimal-mode compact-prompt selection, NOT a new prompting subsystem. §18 is authoritative over these rows — the Phase-4 CTX ids are DISAMBIGUATED from the spec §28.3 trust-aware CTX-01..06 namespace (Phase 4b owns those ids).
+
 ### PageContentService (Phase 4a)
 
 - [ ] **CAT-01**: Content scripts extract `{title, url, text, metadata}` via defuddle (readability fallback, turndown APC-lite)
