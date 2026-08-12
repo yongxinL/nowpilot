@@ -260,11 +260,15 @@ async function runTurn(
         toolCalls = restored.toolCalls;
         phase = (restored as LoopState).phase as AgentTrajectoryPhase;
       }
-      // D-3a-13: each replan consumes one plannerCalls++ slot (the replan's
-      // planOnce consumes the next loop-top slot). At most one replan per
-      // failed tool (D-3a-12); the trajectory cap bounds the cascade.
+      // D-3a-13: each replan consumes one plannerCalls++ slot — the loop-top
+      // increment (before planOnce) already charges the replan's planOnce, so
+      // the restore's rewind + that single increment is the entire cost. The
+      // replan-branch itself must NOT increment again (that would double-charge
+      // the same planOnce and push plannerCalls past plannerCap, making replan
+      // turns terminate partial/cap_exhausted on the default medium tier). At
+      // most one replan per failed tool (D-3a-12); the trajectory cap bounds
+      // the cascade.
       replannedTools.add(toolName);
-      plannerCalls++;
       // D-3a-11 (F-4, Pitfall 7): failure feedback as a sections-in
       // tool_result PromptSection — NEVER a joined-string rebuild.
       const feedbackText = `${toolName} failed: ${result.error?.code ?? 'unknown'}`;

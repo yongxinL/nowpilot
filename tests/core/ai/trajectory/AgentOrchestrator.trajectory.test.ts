@@ -7,9 +7,15 @@
 // Proves:
 //   (a) healthy plan→answer turn records assembling→planning→rendering→completed
 //       and returns AgentTurnOutcome { status:'completed', evidence:[] };
-//   (b) the trajectory cap (plannerCap+toolCap+1, D-3a-10) force-terminates as
-//       'partial' + 'trajectory_cap_exceeded' when a retryable-failure replan
-//       cascade exceeds the ceiling;
+//   (b) a pathological fresh-tool retryable-failure cascade is still bounded
+//       — it terminates 'partial' (never spins unboundedly), bounded by the
+//       individual caps once the D-3a-13 accounting is correct. With the
+//       double-charge removed (each replan consumes exactly ONE plannerCalls
+//       slot via the loop-top increment), plannerCalls ≤ plannerCap and
+//       toolCalls ≤ toolCap, so the trajectory sum can never reach
+//       plannerCap+toolCap+1 — the D-3a-10 ceiling is a defense-in-depth net
+//       (formula asserted below) and the individual caps are the binding
+//       constraint (cap_exhausted).
 //   (c) an illegal transition surfaces AGENT_STATE_INVALID (C5) — exercised via
 //       the canonical transitionPhase guard the loop uses;
 //   (d) the pause seam (D-3a-15/16): an ask_clarification decision transitions
@@ -109,13 +115,17 @@ describe('runAgentTurn — trajectory transitions (AGT-01, D-3a-16)', () => {
     expect(renderMock).toHaveBeenCalledTimes(1);
   });
 
-  it('(b) the trajectory cap force-terminates partial/trajectory_cap_exceeded when the loop exceeds plannerCap+toolCap+1', async () => {
+  it('(b) a fresh-tool retryable-failure cascade is bounded — partial/cap_exhausted, never trajectory_cap_exceeded (D-3a-13 accounting)', async () => {
     // A retryable-failure cascade: the planner chooses a FRESH tool each replan,
-    // so replannedTools never blocks (D-3a-12 repeated-identical can't fire),
-    // and each replan consumes a planner slot (D-3a-13) — plannerCalls+toolCalls
-    // climbs past the ceiling and the trajectory check (FIRST at loop top) fires.
+    // so replannedTools never blocks (D-3a-12 repeated-identical can't fire).
+    // Each replan consumes exactly ONE plannerCalls slot (the loop-top
+    // increment before planOnce — D-3a-13), so plannerCalls stays ≤ plannerCap
+    // and toolCalls ≤ toolCap. The binding cap is therefore the toolCap check
+    // (fired when planning a 3rd tool on medium 3/2): partial/cap_exhausted.
+    // The trajectory ceiling (plannerCap+toolCap+1) is a defense-in-depth net
+    // that is unreachable under this accounting.
     const cap = trajectoryCapFor({ plannerCap: 3, toolCap: 2, mcpChaining: false });
-    expect(cap).toBe(6); // plannerCap + toolCap + 1
+    expect(cap).toBe(6); // plannerCap + toolCap + 1 (defense-in-depth ceiling)
     let toolSeq = 0;
     planMock.mockImplementation(async () => {
       toolSeq += 1;
@@ -136,16 +146,20 @@ describe('runAgentTurn — trajectory transitions (AGT-01, D-3a-16)', () => {
     const { transitions } = recordTransitions(input);
     const outcome = await runAgentTurn(input);
 
-    // The sum exceeded the ceiling, so the trajectory cap (not cap_exhausted)
-    // force-terminated the turn as partial.
-    expect(outcome).toMatchObject({ status: 'partial', reasonCode: 'trajectory_cap_exceeded' });
-    expect(outcome.reasonCode).not.toBe('cap_exhausted');
+    // Never spins unboundedly: the individual caps bound the cascade. toolCap
+    // (2) fires before the trajectory sum can reach the ceiling, so the
+    // terminal is cap_exhausted — NOT trajectory_cap_exceeded.
+    expect(outcome).toMatchObject({ status: 'partial', reasonCode: 'cap_exhausted' });
+    expect(outcome.plannerCalls).toBeLessThanOrEqual(3);
+    expect(outcome.toolCalls).toBeLessThanOrEqual(2);
     const phases = transitions.map((t) => t.phase);
     // The cascade emitted at least one replanning before rendering terminated it.
     expect(phases).toContain('replanning');
     expect(phases).toContain('executing');
     expect(phases[phases.length - 1]).toBe('rendering'); // partial stops at rendering
-    expect(planMock).toHaveBeenCalledTimes(2); // initial plan + one replan, then the cap fires
+    // 3 planOnce calls (plan + replan + the cap-blocked 3rd plan); the 3rd
+    // tool never executes (toolCap fired planning it), so 2 tool executions.
+    expect(planMock).toHaveBeenCalledTimes(3);
     expect(executeMock).toHaveBeenCalledTimes(2);
     expect(renderMock).toHaveBeenCalledTimes(1); // rendered once with accumulated results
   });

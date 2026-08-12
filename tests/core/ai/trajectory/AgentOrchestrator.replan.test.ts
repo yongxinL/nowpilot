@@ -79,7 +79,11 @@ function baseInput(overrides: Partial<AgentTurnInput> = {}): AgentTurnInput {
 }
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  // resetAllMocks (not clearAllMocks) also empties unconsumed
+  // mockResolvedValueOnce queues — a pre-fix regression run of the (a2)
+  // test leaves a leftover 'answer' once-value that would otherwise leak
+  // into the next test in this file (false-positive failure).
+  vi.resetAllMocks();
   renderMock.mockResolvedValue({ text: 'final answer', finishReason: 'stop' });
 });
 
@@ -122,6 +126,33 @@ describe('runAgentTurn — replan-on-tool-failure (AGT-04, D-3a-11)', () => {
     // The failed tool ran once, the replan re-ran it once successfully.
     expect(executeMock).toHaveBeenCalledTimes(2);
     expect(renderMock).toHaveBeenCalledTimes(1); // rendered once at finish (D-3a-14)
+  });
+
+  it('(a2) D-3a-13 regression: a legitimate medium-tier (3/2) one-replan turn COMPLETES — the replan branch must NOT double-charge plannerCalls', async () => {
+    // The committed pre-fix code incremented plannerCalls BOTH in the replan
+    // branch AND at loop top for the same planOnce. On the default medium tier
+    // (plannerCap 3) a healthy turn that replans exactly once — plan → tool
+    // fail (retryable) → replan → tool success → answer — pushed plannerCalls
+    // to 4 and wrongly terminated partial/cap_exhausted at the 3rd iteration.
+    // Post-fix each replan consumes exactly ONE slot (the loop-top increment),
+    // so the same turn completes with an answer.
+    planMock
+      .mockResolvedValueOnce({ action: 'run_tool', toolName: DANGEROUS_TOOL, input: {} })
+      .mockResolvedValueOnce({ action: 'run_tool', toolName: DANGEROUS_TOOL, input: {} })
+      .mockResolvedValueOnce({ action: 'answer', reasonCode: 'success' });
+    executeMock
+      .mockResolvedValueOnce(retryableFailure(DANGEROUS_TOOL))
+      .mockResolvedValueOnce(okResult(DANGEROUS_TOOL));
+
+    const outcome = await runAgentTurn(
+      baseInput({ tier: { plannerCap: 3, toolCap: 2, mcpChaining: false } }),
+    );
+
+    expect(outcome).toMatchObject({ status: 'completed' });
+    expect(outcome.plannerCalls).toBe(3); // exactly the 3 planOnce calls, no extra charge
+    expect(planMock).toHaveBeenCalledTimes(3);
+    expect(executeMock).toHaveBeenCalledTimes(2);
+    expect(renderMock).toHaveBeenCalledTimes(1);
   });
 
   it('(b) a repeated-identical failure after the replan is terminal — failed/replan_identical_failure, never a silent success', async () => {
