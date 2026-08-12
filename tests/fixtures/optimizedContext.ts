@@ -41,6 +41,67 @@ export const FIXED_PREFERENCES: UserPreferences = {
 };
 
 // ---------------------------------------------------------------------------
+// 04-01 additions (P4-15/WR-13): the canonical model-window set, over-budget
+// section samples (the §2.4 ladder trigger material), and CJK/mixed-script
+// text samples for the estimateTokens heuristic. All fixed — determinism rule.
+// ---------------------------------------------------------------------------
+
+/** Mirrors src/core/context/ModelContextTier.ts MODEL_CONTEXT_WINDOWS keys (D-04-04). */
+export const FIXED_MODEL_CONTEXT_WINDOWS: Readonly<Record<string, number>> = {
+  'claude-haiku-4-latest': 200_000,
+  'deepseek-chat': 65_536,
+  'gemini-2.5-flash': 1_048_576,
+  'llama3.2:3b': 4_096,
+  'qwen2.5:7b': 4_096,
+} as const;
+
+/** English-only sample — estimateTokens divisor 4 (D-04-10). */
+export const ENGLISH_TEXT = 'The quick brown fox jumps over the lazy dog while packing.';
+
+/** CJK-dominant sample (ratio >= 0.3) — estimateTokens divisor 3. */
+export const CJK_TEXT = '你好世界，这是中文测试样本。';
+
+/** Mixed-script sample (CJK ratio < 0.3) — the higher-cost divisor wins (P4-13). */
+export const MIXED_TEXT = 'hello world this is mixed 文本 content';
+
+/**
+ * Over-budget PromptSection[] samples: per-kind token counts EXCEEDING the
+ * medium-tier caps (inputBudget 16384 — §2.2 distribution: system 8% = 1311,
+ * context 30% = 4916, user 15% = 2457). The §2.4 degradation ladder (04-02/
+ * 04-04) consumes these as trigger material. Fixed token counts, no slicing.
+ */
+export const OVER_BUDGET_SECTIONS: PromptSection[] = [
+  {
+    kind: 'system',
+    text: '[system: persona block over medium system cap]',
+    tokens: 2000, // > 1311 medium system cap
+    stable: true,
+    sourceId: 'system',
+  },
+  {
+    kind: 'context',
+    text: '[context: extracted page content over medium context cap]',
+    tokens: 6000, // > 4916 medium context cap
+    stable: false,
+    sourceId: 'context',
+  },
+  {
+    kind: 'user_input',
+    text: '[user input over medium user cap]',
+    tokens: 3000, // > 2457 medium user cap
+    stable: false,
+    sourceId: 'user-input',
+  },
+  {
+    kind: 'tool_result',
+    text: '[tool result — uncapped but counted in totalTokens]',
+    tokens: 999, // no cap applies; must still enter totalTokens (Pitfall 3)
+    stable: false,
+    sourceId: 'tool-result',
+  },
+];
+
+// ---------------------------------------------------------------------------
 // Builder
 // ---------------------------------------------------------------------------
 
