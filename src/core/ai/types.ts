@@ -159,7 +159,32 @@ export interface ContextOptimizerInput {
   selectedToolSchemas: ToolSchemaRef[];
   memoryHints: RetrievedMemory[];
   preferences: UserPreferences;
+  // 04-04 (flagged planner-discretion input extension, D-04-07 — additive only;
+  // the OUTPUT shape is untouched): the §2.3 spec input omits these, but F-5's
+  // byte-stable [SYSTEM] persona section requires personaBlock (Phase-3 bridged
+  // via ContextHelperInput.personaBlock) and minimal mode needs the per-role
+  // compact-prompt selection (D-04-11).
+  /** Byte-stable block from PersonaInjector.buildPersonaBlock (D-10 seam). */
+  personaBlock: string;
+  /** Per-role compact-prompt selection (D-04-11): 'planner' | 'renderer'. */
+  stage: 'planner' | 'renderer';
+  /**
+   * D-04-02 CTX-02 seam: a TYPED INPUT-ONLY re-pack signal — present when the
+   * caller wants the optimizer to re-select/repack because context inputs
+   * changed. StageEvent stays a TYPE, never an event bus (L1) — there is no
+   * subscribe/publish/emit anywhere in the context layer. NO consumer in P4
+   * (page/state-change triggers arrive with Phase 4a PageContextBridge /
+   * Phase 7); the optimizer treats it as input-only and its output is identical
+   * with or without it.
+   */
+  contextUpdate?: ContextUpdate;
 }
+
+/**
+ * D-04-02 CTX-02: the typed re-pack signal vocabulary. Input-only by contract —
+ * never published, never subscribed (L1); consumers arrive in Phase 4a/7.
+ */
+export type ContextUpdate = { type: 'page' | 'memory' | 'history' | 'state' };
 
 export interface OptimizedContext {
   tier: ModelContextTier;
