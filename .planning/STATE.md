@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 04a
 current_phase_name: PageContentService (Knowledge Acquisition
 status: executing
-stopped_at: Completed 04a-03-PLAN.md
-last_updated: "2026-08-12T20:18:59.418Z"
+stopped_at: Completed 04a-05-PLAN.md
+last_updated: "2026-08-12T20:47:11.918Z"
 last_activity: 2026-08-12
 last_activity_desc: Phase 04a execution started
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 60
-  completed_plans: 53
+  completed_plans: 54
 ---
 
 # Project State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-08-09)
 ## Current Position
 
 Phase: 04a (PageContentService (Knowledge Acquisition)) — EXECUTING
-Plan: 4 of 10
+Plan: 5 of 10
 Status: Ready to execute
 Last activity: 2026-08-12 — Phase 04a execution started
 
-Progress: [█████████░] 88%
+Progress: [█████████░] 90%
 
 ## Performance Metrics
 
@@ -101,6 +101,7 @@ Progress: [█████████░] 88%
 | Phase 04a-pagecontentservice-knowledge-acquisition P02 | 6min | 2 tasks | 4 files |
 | Phase 04a P01 | 6min | 3 tasks | 3 files |
 | Phase 04a-pagecontentservice-knowledge-acquisition P03 | 8 | 3 tasks | 4 files |
+| Phase 04a-pagecontentservice-knowledge-acquisition P05 | 25min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -209,6 +210,8 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase ?]: [Phase 04a]: apcLite.types.ts + strategies/IExtractionStrategy.ts are R-1 canonical homes per Appendix C.1 verbatim (D-4a-11 full-schema-now; zero rework when 4b/5/8 or v2 automation lands) — prettier-normalized for the phase gate with zero semantic drift; the D-4a-20 password refine reads .refine((c) => !(c.isPassword && c.value !== undefined), ...) (arrow-paren normalized, never loosened)
 - [Phase ?]: [Phase 04a]: PageContentSerializer locks the RESEARCH-critical pipeline correction — defuddle@0.6.6's browser-bundle markdown option is a NO-OP, so turndown (approved stack) is the ONE HTML→markdown converter every prose path routes through (Pitfall 1); TURNDOWN_OPTIONS parity constant verified byte-identical to defuddle's own markdown.js (A6)
 - [Phase ?]: [Phase 04a]: The 'servicenow-api' strategy id is reserved in the StrategyResult source union but NOT implemented (D-4a-17) — the ServiceNow add-on registers its strategy in Phase 8; RawNode type-import added to IExtractionStrategy (spec block references it without importing — compile-blocking, Rule 3)
+- [Phase 04a-pagecontentservice-knowledge-acquisition]: PageContentCache/PageIndexBuilder (04a-05): LRU eviction skips in-flight+subscribed entirely, pinned eviction-last; set() preserves marks on re-upsert; sub-chunks greedily grouped under INDEX_CHUNK_MAX_TOKENS=500; cache holds value/recency, service owns promise map (D-4a-03) — D-4a-04/16 locked decisions; cache-level primitives proven now, service-driven suite deferred to 04a-08 by design
+- [Phase 04a-pagecontentservice-knowledge-acquisition]: Plan verify commands use '-x' (unknown in vitest 4.1.10) — executed with --bail=1 (same stop-on-first-failure semantics) — Rule 3 blocking deviation; command-line only, no source impact
 
 ### Pending Todos
 
@@ -237,6 +240,6 @@ Items acknowledged and carried forward (v2 scope, tracked in REQUIREMENTS.md):
 
 ## Session Continuity
 
-Last session: 2026-08-12T20:17:31.109Z
-Stopped at: Completed 04a-03-PLAN.md
+Last session: 2026-08-12T20:46:59.365Z
+Stopped at: Completed 04a-05-PLAN.md
 Resume file: None
