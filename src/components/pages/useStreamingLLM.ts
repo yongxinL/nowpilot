@@ -231,6 +231,12 @@ export function useStreamingLLM(): UseStreamingLLMResult {
           // window even in minimal mode — surface the messageTooLong failed
           // state, NEVER silently truncate the user's input (P4-10). Returns
           // BEFORE classifyProviderError (T-04-28: no section/user text logged).
+          // WR-01 (04): GR-9 mandates the canonical code on this real error
+          // path — module + operationId only, no user text (R-10).
+          debugLog(ERROR_CODES.CONTEXT_TOO_LARGE, 'context too large — minimal mode exceeded', {
+            module: 'useStreamingLLM',
+            extra: { operationId },
+          });
           setState({ state: 'failed', operationId });
           return;
         }

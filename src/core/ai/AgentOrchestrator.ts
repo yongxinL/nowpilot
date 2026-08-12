@@ -140,7 +140,13 @@ export async function runAgentTurn(input: AgentTurnInput): Promise<AgentTurnOutc
     if (isProviderUnconfiguredError(e)) {
       // D-07 gate: no configured+enabled provider matches the tier — terminate
       // with the provider_unconfigured terminal and NO model call. Kept as a
-      // failed terminal (D-3a-19 / unchanged UX, 03a-04 hook mapping).
+      // failed terminal (D-3a-19 / unchanged UX, 03a-04 hook mapping). WR-01
+      // (04): GR-9 — the terminal is a real error path and must carry a
+      // canonical code (module + operationId only, no user/provider text).
+      debugLog(ERROR_CODES.UNKNOWN, 'provider_unconfigured — no configured provider for the tier', {
+        module: 'AgentOrchestrator',
+        extra: { operationId: input.operationId },
+      });
       return {
         operationId: input.operationId,
         status: 'failed',

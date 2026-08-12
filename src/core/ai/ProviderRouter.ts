@@ -469,6 +469,14 @@ export class ProviderRouter {
     });
     if (!resolved) {
       // D-07: no configured+enabled provider matches the tier → unconfigured.
+      // WR-01 (04): GR-9 — this terminal had zero observability end-to-end
+      // (the privacy_blocked site below logs; this one did not). Canonical
+      // UNKNOWN code (provider_unconfigured is a typed reason marker, NOT an
+      // error-code constant) + module + operationId only — no provider text.
+      debugLog(ERROR_CODES.UNKNOWN, 'provider_unconfigured — no provider matches the tier', {
+        module: 'ProviderRouter',
+        extra: { operationId: input.operationId },
+      });
       throw unavailable('provider_unconfigured');
     }
     const chain: Array<{ providerId: ProviderId; model: string }> = [
