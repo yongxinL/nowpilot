@@ -30,7 +30,9 @@ import { buildOutcome } from '@/core/ai/OutcomeVerifier';
 import type { Verifier } from '@/core/ai/OutcomeVerifier';
 import { CheckpointRecorder } from '@/core/ai/CheckpointRecorder';
 import type { LoopState } from '@/core/ai/CheckpointRecorder';
-import { estimateTokens } from '@/core/ai/contextHelper';
+// Pitfall 1 (04-06): re-pointed from the deleted Phase-3 context-helper module
+// in the SAME wave as the deletion — TokenBudget is the ONLY token counter.
+import { estimateTokens } from '@/core/context/TokenBudget';
 import { transitionPhase } from '@/types/harness';
 import type { AgentTrajectoryPhase, AgentTrajectoryState, AgentTurnOutcome } from '@/types/harness';
 import type { ModelContextTier } from '@/core/context/ModelContextTier';
@@ -90,6 +92,14 @@ export interface AgentTurnInput {
   onStreamDelta?: (delta: string) => void;
   /** Documented Phase-3 input-only deviation: per-stage StageInvocation bundles (03-05). */
   invocation?: StageResolver;
+  /**
+   * D-04-05 input-only seam: per-stage OptimizedContext (planner loop /
+   * renderer finish). Direct call, never an event bus (L1 — mirrors
+   * invocation/onStreamDelta). The hook passes the per-stage optimizer packs
+   * (04-06); when absent, input.context is used for BOTH stages (RESEARCH
+   * Pattern 1 — defaults keep every existing call site green).
+   */
+  contextForStage?: (stage: 'planner' | 'renderer') => OptimizedContext;
   /**
    * D-3a-16 (Phase 3a): input-only trajectory recorder — mirrors onStreamDelta.
    * Direct calls, never an event bus (L1). Records each reached trajectory
@@ -337,7 +347,9 @@ async function runTurn(
     const rendererInvocation = resolveStage(input, 'renderer');
     await RendererService.render({
       operationId: input.operationId,
-      context: input.context,
+      // D-04-05: the renderer-stage context resolves from the input-only seam;
+      // default (no seam) keeps the Phase-3 input.context behavior (drop-in).
+      context: input.contextForStage ? input.contextForStage('renderer') : input.context,
       userInput: input.userInput,
       toolResults,
       abortSignal: input.abortSignal,
@@ -387,13 +399,19 @@ async function planOnce(
 ): Promise<PlannerDecision> {
   const invocation = resolveStage(input, 'planner');
   try {
+    // D-04-05: the planner-stage section base resolves from the input-only
+    // seam; default (no seam) keeps input.context.sections (drop-in). Replan
+    // feedback sections still append AFTER the base either way.
+    const baseContext = input.contextForStage
+      ? input.contextForStage('planner')
+      : input.context;
     const sections =
       replanSections.length > 0
-        ? [...input.context.sections, ...replanSections]
-        : input.context.sections;
+        ? [...baseContext.sections, ...replanSections]
+        : baseContext.sections;
     return await PlannerService.plan({
       operationId: input.operationId,
-      context: { ...input.context, sections },
+      context: { ...baseContext, sections },
       userInput: input.userInput,
       abortSignal: input.abortSignal,
       timeoutMs: PLANNER_TIMEOUT_MS,
