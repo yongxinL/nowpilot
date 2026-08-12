@@ -59,7 +59,7 @@
 
 ### Context-Adaptive Execution (Phase 4)
 
-- [ ] **CTX-01**: Context windows (small/medium/large) selectable with budget enforcement
+- [x] **CTX-01**: Context windows (small/medium/large) selectable with budget enforcement
 - [ ] **CTX-02**: ContextUpdate events trigger context-aware selection on rapid page/state change
 - [ ] **CTX-03**: Phase-aware prompting applies per-context-role guidance
 - [ ] **CTX-04**: OptimizedContext degrades gracefully per §2.4 without mid-structure truncation
@@ -191,7 +191,7 @@ Deferred to a future release. Tracked but not in the current roadmap.
 | AI-01…06 | Phase 3 | Done |
 | AI-07 | Phase 8 (re-mapped per D-06 — MCP dependency-blocked to Phase 8/8a) | Complete |
 | AGT-01…05 | Phase 3a | Done |
-| CTX-01…04 | Phase 4 | Pending |
+| CTX-01…04 | Phase 4 | CTX-01 Done (04-01), CTX-02…04 Pending |
 | CAT-01…05 | Phase 4a | Pending |
 | TRUST-01…03 | Phase 4b | Pending |
 | KNW-01…05 | Phase 5 | Pending |

@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v0.1
 milestone_name: milestone
-current_phase: 4
-current_phase_name: Context-Adaptive Execution
+current_phase: 04
+current_phase_name: context-adaptive-execution
 status: executing
-stopped_at: Phase 4 context gathered
-last_updated: "2026-08-12T05:05:24.826Z"
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-08-12T05:34:08.006Z"
 last_activity: 2026-08-12
-last_activity_desc: Phase 03a complete, transitioned to Phase 4
+last_activity_desc: Phase 04 execution started
 progress:
   total_phases: 5
   completed_phases: 4
-  total_plans: 43
-  completed_plans: 43
+  total_plans: 50
+  completed_plans: 44
 ---
 
 # Project State
@@ -24,16 +24,16 @@ See: .planning/PROJECT.md (updated 2026-08-09)
 
 **Core value:** A privacy-first, local-first AI assistant where chat, extracted page content, and a linked notes/knowledge layer combine into a persistent personal workspace — no data leaves the machine unless the user deliberately configures a cloud provider.
 
-**Current focus:** Phase 03a — agent-reliability-and-evidence
+**Current focus:** Phase 04 — context-adaptive-execution
 
 ## Current Position
 
-Phase: 4 — Context-Adaptive Execution
-Plan: Not started
+Phase: 04 (context-adaptive-execution) — EXECUTING
+Plan: 2 of 7
 Status: Ready to execute
-Last activity: 2026-08-12 — Phase 03a complete, transitioned to Phase 4
+Last activity: 2026-08-12 — Phase 04 execution started
 
-Progress: [██████████] 100%
+Progress: [█████████░] 88%
 
 ## Performance Metrics
 
@@ -90,6 +90,7 @@ Progress: [██████████] 100%
 | Phase 03a P03 | 96 | 11 tasks | 5 files |
 | Phase 03a P04 | 17min | 6 tasks | 4 files |
 | Phase 03a-agent-reliability-and-evidence P05 | 21min | 6 tasks | 14 files |
+| Phase 04-context-adaptive-execution P01 | 11min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -183,6 +184,9 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 03a]: RenderInput verdict/evidence optional for Phase-3 compat (legacy RendererService.test.ts untouchable); orchestrator always supplies them; renderer evidence guard (D-3a-17) marks only ok:true-evidenced tools 'done' — display-only, never re-verifies — RenderInput verdict/evidence optional for Phase-3 compat (legacy RendererService.test.ts untouchable); orchestrator always supplies them; renderer evidence guard (D-3a-17) marks only ok:true-evidenced tools 'done' — display-only, never re-verifies
 - [Phase 03a]: useStreamingLLM.ts maps AgentTurnOutcome.status per D-3a-19 (completed->completed, partial/failed->failed with partial text + Retry, aborted->idle; provider_unconfigured stays failed) — D-20 fence test INVERTED (Pitfall 1): the orchestrator source must reference AgentTurnOutcome|OutcomeVerifier|trajectory - never the stale zero-tokens contract
 - [Phase 03a-agent-reliability-and-evidence]: The verify:phase-3a gate is the §24 chain verbatim (eslint + prettier --check + tsc --noEmit + wxt build + vitest run + isolation check) with the R-3 isolation check non-optional and NO exact test-count assertions (P-5); Phase 3a sealed per Golden Rule 10 when it passes green — REQUIREMENTS.md records the D-3a-01/02 reconciliation in the AI-07 note style: CheckpointRecorder folds into AGT-02 (no new AGT id invented); AGT-05 commit-confirm barrier re-maps to Phase 8 TOL-03 (03a ships only waiting-for-permission + pause seam); §18 remains authoritative over the rows
+- [Phase 04-context-adaptive-execution]: ModelContextTier = no-change (assumption-delta): tier is DERIVED from the resolved model window (D-04-04); ROADMAP criterion 1 selectable = follow-the-model, no user-facing tier override setting (second source of truth could mismatch the actual window) — 04-01 assumption-delta decision recorded in plan header
+- [Phase 04-context-adaptive-execution]: Unknown models resolve to conservative tiny 4096 + windowKnown:false (D-04-06) - never assume large; map values flagged [ASSUMED] A2..A6 behind user confirmation gates — Wrong window mis-sizes every downstream budget; smallest is the safe unknown
+- [Phase 04-context-adaptive-execution]: History distribution column maps to [] (reserved-unfilled, D-04-16) - never a new PromptSection kind (R-1/R-2); tool_result uncapped-but-counted in totalTokens (Pitfall 3) — Column-to-kind mapping is the planner's Pitfall-3 resolution, encoded as tested constant
 
 ### Pending Todos
 
@@ -211,6 +215,6 @@ Items acknowledged and carried forward (v2 scope, tracked in REQUIREMENTS.md):
 
 ## Session Continuity
 
-Last session: 2026-08-12T03:37:42.018Z
-Stopped at: Phase 4 context gathered
-Resume file: .planning/phases/04-context-adaptive-execution/04-CONTEXT.md
+Last session: 2026-08-12T05:34:07.971Z
+Stopped at: Completed 04-01-PLAN.md
+Resume file: None

@@ -220,11 +220,11 @@ Plans:
   3. Minimal mode blocks MCP chaining and LLM-Wiki RAG synthesis for small local models.
   4. Every OptimizedContext carries a ContextProvenanceManifest.
 
-**Plans**: 7 plans
+**Plans**: 1/7 plans executed
 Plans:
 **Wave 1**
 
-- [ ] 04-01-PLAN.md — context foundation: MODEL_CONTEXT_WINDOWS map + TokenBudget (70/20/10 + caps) + fixture extension (wave 1)
+- [x] 04-01-PLAN.md — context foundation: MODEL_CONTEXT_WINDOWS map + TokenBudget (70/20/10 + caps) + fixture extension (wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -466,7 +466,7 @@ Plans:
 | 2. Storage, Security, WriteJournal, Workspace Persistence | 11/11 | Complete    | 2026-08-09 |
 | 3. Cost-Effective AI Runtime (+ Persona seed) | 16/16 | Complete    | 2026-08-11 |
 | 3a. Agent Reliability and Evidence | 5/5 | Complete    | 2026-08-12 |
-| 4. Context-Adaptive Execution | TBD | Not started | - |
+| 4. Context-Adaptive Execution | 1/7 | In Progress|  |
 | 4a. PageContentService (Knowledge Acquisition) | TBD | Not started | - |
 | 4b. Trust-Aware Context and Receipts | TBD | Not started | - |
 | 5. Knowledge Base (Memory + MiniSearch + Notes) | TBD | Not started | - |
