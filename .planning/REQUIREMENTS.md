@@ -53,6 +53,10 @@
 - [x] **AGT-04**: Replan path is bounded by tier caps and never nested
 - [x] **AGT-05**: Commit-confirm barrier requires user confirmation before irreversible actions
 
+> **AGT-02 (D-3a-02, 03a):** CheckpointRecorder is delivered as part of AGT-02 (rollback machinery, §17.7.7 in-memory loop-state rewind) — no new AGT id is invented; AGT-02 is the requirement that owns it.
+>
+> **AGT-05 → Phase 8 (D-3a-01, 03a):** the commit-confirm barrier re-maps to Phase 8 (TOL-03 PermissionDialog / ToolCapabilityManifest risk gating); Phase 3a ships only the trajectory `waiting-for-permission` state + the within-turn pause seam. §18 is authoritative over this row — the 03a AGT-05 bullet is NOT a full 03a deliverable.
+
 ### Context-Adaptive Execution (Phase 4)
 
 - [ ] **CTX-01**: Context windows (small/medium/large) selectable with budget enforcement
@@ -186,7 +190,7 @@ Deferred to a future release. Tracked but not in the current roadmap.
 | STORAGE-01…05 | Phase 2 | Pending |
 | AI-01…06 | Phase 3 | Done |
 | AI-07 | Phase 8 (re-mapped per D-06 — MCP dependency-blocked to Phase 8/8a) | Complete |
-| AGT-01…05 | Phase 3a | Pending |
+| AGT-01…05 | Phase 3a | Done |
 | CTX-01…04 | Phase 4 | Pending |
 | CAT-01…05 | Phase 4a | Pending |
 | TRUST-01…03 | Phase 4b | Pending |
