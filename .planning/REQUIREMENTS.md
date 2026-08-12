@@ -60,8 +60,8 @@
 ### Context-Adaptive Execution (Phase 4)
 
 - [x] **CTX-01**: Context windows (small/medium/large) selectable with budget enforcement
-- [ ] **CTX-02**: ContextUpdate events trigger context-aware selection on rapid page/state change
-- [ ] **CTX-03**: Phase-aware prompting applies per-context-role guidance
+- [x] **CTX-02**: ContextUpdate events trigger context-aware selection on rapid page/state change
+- [x] **CTX-03**: Phase-aware prompting applies per-context-role guidance
 - [x] **CTX-04**: OptimizedContext degrades gracefully per §2.4 without mid-structure truncation
 
 ### PageContentService (Phase 4a)

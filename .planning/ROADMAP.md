@@ -220,7 +220,7 @@ Plans:
   3. Minimal mode blocks MCP chaining and LLM-Wiki RAG synthesis for small local models.
   4. Every OptimizedContext carries a ContextProvenanceManifest.
 
-**Plans**: 4/7 plans executed
+**Plans**: 5/7 plans executed
 Plans:
 **Wave 1**
 
@@ -233,7 +233,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 04-04-PLAN.md — ContextOptimizer: tier/budget derivation, ladder orchestration, minimal mode + compact prompts, CONTEXT_TOO_LARGE terminal, CTX-02 seam (wave 3)
+- [x] 04-04-PLAN.md — ContextOptimizer: tier/budget derivation, ladder orchestration, minimal mode + compact prompts, CONTEXT_TOO_LARGE terminal, CTX-02 seam (wave 3)
 - [x] 04-05-PLAN.md — Router: StageInvocation.modelContextWindow stamp + fixture updates (wave 3)
 
 **Wave 4** *(blocked on Wave 3 completion)*
@@ -466,7 +466,7 @@ Plans:
 | 2. Storage, Security, WriteJournal, Workspace Persistence | 11/11 | Complete    | 2026-08-09 |
 | 3. Cost-Effective AI Runtime (+ Persona seed) | 16/16 | Complete    | 2026-08-11 |
 | 3a. Agent Reliability and Evidence | 5/5 | Complete    | 2026-08-12 |
-| 4. Context-Adaptive Execution | 4/7 | In Progress|  |
+| 4. Context-Adaptive Execution | 5/7 | In Progress|  |
 | 4a. PageContentService (Knowledge Acquisition) | TBD | Not started | - |
 | 4b. Trust-Aware Context and Receipts | TBD | Not started | - |
 | 5. Knowledge Base (Memory + MiniSearch + Notes) | TBD | Not started | - |
