@@ -4,14 +4,16 @@
 // the ../ path since this file lives in strategies/ (PATTERNS L161); contract otherwise verbatim.
 import type { APCLiteNode, RawNode } from '../apcLite.types';
 export interface StrategyInput {
-  url: string; title: string; mode: 'default' | 'actionable';
-  html?: string;   // present for DefuddleStrategy (default/read mode)
-  raw?: RawNode;   // present for ApcLiteStrategy (actionable mode)
+  url: string;
+  title: string;
+  mode: 'default' | 'actionable';
+  html?: string; // present for DefuddleStrategy (default/read mode)
+  raw?: RawNode; // present for ApcLiteStrategy (actionable mode)
 }
 export interface StrategyResult {
   source: 'defuddle' | 'readability' | 'apc-lite' | 'servicenow-api';
-  markdown?: string;      // prose path (Defuddle/Readability)
-  root?: APCLiteNode;     // structural path (APC-lite)
+  markdown?: string; // prose path (Defuddle/Readability)
+  root?: APCLiteNode; // structural path (APC-lite)
   meta?: Record<string, string>;
   approxTokens: number;
   truncated: boolean;
