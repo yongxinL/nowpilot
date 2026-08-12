@@ -6,12 +6,30 @@ export const PROMPTS = {
   planner: {
     system:
       'Select exactly one action: answer, run_tool, or ask_clarification. Return JSON only. Do not explain.',
+    // D-04-11: canonical COMPACT sibling (04-04) — the §2.5 "compact system
+    // prompt" selected by ContextOptimizer in minimal mode (tiny tier or ladder
+    // escalation). Drafted in Appendix A style (short, directive, JSON-only);
+    // the ONLY consumer is ContextOptimizer — the default path above stays
+    // byte-identical (prompt-cache stability, D-04-07/P4-8). Mirrored into spec
+    // Appendix A in 04-07 (W-1 gate).
+    compact: {
+      system: 'Select one action: answer, run_tool, or ask_clarification. JSON only.',
+      cacheable: true,
+      tier: 'haiku',
+    },
     cacheable: true,
     tier: 'haiku',
   },
   renderer: {
     system:
       'Answer using only the provided context and tool result. Be concise. If data is missing, say what is missing. Do not invent facts.',
+    // D-04-11: canonical COMPACT sibling (04-04) — concise-context-only variant
+    // for renderer minimal mode; consumed ONLY by ContextOptimizer (04-04).
+    compact: {
+      system: 'Answer from context only. Be concise. Do not invent facts.',
+      cacheable: true,
+      tier: 'flash',
+    },
     cacheable: true,
     tier: 'flash',
   },

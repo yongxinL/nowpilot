@@ -84,6 +84,13 @@ export const ERROR_CODES = {
   PROVIDER_MODEL_UNKNOWN: 'PROVIDER_MODEL_UNKNOWN',
   SCHEMA_INVALID: 'SCHEMA_INVALID',
   HOST_NOT_PERMITTED: 'HOST_NOT_PERMITTED',
+  // --- Context-adaptive execution (Phase 4, canonical addition — spec Appendix
+  // C.2 "Runtime / provider" block, line 3512 + line 5040, CONTEXT_TOO_LARGE
+  // already canonical there). 04-04 (D-04-15): the typed honest terminal thrown
+  // by ContextOptimizer when even minimal mode exceeds the model window — never
+  // a silent truncation of user input (P4-10). W-1 gate (04-07) re-verifies the
+  // spec mirror line-anchored.
+  CONTEXT_TOO_LARGE: 'CONTEXT_TOO_LARGE',
   // --- Fallback ---
   UNKNOWN: 'UNKNOWN',
 } as const;
