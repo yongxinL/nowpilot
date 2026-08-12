@@ -19,10 +19,7 @@
 // Math.random — every input and expected value is fixed.
 import { describe, expect, it } from 'vitest';
 
-import {
-  classifyModelContext,
-  resolveModelContextWindow,
-} from '@/core/context/ModelContextTier';
+import { classifyModelContext, resolveModelContextWindow } from '@/core/context/ModelContextTier';
 import {
   PER_TIER_DISTRIBUTION,
   SECTION_CAP_MAPPING,
@@ -31,7 +28,12 @@ import {
   estimateTokens,
 } from '@/core/context/TokenBudget';
 import { FIXED_MODEL_CONTEXT_WINDOWS } from '../../fixtures/optimizedContext';
-import { CJK_TEXT, ENGLISH_TEXT, MIXED_TEXT, OVER_BUDGET_SECTIONS } from '../../fixtures/optimizedContext';
+import {
+  CJK_TEXT,
+  ENGLISH_TEXT,
+  MIXED_TEXT,
+  OVER_BUDGET_SECTIONS,
+} from '../../fixtures/optimizedContext';
 
 const CANONICAL_FIVE = [
   'claude-haiku-4-latest',

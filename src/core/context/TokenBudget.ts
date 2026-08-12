@@ -26,8 +26,7 @@
 import type { ModelContextTier } from './ModelContextTier';
 
 /** D-04-10 CJK unicode-range class (single-char test per loop iteration). */
-const CJK_RE =
-  /[\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF\uF900-\uFAFF\uFF00-\uFFEF]/;
+const CJK_RE = /[\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF\uF900-\uFAFF\uFF00-\uFFEF]/;
 
 /**
  * The ONLY token counter (Pitfall 1). Pure + deterministic: counts characters
@@ -98,7 +97,7 @@ export const SECTION_CAP_MAPPING: Readonly<{
   user: ['user_input', 'task'],
 };
 
-/** Per-kind cap = column% × inputBudget. Caps drive the §2.4 ladder — never truncation. */
+/** Per-kind cap = column% × inputBudget (floored to an integer). Caps drive the §2.4 ladder — never truncation. */
 export function computeSectionCaps(
   tier: ModelContextTier,
   inputBudget: number,
@@ -109,7 +108,7 @@ export function computeSectionCaps(
     keyof typeof SECTION_CAP_MAPPING
   >) {
     const kinds = SECTION_CAP_MAPPING[column];
-    const columnBudget = dist[column] * inputBudget;
+    const columnBudget = Math.floor(dist[column] * inputBudget);
     for (const kind of kinds) {
       caps[kind] = columnBudget;
     }
