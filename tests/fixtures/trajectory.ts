@@ -15,10 +15,7 @@ import { z } from 'zod';
 
 import type { BuiltinTool } from '@/core/ai/types';
 import type { ToolExecutionResult } from '@/core/ai/types';
-import {
-  LEGAL_TRANSITIONS,
-  transitionPhase,
-} from '@/types/harness';
+import { LEGAL_TRANSITIONS, transitionPhase } from '@/types/harness';
 import type { AgentTrajectoryPhase, CompletionEvidence } from '@/types/harness';
 
 // ---------------------------------------------------------------------------
@@ -72,11 +69,9 @@ export const MOCK_DANGEROUS_VERIFIER: MockDangerousVerifier = {
 // 3. syntheticEvidence builder (O1) — CompletionEvidence with fixed defaults.
 // ---------------------------------------------------------------------------
 
-export interface SyntheticEvidenceOverrides extends Partial<CompletionEvidence> {}
+export type SyntheticEvidenceOverrides = Partial<CompletionEvidence>;
 
-export function syntheticEvidence(
-  overrides: SyntheticEvidenceOverrides = {},
-): CompletionEvidence {
+export function syntheticEvidence(overrides: SyntheticEvidenceOverrides = {}): CompletionEvidence {
   return {
     toolName: MOCK_DANGEROUS_TOOL.name,
     operationId: FIXED_TRAJECTORY_OPERATION_ID,

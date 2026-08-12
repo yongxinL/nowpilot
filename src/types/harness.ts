@@ -128,10 +128,7 @@ export const AgentTurnOutcomeSchema = z.object({
  * cannot be a transition target — a turn reaching 'rendering' produces the
  * 'partial' status in AgentTurnOutcome without entering a trajectory phase.
  */
-export const LEGAL_TRANSITIONS: Record<
-  AgentTrajectoryPhase,
-  readonly AgentTrajectoryPhase[]
-> = {
+export const LEGAL_TRANSITIONS: Record<AgentTrajectoryPhase, readonly AgentTrajectoryPhase[]> = {
   'assembling-context': ['planning'],
   planning: ['executing', 'rendering', 'waiting-for-permission'],
   'waiting-for-permission': ['planning', 'aborted'],

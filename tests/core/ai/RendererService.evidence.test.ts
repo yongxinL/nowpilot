@@ -66,9 +66,7 @@ function sideEffectToolResult(ok = true) {
     toolName: MOCK_DANGEROUS_TOOL.name,
     ok,
     output: ok ? { written: true } : undefined,
-    error: ok
-      ? undefined
-      : { code: 'TOOL_FAILED', message: 'write failed', retryable: false },
+    error: ok ? undefined : { code: 'TOOL_FAILED', message: 'write failed', retryable: false },
     durationMs: 1,
   };
 }
@@ -135,9 +133,7 @@ describe('RendererService.render — evidence-aware done-narration guard (D-3a-1
     expect(streamTextMock).toHaveBeenCalledTimes(1);
     const messages = streamTextMock.mock.calls[0][0].messages as CoreMessage[];
     // The honest completion-status note marks the tool done.
-    const note = messages
-      .map((m) => (typeof m.content === 'string' ? m.content : ''))
-      .join('\n');
+    const note = messages.map((m) => (typeof m.content === 'string' ? m.content : '')).join('\n');
     expect(note).toContain(`${MOCK_DANGEROUS_TOOL.name}: done`);
     expect(note).toContain('Turn verdict: completed');
     expect(routerMock.recordFailure).not.toHaveBeenCalled();
@@ -150,9 +146,7 @@ describe('RendererService.render — evidence-aware done-narration guard (D-3a-1
     await RendererService.render(input);
 
     const messages = streamTextMock.mock.calls[0][0].messages as CoreMessage[];
-    const note = messages
-      .map((m) => (typeof m.content === 'string' ? m.content : ''))
-      .join('\n');
+    const note = messages.map((m) => (typeof m.content === 'string' ? m.content : '')).join('\n');
     // The done claim is omitted — the tool is marked not-confirmed instead.
     expect(note).toContain(`${MOCK_DANGEROUS_TOOL.name}: not-confirmed`);
     expect(note).not.toContain(`${MOCK_DANGEROUS_TOOL.name}: done`);
@@ -170,9 +164,7 @@ describe('RendererService.render — evidence-aware done-narration guard (D-3a-1
     const output = await RendererService.render(input);
 
     const messages = streamTextMock.mock.calls[0][0].messages as CoreMessage[];
-    const note = messages
-      .map((m) => (typeof m.content === 'string' ? m.content : ''))
-      .join('\n');
+    const note = messages.map((m) => (typeof m.content === 'string' ? m.content : '')).join('\n');
     // The received verdict is surfaced unchanged (display-only).
     expect(note).toContain('Turn verdict: partial');
     // Display-only: the render output is exactly the streamed text; no

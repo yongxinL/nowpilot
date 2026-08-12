@@ -55,8 +55,11 @@ export async function buildOutcome(
     });
   }
   const sideEffectFailed = evidence.some((e) => !e.ok);
-  const status: AgentTurnOutcome['status'] =
-    caps.capHit ? 'partial' : sideEffectFailed ? 'failed' : 'completed'; // AGT-03: cap = partial
+  const status: AgentTurnOutcome['status'] = caps.capHit
+    ? 'partial'
+    : sideEffectFailed
+      ? 'failed'
+      : 'completed'; // AGT-03: cap = partial
   return {
     operationId,
     status,

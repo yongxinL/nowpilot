@@ -32,11 +32,7 @@ import { CheckpointRecorder } from '@/core/ai/CheckpointRecorder';
 import type { LoopState } from '@/core/ai/CheckpointRecorder';
 import { estimateTokens } from '@/core/ai/contextHelper';
 import { transitionPhase } from '@/types/harness';
-import type {
-  AgentTrajectoryPhase,
-  AgentTrajectoryState,
-  AgentTurnOutcome,
-} from '@/types/harness';
+import type { AgentTrajectoryPhase, AgentTrajectoryState, AgentTurnOutcome } from '@/types/harness';
 import type { ModelContextTier } from '@/core/context/ModelContextTier';
 import type { OptimizedContext, PromptSection, ToolExecutionResult } from '@/core/ai/types';
 
@@ -163,7 +159,7 @@ async function runTurn(
   let phase: AgentTrajectoryPhase = 'assembling-context';
   const checkpoint = new CheckpointRecorder();
   const replannedTools = new Set<string>();
-  let replanSections: PromptSection[] = [];
+  const replanSections: PromptSection[] = [];
   const verifiers = input.verifiers ?? {};
 
   // D-3a-16: record the initial trajectory state, then transition to planning.
@@ -301,11 +297,13 @@ async function runTurn(
    * side-effecting tool without ok:true evidence is never 'completed'. Renders
    * once at finish with the verdict + evidence (display-only renderer, D-3a-17).
    */
-  async function finish(overrides: {
-    status?: AgentTurnOutcome['status'];
-    reasonCode?: string;
-    capHit?: boolean;
-  } = {}): Promise<AgentTurnOutcome> {
+  async function finish(
+    overrides: {
+      status?: AgentTurnOutcome['status'];
+      reasonCode?: string;
+      capHit?: boolean;
+    } = {},
+  ): Promise<AgentTurnOutcome> {
     emit('rendering'); // planning/verifying/replanning → rendering (legal edges)
     const built = await buildOutcome(
       input.operationId,
@@ -347,7 +345,8 @@ async function runTurn(
     // Terminal trajectory phase — partial is an outcome status, not a phase
     // (03a-01 note): completed/failed reach a terminal trajectory phase;
     // partial stops at rendering.
-    if (terminalStatus === 'completed') emit('completed'); // rendering → completed
+    if (terminalStatus === 'completed')
+      emit('completed'); // rendering → completed
     else if (terminalStatus === 'failed') emit('failed'); // rendering → failed
     return {
       operationId: input.operationId,
@@ -378,11 +377,16 @@ function resolveStage(input: AgentTurnInput, stage: 'planner' | 'renderer'): Sta
  * 'planner_failed' fallback decision — NEVER a re-invocation (R-2), and the
  * renderer still produces the visible fallback answer.
  */
-async function planOnce(input: AgentTurnInput, replanSections: PromptSection[]): Promise<PlannerDecision> {
+async function planOnce(
+  input: AgentTurnInput,
+  replanSections: PromptSection[],
+): Promise<PlannerDecision> {
   const invocation = resolveStage(input, 'planner');
   try {
     const sections =
-      replanSections.length > 0 ? [...input.context.sections, ...replanSections] : input.context.sections;
+      replanSections.length > 0
+        ? [...input.context.sections, ...replanSections]
+        : input.context.sections;
     return await PlannerService.plan({
       operationId: input.operationId,
       context: { ...input.context, sections },

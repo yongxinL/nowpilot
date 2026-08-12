@@ -17,7 +17,6 @@ import { runAgentTurn } from '@/core/ai/AgentOrchestrator';
 import type { AgentTurnInput, StageResolver } from '@/core/ai/AgentOrchestrator';
 import { ExecutorService } from '@/core/ai/ExecutorService';
 import { PlannerService } from '@/core/ai/PlannerService';
-import type { PlannerDecision } from '@/core/ai/PlannerService';
 import { RendererService } from '@/core/ai/RendererService';
 import type { StageInvocation } from '@/core/ai/ProviderRouter';
 import type { LanguageModel } from 'ai';
@@ -183,9 +182,9 @@ describe('runAgentTurn — replan-on-tool-failure (AGT-04, D-3a-11)', () => {
 
     // First run_tool fails retryably → the loop restores and re-invokes the
     // planner, which now rejects with AbortError → propagates unchanged.
-    await expect(
-      runAgentTurn(baseInput({ abortSignal: controller.signal })),
-    ).rejects.toMatchObject({ name: 'AbortError' });
+    await expect(runAgentTurn(baseInput({ abortSignal: controller.signal }))).rejects.toMatchObject(
+      { name: 'AbortError' },
+    );
     expect(renderMock).not.toHaveBeenCalled();
   });
 });

@@ -132,7 +132,15 @@ export interface ToolExecutionResult<T = unknown> {
 // `prompt` side via TASK_KINDS (BOTH ProviderRouter.ts and StructuredOutput.ts
 // must list it — Pitfall 2) and NEVER enters CACHED_KINDS (cache-stability, F-4).
 export interface PromptSection {
-  kind: 'system' | 'tool_schemas' | 'preferences' | 'memory' | 'context' | 'task' | 'user_input' | 'tool_result';
+  kind:
+    | 'system'
+    | 'tool_schemas'
+    | 'preferences'
+    | 'memory'
+    | 'context'
+    | 'task'
+    | 'user_input'
+    | 'tool_result';
   text: string;
   tokens: number;
   stable: boolean;

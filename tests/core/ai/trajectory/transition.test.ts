@@ -17,12 +17,7 @@ import {
   AgentTurnOutcomeSchema,
   CompletionEvidenceSchema,
 } from '@/types/harness';
-import type {
-  AgentTrajectoryPhase,
-  AgentTrajectoryState,
-  AgentTurnOutcome,
-  CompletionEvidence,
-} from '@/types/harness';
+import type { AgentTrajectoryPhase, AgentTrajectoryState, AgentTurnOutcome } from '@/types/harness';
 import {
   FIXED_TRAJECTORY_OPERATION_ID,
   FIXED_VERIFIED_AT,
@@ -138,9 +133,9 @@ describe('trajectory/evidence boundary schemas', () => {
     if (ok.success) expect(ok.data).toEqual(stateFixture);
 
     // unknown phase
-    expect(
-      AgentTrajectoryStateSchema.safeParse({ ...stateFixture, phase: 'paused' }).success,
-    ).toBe(false);
+    expect(AgentTrajectoryStateSchema.safeParse({ ...stateFixture, phase: 'paused' }).success).toBe(
+      false,
+    );
     // negative counters
     expect(
       AgentTrajectoryStateSchema.safeParse({ ...stateFixture, plannerCalls: -1 }).success,
@@ -158,9 +153,7 @@ describe('trajectory/evidence boundary schemas', () => {
     if (ok.success) expect(ok.data).toEqual(evidence);
 
     // ok must be boolean
-    expect(
-      CompletionEvidenceSchema.safeParse({ ...evidence, ok: 'yes' }).success,
-    ).toBe(false);
+    expect(CompletionEvidenceSchema.safeParse({ ...evidence, ok: 'yes' }).success).toBe(false);
     // missing postconditionId
     expect(
       CompletionEvidenceSchema.safeParse({ ...evidence, postconditionId: undefined }).success,
@@ -184,12 +177,12 @@ describe('trajectory/evidence boundary schemas', () => {
   });
 
   it('AgentTurnOutcomeSchema rejects malformed shapes (bad status, negative calls, missing evidence)', () => {
-    expect(
-      AgentTurnOutcomeSchema.safeParse({ ...outcomeFixture, status: 'done' }).success,
-    ).toBe(false);
-    expect(
-      AgentTurnOutcomeSchema.safeParse({ ...outcomeFixture, toolCalls: -1 }).success,
-    ).toBe(false);
+    expect(AgentTurnOutcomeSchema.safeParse({ ...outcomeFixture, status: 'done' }).success).toBe(
+      false,
+    );
+    expect(AgentTurnOutcomeSchema.safeParse({ ...outcomeFixture, toolCalls: -1 }).success).toBe(
+      false,
+    );
     // evidence must be an array (syntheticEvidence list); a plain object fails
     expect(
       AgentTurnOutcomeSchema.safeParse({ ...outcomeFixture, evidence: undefined }).success,

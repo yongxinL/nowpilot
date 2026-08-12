@@ -25,7 +25,7 @@ import type { PlannerDecision } from '@/core/ai/PlannerService';
 import { RendererService } from '@/core/ai/RendererService';
 import type { StageInvocation } from '@/core/ai/ProviderRouter';
 import { transitionPhase } from '@/types/harness';
-import type { AgentTrajectoryPhase, AgentTrajectoryState } from '@/types/harness';
+import type { AgentTrajectoryState } from '@/types/harness';
 import type { LanguageModel } from 'ai';
 import { buildOptimizedContextFixture } from '../../../fixtures/optimizedContext';
 
@@ -69,9 +69,10 @@ function baseInput(overrides: Partial<AgentTurnInput> = {}): AgentTurnInput {
   };
 }
 
-function recordTransitions(
-  input: AgentTurnInput,
-): { transitions: AgentTrajectoryState[]; record: (s: AgentTrajectoryState) => void } {
+function recordTransitions(input: AgentTurnInput): {
+  transitions: AgentTrajectoryState[];
+  record: (s: AgentTrajectoryState) => void;
+} {
   const transitions: AgentTrajectoryState[] = [];
   const record = (s: AgentTrajectoryState) => transitions.push(s);
   input.onTransition = record;
@@ -97,12 +98,7 @@ describe('runAgentTurn — trajectory transitions (AGT-01, D-3a-16)', () => {
     const outcome = await runAgentTurn(input);
 
     const phases = transitions.map((t) => t.phase);
-    expect(phases).toEqual([
-      'assembling-context',
-      'planning',
-      'rendering',
-      'completed',
-    ]);
+    expect(phases).toEqual(['assembling-context', 'planning', 'rendering', 'completed']);
     expect(outcome).toMatchObject({ status: 'completed', evidence: [] });
     // The terminal status is the C.1 'completed'; the reasonCode comes from
     // buildOutcome ('ok') — the planner's 'success' reasonCode is not carried
