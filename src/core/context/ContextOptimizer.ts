@@ -32,10 +32,20 @@
 // React — pure deterministic core (determinism rule: no Date.now/crypto).
 import { classifyModelContext } from './ModelContextTier';
 import type { ModelContextTier } from './ModelContextTier';
-import { computeBudgets } from './TokenBudget';
+import { computeBudgets, computeSectionCaps } from './TokenBudget';
 import { packSections } from './ContextPack';
 import type { ContextPackInput } from './ContextPack';
-import { LADDER_STEPS, dropDebugOnly, trimToolSchemas } from './ContextCompressor';
+import {
+  LADDER_STEPS,
+  compressPageContext,
+  dropDebugOnly,
+  dropSecondaryNotes,
+  enterMinimalMode,
+  reduceMemoryTopK,
+  summariseOlderHistory,
+  trimToolSchemas,
+} from './ContextCompressor';
+import type { CompressionKind, CompressionResult } from './ContextCompressor';
 import { ContextProvenanceManifestSchema } from './ContextProvenanceManifest';
 import type { ContextProvenanceManifest, LadderStepName } from './ContextProvenanceManifest';
 import { PROMPTS } from '@/core/prompts';
@@ -134,12 +144,46 @@ export function optimize(input: ContextOptimizerInput): OptimizedContext {
   let sections = packSections(buildPackInput(input, minimalMode));
   let totalTokens = sumTokens(sections);
 
-  // §2.4 ladder — iterate the D-04-12 registry in order; stop as soon as the
-  // budget is met; real steps act, no-ops pass through, 'too-large' is the
-  // honest terminal (never a silent slice — P4-10).
-  if (totalTokens > inputBudget) {
+  // WR-02 (04): the §2.2 per-kind column caps ALSO drive the ladder — a single
+  // kind blowing its cap (e.g. user_input at 3000 vs the medium cap of 2457 —
+  // the OVER_BUDGET_SECTIONS fixture) fires degradation even when the aggregate
+  // stays under budget. computeSectionCaps was dead in the runtime path before
+  // this wave; now it is the per-kind trigger the module contract promised
+  // (TokenBudget L23-24 "caps DRIVE the §2.4 degradation ladder").
+  const caps = computeSectionCaps(tier, inputBudget);
+  const kindTotals = (): Map<string, number> => {
+    const totals = new Map<string, number>();
+    for (const s of sections) totals.set(s.kind, (totals.get(s.kind) ?? 0) + s.tokens);
+    return totals;
+  };
+  const anyKindOverCap = (): boolean => {
+    const totals = kindTotals();
+    return Object.entries(caps).some(([kind, cap]) => (totals.get(kind) ?? 0) > cap);
+  };
+
+  // WR-03 (04): the in-scope predicate is DERIVED from the caller's selected
+  // schemas (D-04-12/T-04-08) — never the hardcoded `() => true` that made
+  // trim-tools structurally unable to fire. The P4 pack only emits selected
+  // schemas, so the step stays inert today, but a future caller injecting an
+  // out-of-scope tool section will be trimmed (whole-section drop, T-04-08).
+  const inScope = (s: PromptSection): boolean =>
+    s.kind !== 'tool_schemas' ||
+    input.selectedToolSchemas.some((t) => s.text.includes(t.name));
+
+  // Per-kind compression markers for the manifest (WR-03 "honor their
+  // markers"): a REAL step that drops/compresses records its compression kind
+  // against the sections it produced; no-ops never drop in P4, so nothing is
+  // stamped (honest provenance — the field stays undefined until a step acts).
+  const compressionByKind = new Map<PromptSection['kind'], CompressionKind>();
+
+  // §2.4 ladder — iterate the D-04-12 registry in order; stop as soon as BOTH
+  // the aggregate budget AND every per-kind cap are met; real steps act, no-op
+  // steps still run their module functions (the registry is genuinely
+  // iterated — WR-03), and 'too-large' is the honest terminal (never a silent
+  // slice — P4-10).
+  if (totalTokens > inputBudget || anyKindOverCap()) {
     for (const step of LADDER_STEPS) {
-      if (totalTokens <= inputBudget) break;
+      if (totalTokens <= inputBudget && !anyKindOverCap()) break;
       switch (step) {
         case 'drop-debug': {
           // REAL step (D-04-12): drop whole debug-metadata sections. Packed
@@ -147,39 +191,79 @@ export function optimize(input: ContextOptimizerInput): OptimizedContext {
           // when a caller-injected debug section is present.
           const r = dropDebugOnly(sections);
           if (r.dropped.length > 0) {
+            // Record the dropped kind BEFORE the section list is filtered —
+            // the marker applies to the surviving sections of that kind.
+            const droppedKinds = new Set(
+              r.dropped
+                .map((id) => sections.find((s) => s.sourceId === id)?.kind)
+                .filter((k): k is PromptSection['kind'] => k !== undefined),
+            );
             sections = r.sections;
             stepsFired.push('drop-debug');
+            if (r.compressionApplied) {
+              for (const kind of droppedKinds) compressionByKind.set(kind, r.compressionApplied);
+            }
           }
           break;
         }
-        // Structural no-ops in P4 (D-04-12): notes / older history / page
-        // context / memory top-k inputs arrive in Phase 4a/5/7 — the registry
-        // slots exist and pass through unchanged (Pitfall 5 — not dead code).
-        case 'drop-secondary':
-        case 'summarise-history':
-        case 'compress-page':
-        case 'reduce-topk':
+        // Structural no-ops in P4 (D-04-12, WR-03): the four inputs arrive in
+        // Phase 4a/5/7, but the optimizer CALLS the module functions so the
+        // registry is genuinely iterated (their compressionApplied markers
+        // exist in the runtime path, not only in unit tests). They never drop
+        // in P4, so behavior is unchanged and nothing is stamped.
+        case 'drop-secondary': {
+          const r = dropSecondaryNotes(sections);
+          if (r.dropped.length > 0) {
+            sections = r.sections;
+            stepsFired.push('drop-secondary');
+          }
           break;
+        }
+        case 'summarise-history': {
+          const r = summariseOlderHistory(sections);
+          if (r.dropped.length > 0) {
+            sections = r.sections;
+            stepsFired.push('summarise-history');
+          }
+          break;
+        }
+        case 'compress-page': {
+          const r = compressPageContext(sections);
+          if (r.dropped.length > 0) {
+            sections = r.sections;
+            stepsFired.push('compress-page');
+          }
+          break;
+        }
         case 'trim-tools': {
           // REAL step (D-04-12/T-04-08): drop WHOLE tool_schemas sections out
-          // of the caller's in-scope set. P4 pack derives sections from the
-          // caller-selected schemas, so every packed section IS in scope — the
-          // step is structurally present and fires when a future caller passes
-          // a narrower scope (minimal mode's ≤1-safe cap already applies at
-          // pack time, atMostOneSafeTool).
-          const r = trimToolSchemas(sections, () => true);
+          // of the caller's in-scope set — the predicate is derived from
+          // input.selectedToolSchemas (WR-03).
+          const r = trimToolSchemas(sections, inScope);
           if (r.dropped.length > 0) {
             sections = r.sections;
             stepsFired.push('trim-tools');
+            if (r.compressionApplied) compressionByKind.set('tool_schemas', r.compressionApplied);
+          }
+          break;
+        }
+        case 'reduce-topk': {
+          const r = reduceMemoryTopK(sections);
+          if (r.dropped.length > 0) {
+            sections = r.sections;
+            stepsFired.push('reduce-topk');
           }
           break;
         }
         case 'minimal-mode': {
           // D-04-14 ladder escalation: re-pack with the compact per-role
           // constant + ≤1 safe tool schema (§2.5 section reduction). Skipped
-          // when already minimal (tiny mandate applied at pack time).
+          // when already minimal (tiny mandate applied at pack time). WR-03:
+          // the compressor's enterMinimalMode marker primitive is called (its
+          // returned minimalMode flag is the §2.5 marker); the optimizer then
+          // performs the actual section reduction below.
           if (!minimalMode) {
-            minimalMode = true;
+            minimalMode = enterMinimalMode(sections).minimalMode;
             sections = packSections(buildPackInput(input, true));
             stepsFired.push('minimal-mode');
           }
@@ -187,8 +271,12 @@ export function optimize(input: ContextOptimizerInput): OptimizedContext {
         }
         case 'too-large': {
           // D-04-15 honest terminal: minimal mode already ran; the turn cannot
-          // fit — throw the typed error, never truncate user input.
-          throw contextTooLargeError(totalTokens, inputBudget);
+          // fit — throw the typed error, never truncate user input. WR-02:
+          // ONLY aggregate window overflow throws — a kind over its column cap
+          // with aggregate headroom degrades as far as P4 allows and then stops
+          // (never a false window overflow for a distribution violation).
+          if (totalTokens > inputBudget) throw contextTooLargeError(totalTokens, inputBudget);
+          break;
         }
       }
       totalTokens = sumTokens(sections);
@@ -199,13 +287,19 @@ export function optimize(input: ContextOptimizerInput): OptimizedContext {
   // whole-section drops, D-04-13), the §2.2 total, the mode flag, the stage's
   // model/window/tier, the heuristic counter method (D-04-10 — the
   // provider-native counter does not exist in ai@4.3.19), and the fired steps.
+  // WR-03: sections whose kind was actually degraded carry the compression
+  // marker (honoring the compressor steps' markers in the runtime path).
   const provenance: ContextProvenanceManifest = {
-    sections: sections.map((s) => ({
-      kind: s.kind,
-      sourceId: s.sourceId,
-      tokens: s.tokens,
-      truncated: false,
-    })),
+    sections: sections.map((s) => {
+      const compressionApplied = compressionByKind.get(s.kind);
+      return {
+        kind: s.kind,
+        sourceId: s.sourceId,
+        tokens: s.tokens,
+        truncated: false,
+        ...(compressionApplied ? { compressionApplied } : {}),
+      };
+    }),
     totalTokens,
     minimalMode,
     workspaceId: input.workspaceId,

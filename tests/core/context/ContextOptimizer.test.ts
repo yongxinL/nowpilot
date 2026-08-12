@@ -254,6 +254,20 @@ describe('optimize — §2.4 ladder order + degradation (04-04 Task 3, D-04-12)'
     expectValidManifest(out);
   });
 
+  it('WR-02: a single kind blowing its per-kind column cap fires the ladder even when the aggregate stays under budget', () => {
+    // medium tier (20_000 → inputBudget 14000, user cap = 15% × 14000 = 2100).
+    // 10_000 ASCII chars ≈ 2500 tokens — blows the user cap while the
+    // aggregate (2500 + system + tool ≈ 2550) stays well under 14000. Pre-fix
+    // this fired nothing (the ladder reacted ONLY to the aggregate total).
+    const out = optimize(
+      baseInput({ modelContextWindow: 20_000, userInput: 'x'.repeat(10_000) }),
+    );
+    expect(out.provenance.totalTokens).toBeLessThan(out.inputBudget); // aggregate headroom
+    expect(out.minimalMode).toBe(true); // WR-02: the per-kind cap drove degradation
+    expect(out.provenance.stepsFired).toContain('minimal-mode');
+    expectValidManifest(out);
+  });
+
   it('tiny-mode [SYSTEM] starts with the compact constant text (D-04-11 selection)', () => {
     const out = optimize(baseInput({ modelContextWindow: 4096 }));
     const system = out.sections.find((s) => s.kind === 'system');
