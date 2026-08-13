@@ -137,16 +137,34 @@ it('content-script bundle contains no UI/antd/React (Appendix G isolation rule)'
   expect(violations).toEqual([]);
 });
 
-it('content bundle payload stays under 50 KB (raw file, Pitfall 3)', async () => {
+/**
+ * Strip the trailing inline sourcemap comment before measuring payload bytes.
+ * RESEARCH Pitfall 3: wxt.config.ts sets sourcemap:'inline' for all builds — a
+ * 21 KB payload reads 174 KB raw; the < 50 KB assertion measures the PAYLOAD
+ * (sourcemap-stripped), never the raw file (§22.1 / ROADMAP criterion 3).
+ *
+ * Implemented via lastIndexOf + slice (not a `$`-anchored regex): the inline
+ * base64 sourcemap ends with a trailing newline, and a JS `.*$` pattern cannot
+ * cross that final newline (the `$` anchor only matches at end-of-input without
+ * the `m` flag) — so regex-based stripping silently matches nothing.
+ */
+function stripInlineSourcemap(text: string): string {
+  const idx = text.lastIndexOf('//# sourceMappingURL=');
+  if (idx === -1) return text;
+  return text.slice(0, idx);
+}
+
+it('content bundle payload stays under 50 KB (sourcemap-stripped, Pitfall 3)', async () => {
   const allFiles = await walk(outDir);
   const contentBundles = allFiles.filter(isContentBundle);
   if (contentBundles.length === 0) return;
 
   for (const file of contentBundles) {
     const content = await readFile(file, 'utf8');
+    const payload = stripInlineSourcemap(content);
     expect(
-      Buffer.byteLength(content),
-      `${relative(outDir, file)} exceeds 50 KB`,
+      Buffer.byteLength(payload),
+      `${relative(outDir, file)} payload exceeds 50 KB (sourcemap-stripped)`,
     ).toBeLessThan(50 * 1024);
   }
 });
