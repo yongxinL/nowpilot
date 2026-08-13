@@ -18,6 +18,7 @@ export const EVENT_TYPES = [
   'SIDEPANEL_OPENED',
   'STANDALONE_OPENED',
   'NOTE_SAVE',
+  'note:saved',
   'THEME_CHANGED',
   'NETWORK_STATUS_CHANGED',
 ] as const;

@@ -102,6 +102,17 @@ export const ERROR_CODES = {
   // attempt. W-1 spec-mirror note: the C.2 mirror (spec Appendix C.2) is
   // re-verified line-anchored at the phase gate (04b-06), Phase-1/04 precedent.
   CONTEXT_INSTRUCTION_INJECTION_BLOCKED: 'CONTEXT_INSTRUCTION_INJECTION_BLOCKED',
+  // --- Knowledge base / memory / notes / search (Phase 5, canonical
+  // additions, KNW-01..05 — Open Q7 vocabulary). Every debugLog in the Phase-5
+  // memory/notes/search layer uses one of these verbatim (Golden Rule 9); the
+  // W-1 spec-mirror note: the C.2 mirror (spec Appendix C.2) is re-verified
+  // line-anchored at the phase gate. Stores reuse STORE_READ/STORE_WRITE for
+  // idb failures — never new codes for IndexedDB operations.
+  MEMORY_RETRIEVAL_FAILED: 'MEMORY_RETRIEVAL_FAILED',
+  MEMORY_EXTRACT_FAILED: 'MEMORY_EXTRACT_FAILED',
+  NOTE_LINK_PARSE_FAILED: 'NOTE_LINK_PARSE_FAILED',
+  NOTE_GRAPH_FAILED: 'NOTE_GRAPH_FAILED',
+  SEARCH_INDEX_REBUILD_FAILED: 'SEARCH_INDEX_REBUILD_FAILED',
   // --- Fallback ---
   UNKNOWN: 'UNKNOWN',
 } as const;

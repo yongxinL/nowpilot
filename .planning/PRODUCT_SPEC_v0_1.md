@@ -5180,6 +5180,16 @@ PROVIDER_AUTH
 PROVIDER_MODEL_UNKNOWN
 SCHEMA_INVALID
 HOST_NOT_PERMITTED
+# Phase 5 — knowledge base / memory / notes / search (canonical additions, 05-01 reconciliation)
+# Open Q7 vocabulary: the Phase-5 code set is EXACTLY these five (KNW-01..05).
+# Every debugLog(code, …) in the Phase-5 memory/notes/search layer uses one of
+# these verbatim (Golden Rule 9). errorCodes.ts (05-01) exports this phase
+# subset; stores reuse STORE_READ/STORE_WRITE for idb failures — never new codes.
+MEMORY_RETRIEVAL_FAILED
+MEMORY_EXTRACT_FAILED
+NOTE_LINK_PARSE_FAILED
+NOTE_GRAPH_FAILED
+SEARCH_INDEX_REBUILD_FAILED
 ```
 
 ## Appendix D — Tier → Model Resolver Table
