@@ -32,7 +32,6 @@ import { FIXED_TIMESTAMP, FIXED_TITLE, FIXED_URL } from '../../../fixtures/pageC
 // Fixed fixtures (deterministic — no dynamic values anywhere in this module)
 // ---------------------------------------------------------------------------
 
-const ALL_TRUE_PREFS: TrustPrefs = { page: true, notes: true, memory: true, tool_result: true };
 const PAGE_DISABLED_PREFS: TrustPrefs = {
   page: false,
   notes: true,
