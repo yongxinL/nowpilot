@@ -15,7 +15,14 @@
 // phases — never relocate. Consumers (src/core/ai/types.ts
 // ToolExecutionResult.evidence, OutcomeVerifier 03a-02, AgentOrchestrator
 // 03a-03) import from here, never re-declare (R-1, C.1 type-home table L4798).
+// Phase 4b (04b-01) REALIZES the ContextItem extension point the header
+// declared: the C.1 trust-aware types (TrustLevel, ContextItem,
+// ContextReceiptEntry — spec Appendix C.1 L4877-4899 VERBATIM, §28.3) land
+// here with co-located Zod boundary schemas (GR-4, D-3a-20 precedent).
+// ContextItem.kind mirrors PromptSection['kind'] via type import (R-1 — the
+// union is NEVER re-declared; 03a-01 lockstep incl. 'tool_result').
 import { z } from 'zod';
+import type { PromptSection } from '@/core/ai/types';
 
 // ---- Agent reliability (Phase 3a, §28.2; C.1 L4809-4837 VERBATIM) ----
 
@@ -151,3 +158,114 @@ export function transitionPhase(from: AgentTrajectoryPhase, to: AgentTrajectoryP
     throw new Error(`AGENT_STATE_INVALID: ${from} -> ${to}`);
   }
 }
+
+// ---- Trust-aware context (Phase 4b, §28.3; C.1 L4877-4899 VERBATIM,
+// ---- CTX-01/D-4b-01 — the trust envelope every downstream 4b module imports)
+
+/**
+ * C.1 (L4878): the 5-member trust provenance union. `system`/`user` may carry
+ * instruction authority; `tool`/`retrieved`/`untrusted` MUST NOT (CTX-01,
+ * enforced at the Zod boundary by ContextItemSchema and at runtime by
+ * applyTrustPolicy, O.3).
+ */
+export type TrustLevel = 'system' | 'user' | 'tool' | 'retrieved' | 'untrusted';
+
+/**
+ * C.1 (L4879-4889): a single source item entering the optimized context.
+ * `kind` mirrors PromptSection['kind'] (R-1 type import — never re-declared).
+ * `instructionAuthority` MUST be false for retrieved/untrusted data (CTX-01).
+ * `disclosureReady?: boolean` is the CTX-05 progressive-skill-disclosure seam
+ * (D-4b-13) — type-level only in 4b; skills land Phase 8.
+ */
+export interface ContextItem {
+  id: string;
+  kind: PromptSection['kind'];
+  text: string;
+  tokens: number;
+  trust: TrustLevel;
+  instructionAuthority: boolean; // MUST be false for retrieved/untrusted data
+  relevance: number; // 0..1
+  freshness: number; // 0..1
+  sensitivity: 'none' | 'low' | 'high';
+  sourceId: string;
+  /** CTX-05 seam (D-4b-13): progressive-skill-disclosure readiness — type-level only in 4b. */
+  disclosureReady?: boolean;
+}
+
+/**
+ * C.1 (L4891-4898): one row of the context receipt (CTX-03) — reconstructs
+ * every packing decision (included/excluded, token deltas, compression,
+ * omit reason) WITHOUT re-running the optimizer (D-4b-11). Never carries raw
+ * text (R-10) — sourceId + token counts only.
+ */
+export interface ContextReceiptEntry {
+  sourceId: string;
+  included: boolean;
+  originalTokens: number;
+  finalTokens: number;
+  compression?: 'summarise' | 'structural' | 'topk';
+  cacheEligible: boolean;
+  omitReason?: string;
+}
+
+// ---- Zod boundary schemas (GR-4, D-3a-20 — zod 3 API only) ----
+
+/** Zod boundary validator for TrustLevel (C.1 L4878 — 5 members verbatim). */
+export const TrustLevelSchema = z.enum(['system', 'user', 'tool', 'retrieved', 'untrusted']);
+
+/**
+ * Zod boundary validator for ContextItem (C.1 L4879-4889). `kind` uses the
+ * 8-member PromptSection union verbatim (incl. 'tool_result', 03a-01 lockstep)
+ * so a new PromptSection kind landing without a schema update fails at the
+ * boundary (D-04-18 union-parity test pattern). CTX-01 MUST-be-false invariant:
+ * instructionAuthority:true combined with trust 'tool'/'retrieved'/'untrusted'
+ * is REJECTED — a forged authority claim cannot survive the boundary.
+ */
+export const ContextItemSchema = z
+  .object({
+    id: z.string(),
+    kind: z.enum([
+      'system',
+      'tool_schemas',
+      'preferences',
+      'memory',
+      'context',
+      'task',
+      'user_input',
+      'tool_result',
+    ]),
+    text: z.string(),
+    tokens: z.number().int().nonnegative(),
+    trust: TrustLevelSchema,
+    instructionAuthority: z.boolean(),
+    relevance: z.number().min(0).max(1),
+    freshness: z.number().min(0).max(1),
+    sensitivity: z.enum(['none', 'low', 'high']),
+    sourceId: z.string(),
+    // CTX-05 seam (D-4b-13): optional boolean — type-level field presence.
+    disclosureReady: z.boolean().optional(),
+  })
+  .refine((c) => !(c.instructionAuthority && c.trust !== 'system' && c.trust !== 'user'), {
+    message: 'CTX-01: instructionAuthority must be false for tool/retrieved/untrusted trust',
+    path: ['instructionAuthority'],
+  });
+
+/** Zod boundary validator for ContextReceiptEntry (C.1 L4891-4898). */
+export const ContextReceiptEntrySchema = z.object({
+  sourceId: z.string(),
+  included: z.boolean(),
+  originalTokens: z.number().int().nonnegative(),
+  finalTokens: z.number().int().nonnegative(),
+  compression: z.enum(['summarise', 'structural', 'topk']).optional(),
+  cacheEligible: z.boolean(),
+  omitReason: z.string().optional(),
+});
+
+/**
+ * Structured omit reasons for the context receipt (Open Q3 resolution,
+ * D-4b-12): 'prompt_injection' (quarantined by the injection screener) and
+ * 'trust_disabled' (source type switched off in np_trust prefs). Forward-
+ * compatible with Phase-5 memory reasons — no new C.2 codes.
+ */
+export const TrustOmitReasonSchema = z.enum(['prompt_injection', 'trust_disabled']);
+export type TrustOmitReason = z.infer<typeof TrustOmitReasonSchema>;
