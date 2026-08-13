@@ -44,7 +44,7 @@ created: 2026-08-13
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
 | 04b-01-T1 | 01 | 1 | TRUST-01 (CTX-01) | T-4b-01 / — | C.1 types verbatim: TrustLevel union, ContextItem shape with `instructionAuthority` false for retrieved, ContextReceiptEntry — Zod gates reject unknown kinds/trusts | unit | `pnpm vitest run tests/core/context/trust/TrustTypes.test.ts --bail=1` | ❌ W0 | ⬜ pending |
 | 04b-02-T1 | 02 | 2 | TRUST-01 (CTX-02) | T-4b-02 / — | `applyTrustPolicy` (O.3 verbatim): AUTHORITY_BY_TRUST mapping; `<untrusted_data source="…">` wrap; system/user untouched | unit | `pnpm vitest run tests/core/context/trust/TrustPolicy.test.ts --bail=1` | ❌ W0 | ⬜ pending |
-| 04b-02-T1 | 02 | 2 | TRUST-01 (CTX-02) | T-4b-03 / — | `CONTEXT_INSTRUCTION_INJECTION_BLOCKED` raised on policy-redefinition attempt; code exists in errorCodes.ts (GR-9) | unit | `pnpm vitest run tests/core/context/trust/TrustPolicy.test.ts --bail=1` | ❌ W0 | ⬜ pending |
+| 04b-02-T1 | 02 | 2 | TRUST-01 (CTX-02) | T-4b-03 / — | `CONTEXT_INSTRUCTION_INJECTION_BLOCKED` typed carrier + `isContextInjectionBlockedError` guard exported for defensive use (code canonical in errorCodes.ts, GR-9); strip+wrap+quarantine is the enforcement — no raise site in Phase 4b (carrier exported, not thrown) | unit | `pnpm vitest run tests/core/context/trust/TrustPolicy.test.ts --bail=1` | ❌ W0 | ⬜ pending |
 | 04b-02-T2 | 02 | 2 | TRUST-02 (CTX-02) | T-4b-04 / — | Classifier: `stripInvisibleUnicode` removes zero-width/tag-block/variation-selector; `classifyInjection` flags instruction-override shapes; determinism | unit (security dir) | `pnpm vitest run tests/security/prompt-injection/injectionScreener.test.ts --bail=1` | ❌ W0 | ⬜ pending |
 | 04b-04-T3 | 04 | 3 | TRUST-02 (CTX-02) | T-4b-05 / — | Quarantine-not-drop: flagged item stays ContextItem, never PromptSection; receipt `included:false, omitReason:'prompt_injection'`; legit page ABOUT injection recoverable | unit | `pnpm vitest run tests/security/prompt-injection/quarantine.test.ts --bail=1` | ❌ W0 | ⬜ pending |
 | 04b-04-T3 | 04 | 3 | TRUST-02 (CTX-02) | T-4b-06 / — | Malicious fixtures cannot alter policy or inject: authority strip renders classifier-miss inert (boundary test, not filter recall) | unit | `pnpm vitest run tests/security/prompt-injection/quarantine.test.ts --bail=1` | ❌ W0 | ⬜ pending |
@@ -72,7 +72,7 @@ created: 2026-08-13
 - [ ] `tests/core/context/trust/qualityCounters.test.ts` — CTX-06 counters, no raw text
 - [ ] `tests/security/prompt-injection/injectionScreener.test.ts` — classifier + unicode strip (new top-level dir `tests/security/`)
 - [ ] `tests/security/prompt-injection/quarantine.test.ts` — quarantine-not-drop + malicious-fixture invariants
-- [ ] `tests/components/OptionsPage.test.tsx` — content-trust card (extend or add; fakeBrowser for chrome.storage)
+- [ ] `tests/components/pages/OptionsPage.test.tsx` — content-trust card (extend or add; fakeBrowser for chrome.storage)
 - [ ] `tests/core/context/ContextOptimizer.test.ts` — extend: trust-aware pageContext feed + drop-in identity with/without page
 - [ ] Framework install: none — zero new packages (antd `Switch` verified in installed 6.5.3)
 - [ ] `verify:phase-4b` script in package.json (§24 chain, consistent with prior phases)

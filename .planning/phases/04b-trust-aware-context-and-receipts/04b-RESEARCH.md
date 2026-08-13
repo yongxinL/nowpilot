@@ -518,24 +518,28 @@ export async function readTrustPrefs(): Promise<TrustPrefs> {
 | A7 | `relevance: 1` and a deterministic age-decay `freshness` for the single-page feed; `sensitivity: 'none'` | Code Examples (Operation 2) | CTX-01 metadata semantics feed Phase-6 diagnostics; different defaults change the counters' meaning |
 | A8 | `verify:phase-4b` follows the repo's actual §24 chain form (`eslint . && prettier --check . && tsc --noEmit && wxt build && vitest run`) — the spec's scoped form (L3684) is satisfied as a subset | Environment Availability | Prior phases all deviate from the spec's scoped strings to the full chain; consistency with the 6 existing scripts is the safer call |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Does 4b deliver the top-k `selectRelevant` page feed (4a deferred item 14), or only the structural budget cap?**
+   - **RESOLVED:** 04b-03 delivers the structural cap only — `contextFeed.pageToContextItems` enforces the §22.2 2,000-token budget at conversion (04b-03 flagged assumption A3); top-k `selectRelevant` is deferred to Phase 5a.
    - What we know: §26.5 says pages over 2,000 tokens route through `selectRelevant(query)` with `compressionApplied:'topk'`; the 4a CONTEXT deferred list names that feed → 4b; 4b's own CONTEXT.md D-4b-01 names only `PageContext → ContextItem[]` and does not commit to query-dependent ranking. `ContextOptimizerInput` has no query-relevance surface today.
    - What's unclear: whether "item 14" is in 4b's scope or was superseded by the D-4b-01 single-item page feed.
    - Recommendation: defer top-k to Phase 5a (query-dependent ranking belongs with the RAG/MiniSearch consumer); 4b enforces the §22.2 budget structurally at conversion (A3). If the discuss-phase disagrees, the feed needs a relevance source the optimizer doesn't have.
 
 2. **Where does the receipt reconstruction helper live?** (D-4b-10 discretion)
+   - **RESOLVED:** 04b-03 Task 2 places the builder at `src/core/context/contextReceipt.ts` (sibling of the manifest module); the receipt TYPE + Zod schema stay in `ContextProvenanceManifest.ts` (R-1) — the BUILDER lives next to the decisions it consumes.
    - What we know: manifest extension is R-1-bound to `ContextProvenanceManifest.ts`; the helper (`buildContextReceipt`) is pure derivation from trust decisions.
    - What's unclear: co-location (manifest module) vs trust module.
    - Recommendation: co-locate `contextReceipt.ts` as a sibling of `TrustPolicy` in `src/core/context/trust/` OR extend the manifest module in place — either is fine; the receipt TYPE + schema stay in the manifest module (R-1), the BUILDER lives next to the decisions it consumes.
 
 3. **Should the classifier's quarantine reason be structured?** (D-4b-06)
+   - **RESOLVED:** 04b-01 Task 1 adds `TrustOmitReasonSchema = z.enum(['prompt_injection','trust_disabled'])` + `TrustOmitReason` type in `src/types/harness.ts` — exact, testable, forward-compatible with Phase-5 memory reasons, without adding non-canonical §C.2 codes.
    - What we know: `omitReason?: string` is a free string in C.1; the spec's canonical codes live in §C.2.
    - What's unclear: whether `'prompt_injection'`/`'trust_disabled'` become enum members of a receipt schema or stay strings.
    - Recommendation: keep them as string literals in the Zod enum for the receipt schema (`z.enum(['prompt_injection','trust_disabled'])` on a `TrustOmitReason` type) — exact, testable, and forward-compatible with Phase-5 memory reasons — without adding non-canonical §C.2 codes.
 
 4. **Freshness decay semantics for the page item.**
+   - **RESOLVED:** 04b-03 Task 1 pins a fixed deterministic decay curve (`max(0, 1 - ageHours/24)`, clamped 0..1) documented in the converter with fixture-pinned values (04b-03 flagged assumption A7); the receipt only records the resulting number.
    - What we know: `freshness: 0..1`; page carries `extractedAt`.
    - What's unclear: the exact deterministic decay curve (e.g. `max(0, 1 - ageHours/24)`).
    - Recommendation: a fixed curve documented in the converter with fixture-pinned values; the receipt only records the resulting number.
@@ -575,7 +579,7 @@ export async function readTrustPrefs(): Promise<TrustPrefs> {
 | TRUST-01 (CTX-01) | C.1 types verbatim: TrustLevel union, ContextItem shape (`instructionAuthority` must be false for retrieved), ContextReceiptEntry — Zod gates parse fixtures, reject unknown kinds/trusts | unit | `pnpm vitest run tests/core/context/trust/TrustTypes.test.ts --bail=1` | ❌ Wave 0 |
 | TRUST-01 (CTX-01) | Zod schema for ContextItem rejects `instructionAuthority: true` with trust `retrieved`/`untrusted`/`tool` (CTX-01 MUST-be-false invariant at the boundary) | unit | `pnpm vitest run tests/core/context/trust/TrustTypes.test.ts --bail=1` | ❌ Wave 0 |
 | TRUST-01 (CTX-02) | `applyTrustPolicy` (O.3 verbatim): AUTHORITY_BY_TRUST mapping; wrap format `<untrusted_data source="…">`; system/user items untouched | unit | `pnpm vitest run tests/core/context/trust/TrustPolicy.test.ts --bail=1` | ❌ Wave 0 |
-| TRUST-01 (CTX-02) | `CONTEXT_INSTRUCTION_INJECTION_BLOCKED` error raised when a retrieved item tries to redefine policy; code exists in errorCodes.ts (GR-9) | unit | `pnpm vitest run tests/core/context/trust/TrustPolicy.test.ts --bail=1` | ❌ Wave 0 |
+| TRUST-01 (CTX-02) | `CONTEXT_INSTRUCTION_INJECTION_BLOCKED` typed carrier + `isContextInjectionBlockedError` guard exported for defensive use (code canonical in errorCodes.ts, GR-9); strip+wrap+quarantine is the enforcement — no raise site in Phase 4b | unit | `pnpm vitest run tests/core/context/trust/TrustPolicy.test.ts --bail=1` | ❌ Wave 0 |
 | TRUST-02 (CTX-02) | Classifier: `stripInvisibleUnicode` removes zero-width/tag-block/variation-selector chars; `classifyInjection` flags known instruction-override shapes; determinism (same input → same verdict) | unit (security dir) | `pnpm vitest run tests/security/prompt-injection/injectionScreener.test.ts --bail=1` | ❌ Wave 0 |
 | TRUST-02 (CTX-02) | Quarantine-not-drop: flagged item stays a ContextItem, never a PromptSection; receipt row `included:false, omitReason:'prompt_injection'`; legit page ABOUT injection is auditably recoverable | unit | `pnpm vitest run tests/security/prompt-injection/quarantine.test.ts --bail=1` | ❌ Wave 0 |
 | TRUST-02 (CTX-02) | Malicious page/note/tool fixtures cannot alter policy or inject: authority strip renders even a classifier-miss inert (boundary test, not filter recall) | unit | `pnpm vitest run tests/security/prompt-injection/quarantine.test.ts --bail=1` | ❌ Wave 0 |
@@ -586,7 +590,7 @@ export async function readTrustPrefs(): Promise<TrustPrefs> {
 | CTX-06 (D-4b-14) | Quality counters: screened/quarantined/per-trust-bucket/totalIncludedTokens, no raw text in counters; manifest schema extended (union-parity test D-04-18 extended) | unit | `pnpm vitest run tests/core/context/trust/qualityCounters.test.ts --bail=1` | ❌ Wave 0 |
 | CTX-05 (D-4b-13) | Structural seam: ContextItem carries disclosure-readiness metadata field; type-level (no logic) | unit (type-level) | `pnpm vitest run tests/core/context/trust/TrustTypes.test.ts --bail=1` | ❌ Wave 0 |
 | D-4b-09 | Hook wiring: optimizer `pageContext` + `trustPrefs` path — page feed produces a `context` section; `pageContext: undefined` path byte-identical to pre-4b (drop-in regression extended) | unit | `pnpm vitest run tests/core/context/ContextOptimizer.test.ts --bail=1` | ❌ extend existing |
-| D-4b-07 | Options content-trust card: 4 Switch rows render at persisted values, toggle write-through to np_trust, rollback + `STR.options.trustSaveFailed` toast on failure, all-true fallback on invalid storage | component | `pnpm vitest run tests/components/OptionsPage.test.tsx --bail=1` | ❌ Wave 0 |
+| D-4b-07 | Options content-trust card: 4 Switch rows render at persisted values, toggle write-through to np_trust, rollback + `STR.options.trustSaveFailed` toast on failure, all-true fallback on invalid storage | component | `pnpm vitest run tests/components/pages/OptionsPage.test.tsx --bail=1` | ❌ Wave 0 |
 | verify gate | `verify:phase-4b` green (chain + scoped dirs) | — | `pnpm run verify:phase-4b` | ❌ Wave 0 (script) |
 
 ### Sampling Rate
@@ -603,7 +607,7 @@ export async function readTrustPrefs(): Promise<TrustPrefs> {
 - [ ] `tests/core/context/trust/qualityCounters.test.ts` — CTX-06 counters, no raw text
 - [ ] `tests/security/prompt-injection/injectionScreener.test.ts` — classifier + unicode strip (new top-level dir `tests/security/`)
 - [ ] `tests/security/prompt-injection/quarantine.test.ts` — quarantine-not-drop + malicious-fixture invariants
-- [ ] `tests/components/OptionsPage.test.tsx` — content-trust card (extend or add; fakeBrowser for chrome.storage)
+- [ ] `tests/components/pages/OptionsPage.test.tsx` — content-trust card (extend or add; fakeBrowser for chrome.storage)
 - [ ] `tests/core/context/ContextOptimizer.test.ts` — extend: trust-aware pageContext feed + drop-in identity with/without page
 - [ ] Framework install: none — zero new packages
 - [ ] `verify:phase-4b` script in package.json (§24 chain, consistent with prior phases)
