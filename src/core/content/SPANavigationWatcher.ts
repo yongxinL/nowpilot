@@ -21,10 +21,17 @@
 // (04a-07) uses to rebuild the live context and mark the panel cache stale via the bridge
 // (subscribed tabs re-extract, unsubscribed mark-stale only).
 
-/** wxt event shape: {newUrl, oldUrl} carried on the namespaced window event. */
+/**
+ * wxt event shape: {newUrl, oldUrl} carried on the namespaced window event.
+ * wxt 0.19.29's real WxtLocationChangeEvent carries URL INSTANCES (verified in
+ * custom-events.mjs — `new WxtLocationChangeEvent(newUrl, oldUrl)` from
+ * location-watcher.mjs); the host's callback contract is a plain string href,
+ * so the watcher normalizes either shape (Rule 1 — a string-only guard would
+ * never fire in production).
+ */
 export interface WxtLocationChangeLikeEvent extends Event {
-  newUrl: string;
-  oldUrl?: string;
+  newUrl: string | URL;
+  oldUrl?: string | URL;
 }
 
 /**
@@ -67,8 +74,10 @@ export class SPANavigationWatcher {
     this.eventName = options.eventName ?? 'wxt:locationchange';
     this.handler = (event: Event) => {
       const { newUrl } = event as WxtLocationChangeLikeEvent;
-      // Defensive: only react to wxt-shaped events carrying the post-navigation URL.
-      if (typeof newUrl === 'string') this.onNavigate(newUrl);
+      // Normalize wxt's URL-instance event AND the string shape tests dispatch:
+      // both carry the post-navigation URL, delivered to the host as a string href.
+      const href = typeof newUrl === 'string' ? newUrl : newUrl?.href;
+      if (typeof href === 'string') this.onNavigate(href);
     };
     // ctx.addEventListener (auto-cleans on context invalidation) — never a bare
     // window.addEventListener here (RESEARCH Common Op 5: leak + invalidated context).

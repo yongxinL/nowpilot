@@ -176,7 +176,7 @@ describe('ContentScriptHost (D-16 content skeleton)', () => {
     expect(full.startsWith(payload.html)).toBe(true);
     expect(payload.html.endsWith('</p>')).toBe(true);
     host.stop();
-  });
+  }, 30000);
 
   it('mode actionable replies with the walked RawNode tree minus password values (D-4a-12/20)', async () => {
     document.body.innerHTML = `

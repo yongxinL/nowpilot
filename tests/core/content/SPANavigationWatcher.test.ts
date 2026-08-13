@@ -78,4 +78,23 @@ describe('SPANavigationWatcher (D-4a-01)', () => {
     expect(received).toBe('https://example.com/pages/42');
     watcher.stop();
   });
+
+  it('normalizes wxt URL-instance events to a string href (wxt 0.19.29 runtime shape)', () => {
+    let received: string | undefined;
+    const watcher = new SPANavigationWatcher(
+      windowDeps(),
+      (newUrl) => {
+        received = newUrl;
+      },
+      { eventName: NAMESPACED_EVENT },
+    );
+
+    // wxt's location-watcher dispatches `new WxtLocationChangeEvent(new URL(...), ...)`
+    // — newUrl is a URL instance, never a string. The watcher must normalize it.
+    const event = new Event(NAMESPACED_EVENT) as Event & { newUrl: unknown };
+    event.newUrl = new URL('https://example.com/spa-route/7');
+    window.dispatchEvent(event);
+    expect(received).toBe('https://example.com/spa-route/7');
+    watcher.stop();
+  });
 });

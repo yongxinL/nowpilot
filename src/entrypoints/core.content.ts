@@ -16,8 +16,11 @@ export default defineContentScript({
   matches: ['<all_urls>'],
   runAt: 'document_idle',
   world: 'ISOLATED',
-  main: () => {
-    const host = new ContentScriptHost();
+  main: (ctx) => {
+    // The wxt ctx drives the SPA-nav watcher (D-4a-01): ctx.addEventListener
+    // maps 'wxt:locationchange' to the namespaced name AND auto-cleans the
+    // listener on context invalidation — never a bare window.addEventListener.
+    const host = new ContentScriptHost({ watcherDeps: ctx });
     host.start();
   },
 });
