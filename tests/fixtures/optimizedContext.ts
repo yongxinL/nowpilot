@@ -223,6 +223,16 @@ export function buildOptimizedContextFixture(
     window: FIXED_MODEL_CONTEXT_WINDOWS[FIXED_MODEL],
     counterMethod: 'heuristic', // D-04-10: provider-native counter absent in ai@4.3.19
     stepsFired: [], // no degradation in the default fixture
+    // 04b-03 sync: receipt + CTX-06 counters are REQUIRED fields — deterministic
+    // constants keep the fixture manifest schema-valid (ContextProvenanceManifest.test.ts
+    // positive gate); 04b-04's trust stage wires the real values.
+    receipt: [],
+    counters: {
+      screened: 0,
+      quarantined: 0,
+      byTrust: { system: 0, user: 0, tool: 0, retrieved: 0, untrusted: 0 },
+      totalIncludedTokens: 0,
+    },
   };
 
   return {

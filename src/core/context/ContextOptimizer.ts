@@ -308,6 +308,16 @@ export function optimize(input: ContextOptimizerInput): OptimizedContext {
     window: input.modelContextWindow,
     counterMethod: 'heuristic',
     stepsFired,
+    // placeholder — 04b-04 (trust stage) stamps the real receipt/counters
+    // (04b-03 sync: the new fields are REQUIRED, so this literal stays
+    // schema-valid at every boundary until the trust stage lands).
+    receipt: [],
+    counters: {
+      screened: 0,
+      quarantined: 0,
+      byTrust: { system: 0, user: 0, tool: 0, retrieved: 0, untrusted: 0 },
+      totalIncludedTokens: 0,
+    },
   };
 
   // GR-4/GR-9 (T-04-19): a manifest that fails its own boundary schema must

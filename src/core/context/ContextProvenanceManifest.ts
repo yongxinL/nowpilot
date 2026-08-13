@@ -16,6 +16,8 @@
 // Phase 6 AITransactionLog).
 import { z } from 'zod';
 import type { ModelContextTier } from './ModelContextTier';
+import type { ContextReceiptEntry, TrustLevel } from '@/types/harness';
+import { ContextReceiptEntrySchema, TrustLevelSchema } from '@/types/harness';
 
 /**
  * §2.4 degradation-ladder step names (D-04-12) — the vocabulary `stepsFired`
@@ -67,6 +69,21 @@ export interface ContextProvenanceManifest {
   counterMethod: 'native' | 'heuristic';
   /** The §2.4 ladder steps that fired this turn (empty when no degradation). */
   stepsFired: ReadonlyArray<LadderStepName>;
+  /**
+   * D-4b-10/11 (04b-03): the context receipt — one ContextReceiptEntry per
+   * source item (included AND excluded, D-4b-06 no-silent-drop). Sufficient to
+   * reconstruct every packing decision without re-running the optimizer
+   * (Phase 6 PromptInspector consumes it). R-10: sourceId + token counts +
+   * decisions only — NEVER raw text.
+   */
+  receipt: ContextReceiptEntry[];
+  /** CTX-06 (04b-03): classifier + trust counters — pure counts, no raw text. */
+  counters: {
+    screened: number;
+    quarantined: number;
+    byTrust: Record<TrustLevel, number>;
+    totalIncludedTokens: number;
+  };
 }
 
 /**
@@ -104,4 +121,14 @@ export const ContextProvenanceManifestSchema = z.object({
   window: z.number().int().nonnegative(),
   counterMethod: z.enum(['native', 'heuristic']),
   stepsFired: z.array(z.enum(LADDER_STEP_NAMES)),
+  // 04b-03 (GR-4 lockstep): the receipt + counters Zod mirrors — a manifest
+  // whose receipt/counters drift from the emitted shape fails SCHEMA_INVALID at
+  // the optimizer stamp site (T-4b-09).
+  receipt: z.array(ContextReceiptEntrySchema),
+  counters: z.object({
+    screened: z.number().int().nonnegative(),
+    quarantined: z.number().int().nonnegative(),
+    byTrust: z.record(TrustLevelSchema, z.number().int().nonnegative()),
+    totalIncludedTokens: z.number().int().nonnegative(),
+  }),
 });
