@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 04a
 current_phase_name: pagecontentservice-knowledge-acquisition
 status: verifying
-stopped_at: Completed 04b-01-PLAN.md
-last_updated: "2026-08-13T14:46:02.337Z"
+stopped_at: Completed 04b-02-PLAN.md
+last_updated: "2026-08-13T15:09:44.389Z"
 last_activity: 2026-08-13
 last_activity_desc: Phase 04a execution started
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 66
-  completed_plans: 61
+  completed_plans: 62
 ---
 
 # Project State
@@ -33,7 +33,7 @@ Plan: 10 of 10
 Status: Phase complete — ready for verification
 Last activity: 2026-08-13 — Phase 04a execution started
 
-Progress: [█████████░] 92%
+Progress: [█████████░] 94%
 
 ## Performance Metrics
 
@@ -109,6 +109,7 @@ Progress: [█████████░] 92%
 | Phase 04a P09 | 11min | 1 tasks | 3 files |
 | Phase 04a-pagecontentservice-knowledge-acquisition P10 | 25 | 1 tasks | 5 files |
 | Phase 04b-trust-aware-context-and-receipts P01 | 14 | 3 tasks | 6 files |
+| Phase 04b-trust-aware-context-and-receipts P02 | 16 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -235,6 +236,9 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase ?]: handleNavigate keeps its watcher-callback signature with the URL prefixed _newUrl: the wxt:locationchange URL is intentionally unused (live DOM state is the D-4a-01 context source); prefix satisfies the eslint /^_/u allowed-args rule without changing behavior
 - [Phase ?]: The six pinned constants are documented in Appendix C as a code block with per-constant executable homes named; C.2 CONTENT_EXTRACT_FAILED count=3 (L3270 vocabulary + L3510 closed set + L5108 Phase-1 block); O.12's EXTRACTION_FAILED never added (D-4a-22)
 - [Phase 04b-trust-aware-context-and-receipts]: Trust types land IN PLACE in harness.ts (R-1) with co-located Zod schemas; ContextItem.kind typed as PromptSection['kind'] via type import (never re-declared); CTX-01 enforced at the Zod boundary refine; CTX-05 disclosureReady?: boolean seam type-level only (D-4b-13); TrustOmitReason = z.enum(['prompt_injection','trust_disabled']) Open Q3 structured omit reasons, no new C.2 codes; np_trust shape { page, notes, memory, tool_result } all-boolean area local (D-4b-07), all-true safe default; verify:phase-4b = §24 chain verbatim — Trust types land IN PLACE in harness.ts (R-1) with co-located Zod schemas; ContextItem.kind typed as PromptSection['kind'] via type import (never re-declared); CTX-01 enforced at the Zod boundary refine; CTX-05 disclosureReady?: boolean seam type-level only (D-4b-13); TrustOmitReason = z.enum(['prompt_injection','trust_disabled']) Open Q3 structured omit reasons, no new C.2 codes; np_trust shape { page, notes, memory, tool_result } all-boolean area local (D-4b-07), all-true safe default; verify:phase-4b = §24 chain verbatim
+- [Phase 04b]: applyTrustPolicy is O.3 verbatim; CONTEXT_INSTRUCTION_INJECTION_BLOCKED exported as typed carrier + guard only (no raise site in 4b; strip+wrap+quarantine is the enforcement, D-4b-06) — Typed-error carrier precedent (ContextTooLargeError); no 4b code raises it
+- [Phase 04b]: Tag-block regex class MUST use \u{E0000}-\u{E007F} with the u flag — 4-hex \uE0000 parses as \uE000+0, widening the class to a 0-U+E007 range that strips ordinary ASCII (Rule 1) — Empirically verified in node; the plan/RESEARCH literal was silently destructive
+- [Phase 04b]: Smuggled-variant test fixtures preserve word separators (OWASP ASCII-smuggling shape) — replacing separators with ZWSPs makes strip-then-classify unfixable — Plan fixture literal could not pass against the pinned RESEARCH patterns
 
 ### Pending Todos
 
@@ -263,6 +267,6 @@ Items acknowledged and carried forward (v2 scope, tracked in REQUIREMENTS.md):
 
 ## Session Continuity
 
-Last session: 2026-08-13T14:45:28.365Z
-Stopped at: Completed 04b-01-PLAN.md
+Last session: 2026-08-13T15:09:44.349Z
+Stopped at: Completed 04b-02-PLAN.md
 Resume file: None
