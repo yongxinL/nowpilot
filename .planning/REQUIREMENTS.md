@@ -70,7 +70,7 @@
 
 - [x] **CAT-01**: Content scripts extract `{title, url, text, metadata}` via defuddle (readability fallback, turndown APC-lite)
 - [x] **CAT-02**: SPANavigationWatcher + PageContextBridge deliver page context to side panel/standalone
-- [ ] **CAT-03**: TraceRedactor applied to DOM-embedded sensitive values
+- [x] **CAT-03**: TraceRedactor applied to DOM-embedded sensitive values
 - [x] **CAT-04**: ISOLATED world by default; MAIN world only for domain-specific globals
 - [x] **CAT-05**: Content bundle under 50KB; extraction is non-blocking
 
@@ -194,7 +194,7 @@ Deferred to a future release. Tracked but not in the current roadmap.
 | AI-07 | Phase 8 (re-mapped per D-06 — MCP dependency-blocked to Phase 8/8a) | Complete |
 | AGT-01…05 | Phase 3a | Done |
 | CTX-01…04 | Phase 4 | Done |
-| CAT-01…05 | Phase 4a | Pending |
+| CAT-01…05 | Phase 4a | Done |
 | TRUST-01…03 | Phase 4b | Pending |
 | KNW-01…05 | Phase 5 | Pending |
 | LLM-WIKI-01…03, SYNC-01…02 | Phase 5a | Pending |

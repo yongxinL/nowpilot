@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v0.1
 milestone_name: milestone
 current_phase: 04a
-current_phase_name: PageContentService (Knowledge Acquisition
+current_phase_name: pagecontentservice-knowledge-acquisition
 status: executing
-stopped_at: Completed 04a-07-PLAN.md
-last_updated: "2026-08-13T01:57:24.140Z"
-last_activity: 2026-08-12
+stopped_at: Completed 04a-08-PLAN.md
+last_updated: "2026-08-13T06:56:53.801Z"
+last_activity: 2026-08-13
 last_activity_desc: Phase 04a execution started
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 60
-  completed_plans: 57
+  completed_plans: 58
 ---
 
 # Project State
@@ -24,16 +24,16 @@ See: .planning/PROJECT.md (updated 2026-08-09)
 
 **Core value:** A privacy-first, local-first AI assistant where chat, extracted page content, and a linked notes/knowledge layer combine into a persistent personal workspace — no data leaves the machine unless the user deliberately configures a cloud provider.
 
-**Current focus:** Phase 04a — PageContentService (Knowledge Acquisition)
+**Current focus:** Phase 04a — pagecontentservice-knowledge-acquisition
 
 ## Current Position
 
-Phase: 04a (PageContentService (Knowledge Acquisition)) — EXECUTING
-Plan: 8 of 10
+Phase: 04a (pagecontentservice-knowledge-acquisition) — EXECUTING
+Plan: 9 of 10
 Status: Ready to execute
-Last activity: 2026-08-12 — Phase 04a execution started
+Last activity: 2026-08-13 — Phase 04a execution started
 
-Progress: [██████████] 95%
+Progress: [██████████] 97%
 
 ## Performance Metrics
 
@@ -105,6 +105,7 @@ Progress: [██████████] 95%
 | Phase 04a-pagecontentservice-knowledge-acquisition P04 | 9min | 2 tasks | 5 files |
 | Phase 04a P06 | 11min | 2 tasks | 4 files |
 | Phase 04a-pagecontentservice-knowledge-acquisition P07 | 13min | 2 tasks | 8 files |
+| Phase 04a P08 | 20min | 1 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -224,6 +225,9 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 04a]: SPANavigationWatcher normalizes wxt's URL-instance newUrl (wxt 0.19.29 dispatches new WxtLocationChangeEvent(new URL(...)) — a string-only guard made the production D-4a-01 signal dead; the handler extracts .href for URL objects and passes strings through; regression test pins the runtime shape — wxt runtime event shape verified in node_modules (custom-events.mjs / location-watcher.mjs) during 04a-07; vitest 4.1.10 rejects -x so plan verify commands run with --bail=1
 - [Phase 04a]: Element-boundary truncation = COMPLETE CLOSING TAG boundary: walk back to the last '</...>' before PAGE_HTML_MAX_BYTES (a bare '>' may be an opening tag, leaving a dangling unclosed element); the test pins endsWith('</p>') + prefix-of-full — wxt runtime event shape verified in node_modules (custom-events.mjs / location-watcher.mjs) during 04a-07; vitest 4.1.10 rejects -x so plan verify commands run with --bail=1
 - [Phase 04a]: PAGE_HTML_MAX_BYTES (2_097_152) has a single home — exported from ContentScriptHost; tests import it from there; the truncation test needs an explicit 30s timeout (jsdom 4MB parse exceeds vitest's 5s default) — wxt runtime event shape verified in node_modules (custom-events.mjs / location-watcher.mjs) during 04a-07; vitest 4.1.10 rejects -x so plan verify commands run with --bail=1
+- [Phase ?]: extractLayered (04a-08) keeps Appendix O.12 accept-first-with-usable-content verbatim; D-4a-19 provenance records a strategy id in fallbacksTried when the winning result.source differs from the strategy's own id (Readability-inside-Defuddle) — the plan's Test 2 fallback-record contract
+- [Phase ?]: Timeout ownership (04a-08): the service passes its EXTRACTION_TIMEOUT_MS cap to bridge.requestExtraction AND keeps its own AbortController timer as the backstop for a hung bridge — one cap per round-trip (R-2); late payloads after a timeout are discarded, never cached/delivered
+- [Phase ?]: In-flight mark semantics (04a-08): extract() calls cache.setInFlight(tabId, promise) on the existing entry so LRU pressure mid-extraction cannot evict it — the 04a-05 cache primitive exercised service-side (Test 7c)
 
 ### Pending Todos
 
@@ -252,6 +256,6 @@ Items acknowledged and carried forward (v2 scope, tracked in REQUIREMENTS.md):
 
 ## Session Continuity
 
-Last session: 2026-08-13T01:57:24.103Z
-Stopped at: Completed 04a-07-PLAN.md
+Last session: 2026-08-13T06:55:17.919Z
+Stopped at: Completed 04a-08-PLAN.md
 Resume file: None
