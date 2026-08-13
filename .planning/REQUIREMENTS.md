@@ -199,7 +199,7 @@ Deferred to a future release. Tracked but not in the current roadmap.
 | AGT-01…05 | Phase 3a | Done |
 | CTX-01…04 | Phase 4 | Done |
 | CAT-01…05 | Phase 4a | Done |
-| TRUST-01…03 | Phase 4b | Pending |
+| TRUST-01…03 | Phase 4b | Done |
 | KNW-01…05 | Phase 5 | Pending |
 | LLM-WIKI-01…03, SYNC-01…02 | Phase 5a | Pending |
 | MEM-01…03 | Phase 5b | Pending |

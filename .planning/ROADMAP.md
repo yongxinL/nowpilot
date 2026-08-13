@@ -300,7 +300,7 @@ Plans:
   3. User can control which content sources feed the model (content trust controls).
   4. XSS-risk screening and prompt-injection quarantine run before any AI context use.
 
-**Plans**: 3/6 plans executed
+**Plans**: 6/6 plans executed
 
 Plans:
 **Wave 1**
@@ -322,7 +322,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 04b-06-PLAN.md — phase gate: D-4b-00 REQUIREMENTS TRUST→CTX re-map note + verify:phase-4b green end-to-end (wave 5)
+- [x] 04b-06-PLAN.md — phase gate: D-4b-00 REQUIREMENTS TRUST→CTX re-map note + verify:phase-4b green end-to-end (wave 5)
 
 **UI hint**: yes
 
@@ -520,7 +520,7 @@ Plans:
 | 3a. Agent Reliability and Evidence | 5/5 | Complete    | 2026-08-12 |
 | 4. Context-Adaptive Execution | 7/7 | Complete    | 2026-08-12 |
 | 4a. PageContentService (Knowledge Acquisition) | 10/10 | In Progress|  |
-| 4b. Trust-Aware Context and Receipts | 2/6 | In Progress|  |
+| 4b. Trust-Aware Context and Receipts | 6/6 | In Progress|  |
 | 5. Knowledge Base (Memory + MiniSearch + Notes) | TBD | Not started | - |
 | 5a. LLM-Wiki & Filesystem Sync | TBD | Not started | - |
 | 5b. Memory Governance and Experience Candidates | TBD | Not started | - |
