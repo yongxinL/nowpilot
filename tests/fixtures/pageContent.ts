@@ -246,7 +246,70 @@ export function buildLargeArticleFixture(
 }
 
 // ---------------------------------------------------------------------------
-// 5. buildRawNodeFixture — typed RawNode tree (the ApcLiteStrategy input
+// 5a. buildEmptyPageFixture — a totally-empty page (the CAT-01 empty probe
+// fixture, 04a-08). Defuddle yields no text (char floor + density ratio fire)
+// and Readability finds no article on the fresh clone → both layers return
+// unusable content → extractLayered throws typed CONTENT_EXTRACT_FAILED
+// (D-4a-19 — never a silent-empty result).
+// ---------------------------------------------------------------------------
+
+export function buildEmptyPageFixture(
+  overrides: Partial<ArticleHtmlFixture> = {},
+): ArticleHtmlFixture {
+  return {
+    html: `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Empty Page</title>
+</head>
+<body>
+  <main>
+    <p></p>
+  </main>
+</body>
+</html>`,
+    url: 'https://empty.example.com/',
+    title: 'Empty Page',
+    ...overrides,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// 5b. buildSecretPageFixture — a prose article containing a secret-shaped
+// string (JSESSIONID cookie, the D-4a-10/CAT-03 redaction fixture, 04a-08).
+// The secret sits in a plain <p> so it survives Defuddle extraction into the
+// markdown; TraceRedactor.redact MUST strip it before the cache write / index
+// build (the R-10 redaction seam) — the shared-module guard (D-4a-24).
+// ---------------------------------------------------------------------------
+
+export function buildSecretPageFixture(
+  overrides: Partial<ArticleHtmlFixture> = {},
+): ArticleHtmlFixture {
+  return {
+    html: `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Session Handling</title>
+</head>
+<body>
+  <main>
+    <h1>Session Handling</h1>
+    <p>Each browser session is identified by a cookie. The current session cookie is JSESSIONID=abc123def456 and it must never be indexed or logged.</p>
+    <h2>Rotation</h2>
+    <p>Sessions rotate every hour. Keep the cookie value private — it grants access to the account.</p>
+  </main>
+</body>
+</html>`,
+    url: 'https://session.example.com/handling',
+    title: 'Session Handling',
+    ...overrides,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// 6. buildRawNodeFixture — typed RawNode tree (the ApcLiteStrategy input
 // fixture). Roles + text + interaction flags + hierarchy + links; the form
 // control carries isPassword: true with NO value field (the D-4a-20 invariant
 // fixture shape). Geometry is unset (D-4a-12/13 omit it in v0.1).
