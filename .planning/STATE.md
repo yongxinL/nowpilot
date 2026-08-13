@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 04a
 current_phase_name: pagecontentservice-knowledge-acquisition
 status: verifying
-stopped_at: Completed 04b-04-PLAN.md
-last_updated: "2026-08-13T15:54:15.700Z"
+stopped_at: Completed 04b-05-PLAN.md
+last_updated: "2026-08-13T16:24:33.806Z"
 last_activity: 2026-08-13
 last_activity_desc: Phase 04a execution started
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 66
-  completed_plans: 64
+  completed_plans: 65
 ---
 
 # Project State
@@ -33,7 +33,7 @@ Plan: 10 of 10
 Status: Phase complete — ready for verification
 Last activity: 2026-08-13 — Phase 04a execution started
 
-Progress: [██████████] 97%
+Progress: [██████████] 98%
 
 ## Performance Metrics
 
@@ -112,6 +112,7 @@ Progress: [██████████] 97%
 | Phase 04b-trust-aware-context-and-receipts P02 | 16 | 2 tasks | 4 files |
 | Phase 04b-trust-aware-context-and-receipts P03 | 17min | 2 tasks | 8 files |
 | Phase 04b-trust-aware-context-and-receipts P04 | 11min | 3 tasks | 5 files |
+| Phase 04b-trust-aware-context-and-receipts P05 | 17min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -245,6 +246,9 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 04b-trust-aware-context-and-receipts]: capToBudget is exported (not module-internal): the truncated marker is not representable on ContextItem (C.1 verbatim — R-1), so the 22.2 structural-cap contract is asserted through capToBudget directly; pageToContextItems consumes it without surfacing truncation. — The plan allows 'export a small marker type if a test needs the truncated flag' — the §22.2 over-budget test needs truncated:true, and ContextItem has no truncated field.
 - [Phase 04b-trust-aware-context-and-receipts]: contextText separator = '\n\n' (ProviderRouter joinSections L105 convention) — the context section 04b-04 emits is byte-identical to what the receipt reconstructs (D-4b-11 / Pitfall 3). — joinSections is the canonical section-join convention; using it keeps the packed contextText reconstruction-exact.
 - [Phase 04b-trust-aware-context-and-receipts]: Freshness = Open Question 4 fixed curve max(0, 1 - ageHours/24) clamped 0..1 with an injectable nowMs clock (absent injection → age 0 → freshness 1); fixture-pinned, no Date.now in the module. — Determinism rule (fixtures precedent) — the injectable clock mirrors the PromptCacheManager precedent; production wiring (04b-04) supplies the clock at its own boundary.
+- [Phase 04b-trust-aware-context-and-receipts]: Hook page read uses useWorkspaceStore.getState() inside send() — the plan's literal hook-call sketch would throw "Invalid hook call" in a non-render callback; getState() is the same store read live at call time — Hook page read uses useWorkspaceStore.getState() inside send() — the plan's literal hook-call sketch would throw "Invalid hook call" in a non-render callback; getState() is the same store read live at call time
+- [Phase 04b-trust-aware-context-and-receipts]: setSource is async Promise<void> (plan said void + fire-and-forget) so the Task-3 rollback-detection contract (store-state != requested -> E5 toast) can observe the rollback after await; optimistic set + write-through + rollback on failure — setSource is async Promise<void> (plan said void + fire-and-forget) so the Task-3 rollback-detection contract (store-state != requested -> E5 toast) can observe the rollback after await; optimistic set + write-through + rollback on failure
+- [Phase 04b-trust-aware-context-and-receipts]: TrustSettingsStore.init() is called from OptionsPage's useEffect (plan lists no entrypoints; Options is Standalone-only) to satisfy the UI-SPEC hydrating row — TrustSettingsStore.init() is called from OptionsPage's useEffect (plan lists no entrypoints; Options is Standalone-only) to satisfy the UI-SPEC hydrating row
 
 ### Pending Todos
 
@@ -273,6 +277,6 @@ Items acknowledged and carried forward (v2 scope, tracked in REQUIREMENTS.md):
 
 ## Session Continuity
 
-Last session: 2026-08-13T15:54:15.662Z
-Stopped at: Completed 04b-04-PLAN.md
+Last session: 2026-08-13T16:24:05.672Z
+Stopped at: Completed 04b-05-PLAN.md
 Resume file: None
