@@ -31,14 +31,16 @@ describe('untrusted-data behavioral anchor (CR-01, 04b review)', () => {
         'Select exactly one action: answer, run_tool, or ask_clarification. Return JSON only. Do not explain.',
       ),
     ).toBe(true);
-    expect(PROMPTS.renderer.system.startsWith('Answer using only the provided context and tool result.')).toBe(
-      true,
-    );
+    expect(
+      PROMPTS.renderer.system.startsWith('Answer using only the provided context and tool result.'),
+    ).toBe(true);
     expect(
       PROMPTS.planner.compact.system.startsWith(
         'Select one action: answer, run_tool, or ask_clarification. JSON only.',
       ),
     ).toBe(true);
-    expect(PROMPTS.renderer.compact.system.startsWith('Answer from context only. Be concise.')).toBe(true);
+    expect(
+      PROMPTS.renderer.compact.system.startsWith('Answer from context only. Be concise.'),
+    ).toBe(true);
   });
 });

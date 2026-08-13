@@ -48,7 +48,8 @@ export const PROMPTS = {
     // for renderer minimal mode; consumed ONLY by ContextOptimizer (04-04).
     compact: {
       system:
-        'Answer from context only. Be concise. Do not invent facts. ' + UNTRUSTED_DATA_SEMANTICS_COMPACT,
+        'Answer from context only. Be concise. Do not invent facts. ' +
+        UNTRUSTED_DATA_SEMANTICS_COMPACT,
       cacheable: true,
       tier: 'flash',
     },
