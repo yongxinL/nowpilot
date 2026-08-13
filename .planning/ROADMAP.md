@@ -257,7 +257,7 @@ Plans:
   4. SPA navigation and tab updates trigger cache invalidation and re-extraction.
   5. Extracted content is searchable via an ephemeral per-tab MiniSearch index (never persisted).
 
-**Plans**: 9/10 plans executed
+**Plans**: 10/10 plans executed
 
 Plans:
 **Wave 1**
@@ -286,7 +286,7 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 04a-10-PLAN.md — phase gate: verify:phase-4a green + CAT marks + ROADMAP list + W-1 constants (wave 6)
+- [x] 04a-10-PLAN.md — phase gate: verify:phase-4a green + CAT marks + ROADMAP list + W-1 constants (wave 6)
 
 ### Phase 4b: Trust-Aware Context and Receipts
 

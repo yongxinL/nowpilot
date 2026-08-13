@@ -4701,6 +4701,21 @@ export interface IExtractionStrategy {
 ```
 
 ```ts
+// src/core/extraction/pinned-constants.ts — Phase 4a pinned constants (04a-10 W-1 gate).
+// Values documented here per the CONTEXT discretion "researcher/planner pins + documents in
+// Appendix C". Single-sourced executable homes: PAGE_HTML_MAX_BYTES → ContentScriptHost.ts,
+// PAGE_CACHE_MAX_TABS → PageContentCache.ts, EXTRACTION_TIMEOUT_MS → PageContentService.ts +
+// PageContextBridge.ts, INDEX_CHUNK_MAX_TOKENS → PageIndexBuilder.ts, MIN_EXTRACTED_CHARS +
+// MIN_CONTENT_DENSITY → DefuddleStrategy.ts. The source files remain the executable truth.
+export const PAGE_CACHE_MAX_TABS = 20;        // LRU per-tab cache size (D-4a-04)
+export const EXTRACTION_TIMEOUT_MS = 5000;    // per round-trip hard cap, one AbortController (§22.1)
+export const PAGE_HTML_MAX_BYTES = 2_097_152; // ≈ 2 MB serialized-HTML cap, element-boundary truncation (D-4a-09)
+export const INDEX_CHUNK_MAX_TOKENS = 500;    // MiniSearch chunk cap (D-4a-16)
+export const MIN_EXTRACTED_CHARS = 500;       // Defuddle low-confidence char floor (D-4a-18)
+export const MIN_CONTENT_DENSITY = 0.2;       // Defuddle low-confidence density threshold (D-4a-18)
+```
+
+```ts
 // src/types/addon.ts
 export interface Addon {
   id: string;

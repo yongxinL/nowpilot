@@ -74,6 +74,8 @@
 - [x] **CAT-04**: ISOLATED world by default; MAIN world only for domain-specific globals
 - [x] **CAT-05**: Content bundle under 50KB; extraction is non-blocking
 
+> **CAT re-map (04a-10):** CAT-01 shipped as defuddle primary / Readability fallback / turndown APC-lite, plus the RESEARCH-critical turndown-as-markdown correction — defuddle 0.19.2's browser-bundle markdown option is a NO-OP, so turndown is the ONE HTML→markdown converter on every prose path. CAT-02 = SPANavigationWatcher (namespaced `wxt:locationchange`) + PageContextBridge + panel-side `tabs.onUpdated` — the background stays forward-only (R-3). CAT-03 = panel-side TraceRedactor before index/log + capture-time password omission (`isPassword ⇒ value omitted`, D-4a-20). CAT-04 = ISOLATED world only in 4a — MAIN world is a Phase-8 ServiceNow concern. CAT-05 = < 50 KB sourcemap-stripped payload + non-blocking `document_idle` + 5 s extraction cap. §18 is authoritative over these rows — the row text is narrower than the delivered scope.
+
 ### Trust-Aware Context (Phase 4b)
 
 - [ ] **TRUST-01**: Content classification labels page/note/memory/tool output as retrieved/untrusted with `instructionAuthority: false`
