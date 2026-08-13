@@ -12,7 +12,9 @@
 // Pattern 2 token semantics (RESEARCH L272): originalTokens =
 // estimateTokens(item.text) PRE-wrap; finalTokens = estimateTokens(wrappedText)
 // when included, 0 when excluded. buildReceipt applies the O.3 wrap itself —
-// the single wrap site for the feed path. The 04b-03 feed stamps
+// via TrustPolicy's shared wrapText (P4b-1: TrustPolicy owns ALL trust logic;
+// CR-02 adds delimiter-breakout neutralization + sourceId escaping to that one
+// sanitizer) — the single wrap site for the feed path. The 04b-03 feed stamps
 // instructionAuthority:false at conversion, so applyTrustPolicy's
 // authority-strip wrap (04b-02) never fires on it — no double-wrap in the
 // page-only pipeline; 04b-04 wires the stage ordering.
@@ -28,11 +30,7 @@ import type {
   TrustOmitReason,
 } from '@/types/harness';
 import { estimateTokens } from './TokenBudget';
-
-/** O.3 wrap format (spec L6441-6452 verbatim) — the exact bytes buildReceipt emits. */
-function wrapText(sourceId: string, text: string): string {
-  return `<untrusted_data source="${sourceId}">\n${text}\n</untrusted_data>`;
-}
+import { wrapText } from './trust/TrustPolicy';
 
 /**
  * D-4b-10/11: the receipt + CTX-06 counters for one feed pass. contextText is

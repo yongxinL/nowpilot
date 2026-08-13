@@ -9,6 +9,9 @@
 // storage access (Pitfall 5), never mutates SYSTEM content (D-4b-03). The
 // <untrusted_data> wrap must never enter CACHED_KINDS — the wrap lands only on
 // the per-turn context section (F-5). Determinism rule: no Date.now/crypto.
+// wrapText is the exported O.3 wrap builder (CR-02 sanitizer) — the ONE wrap
+// implementation, shared with buildReceipt (contextReceipt.ts, feed-path wrap
+// site) so the two wrap paths can never drift.
 //
 // D-4b-06: strip+wrap+quarantine IS the Phase-4b enforcement, so no code in
 // Phase 4b raises ContextInjectionBlockedError. The typed carrier + guard are
@@ -32,13 +35,33 @@ const AUTHORITY_BY_TRUST: Record<TrustLevel, boolean> = {
 };
 
 /**
+ * CR-02 (04b review): the O.3 wrap with delimiter-breakout neutralization —
+ * the wrap's protective value (quoted DATA, OWASP LLM01 #6) must survive
+ * attacker-controlled text, so the literal closing tag and any forged opening
+ * tag are neutralized INSIDE the wrapped content BEFORE wrapping, and `"` in
+ * the source id is escaped. A clean input produces byte-identical output to
+ * the O.3 verbatim format (spec L6441-6452), so byte-pinned wrap tests hold.
+ * Shared by applyTrustPolicy (authority-strip site) and buildReceipt
+ * (feed-path site, contextReceipt.ts) — ONE sanitizer, never re-authored
+ * (P4b-1: TrustPolicy owns ALL trust logic; the feed-path wrap site consumes
+ * it). Deterministic and pure like the rest of this module.
+ */
+export function wrapText(sourceId: string, text: string): string {
+  const safe = text
+    .replace(/<\/untrusted_data>/gi, '<\\/untrusted_data>')
+    .replace(/<untrusted_data/gi, '<untrusted_data\\u002D');
+  return `<untrusted_data source="${sourceId.replace(/"/g, '&quot;')}">\n${safe}\n</untrusted_data>`;
+}
+
+/**
  * O.3 verbatim (L6441-6452): enforce CTX-02 — only system/user may carry
  * instruction authority. Any instructionAuthority:true item whose trust is
  * not allowed is force-set false and wrapped in <untrusted_data source=...>
  * so the model treats it as quoted DATA, not a directive (OWASP LLM01 #6
  * provenance-labeled channel). Items with trust system/user pass through
  * byte-identical; items already instructionAuthority:false pass through
- * unmodified (the wrap happens exactly once — no double-wrap).
+ * unmodified (the wrap happens exactly once — no double-wrap). The wrap goes
+ * through wrapText (CR-02: delimiter breakout neutralized + sourceId escaped).
  */
 export function applyTrustPolicy(items: ContextItem[]): ContextItem[] {
   return items.map((it) => {
@@ -47,7 +70,7 @@ export function applyTrustPolicy(items: ContextItem[]): ContextItem[] {
       return {
         ...it,
         instructionAuthority: false,
-        text: `<untrusted_data source="${it.sourceId}">\n${it.text}\n</untrusted_data>`,
+        text: wrapText(it.sourceId, it.text),
       };
     }
     return it;
