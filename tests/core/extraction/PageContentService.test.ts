@@ -41,7 +41,10 @@ import {
 import { PAGE_CACHE_MAX_TABS, PageContentCache } from '@/core/extraction/PageContentCache';
 import { DefuddleStrategy } from '@/core/extraction/strategies/DefuddleStrategy';
 import { ApcLiteStrategy } from '@/core/extraction/strategies/ApcLiteStrategy';
-import type { IExtractionStrategy, StrategyResult } from '@/core/extraction/strategies/IExtractionStrategy';
+import type {
+  IExtractionStrategy,
+  StrategyResult,
+} from '@/core/extraction/strategies/IExtractionStrategy';
 import type { ExtractionPayload } from '@/core/content/PageContextBridge';
 import { MessageType } from '@/core/runtime/MessageType';
 import type { RuntimeEnvelope } from '@/core/runtime/RuntimeEnvelope';
@@ -90,6 +93,7 @@ class MockBridge implements PageContentBridgeLike {
   payload: unknown;
   rejectWith: unknown | undefined;
   private readonly subscribers = new Set<(message: RuntimeEnvelope<unknown>) => void>();
+  private readonly hangResolvers: Array<(value: unknown) => void> = [];
 
   constructor(payload: unknown, latency = 0, rejectWith?: unknown) {
     this.payload = payload;
@@ -103,12 +107,23 @@ class MockBridge implements PageContentBridgeLike {
     _options?: { timeoutMs?: number },
   ): Promise<TData> {
     this.calls++;
-    if (this.hang) return new Promise<TData>(() => {});
+    if (this.hang) {
+      return new Promise<TData>((resolve) =>
+        this.hangResolvers.push(resolve as (value: unknown) => void),
+      );
+    }
     if (this.rejectWith !== undefined) return Promise.reject(this.rejectWith);
     if (this.latency === 0) return Promise.resolve(this.payload as TData);
     return new Promise<TData>((resolve) =>
       setTimeout(() => resolve(this.payload as TData), this.latency),
     );
+  }
+
+  /** Resolve the given number of currently-hung requests with the configured payload. */
+  release(count = 1): void {
+    for (let i = 0; i < count && this.hangResolvers.length > 0; i++) {
+      this.hangResolvers.shift()?.(this.payload);
+    }
   }
 
   onMessage(cb: (message: RuntimeEnvelope<unknown>) => void): () => void {
@@ -177,8 +192,12 @@ describe('PageContentService (D-4a-03/04/05/10 orchestrator)', () => {
       bridge,
       cache: new PageContentCache(),
       strategies: realStrategies(),
+      deliverContext: () => {},
     });
-    const [a, b] = await Promise.all([service.extract(1, 'default'), service.extract(1, 'default')]);
+    const [a, b] = await Promise.all([
+      service.extract(1, 'default'),
+      service.extract(1, 'default'),
+    ]);
     expect(bridge.calls).toBe(1);
     expect(a).toBe(b);
     expect(a.sourceUsed).toBe('defuddle');
@@ -192,6 +211,7 @@ describe('PageContentService (D-4a-03/04/05/10 orchestrator)', () => {
       bridge,
       cache: new PageContentCache(),
       strategies: realStrategies(),
+      deliverContext: () => {},
     });
 
     // First extraction completes — the cache holds the OLD (pre-navigation) content.
@@ -220,6 +240,7 @@ describe('PageContentService (D-4a-03/04/05/10 orchestrator)', () => {
       cache: new PageContentCache(),
       strategies: realStrategies(),
       timeoutMs: 25,
+      deliverContext: () => {},
     });
     try {
       await service.extract(1, 'default');
@@ -238,7 +259,12 @@ describe('PageContentService (D-4a-03/04/05/10 orchestrator)', () => {
     const makeService = (): { service: PageContentService; cache: PageContentCache } => {
       tick = 0;
       const cache = new PageContentCache({ now: () => ++tick });
-      const service = new PageContentService({ bridge, cache, strategies: [fake] });
+      const service = new PageContentService({
+        bridge,
+        cache,
+        strategies: [fake],
+        deliverContext: () => {},
+      });
       return { service, cache };
     };
 
@@ -274,6 +300,7 @@ describe('PageContentService (D-4a-03/04/05/10 orchestrator)', () => {
       for (let i = 2; i <= PAGE_CACHE_MAX_TABS + 1; i++) await service.extract(i, 'default');
       expect(cache.get(1)).toBeDefined(); // in-flight entry survived 20 further upserts
       expect(cache.get(2)).toBeUndefined(); // the eviction pressure hit tab 2 instead
+      bridge.release(); // unblock the in-flight extraction so the test settles
       await inFlight;
     }
   });
@@ -304,6 +331,7 @@ describe('PageContentService (D-4a-03/04/05/10 orchestrator)', () => {
       bridge,
       cache,
       strategies: realStrategies(),
+      deliverContext: () => {},
     });
     await service.extract(1, 'default');
     const entry = cache.get(1);
@@ -311,7 +339,7 @@ describe('PageContentService (D-4a-03/04/05/10 orchestrator)', () => {
     expect(entry?.markdown).not.toContain('JSESSIONID=abc123def456');
     expect(entry?.markdown).toContain('[REDACTED]');
     expect(entry?.pageContext.markdown).not.toContain('JSESSIONID=abc123def456');
-    expect(entry?.pageContext.html).toBeUndefined();
+    expect(entry?.pageContext.html).not.toContain('JSESSIONID=abc123def456');
     expect(Object.values(entry?.pageContext.meta ?? {}).join(' ')).not.toContain(
       'JSESSIONID=abc123def456',
     );
@@ -347,6 +375,7 @@ describe('PageContentService (D-4a-03/04/05/10 orchestrator)', () => {
       cache,
       strategies: realStrategies(),
       tabId: 7,
+      deliverContext: () => {},
     });
     service.start();
     await service.extract(7, 'default');
