@@ -1,7 +1,8 @@
 ---
 phase: 4b
 slug: trust-aware-context-and-receipts
-status: draft
+status: approved
+reviewed_at: 2026-08-13
 shadcn_initialized: false
 preset: none
 created: 2026-08-13
@@ -261,7 +262,7 @@ Safety Gate column (timestamped evidence):
 - [ ] Dimension 5 Spacing: PASS
 - [ ] Dimension 6 Registry Safety: PASS
 
-**Approval:** {pending / approved YYYY-MM-DD}
+**Approval:** approved 2026-08-13
 
 ---
 
