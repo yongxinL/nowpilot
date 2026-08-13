@@ -300,12 +300,12 @@ Plans:
   3. User can control which content sources feed the model (content trust controls).
   4. XSS-risk screening and prompt-injection quarantine run before any AI context use.
 
-**Plans**: 6 plans planned
+**Plans**: 1/6 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 04b-01-PLAN.md — foundation: C.1 trust types (TrustLevel/ContextItem/ContextReceiptEntry) + Zod gates in harness.ts, CONTEXT_INSTRUCTION_INJECTION_BLOCKED code, np_trust registry, trustConfig accessor, verify:phase-4b script (wave 1)
+- [x] 04b-01-PLAN.md — foundation: C.1 trust types (TrustLevel/ContextItem/ContextReceiptEntry) + Zod gates in harness.ts, CONTEXT_INSTRUCTION_INJECTION_BLOCKED code, np_trust registry, trustConfig accessor, verify:phase-4b script (wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -520,7 +520,7 @@ Plans:
 | 3a. Agent Reliability and Evidence | 5/5 | Complete    | 2026-08-12 |
 | 4. Context-Adaptive Execution | 7/7 | Complete    | 2026-08-12 |
 | 4a. PageContentService (Knowledge Acquisition) | 10/10 | In Progress|  |
-| 4b. Trust-Aware Context and Receipts | TBD | Not started | - |
+| 4b. Trust-Aware Context and Receipts | 1/6 | In Progress|  |
 | 5. Knowledge Base (Memory + MiniSearch + Notes) | TBD | Not started | - |
 | 5a. LLM-Wiki & Filesystem Sync | TBD | Not started | - |
 | 5b. Memory Governance and Experience Candidates | TBD | Not started | - |

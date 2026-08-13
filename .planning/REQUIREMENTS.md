@@ -78,9 +78,9 @@
 
 ### Trust-Aware Context (Phase 4b)
 
-- [ ] **TRUST-01**: Content classification labels page/note/memory/tool output as retrieved/untrusted with `instructionAuthority: false`
+- [x] **TRUST-01**: Content classification labels page/note/memory/tool output as retrieved/untrusted with `instructionAuthority: false`
 - [ ] **TRUST-02**: XSS risk screening + prompt-injection quarantine before AI context use
-- [ ] **TRUST-03**: Content trust controls let the user decide which sources feed the model
+- [x] **TRUST-03**: Content trust controls let the user decide which sources feed the model
 
 ### Knowledge & Notes (Phase 5)
 
