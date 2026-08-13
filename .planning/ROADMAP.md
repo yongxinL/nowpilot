@@ -12,7 +12,7 @@ NowPilot v0.1 is a privacy-first, local-first AI assistant and personal knowledg
 - [x] **Phase 3a: Agent Reliability and Evidence** - Token-budgeted agent runs, checkpoint rollback, CompletionEvidence, bounded replan, commit-confirm barrier (completed 2026-08-12)
 - [x] **Phase 4: Context-Adaptive Execution** - Tiered context windows, budget enforcement, graceful degradation, provenance manifests (completed 2026-08-12)
 - [ ] **Phase 4a: PageContentService (Knowledge Acquisition)** - Extraction-only page capture (Defuddle), < 50 KB content bundle, ephemeral per-tab index
-- [ ] **Phase 4b: Trust-Aware Context and Receipts** - Retrieved data never instructs; injection quarantine; trust controls + context receipts
+- [x] **Phase 4b: Trust-Aware Context and Receipts** - Retrieved data never instructs; injection quarantine; trust controls + context receipts (completed 2026-08-13)
 - [ ] **Phase 5: Knowledge Base (Memory + MiniSearch + Notes)** - Atomic notes with wikilinks, note graph, full-text search, budgeted memory
 - [ ] **Phase 5a: LLM-Wiki & Filesystem Sync** - Auto-tagging, "Ask notes" RAG, chat→note conversion, one-way .md filesystem sync + restore
 - [ ] **Phase 5b: Memory Governance and Experience Candidates** - Memory caps, decay, conflict precedence, user governance controls with provenance
@@ -520,7 +520,7 @@ Plans:
 | 3a. Agent Reliability and Evidence | 5/5 | Complete    | 2026-08-12 |
 | 4. Context-Adaptive Execution | 7/7 | Complete    | 2026-08-12 |
 | 4a. PageContentService (Knowledge Acquisition) | 10/10 | In Progress|  |
-| 4b. Trust-Aware Context and Receipts | 6/6 | In Progress|  |
+| 4b. Trust-Aware Context and Receipts | 7/6 | Complete    | 2026-08-13 |
 | 5. Knowledge Base (Memory + MiniSearch + Notes) | TBD | Not started | - |
 | 5a. LLM-Wiki & Filesystem Sync | TBD | Not started | - |
 | 5b. Memory Governance and Experience Candidates | TBD | Not started | - |
