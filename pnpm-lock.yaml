@@ -35,6 +35,9 @@ importers:
       antd:
         specifier: ^6.5.3
         version: 6.5.3(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      d3-force:
+        specifier: ^3.0.0
+        version: 3.0.0
       defuddle:
         specifier: ^0.19.2
         version: 0.19.2

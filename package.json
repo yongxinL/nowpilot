@@ -23,6 +23,7 @@
     "verify:phase-4": "eslint . && prettier --check . && tsc --noEmit && wxt build && vitest run",
     "verify:phase-4a": "eslint . && prettier --check . && tsc --noEmit && wxt build && vitest run",
     "verify:phase-4b": "eslint . && prettier --check . && tsc --noEmit && wxt build && vitest run",
+    "verify:phase-5": "eslint . && prettier --check . && tsc --noEmit && wxt build && vitest run",
     "verify:e2e-phase-1": "node tests/e2e/load-smoke.mjs",
     "verify:all": "tsc --noEmit && vitest run && pnpm run lint"
   },
@@ -36,6 +37,7 @@
     "@mozilla/readability": "^0.5.0",
     "ai": "4.3.19",
     "antd": "^6.5.3",
+    "d3-force": "^3.0.0",
     "defuddle": "^0.19.2",
     "dompurify": "^3.4.13",
     "fflate": "^0.8.3",

@@ -269,3 +269,26 @@ export const ContextReceiptEntrySchema = z.object({
  */
 export const TrustOmitReasonSchema = z.enum(['prompt_injection', 'trust_disabled']);
 export type TrustOmitReason = z.infer<typeof TrustOmitReasonSchema>;
+
+// ---- Working memory (Phase 5, §3.6; C.1 L4976-4988 VERBATIM, D-05-09) ----
+//
+// Source: PRODUCT_SPEC §3.6 (L614-634 — WorkingMemory interface +
+// WORKING_MEMORY_TEMPLATE) + Appendix C.1 L4976-4988 (the C.1 home
+// declaration). R-1: the O.10 working-memory updater (05-02 UserMemoryStore)
+// imports both from here — never re-declare.
+
+/** C.1 (L4977-4982): the always-on Markdown profile block, one per resource. */
+export interface WorkingMemory {
+  resourceId: string; // user/owner scope (NOT thread) — §3.1
+  markdown: string; // fixed template below
+  tokens: number; // enforced cap (§3.6: ≤ 300 recommended)
+  updatedAt: number;
+}
+
+/** C.1 (L4983-4988): the fixed five-line §3.6 template, byte-verbatim. */
+export const WORKING_MEMORY_TEMPLATE = `# User Profile
+- **Name**:
+- **Role / Team**:
+- **Environment**:
+- **Preferences**:
+- **Long-term Goals**:`;
