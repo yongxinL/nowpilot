@@ -94,6 +94,14 @@ export const ERROR_CODES = {
   // a silent truncation of user input (P4-10). W-1 gate (04-07) re-verifies the
   // spec mirror line-anchored.
   CONTEXT_TOO_LARGE: 'CONTEXT_TOO_LARGE',
+  // --- Trust-aware context (Phase 4b, canonical addition — O.3 comment spec
+  // L6457-6458, CTX-02/D-4b-04). The typed-error carrier thrown when a
+  // retrieved source attempts to redefine the prompt policy (instruction
+  // injection) — the trust boundary is enforced structurally (applyTrustPolicy
+  // wraps + strips authority, O.3), and this code marks the redefinition
+  // attempt. W-1 spec-mirror note: the C.2 mirror (spec Appendix C.2) is
+  // re-verified line-anchored at the phase gate (04b-06), Phase-1/04 precedent.
+  CONTEXT_INSTRUCTION_INJECTION_BLOCKED: 'CONTEXT_INSTRUCTION_INJECTION_BLOCKED',
   // --- Fallback ---
   UNKNOWN: 'UNKNOWN',
 } as const;

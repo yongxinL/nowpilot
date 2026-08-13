@@ -65,6 +65,7 @@ export const STORAGE_KEY_REGISTRY: Record<string, KeyPermission> = {
   np_addon_settings: { area: 'local' },
   np_flags: { area: 'local' },
   np_persona: { area: 'local' },
+  np_trust: { area: 'local' },
   np_schema_version: { area: 'local' },
   np_debug_mode: { area: 'local' },
   // --- sync (cosmetic keys, ≤ 8 KB per key — §15.1) ---
