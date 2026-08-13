@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 04a
 current_phase_name: PageContentService (Knowledge Acquisition
 status: executing
-stopped_at: Completed 04a-06-PLAN.md
-last_updated: "2026-08-12T21:35:27.299Z"
+stopped_at: Completed 04a-07-PLAN.md
+last_updated: "2026-08-13T01:57:24.140Z"
 last_activity: 2026-08-12
 last_activity_desc: Phase 04a execution started
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 60
-  completed_plans: 56
+  completed_plans: 57
 ---
 
 # Project State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-08-09)
 ## Current Position
 
 Phase: 04a (PageContentService (Knowledge Acquisition)) — EXECUTING
-Plan: 7 of 10
+Plan: 8 of 10
 Status: Ready to execute
 Last activity: 2026-08-12 — Phase 04a execution started
 
-Progress: [█████████░] 93%
+Progress: [██████████] 95%
 
 ## Performance Metrics
 
@@ -104,6 +104,7 @@ Progress: [█████████░] 93%
 | Phase 04a-pagecontentservice-knowledge-acquisition P05 | 25min | 2 tasks | 4 files |
 | Phase 04a-pagecontentservice-knowledge-acquisition P04 | 9min | 2 tasks | 5 files |
 | Phase 04a P06 | 11min | 2 tasks | 4 files |
+| Phase 04a-pagecontentservice-knowledge-acquisition P07 | 13min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -220,6 +221,9 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 04a]: SPANavigationWatcher takes a structural ctx deps object + eventName option: production default 'wxt:locationchange' (wxt ctx.addEventListener maps to the namespaced name + auto-cleans on invalidation — never bare window.addEventListener); tests pass the resolved ${FIXED_EXTENSION_ID}:core:wxt:locationchange so the Pitfall 4 pin is asserted, not assumed — SPANavigationWatcher takes a structural ctx deps object + eventName option: production default 'wxt:locationchange' (wxt ctx.addEventListener maps to the namespaced name + auto-cleans on invalidation — never bare window.addEventListener); tests pass the resolved ${FIXED_EXTENSION_ID}:core:wxt:locationchange so the Pitfall 4 pin is asserted, not assumed
 - [Phase 04a]: AxDomWalker maps THEAD/TBODY/TFOOT to the ARIA 'rowgroup' role — the HTML parser wraps <tr>s in an implicit <tbody>, so table -> rowgroup -> rows is the honest hierarchy (test deep-searches rows); direct-text capture + meaningful-node filter keep the emitted RawNode tree small for the bridge payload — AxDomWalker maps THEAD/TBODY/TFOOT to the ARIA 'rowgroup' role — the HTML parser wraps <tr>s in an implicit <tbody>, so table -> rowgroup -> rows is the honest hierarchy (test deep-searches rows); direct-text capture + meaningful-node filter keep the emitted RawNode tree small for the bridge payload
 - [Phase 04a]: Acceptance-grep hygiene: content-side header comments avoid literal greppable tokens (getBoundingClientRect / forbidden-lib names / MutationObserver) so the mechanical acceptance pins (grep == 0) stay clean without code-behavior change — Acceptance-grep hygiene: content-side header comments avoid literal greppable tokens (getBoundingClientRect / forbidden-lib names / MutationObserver) so the mechanical acceptance pins (grep == 0) stay clean without code-behavior change
+- [Phase 04a]: SPANavigationWatcher normalizes wxt's URL-instance newUrl (wxt 0.19.29 dispatches new WxtLocationChangeEvent(new URL(...)) — a string-only guard made the production D-4a-01 signal dead; the handler extracts .href for URL objects and passes strings through; regression test pins the runtime shape — wxt runtime event shape verified in node_modules (custom-events.mjs / location-watcher.mjs) during 04a-07; vitest 4.1.10 rejects -x so plan verify commands run with --bail=1
+- [Phase 04a]: Element-boundary truncation = COMPLETE CLOSING TAG boundary: walk back to the last '</...>' before PAGE_HTML_MAX_BYTES (a bare '>' may be an opening tag, leaving a dangling unclosed element); the test pins endsWith('</p>') + prefix-of-full — wxt runtime event shape verified in node_modules (custom-events.mjs / location-watcher.mjs) during 04a-07; vitest 4.1.10 rejects -x so plan verify commands run with --bail=1
+- [Phase 04a]: PAGE_HTML_MAX_BYTES (2_097_152) has a single home — exported from ContentScriptHost; tests import it from there; the truncation test needs an explicit 30s timeout (jsdom 4MB parse exceeds vitest's 5s default) — wxt runtime event shape verified in node_modules (custom-events.mjs / location-watcher.mjs) during 04a-07; vitest 4.1.10 rejects -x so plan verify commands run with --bail=1
 
 ### Pending Todos
 
@@ -248,6 +252,6 @@ Items acknowledged and carried forward (v2 scope, tracked in REQUIREMENTS.md):
 
 ## Session Continuity
 
-Last session: 2026-08-12T21:34:41.114Z
-Stopped at: Completed 04a-06-PLAN.md
+Last session: 2026-08-13T01:57:24.103Z
+Stopped at: Completed 04a-07-PLAN.md
 Resume file: None

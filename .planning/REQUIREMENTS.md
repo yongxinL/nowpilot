@@ -69,9 +69,9 @@
 ### PageContentService (Phase 4a)
 
 - [x] **CAT-01**: Content scripts extract `{title, url, text, metadata}` via defuddle (readability fallback, turndown APC-lite)
-- [ ] **CAT-02**: SPANavigationWatcher + PageContextBridge deliver page context to side panel/standalone
+- [x] **CAT-02**: SPANavigationWatcher + PageContextBridge deliver page context to side panel/standalone
 - [ ] **CAT-03**: TraceRedactor applied to DOM-embedded sensitive values
-- [ ] **CAT-04**: ISOLATED world by default; MAIN world only for domain-specific globals
+- [x] **CAT-04**: ISOLATED world by default; MAIN world only for domain-specific globals
 - [x] **CAT-05**: Content bundle under 50KB; extraction is non-blocking
 
 ### Trust-Aware Context (Phase 4b)
