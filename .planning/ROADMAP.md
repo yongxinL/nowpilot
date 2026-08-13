@@ -314,7 +314,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 04b-04-PLAN.md — optimizer trust stage: trustPrefs seam + feed→classifier→quarantine→policy→gates→contextText+receipt wiring; CTX-04 stable-prefix snapshots (wave 3)
+- [x] 04b-04-PLAN.md — optimizer trust stage: trustPrefs seam + feed→classifier→quarantine→policy→gates→contextText+receipt wiring; CTX-04 stable-prefix snapshots (wave 3)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
