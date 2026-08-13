@@ -339,11 +339,11 @@ Plans:
   4. Memory retrieval returns top-5 (top-3 in tiny mode) with scores in [0, 1]; preference profile injects compact JSON including persona overrides.
   5. The end-to-end Page → PageContentService → Note → MiniSearch path works.
 
-**Plans**: 8 plans
+**Plans**: 1/8 plans executed
 
 **Wave 1** *(foundation)*
 
-- [ ] 05-01-PLAN.md — types + canonical foundation: memory types (UserMemoryFact/ConversationMemory/ConversationMeta/MemoryInjection + UserPreferencesSchema), 5 Phase-5 error codes + spec C.2 mirror, np_conversation_meta registration, note:saved event, WorkingMemory in harness, 23 STR.notes.* keys, verify:phase-5 script, d3-force install (wave 1)
+- [x] 05-01-PLAN.md — types + canonical foundation: memory types (UserMemoryFact/ConversationMemory/ConversationMeta/MemoryInjection + UserPreferencesSchema), 5 Phase-5 error codes + spec C.2 mirror, np_conversation_meta registration, note:saved event, WorkingMemory in harness, 23 STR.notes.* keys, verify:phase-5 script, d3-force install (wave 1)
 
 **Wave 2** *(stores + search + notes core, parallel)*
 
@@ -548,7 +548,7 @@ Plans:
 | 4. Context-Adaptive Execution | 7/7 | Complete    | 2026-08-12 |
 | 4a. PageContentService (Knowledge Acquisition) | 10/10 | In Progress|  |
 | 4b. Trust-Aware Context and Receipts | 7/6 | Complete    | 2026-08-13 |
-| 5. Knowledge Base (Memory + MiniSearch + Notes) | TBD | Not started | - |
+| 5. Knowledge Base (Memory + MiniSearch + Notes) | 1/8 | In Progress|  |
 | 5a. LLM-Wiki & Filesystem Sync | TBD | Not started | - |
 | 5b. Memory Governance and Experience Candidates | TBD | Not started | - |
 | 6. Transaction Logging and Diagnostics | TBD | Not started | - |

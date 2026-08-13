@@ -86,11 +86,11 @@
 
 ### Knowledge & Notes (Phase 5)
 
-- [ ] **KNW-01**: Atomic note-taking: create, edit, save, delete notes with wikilinks ([[…]])
+- [x] **KNW-01**: Atomic note-taking: create, edit, save, delete notes with wikilinks ([[…]])
 - [ ] **KNW-02**: Note graph (d3-force) + backlinks in Standalone Notes view
-- [ ] **KNW-03**: MiniSearch indexes notes for full-text search
-- [ ] **KNW-04**: MemoryEngine stores conversation, user, and preference memory with budget enforcement
-- [ ] **KNW-05**: Memory injection ≤ 1000 tokens / top-5; working memory ≤ 300 tokens
+- [x] **KNW-03**: MiniSearch indexes notes for full-text search
+- [x] **KNW-04**: MemoryEngine stores conversation, user, and preference memory with budget enforcement
+- [x] **KNW-05**: Memory injection ≤ 1000 tokens / top-5; working memory ≤ 300 tokens
 
 ### LLM-Wiki & Filesystem Sync (Phase 5a)
 

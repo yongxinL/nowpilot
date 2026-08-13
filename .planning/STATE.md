@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v0.1
 milestone_name: milestone
-current_phase: 5
-current_phase_name: Memory + MiniSearch + Notes
+current_phase: 05
+current_phase_name: knowledge-base-memory-minisearch-notes
 status: executing
-stopped_at: Phase 5 plans created (8 plans, waves 1-6) — ready to execute
-last_updated: "2026-08-13T22:53:26.988Z"
+stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-08-13T23:09:17.743Z"
 last_activity: 2026-08-13
-last_activity_desc: Phase 04b complete, transitioned to Phase 5
+last_activity_desc: Phase 05 execution started
 progress:
   total_phases: 8
   completed_phases: 7
-  total_plans: 66
-  completed_plans: 66
+  total_plans: 74
+  completed_plans: 67
 ---
 
 # Project State
@@ -24,16 +24,16 @@ See: .planning/PROJECT.md (updated 2026-08-13)
 
 **Core value:** A privacy-first, local-first AI assistant where chat, extracted page content, and a linked notes/knowledge layer combine into a persistent personal workspace — no data leaves the machine unless the user deliberately configures a cloud provider.
 
-**Current focus:** Phase 5 — Knowledge Base (Memory + MiniSearch + Notes)
+**Current focus:** Phase 05 — knowledge-base-memory-minisearch-notes
 
 ## Current Position
 
-Phase: 5 — Knowledge Base (Memory + MiniSearch + Notes)
-Plan: Not started
+Phase: 05 (knowledge-base-memory-minisearch-notes) — EXECUTING
+Plan: 2 of 8
 Status: Ready to execute
-Last activity: 2026-08-13 — Phase 04b complete, transitioned to Phase 5
+Last activity: 2026-08-13 — Phase 05 execution started
 
-Progress: [██████████] 100%
+Progress: [█████████░] 91%
 
 ## Performance Metrics
 
@@ -115,6 +115,7 @@ Progress: [██████████] 100%
 | Phase 04b-trust-aware-context-and-receipts P04 | 11min | 3 tasks | 5 files |
 | Phase 04b-trust-aware-context-and-receipts P05 | 17min | 3 tasks | 7 files |
 | Phase 04b-trust-aware-context-and-receipts P06 | 11min | 2 tasks | 5 files |
+| Phase 05-knowledge-base-memory-minisearch-notes P01 | 8 min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -254,6 +255,13 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 04b-trust-aware-context-and-receipts]: INVISIBLE_UNICODE uses the alternation form (not one combined class) — REQUIRED by eslint's no-misleading-character-class; semantically identical, proven via node replace() parity — A single class holding U+200D (ZWJ) / U+2060 (word joiner) / U+FE00-FE0F (variation selectors) reads as a grapheme-cluster sequence to the heuristic; the alternation matches the exact same codepoint set
 - [Phase 04b (post-seal fix, CR-01)]: Untrusted-data semantics anchored in ALL four prompt variants (renderer + planner, full + compact) — the compact siblings needed the shorter anchor because ContextOptimizer threads contextText through buildPackInput in both default and minimal packs (ContextPack emits the context section whenever contextText is non-empty); shared UNTRUSTED_DATA_SEMANTICS/_COMPACT constants keep the variants in sync, Appendix A directives still lead, byte-stable (one-time cache-key change) — CR-01: OWASP LLM01 #6 behavioral anchor (T-4b-01); without it the O.3 wrap relies on unstated model priors
 - [Phase 04b (post-seal fix, CR-02)]: ONE shared wrap sanitizer — TrustPolicy exports wrapText (backslash-escape </untrusted_data>, break forged <untrusted_data opens with \u002D, escape " in sourceId to &quot;); buildReceipt (contextReceipt.ts) imports it, local duplicate deleted — the two wrap sites cannot drift (review's keep-in-sync requirement); clean inputs stay byte-identical to O.3 verbatim so byte-pinned tests pass unchanged; finalTokens counts the sanitized emitted bytes, originalTokens stays pre-wrap (Pattern 2 preserved) — CR-02: delimiter breakout (forged close/open) previously let injected directives escape the wrapper, and the module's "classifier miss is inert" claim was false for e.g. 'DISREGARD ALL PRIOR RULES'
+- [Phase 05-knowledge-base-memory-minisearch-notes]: [Phase 05]: R-1 single homes: UserMemoryFact/ConversationMemory/ConversationMeta/MemoryInjection land in src/core/memory/types.ts; WorkingMemory lands in src/types/harness.ts (Appendix C.1 L4976-4988) — every Phase-5 store imports from these homes, never re-declares (D-05-01)
+
+[Phase 05]: UserPreferencesSchema (zod 3) co-located beside UserPreferences in memory/types.ts (GR-4, harness.ts L211-251 precedent) — the np_persona write gate PreferenceMemoryStore (05-04) uses; defaultProviderId validated as z.string() (boundary schema, not the ProviderId union)
+[Phase 05]: Five Phase-5 canonical error codes exactly (Open Q7): MEMORY_RETRIEVAL_FAILED / MEMORY_EXTRACT_FAILED / NOTE_LINK_PARSE_FAILED / NOTE_GRAPH_FAILED / SEARCH_INDEX_REBUILD_FAILED in errorCodes.ts + spec Appendix C.2 mirror (W-1); stores reuse STORE_READ/STORE_WRITE for idb failures — never new codes
+[Phase 05]: np_conversation_meta { area: 'local' } registered in Setting.ts STORAGE_KEY_REGISTRY next to np_persona (Pitfall 4 closed) — 05-03 ConversationMemoryStore LRU archive/evict writes via settingWrite; bodies stay in MemoryDB (ADM metadata-local/bodies-IDB split, Open Q8)
+[Phase 05]: 'note:saved' appended to EVENT_TYPES after NOTE_SAVE; NOTE_SAVE retained for backward compat (Pitfall 7); save pipeline emits { noteId } (D-05-15); 05-07/08 subscribe for index/graph re-derivation
+[Phase 05]: verify:phase-5 = §24 chain byte-identical to verify:phase-4b (eslint + prettier --check + tsc --noEmit + wxt build + vitest run), no test-count assertions (P-5); d3-force@^3 resolved to 3.0.0 (A4 confirmed — dual ESM/CJS builds under WXT bundler) — Wave-1 foundation plan 05-01 established the R-1 type homes, canonical code vocabulary (Open Q7), the np_conversation_meta registry row (Pitfall 4), the note:saved event (Pitfall 7), and the verify:phase-5 gate (D-05-19). These decisions are locked contracts for plans 05-02..08.
 
 ### Pending Todos
 
@@ -282,6 +290,6 @@ Items acknowledged and carried forward (v2 scope, tracked in REQUIREMENTS.md):
 
 ## Session Continuity
 
-Last session: 2026-08-13T22:05:52.357Z
-Stopped at: Phase 5 UI-SPEC approved
-Resume file: .planning/phases/05-knowledge-base-memory-minisearch-notes/05-UI-SPEC.md
+Last session: 2026-08-13T23:09:17.713Z
+Stopped at: Completed 05-01-PLAN.md
+Resume file: None
