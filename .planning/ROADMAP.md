@@ -300,7 +300,30 @@ Plans:
   3. User can control which content sources feed the model (content trust controls).
   4. XSS-risk screening and prompt-injection quarantine run before any AI context use.
 
-**Plans**: TBD
+**Plans**: 6 plans planned
+
+Plans:
+**Wave 1**
+
+- [ ] 04b-01-PLAN.md — foundation: C.1 trust types (TrustLevel/ContextItem/ContextReceiptEntry) + Zod gates in harness.ts, CONTEXT_INSTRUCTION_INJECTION_BLOCKED code, np_trust registry, trustConfig accessor, verify:phase-4b script (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 04b-02-PLAN.md — trust primitives: TrustPolicy.applyTrustPolicy (O.3 verbatim authority strip + untrusted_data wrap) + deterministic injectionScreener (wave 2)
+- [ ] 04b-03-PLAN.md — feed + receipt: contextFeed (CTX-01 metadata, §22.2 cap, D-4b-08 gates) + contextReceipt builder + manifest in-place receipt extension (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 04b-04-PLAN.md — optimizer trust stage: trustPrefs seam + feed→classifier→quarantine→policy→gates→contextText+receipt wiring; CTX-04 stable-prefix snapshots (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 04b-05-PLAN.md — surface wiring: useStreamingLLM pageContext+trustPrefs (D-4b-09) + TrustSettingsStore + OptionsPage content-trust card (wave 4)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 04b-06-PLAN.md — phase gate: D-4b-00 REQUIREMENTS TRUST→CTX re-map note + verify:phase-4b green end-to-end (wave 5)
+
 **UI hint**: yes
 
 ### Phase 5: Knowledge Base (Memory + MiniSearch + Notes)
