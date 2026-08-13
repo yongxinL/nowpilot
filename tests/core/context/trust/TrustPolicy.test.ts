@@ -27,7 +27,11 @@ import type { ContextItem } from '@/types/harness';
 import type { ContextTooLargeError } from '@/core/context/ContextOptimizer';
 
 /** Build a fixed ContextItem fixture — trust/authority are the only varying knobs. */
-function item(trust: ContextItem['trust'], instructionAuthority: boolean, sourceId = 'fixed-source'): ContextItem {
+function item(
+  trust: ContextItem['trust'],
+  instructionAuthority: boolean,
+  sourceId = 'fixed-source',
+): ContextItem {
   return {
     id: `fixed:${sourceId}:${trust}`,
     kind: 'context',
@@ -100,7 +104,9 @@ describe('CONTEXT_INSTRUCTION_INJECTION_BLOCKED typed carrier (O.3 L6457-6458)',
 
   it('returns false for a non-Error value', () => {
     expect(isContextInjectionBlockedError(undefined)).toBe(false);
-    expect(isContextInjectionBlockedError({ code: 'CONTEXT_INSTRUCTION_INJECTION_BLOCKED' })).toBe(false);
+    expect(isContextInjectionBlockedError({ code: 'CONTEXT_INSTRUCTION_INJECTION_BLOCKED' })).toBe(
+      false,
+    );
   });
 });
 

@@ -69,7 +69,8 @@ export interface ContextInjectionBlockedError extends Error {
 /** Guard: distinguishes the O.3 carrier from other errors (ContextOptimizer.ts L72-74 precedent). */
 export function isContextInjectionBlockedError(err: unknown): err is ContextInjectionBlockedError {
   return (
-    err instanceof Error && (err as ContextInjectionBlockedError).code === 'CONTEXT_INSTRUCTION_INJECTION_BLOCKED'
+    err instanceof Error &&
+    (err as ContextInjectionBlockedError).code === 'CONTEXT_INSTRUCTION_INJECTION_BLOCKED'
   );
 }
 

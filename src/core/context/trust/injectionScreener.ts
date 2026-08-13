@@ -23,7 +23,15 @@
 // `\uE0000` form parses as `\uE000` + literal `0`, silently turning the
 // class into a `0-U+E007` range that strips ordinary ASCII). The `u` flag
 // is required for `\u{...}` to compile.
-const INVISIBLE_UNICODE = /[\u200B\u200C\u200D\u2060\u{E0000}-\u{E007F}\uFE00-\uFE0F]/gu;
+//
+// NOTE (04b-06 Rule 1 deviation): the alternation form (rather than one
+// combined character class) is REQUIRED by eslint's
+// no-misleading-character-class — a single class holding U+200D (ZWJ) /
+// U+2060 (word joiner) / U+FE00-FE0F (variation selectors) reads as a
+// grapheme-cluster (emoji/combining) sequence, which the rule rejects.
+// The alternation matches the exact same codepoint set (proven identical
+// via node replace() parity on all fixtures).
+const INVISIBLE_UNICODE = /(?:\u200B|\u200C|\u200D|\u2060|[\u{E0000}-\u{E007F}]|[\uFE00-\uFE0F])/gu;
 
 /** Deterministic sanitizer — always applied to retrieved text before classification. */
 export function stripInvisibleUnicode(text: string): string {

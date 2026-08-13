@@ -117,7 +117,9 @@ describe('classifyInjection — safe path (TRUST-02 empty probe resolution)', ()
   it('returns safe for a page ABOUT prompt injection (over-blocking mitigation)', () => {
     // The phrase 'do not tell the user' IS a pattern; this benign prose is not
     // a directive shape — precision over recall (D-4b-06 auditability).
-    expect(classifyInjection('This article explains prompt-injection defenses in depth.')).toBe('safe');
+    expect(classifyInjection('This article explains prompt-injection defenses in depth.')).toBe(
+      'safe',
+    );
   });
 });
 
