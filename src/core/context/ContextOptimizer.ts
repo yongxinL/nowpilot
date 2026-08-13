@@ -35,6 +35,17 @@ import type { ModelContextTier } from './ModelContextTier';
 import { computeBudgets, computeSectionCaps } from './TokenBudget';
 import { packSections } from './ContextPack';
 import type { ContextPackInput } from './ContextPack';
+// 04b-04 (D-4b-04/08/09): the trust stage's building blocks — the ONLY place
+// trust logic runs (P4b-1 ownership). All four are pure/deterministic; the
+// optimizer stays zero-model/zero-async/zero-chrome (module contract L31-32,
+// Pitfall 5 — the hook resolves page + trustPrefs and passes them in).
+import { applySourceGates, pageToContextItems } from './trust/contextFeed';
+import { classifyInjection } from './trust/injectionScreener';
+import { applyTrustPolicy } from './trust/TrustPolicy';
+import { buildReceipt } from './contextReceipt';
+import type { TrustedFeedResult } from './contextReceipt';
+import type { ContextItem, ContextReceiptEntry, TrustOmitReason } from '@/types/harness';
+import { DEFAULT_TRUST_PREFS } from '@/core/preferences/trustConfig';
 import {
   LADDER_STEPS,
   compressPageContext,
@@ -102,8 +113,15 @@ function atMostOneSafeTool(refs: readonly ToolSchemaRef[]): readonly ToolSchemaR
  * stability, re-pinned by the drop-in regression test). MINIMAL path (D-04-14):
  * [SYSTEM] = compact per-role constant + persona block appended (persona-aware
  * from day one, Phase-3 precedent) and tool refs capped to ≤1 safe schema.
+ * contextText (04b-04 trust-stage output) threads into ContextPackInput's
+ * optional slot — emitted only when non-empty, so the no-page path stays
+ * byte-identical to pre-4b (D-4a-06).
  */
-function buildPackInput(input: ContextOptimizerInput, minimalMode: boolean): ContextPackInput {
+function buildPackInput(
+  input: ContextOptimizerInput,
+  minimalMode: boolean,
+  contextText?: string,
+): ContextPackInput {
   const personaBlock = minimalMode
     ? `${compactSystemFor(input.stage)}\n\n${input.personaBlock}`
     : input.personaBlock;
@@ -113,6 +131,89 @@ function buildPackInput(input: ContextOptimizerInput, minimalMode: boolean): Con
     toolSchemaRefs: minimalMode
       ? atMostOneSafeTool(input.selectedToolSchemas)
       : input.selectedToolSchemas,
+    ...(contextText && contextText.length > 0 ? { contextText } : {}),
+  };
+}
+
+/** CTX-06 zeroed counters — the honest no-page-feed stamp (GR-4 schema shape). */
+const ZEROED_COUNTERS: ContextProvenanceManifest['counters'] = {
+  screened: 0,
+  quarantined: 0,
+  byTrust: { system: 0, user: 0, tool: 0, retrieved: 0, untrusted: 0 },
+  totalIncludedTokens: 0,
+};
+
+/**
+ * D-4b-04/08/09 (04b-04): the trust stage — the D-4b-02/04/09 boundary
+ * (ContextItem[] → classifier → quarantine → policy → gates → contextText +
+ * receipt + CTX-06 counters). Pure, synchronous, zero-model, zero-async,
+ * zero-chrome (Pitfall 5 — the hook resolves page + trustPrefs and passes them
+ * in). Section-granular only: the §22.2 cap lives in contextFeed, never here
+ * (D-04-13).
+ *
+ * Returns null when there is nothing to pack — no page feed (D-4a-06 unplugged
+ * path stays byte-identical to pre-4b) or the page source disabled via np_trust
+ * (D-4b-08: the feed then produces no items, so no section is emitted and the
+ * receipt is honestly empty — no fabricated rows). The manifest then carries
+ * `receipt: []` + ZEROED_COUNTERS (the schema requires the fields, GR-4).
+ */
+function buildTrustedContext(
+  input: ContextOptimizerInput,
+): {
+  contextText: string;
+  receipt: ContextReceiptEntry[];
+  counters: TrustedFeedResult['counters'];
+} | null {
+  // D-4a-06: no page feed → no context section (pre-4b byte-identity).
+  if (!input.pageContext) return null;
+  // D-4b-08: page source disabled → the gate would exclude the only item, so
+  // the honest result is no section + an empty receipt.
+  if (input.trustPrefs?.page === false) return null;
+
+  const items = pageToContextItems(input.pageContext);
+  if (items.length === 0) return null;
+
+  // ONE structured decisions map accumulates BOTH producers (D-4b-06/08) —
+  // buildReceipt consumes this exact `{ reason: TrustOmitReason }` shape with
+  // no conversion (04b-03 contract).
+  const excluded = new Map<string, { reason: TrustOmitReason }>();
+
+  // D-4b-05/06: screen every item; a hit is quarantined-not-dropped — the item
+  // stays a ContextItem (receipt row included:false, omitReason
+  // 'prompt_injection', D-4b-06), never becomes a PromptSection.
+  let quarantined = 0;
+  for (const item of items) {
+    if (classifyInjection(item.text) === 'quarantine') {
+      excluded.set(item.id, { reason: 'prompt_injection' });
+      quarantined += 1;
+    }
+  }
+
+  // O.3 authority strip + wrap (T-4b-01) — the REAL boundary: even a classifier
+  // miss is inert after this. The 04b-03 feed stamps instructionAuthority:false,
+  // so the authority-strip wrap never fires in the page-only pipeline (no
+  // double-wrap — 04b-03 decision).
+  const policyItems = applyTrustPolicy(items);
+
+  // D-4b-08 source gates: a disabled source kind is excluded with
+  // 'trust_disabled'; the gate's entries MERGE into the same stage map
+  // (identical shape — plain spread).
+  const gates = applySourceGates(policyItems, input.trustPrefs ?? DEFAULT_TRUST_PREFS);
+  for (const [id, decision] of gates.excluded) excluded.set(id, decision);
+
+  // F-5: cacheEligibility mirrors ProviderRouter's CACHED_KINDS (the single
+  // mapping site — do NOT re-list the kinds here). The page feed emits only
+  // 'context'-kind items whose section is stable:false, so page items are
+  // never cache-eligible; future feed kinds (memory, Phase 5) extend this
+  // predicate in lockstep with CACHED_KINDS. The optimizer stays
+  // dependency-light (no ProviderRouter import).
+  const kindStable = (kind: ContextItem['kind']): boolean => kind === 'memory';
+
+  const feed = buildReceipt(policyItems, { excluded }, kindStable, items.length, quarantined);
+  return {
+    contextText: feed.contextText,
+    receipt: feed.receipt,
+    counters: feed.counters,
   };
 }
 
@@ -141,7 +242,13 @@ export function optimize(input: ContextOptimizerInput): OptimizedContext {
   // (mcpChaining tiny/small false) lands in the hook (04-06).
   let minimalMode = tier === 'tiny';
 
-  let sections = packSections(buildPackInput(input, minimalMode));
+  // 04b-04 (D-4b-04/08/09): the trust stage runs BEFORE packing — page feed →
+  // classifier → quarantine → applyTrustPolicy → source gates → contextText +
+  // receipt/counters. Null when there is no feed to pack (D-4a-06 no-page path
+  // stays byte-identical to pre-4b) or the page source is disabled (D-4b-08).
+  const trusted = buildTrustedContext(input);
+
+  let sections = packSections(buildPackInput(input, minimalMode, trusted?.contextText));
   let totalTokens = sumTokens(sections);
 
   // WR-02 (04): the §2.2 per-kind column caps ALSO drive the ladder — a single
@@ -263,7 +370,7 @@ export function optimize(input: ContextOptimizerInput): OptimizedContext {
           // performs the actual section reduction below.
           if (!minimalMode) {
             minimalMode = enterMinimalMode(sections).minimalMode;
-            sections = packSections(buildPackInput(input, true));
+            sections = packSections(buildPackInput(input, true, trusted?.contextText));
             stepsFired.push('minimal-mode');
           }
           break;
@@ -308,16 +415,13 @@ export function optimize(input: ContextOptimizerInput): OptimizedContext {
     window: input.modelContextWindow,
     counterMethod: 'heuristic',
     stepsFired,
-    // placeholder — 04b-04 (trust stage) stamps the real receipt/counters
-    // (04b-03 sync: the new fields are REQUIRED, so this literal stays
-    // schema-valid at every boundary until the trust stage lands).
-    receipt: [],
-    counters: {
-      screened: 0,
-      quarantined: 0,
-      byTrust: { system: 0, user: 0, tool: 0, retrieved: 0, untrusted: 0 },
-      totalIncludedTokens: 0,
-    },
+    // 04b-04 (D-4b-10/11, GR-4): the REAL trust-stage receipt + CTX-06 counters
+    // ride the manifest on every successful return; when the trust stage saw no
+    // page feed (or the page source is disabled), the honest empty receipt +
+    // zeroed counters are emitted — the schema requires the fields at every
+    // boundary (T-4b-10).
+    receipt: trusted?.receipt ?? [],
+    counters: trusted?.counters ?? ZEROED_COUNTERS,
   };
 
   // GR-4/GR-9 (T-04-19): a manifest that fails its own boundary schema must
