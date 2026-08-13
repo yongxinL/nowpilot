@@ -36,7 +36,12 @@ import { FIXED_TIMESTAMP, FIXED_TITLE, FIXED_URL } from '../../../fixtures/pageC
 // ---------------------------------------------------------------------------
 
 const ALL_TRUE_PREFS: TrustPrefs = { page: true, notes: true, memory: true, tool_result: true };
-const PAGE_DISABLED_PREFS: TrustPrefs = { page: false, notes: true, memory: true, tool_result: true };
+const PAGE_DISABLED_PREFS: TrustPrefs = {
+  page: false,
+  notes: true,
+  memory: true,
+  tool_result: true,
+};
 
 const SMALL_MARKDOWN = `# ${FIXED_TITLE}
 

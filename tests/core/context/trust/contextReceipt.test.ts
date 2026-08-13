@@ -33,7 +33,12 @@ import { FIXED_TIMESTAMP, FIXED_TITLE, FIXED_URL } from '../../../fixtures/pageC
 // ---------------------------------------------------------------------------
 
 const ALL_TRUE_PREFS: TrustPrefs = { page: true, notes: true, memory: true, tool_result: true };
-const PAGE_DISABLED_PREFS: TrustPrefs = { page: false, notes: true, memory: true, tool_result: true };
+const PAGE_DISABLED_PREFS: TrustPrefs = {
+  page: false,
+  notes: true,
+  memory: true,
+  tool_result: true,
+};
 
 /** Distinct body marker — the R-10 negative probe (must never reach the receipt). */
 const SOURCE_BODY = 'SUPER_SECRET_PAGE_BODY_42_NEVER_IN_RECEIPT';
@@ -105,7 +110,11 @@ describe('D-4b-11 reconstruction contract (04b-03 Task 2, RESEARCH Pitfall 3)', 
     const mem = memoryItem('mem-1', 'User prefers concise summaries.');
     const bad = untrustedItem('mem-bad', SOURCE_BODY);
     const items = [pageItem, mem, bad];
-    const decisions = { excluded: new Map<string, { reason: 'prompt_injection' }>([['mem-bad', { reason: 'prompt_injection' }]]) };
+    const decisions = {
+      excluded: new Map<string, { reason: 'prompt_injection' }>([
+        ['mem-bad', { reason: 'prompt_injection' }],
+      ]),
+    };
     const result = buildReceipt(items, decisions, kindStable, 3, 1);
 
     // recompute from the receipt rows: included entries → sourceId → wrap oracle
@@ -127,7 +136,11 @@ describe('receipt rows — quarantine + trust-disabled (D-4b-06 no-silent-drop)'
     const bad = untrustedItem('mem-bad', SOURCE_BODY);
     const result = buildReceipt(
       [bad],
-      { excluded: new Map<string, { reason: 'prompt_injection' }>([['mem-bad', { reason: 'prompt_injection' }]]) },
+      {
+        excluded: new Map<string, { reason: 'prompt_injection' }>([
+          ['mem-bad', { reason: 'prompt_injection' }],
+        ]),
+      },
       kindStable,
       1,
       1,
@@ -169,7 +182,11 @@ describe('R-10 — ids + token counts only, never raw text', () => {
     const bad = untrustedItem('mem-bad', SOURCE_BODY);
     const result = buildReceipt(
       [good, bad],
-      { excluded: new Map<string, { reason: 'prompt_injection' }>([['mem-bad', { reason: 'prompt_injection' }]]) },
+      {
+        excluded: new Map<string, { reason: 'prompt_injection' }>([
+          ['mem-bad', { reason: 'prompt_injection' }],
+        ]),
+      },
       kindStable,
       2,
       1,
@@ -200,7 +217,11 @@ describe('Pattern 2 token semantics (RESEARCH L272 / A5)', () => {
     const bad = untrustedItem('mem-bad', SOURCE_BODY);
     const result = buildReceipt(
       [pageItem, mem, bad],
-      { excluded: new Map<string, { reason: 'prompt_injection' }>([['mem-bad', { reason: 'prompt_injection' }]]) },
+      {
+        excluded: new Map<string, { reason: 'prompt_injection' }>([
+          ['mem-bad', { reason: 'prompt_injection' }],
+        ]),
+      },
       kindStable,
       3,
       1,
@@ -222,7 +243,11 @@ describe('CTX-06 counters (D-4b-14)', () => {
     const bad = untrustedItem('mem-bad', SOURCE_BODY);
     const result = buildReceipt(
       [pageItem, mem, bad],
-      { excluded: new Map<string, { reason: 'prompt_injection' }>([['mem-bad', { reason: 'prompt_injection' }]]) },
+      {
+        excluded: new Map<string, { reason: 'prompt_injection' }>([
+          ['mem-bad', { reason: 'prompt_injection' }],
+        ]),
+      },
       kindStable,
       3,
       1,

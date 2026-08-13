@@ -21,7 +21,12 @@
 // (TRUST-02 ordering probe — no dedup/merge) with the '\n\n' joinSections
 // convention (ProviderRouter L105), so the context section 04b-04 emits is
 // byte-identical to what the receipt reconstructs (D-4b-11 / Pitfall 3).
-import type { ContextItem, ContextReceiptEntry, TrustLevel, TrustOmitReason } from '@/types/harness';
+import type {
+  ContextItem,
+  ContextReceiptEntry,
+  TrustLevel,
+  TrustOmitReason,
+} from '@/types/harness';
 import { estimateTokens } from './TokenBudget';
 
 /** O.3 wrap format (spec L6441-6452 verbatim) — the exact bytes buildReceipt emits. */

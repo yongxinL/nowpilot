@@ -99,7 +99,13 @@ describe('CTX-06 counters shape (D-4b-14)', () => {
     expect(typeof c.screened).toBe('number');
     expect(typeof c.quarantined).toBe('number');
     expect(typeof c.totalIncludedTokens).toBe('number');
-    expect(Object.keys(c.byTrust).sort()).toEqual(['retrieved', 'system', 'tool', 'untrusted', 'user']);
+    expect(Object.keys(c.byTrust).sort()).toEqual([
+      'retrieved',
+      'system',
+      'tool',
+      'untrusted',
+      'user',
+    ]);
     for (const v of Object.values(c.byTrust)) {
       expect(typeof v).toBe('number');
     }
@@ -113,7 +119,11 @@ describe('R-10 — counters/receipt never carry the source body (T-4b-07)', () =
     const bad = untrustedItem('mem-bad', SOURCE_BODY);
     const result = buildReceipt(
       [bad],
-      { excluded: new Map<string, { reason: 'prompt_injection' }>([['mem-bad', { reason: 'prompt_injection' }]]) },
+      {
+        excluded: new Map<string, { reason: 'prompt_injection' }>([
+          ['mem-bad', { reason: 'prompt_injection' }],
+        ]),
+      },
       () => false,
       1,
       1,
