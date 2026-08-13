@@ -4,16 +4,16 @@ milestone: v0.1
 milestone_name: milestone
 current_phase: 04a
 current_phase_name: pagecontentservice-knowledge-acquisition
-status: executing
-stopped_at: Completed 04a-09-PLAN.md
-last_updated: "2026-08-13T07:13:30.501Z"
+status: verifying
+stopped_at: Completed 04a-10-PLAN.md (phase gate sealed)
+last_updated: "2026-08-13T07:44:58.954Z"
 last_activity: 2026-08-13
 last_activity_desc: Phase 04a execution started
 progress:
   total_phases: 6
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 60
-  completed_plans: 59
+  completed_plans: 60
 ---
 
 # Project State
@@ -28,12 +28,12 @@ See: .planning/PROJECT.md (updated 2026-08-09)
 
 ## Current Position
 
-Phase: 04a (pagecontentservice-knowledge-acquisition) — EXECUTING
+Phase: 04a (pagecontentservice-knowledge-acquisition) — VERIFYING (10/10 plans sealed)
 Plan: 10 of 10
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-08-13 — Phase 04a execution started
 
-Progress: [██████████] 98%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -107,6 +107,7 @@ Progress: [██████████] 98%
 | Phase 04a-pagecontentservice-knowledge-acquisition P07 | 13min | 2 tasks | 8 files |
 | Phase 04a P08 | 20min | 1 tasks | 3 files |
 | Phase 04a P09 | 11min | 1 tasks | 3 files |
+| Phase 04a-pagecontentservice-knowledge-acquisition P10 | 25 | 1 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -229,6 +230,9 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase ?]: extractLayered (04a-08) keeps Appendix O.12 accept-first-with-usable-content verbatim; D-4a-19 provenance records a strategy id in fallbacksTried when the winning result.source differs from the strategy's own id (Readability-inside-Defuddle) — the plan's Test 2 fallback-record contract
 - [Phase ?]: Timeout ownership (04a-08): the service passes its EXTRACTION_TIMEOUT_MS cap to bridge.requestExtraction AND keeps its own AbortController timer as the backstop for a hung bridge — one cap per round-trip (R-2); late payloads after a timeout are discarded, never cached/delivered
 - [Phase ?]: In-flight mark semantics (04a-08): extract() calls cache.setInFlight(tabId, promise) on the existing entry so LRU pressure mid-extraction cannot evict it — the 04a-05 cache primitive exercised service-side (Test 7c)
+- [Phase ?]: Phase 4a is DONE only when verify:phase-4a runs green end-to-end (Golden Rule 10); the executor owns drift fixes inside the gate task — the gate command IS the acceptance criterion (T-4a-27)
+- [Phase ?]: handleNavigate keeps its watcher-callback signature with the URL prefixed _newUrl: the wxt:locationchange URL is intentionally unused (live DOM state is the D-4a-01 context source); prefix satisfies the eslint /^_/u allowed-args rule without changing behavior
+- [Phase ?]: The six pinned constants are documented in Appendix C as a code block with per-constant executable homes named; C.2 CONTENT_EXTRACT_FAILED count=3 (L3270 vocabulary + L3510 closed set + L5108 Phase-1 block); O.12's EXTRACTION_FAILED never added (D-4a-22)
 
 ### Pending Todos
 
@@ -257,6 +261,6 @@ Items acknowledged and carried forward (v2 scope, tracked in REQUIREMENTS.md):
 
 ## Session Continuity
 
-Last session: 2026-08-13T07:13:30.463Z
-Stopped at: Completed 04a-09-PLAN.md
+Last session: 2026-08-13T07:44:48.173Z
+Stopped at: Completed 04a-10-PLAN.md (phase gate sealed)
 Resume file: None

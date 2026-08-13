@@ -496,7 +496,7 @@ Plans:
 | 3. Cost-Effective AI Runtime (+ Persona seed) | 16/16 | Complete    | 2026-08-11 |
 | 3a. Agent Reliability and Evidence | 5/5 | Complete    | 2026-08-12 |
 | 4. Context-Adaptive Execution | 7/7 | Complete    | 2026-08-12 |
-| 4a. PageContentService (Knowledge Acquisition) | 9/10 | In Progress|  |
+| 4a. PageContentService (Knowledge Acquisition) | 10/10 | In Progress|  |
 | 4b. Trust-Aware Context and Receipts | TBD | Not started | - |
 | 5. Knowledge Base (Memory + MiniSearch + Notes) | TBD | Not started | - |
 | 5a. LLM-Wiki & Filesystem Sync | TBD | Not started | - |
