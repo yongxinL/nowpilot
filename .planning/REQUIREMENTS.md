@@ -82,6 +82,8 @@
 - [x] **TRUST-02**: XSS risk screening + prompt-injection quarantine before AI context use
 - [x] **TRUST-03**: Content trust controls let the user decide which sources feed the model
 
+> **TRUST re-map (D-4b-00, 04b-06):** TRUST-01..03 map to the spec §28.3 CTX-01..06 namespace (Phase 4b owns those ids per D-04-01): TRUST-01 = CTX-01/02 (source trust/authority metadata; retrieved data can never redefine policy), TRUST-02 = CTX-02 injection defences (deterministic classifier + quarantine-not-drop), TRUST-03 = CTX-03/04 controls (per-source-type content-trust toggles; manifest → context receipt; stable-prefix snapshots). CTX-05 (progressive skill disclosure) and CTX-06 (context-quality diagnostics) are P1 → structural-only in 4b (D-4b-13/14). §18 remains authoritative over the rows.
+
 ### Knowledge & Notes (Phase 5)
 
 - [ ] **KNW-01**: Atomic note-taking: create, edit, save, delete notes with wikilinks ([[…]])
