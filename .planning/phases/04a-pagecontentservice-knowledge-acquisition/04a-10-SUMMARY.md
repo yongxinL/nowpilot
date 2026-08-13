@@ -162,3 +162,11 @@ None - no external service configuration required.
 ---
 *Phase: 04a-pagecontentservice-knowledge-acquisition*
 *Completed: 2026-08-13*
+
+## Self-Check: PASSED
+
+- SUMMARY.md exists on disk: `FOUND: .planning/phases/04a-pagecontentservice-knowledge-acquisition/04a-10-SUMMARY.md`
+- Commits verified in `git log`: `60e8c7b` (fix), `3c9c0ba` (docs), `ca37093` (docs metadata) — all present
+- Acceptance criteria re-run after final edits: verify:phase-4a exit 0; CAT-01..05 `[x]` + note L77; ROADMAP `10/10 plans executed` + ten `[x]` lines; `CONTENT_EXTRACT_FAILED` count=3 (>= 2); six pinned constants all greppable; `check-content-bundle` absent from package.json
+- No deletions in the metadata commit (`git diff --diff-filter=D HEAD~1 HEAD` empty); working tree clean
+
