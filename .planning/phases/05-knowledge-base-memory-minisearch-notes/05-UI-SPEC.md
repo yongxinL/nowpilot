@@ -1,7 +1,8 @@
 ---
 phase: 5
 slug: knowledge-base-memory-minisearch-notes
-status: draft
+status: approved
+reviewed_at: 2026-08-13
 shadcn_initialized: false
 preset: none
 created: 2026-08-13
@@ -103,7 +104,7 @@ The 60/30/10 contract (DESIGN_SYSTEM.md §6.2 + Appendix F seed tokens) is inher
 `colorPrimary` is reserved for these Phase-5 surfaces **only**:
 
 1. **Resolved wikilinks** in the rendered note body — clickable `[[Title]]` links (opens the target note).
-2. **Primary buttons:** "New note" (page header), "Save" (editor header).
+2. **Primary buttons:** "New note" (page header), "Save Note" (editor header).
 3. **Active view toggle** — the active segment of the Notes/Graph `Segmented` control (DESIGN_SYSTEM.md §9 "header segmented toggles colorPrimary when active").
 4. **Selected note card** in the list — `colorPrimaryBg` fill pill + `colorPrimary` title text (DESIGN_SYSTEM.md §9 active-item pattern).
 5. **Search focus ring** + clear affordance on the search `Input` (AntD default).
@@ -135,7 +136,7 @@ All Phase-5 copy below is **canonical** — existing keys are reused verbatim; n
 | Editor loading | **Loading note...** | **new key** `STR.notes.loadingNote = 'Loading note...'` (spec §12 NoteEditor row) |
 | Editor save error | **Failed to save note. [Retry]** | **new key** `STR.notes.saveFailed = 'Failed to save note. [Retry]'` (spec §12 NoteEditor row; inline retry re-runs the save pipeline D-05-15) |
 | Editor no-selection placeholder | **Select a note or create a new one.** | **new key** `STR.notes.selectNote = 'Select a note or create a new one.'` (rendered centered-muted in the editor pane when no note is selected/drafted) |
-| Editor save CTA | **Save** | **new key** `STR.notes.save = 'Save'` (primary button, editor header; `Cmd/Ctrl+S` accelerator; disabled when not dirty) |
+| Editor save CTA | **Save Note** | **new key** `STR.notes.save = 'Save Note'` (primary button, editor header; `Cmd/Ctrl+S` accelerator; disabled when not dirty) |
 | Dirty indicator (editor header, 12 px) | **Unsaved changes** | **new key** `STR.notes.unsaved = 'Unsaved changes'` (muted caption + `Badge dot` accent; visible while the draft differs from the persisted note) |
 | Discard confirmation (switching note with dirty draft) | **Discard unsaved changes?** | **new key** `STR.notes.discard = 'Discard unsaved changes?'` (Popconfirm, buttons: **Discard** (danger) / **Keep editing**) |
 | Delete confirm | **Delete "[title]"? This cannot be undone.** | **new key** `STR.notes.deleteConfirm = 'Delete "[title]"? This cannot be undone.'` (`[title]` = the note title; Popconfirm title, OK button **Delete** danger) |
@@ -181,7 +182,7 @@ NotesPage (ErrorBoundary-wrapped, Standalone content column)
             ├── no-selection: centered muted "Select a note or create a new one."
             ├── selected/draft:
             │   ├── editor header row:
-            │   │     [Input 20/600 title, borderless, placeholder = note title]  [Star]  [Segmented Edit|Preview]  [unsaved dot]  [Save primary]  [⋯ More: Delete]
+            │   │     [Input 20/600 title, borderless, placeholder = note title]  [Star]  [Segmented Edit|Preview]  [unsaved dot]  [Save Note primary]  [⋯ More: Delete]
             │   ├── tag chips row: [Tag ×n (closable)]  [+ Add tag inline input]  (12 px chips, colorFillTertiary)
             │   ├── body: Edit mode → TextArea (markdown source, mono-off, `[[` triggers autocomplete)
             │   │        Preview mode → PortableMarkdown (wikilinks resolved/styled; unresolved dashed+muted+"Create note")
@@ -237,7 +238,7 @@ Locked by 05-CONTEXT D-05-12 (MiniSearch lifecycle), D-05-13 (New note from page
 
 - **Title:** borderless `Input` at 20/600; empty title allowed while editing, Save falls back to "Untitled" on persist.
 - **Edit | Preview segmented:** body renders markdown source in a `TextArea` (Edit) or `PortableMarkdown` (Preview). Preview resolves `[[Title]]` via the current note's `links[]`/`unresolvedLinks[]` (D-05-14): resolved → clickable `colorPrimary` link (opens target note); unresolved → `colorTextTertiary` + dashed underline + "Create note" action (drafts a new note titled `Title`; after its first save, the bounded reconciliation promotes the matching unresolved entry — D-05-14, never blocks save).
-- **Save:** explicit primary `Save` button + `Cmd/Ctrl+S` (planner may bind via keydown handler; no global shortcut system this phase). Disabled when the draft is not dirty. Pipeline: `parseLinks` → `resolveLinks` (tie-break: exact title → `updated` desc → `id` asc, ≤ 20 ms) → `NotesDB.put` → `EventBus 'note:saved'` → MiniSearch incremental add + graph/backlinks re-derivation (D-05-12/15/17). Write paths never throw (Golden Rule 9; GR-9 codes to `debugLog`); failure → `STR.notes.saveFailed` inline retry.
+- **Save:** explicit primary `Save Note` button + `Cmd/Ctrl+S` (planner may bind via keydown handler; no global shortcut system this phase). Disabled when the draft is not dirty. Pipeline: `parseLinks` → `resolveLinks` (tie-break: exact title → `updated` desc → `id` asc, ≤ 20 ms) → `NotesDB.put` → `EventBus 'note:saved'` → MiniSearch incremental add + graph/backlinks re-derivation (D-05-12/15/17). Write paths never throw (Golden Rule 9; GR-9 codes to `debugLog`); failure → `STR.notes.saveFailed` inline retry.
 - **Dirty guard:** switching selection (or toggling to Graph view) with a dirty draft → `Popconfirm` `STR.notes.discard` (Discard danger / Keep editing). The dirty indicator is the "Unsaved changes" caption + `Badge` dot in the editor header.
 - **Delete:** `⋯ More` → Delete → `Popconfirm` `STR.notes.deleteConfirm` (title quoted; OK = Delete, danger `colorError`) → NotesDB row removed → `note:saved`-adjacent rebuild. Referencing edges dangle back into `unresolvedLinks[]` on other notes at their next save/rebuild (WIKI-ID-04 — no source-body rewrites, no cascade).
 
