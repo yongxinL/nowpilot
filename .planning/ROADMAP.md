@@ -339,7 +339,34 @@ Plans:
   4. Memory retrieval returns top-5 (top-3 in tiny mode) with scores in [0, 1]; preference profile injects compact JSON including persona overrides.
   5. The end-to-end Page → PageContentService → Note → MiniSearch path works.
 
-**Plans**: TBD
+**Plans**: 8 plans
+
+**Wave 1** *(foundation)*
+
+- [ ] 05-01-PLAN.md — types + canonical foundation: memory types (UserMemoryFact/ConversationMemory/ConversationMeta/MemoryInjection + UserPreferencesSchema), 5 Phase-5 error codes + spec C.2 mirror, np_conversation_meta registration, note:saved event, WorkingMemory in harness, 23 STR.notes.* keys, verify:phase-5 script, d3-force install (wave 1)
+
+**Wave 2** *(stores + search + notes core, parallel)*
+
+- [ ] 05-02-PLAN.md — MemoryScorer (§3.4 weights) + UserMemoryStore (UserMemoryFact CRUD + O.10 working memory) + MemoryDB v1→v2 migration (wave 2)
+- [ ] 05-03-PLAN.md — ConversationMemoryStore (tiered turns + 12-message compactor + §15.3 LRU) + PreferenceMemoryStore (np_persona writer) + personaConfig dual-shape read (wave 2)
+- [ ] 05-05-PLAN.md — MiniSearchIndex (persistent notes index, [0,1]) + LinkParser (wikilink tie-break) + NoteGraph (derived edges + §22.3 cosine) (wave 2)
+
+**Wave 3** *(orchestration)*
+
+- [ ] 05-04-PLAN.md — MemoryEngine (single orchestrator, assemble budgets top-5/top-3 tiny/≤1000) + MemoryExtractor (haiku-tier via PersonaInjector + requestJson) (wave 3)
+
+**Wave 4** *(pipeline wiring)*
+
+- [ ] 05-06-PLAN.md — ContextOptimizer threading (memory/preferences sections real) + reduce-topk realization + hook wiring with trustPrefs.memory gate (wave 4)
+
+**Wave 5** *(notes workspace UI)*
+
+- [ ] 05-07-PLAN.md — Notes workspace: PortableMarkdown wikilinks + NotesPage (list+editor+search+save pipeline+star+delete) + BacklinksPanel + WikilinkAutocomplete (wave 5)
+
+**Wave 6** *(graph + phase gate)*
+
+- [ ] 05-08-PLAN.md — NoteGraphView (d3-force) + graph wiring + phase gate verify:phase-5 green + KNW checkboxes (wave 6)
+
 **UI hint**: yes
 
 ### Phase 5a: LLM-Wiki & Filesystem Sync
