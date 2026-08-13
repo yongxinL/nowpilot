@@ -1,12 +1,13 @@
 // tests/core/storage/MemoryDB.test.ts — STORAGE-01 MemoryDB contract tests
-// (§21.3 composite-keyed messages + §21.4 facts, §15.1 userFacts +
-// conversationSummaries). Uses the fake-indexeddb harness (RESEARCH Pattern 8):
-// a fresh IDBFactory per test so the 'MemoryDB' database starts empty. Cases:
+// (§21.3 composite-keyed messages + §3.4 user facts (v2 — 05-02 upgraded the
+// userFacts store from §21.4 Fact), §15.1 userFacts + conversationSummaries).
+// Uses the fake-indexeddb harness (RESEARCH Pattern 8): a fresh IDBFactory per
+// test so the 'MemoryDB' database starts empty. Cases:
 //   1. Composite keyPath [conversationId, seq] — two conversations interleave;
 //      getMessagesForConversation returns ONLY the requested conversation,
 //      ordered by seq (T-2-07-02: a cross-conversation leak would fail these
 //      ordering assertions)
-//   2. putFact/getFact/listFacts round-trip (§21.4 verbatim shape)
+//   2. putFact/getFact/listFacts round-trip (§3.4 UserMemoryFact shape — v2)
 //   3. putConversationSummary/getConversationSummary round-trip
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { IDBFactory } from 'fake-indexeddb';
@@ -20,10 +21,10 @@ import {
   putConversationSummary,
   putFact,
   putMemoryMessage,
-  type Fact,
   type MemoryDBSchema,
   type MemoryMessage,
 } from '@/core/storage/MemoryDB';
+import type { UserMemoryFact } from '@/core/memory/types';
 
 function makeMemoryMessage(
   conversationId: string,
@@ -34,8 +35,19 @@ function makeMemoryMessage(
   return { conversationId, seq, role, content, timestamp: seq * 10 };
 }
 
-function makeFact(id: string, content: string): Fact {
-  return { id, content, confidence: 0.9, source: 'extracted', created: 42 };
+function makeFact(id: string, content: string): UserMemoryFact {
+  return {
+    id,
+    content,
+    type: 'fact',
+    tags: [],
+    confidence: 0.9,
+    source: 'explicit',
+    createdAt: 42,
+    updatedAt: 42,
+    lastUsedAt: undefined,
+    useCount: 0,
+  };
 }
 
 describe('MemoryDB — composite-keyed messages + facts + summaries', () => {
@@ -72,7 +84,7 @@ describe('MemoryDB — composite-keyed messages + facts + summaries', () => {
     expect(c2.every((m) => m.conversationId === 'c2')).toBe(true);
   });
 
-  it('round-trips putFact/getFact/listFacts with the §21.4 verbatim shape', async () => {
+  it('round-trips putFact/getFact/listFacts with the §3.4 UserMemoryFact shape (v2)', async () => {
     db = await openMemoryDB();
 
     await putFact(db, makeFact('f1', 'user prefers concise answers'));
@@ -83,7 +95,7 @@ describe('MemoryDB — composite-keyed messages + facts + summaries', () => {
 
     const all = await listFacts(db);
     expect(all.map((f) => f.id).sort()).toEqual(['f1', 'f2']);
-    expect(all[0]).toMatchObject({ confidence: 0.9, source: 'extracted', created: 42 });
+    expect(all[0]).toMatchObject({ confidence: 0.9, source: 'explicit', createdAt: 42 });
   });
 
   it('round-trips putConversationSummary/getConversationSummary keyed by conversationId', async () => {

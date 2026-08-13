@@ -66,6 +66,7 @@ import {
   type Fact,
   type MemoryMessage,
 } from '@/core/storage/MemoryDB';
+import type { UserMemoryFact } from '@/core/memory/types';
 import { persistJournalEntry, runJournaled, type JournalStep } from '@/core/storage/WriteJournal';
 import {
   CURRENT_SCHEMA_VERSION,
@@ -447,6 +448,47 @@ function isFact(v: unknown): v is Fact {
   );
 }
 
+/**
+ * Normalize an incoming memory fact row to the v2 §3.4 UserMemoryFact shape.
+ * Accepts BOTH the legacy §21.4 Fact shape (pre-05-02 backups) and the v2
+ * UserMemoryFact shape (post-05-02 backups, incl. the data-carry migration's
+ * default-fill fields). Legacy rows are default-filled exactly like the v1→v2
+ * migration: type 'fact', tags [], createdAt/updatedAt = created, useCount 0,
+ * source 'extracted' mapped to 'inferred' (not in the §3.4 union). Returns
+ * undefined for anything that matches neither shape (skipMalformed).
+ */
+function toUserMemoryFact(v: unknown): UserMemoryFact | undefined {
+  if (isFact(v)) {
+    return {
+      id: v.id,
+      content: v.content,
+      type: 'fact',
+      tags: [],
+      confidence: v.confidence,
+      source: v.source === 'explicit' ? 'explicit' : 'inferred',
+      createdAt: v.created,
+      updatedAt: v.created,
+      lastUsedAt: undefined,
+      useCount: 0,
+    };
+  }
+  if (
+    isRecord(v) &&
+    typeof v.id === 'string' &&
+    typeof v.content === 'string' &&
+    isFiniteNumber(v.confidence) &&
+    (v.source === 'explicit' || v.source === 'inferred' || v.source === 'system') &&
+    (v.type === 'fact' || v.type === 'preference' || v.type === 'pattern') &&
+    Array.isArray(v.tags) &&
+    isFiniteNumber(v.createdAt) &&
+    isFiniteNumber(v.updatedAt) &&
+    isFiniteNumber(v.useCount)
+  ) {
+    return v as unknown as UserMemoryFact;
+  }
+  return undefined;
+}
+
 function isConversationSummary(v: unknown): v is ConversationSummary {
   return (
     isRecord(v) &&
@@ -616,16 +658,17 @@ async function mergeMemory(incoming: unknown, opts: { overwrite?: boolean }): Pr
       upserted++;
     }
     for (const fact of data.facts ?? []) {
-      if (!isFact(fact)) {
+      const normalized = toUserMemoryFact(fact);
+      if (!normalized) {
         skipMalformed('fact', fact);
         continue;
       }
-      const existing = await getFact(db, fact.id);
+      const existing = await getFact(db, normalized.id);
       if (existing !== undefined && opts.overwrite !== true) {
         kept++;
         continue;
       }
-      await putFact(db, fact);
+      await putFact(db, normalized);
       upserted++;
     }
     for (const summary of data.conversationSummaries ?? []) {

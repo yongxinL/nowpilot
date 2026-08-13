@@ -40,9 +40,9 @@ import {
   openMemoryDB,
   putFact,
   putMemoryMessage,
-  type Fact,
   type MemoryMessage,
 } from '@/core/storage/MemoryDB';
+import type { UserMemoryFact } from '@/core/memory/types';
 import {
   loadPendingEntries,
   persistJournalEntry,
@@ -111,13 +111,18 @@ function makeMemoryMessage(overrides: Partial<MemoryMessage> = {}): MemoryMessag
   };
 }
 
-function makeFact(overrides: Partial<Fact> = {}): Fact {
+function makeFact(overrides: Partial<UserMemoryFact> = {}): UserMemoryFact {
   return {
     id: 'f-1',
     content: 'user prefers dark mode',
+    type: 'fact',
+    tags: [],
     confidence: 0.9,
-    source: 'explicit' as const,
-    created: 1000,
+    source: 'explicit',
+    createdAt: 1000,
+    updatedAt: 1000,
+    lastUsedAt: undefined,
+    useCount: 0,
     ...overrides,
   };
 }
