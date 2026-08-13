@@ -178,6 +178,14 @@ export interface ContextOptimizerInput {
    * with or without it.
    */
   contextUpdate?: ContextUpdate;
+  /**
+   * D-4b-08/D-04-07 (additive input extension — the OUTPUT shape is untouched):
+   * the trust-aware page feed's source-type gates (np_trust). Optional, so every
+   * existing ContextOptimizerInput construction site compiles unchanged; the
+   * optimizer's trust stage (04b-04) applies applySourceGates against this when
+   * present and DEFAULT_TRUST_PREFS otherwise (D-4b-08).
+   */
+  trustPrefs?: import('@/core/preferences/trustConfig').TrustPrefs;
 }
 
 /**
