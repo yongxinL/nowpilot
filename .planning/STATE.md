@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 05
 current_phase_name: knowledge-base-memory-minisearch-notes
 status: executing
-stopped_at: Completed 05-01-PLAN.md
-last_updated: "2026-08-13T23:09:17.743Z"
+stopped_at: Completed 05-02-PLAN.md
+last_updated: "2026-08-13T23:53:30.080Z"
 last_activity: 2026-08-13
 last_activity_desc: Phase 05 execution started
 progress:
   total_phases: 8
   completed_phases: 7
   total_plans: 74
-  completed_plans: 67
+  completed_plans: 68
 ---
 
 # Project State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-08-13)
 ## Current Position
 
 Phase: 05 (knowledge-base-memory-minisearch-notes) — EXECUTING
-Plan: 2 of 8
+Plan: 3 of 8
 Status: Ready to execute
 Last activity: 2026-08-13 — Phase 05 execution started
 
-Progress: [█████████░] 91%
+Progress: [█████████░] 92%
 
 ## Performance Metrics
 
@@ -116,6 +116,7 @@ Progress: [█████████░] 91%
 | Phase 04b-trust-aware-context-and-receipts P05 | 17min | 3 tasks | 7 files |
 | Phase 04b-trust-aware-context-and-receipts P06 | 11min | 2 tasks | 5 files |
 | Phase 05-knowledge-base-memory-minisearch-notes P01 | 8 min | 3 tasks | 10 files |
+| Phase 05-knowledge-base-memory-minisearch-notes P02 | 27 | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -263,6 +264,11 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 [Phase 05]: 'note:saved' appended to EVENT_TYPES after NOTE_SAVE; NOTE_SAVE retained for backward compat (Pitfall 7); save pipeline emits { noteId } (D-05-15); 05-07/08 subscribe for index/graph re-derivation
 [Phase 05]: verify:phase-5 = §24 chain byte-identical to verify:phase-4b (eslint + prettier --check + tsc --noEmit + wxt build + vitest run), no test-count assertions (P-5); d3-force@^3 resolved to 3.0.0 (A4 confirmed — dual ESM/CJS builds under WXT bundler) — Wave-1 foundation plan 05-01 established the R-1 type homes, canonical code vocabulary (Open Q7), the np_conversation_meta registry row (Pitfall 4), the note:saved event (Pitfall 7), and the verify:phase-5 gate (D-05-19). These decisions are locked contracts for plans 05-02..08.
 
+- [Phase 05]: MemoryDB.userFacts v1→v2 data-carry migration via runMigrations (Open Q2): default-fill type 'fact'/tags []/updatedAt:created/useCount 0; legacy source 'extracted' maps to 'inferred' (not in §3.4 union); openMemoryDB name unchanged — Spec §15.1 names userFacts UserMemoryFact[] — code deviated; RESEARCH recommended the migration over in-memory mapping (keeps tag/useCount persistence)
+- [Phase 05]: MemoryScorer return statement prettier-ignore pinned — verbatim coefficient literal * 0.10 survives (prettier normalizes to 0.1; acceptance grep requires literal) — Acceptance grep pin vs prettier normalization conflict resolved at the source
+- [Phase 05]: Working memory persists as wm:user UserMemoryFact rows in the same userFacts store; retrieve() excludes wm: prefix so the always-on block never ranks as a retrieved fact — D-05-09: block injected separately BEFORE facts; survival + migration ride the v2 store
+- [Phase 05]: truncateToTokens implemented locally in UserMemoryStore per O.10 reference (slice cap*4 chars, ONE sanctioned slice); estimateTokens stays the ONLY token counter — Plan spec referenced a function that did not exist; RESEARCH Common Operation 2 defines it locally
+
 ### Pending Todos
 
 [From .planning/todos/pending/ — ideas captured during sessions]
@@ -290,6 +296,6 @@ Items acknowledged and carried forward (v2 scope, tracked in REQUIREMENTS.md):
 
 ## Session Continuity
 
-Last session: 2026-08-13T23:09:17.713Z
-Stopped at: Completed 05-01-PLAN.md
+Last session: 2026-08-13T23:53:30.037Z
+Stopped at: Completed 05-02-PLAN.md
 Resume file: None
