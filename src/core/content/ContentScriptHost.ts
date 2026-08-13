@@ -14,7 +14,11 @@
 // serialization reads the live DOM, never writes to it.
 import { PageRegistry } from '@/core/registry/PageRegistry';
 import { PageContextBridge } from '@/core/content/PageContextBridge';
-import type { ContentCapabilities, ExtractionPayload, ExtractionRequest } from '@/core/content/PageContextBridge';
+import type {
+  ContentCapabilities,
+  ExtractionPayload,
+  ExtractionRequest,
+} from '@/core/content/PageContextBridge';
 import { MessageType } from '@/core/runtime/MessageType';
 import type { RuntimeEnvelope } from '@/core/runtime/RuntimeEnvelope';
 import type { PageContext } from '@/core/content/PageContext';
@@ -139,7 +143,10 @@ export class ContentScriptHost {
     clone.querySelectorAll('[formaction]').forEach((n) => n.removeAttribute('formaction'));
     const html = clone.outerHTML;
     return {
-      html: html.length > PAGE_HTML_MAX_BYTES ? truncateAtElementBoundary(html, PAGE_HTML_MAX_BYTES) : html,
+      html:
+        html.length > PAGE_HTML_MAX_BYTES
+          ? truncateAtElementBoundary(html, PAGE_HTML_MAX_BYTES)
+          : html,
       baseUrl: document.baseURI, // D-4a-08 stamp — absolute, resolves relative links panel-side
       truncated: html.length > PAGE_HTML_MAX_BYTES,
     };
@@ -178,7 +185,7 @@ export class ContentScriptHost {
    * (mark-stale signal). Full re-extraction happens only when a surface
    * requests it (subscribed-only).
    */
-  private handleNavigate(newUrl: string): void {
+  private handleNavigate(_newUrl: string): void {
     this.currentPage = this.buildLiveContext();
     this.registry.upsert(this.tabId, this.currentPage);
     this.bridge.publishContext(this.currentPage);

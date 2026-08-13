@@ -156,7 +156,11 @@ export class PageContextBridge {
         reject(contentExtractFailedError(`extraction timed out after ${timeoutMs}ms`));
       }, timeoutMs);
       this.bridge.publish(
-        this.envelope(MessageType.EXTRACT_PAGE_CONTENT, { tabId, mode } satisfies ExtractionRequest, opId),
+        this.envelope(
+          MessageType.EXTRACT_PAGE_CONTENT,
+          { tabId, mode } satisfies ExtractionRequest,
+          opId,
+        ),
       );
     });
   }
