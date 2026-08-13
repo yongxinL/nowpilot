@@ -22,6 +22,8 @@ A privacy-first, local-first AI assistant where chat, extracted page content, an
   *Validated in Phase 03: Cost-Effective AI Runtime + Persona seed (16/16 plans, 5/5 must-haves verified; AI-01…07; includes gap-closure cycle 03-10..03-16 closing CR-01/WR-01/WR-02/WR-03/WR-04, verified passed 5/5)*
 - **Agent reliability & evidence** — trajectory state machine (AgentTrajectoryPhase/State/Outcome in `@/types/harness`, C.1 verbatim), legal-transition table + trajectory cap, CheckpointRecorder one-step rollback, O.2-verbatim buildOutcome (evidence-gated completion; cap ⇒ partial never completed), bounded non-nested replan-on-tool-failure, commit-confirm pause seam (waiting-for-permission; UI deferred to Phase 8), renderer evidence guard
   *Validated in Phase 3a: Agent Reliability and Evidence (5/5 plans, 5/5 must-haves verified; AGT-01…05; `verify:phase-3a` green — 65 files / 527 tests)*
+- **Trust-aware context** — C.1 trust types (TrustLevel/ContextItem/ContextReceiptEntry) + Zod gates in `@/types/harness`, O.3 `applyTrustPolicy` authority strip + `<untrusted_data>` wrap (delimiter-breakout sanitized, prompt-layer semantics anchored), deterministic injection screener + quarantine, `contextFeed`/`contextReceipt` (reconstruction-sufficient receipt, CTX-06 counters), trust stage in `ContextOptimizer`, `TrustSettingsStore` (np_trust) + content-trust Options card
+  *Validated in Phase 4b: Trust-Aware Context and Receipts (6/6 plans + critical-fix pass, 4/4 must-haves verified; TRUST-01…03 → CTX re-mapped; code review 2 criticals fixed; `verify:phase-4b` green — 88 files / 797 tests)*
 
 ### Active
 
@@ -29,8 +31,8 @@ v1 scope, derived from the canonical product spec (`.planning/PRODUCT_SPEC_v0_1.
 - [x] **Cost-effective AI runtime** — Vercel AI SDK, Anthropic/SDK provider integrations, Planner→Executor→Renderer orchestration, streaming (SSE + text), cost guardrails (tier caps, monthly budget) — *Phase 03 complete*
 - [x] **Agent reliability & evidence** — trajectory state machine (10-state, legal-transition table, trajectory cap), CheckpointRecorder one-step rollback, CompletionEvidence-gated completion (partial never completed), bounded non-nested replan, commit-confirm pause seam (UI deferred to Phase 8), renderer evidence guard — *Phase 3a complete*
 - [ ] **Context-adaptive execution** — context windows, ContextUpdate events, context-aware selection, phase-aware prompting
-- [ ] **PageContentService** — content-script extraction (defuddle main content), schema `{title, url, text, metadata}`, TraceRedactor in DOMElems
-- [ ] **Trust-aware context** — content-classification, XSS risk screening, prompt-injection quarantine, content trust controls
+- [x] **PageContentService** — content-script extraction (defuddle main content), schema `{title, url, text, metadata}`, TraceRedactor in DOMElems
+- [x] **Trust-aware context** — content-classification, XSS risk screening, prompt-injection quarantine, content trust controls — *Phase 4b complete*
 - [ ] **Knowledge & notes** — atomic note-taking, wikilinks, note graph ([[wiki]] navigation), note views
 - [ ] **LLM-Wiki & filesystem sync** — auto-tagging, title→LLM integration, RAG "Ask notes" (MiniSearch), local-FS sync + baseline
 - [ ] **Memory governance** — memory cap, decay, privacy-preserving compression
@@ -93,4 +95,4 @@ v1 scope, derived from the canonical product spec (`.planning/PRODUCT_SPEC_v0_1.
 | ServiceNow, Write, TeamGQM as first-party add-ons | P1 add-ons; architecture supports third-party add-on SDK later | ✓ Spec §25 |
 
 ---
-*Last updated: 2026-08-12 after Phase 3a completion (/gsd-execute-phase 3a → verification passed 5/5, code review advisory findings logged)*
+*Last updated: 2026-08-13 after Phase 04b completion (/gsd-execute-phase 04b → verification passed 4/4, code review 2 criticals fixed before seal)*
