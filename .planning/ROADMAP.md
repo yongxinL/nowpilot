@@ -257,7 +257,7 @@ Plans:
   4. SPA navigation and tab updates trigger cache invalidation and re-extraction.
   5. Extracted content is searchable via an ephemeral per-tab MiniSearch index (never persisted).
 
-**Plans**: 8/10 plans executed
+**Plans**: 9/10 plans executed
 
 Plans:
 **Wave 1**
@@ -282,7 +282,7 @@ Plans:
 **Wave 5** *(blocked on Wave 4 completion)*
 
 - [x] 04a-08-PLAN.md — PageContentService: O.12 extractLayered + coalescing + 5 s cap + stale-safe + eviction + currentPageContext delivery + test (wave 5)
-- [ ] 04a-09-PLAN.md — isolation suite: extended tokens + < 50 KB sourcemap-stripped + password invariant; retire check-content-bundle.mjs (D-4a-23) (wave 5)
+- [x] 04a-09-PLAN.md — isolation suite: extended tokens + < 50 KB sourcemap-stripped + password invariant; retire check-content-bundle.mjs (D-4a-23) (wave 5)
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
@@ -496,7 +496,7 @@ Plans:
 | 3. Cost-Effective AI Runtime (+ Persona seed) | 16/16 | Complete    | 2026-08-11 |
 | 3a. Agent Reliability and Evidence | 5/5 | Complete    | 2026-08-12 |
 | 4. Context-Adaptive Execution | 7/7 | Complete    | 2026-08-12 |
-| 4a. PageContentService (Knowledge Acquisition) | 8/10 | In Progress|  |
+| 4a. PageContentService (Knowledge Acquisition) | 9/10 | In Progress|  |
 | 4b. Trust-Aware Context and Receipts | TBD | Not started | - |
 | 5. Knowledge Base (Memory + MiniSearch + Notes) | TBD | Not started | - |
 | 5a. LLM-Wiki & Filesystem Sync | TBD | Not started | - |
