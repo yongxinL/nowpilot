@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 04a
 current_phase_name: pagecontentservice-knowledge-acquisition
 status: verifying
-stopped_at: Completed 04b-02-PLAN.md
-last_updated: "2026-08-13T15:09:44.389Z"
+stopped_at: Completed 04b-03-PLAN.md
+last_updated: "2026-08-13T15:34:57.432Z"
 last_activity: 2026-08-13
 last_activity_desc: Phase 04a execution started
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 66
-  completed_plans: 62
+  completed_plans: 63
 ---
 
 # Project State
@@ -33,7 +33,7 @@ Plan: 10 of 10
 Status: Phase complete — ready for verification
 Last activity: 2026-08-13 — Phase 04a execution started
 
-Progress: [█████████░] 94%
+Progress: [██████████] 95%
 
 ## Performance Metrics
 
@@ -110,6 +110,7 @@ Progress: [█████████░] 94%
 | Phase 04a-pagecontentservice-knowledge-acquisition P10 | 25 | 1 tasks | 5 files |
 | Phase 04b-trust-aware-context-and-receipts P01 | 14 | 3 tasks | 6 files |
 | Phase 04b-trust-aware-context-and-receipts P02 | 16 | 2 tasks | 4 files |
+| Phase 04b-trust-aware-context-and-receipts P03 | 17min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -239,6 +240,10 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 04b]: applyTrustPolicy is O.3 verbatim; CONTEXT_INSTRUCTION_INJECTION_BLOCKED exported as typed carrier + guard only (no raise site in 4b; strip+wrap+quarantine is the enforcement, D-4b-06) — Typed-error carrier precedent (ContextTooLargeError); no 4b code raises it
 - [Phase 04b]: Tag-block regex class MUST use \u{E0000}-\u{E007F} with the u flag — 4-hex \uE0000 parses as \uE000+0, widening the class to a 0-U+E007 range that strips ordinary ASCII (Rule 1) — Empirically verified in node; the plan/RESEARCH literal was silently destructive
 - [Phase 04b]: Smuggled-variant test fixtures preserve word separators (OWASP ASCII-smuggling shape) — replacing separators with ZWSPs makes strip-then-classify unfixable — Plan fixture literal could not pass against the pinned RESEARCH patterns
+- [Phase 04b-trust-aware-context-and-receipts]: buildReceipt applies the O.3 wrap internally (single wrap site for the feed path): items arrive PRE-wrap so Pattern 2 token semantics (originalTokens = pre-wrap estimateTokens; finalTokens = wrapped) and the D-4b-11 reconstruction contract hold byte-exactly. The 04b-03 feed stamps instructionAuthority:false, so applyTrustPolicy's authority-strip wrap (04b-02) never fires on it — no double-wrap in the page-only pipeline; 04b-04 wires the stage ordering. — RESEARCH Code Example 3 comments 'wrapped text present' on buildReceipt input, but the plan's Pattern 2 semantics require originalTokens = pre-wrap estimateTokens; wrapping inside buildReceipt is the only consistent reading and the reconstruction test verifies it via a plan-local O.3 oracle.
+- [Phase 04b-trust-aware-context-and-receipts]: capToBudget is exported (not module-internal): the truncated marker is not representable on ContextItem (C.1 verbatim — R-1), so the 22.2 structural-cap contract is asserted through capToBudget directly; pageToContextItems consumes it without surfacing truncation. — The plan allows 'export a small marker type if a test needs the truncated flag' — the §22.2 over-budget test needs truncated:true, and ContextItem has no truncated field.
+- [Phase 04b-trust-aware-context-and-receipts]: contextText separator = '\n\n' (ProviderRouter joinSections L105 convention) — the context section 04b-04 emits is byte-identical to what the receipt reconstructs (D-4b-11 / Pitfall 3). — joinSections is the canonical section-join convention; using it keeps the packed contextText reconstruction-exact.
+- [Phase 04b-trust-aware-context-and-receipts]: Freshness = Open Question 4 fixed curve max(0, 1 - ageHours/24) clamped 0..1 with an injectable nowMs clock (absent injection → age 0 → freshness 1); fixture-pinned, no Date.now in the module. — Determinism rule (fixtures precedent) — the injectable clock mirrors the PromptCacheManager precedent; production wiring (04b-04) supplies the clock at its own boundary.
 
 ### Pending Todos
 
@@ -267,6 +272,6 @@ Items acknowledged and carried forward (v2 scope, tracked in REQUIREMENTS.md):
 
 ## Session Continuity
 
-Last session: 2026-08-13T15:09:44.349Z
-Stopped at: Completed 04b-02-PLAN.md
+Last session: 2026-08-13T15:33:58.986Z
+Stopped at: Completed 04b-03-PLAN.md
 Resume file: None
