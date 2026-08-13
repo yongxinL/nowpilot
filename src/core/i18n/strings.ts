@@ -116,6 +116,19 @@ export const STR = {
     about: 'About',
     // Phase-1 canonical addition (UI-SPEC Copywriting Contract: Options empty state)
     noProvider: 'No provider connected. Set up a provider to start.',
+    // Phase-4b canonical additions (04b-UI-SPEC Copywriting Contract —
+    // content-trust card, verbatim; D-4b-07)
+    contentTrust: 'Content trust',
+    trustHelper: 'Choose which content sources can feed the model.',
+    trustStructuralNote:
+      'Pages is the only active source in this version. Notes, memory, and tool results arrive in later phases.',
+    trustSources: {
+      pages: 'Pages',
+      notes: 'Notes',
+      memory: 'Memory',
+      toolResults: 'Tool results',
+    },
+    trustSaveFailed: "Couldn't save your content trust settings. We'll retry on the next change.",
   },
   theme: {
     // Phase-1 canonical addition (UI-SPEC Copywriting Contract: theme persistence error)

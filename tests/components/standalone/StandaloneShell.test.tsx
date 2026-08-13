@@ -9,6 +9,7 @@
 import { render, screen } from '@testing-library/react';
 import { App as AntdApp } from 'antd';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { fakeBrowser } from 'wxt/testing';
 import { StandaloneRouter } from '@/components/standalone/StandaloneRouter';
 import { StandaloneShell } from '@/components/standalone/StandaloneShell';
 import { useStandaloneNav } from '@/components/standalone/standaloneNav';
@@ -58,6 +59,11 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  // 04b-05 (Rule 3): unstubAllGlobals also tears down the WXT vitest plugin's
+  // chrome stub (installed once at file setup). OptionsPage now calls
+  // TrustSettingsStore.init() on mount, so chrome must remain stubbed for the
+  // next test in this file — restore the plugin guarantee.
+  vi.stubGlobal('chrome', fakeBrowser);
 });
 
 describe('StandaloneShell', () => {
