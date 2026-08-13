@@ -20,11 +20,11 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-08-09)
+See: .planning/PROJECT.md (updated 2026-08-13)
 
 **Core value:** A privacy-first, local-first AI assistant where chat, extracted page content, and a linked notes/knowledge layer combine into a persistent personal workspace — no data leaves the machine unless the user deliberately configures a cloud provider.
 
-**Current focus:** Phase 04a — pagecontentservice-knowledge-acquisition
+**Current focus:** Phase 5 — Knowledge Base (Memory + MiniSearch + Notes)
 
 ## Current Position
 
@@ -282,6 +282,6 @@ Items acknowledged and carried forward (v2 scope, tracked in REQUIREMENTS.md):
 
 ## Session Continuity
 
-Last session: 2026-08-13T16:41:19.661Z
-Stopped at: Completed 04b-06-PLAN.md — Phase 04b sealed (verify:phase-4b green)
+Last session: 2026-08-13T21:38:25.011Z
+Stopped at: Phase 04b complete, ready to plan Phase 5 (Knowledge Base)
 Resume file: None
