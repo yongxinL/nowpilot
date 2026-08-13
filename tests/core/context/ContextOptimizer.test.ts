@@ -47,6 +47,8 @@ import {
   FIXED_PREFERENCES,
   FIXED_WORKSPACE_ID,
 } from '../../fixtures/optimizedContext';
+import type { PageContext } from '@/core/content/PageContext';
+import { FIXED_TIMESTAMP, FIXED_TITLE, FIXED_URL } from '../../fixtures/pageContent';
 
 /** Fixed base optimizer input — every field the §2.3 contract requires (04-04 additions included). */
 function baseInput(overrides: Partial<ContextOptimizerInput> = {}): ContextOptimizerInput {
@@ -342,5 +344,102 @@ describe('optimize — section-granularity invariants (04-04 Task 3, D-04-13/D-0
         expect(knownTexts.has(section.text)).toBe(true); // no slice/substring anywhere (D-04-13)
       }
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 04b-04 Task 3 — the trust-aware pageContext feed + receipt wiring (D-4b-09).
+// baseInput already threads pageContext/trustPrefs through its additive
+// overrides spread (L52-69); the new cases assert the trust stage's optimizer
+// boundary: the wrapped context section, the no-page byte-identity regression
+// (drop-in L307-318 untouched above), the Pitfall 3 included-row guard, and the
+// D-4b-08 page-disabled path.
+// ---------------------------------------------------------------------------
+
+/** The O.3 wrap marker — the inert-data signal (data, not a directive). */
+const WRAP_MARKER = '<untrusted_data';
+
+/** Fixed page feed fixture (deterministic — FIXED_TIMESTAMP, no Date.now). */
+function fixedPage(): PageContext {
+  return {
+    url: FIXED_URL,
+    origin: 'https://docs.example.com',
+    hostname: 'docs.example.com',
+    title: FIXED_TITLE,
+    markdown: `# ${FIXED_TITLE}
+
+The extraction pipeline runs entirely inside the side panel. Layered strategies keep the content script dependency-free.`,
+    meta: {},
+    extractedAt: FIXED_TIMESTAMP,
+  };
+}
+
+/** Page-source-disabled prefs — the D-4b-08 gate test (np_trust page:false). */
+const PAGE_DISABLED_PREFS = {
+  page: false,
+  notes: true,
+  memory: true,
+  tool_result: true,
+} as const;
+
+describe('optimize — trust-aware pageContext feed (04b-04 Task 3, D-4b-09)', () => {
+  it('a page feed produces a wrapped context section (stable:false, TASK_KINDS)', () => {
+    const out = optimize(baseInput({ pageContext: fixedPage() }));
+    const context = out.sections.find((s) => s.kind === 'context');
+    expect(context).toBeDefined();
+    expect(context!.text).toContain(WRAP_MARKER);
+    expect(context!.text).toContain(`source="${FIXED_URL}"`);
+    expect(context!.stable).toBe(false); // per-turn — never CACHED_KINDS (F-5)
+    expect(context!.sourceId).toBe('context');
+    // the manifest rides the REAL trust-stage receipt + counters (D-4b-10/11)
+    expect(out.provenance.receipt).toHaveLength(1);
+    expect(out.provenance.receipt[0]).toMatchObject({ sourceId: FIXED_URL, included: true });
+    expect(out.provenance.counters.screened).toBe(1);
+    expect(out.provenance.counters.quarantined).toBe(0);
+    expect(out.provenance.counters.byTrust.retrieved).toBe(1);
+  });
+
+  it('pageContext:undefined stays byte-identical to the pre-4b output (drop-in regression, D-4a-06)', () => {
+    const out = optimize(baseInput({ pageContext: undefined }));
+    // the no-page path emits NO context section and an honest empty receipt
+    expect(out.sections.find((s) => s.kind === 'context')).toBeUndefined();
+    expect(out.provenance.receipt).toEqual([]);
+    expect(out.provenance.counters).toEqual({
+      screened: 0,
+      quarantined: 0,
+      byTrust: { system: 0, user: 0, tool: 0, retrieved: 0, untrusted: 0 },
+      totalIncludedTokens: 0,
+    });
+    // byte-identity: deep-equals the default baseInput output
+    expect(out).toEqual(optimize(baseInput()));
+    // and the drop-in snapshot assertion above (L307-318) still pins the
+    // Phase-3 section texts — the trust stage never disturbs them.
+    expect(out.sections.map((s) => s.text)).toEqual(
+      optimize(baseInput()).sections.map((s) => s.text),
+    );
+  });
+
+  it('Pitfall 3 guard: every receipt included:true row source text IS in the packed context section', () => {
+    const out = optimize(baseInput({ pageContext: fixedPage() }));
+    const context = out.sections.find((s) => s.kind === 'context');
+    const pageRow = out.provenance.receipt.find((r) => r.sourceId === FIXED_URL);
+    expect(pageRow?.included).toBe(true);
+    // the receipt row's source text (the wrapped page item) is byte-present in
+    // the packed section — no divergence between receipt and packing (D-4b-11)
+    expect(context!.text).toContain(`source="${FIXED_URL}"`);
+    expect(context!.text).toContain(pageRow!.sourceId);
+    // and the section text is exactly the wrapped feed item (single page feed)
+    expect(context!.text.startsWith(WRAP_MARKER)).toBe(true);
+  });
+
+  it('trustPrefs.page:false → no context section + honest empty receipt (D-4b-08 Task 2 decision)', () => {
+    const out = optimize(baseInput({ pageContext: fixedPage(), trustPrefs: PAGE_DISABLED_PREFS }));
+    // page source disabled → the feed produces no items → no section is emitted
+    expect(out.sections.find((s) => s.kind === 'context')).toBeUndefined();
+    // ... and the receipt is honestly empty (no fabricated rows — Task 2 decision)
+    expect(out.provenance.receipt).toEqual([]);
+    expect(out.provenance.counters.screened).toBe(0);
+    expect(out.provenance.counters.quarantined).toBe(0);
+    expectValidManifest(out); // the empty-receipt manifest still passes GR-4
   });
 });

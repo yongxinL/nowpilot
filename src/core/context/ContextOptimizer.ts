@@ -157,9 +157,7 @@ const ZEROED_COUNTERS: ContextProvenanceManifest['counters'] = {
  * receipt is honestly empty — no fabricated rows). The manifest then carries
  * `receipt: []` + ZEROED_COUNTERS (the schema requires the fields, GR-4).
  */
-function buildTrustedContext(
-  input: ContextOptimizerInput,
-): {
+function buildTrustedContext(input: ContextOptimizerInput): {
   contextText: string;
   receipt: ContextReceiptEntry[];
   counters: TrustedFeedResult['counters'];
