@@ -19,6 +19,9 @@ import { classifyModelContext } from '@/core/context/ModelContextTier';
 import { estimateTokens } from '@/core/context/TokenBudget';
 import { buildPersonaBlock, resolvePersona } from '@/core/ai/persona/PersonaInjector';
 import { DEFAULT_PERSONA } from '@/core/ai/persona/PersonaProfile';
+import { DEFAULT_TRUST_PREFS } from '@/core/preferences/trustConfig';
+import { useWorkspaceStore } from '@/core/workspace/WorkspaceStore';
+import type { PageContext } from '@/core/content/PageContext';
 import type { PromptSection } from '@/core/ai/types';
 import type { AgentTurnOutcome } from '@/types/harness';
 import { FIXED_PREFERENCES } from '../../fixtures/optimizedContext';
@@ -27,31 +30,33 @@ import { FIXED_PREFERENCES } from '../../fixtures/optimizedContext';
 // Module mocks (the hook's I/O boundaries — the hook itself stays real)
 // ---------------------------------------------------------------------------
 
-const { runAgentTurnMock, routerMock, readPersonaPrefsMock, capsTierCalls } = vi.hoisted(() => {
-  const capsTierCalls: string[] = [];
-  const createStageInvocation = vi.fn((input: { tier?: string; maxTokens?: number }) => ({
-    providerId: 'anthropic',
-    model: { modelId: 'claude-3-5-haiku-latest' },
-    jsonMode: 'native',
-    callProviderJsonMode: vi.fn(async () => '{}'),
-    // 04-05 (D-04-04): required field — deterministic fixture window.
-    modelContextWindow: 200_000,
-    ...input,
-  }));
-  const classifyProviderError = vi.fn((e: unknown) => ({
-    code:
-      e instanceof Error && /fetch failed|ECONNREFUSED|network/i.test(e.message)
-        ? 'NETWORK'
-        : 'UNKNOWN',
-    retryable: false,
-  }));
-  return {
-    runAgentTurnMock: vi.fn(),
-    routerMock: { createStageInvocation, classifyProviderError },
-    readPersonaPrefsMock: vi.fn(async () => FIXED_PREFERENCES),
-    capsTierCalls,
-  };
-});
+const { runAgentTurnMock, routerMock, readPersonaPrefsMock, readTrustPrefsMock, capsTierCalls } =
+  vi.hoisted(() => {
+    const capsTierCalls: string[] = [];
+    const createStageInvocation = vi.fn((input: { tier?: string; maxTokens?: number }) => ({
+      providerId: 'anthropic',
+      model: { modelId: 'claude-3-5-haiku-latest' },
+      jsonMode: 'native',
+      callProviderJsonMode: vi.fn(async () => '{}'),
+      // 04-05 (D-04-04): required field — deterministic fixture window.
+      modelContextWindow: 200_000,
+      ...input,
+    }));
+    const classifyProviderError = vi.fn((e: unknown) => ({
+      code:
+        e instanceof Error && /fetch failed|ECONNREFUSED|network/i.test(e.message)
+          ? 'NETWORK'
+          : 'UNKNOWN',
+      retryable: false,
+    }));
+    return {
+      runAgentTurnMock: vi.fn(),
+      routerMock: { createStageInvocation, classifyProviderError },
+      readPersonaPrefsMock: vi.fn(async () => FIXED_PREFERENCES),
+      readTrustPrefsMock: vi.fn(),
+      capsTierCalls,
+    };
+  });
 
 vi.mock('@/core/ai/AgentOrchestrator', () => ({
   runAgentTurn: runAgentTurnMock,
@@ -70,6 +75,15 @@ vi.mock('@/core/ai/ProviderRouter', () => ({
 vi.mock('@/core/ai/persona/personaConfig', () => ({
   readPersonaPrefs: readPersonaPrefsMock,
 }));
+
+// 04b-05 (D-4b-09): the trust-accessor boundary is mocked; the optimizer stays
+// REAL so the trust-disabled gate runs through the actual trust stage
+// (04b-04). importOriginal spread keeps DEFAULT_TRUST_PREFS real (the optimizer
+// imports it as the fallback).
+vi.mock('@/core/preferences/trustConfig', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/core/preferences/trustConfig')>();
+  return { ...actual, readTrustPrefs: readTrustPrefsMock };
+});
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -113,6 +127,30 @@ function rejectTurn(err: unknown) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// 04b-05 (D-4b-09): page-feed fixtures — a fixed PageContext (markdown body)
+// and a direct store-state seed (the plan's "direct state set with a fixed
+// fixture" path; avoids the journaled update() write path entirely).
+// ---------------------------------------------------------------------------
+
+const PAGE_FIXTURE: PageContext = {
+  url: 'https://docs.example.com/article/how-nowpilot-extracts',
+  origin: 'https://docs.example.com',
+  hostname: 'docs.example.com',
+  title: 'How NowPilot Extracts Page Content',
+  markdown:
+    '# How NowPilot Extracts Page Content\n\n' +
+    'NowPilot extracts pages with a layered strategy: Defuddle first, Readability as fallback.',
+  meta: {},
+  extractedAt: 1_700_000_000_000,
+};
+
+function seedCurrentPage(page: PageContext | undefined): void {
+  useWorkspaceStore.setState((s) => ({
+    workspace: { ...s.workspace, currentPageContext: page },
+  }));
+}
+
 beforeEach(() => {
   runAgentTurnMock.mockReset();
   routerMock.createStageInvocation.mockReset();
@@ -138,6 +176,11 @@ beforeEach(() => {
   }));
   readPersonaPrefsMock.mockReset();
   readPersonaPrefsMock.mockImplementation(async () => FIXED_PREFERENCES);
+  readTrustPrefsMock.mockReset();
+  readTrustPrefsMock.mockImplementation(async () => DEFAULT_TRUST_PREFS);
+  // 04b-05: a page seeded by one test must never leak into the next — the
+  // drop-in regression asserts the exact section bytes of the no-page path.
+  seedCurrentPage(undefined);
   capsTierCalls.length = 0;
 });
 
@@ -324,6 +367,81 @@ describe('useStreamingLLM — drop-in identity + honest terminal (04-06 rewire)'
       state: 'failed',
       reason: 'too_long',
     });
+  });
+});
+
+describe('useStreamingLLM — trust-aware page feed (04b-05, D-4b-09)', () => {
+  it('a seeded currentPageContext + all-true np_trust → a wrapped context section in BOTH stage contexts', async () => {
+    seedCurrentPage(PAGE_FIXTURE);
+    resolveTurn(['ok']);
+    const { result } = renderHook(() => useStreamingLLM());
+
+    await act(async () => {
+      await result.current.send('hi');
+    });
+
+    const input = runAgentTurnMock.mock.calls[0][0] as AgentTurnInputLike;
+    const plannerSections = (input.context as { sections: PromptSection[] }).sections;
+    const contextSection = plannerSections.find((s) => s.kind === 'context');
+    // The O.3 wrap marker + the page text survive the real optimizer pipeline
+    // (pageToContextItems → classifier → applyTrustPolicy → gates → buildReceipt
+    // → packSections); the context section is per-turn (stable:false).
+    expect(contextSection).toBeDefined();
+    expect(contextSection?.text).toContain(
+      '<untrusted_data source="https://docs.example.com/article/how-nowpilot-extracts">',
+    );
+    expect(contextSection?.text).toContain('NowPilot extracts pages with a layered strategy');
+    expect(contextSection?.stable).toBe(false);
+    // The renderer stage packs the SAME feed (contextForStage seam).
+    const rendererCtx = input.contextForStage?.('renderer') as {
+      sections: PromptSection[];
+    };
+    const rendererContextSection = rendererCtx.sections.find((s) => s.kind === 'context');
+    expect(rendererContextSection).toBeDefined();
+    expect(rendererContextSection?.text).toContain(
+      '<untrusted_data source="https://docs.example.com/article/how-nowpilot-extracts">',
+    );
+  });
+
+  it('no currentPageContext → NO context section (pre-4b drop-in, D-4a-06)', async () => {
+    resolveTurn(['ok']);
+    const { result } = renderHook(() => useStreamingLLM());
+
+    await act(async () => {
+      await result.current.send('hi');
+    });
+
+    const input = runAgentTurnMock.mock.calls[0][0] as AgentTurnInputLike;
+    const sections = (input.context as { sections: PromptSection[] }).sections;
+    expect(sections.find((s) => s.kind === 'context')).toBeUndefined();
+    // Byte-identical to the pre-4b no-page path: [SYSTEM][USER INPUT] only.
+    expect(sections.map((s) => s.kind)).toEqual(['system', 'user_input']);
+  });
+
+  it('np_trust page:false → NO context section (trust_disabled gate through the REAL optimizer)', async () => {
+    readTrustPrefsMock.mockImplementationOnce(async () => ({
+      page: false,
+      notes: true,
+      memory: true,
+      tool_result: true,
+    }));
+    seedCurrentPage(PAGE_FIXTURE);
+    resolveTurn(['ok']);
+    const { result } = renderHook(() => useStreamingLLM());
+
+    await act(async () => {
+      await result.current.send('hi');
+    });
+
+    // buildTrustedContext returns null when the page source is disabled — the
+    // honest result is no section, not a fabricated empty one (D-4b-08).
+    const input = runAgentTurnMock.mock.calls[0][0] as AgentTurnInputLike;
+    const sections = (input.context as { sections: PromptSection[] }).sections;
+    expect(sections.find((s) => s.kind === 'context')).toBeUndefined();
+    const rendererCtx = input.contextForStage?.('renderer') as {
+      sections: PromptSection[];
+    };
+    expect(rendererCtx.sections.find((s) => s.kind === 'context')).toBeUndefined();
   });
 });
 

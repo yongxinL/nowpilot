@@ -33,6 +33,7 @@ import type { ModelTier } from '@/core/ai/TierResolver';
 import { buildPersonaBlock, resolvePersona } from '@/core/ai/persona/PersonaInjector';
 import { DEFAULT_PERSONA } from '@/core/ai/persona/PersonaProfile';
 import { readPersonaPrefs } from '@/core/ai/persona/personaConfig';
+import { readTrustPrefs } from '@/core/preferences/trustConfig';
 import { getProviderRegistry } from '@/core/ai/ProviderRegistry';
 import { ERROR_CODES } from '@/core/error/errorCodes';
 import { debugLog } from '@/core/error/debugLog';
@@ -152,6 +153,15 @@ export function useStreamingLLM(): UseStreamingLLMResult {
         const prefs = await readPersonaPrefs();
         const persona = resolvePersona(DEFAULT_PERSONA, prefs);
         const personaBlock = buildPersonaBlock(persona);
+        // 04b-05 (D-4b-09): the trust-aware page feed — the hook is the ONLY
+        // chrome-boundary input resolver (page + prefs, Pitfall 5); the
+        // optimizer stays pure. readTrustPrefs is Zod-gated (never throws); the
+        // live page read uses getState() — a React hook call is invalid inside
+        // this non-render callback (Rule 1: plan's literal hook-call sketch
+        // would throw "Invalid hook call"; getState() is the same store, read at
+        // call time). Golden Rule 3: data only, no prompt assembly here.
+        const trustPrefs = await readTrustPrefs();
+        const currentPage = useWorkspaceStore.getState().workspace.currentPageContext;
         // 03-05 seam: per-stage invocations (planner haiku 256 / renderer flash
         // 512 — §1.2) from the Router's createStageInvocation.
         const invocation: StageResolver = (stage) =>
@@ -181,7 +191,11 @@ export function useStreamingLLM(): UseStreamingLLMResult {
           selectedToolSchemas: [],
           memoryHints: [],
           preferences: prefs,
-          pageContext: undefined,
+          // 04b-05 (D-4b-09): the trust-aware feed — pageContext (undefined →
+          // no context section, byte-identical pre-4b behavior) + trustPrefs
+          // (np_trust) flow as DATA into the trust-wired optimizer (04b-04).
+          pageContext: currentPage,
+          trustPrefs,
         };
         const plannerCtx = optimize({
           ...optimizerBase,
