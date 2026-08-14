@@ -8,13 +8,13 @@
 // ContextOptimizer 04-04 iterates it):
 //   drop debug → drop secondary → summarise history → compress page →
 //   trim tools → reduce top-k → minimal mode → CONTEXT_TOO_LARGE
-// Only drop-debug, trim-tool-schemas, and minimal-mode do REAL work in P4;
-// notes/memory/pageContext/history inputs arrive in Phase 4a/5/7, so their
-// steps are STRUCTURAL NO-OPS — they return the input sections unchanged plus
-// a compressionApplied marker ('summarise' | 'structural' | 'topk'). They are
-// not dead code and not stubbed-with-throw (Pitfall 5). CONTEXT_TOO_LARGE is
-// the honest terminal thrown by the OPTIMIZER (04-04), not here; 'too-large'
-// is the last registry entry the optimizer recognizes.
+// drop-debug, trim-tool-schemas, reduce-top-k, and minimal-mode do REAL work
+// in P4/P5; notes/memory/pageContext/history inputs arrive across Phase 4a/5/7,
+// so the remaining steps are STRUCTURAL NO-OPS — they return the input sections
+// unchanged plus a compressionApplied marker ('summarise' | 'structural' |
+// 'topk'). They are not dead code and not stubbed-with-throw (Pitfall 5).
+// CONTEXT_TOO_LARGE is the honest terminal thrown by the OPTIMIZER (04-04),
+// not here; 'too-large' is the last registry entry the optimizer recognizes.
 //
 // D-04-13: degradation is SECTION-granular — a step drops or keeps a WHOLE
 // section, never a text slice; user_input is never truncated by caps. Zero
@@ -23,6 +23,9 @@
 // stable:true section's text (P4-8). D-04-16: no 'history' PromptSection kind
 // is invented — the History slice is a budget-column reservation (R-1/R-2).
 import type { PromptSection } from '@/core/ai/types';
+import type { RetrievedMemory } from '@/core/memory/types';
+import { estimateTokens } from './TokenBudget';
+import { buildMemorySectionText } from './ContextPack';
 
 /** Which compression kind a step applied ('summarise' | 'structural' | 'topk'). */
 export type CompressionKind = 'summarise' | 'structural' | 'topk';
@@ -120,11 +123,52 @@ export function trimToolSchemas(
 }
 
 /**
- * NO-OP in P4 (D-04-12): top-k memory reduction arrives in Phase 5
- * (RetrievedMemory top-k). Structurally present with a marker.
+ * REAL step (05-06, Pitfall 5): top-k memory reduction — the fallback safety
+ * net behind MemoryEngine's per-tier budget (05-04, D-05-02). When the ladder
+ * fires 'reduce-topk' WITH a memorySource, the memory section is RE-BUILT from
+ * the top-3 hints via buildMemorySectionText — the SHARED pack-time formatter,
+ * so the fallback text can never diverge from the pack format. Drops are
+ * WHOLE ITEMS only (memorySource.memoryHints.slice(0, 3) is item-level, never
+ * a substring of a fact's content — D-04-13 no-slice gate); the rebuilt
+ * section keeps the original kind/sourceId/stable:true and recomputes tokens
+ * via estimateTokens (the ONLY token counter, Pitfall 1).
+ *
+ * Without a memorySource (standalone callers — backward compat) the step keeps
+ * its pre-5 passthrough semantics: sections unchanged, 'topk' marker, dropped
+ * [].
  */
-export function reduceMemoryTopK(sections: PromptSection[]): CompressionResult {
-  return { sections: [...sections], compressionApplied: 'topk', dropped: [] };
+export function reduceMemoryTopK(
+  sections: readonly PromptSection[],
+  memorySource?: {
+    memoryHints: readonly RetrievedMemory[];
+    workingMemoryBlock?: string;
+  },
+): CompressionResult {
+  if (memorySource === undefined) {
+    return { sections: [...sections], compressionApplied: 'topk', dropped: [] };
+  }
+  const idx = sections.findIndex((s) => s.kind === 'memory');
+  if (idx === -1) {
+    return { sections: [...sections], compressionApplied: 'topk', dropped: [] };
+  }
+  // Top-3 whole-item fallback (D-04-13 no-slice gate) via the shared formatter.
+  const rebuilt = buildMemorySectionText({
+    memoryHints: memorySource.memoryHints.slice(0, 3),
+    workingMemoryBlock: memorySource.workingMemoryBlock,
+  });
+  const current = sections[idx];
+  if (rebuilt === undefined || rebuilt === current.text) {
+    return { sections: [...sections], compressionApplied: 'topk', dropped: [] };
+  }
+  const next = [...sections];
+  next[idx] = {
+    kind: 'memory',
+    text: rebuilt,
+    tokens: estimateTokens(rebuilt),
+    stable: current.stable,
+    sourceId: current.sourceId,
+  };
+  return { sections: next, compressionApplied: 'topk', dropped: ['memory'] };
 }
 
 /**

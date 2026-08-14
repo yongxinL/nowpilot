@@ -33,7 +33,8 @@ import type { ContextTooLargeError } from '@/core/context/ContextOptimizer';
 import { classifyModelContext } from '@/core/context/ModelContextTier';
 import type { ModelContextTier } from '@/core/context/ModelContextTier';
 import { computeBudgets, estimateTokens } from '@/core/context/TokenBudget';
-import { packSections } from '@/core/context/ContextPack';
+import { packSections, buildMemorySectionText } from '@/core/context/ContextPack';
+import { reduceMemoryTopK } from '@/core/context/ContextCompressor';
 import { ContextProvenanceManifestSchema } from '@/core/context/ContextProvenanceManifest';
 import { PROMPTS } from '@/core/prompts';
 import type { ContextOptimizerInput, OptimizedContext, PromptSection } from '@/core/ai/types';
@@ -556,5 +557,76 @@ describe('optimize — Phase-5 memory/preferences threading (05-06 Task 1, D-05-
       'memory',
       'user_input',
     ]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 05-06 Task 2 — reduceMemoryTopK is REAL (Pitfall 5 / D-04-13): the top-3
+// whole-item fallback safety net behind MemoryEngine's per-tier budget. The
+// optimizer ladder passes the memory source; the fallback re-builds the memory
+// section via the SHARED pack-time formatter (buildMemorySectionText) so the
+// text can never diverge. Without a memorySource the step keeps its pre-5
+// passthrough (backward compat).
+// ---------------------------------------------------------------------------
+
+/** Five facts, descending scores — the top-3 slice(0,3) fallback material. */
+const FIVE_HINTS: RetrievedMemory[] = [
+  { id: 'f1', content: 'user prefers concise summaries', type: 'fact', tags: [], score: 0.95 },
+  { id: 'f2', content: 'works on the Chrome extension team', type: 'fact', tags: [], score: 0.9 },
+  { id: 'f3', content: 'uses zsh with oh-my-zsh', type: 'fact', tags: [], score: 0.8 },
+  { id: 'f4', content: 'lives in Berlin', type: 'fact', tags: [], score: 0.6 },
+  { id: 'f5', content: 'prefers dark mode', type: 'fact', tags: [], score: 0.4 },
+];
+
+describe('reduceMemoryTopK — real top-3 whole-item fallback (05-06 Task 2, Pitfall 5/D-04-13)', () => {
+  it('re-builds the memory section from EXACTLY the top-3 hints and reports the drop (whole items, never a substring)', () => {
+    // a 6-section pack: system + tool_schemas + preferences + memory + context + user_input
+    const packed = packSections({
+      personaBlock: FIXED_PERSONA_BLOCK,
+      toolSchemaRefs: [GET_PROVIDER_INFO_TOOL],
+      preferencesText: JSON.stringify(MEMORY_ENABLED_PREFS),
+      memoryText: buildMemorySectionText({ memoryHints: FIVE_HINTS }),
+      contextText: '[context: extracted page content]',
+      userInput: 'hi',
+    });
+    expect(packed).toHaveLength(6);
+    expect(packed.find((s) => s.kind === 'memory')?.text).toBe(
+      buildMemorySectionText({ memoryHints: FIVE_HINTS }),
+    );
+
+    const result = reduceMemoryTopK(packed, { memoryHints: FIVE_HINTS });
+    expect(result.dropped).toEqual(['memory']);
+    const memory = result.sections.find((s) => s.kind === 'memory');
+    expect(memory).toBeDefined();
+    // EXACTLY the top-3 — byte-identical to the shared formatter over slice(0,3)
+    const top3Text = buildMemorySectionText({ memoryHints: FIVE_HINTS.slice(0, 3) });
+    expect(memory!.text).toBe(top3Text);
+    // the replacement keeps kind/sourceId/stable and recomputes tokens (Pitfall 1)
+    expect(memory!.kind).toBe('memory');
+    expect(memory!.sourceId).toBe('memory');
+    expect(memory!.stable).toBe(true);
+    expect(memory!.tokens).toBe(estimateTokens(memory!.text));
+    // whole-item drops (D-04-13): fact-4/fact-5 content never appears as a substring
+    expect(memory!.text).not.toContain(FIVE_HINTS[3].content);
+    expect(memory!.text).not.toContain(FIVE_HINTS[4].content);
+    // untouched non-memory sections pass through byte-identical
+    expect(result.sections.filter((s) => s.kind !== 'memory')).toEqual(
+      packed.filter((s) => s.kind !== 'memory'),
+    );
+  });
+
+  it('without memorySource → passthrough (backward compat, dropped [])', () => {
+    const packed = packSections({ personaBlock: FIXED_PERSONA_BLOCK, userInput: 'hi' });
+    const result = reduceMemoryTopK(packed);
+    expect(result.sections).toEqual(packed);
+    expect(result.dropped).toEqual([]);
+    expect(result.compressionApplied).toBe('topk');
+  });
+
+  it('no memory section in the pack → passthrough even with a memorySource (the memory-disabled gate)', () => {
+    const packed = packSections({ personaBlock: FIXED_PERSONA_BLOCK, userInput: 'hi' });
+    const result = reduceMemoryTopK(packed, { memoryHints: FIVE_HINTS });
+    expect(result.sections).toEqual(packed);
+    expect(result.dropped).toEqual([]);
   });
 });

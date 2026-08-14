@@ -367,10 +367,20 @@ export function optimize(input: ContextOptimizerInput): OptimizedContext {
           break;
         }
         case 'reduce-topk': {
-          const r = reduceMemoryTopK(sections);
+          // 05-06 (Pitfall 5): REAL fallback — the ladder passes the memory
+          // source so reduceMemoryTopK re-builds the memory section from the
+          // top-3 hints (whole-item drops, D-04-13) via the shared formatter
+          // when the per-tier budget was exceeded. Empty hints → no memory
+          // section → passthrough (dropped []), so the memory-disabled path
+          // never fires this step.
+          const r = reduceMemoryTopK(sections, {
+            memoryHints: input.memoryHints,
+            workingMemoryBlock: input.workingMemoryBlock,
+          });
           if (r.dropped.length > 0) {
             sections = r.sections;
             stepsFired.push('reduce-topk');
+            if (r.compressionApplied) compressionByKind.set('memory', r.compressionApplied);
           }
           break;
         }
