@@ -203,6 +203,14 @@ export interface WorkspaceStoreShape {
   /** Set or clear the opened standalone tab id (D-18 active field). */
   setOpenedStandaloneTabId(id?: number): void;
   /**
+   * Phase 5 (05-07, D-18 activation): toggle a note id in/out of
+   * workspace.selectedNotes — the D-18 declared field activated as the
+   * favorites set (no type widening, no new storage key; np_workspace
+   * persistence covers it via the journaled update path). Star toggles
+   * persist across surfaces like any other workspace field.
+   */
+  toggleSelectedNote(noteId: string): void;
+  /**
    * D-07 crash recovery: replay WriteJournalDB entries left pending/applying by
    * a mid-write crash. Workspace-scoped (WR-10) — a recovered write for a
    * different workspaceId is skipped; unknown operation values are
@@ -337,6 +345,21 @@ export const useWorkspaceStore = create<WorkspaceStoreShape>()((set, get) => ({
   setOpenedStandaloneTabId: (id) => {
     get().update((draft) => {
       draft.openedStandaloneTabId = id;
+    });
+  },
+
+  // Phase 5 (05-07): D-18 selectedNotes activated as the favorites set — the
+  // plan's literal raw set() sketch would BYPASS the D-06 journaled write path
+  // (version bump + np_workspace persistence + WORKSPACE_UPDATED broadcast),
+  // so the toggle routes through update() like every other workspace mutation
+  // (Rule 1: the intended persist semantics require the store's own path).
+  toggleSelectedNote: (noteId) => {
+    get().update((draft) => {
+      if (draft.selectedNotes.includes(noteId)) {
+        draft.selectedNotes = draft.selectedNotes.filter((id) => id !== noteId);
+      } else {
+        draft.selectedNotes = [...draft.selectedNotes, noteId];
+      }
     });
   },
 
