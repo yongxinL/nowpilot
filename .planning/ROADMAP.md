@@ -339,7 +339,7 @@ Plans:
   4. Memory retrieval returns top-5 (top-3 in tiny mode) with scores in [0, 1]; preference profile injects compact JSON including persona overrides.
   5. The end-to-end Page → PageContentService → Note → MiniSearch path works.
 
-**Plans**: 8/8 plans executed
+**Plans**: 10/10 plans executed
 
 **Wave 1** *(foundation)*
 
@@ -366,6 +366,11 @@ Plans:
 **Wave 6** *(graph + phase gate)*
 
 - [x] 05-08-PLAN.md — NoteGraphView (d3-force) + graph wiring + phase gate verify:phase-5 green + KNW checkboxes (wave 6)
+
+**Gap Closure** *(waves 7-8 — VERIFICATION.md gaps_found 7/11: CR-01/CR-02 blockers + WR-01 budget violation, 05-REVIEW.md findings)*
+
+- [x] 05-09-PLAN.md — [CR-01] star persistence through the np_workspace serialization set + [WR-01] combined memory-section ≤1000 budget (packed-estimate) + [WR-05] appendTurn seq no-overwrite + [WR-06] single MemoryDB connection + MEMORY_RETRIEVAL_FAILED emit (wave 7)
+- [x] 05-10-PLAN.md — [CR-02] guarded navigation helper closing all 4 dirty-draft bypass paths + [WR-02] shared reduced-hints across the ladder + [WR-03] canonical error-code split + [WR-07] prefs-before-renderer-invocation + [WR-08] Shift+Enter + IN-01..04 + SEARCH_INDEX_REBUILD_FAILED/NOTE_GRAPH_FAILED emits (wave 8, depends on 05-09)
 
 **UI hint**: yes
 
@@ -548,7 +553,7 @@ Plans:
 | 4. Context-Adaptive Execution | 7/7 | Complete    | 2026-08-12 |
 | 4a. PageContentService (Knowledge Acquisition) | 10/10 | In Progress|  |
 | 4b. Trust-Aware Context and Receipts | 7/6 | Complete    | 2026-08-13 |
-| 5. Knowledge Base (Memory + MiniSearch + Notes) | 8/8 | In Progress|  |
+| 5. Knowledge Base (Memory + MiniSearch + Notes) | 10/10 | In Progress|  |
 | 5a. LLM-Wiki & Filesystem Sync | TBD | Not started | - |
 | 5b. Memory Governance and Experience Candidates | TBD | Not started | - |
 | 6. Transaction Logging and Diagnostics | TBD | Not started | - |
