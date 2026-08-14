@@ -5,9 +5,19 @@
 //
 // Read-only this phase (D-10): Phase 5's PreferenceMemoryStore is the writer;
 // it swaps only the injected provider, so this file stays the single read seam.
-// Every read is PersonaProfileSchema-validated (the D-09/T-1-13 inbound gate);
-// an empty or invalid key logs PERSONA_LOAD_FAILED and falls back to
-// DEFAULT_PERSONA — never a crash, never a blocked Sender (AI-05 empty).
+// Phase 5 (D-05-18, Open Q1 resolution) made the read DUAL-SHAPE: np_persona
+// now holds the FULL UserPreferences shape (UserPreferencesSchema-gated),
+// while legacy Phase-3 PersonaProfile values must keep working — the store
+// that wrote them was the Phase-3 persona UI. loadPersona tries
+// UserPreferencesSchema FIRST (a UserPreferences value passes through via
+// resolvePersona(DEFAULT_PERSONA, prefs) — it can never PERSONA_LOAD_FAILED-
+// reset the persona, Pitfall 1 closed), then falls back to the legacy
+// PersonaProfileSchema path (byte-identical Phase-3 behavior). readPersona /
+// readPersonaPrefs signatures and downstream shapes are unchanged.
+//
+// Every read is schema-validated (the D-09/T-1-13 inbound gate); an empty or
+// invalid key logs PERSONA_LOAD_FAILED and falls back to DEFAULT_PERSONA —
+// never a crash, never a blocked Sender (AI-05 empty).
 //
 // readPersonaPrefs() maps the stored persona's name/tone/brevity onto
 // UserPreferences.personaOverrides so PersonaInjector.resolvePersona merges
@@ -19,8 +29,10 @@ import { debugLog } from '@/core/error/debugLog';
 import { ERROR_CODES } from '@/core/error/errorCodes';
 import { settingRead } from '@/core/storage/Setting';
 import type { UserPreferences } from '@/core/memory/types';
+import { UserPreferencesSchema } from '@/core/memory/types';
 import { DEFAULT_PERSONA, PersonaProfileSchema } from './PersonaProfile';
 import type { PersonaProfile } from './PersonaProfile';
+import { resolvePersona } from './PersonaInjector';
 
 /** §15.1 key — registered area:'local' at Setting.ts (NO registry change, D-09). */
 export const NP_PERSONA_KEY = 'np_persona';
@@ -47,11 +59,26 @@ async function loadPersona(): Promise<PersonaLoad> {
     // persona pipeline is independent of provider config, AI-05 empty).
     return { persona: DEFAULT_PERSONA, loaded: false };
   }
+  // Phase 5 dual-shape FIRST path (D-05-18, Open Q1 resolution): the store
+  // writes the full UserPreferences shape — a UserPreferences value passes
+  // through via resolvePersona and can NEVER PERSONA_LOAD_FAILED-reset the
+  // persona (Pitfall 1).
+  const prefsParsed = UserPreferencesSchema.safeParse(stored);
+  if (prefsParsed.success) {
+    // Boundary cast: UserPreferencesSchema types defaultProviderId as `string`
+    // while the UserPreferences interface narrows it to ProviderId — stored
+    // values were written by the interface-typed store (see PreferenceMemoryStore).
+    return {
+      persona: resolvePersona(DEFAULT_PERSONA, prefsParsed.data as UserPreferences),
+      loaded: true,
+    };
+  }
+  // Legacy Phase-3 path (unchanged behavior for legacy PersonaProfile values).
   const parsed = PersonaProfileSchema.safeParse(stored);
   if (!parsed.success) {
     debugLog(
       ERROR_CODES.PERSONA_LOAD_FAILED,
-      'np_persona failed PersonaProfileSchema validation — using DEFAULT_PERSONA',
+      'np_persona failed UserPreferencesSchema and PersonaProfileSchema validation — using DEFAULT_PERSONA',
       {
         module: 'personaConfig',
         extra: { issueCount: parsed.error.issues.length },
