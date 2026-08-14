@@ -1,7 +1,8 @@
 ---
 phase: 05a
 slug: llm-wiki-filesystem-sync
-status: draft
+status: approved
+reviewed_at: 2026-08-14
 shadcn_initialized: false
 preset: none
 created: 2026-08-14
