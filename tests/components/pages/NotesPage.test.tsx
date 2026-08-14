@@ -14,7 +14,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { IDBFactory } from 'fake-indexeddb';
 import type { IDBPDatabase } from 'idb';
 
-import { NotesPage } from '@/components/pages/NotesPage';
+import { NotesPage, relativeTime } from '@/components/pages/NotesPage';
 import { getEventBus } from '@/core/events/EventBusManager';
 import { STR } from '@/core/i18n/strings';
 import {
@@ -277,6 +277,115 @@ describe('NotesPage — real Notes workspace (05-07)', () => {
     // OK (Discard) proceeds with the switch.
     fireEvent.click(screen.getByRole('button', { name: 'OK' }));
     await waitFor(() => expect(title.value).toBe('Note Two'));
+  });
+
+  it('CR-02 new note: dirty draft + New note → discard Popconfirm; Discard creates the empty draft, Keep editing stays', async () => {
+    await seed([makeNote('n1', 'Note One')]);
+    renderPage();
+    await waitFor(() => expect(cardOf('n1')).not.toBeNull());
+    fireEvent.click(cardOf('n1')!);
+    await waitFor(() => expect(screen.getByText(STR.notes.save)).toBeTruthy());
+    const body = document.querySelector('[data-np-note-body="1"]') as HTMLTextAreaElement;
+    fireEvent.change(body, { target: { value: 'unsaved edit' } });
+
+    // New note with a dirty draft → the shared discard Popconfirm appears and
+    // the empty draft is NOT created yet.
+    fireEvent.click(screen.getByText(STR.notes.newNote));
+    expect(await screen.findByText(STR.notes.discard)).toBeTruthy();
+    const title = document.querySelector('[data-np-note-title="1"]') as HTMLInputElement;
+    expect(title.value).toBe('Note One');
+
+    // Keep editing (Cancel) stays on the draft — the contract is that the
+    // navigation never happened, not that the popup DOM is gone (rc-motion's
+    // leave animation never completes in jsdom, matching the graph Popconfirm).
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(title.value).toBe('Note One');
+
+    // Discard (OK) creates the empty draft.
+    fireEvent.click(screen.getByText(STR.notes.newNote));
+    expect(await screen.findByText(STR.notes.discard)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'OK' }));
+    await waitFor(() => expect(title.value).toBe(''));
+  });
+
+  it('CR-02 new note from page: dirty draft + [data-np-new-from-page] click → discard Popconfirm', async () => {
+    await seed([makeNote('n1', 'Note One')]);
+    useWorkspaceStore.setState({
+      workspace: { ...freshWorkspace(), currentPageContext: PAGE_CONTEXT },
+    });
+    renderPage();
+    await waitFor(() => expect(cardOf('n1')).not.toBeNull());
+    fireEvent.click(cardOf('n1')!);
+    await waitFor(() => expect(screen.getByText(STR.notes.save)).toBeTruthy());
+    const body = document.querySelector('[data-np-note-body="1"]') as HTMLTextAreaElement;
+    fireEvent.change(body, { target: { value: 'unsaved edit' } });
+
+    // New note from page with a dirty draft → the discard Popconfirm gates the
+    // page-export draft; OK drafts it.
+    fireEvent.click(document.querySelector('[data-np-new-from-page="1"]')!);
+    expect(await screen.findByText(STR.notes.discard)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'OK' }));
+    const title = document.querySelector('[data-np-note-title="1"]') as HTMLInputElement;
+    await waitFor(() => expect(title.value).toBe('Page Title'));
+  });
+
+  it('CR-02 backlinks: dirty draft + backlink row click → discard Popconfirm; OK opens the backlinked note', async () => {
+    // n2 links n1 → n1's BacklinksPanel lists n2 as a row.
+    await seed([makeNote('n1', 'Note One'), makeNote('n2', 'Note Two', { links: ['n1'] })]);
+    renderPage();
+    await waitFor(() => expect(cardOf('n1')).not.toBeNull());
+    fireEvent.click(cardOf('n1')!);
+    await waitFor(() => expect(screen.getByText(STR.notes.save)).toBeTruthy());
+    const body = document.querySelector('[data-np-note-body="1"]') as HTMLTextAreaElement;
+    fireEvent.change(body, { target: { value: 'unsaved edit' } });
+
+    // Backlink row click with a dirty draft → the discard Popconfirm gates the
+    // open; OK opens n2.
+    fireEvent.click(document.querySelector('[data-np-backlink-row="1"]')!);
+    expect(await screen.findByText(STR.notes.discard)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'OK' }));
+    const title = document.querySelector('[data-np-note-title="1"]') as HTMLInputElement;
+    await waitFor(() => expect(title.value).toBe('Note Two'));
+  });
+
+  it('CR-02 wikilink: dirty draft + resolved wikilink click in Preview → discard Popconfirm; OK opens the target note', async () => {
+    // Alpha + a note whose content contains [[Alpha]] (resolved in Preview).
+    await seed([
+      makeNote('alpha', 'Alpha'),
+      makeNote('n1', 'Note One', { content: 'See [[Alpha]]' }),
+    ]);
+    renderPage();
+    await waitFor(() => expect(cardOf('n1')).not.toBeNull());
+    fireEvent.click(cardOf('n1')!);
+    await waitFor(() => expect(screen.getByText(STR.notes.save)).toBeTruthy());
+    // Dirty the draft (title edit) and switch to Preview to render the wikilink.
+    const title = document.querySelector('[data-np-note-title="1"]') as HTMLInputElement;
+    fireEvent.change(title, { target: { value: 'Note One edited' } });
+    fireEvent.click(screen.getByText('Preview'));
+    await waitFor(() =>
+      expect(document.querySelector('[data-np-wikilink-resolved="1"]')).not.toBeNull(),
+    );
+
+    // Resolved wikilink click with a dirty draft → the discard Popconfirm gates
+    // the open; OK opens Alpha.
+    fireEvent.click(document.querySelector('[data-np-wikilink-resolved="1"]')!);
+    expect(await screen.findByText(STR.notes.discard)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'OK' }));
+    await waitFor(() => {
+      const t = document.querySelector('[data-np-note-title="1"]') as HTMLInputElement;
+      expect(t.value).toBe('Alpha');
+    });
+  });
+
+  it('IN-03: relativeTime honors the preferredLanguage locale, defaulting to en', () => {
+    const now = 1_700_000_000_000;
+    const ts = now - 5 * 3_600_000; // 5 hours ago — 'auto' stays numeric, no singular forms
+    expect(relativeTime(ts, now, 'en')).toBe('5 hours ago');
+    const de = relativeTime(ts, now, 'de');
+    expect(de).not.toBe(relativeTime(ts, now, 'en'));
+    expect(de).toBe('vor 5 Stunden');
+    // Default locale is 'en'.
+    expect(relativeTime(ts, now)).toBe('5 hours ago');
   });
 
   it('search: query filters the list via searchNotes; zero hits → STR.notes.searchEmpty', async () => {

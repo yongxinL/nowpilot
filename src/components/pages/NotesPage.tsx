@@ -50,6 +50,7 @@ import {
 } from '@/components/notes/WikilinkAutocomplete';
 import { ErrorBoundary } from '@/core/components/ErrorBoundary';
 import { PortableMarkdown } from '@/core/components/PortableMarkdown';
+import { readPersonaPrefs } from '@/core/ai/persona/personaConfig';
 import { debugLog } from '@/core/error/debugLog';
 import { ERROR_CODES } from '@/core/error/errorCodes';
 import { getEventBus } from '@/core/events/EventBusManager';
@@ -105,10 +106,14 @@ function buildTitleIndex(notes: readonly Note[]): MiniSearch<NoteSearchDoc> {
   return mini;
 }
 
-/** Relative-time caption ("10m ago" — UI-SPEC planner discretion). */
-function relativeTime(ts: number, now: number): string {
+/**
+ * Relative-time caption ("10m ago" — UI-SPEC planner discretion). IN-03: the
+ * locale is threaded from the user's preferredLanguage (readPersonaPrefs on
+ * mount, default 'en') — never hardcoded. Exported for the unit regression.
+ */
+export function relativeTime(ts: number, now: number, locale: string = 'en'): string {
   const diff = now - ts;
-  const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
   if (diff < 60_000) return rtf.format(-Math.max(1, Math.round(diff / 1000)), 'second');
   if (diff < 3_600_000) return rtf.format(-Math.round(diff / 60_000), 'minute');
   if (diff < 86_400_000) return rtf.format(-Math.round(diff / 3_600_000), 'hour');
@@ -163,8 +168,19 @@ export function NotesPage() {
     try {
       dbRef.current = await openNotesDB();
       const notes = await listNotes(dbRef.current);
-      indexRef.current = buildNotesIndex(notes);
-      titleIndexRef.current = buildTitleIndex(notes);
+      // WR-04: a failed index rebuild is logged (SEARCH_INDEX_REBUILD_FAILED),
+      // never silent — the list falls back to the previous index (or null) and
+      // search degrades to the unmounted state instead of throwing.
+      try {
+        indexRef.current = buildNotesIndex(notes);
+        titleIndexRef.current = buildTitleIndex(notes);
+      } catch (err) {
+        debugLog(ERROR_CODES.SEARCH_INDEX_REBUILD_FAILED, 'notes index rebuild failed', {
+          error: err instanceof Error ? err : undefined,
+          module: 'NotesPage',
+          extra: { noteCount: notes.length },
+        });
+      }
       setAllNotes(notes);
       setListState('ready');
     } catch (err) {
@@ -211,23 +227,55 @@ export function NotesPage() {
   }, [onNoteSaved, loadNotes]);
 
   // --- Selection + draft transitions ---
-  const applySelect = useCallback((noteId: string) => {
-    setAllNotes((current) => {
-      const note = current.find((n) => n.id === noteId);
-      if (note) {
-        setSelectedId(noteId);
-        setDraft({
-          title: note.title,
-          content: note.content,
-          tags: note.tags,
-          source: note.source,
-        });
-        setDirty(false);
-        setMode('edit');
-        setSaveError(false);
+  // IN-02: applySelect reads the note from a ref-synced list and dispatches the
+  // state updates DIRECTLY — never via state setters inside the setAllNotes
+  // updater callback (updaters must stay pure; a setState inside an updater is
+  // a React anti-pattern that can drop updates under concurrent rendering).
+  const allNotesRef = useRef<Note[]>([]);
+  useEffect(() => {
+    allNotesRef.current = allNotes;
+  }, [allNotes]);
+
+  // IN-03: the relative-time locale is read ONCE on mount from the persona
+  // prefs (the D-05-18 sanctioned read accessor); the read is non-blocking and
+  // never throws — a failure falls back to 'en' (canonical code, GR-9).
+  const [locale, setLocale] = useState('en');
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const prefs = await readPersonaPrefs();
+        if (!cancelled) setLocale(prefs.preferredLanguage || 'en');
+      } catch (err) {
+        debugLog(
+          ERROR_CODES.PERSONA_LOAD_FAILED,
+          'persona prefs read failed — locale falls back to en',
+          {
+            error: err instanceof Error ? err : undefined,
+            module: 'NotesPage',
+          },
+        );
       }
-      return current;
-    });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const applySelect = useCallback((noteId: string) => {
+    const note = allNotesRef.current.find((n) => n.id === noteId);
+    if (note) {
+      setSelectedId(noteId);
+      setDraft({
+        title: note.title,
+        content: note.content,
+        tags: note.tags,
+        source: note.source,
+      });
+      setDirty(false);
+      setMode('edit');
+      setSaveError(false);
+    }
   }, []);
 
   const handleOpenNote = useCallback(
@@ -238,6 +286,25 @@ export function NotesPage() {
     },
     [applySelect],
   );
+
+  // CR-02: ONE guarded navigation helper owns the dirty-draft discard contract.
+  // Every navigation entry point that crosses from an unsaved editor draft into
+  // another note/view (New note, New note from page, BacklinksPanel rows,
+  // Preview wikilinks) routes through here — with a dirty draft the pending
+  // navigation is stashed in pendingNavRef and the shared discard Popconfirm
+  // (controlled by navDiscardPending, rendered over a hidden trigger below) is
+  // shown; only Discard runs the pending navigation, Keep editing stays.
+  // dirtyRef (synced with dirty at L353-359) avoids stale closures.
+  const pendingNavRef = useRef<(() => void) | null>(null);
+  const [navDiscardPending, setNavDiscardPending] = useState(false);
+  const guardedNavigate = useCallback((fn: () => void) => {
+    if (dirtyRef.current) {
+      pendingNavRef.current = fn;
+      setNavDiscardPending(true);
+      return;
+    }
+    fn();
+  }, []);
 
   // Graph-node navigation (05-08): the SAME single navigation contract — a
   // node click selects the note + switches to the Notes view. With a dirty
@@ -265,7 +332,19 @@ export function NotesPage() {
     if (!draft) return;
     setSaveError(false);
     try {
-      const targets = parseLinks(draft.content);
+      // WR-03: NOTE_LINK_PARSE_FAILED belongs ONLY at the parse boundary —
+      // the store write below can never be misattributed to the parser.
+      let targets: string[];
+      try {
+        targets = parseLinks(draft.content);
+      } catch (err) {
+        debugLog(ERROR_CODES.NOTE_LINK_PARSE_FAILED, 'note link parse failed', {
+          error: err instanceof Error ? err : undefined,
+          module: 'NotesPage',
+        });
+        setSaveError(true);
+        return;
+      }
       const { links, unresolvedLinks } = resolveLinks(targets, allNotes);
       const existing = selectedId !== null ? allNotes.find((n) => n.id === selectedId) : undefined;
       const now = Date.now();
@@ -298,7 +377,7 @@ export function NotesPage() {
       // WIKI-ID-03 save-time reconciliation — fire-and-forget, never blocks save.
       void reconcileAfterSave(note);
     } catch (err) {
-      debugLog(ERROR_CODES.NOTE_LINK_PARSE_FAILED, 'note save failed', {
+      debugLog(ERROR_CODES.STORE_WRITE, 'note save failed', {
         error: err instanceof Error ? err : undefined,
         module: 'NotesPage',
       });
@@ -341,7 +420,7 @@ export function NotesPage() {
         getEventBus().emit('note:saved', { noteId: updated.id });
       }
     } catch (err) {
-      debugLog(ERROR_CODES.NOTE_LINK_PARSE_FAILED, 'save-time reconciliation failed', {
+      debugLog(ERROR_CODES.STORE_WRITE, 'save-time reconciliation failed', {
         error: err instanceof Error ? err : undefined,
         module: 'NotesPage',
       });
@@ -403,8 +482,18 @@ export function NotesPage() {
       }
       const fresh = await listNotes(db);
       setAllNotes(fresh);
-      indexRef.current = buildNotesIndex(fresh);
-      titleIndexRef.current = buildTitleIndex(fresh);
+      // WR-04: rebuild failures are logged, never silent — the previous index
+      // (or null) stays in place and search degrades gracefully.
+      try {
+        indexRef.current = buildNotesIndex(fresh);
+        titleIndexRef.current = buildTitleIndex(fresh);
+      } catch (err) {
+        debugLog(ERROR_CODES.SEARCH_INDEX_REBUILD_FAILED, 'notes index rebuild failed', {
+          error: err instanceof Error ? err : undefined,
+          module: 'NotesPage',
+          extra: { noteCount: fresh.length },
+        });
+      }
       setSelectedId(null);
       setDraft(null);
       setDirty(false);
@@ -419,30 +508,38 @@ export function NotesPage() {
 
   // --- Create flows ---
   const handleNewNote = useCallback(() => {
-    setDraft({ title: '', content: '', tags: [], source: { kind: 'manual' } });
-    setSelectedId(null);
-    // A fully-empty draft is not dirty — Save stays disabled until the user
-    // types (plan contract: New note → empty draft, Save disabled).
-    setDirty(false);
-    setMode('edit');
-    setSaveError(false);
-  }, []);
+    // CR-02: a dirty draft is never silently discarded — the empty-draft
+    // transition runs through the guarded navigation helper.
+    guardedNavigate(() => {
+      setDraft({ title: '', content: '', tags: [], source: { kind: 'manual' } });
+      setSelectedId(null);
+      // A fully-empty draft is not dirty — Save stays disabled until the user
+      // types (plan contract: New note → empty draft, Save disabled).
+      setDirty(false);
+      setMode('edit');
+      setSaveError(false);
+    });
+  }, [guardedNavigate]);
 
   const handleNewNoteFromPage = useCallback(() => {
-    const ctx = useWorkspaceStore.getState().workspace.currentPageContext;
-    if (!ctx) return;
-    // D-05-13 / SC#5: Page → PageContentService → Note (source.kind 'page-export').
-    setDraft({
-      title: ctx.title,
-      content: ctx.markdown ?? '',
-      tags: [],
-      source: { kind: 'page-export' },
+    // CR-02: same guarded contract — the page-export draft transition never
+    // silently discards a dirty draft.
+    guardedNavigate(() => {
+      const ctx = useWorkspaceStore.getState().workspace.currentPageContext;
+      if (!ctx) return;
+      // D-05-13 / SC#5: Page → PageContentService → Note (source.kind 'page-export').
+      setDraft({
+        title: ctx.title,
+        content: ctx.markdown ?? '',
+        tags: [],
+        source: { kind: 'page-export' },
+      });
+      setSelectedId(null);
+      setDirty(true);
+      setMode('edit');
+      setSaveError(false);
     });
-    setSelectedId(null);
-    setDirty(true);
-    setMode('edit');
-    setSaveError(false);
-  }, []);
+  }, [guardedNavigate]);
 
   // --- Star (D-18 selectedNotes activated as the favorites set) ---
   const toggleStar = useCallback((noteId: string) => {
@@ -629,7 +726,7 @@ export function NotesPage() {
           <Typography.Text
             style={{ fontSize: 12, marginLeft: 'auto', color: token.colorTextTertiary }}
           >
-            {relativeTime(note.updated, Date.now())}
+            {relativeTime(note.updated, Date.now(), locale)}
           </Typography.Text>
         </div>
       </div>
@@ -1011,7 +1108,7 @@ export function NotesPage() {
                             const match = allNotes.find((n) => n.title === title);
                             return match ? { id: match.id } : null;
                           },
-                          onOpen: handleOpenNote,
+                          onOpen: (id) => guardedNavigate(() => handleOpenNote(id)),
                           onCreate: (title) => {
                             // WIKI-ID-03: draft a new note titled Title.
                             setDraft({ title, content: '', tags: [], source: { kind: 'manual' } });
@@ -1037,7 +1134,7 @@ export function NotesPage() {
                       <BacklinksPanel
                         noteId={selectedId}
                         notes={allNotes}
-                        onOpenNote={handleOpenNote}
+                        onOpenNote={(id) => guardedNavigate(() => handleOpenNote(id))}
                       />
                     </div>
                   )}
@@ -1046,6 +1143,34 @@ export function NotesPage() {
             </div>
           </div>
         )}
+
+        {/* CR-02: the ONE shared discard Popconfirm — controlled by
+            navDiscardPending, wrapped around a hidden trigger so no bypass path
+            can navigate past a dirty draft. Discard runs the stashed pending
+            navigation exactly once; Keep editing / dismiss clears it. */}
+        <Popconfirm
+          title={STR.notes.discard}
+          okButtonProps={{ danger: true }}
+          open={navDiscardPending}
+          onOpenChange={(open) => {
+            if (!open) {
+              pendingNavRef.current = null;
+              setNavDiscardPending(false);
+            }
+          }}
+          onConfirm={() => {
+            const pending = pendingNavRef.current;
+            pendingNavRef.current = null;
+            setNavDiscardPending(false);
+            if (pending) pending();
+          }}
+          onCancel={() => {
+            pendingNavRef.current = null;
+            setNavDiscardPending(false);
+          }}
+        >
+          <span data-np-nav-guard="1" style={{ display: 'none' }} />
+        </Popconfirm>
       </div>
     </ErrorBoundary>
   );
