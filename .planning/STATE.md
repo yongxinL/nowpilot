@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v0.1
 milestone_name: milestone
 current_phase: 05
-current_phase_name: knowledge-base-memory-minisearch-notes
+current_phase_name: Knowledge Base (Memory + MiniSearch + Notes
 status: executing
-stopped_at: Completed 05-08-PLAN.md
-last_updated: "2026-08-14T08:52:33.304Z"
+stopped_at: Completed 05-09-PLAN.md
+last_updated: "2026-08-14T09:15:59.154Z"
 last_activity: 2026-08-14
-last_activity_desc: Phase 05 execution in progress
+last_activity_desc: Phase 05 execution started
 progress:
   total_phases: 8
   completed_phases: 7
-  total_plans: 74
-  completed_plans: 70
+  total_plans: 76
+  completed_plans: 75
 ---
 
 # Project State
@@ -24,16 +24,16 @@ See: .planning/PROJECT.md (updated 2026-08-13)
 
 **Core value:** A privacy-first, local-first AI assistant where chat, extracted page content, and a linked notes/knowledge layer combine into a persistent personal workspace — no data leaves the machine unless the user deliberately configures a cloud provider.
 
-**Current focus:** Phase 05 — knowledge-base-memory-minisearch-notes
+**Current focus:** Phase 05 — Knowledge Base (Memory + MiniSearch + Notes)
 
 ## Current Position
 
-Phase: 05 (knowledge-base-memory-minisearch-notes) — EXECUTING
-Plan: 8 of 8
+Phase: 05 (Knowledge Base (Memory + MiniSearch + Notes)) — EXECUTING
+Plan: 2 of 10
 Status: Ready to execute
-Last activity: 2026-08-14 — Phase 05 execution in progress
+Last activity: 2026-08-14 — Phase 05 execution started
 
-Progress: [██████████] 95%
+Progress: [██████████] 99%
 
 ## Performance Metrics
 
@@ -119,6 +119,7 @@ Progress: [██████████] 95%
 | Phase 05-knowledge-base-memory-minisearch-notes P02 | 27 | 3 tasks | 8 files |
 | Phase 05 P03 | 11min | 2 tasks | 5 files |
 | Phase 05-knowledge-base-memory-minisearch-notes P05 | 10min | 3 tasks | 6 files |
+| Phase 05 P09 | 17 min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -275,6 +276,8 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 05]: UserPreferencesSchema defaultProviderId typed string vs interface ProviderId (05-01 pin): documented boundary casts at the two read seams (PreferenceMemoryStore.read, personaConfig.loadPersona); schema unchanged — Schema pinned by MemoryTypes.test.ts (05-01); changing it would break the prior plan's pin
 - [Phase 05]: ConversationMemoryStore: appendTurn reactivates archived conversations; seq from by-conversation index with meta.messageCount fallback; LRU eviction journals WriteJournal op 'evict-conversation' with targetIds.conversationId — §15.3 LRU semantics + §13 single-writer
 - [Phase 05-knowledge-base-memory-minisearch-notes]: Perf fallback <200ms for 1,000-note MiniSearch build+search (plan-sanctioned; measured 55-84ms on CI box; real-world latency in 05-VALIDATION)
+- [Phase ?]: 05-09 WR-06: the MemoryDB handle is a module-scope promise (not a surface closure field) so the rejection self-heal reset survives the lazy surface's lifetime
+- [Phase ?]: 05-09: ESM live bindings cannot be patched with vi.spyOn on a namespace import — WR-05 regression uses the whole-module vi.mock + importOriginal pattern with a vi.hoisted seam (RendererService.test.ts precedent)
 
 ### Pending Todos
 
@@ -303,6 +306,6 @@ Items acknowledged and carried forward (v2 scope, tracked in REQUIREMENTS.md):
 
 ## Session Continuity
 
-Last session: 2026-08-14T00:30:43.443Z
-Stopped at: Completed 05-08-PLAN.md
+Last session: 2026-08-14T09:15:58.446Z
+Stopped at: Completed 05-09-PLAN.md
 Resume file: None

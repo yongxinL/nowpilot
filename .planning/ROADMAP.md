@@ -339,7 +339,7 @@ Plans:
   4. Memory retrieval returns top-5 (top-3 in tiny mode) with scores in [0, 1]; preference profile injects compact JSON including persona overrides.
   5. The end-to-end Page → PageContentService → Note → MiniSearch path works.
 
-**Plans**: 10/10 plans executed
+**Plans**: 9/10 plans executed
 
 **Wave 1** *(foundation)*
 
@@ -553,7 +553,7 @@ Plans:
 | 4. Context-Adaptive Execution | 7/7 | Complete    | 2026-08-12 |
 | 4a. PageContentService (Knowledge Acquisition) | 10/10 | In Progress|  |
 | 4b. Trust-Aware Context and Receipts | 7/6 | Complete    | 2026-08-13 |
-| 5. Knowledge Base (Memory + MiniSearch + Notes) | 10/10 | In Progress|  |
+| 5. Knowledge Base (Memory + MiniSearch + Notes) | 9/10 | In Progress|  |
 | 5a. LLM-Wiki & Filesystem Sync | TBD | Not started | - |
 | 5b. Memory Governance and Experience Candidates | TBD | Not started | - |
 | 6. Transaction Logging and Diagnostics | TBD | Not started | - |
