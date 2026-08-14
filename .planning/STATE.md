@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 05
 current_phase_name: knowledge-base-memory-minisearch-notes
 status: executing
-stopped_at: Completed 05-03-PLAN.md
-last_updated: "2026-08-14T00:14:29.420Z"
+stopped_at: Completed 05-05-PLAN.md
+last_updated: "2026-08-14T00:30:43.467Z"
 last_activity: 2026-08-13
 last_activity_desc: Phase 05 execution started
 progress:
   total_phases: 8
   completed_phases: 7
   total_plans: 74
-  completed_plans: 69
+  completed_plans: 70
 ---
 
 # Project State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-08-13)
 ## Current Position
 
 Phase: 05 (knowledge-base-memory-minisearch-notes) — EXECUTING
-Plan: 4 of 8
+Plan: 5 of 8
 Status: Ready to execute
 Last activity: 2026-08-13 — Phase 05 execution started
 
-Progress: [█████████░] 93%
+Progress: [██████████] 95%
 
 ## Performance Metrics
 
@@ -118,6 +118,7 @@ Progress: [█████████░] 93%
 | Phase 05-knowledge-base-memory-minisearch-notes P01 | 8 min | 3 tasks | 10 files |
 | Phase 05-knowledge-base-memory-minisearch-notes P02 | 27 | 3 tasks | 8 files |
 | Phase 05 P03 | 11min | 2 tasks | 5 files |
+| Phase 05-knowledge-base-memory-minisearch-notes P05 | 10min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -273,6 +274,7 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 05]: Dual-shape storage read shim: one key accepts two schema generations — new schema first (pass-through), legacy schema fallback (convert via resolvePersona, legacy id preserved as personaId — the merged profile id is the base default), neither → defaults; Phase-3 pipeline output byte-identical — Pitfall 1 closed — a UserPreferences value can never PERSONA_LOAD_FAILED-reset the persona
 - [Phase 05]: UserPreferencesSchema defaultProviderId typed string vs interface ProviderId (05-01 pin): documented boundary casts at the two read seams (PreferenceMemoryStore.read, personaConfig.loadPersona); schema unchanged — Schema pinned by MemoryTypes.test.ts (05-01); changing it would break the prior plan's pin
 - [Phase 05]: ConversationMemoryStore: appendTurn reactivates archived conversations; seq from by-conversation index with meta.messageCount fallback; LRU eviction journals WriteJournal op 'evict-conversation' with targetIds.conversationId — §15.3 LRU semantics + §13 single-writer
+- [Phase 05-knowledge-base-memory-minisearch-notes]: Perf fallback <200ms for 1,000-note MiniSearch build+search (plan-sanctioned; measured 55-84ms on CI box; real-world latency in 05-VALIDATION)
 
 ### Pending Todos
 
@@ -301,6 +303,6 @@ Items acknowledged and carried forward (v2 scope, tracked in REQUIREMENTS.md):
 
 ## Session Continuity
 
-Last session: 2026-08-14T00:12:25.075Z
-Stopped at: Completed 05-03-PLAN.md
+Last session: 2026-08-14T00:30:43.443Z
+Stopped at: Completed 05-05-PLAN.md
 Resume file: None
