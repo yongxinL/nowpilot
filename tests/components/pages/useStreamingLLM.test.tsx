@@ -31,41 +31,36 @@ import { FIXED_PREFERENCES } from '../../fixtures/optimizedContext';
 // Module mocks (the hook's I/O boundaries — the hook itself stays real)
 // ---------------------------------------------------------------------------
 
-const {
-  runAgentTurnMock,
-  routerMock,
-  assembleMemoryMock,
-  readTrustPrefsMock,
-  capsTierCalls,
-} = vi.hoisted(() => {
-  const capsTierCalls: string[] = [];
-  const createStageInvocation = vi.fn((input: { tier?: string; maxTokens?: number }) => ({
-    providerId: 'anthropic',
-    model: { modelId: 'claude-3-5-haiku-latest' },
-    jsonMode: 'native',
-    callProviderJsonMode: vi.fn(async () => '{}'),
-    // 04-05 (D-04-04): required field — deterministic fixture window.
-    modelContextWindow: 200_000,
-    ...input,
-  }));
-  const classifyProviderError = vi.fn((e: unknown) => ({
-    code:
-      e instanceof Error && /fetch failed|ECONNREFUSED|network/i.test(e.message)
-        ? 'NETWORK'
-        : 'UNKNOWN',
-    retryable: false,
-  }));
-  return {
-    runAgentTurnMock: vi.fn(),
-    routerMock: { createStageInvocation, classifyProviderError },
-    // 05-06 (Task 3): the MemoryEngine boundary is mocked (like readPersonaPrefs
-    // was) — the hook calls getMemoryEngine().assemble per stage and passes the
-    // injection DATA; the store/DB behavior is MemoryEngine's own suite.
-    assembleMemoryMock: vi.fn(),
-    readTrustPrefsMock: vi.fn(),
-    capsTierCalls,
-  };
-});
+const { runAgentTurnMock, routerMock, assembleMemoryMock, readTrustPrefsMock, capsTierCalls } =
+  vi.hoisted(() => {
+    const capsTierCalls: string[] = [];
+    const createStageInvocation = vi.fn((input: { tier?: string; maxTokens?: number }) => ({
+      providerId: 'anthropic',
+      model: { modelId: 'claude-3-5-haiku-latest' },
+      jsonMode: 'native',
+      callProviderJsonMode: vi.fn(async () => '{}'),
+      // 04-05 (D-04-04): required field — deterministic fixture window.
+      modelContextWindow: 200_000,
+      ...input,
+    }));
+    const classifyProviderError = vi.fn((e: unknown) => ({
+      code:
+        e instanceof Error && /fetch failed|ECONNREFUSED|network/i.test(e.message)
+          ? 'NETWORK'
+          : 'UNKNOWN',
+      retryable: false,
+    }));
+    return {
+      runAgentTurnMock: vi.fn(),
+      routerMock: { createStageInvocation, classifyProviderError },
+      // 05-06 (Task 3): the MemoryEngine boundary is mocked (like readPersonaPrefs
+      // was) — the hook calls getMemoryEngine().assemble per stage and passes the
+      // injection DATA; the store/DB behavior is MemoryEngine's own suite.
+      assembleMemoryMock: vi.fn(),
+      readTrustPrefsMock: vi.fn(),
+      capsTierCalls,
+    };
+  });
 
 vi.mock('@/core/ai/AgentOrchestrator', () => ({
   runAgentTurn: runAgentTurnMock,

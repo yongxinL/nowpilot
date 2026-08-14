@@ -144,7 +144,12 @@ async function putMeta(meta: ConversationMeta): Promise<void> {
  */
 export async function appendTurn(
   db: IDBPDatabase<MemoryDBSchema>,
-  input: { conversationId: string; role: MemoryMessage['role']; content: string; timestamp: number },
+  input: {
+    conversationId: string;
+    role: MemoryMessage['role'];
+    content: string;
+    timestamp: number;
+  },
 ): Promise<void> {
   try {
     const existing = await getMeta(input.conversationId);

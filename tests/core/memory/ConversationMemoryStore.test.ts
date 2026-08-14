@@ -266,7 +266,12 @@ describe('ConversationMemoryStore — appendTurn round-trip', () => {
     const memory = await getRecentTurns(db, 'c1', 'tiny');
     expect(memory.lastMessages).toEqual([
       { role: 'user', content: 'hello', tokens: estimateTokens('hello'), timestamp: 1000 },
-      { role: 'assistant', content: 'hi there', tokens: estimateTokens('hi there'), timestamp: 2000 },
+      {
+        role: 'assistant',
+        content: 'hi there',
+        tokens: estimateTokens('hi there'),
+        timestamp: 2000,
+      },
     ]);
     const meta = await settingRead(NP_CONVERSATION_META_KEY, (v) => v, undefined);
     expect((meta as Record<string, ConversationMeta>).c1).toMatchObject({

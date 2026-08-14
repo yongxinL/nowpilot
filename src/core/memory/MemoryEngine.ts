@@ -54,7 +54,11 @@ export interface AssembleOptions {
 
 /** Structural UserMemoryStore surface (05-02) — real store functions in prod, fakes in tests. */
 export interface UserMemoryStoreAPI {
-  retrieve(db: IDBPDatabase<MemoryDBSchema>, query: string, nowMs: number): Promise<UserMemoryFact[]>;
+  retrieve(
+    db: IDBPDatabase<MemoryDBSchema>,
+    query: string,
+    nowMs: number,
+  ): Promise<UserMemoryFact[]>;
   readWorkingMemory(
     db: IDBPDatabase<MemoryDBSchema>,
     resourceId?: string,
@@ -97,9 +101,7 @@ export interface MemoryEngineDeps {
 
 /** Lightweight change-notification payload (subscribe seam). */
 export type MemoryEngineEvent =
-  | { kind: 'turn'; conversationId: string }
-  | { kind: 'facts' }
-  | { kind: 'working-memory' };
+  { kind: 'turn'; conversationId: string } | { kind: 'facts' } | { kind: 'working-memory' };
 
 /** In-memory subscriber set — the subscribe() seam backing store. */
 const listeners = new Set<(event: MemoryEngineEvent) => void>();

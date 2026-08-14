@@ -479,7 +479,13 @@ describe('optimize — trust-aware pageContext feed (04b-04 Task 3, D-4b-09)', (
 /** Fixed 2-fact memory fixture — deterministic scores (toFixed(2) pin). */
 const TWO_FACTS: RetrievedMemory[] = [
   { id: 'fact-1', content: 'user prefers concise summaries', type: 'fact', tags: [], score: 0.87 },
-  { id: 'fact-2', content: 'works on the Chrome extension team', type: 'fact', tags: [], score: 0.5 },
+  {
+    id: 'fact-2',
+    content: 'works on the Chrome extension team',
+    type: 'fact',
+    tags: [],
+    score: 0.5,
+  },
 ];
 
 /** Fixed memory-enabled preferences — includes personaId/personaOverrides (D-05-08). */

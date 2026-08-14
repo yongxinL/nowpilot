@@ -55,6 +55,12 @@ const FORBIDDEN_TOKENS = [
   'turndown',
   'minisearch',
   'readability',
+  // 05-08 (T-05-30): the Phase-5 R-3 additions — MiniSearch (class name
+  // survives minification) and d3-force + MemoryEngine — must never leak into
+  // content bundles; the notes UI + search + graph live in Standalone only.
+  'MiniSearch',
+  'd3-force',
+  'MemoryEngine',
 ];
 
 // R-3 forbidden tokens for the BACKGROUND SW (checked as plain substrings).
@@ -78,6 +84,13 @@ const BACKGROUND_FORBIDDEN_TOKENS = [
   'EncryptedStorage',
   'idb',
   'fflate',
+  // 05-08 (T-05-30): the Phase-5 R-3 additions for the background — memory
+  // (MemoryEngine), search (MiniSearch/minisearch) and the graph library
+  // (d3-force) are Standalone-only; a background breach fails verify:phase-5.
+  'MemoryEngine',
+  'MiniSearch',
+  'minisearch',
+  'd3-force',
 ];
 
 async function walk(dir: string): Promise<string[]> {

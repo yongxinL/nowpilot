@@ -165,7 +165,11 @@ export function useStreamingLLM(): UseStreamingLLMResult {
         // memory injection below (the SAME UserPreferences the preferences
         // section injects); privacyModeFromPrefs(prefs) reads it at closure
         // call time, so runAgentTurn's invocations see the store value.
-        let prefs: UserPreferences | undefined;
+        // eslint prefers an explicit initializer here: the no-initializer form
+        // trips prefer-const under eslint 10.8.1 + typescript-eslint 8.66
+        // (05-08 gate drift fix — semantics unchanged: same declared type, the
+        // SAME late-bound single assignment below).
+        let prefs: UserPreferences | undefined = undefined;
         const invocation: StageResolver = (stage) =>
           getProviderRouter().createStageInvocation({
             operationId,

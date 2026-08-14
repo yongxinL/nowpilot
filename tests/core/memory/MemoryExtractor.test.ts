@@ -22,10 +22,7 @@
 //      rejected (repair/STRUCTURED_OUTPUT_FAILED path) → null.
 // @vitest-environment node
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import {
-  extractMemory,
-  MemoryExtractorResultSchema,
-} from '@/core/memory/MemoryExtractor';
+import { extractMemory, MemoryExtractorResultSchema } from '@/core/memory/MemoryExtractor';
 import { PersonaInjector } from '@/core/ai/persona/PersonaInjector';
 import { PROMPTS } from '@/core/prompts';
 import { DEFAULT_PERSONA } from '@/core/ai/persona/PersonaProfile';

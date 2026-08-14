@@ -92,6 +92,8 @@
 - [x] **KNW-04**: MemoryEngine stores conversation, user, and preference memory with budget enforcement
 - [x] **KNW-05**: Memory injection ≤ 1000 tokens / top-5; working memory ≤ 300 tokens
 
+> **KNW re-map (05-08):** KNW-01..05 are realized across plans 05-01..08 — KNW-04/05 (MemoryEngine stores + budget enforcement ≤ 1000 tokens top-5 / working memory ≤ 300) in 05-01..06 (core-only, zero UI per D-05-18); KNW-03 (MiniSearch full-text index + <50ms/1000-notes target) in 05-05/07; KNW-01 (atomic notes + wikilinks, WIKI-ID-01..04) in 05-05/07; KNW-02 (d3-force note graph + backlinks) in 05-05/07/08 — NoteGraph derivation in 05-05, BacklinksPanel + NotesPage list/editor in 05-07, NoteGraphView (d3-force, reduced-motion, states) wired into the Graph view in 05-08. The phase gate verify:phase-5 (§24 chain) is green end-to-end (Golden Rule 10), the R-3 isolation scan is clean, and the UI-SPEC ⚠ autocomplete max-height assumption is confirmed (MAX_DROPDOWN_HEIGHT = 320 + overflowY auto). §18 remains authoritative over the rows.
+
 ### LLM-Wiki & Filesystem Sync (Phase 5a)
 
 - [ ] **LLM-WIKI-01**: Auto-tagging adds suggested tags to notes
@@ -200,7 +202,7 @@ Deferred to a future release. Tracked but not in the current roadmap.
 | CTX-01…04 | Phase 4 | Done |
 | CAT-01…05 | Phase 4a | Done |
 | TRUST-01…03 | Phase 4b | Done |
-| KNW-01…05 | Phase 5 | Pending |
+| KNW-01…05 | Phase 5 | Done |
 | LLM-WIKI-01…03, SYNC-01…02 | Phase 5a | Pending |
 | MEM-01…03 | Phase 5b | Pending |
 | DIAG-01…03 | Phase 6 | Pending |

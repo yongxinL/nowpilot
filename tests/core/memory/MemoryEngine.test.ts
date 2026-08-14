@@ -400,7 +400,12 @@ describe('MemoryEngine — never throws (closed db)', () => {
     };
 
     await expect(
-      assemble(db, deps, { query: 'anything', conversationId: 'c-1', tier: 'medium', nowMs: NOW_MS }),
+      assemble(db, deps, {
+        query: 'anything',
+        conversationId: 'c-1',
+        tier: 'medium',
+        nowMs: NOW_MS,
+      }),
     ).resolves.toEqual({
       memories: [],
       workingMemoryBlock: '',

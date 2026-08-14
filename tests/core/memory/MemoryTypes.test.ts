@@ -58,7 +58,10 @@ describe('UserPreferencesSchema (05-01 Task 1 — GR-4 boundary gate)', () => {
   });
 
   it('rejects an out-of-union responseStyle value', () => {
-    const parsed = UserPreferencesSchema.safeParse({ ...fullUserPreferences, responseStyle: 'chatty' });
+    const parsed = UserPreferencesSchema.safeParse({
+      ...fullUserPreferences,
+      responseStyle: 'chatty',
+    });
     expect(parsed.success).toBe(false);
     if (!parsed.success) {
       expect(parsed.error.issues.some((i) => i.path.join('.') === 'responseStyle')).toBe(true);
@@ -66,10 +69,15 @@ describe('UserPreferencesSchema (05-01 Task 1 — GR-4 boundary gate)', () => {
   });
 
   it('rejects a numeric preferStructuredOutput value', () => {
-    const parsed = UserPreferencesSchema.safeParse({ ...fullUserPreferences, preferStructuredOutput: 1 });
+    const parsed = UserPreferencesSchema.safeParse({
+      ...fullUserPreferences,
+      preferStructuredOutput: 1,
+    });
     expect(parsed.success).toBe(false);
     if (!parsed.success) {
-      expect(parsed.error.issues.some((i) => i.path.join('.') === 'preferStructuredOutput')).toBe(true);
+      expect(parsed.error.issues.some((i) => i.path.join('.') === 'preferStructuredOutput')).toBe(
+        true,
+      );
     }
   });
 });
