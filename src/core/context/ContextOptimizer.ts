@@ -24,6 +24,15 @@
 // (P4-10). The optimizer only MARKS minimalMode — MCP-chaining/RAG enforcement
 // is capsForTier in the hook (04-06) + a Phase-5a consumer concern (D-04-14).
 //
+// WR-02 (05-10): the degradation ladder shares ONE reduced-memory source. The
+// reduce-topk step applies a real top-3 whole-item reduction (dropped.length >
+// 0); the minimal-mode re-pack MUST consume the SAME reduced set (via
+// reducedMemoryHints) or the top-3 reduction is silently undone by a re-pack
+// over the full top-5 — a turn where compact system + top-3 memory fits would
+// spuriously throw CONTEXT_TOO_LARGE. When no reduction occurred (empty hints
+// or no memory section) reducedMemoryHints stays input.memoryHints and the
+// minimal-mode re-pack is byte-identical to the pre-WR-02 behavior.
+//
 // D-04-13: degradation is SECTION-granular — no text.slice/substring anywhere
 // in this module; user_input is never modified. GR-3/Pitfall 7: the optimizer
 // SELECTS prompt constants (D-04-11, PROMPTS.compact.*) — it never authors
@@ -64,6 +73,7 @@ import { ERROR_CODES } from '@/core/error/errorCodes';
 import { debugLog } from '@/core/error/debugLog';
 import type { ContextOptimizerInput, OptimizedContext, PromptSection } from '@/core/ai/types';
 import type { ToolSchemaRef } from '@/core/ai/toolSchemas';
+import type { RetrievedMemory } from '@/core/memory/types';
 
 /**
  * The typed CONTEXT_TOO_LARGE terminal carrier (D-04-15) — the StructuredOutput
@@ -295,6 +305,14 @@ export function optimize(input: ContextOptimizerInput): OptimizedContext {
   // stamped (honest provenance — the field stays undefined until a step acts).
   const compressionByKind = new Map<PromptSection['kind'], CompressionKind>();
 
+  // WR-02 (05-10): the SHARED reduced-memory source between the reduce-topk and
+  // minimal-mode ladder steps. reduce-topk applies a real top-3 whole-item
+  // reduction by REPLACING the memory section text; if the later minimal-mode
+  // re-pack rebuilt from the FULL input.memoryHints (top-5) the reduction would
+  // be silently undone and a turn that fits with compact system + top-3 memory
+  // would still throw CONTEXT_TOO_LARGE. Both steps consume this one source.
+  let reducedMemoryHints: RetrievedMemory[] = input.memoryHints;
+
   // §2.4 ladder — iterate the D-04-12 registry in order; stop as soon as BOTH
   // the aggregate budget AND every per-kind cap are met; real steps act, no-op
   // steps still run their module functions (the registry is genuinely
@@ -379,6 +397,10 @@ export function optimize(input: ContextOptimizerInput): OptimizedContext {
           });
           if (r.dropped.length > 0) {
             sections = r.sections;
+            // WR-02 (05-10): a REAL reduction fired — record the same top-3
+            // whole-item slice reduceMemoryTopK applies internally so the
+            // minimal-mode re-pack below consumes the SAME reduced set.
+            reducedMemoryHints = input.memoryHints.slice(0, 3);
             stepsFired.push('reduce-topk');
             if (r.compressionApplied) compressionByKind.set('memory', r.compressionApplied);
           }
@@ -390,10 +412,20 @@ export function optimize(input: ContextOptimizerInput): OptimizedContext {
           // when already minimal (tiny mandate applied at pack time). WR-03:
           // the compressor's enterMinimalMode marker primitive is called (its
           // returned minimalMode flag is the §2.5 marker); the optimizer then
-          // performs the actual section reduction below.
+          // performs the actual section reduction below. WR-02 (05-10): the
+          // re-pack consumes reducedMemoryHints — when reduce-topk reduced the
+          // memory set, the minimal pack keeps the top-3 (never re-expands to
+          // the full top-5); when no reduction occurred the source is
+          // input.memoryHints, byte-identical to pre-WR-02.
           if (!minimalMode) {
             minimalMode = enterMinimalMode(sections).minimalMode;
-            sections = packSections(buildPackInput(input, true, trusted?.contextText));
+            sections = packSections(
+              buildPackInput(
+                { ...input, memoryHints: reducedMemoryHints },
+                true,
+                trusted?.contextText,
+              ),
+            );
             stepsFired.push('minimal-mode');
           }
           break;

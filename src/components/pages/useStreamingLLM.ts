@@ -185,26 +185,25 @@ export function useStreamingLLM(): UseStreamingLLMResult {
         // imports ContextOptimizer + capsForTier — it NEVER assembles prompts or
         // computes budget math; compact prompt text lives only in
         // src/core/prompts/index.ts (04-04).
+        //
+        // WR-07 (05-10) ordering contract: the PLANNER invocation is resolved
+        // FIRST by necessity — its window derives the tier that derives prefs
+        // (05-06, D-05-18). prefs is assigned from the planner memory injection
+        // BEFORE the renderer upfront invocation runs, so the renderer's
+        // privacyModeFromPrefs(prefs) reads the REAL value, never the
+        // 'prefer-local' undefined fallback.
         const plannerInv = invocation('planner');
-        const rendererInv = invocation('renderer');
-        // 05-06 (Open Q3/Pitfall 5): per-stage memory assembly — the tier is
-        // DERIVED from the resolved StageInvocation window (T-04-22) and the
-        // §3.4 budgets (top-5/top-3-tiny/≤1000 tokens/working-memory-first)
-        // are enforced INSIDE MemoryEngine.assemble (05-04). Golden Rule 3:
-        // the hook calls the core builder and passes DATA — it never assembles
-        // the memory/preferences section text (ContextPack owns that).
         const plannerTier = classifyModelContext(plannerInv.modelContextWindow);
-        const rendererTier = classifyModelContext(rendererInv.modelContextWindow);
         const assembleMemory = async (tier: ModelContextTier) =>
           getMemoryEngine().assemble({ query: trimmed, conversationId: 'default', tier }); // A5: 'default' until Phase 7
-        const [plannerInjection, rendererInjection] = await Promise.all([
-          assembleMemory(plannerTier),
-          assembleMemory(rendererTier),
-        ]);
         // D-05-18 (read path stays compatible): the persona block now reads the
         // SAME UserPreferences the preferences section injects — the store read
         // replaces the Phase-3 readPersonaPrefs() seam.
+        const plannerInjection = await assembleMemory(plannerTier);
         prefs = plannerInjection.preferences;
+        const rendererInv = invocation('renderer');
+        const rendererTier = classifyModelContext(rendererInv.modelContextWindow);
+        const rendererInjection = await assembleMemory(rendererTier);
         const persona = resolvePersona(DEFAULT_PERSONA, prefs);
         const personaBlock = buildPersonaBlock(persona);
         const optimizerBase = {

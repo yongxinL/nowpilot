@@ -258,6 +258,40 @@ describe('useStreamingLLM — send path (Golden Rule 3 + D-02)', () => {
     expect(rendererCall.tier).toBe('flash');
     expect(rendererCall.maxTokens).toBe(512);
   });
+
+  it('WR-07: prefs is assigned before the renderer upfront invocation — the renderer privacy mode derives from the REAL planner-injection preferences', async () => {
+    // The plan's literal fixture (allowCloudFallbackFromLocal: false → assert
+    // 'local-only') cannot discriminate the fix: privacyModeFromPrefs returns
+    // 'prefer-local' for BOTH undefined and false, and never returns
+    // 'local-only'. The discriminating value is TRUE → 'cloud-ok' — pre-fix
+    // the renderer invocation saw prefs === undefined ('prefer-local'), post-fix
+    // it sees the assigned value ('cloud-ok').
+    assembleMemoryMock.mockImplementation(async () => ({
+      memories: [],
+      workingMemoryBlock: '',
+      preferences: { ...FIXED_PREFERENCES, allowCloudFallbackFromLocal: true },
+    }));
+    resolveTurn(['ok']);
+    const { result } = renderHook(() => useStreamingLLM());
+
+    await act(async () => {
+      await result.current.send('hi');
+    });
+
+    // Planner is resolved FIRST by necessity (its window derives the tier that
+    // derives prefs — flagged assumption (a)): prefs is still undefined there,
+    // so the planner invocation carries the 'prefer-local' fallback.
+    const plannerCall = routerMock.createStageInvocation.mock.calls[0]?.[0] as unknown as {
+      privacyMode: string;
+    };
+    expect(plannerCall.privacyMode).toBe('prefer-local');
+    // The RENDERER invocation runs AFTER prefs assignment — its privacy mode
+    // must be derived from the real planner-injection preferences ('cloud-ok').
+    const rendererCall = routerMock.createStageInvocation.mock.calls[1]?.[0] as unknown as {
+      privacyMode: string;
+    };
+    expect(rendererCall.privacyMode).toBe('cloud-ok');
+  });
 });
 
 describe('useStreamingLLM — per-stage optimizer contexts (04-06 rewire, D-04-04/05)', () => {

@@ -636,3 +636,63 @@ describe('reduceMemoryTopK — real top-3 whole-item fallback (05-06 Task 2, Pit
     expect(result.dropped).toEqual([]);
   });
 });
+
+// ---------------------------------------------------------------------------
+// 05-10 Task 2 — WR-02 (05-REVIEW.md WR-02): the ladder's reduce-topk and
+// minimal-mode steps must consume the SAME reduced memory set. Pre-fix the
+// minimal-mode re-pack rebuilt from the FULL input.memoryHints (top-5),
+// silently undoing the top-3 reduction — a turn where compact system + top-3
+// memory fits would still throw CONTEXT_TOO_LARGE.
+// ---------------------------------------------------------------------------
+
+/** Five LARGE facts ≈ 2,500 tokens each (10,000 ASCII chars → divisor 4) — the
+    WR-02 ladder material: top-5 blows the small-window budget, top-3 alone
+    still does (the default system + 8 long tools dominate), but compact system
+    + top-3 fits. */
+const LARGE_HINTS: RetrievedMemory[] = Array.from({ length: 5 }, (_, i) => ({
+  id: `large-${i}`,
+  content: 'm'.repeat(10_000),
+  type: 'fact',
+  tags: [],
+  score: 0.95 - i * 0.1,
+}));
+
+describe('WR-02 — shared reduced-hints across the ladder (05-10 Task 2)', () => {
+  it('over-budget where top-3 + compact fits never throws CONTEXT_TOO_LARGE', () => {
+    // small window: inputBudget = floor(16384*0.7) = 11468. The fixture is
+    // sized (see the module comment above) so the DEFAULT pack (top-5 memory +
+    // 8 long tools) and the post-reduce-topk pack (top-3 memory + 8 long
+    // tools) both exceed the budget, while the minimal-mode re-pack (compact
+    // system + top-3 memory + ≤1 tool) fits — the WR-02 fix is the ONLY way
+    // this turn resolves without the spurious terminal.
+    const input = baseInput({
+      modelContextWindow: 16_384,
+      memoryHints: LARGE_HINTS,
+      selectedToolSchemas: EIGHT_LONG_TOOLS,
+      preferences: MEMORY_ENABLED_PREFS,
+      workingMemoryBlock: undefined,
+      userInput: 'u'.repeat(4_000), // ≈ 1000 tokens — straddles the same boundary
+    });
+    // Pre-ladder sanity: the default pack (top-5) is over budget.
+    const before = sumTokens(
+      packSections({
+        personaBlock: FIXED_PERSONA_BLOCK,
+        userInput: 'u'.repeat(4_000),
+        toolSchemaRefs: EIGHT_LONG_TOOLS,
+        preferencesText: JSON.stringify(MEMORY_ENABLED_PREFS),
+        memoryText: buildMemorySectionText({ memoryHints: LARGE_HINTS }),
+      }),
+    );
+    expect(before).toBeGreaterThan(Math.floor(16_384 * 0.7)); // ladder must fire
+
+    const out = optimize(input); // MUST return — no CONTEXT_TOO_LARGE
+    expect(out.provenance.stepsFired).toEqual(['reduce-topk', 'minimal-mode']);
+    // The final memory section is built from EXACTLY the top-3 hints — the
+    // same slice reduceMemoryTopK applies internally, now shared by the
+    // minimal-mode re-pack (never the full top-5).
+    const memory = out.sections.find((s) => s.kind === 'memory');
+    expect(memory?.text).toBe(buildMemorySectionText({ memoryHints: LARGE_HINTS.slice(0, 3) }));
+    expect(memory?.tokens).toBe(estimateTokens(memory!.text));
+    expectValidManifest(out);
+  });
+});
