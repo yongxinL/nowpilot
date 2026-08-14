@@ -24,6 +24,8 @@ A privacy-first, local-first AI assistant where chat, extracted page content, an
   *Validated in Phase 3a: Agent Reliability and Evidence (5/5 plans, 5/5 must-haves verified; AGT-01…05; `verify:phase-3a` green — 65 files / 527 tests)*
 - **Trust-aware context** — C.1 trust types (TrustLevel/ContextItem/ContextReceiptEntry) + Zod gates in `@/types/harness`, O.3 `applyTrustPolicy` authority strip + `<untrusted_data>` wrap (delimiter-breakout sanitized, prompt-layer semantics anchored), deterministic injection screener + quarantine, `contextFeed`/`contextReceipt` (reconstruction-sufficient receipt, CTX-06 counters), trust stage in `ContextOptimizer`, `TrustSettingsStore` (np_trust) + content-trust Options card
   *Validated in Phase 4b: Trust-Aware Context and Receipts (6/6 plans + critical-fix pass, 4/4 must-haves verified; TRUST-01…03 → CTX re-mapped; code review 2 criticals fixed; `verify:phase-4b` green — 88 files / 797 tests)*
+- **Knowledge & notes** — atomic notes with wikilinks, note graph, full-text search, budgeted memory
+  *Validated in Phase 5: Knowledge Base (Memory + MiniSearch + Notes) (10/10 plans, 11/11 must-haves verified; KNW-01…05; VERIFICATION re-verified **passed** after gap-closure waves 05-09 + 05-10 closed CR-01/CR-02/WR-01 + the WR-02..08/IN-01..04 cohort; `verify:phase-5` green — 102 files / 941 tests)*
 
 ### Active
 
@@ -33,7 +35,7 @@ v1 scope, derived from the canonical product spec (`.planning/PRODUCT_SPEC_v0_1.
 - [ ] **Context-adaptive execution** — context windows, ContextUpdate events, context-aware selection, phase-aware prompting
 - [x] **PageContentService** — content-script extraction (defuddle main content), schema `{title, url, text, metadata}`, TraceRedactor in DOMElems
 - [x] **Trust-aware context** — content-classification, XSS risk screening, prompt-injection quarantine, content trust controls — *Phase 4b complete*
-- [ ] **Knowledge & notes** — atomic note-taking, wikilinks, note graph ([[wiki]] navigation), note views
+- [x] **Knowledge & notes** — atomic note-taking, wikilinks, note graph ([[wiki]] navigation), note views — *Phase 5 complete*
 - [ ] **LLM-Wiki & filesystem sync** — auto-tagging, title→LLM integration, RAG "Ask notes" (MiniSearch), local-FS sync + baseline
 - [ ] **Memory governance** — memory cap, decay, privacy-preserving compression
 - [ ] **Diagnostics** — transaction logging, Debug Diagnostic Console, execution path inspection
@@ -95,4 +97,4 @@ v1 scope, derived from the canonical product spec (`.planning/PRODUCT_SPEC_v0_1.
 | ServiceNow, Write, TeamGQM as first-party add-ons | P1 add-ons; architecture supports third-party add-on SDK later | ✓ Spec §25 |
 
 ---
-*Last updated: 2026-08-13 after Phase 04b completion (/gsd-execute-phase 04b → verification passed 4/4, code review 2 criticals fixed before seal)*
+*Last updated: 2026-08-14 after Phase 05 completion (/gsd-execute-phase 05 → 10/10 plans; verification re-run passed 11/11 after 05-09 + 05-10 gap closure)*

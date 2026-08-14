@@ -13,7 +13,7 @@ NowPilot v0.1 is a privacy-first, local-first AI assistant and personal knowledg
 - [x] **Phase 4: Context-Adaptive Execution** - Tiered context windows, budget enforcement, graceful degradation, provenance manifests (completed 2026-08-12)
 - [ ] **Phase 4a: PageContentService (Knowledge Acquisition)** - Extraction-only page capture (Defuddle), < 50 KB content bundle, ephemeral per-tab index
 - [x] **Phase 4b: Trust-Aware Context and Receipts** - Retrieved data never instructs; injection quarantine; trust controls + context receipts (completed 2026-08-13)
-- [ ] **Phase 5: Knowledge Base (Memory + MiniSearch + Notes)** - Atomic notes with wikilinks, note graph, full-text search, budgeted memory
+- [x] **Phase 5: Knowledge Base (Memory + MiniSearch + Notes)** - Atomic notes with wikilinks, note graph, full-text search, budgeted memory (completed 2026-08-14)
 - [ ] **Phase 5a: LLM-Wiki & Filesystem Sync** - Auto-tagging, "Ask notes" RAG, chat→note conversion, one-way .md filesystem sync + restore
 - [ ] **Phase 5b: Memory Governance and Experience Candidates** - Memory caps, decay, conflict precedence, user governance controls with provenance
 - [ ] **Phase 6: Transaction Logging and Diagnostics** - Redacted transaction traces, Diagnostics panel, sanitized debug export
@@ -339,7 +339,9 @@ Plans:
   4. Memory retrieval returns top-5 (top-3 in tiny mode) with scores in [0, 1]; preference profile injects compact JSON including persona overrides.
   5. The end-to-end Page → PageContentService → Note → MiniSearch path works.
 
-**Plans**: 9/10 plans executed
+**Plans**: 10/10 plans executed
+
+**Status**: COMPLETED 2026-08-14 — `verify:phase-5` green (102 files / 941 tests, exit 0); VERIFICATION.md re-verified **passed** (11/11 truths) after the 05-09 + 05-10 gap-closure waves closed CR-01/CR-02/WR-01 and the full warning cohort (WR-02..WR-08, IN-01..04).
 
 **Wave 1** *(foundation)*
 

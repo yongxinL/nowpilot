@@ -1,38 +1,23 @@
 ---
 phase: 05-knowledge-base-memory-minisearch-notes
-verified: 2026-08-14T04:05:00Z
-status: gaps_found
-score: 7/11 must-haves verified
+verified: 2026-08-14T10:45:00Z
+status: passed
+score: 11/11 must-haves verified
 behavior_unverified: 1
 overrides_applied: 0
 gaps:
   - truth: "Star toggles persist in WorkspaceStore.workspace.selectedNotes: string[] (D-18 selectedNotes activated as the favorites set — no type widening, no new storage key)"
-    status: failed
-    reason: "CR-01 (05-REVIEW.md): selectedNotes is NOT in ACTIVE_FIELDS (WorkspaceStore.ts L51-58), pickActive drops it from the np_workspace payload, and sanitizeStored drops it on read. The journaled update() path bumps version + writes storage, but the stars themselves never reach storage — after reload defaultState() resets selectedNotes to []. The 05-07 summary's claims ('np_workspace persistence covers it', 'star toggles persist across surfaces like any other workspace field') are false. The NotesPage star test only asserts in-memory store membership — the gap is untested."
-    artifacts:
-      - path: "src/core/workspace/WorkspaceStore.ts"
-        issue: "ACTIVE_FIELDS (L51-58) omits 'selectedNotes'; pickActive (L74-82) and sanitizeStored (L93-112) both drop it — stars silently lost on reload"
-    missing:
-      - "Add 'selectedNotes' to ACTIVE_FIELDS and accept an array-of-strings selectedNotes in sanitizeStored"
-      - "Add a persistence regression test: toggle star → re-init store from storage → star present"
+    status: closed
+    closed_by: 05-09 (commit 991586c)
+    reason: "CR-01 fixed: 'selectedNotes' added to ACTIVE_FIELDS (WorkspaceStore.ts L57) and sanitizeStored accepts array-of-strings selectedNotes only (L113-117). Round-trip regression passes (toggle → stored np_workspace payload → re-init → star present)."
   - truth: "Dirty guard Popconfirm STR.notes.discard on switching notes/graph with a dirty draft"
-    status: failed
-    reason: "CR-02 (05-REVIEW.md): the dirty-guard Popconfirm only wraps note-card clicks (NotesPage.tsx L637-648) and graph switches (Segmented L659-669, graph pane L746-775). Four navigation paths bypass it entirely: New note (handleNewNote L421-429), New note from page (handleNewNoteFromPage L431-445), BacklinksPanel row click (onOpenNote=handleOpenNote L1040), and resolved wikilink click in Preview (onOpen: handleOpenNote L1014). All call applySelect/setDraft unconditionally — an unsaved draft is silently discarded (data loss)."
-    artifacts:
-      - path: "src/components/pages/NotesPage.tsx"
-        issue: "handleNewNote (L421-429), handleNewNoteFromPage (L431-445), handleOpenNote (L233-240) bypass the dirty guard; BacklinksPanel onOpenNote (L1040) and wikilinks onOpen (L1014) route through the unguarded handleOpenNote"
-    missing:
-      - "Route all four paths through a single guarded navigation helper (dirty → STR.notes.discard Popconfirm; discard → navigate; keep → stay)"
+    status: closed
+    closed_by: 05-10 (commit e69cb83)
+    reason: "CR-02 fixed: all four bypass paths (New note, New note from page, BacklinksPanel rows, Preview wikilinks) route through guardedNavigate + the shared discard Popconfirm. Four path-specific regressions pass."
   - truth: "assemble budgets: running total ≤ 1000 tokens via estimateTokens (whole-item drops from the end) — the memory section total, incl. the working-memory block, per spec §3.4/§3.6"
-    status: failed
-    reason: "WR-01 (05-REVIEW.md): MemoryEngine.assemble enforces MAX_MEMORY_TOKENS only against fact memories (MemoryEngine.ts L197-210); the ≤300-token working-memory block rides separately. buildMemorySectionText joins WMB + fact lines (ContextPack.ts), so the packed memory section can reach ~1300 tokens. Spec §3.6 mandates the WMB 'counts against the memory budget (§3.4: ≤ 1000 tokens total)' and requires truncating the block BEFORE dropping retrieved facts — neither is implemented. Golden Rule 6 (≤1000 tokens) is a hard project contract; the 05-06 summary's 'memory ≤1000 tokens … lands in a real stable:true memory section' claim does not hold for the combined section."
-    artifacts:
-      - path: "src/core/memory/MemoryEngine.ts"
-        issue: "assemble (L197-210) caps facts at MAX_MEMORY_TOKENS but does not account for the working-memory block in the total; no WMB-first truncation per §3.6"
-      - path: "src/core/context/ContextPack.ts"
-        issue: "buildMemorySectionText joins workingMemoryBlock + fact lines without a combined budget"
-    missing:
-      - "Account for estimateTokens(workingMemoryBlock) in the ≤1000-token cap, or truncate the WMB to fit the combined budget before dropping facts (spec §3.6 degradation order)"
+    status: closed
+    closed_by: 05-09 (commit a07c419)
+    reason: "WR-01 fixed: assemble budgets facts against estimateTokens(buildMemorySectionText({ memoryHints, workingMemoryBlock })) — WMB counts toward the cap; whole-item fact drops first; last-resort block truncation only when facts reach 0. Three budget regressions pass."
 behavior_unverified_items:
   - truth: "MiniSearch search over 1,000 notes completes in < 50 ms (SC#3 / KNW-03 / §22.1)"
     test: "Load 1,000 seeded notes in the Standalone Notes view and run a search, measuring wall-clock latency in performance tooling"
@@ -56,9 +41,9 @@ human_verification:
 # Phase 5: Knowledge Base (Memory + MiniSearch + Notes) Verification Report
 
 **Phase Goal:** Users write atomic notes with wikilinks, browse a note graph with backlinks, search notes full-text, and benefit from budgeted conversation/user/preference memory.
-**Verified:** 2026-08-14T04:05:00Z
-**Status:** gaps_found
-**Re-verification:** No — initial verification
+**Verified:** 2026-08-14T10:45:00Z
+**Status:** passed
+**Re-verification:** Yes — re-verified after 05-09 + 05-10 gap-closure waves (was gaps_found, 7/11)
 
 ## Goal Achievement
 
@@ -72,13 +57,25 @@ human_verification:
 | 4   | SC#3 perf: MiniSearch < 50 ms over 1,000 notes | ⚠️ PRESENT_BEHAVIOR_UNVERIFIED | Unit test asserts < 200 ms (plan-sanctioned CI fallback; measured 55-84 ms on dev box); real-world < 50 ms is the 05-VALIDATION manual backstop — see Human Verification #2 |
 | 5   | SC#4/KNW-04: Memory retrieval returns top-5 (top-3 in tiny mode) with scores in [0, 1] | ✓ VERIFIED | MemoryEngine.assemble budgets (MAX_MEMORIES 5 / MAX_MEMORIES_TINY 3, MemoryScorer verbatim weights, scores [0,1], sort desc); MemoryEngine.test.ts 'budgets' + 'DTO-score parity' pass; MemoryScorer.test.ts weight-pinning + 50-fixture [0,1] invariant pass |
 | 6   | SC#4/KNW-05: Preference profile injects compact JSON including persona overrides | ✓ VERIFIED | ContextPack.buildPreferencesSectionText = JSON.stringify(prefs) (D-05-08, incl. personaId/personaOverrides); ContextOptimizer.test.ts compact-JSON + persona-overrides cases pass; PreferenceMemoryStore np_persona writer + dual-shape read (Pitfall 1 closed) |
-| 7   | KNW-05: Memory injection ≤ 1000 tokens total (incl. working-memory block, spec §3.6) | ✗ FAILED | WR-01: WMB rides outside the ≤1000 cap; combined memory section can reach ~1300 tokens; §3.6 truncate-block-first degradation absent — see Gaps |
+| 7   | KNW-05: Memory injection ≤ 1000 tokens total (incl. working-memory block, spec §3.6) | ✓ VERIFIED | WR-01 closed (05-09 a07c419): assemble budgets facts against estimateTokens(buildMemorySectionText({memoryHints, workingMemoryBlock})) — WMB counts; whole-item fact drops first; last-resort block truncation; MemoryEngine.test.ts combined-budget + byte-identical-block + corrupt-block regressions pass |
 | 8   | SC#5: End-to-end Page → PageContentService → Note → MiniSearch path works | ✓ VERIFIED | NotesPage.test.tsx 'new note from page: ghost CTA…pre-fills a page-export draft (D-05-13/SC#5)' passes (currentPageContext → draft source.kind 'page-export' → save → index) |
-| 9   | 05-07: Star toggles persist in WorkspaceStore.workspace.selectedNotes (D-18 favorites set) | ✗ FAILED | CR-01: selectedNotes excluded from ACTIVE_FIELDS/pickActive/sanitizeStored — stars lost on reload; test only asserts in-memory membership — see Gaps |
-| 10  | 05-07: Dirty guard Popconfirm STR.notes.discard on switching notes/graph with a dirty draft | ✗ FAILED | CR-02: 4 navigation paths (New note, New note from page, backlink rows, resolved wikilinks) bypass the guard — silent draft loss — see Gaps |
+| 9   | 05-07: Star toggles persist in WorkspaceStore.workspace.selectedNotes (D-18 favorites set) | ✓ VERIFIED | CR-01 closed (05-09 991586c): selectedNotes in ACTIVE_FIELDS + sanitizeStored array-of-strings guard; WorkspaceStore.test.ts round-trip regression (toggle → stored payload → re-init → star present) passes |
+| 10  | 05-07: Dirty guard Popconfirm STR.notes.discard on switching notes/graph with a dirty draft | ✓ VERIFIED | CR-02 closed (05-10 e69cb83): all four bypass paths (New note, New note from page, BacklinksPanel rows, Preview wikilinks) route through guardedNavigate + shared discard Popconfirm; 4 path-specific regressions pass |
 | 11  | 05-08: verify:phase-5 gate green end-to-end + R-3 isolation clean + KNW-01..05 checked | ✓ VERIFIED | Re-ran `pnpm run verify:phase-5` → exit 0 (102 files / 922 tests, eslint + prettier + tsc + wxt build + vitest run; PIPESTATUS 0 — the earlier empty-output exit-1 was the documented redirect artifact); background.js + content-scripts scan for d3-force/MiniSearch/MemoryEngine → 0 matches; tests/isolation/no-content-script-ui.test.ts (4 tests) green; REQUIREMENTS.md KNW-01..05 `[x]` + Traceability `| KNW-01…05 | Phase 5 | Done |` |
 
-**Score:** 7/11 truths verified (1 present, behavior-unverified)
+**Score:** 11/11 truths verified (1 present, behavior-unverified)
+
+### Re-Verification Closure Record
+
+Re-verified 2026-08-14T10:45:00Z after the 05-09 + 05-10 gap-closure waves. All three previously-failed truths now VERIFIED:
+
+| Truth | Prior Status | Closure | Evidence |
+| ----- | ------------ | ------- | -------- |
+| Star persistence (CR-01) | ✗ FAILED | 05-09 `991586c` | `selectedNotes` in ACTIVE_FIELDS (WorkspaceStore.ts:57) + sanitizeStored array-of-strings guard (:113-117); WorkspaceStore.test.ts "star toggles persist through np_workspace (CR-01)" |
+| Dirty-guard completeness (CR-02) | ✗ FAILED | 05-10 `e69cb83` | `guardedNavigate` + `pendingNavRef`/`navDiscardPending` + shared discard Popconfirm (NotesPage.tsx:294-302, 513, 527, 1111, 1137); 4 path regressions in NotesPage.test.tsx |
+| Combined ≤1000 memory budget (WR-01) | ✗ FAILED | 05-09 `a07c419` | assemble budgets against `estimateTokens(buildMemorySectionText({memoryHints, workingMemoryBlock}))` (MemoryEngine.ts:209-245); 3 budget regressions in MemoryEngine.test.ts |
+
+The warning cohort (WR-02..WR-08, IN-01..04) was also closed by the same waves — see the Anti-Patterns table below for per-finding closure notes.
 
 ### Deferred Items
 
@@ -89,21 +86,21 @@ None — no failed truth is addressed by a later phase's goal or success criteri
 | Artifact | Expected    | Status | Details |
 | -------- | ----------- | ------ | ------- |
 | `src/core/memory/types.ts` | UserMemoryFact/ConversationMemory/ConversationMeta/MemoryInjection + UserPreferencesSchema (R-1 home) | ✓ VERIFIED | All five declarations present (L47/61/75/85/96); RetrievedMemory/UserPreferences byte-unchanged; MemoryTypes.test.ts green |
-| `src/core/error/errorCodes.ts` | 5-member Phase-5 canonical block + spec C.2 mirror | ⚠️ WARNING | 5 codes declared + spec mirror present (05-01) — but 3 of 5 (MEMORY_RETRIEVAL_FAILED, NOTE_GRAPH_FAILED, SEARCH_INDEX_REBUILD_FAILED) have ZERO call sites (WR-04); NOTE_LINK_PARSE_FAILED misused for STORE_WRITE failures (WR-03) |
+| `src/core/error/errorCodes.ts` | 5-member Phase-5 canonical block + spec C.2 mirror | ✓ VERIFIED | 5 codes declared + spec mirror present; all 5 now have live call sites — MEMORY_RETRIEVAL_FAILED (05-09), SEARCH_INDEX_REBUILD_FAILED + NOTE_GRAPH_FAILED (05-10), NOTE_LINK_PARSE_FAILED parse-boundary-only (WR-03/04 closed) |
 | `src/core/memory/MemoryScorer.ts` | §3.4 verbatim weights, pure, injectable clock | ✓ VERIFIED | scoreMemoryFact + RECENCY_WINDOW_MS; no Date.now/Math.random/crypto; MemoryScorer.test.ts green |
 | `src/core/memory/UserMemoryStore.ts` | Fact CRUD + scored retrieve + O.10 working memory | ✓ VERIFIED | putFact/getFact/listFacts/deleteFact/retrieve + init/update/read/putWorkingMemory; never-throws; wm: persistence; UserMemoryStore.test.ts green (incl. v1→v2 migration pin) |
-| `src/core/memory/ConversationMemoryStore.ts` | Tiered turns + 12-message compactor + §15.3 LRU | ⚠️ WARNING | Full implementation + 13 tests green — but appendTurn seq fallback can overwrite the seq-1 message on index-read failure (WR-05) |
+| `src/core/memory/ConversationMemoryStore.ts` | Tiered turns + 12-message compactor + §15.3 LRU | ✓ VERIFIED | Full implementation + 14 tests green; WR-05 closed (05-09 2b0fc14) — seq base from stored messageCount, no-overwrite regression |
 | `src/core/memory/PreferenceMemoryStore.ts` | np_persona writer, dual-shape read | ✓ VERIFIED | write/read with UserPreferencesSchema gate + legacy PersonaProfile conversion; PreferenceMemoryStore.test.ts green |
-| `src/core/memory/MemoryEngine.ts` | Single orchestrator: assemble budgets, recordTurn, updateWorkingMemory, addFacts, subscribe | ⚠️ WARNING | Single-orchestrator contract + top-5/top-3 + [0,1] + never-throws verified — but WMB not counted in the ≤1000 cap (WR-01) and getMemoryEngine() leaks an IDB connection per assemble call (WR-06) |
+| `src/core/memory/MemoryEngine.ts` | Single orchestrator: assemble budgets, recordTurn, updateWorkingMemory, addFacts, subscribe | ✓ VERIFIED | WR-01 closed (05-09): combined packed-section ≤1000 budget; WR-06 closed: single reused DB connection; MEMORY_RETRIEVAL_FAILED emitted; budget + single-open regressions pass |
 | `src/core/memory/MemoryExtractor.ts` | Haiku-tier via PersonaInjector + requestJson, one repair, never throws | ✓ VERIFIED | MemoryExtractorResultSchema (.max(10)), PersonaInjector.inject('memoryExtractor'), MEMORY_EXTRACT_FAILED + null on failure; 6 tests green |
 | `src/core/search/MiniSearchIndex.ts` | Persistent notes index, [0,1] scores, incremental | ✓ VERIFIED | buildNotesIndex/searchNotes/addToNotesIndex/removeFromNotesIndex; 6 tests green incl. §26.5 distinctness |
 | `src/core/notes/LinkParser.ts` | parseLinks/resolveLinks tie-break/promoteUnresolvedLinks | ✓ VERIFIED | Verbatim WIKI-ID-02 tie-break + WIKI-ID-03 helper; 9 tests green |
 | `src/core/notes/NoteGraph.ts` | Derived edges/backlinks/dangling reconciliation/§22.3 cosine | ✓ VERIFIED | edges/backlinkIndex/resolveDanglingOnDelete/topKSimilar + 50-word STOP_WORDS; 11 tests green |
 | `src/components/notes/NoteGraphView.tsx` | d3-force graph pane (states, token colors, reduced motion) | ✓ VERIFIED | Only file importing d3-force (R-3); no hex literals; tick(300) reduced-motion path; 6 tests green |
 | `src/components/notes/BacklinksPanel.tsx` | Derived in-links, collapsible, empty/count | ✓ VERIFIED | backlinkIndex-derived; tests green |
-| `src/components/notes/WikilinkAutocomplete.tsx` | Anchored combobox, binding a11y contract, 320px scroll | ✓ VERIFIED | role=listbox/option, aria-activedescendant, MAX_DROPDOWN_HEIGHT 320 + overflowY auto; ⚠ WR-08: Shift+Enter swallowed while dropdown open (Enter inserts regardless of modifiers) |
-| `src/components/pages/NotesPage.tsx` | Real workspace (list+editor+search+save+star+delete+dirty guard+graph) | ⚠️ WARNING | Full workspace + save pipeline + graph wiring present; 9 tests green — but CR-02 (dirty guard bypass) and CR-01 (star persistence) defects live here |
-| `src/core/workspace/WorkspaceStore.ts` | toggleSelectedNote action | ⚠️ WARNING | toggleSelectedNote exists (L356) — but selectedNotes missing from ACTIVE_FIELDS/pickActive/sanitizeStored (CR-01) |
+| `src/components/notes/WikilinkAutocomplete.tsx` | Anchored combobox, binding a11y contract, 320px scroll | ✓ VERIFIED | role=listbox/option, aria-activedescendant, MAX_DROPDOWN_HEIGHT 320 + overflowY auto; WR-08 closed (05-10 98c76d2) — Shift+Enter falls through to the newline |
+| `src/components/pages/NotesPage.tsx` | Real workspace (list+editor+search+save+star+delete+dirty guard+graph) | ✓ VERIFIED | CR-01/CR-02 closed (05-09/05-10); guardedNavigate + correct codes + ref-based applySelect + locale + index-rebuild emits; 13 tests green |
+| `src/core/workspace/WorkspaceStore.ts` | toggleSelectedNote action | ✓ VERIFIED | toggleSelectedNote + selectedNotes in ACTIVE_FIELDS (L57) + sanitizeStored array-of-strings guard; CR-01 round-trip regression passes |
 | `src/core/components/PortableMarkdown.tsx` | Optional wikilinks prop, DOMPurify unconditional | ✓ VERIFIED | wikilinks? prop with tokenize→sanitize→DOM-walk substitution; DOMPurify.sanitize + escapeRawHtml intact; script-injection test passes with and without the prop |
 
 ### Key Link Verification
@@ -113,10 +110,10 @@ None — no failed truth is addressed by a later phase's goal or success criteri
 | NotesPage save | NotesDB | parseLinks→resolveLinks→putNote→note:saved | ✓ WIRED | L264-309; post-condition re-read for failure detection; test-proven |
 | note:saved event | index/graph re-derivation | EventBus emit → handler | ✓ WIRED | 'note:saved' in EVENT_TYPES (NOTE_SAVE retained); NotesPage + NoteGraphView subscribe; EventBus.test.ts green |
 | MemoryEngine.assemble | useStreamingLLM | getMemoryEngine() → per-stage assemble → optimizerBase memoryHints/workingMemoryBlock/preferences | ✓ WIRED | useStreamingLLM L196-223; trustPrefs.memory gate (Open Q6); GR-3 data-only |
-| optimizer ladder | reduceMemoryTopK | memory source { memoryHints, workingMemoryBlock } | ⚠️ PARTIAL | reduce-topk fires (L369-382) — but minimal-mode re-pack rebuilds memory from full top-5 hints, undoing the top-3 reduction (WR-02); can throw spurious CONTEXT_TOO_LARGE |
-| NoteGraph.edges | NoteGraphView | props (derived on demand, D-05-17) | ✓ WIRED | edges() imported; no graph store, no parse-at-render |
-| toggleSelectedNote | np_workspace persistence | update() → journaledUpdateWorkspace → pickActive | ✗ NOT_WIRED | update() runs, but pickActive strips selectedNotes — the star never reaches storage (CR-01) |
-| dirty guard | navigation | Popconfirm on card/graph switches | ⚠️ PARTIAL | Card + graph-switch + graph-node paths guarded; New note / New note from page / backlink rows / wikilinks unguarded (CR-02) |
+| optimizer ladder | reduceMemoryTopK | memory source { memoryHints, workingMemoryBlock } | ✓ WIRED | WR-02 closed (05-10 c36d23e): reducedMemoryHints shared between reduce-topk and minimal-mode; ContextOptimizer.test.ts must-not-throw regression proves top-3 + compact fits |
+| NoteGraph.edges | NoteGraphView | props (derived on demand, D-05-17) | ✓ WIRED | edges() imported; no graph store, no parse-at-render; NOTE_GRAPH_FAILED emitted on derivation failure (05-10) |
+| toggleSelectedNote | np_workspace persistence | update() → journaledUpdateWorkspace → pickActive | ✓ WIRED | CR-01 closed (05-09 991586c): selectedNotes in ACTIVE_FIELDS; pickActive carries it; round-trip regression proves storage persistence |
+| dirty guard | navigation | Popconfirm on card/graph switches | ✓ WIRED | CR-02 closed (05-10 e69cb83): guardedNavigate + shared discard Popconfirm covers New note / New note from page / backlink rows / wikilinks; 4 regressions |
 
 ### Data-Flow Trace (Level 4)
 
@@ -127,7 +124,7 @@ None — no failed truth is addressed by a later phase's goal or success criteri
 | MemoryEngine.assemble | memories | UserMemoryStore.retrieve + MemoryScorer | ✓ real (facts from MemoryDB v2) | ✓ FLOWING |
 | Working memory block | workingMemoryBlock | readWorkingMemory (wm:user row) | ✓ real (O.10 updater, redacted, ≤300) | ✓ FLOWING |
 | Preferences section | preferences | PreferenceMemoryStore.read (np_persona) | ✓ real (schema-gated, dual-shape) | ✓ FLOWING |
-| Stars (selectedNotes) | selectedNotes | toggleSelectedNote in-memory only | ✗ DISCONNECTED — never serialized (CR-01) | ✗ HOLLOW |
+| Stars (selectedNotes) | selectedNotes | toggleSelectedNote → journaled update → np_workspace payload → re-init hydrate | ✓ real (round-trip regression through fake-indexeddb) | ✓ FLOWING (CR-01 closed 05-09) |
 | Graph view | nodes/edges | NoteGraph.edges over allNotes | ✓ real (derived from stored links[]) | ✓ FLOWING |
 
 ### Behavioral Spot-Checks
@@ -139,7 +136,7 @@ None — no failed truth is addressed by a later phase's goal or success criteri
 | Key behavior tests (perf/tie-break/cosine/budgets/graph) | `pnpm vitest run tests/core/search/MiniSearchIndex.test.ts tests/core/notes/LinkParser.test.ts tests/core/notes/NoteGraph.test.ts tests/components/notes/NoteGraphView.test.tsx tests/core/memory/MemoryEngine.test.ts --bail=1` | 5 files / 42 tests passed | ✓ PASS |
 | TypeScript | `pnpm exec tsc --noEmit` | exit 0 | ✓ PASS |
 | R-3 isolation | `pnpm vitest run tests/isolation --bail=1` + grep background/content bundles for d3-force/MiniSearch/MemoryEngine | 4 tests passed; 0 token matches in background/content | ✓ PASS |
-| Full phase gate | `pnpm run verify:phase-5` | exit 0 — eslint + prettier + tsc + wxt build + vitest run (102 files / 922 tests) | ✓ PASS |
+| Full phase gate | `pnpm run verify:phase-5` | exit 0 — eslint + prettier + tsc + wxt build + vitest run (102 files / 941 tests) | ✓ PASS |
 
 ### Probe Execution
 
@@ -149,32 +146,34 @@ No probe scripts declared in the phase plans (the phase gate `verify:phase-5` is
 
 | Requirement | Source Plan | Description | Status | Evidence |
 | ----------- | ----------- | ----------- | ------ | -------- |
-| KNW-01 | 05-01/05-05/05-07 | Atomic note-taking: create, edit, save, delete notes with wikilinks ([[…]]) | ✓ SATISFIED | LinkParser tie-break + NotesPage CRUD + save pipeline; tests green (CR-02 dirty-guard gap recorded under gaps — core CRUD works, draft-preservation incomplete) |
-| KNW-02 | 05-05/05-07/05-08 | Note graph (d3-force) + backlinks in Standalone Notes view | ✓ SATISFIED | NoteGraphView + BacklinksPanel + wiring; tests green |
+| KNW-01 | 05-01/05-05/05-07 | Atomic note-taking: create, edit, save, delete notes with wikilinks ([[…]]) | ✓ SATISFIED | LinkParser tie-break + NotesPage CRUD + save pipeline + dirty-guard completeness (CR-02 closed 05-10); tests green |
+| KNW-02 | 05-05/05-07/05-08 | Note graph (d3-force) + backlinks in Standalone Notes view | ✓ SATISFIED | NoteGraphView + BacklinksPanel + wiring; IN-04 deterministic layout + IN-01 tooltip; NOTE_GRAPH_FAILED; tests green |
 | KNW-03 | 05-05/05-07 | MiniSearch indexes notes for full-text search | ✓ SATISFIED | Persistent index + [0,1] + incremental; functionality verified; <50ms real-world latency → human backstop |
-| KNW-04 | 05-01..05-06 | MemoryEngine stores conversation, user, and preference memory with budget enforcement | ✓ SATISFIED | All three stores + MemoryEngine + budgets top-5/top-3-tiny + [0,1] scores; tests green |
-| KNW-05 | 05-01..05-06 | Memory injection ≤ 1000 tokens / top-5; working memory ≤ 300 tokens | ✗ BLOCKED | Top-5/top-3 + WMB ≤300 verified — but the combined memory section can exceed 1000 tokens (WR-01, spec §3.6); see gaps |
+| KNW-04 | 05-01..05-06 | MemoryEngine stores conversation, user, and preference memory with budget enforcement | ✓ SATISFIED | All three stores + MemoryEngine + budgets top-5/top-3-tiny + [0,1] scores; WR-04/05/06 closed (05-09); tests green |
+| KNW-05 | 05-01..05-06 | Memory injection ≤ 1000 tokens / top-5; working memory ≤ 300 tokens | ✓ SATISFIED | WR-01 closed (05-09): combined packed-section budget ≤ 1000; WR-02 closed (05-10): degradation ladder shares the reduced set — no spurious CONTEXT_TOO_LARGE |
 
 **Orphaned requirements:** none — all five KNW IDs appear in plan frontmatter (KNW-01: 05-01/05/07; KNW-02: 05-05/07/08; KNW-03: 05-01/05/07; KNW-04: 05-01/02/03/04; KNW-05: 05-01/03/04/06). REQUIREMENTS.md `[x]` + Traceability Done rows present.
 
 ### Anti-Patterns Found
 
-| File | Line | Pattern | Severity | Impact |
-| ---- | ---- | ------- | -------- | ------ |
-| src/core/workspace/WorkspaceStore.ts | 51-58, 74-82, 93-112 | Field activated but excluded from the D-18 serialization set | 🛑 BLOCKER (CR-01) | Stars silently lost on reload — data loss, contradicts the 05-07 must-have and summary claims |
-| src/components/pages/NotesPage.tsx | 421-445, 233-240, 1014, 1040 | Dirty-guard bypass on 4 navigation paths | 🛑 BLOCKER (CR-02) | Unsaved drafts silently discarded — data loss |
-| src/core/memory/MemoryEngine.ts | 197-210 | Budget cap excludes the working-memory block | 🛑 BLOCKER (WR-01) | Memory section can reach ~1300 tokens — violates spec §3.4/§3.6 + Golden Rule 6 |
-| src/components/pages/NotesPage.tsx | 301, 344 | NOTE_LINK_PARSE_FAILED logged for STORE_WRITE failures | ⚠️ Warning (WR-03) | Wrong canonical code breaks monitoring/attribution (GR-9) |
-| src/core/error/errorCodes.ts | 111-115 | 3 of 5 Phase-5 codes never emitted | ⚠️ Warning (WR-04) | Declared-but-unreachable canonical codes |
-| src/core/memory/ConversationMemoryStore.ts | 156-164 | seq fallback overwrites seq-1 message on index-read failure | ⚠️ Warning (WR-05) | Data-loss mode on transient IDB error |
-| src/core/memory/MemoryEngine.ts | 376-381 | getMemoryEngine().assemble opens a DB per call, never closes | ⚠️ Warning (WR-06) | Unbounded IDB connection accumulation over a session |
-| src/components/pages/useStreamingLLM.ts | 188-207 | prefs assigned after the upfront invocations | ⚠️ Warning (WR-07) | privacyModeFromPrefs(undefined) → 'prefer-local' for upfront calls; latent tier desync |
-| src/core/context/ContextOptimizer.ts | 369-399 | minimal-mode re-pack rebuilds memory from full top-5, undoing reduce-topk | ⚠️ Warning (WR-02) | Spurious CONTEXT_TOO_LARGE when top-3 + compact system would fit |
-| src/components/notes/WikilinkAutocomplete.tsx | 128-133 | Shift+Enter swallowed while dropdown open | ⚠️ Warning (WR-08) | No newline insertion in the body while autocomplete is active |
-| src/components/notes/BacklinksPanel.tsx | 51 | Collapse tooltip ternary dead (both branches identical) | ℹ️ Info (IN-01) | Affordance never distinguishes state |
-| src/components/pages/NotesPage.tsx | 215-231 | setState side effects inside setAllNotes updater | ℹ️ Info (IN-02) | Anti-pattern; idempotent today |
-| src/components/pages/NotesPage.tsx | 109-117 | relativeTime hardcodes locale 'en' | ℹ️ Info (IN-03) | Ignores preferredLanguage |
-| src/components/notes/NoteGraphView.tsx | 112-153 | All nodes at (0,0) pre-first-tick; simulation restarts on list refresh | ℹ️ Info (IN-04) | One-frame origin flash; graph re-randomizes on save |
+All 14 findings closed by the 05-09 + 05-10 gap-closure waves:
+
+| File | Line | Pattern | Severity | Closure |
+| ---- | ---- | ------- | -------- | ------- |
+| src/core/workspace/WorkspaceStore.ts | 51-58, 74-82, 93-112 | Field activated but excluded from the D-18 serialization set | 🛑 BLOCKER (CR-01) | ✅ CLOSED (05-09 `991586c`): selectedNotes in ACTIVE_FIELDS + sanitizeStored array-of-strings guard; round-trip regression |
+| src/components/pages/NotesPage.tsx | 421-445, 233-240, 1014, 1040 | Dirty-guard bypass on 4 navigation paths | 🛑 BLOCKER (CR-02) | ✅ CLOSED (05-10 `e69cb83`): guardedNavigate + shared discard Popconfirm; 4 regressions |
+| src/core/memory/MemoryEngine.ts | 197-210 | Budget cap excludes the working-memory block | 🛑 BLOCKER (WR-01) | ✅ CLOSED (05-09 `a07c419`): combined packed-section budget; 3 regressions |
+| src/components/pages/NotesPage.tsx | 301, 344 | NOTE_LINK_PARSE_FAILED logged for STORE_WRITE failures | ⚠️ Warning (WR-03) | ✅ CLOSED (05-10 `e69cb83`): parse-boundary split — NOTE_LINK_PARSE_FAILED only at parseLinks; STORE_WRITE for put/get/reconcile |
+| src/core/error/errorCodes.ts | 111-115 | 3 of 5 Phase-5 codes never emitted | ⚠️ Warning (WR-04) | ✅ CLOSED (05-09 `a07c419` MEMORY_RETRIEVAL_FAILED; 05-10 `e69cb83` SEARCH_INDEX_REBUILD_FAILED + `847c8f5` NOTE_GRAPH_FAILED): all 5 codes live |
+| src/core/memory/ConversationMemoryStore.ts | 156-164 | seq fallback overwrites seq-1 message on index-read failure | ⚠️ Warning (WR-05) | ✅ CLOSED (05-09 `2b0fc14`): seq base from stored messageCount; no-overwrite regression |
+| src/core/memory/MemoryEngine.ts | 376-381 | getMemoryEngine().assemble opens a DB per call, never closes | ⚠️ Warning (WR-06) | ✅ CLOSED (05-09 `a07c419`): module-held memoryDbPromise reused; single-open regression |
+| src/components/pages/useStreamingLLM.ts | 188-207 | prefs assigned after the upfront invocations | ⚠️ Warning (WR-07) | ✅ CLOSED (05-10 `c36d23e`): prefs assigned before the renderer upfront invocation; privacy-mode regression |
+| src/core/context/ContextOptimizer.ts | 369-399 | minimal-mode re-pack rebuilds memory from full top-5, undoing reduce-topk | ⚠️ Warning (WR-02) | ✅ CLOSED (05-10 `c36d23e`): shared reducedMemoryHints; must-not-throw regression |
+| src/components/notes/WikilinkAutocomplete.tsx | 128-133 | Shift+Enter swallowed while dropdown open | ⚠️ Warning (WR-08) | ✅ CLOSED (05-10 `98c76d2`): shiftKey fall-through; regression |
+| src/components/notes/BacklinksPanel.tsx | 51 | Collapse tooltip ternary dead (both branches identical) | ℹ️ Info (IN-01) | ✅ CLOSED (05-10 `3e9b1db`): backlinksCollapse/backlinksExpand keys; regression |
+| src/components/pages/NotesPage.tsx | 215-231 | setState side effects inside setAllNotes updater | ℹ️ Info (IN-02) | ✅ CLOSED (05-10 `e69cb83`): ref-based applySelect, updater-pure |
+| src/components/pages/NotesPage.tsx | 109-117 | relativeTime hardcodes locale 'en' | ℹ️ Info (IN-03) | ✅ CLOSED (05-10 `e69cb83`): locale threaded from readPersonaPrefs |
+| src/components/notes/NoteGraphView.tsx | 112-153 | All nodes at (0,0) pre-first-tick; simulation restarts on list refresh | ℹ️ Info (IN-04) | ✅ CLOSED (05-10 `847c8f5`): phyllotaxisLayout fallback + positionsRef preservation; 3 regressions |
 
 **Debt-marker scan:** no TBD/FIXME/XXX markers in any phase-modified source file. No placeholder copy remains ('Notes live here once you save your first one.' gone — grep 0). No `dangerouslySetInnerHTML` anywhere in src (only comments).
 
@@ -187,15 +186,17 @@ No probe scripts declared in the phase plans (the phase gate `verify:phase-5` is
 
 ### Gaps Summary
 
-The phase goal is **largely implemented and the phase gate is genuinely green** (re-ran end-to-end: 102 files / 922 tests, exit 0), but three must-have truths fail — two of them data-loss defects confirmed by the code review and by direct code inspection:
+Initial verification (2026-08-14T04:05:00Z) found three failed must-have truths (CR-01 star persistence, CR-02 dirty-guard completeness, WR-01 combined memory budget) and an 11-finding warning/info cohort. **Re-verified 2026-08-14T10:45:00Z after the 05-09 + 05-10 gap-closure waves — all gaps are now CLOSED and the phase is PASSED:**
 
-1. **CR-01 — Stars never persist.** `toggleSelectedNote` routes through the journaled `update()` path (version bump + np_workspace write), but `selectedNotes` is absent from `ACTIVE_FIELDS`/`pickActive`/`sanitizeStored`, so the star set never reaches storage and resets on reload. The 05-07 summary's persistence claims are false; the star test asserts only in-memory membership.
-2. **CR-02 — Dirty drafts silently discarded.** The dirty-guard Popconfirm covers note cards and graph switches only; New note, New note from page, backlink rows, and resolved wikilinks all call `applySelect`/`setDraft` unconditionally, discarding unsaved edits without confirmation.
-3. **WR-01 — Memory budget ≤1000 tokens violated for the combined section.** The working-memory block (≤300) rides outside the fact cap, so the packed memory section can reach ~1300 tokens; the spec §3.6 mandated degradation order (truncate the block before dropping facts) is not implemented.
+1. **CR-01 — Stars never persist.** Closed by 05-09 (`991586c`): `selectedNotes` added to `ACTIVE_FIELDS` (WorkspaceStore.ts:57) and `sanitizeStored` merges it only as an array-of-strings (T-1-13). The round-trip regression (toggle → stored np_workspace payload → re-init → star present) passes through real storage.
+2. **CR-02 — Dirty drafts silently discarded.** Closed by 05-10 (`e69cb83`): one `guardedNavigate` helper + shared discard Popconfirm covers New note, New note from page, backlink rows, and resolved wikilinks — Discard navigates once, Keep stays. Four path-specific regressions pass.
+3. **WR-01 — Memory budget ≤1000 tokens violated.** Closed by 05-09 (`a07c419`): `assemble` budgets facts against `estimateTokens(buildMemorySectionText({memoryHints, workingMemoryBlock}))` — the working-memory block counts toward the §3.6 cap; whole-item fact drops first; a corrupt >1000-token block truncates only as the last resort. Three budget regressions pass.
 
-Both critical review findings are confirmed in the codebase and directly falsify 05-07 must-have truths (star persistence; dirty-guard completeness). KNW-05 is blocked at the budget level. Because these are failed must-haves with user-visible data loss, the phase must not be declared complete until a gap-closure plan addresses CR-01, CR-02, and WR-01. The remaining review warnings (WR-02..WR-08, IN-01..04) are quality issues to fold into the same closure work. Human backstops (1,000-note list, MiniSearch real-world latency, graph visual pass, delete-menu decision) are recorded for the end-of-phase human checkpoint.
+The remaining warning/info cohort (WR-02..WR-08, IN-01..04) was folded into the same closure waves and is fully resolved (see Anti-Patterns table above). The phase gate re-ran green end-to-end after closure: **102 files / 941 tests, exit 0** (eslint + prettier + tsc + wxt build + vitest run), R-3 isolation scan 0 token matches in background/content bundles.
+
+**Remaining for the end-of-phase human checkpoint** (non-automatable, recorded above): 1,000-note list interactivity, MiniSearch real-world < 50 ms latency, graph visual pass, and the delete-menu spec-gap decision (05-07 deviations #5/#7).
 
 ---
 
-_Verified: 2026-08-14T04:05:00Z_
+_Verified: 2026-08-14T10:45:00Z (re-verification after 05-09 + 05-10 gap-closure)_
 _Verifier: the agent (gsd-verifier)_
