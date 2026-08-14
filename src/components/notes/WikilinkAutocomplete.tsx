@@ -47,6 +47,13 @@ export interface WikilinkAutocompleteProps {
   onHighlightChange: (i: number) => void;
   /** Polite insertion announcement (visually-hidden aria-live region). */
   announcement?: string;
+  /**
+   * Optional stable listbox id — the page supplies this so the TextArea
+   * anchor's aria-controls/aria-activedescendant can reference the real ids
+   * (the page spreads buildAnchorA11y onto the TextArea). Defaults to a
+   * component-generated id when omitted.
+   */
+  listId?: string;
 }
 
 /** Imperative handle — the page forwards TextArea keydowns here. */
@@ -63,7 +70,12 @@ export function buildAnchorA11y(
   open: boolean,
   listId: string,
   activeOptionId: string | undefined,
-): { 'aria-haspopup': 'listbox'; 'aria-expanded': boolean; 'aria-controls'?: string; 'aria-activedescendant'?: string } {
+): {
+  'aria-haspopup': 'listbox';
+  'aria-expanded': boolean;
+  'aria-controls'?: string;
+  'aria-activedescendant'?: string;
+} {
   return {
     'aria-haspopup': 'listbox',
     'aria-expanded': open,
@@ -84,18 +96,19 @@ export const WikilinkAutocomplete = forwardRef<
     highlighted,
     onHighlightChange,
     announcement,
+    listId,
   }: WikilinkAutocompleteProps,
   ref,
 ) {
   const { token } = theme.useToken();
   const uid = useId();
-  const listId = `np-wikilink-list-${uid}`;
-  const optionId = (i: number): string => `np-wikilink-option-${uid}-${i}`;
+  const resolvedListId = listId ?? `np-wikilink-list-${uid}`;
+  const optionId = (i: number): string => `${resolvedListId}-option-${i}`;
   const activeOptionId =
     open && highlighted >= 0 && matches[highlighted] !== undefined
       ? optionId(highlighted)
       : undefined;
-  const anchorA11y = buildAnchorA11y(open, listId, activeOptionId);
+  const anchorA11y = buildAnchorA11y(open, resolvedListId, activeOptionId);
 
   // The parent forwards TextArea keydowns here (the page owns the caret).
   useImperativeHandle(
@@ -143,11 +156,17 @@ export const WikilinkAutocomplete = forwardRef<
         aria-expanded={anchorA11y['aria-expanded']}
         aria-controls={anchorA11y['aria-controls']}
         aria-activedescendant={anchorA11y['aria-activedescendant']}
-        style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clipPath: 'inset(50%)' }}
+        style={{
+          position: 'absolute',
+          width: 1,
+          height: 1,
+          overflow: 'hidden',
+          clipPath: 'inset(50%)',
+        }}
       />
       {open && matches.length > 0 && (
         <div
-          id={listId}
+          id={resolvedListId}
           role="listbox"
           data-np-wikilink-list="1"
           style={{
@@ -189,7 +208,13 @@ export const WikilinkAutocomplete = forwardRef<
         aria-live="polite"
         role="status"
         data-np-wikilink-live="1"
-        style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clipPath: 'inset(50%)' }}
+        style={{
+          position: 'absolute',
+          width: 1,
+          height: 1,
+          overflow: 'hidden',
+          clipPath: 'inset(50%)',
+        }}
       >
         {announcement ?? ''}
       </span>

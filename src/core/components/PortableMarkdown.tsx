@@ -197,7 +197,10 @@ export function PortableMarkdown({
   // Open Q4: without the wikilinks prop the render path is byte-identical to
   // the pre-Phase-5 component (no tokenization, no DOM walk).
   const { tokenized, entries } = useMemo(
-    () => (wikilinks ? tokenizeWikilinks(content, wikilinks.resolve) : { tokenized: content, entries: new Map<string, WikilinkEntry>() }),
+    () =>
+      wikilinks
+        ? tokenizeWikilinks(content, wikilinks.resolve)
+        : { tokenized: content, entries: new Map<string, WikilinkEntry>() },
     [content, wikilinks],
   );
   const sanitized = DOMPurify.sanitize(tokenized);
