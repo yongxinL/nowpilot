@@ -42,6 +42,7 @@ import {
 } from '@ant-design/icons';
 import MiniSearch from 'minisearch';
 import { BacklinksPanel } from '@/components/notes/BacklinksPanel';
+import { NoteGraphView } from '@/components/notes/NoteGraphView';
 import {
   WikilinkAutocomplete,
   buildAnchorA11y,
@@ -236,6 +237,26 @@ export function NotesPage() {
       setView('notes');
     },
     [applySelect],
+  );
+
+  // Graph-node navigation (05-08): the SAME single navigation contract — a
+  // node click selects the note + switches to the Notes view. With a dirty
+  // draft the discard Popconfirm (wrapped around the graph pane below) gates
+  // the switch: the pending note id applies only on Discard; Keep editing
+  // stays in the Graph view (05-07 dirty-guard contract).
+  const pendingGraphOpenRef = useRef<string | null>(null);
+  const [graphDiscardPending, setGraphDiscardPending] = useState(false);
+  const handleGraphOpen = useCallback(
+    (noteId: string) => {
+      if (dirty) {
+        pendingGraphOpenRef.current = noteId;
+        setGraphDiscardPending(true);
+        return;
+      }
+      applySelect(noteId);
+      setView('notes');
+    },
+    [applySelect, dirty],
   );
 
   // --- Save pipeline (D-05-15 VERBATIM: parse → resolve → put → note:saved
@@ -647,6 +668,21 @@ export function NotesPage() {
     />
   );
 
+  // Graph pane (05-08): the d3-force view derives edges from allNotes on
+  // demand (D-05-17 — no graph store; the note:saved list refresh re-derives
+  // via the prop change). Loading/error/retry SHARE the list's state — the
+  // copy lives inside NoteGraphView, no duplicate error state here.
+  const graphPane = (
+    <NoteGraphView
+      notes={allNotes}
+      selectedNoteId={selectedId ?? undefined}
+      onOpenNote={handleGraphOpen}
+      loading={listState === 'loading'}
+      error={listState === 'error'}
+      onRetry={() => void loadNotes()}
+    />
+  );
+
   return (
     <ErrorBoundary>
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -697,13 +733,46 @@ export function NotesPage() {
         </div>
 
         {view === 'graph' ? (
-          // NoteGraphView (d3-force) lands in 05-08 — this placeholder keeps
-          // the Graph pane from being a blank; canonical copy only.
+          // NoteGraphView full-pane (UI-SPEC Graph visual contract: padding
+          // lg + colorBgBase — the graph is a full-pane alternative view, not
+          // a widget on the editor). With a dirty draft the pane is wrapped in
+          // the discard Popconfirm (05-07 dirty-guard contract, now covering
+          // the graph-node click): Discard opens the pending note, Keep
+          // editing stays in the Graph view.
           <div
-            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-            data-np-graph-placeholder="1"
+            data-np-graph-pane="1"
+            style={{ flex: 1, minHeight: 0, padding: 24, background: token.colorBgBase }}
           >
-            <Typography.Text type="secondary">{STR.notes.graphEmpty}</Typography.Text>
+            {dirty ? (
+              <Popconfirm
+                title={STR.notes.discard}
+                okButtonProps={{ danger: true }}
+                open={graphDiscardPending}
+                onOpenChange={(open) => {
+                  if (!open) {
+                    pendingGraphOpenRef.current = null;
+                    setGraphDiscardPending(false);
+                  }
+                }}
+                onConfirm={() => {
+                  const pending = pendingGraphOpenRef.current;
+                  pendingGraphOpenRef.current = null;
+                  setGraphDiscardPending(false);
+                  if (pending) {
+                    applySelect(pending);
+                    setView('notes');
+                  }
+                }}
+                onCancel={() => {
+                  pendingGraphOpenRef.current = null;
+                  setGraphDiscardPending(false);
+                }}
+              >
+                {graphPane}
+              </Popconfirm>
+            ) : (
+              graphPane
+            )}
           </div>
         ) : (
           <div style={{ display: 'flex', flex: 1, minHeight: 0, gap: 16, paddingTop: 12 }}>
