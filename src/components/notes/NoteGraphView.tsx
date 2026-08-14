@@ -18,9 +18,11 @@
 // title. Note titles render as SVG <text> content ONLY — never HTML
 // (T-05-28); no dangerouslySetInnerHTML. Tests step ticks synchronously
 // (Pitfall 6 — jsdom never awaits real simulation ticks; no rAF loop).
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Skeleton, Tooltip, Typography, theme } from 'antd';
 import { forceCenter, forceLink, forceManyBody, forceSimulation } from 'd3-force';
+import { debugLog } from '@/core/error/debugLog';
+import { ERROR_CODES } from '@/core/error/errorCodes';
 import { STR } from '@/core/i18n/strings';
 import { edges } from '@/core/notes/NoteGraph';
 import type { Note } from '@/core/storage/NotesDB';
@@ -76,6 +78,36 @@ function truncateTitle(title: string): string {
   return title.length > LABEL_MAX ? `${title.slice(0, LABEL_MAX - 1)}…` : title;
 }
 
+/**
+ * IN-04: deterministic sunflower/phyllotaxis arrangement — the pre-tick render
+ * fallback AND the simulation's initial-seed source for unmatched nodes. Pure
+ * + deterministic (no Date.now, no Math.random — the same input always yields
+ * the same map): golden-angle ~137.5° stepping, radius = sqrt(i) * scale,
+ * centered on the viewBox midpoint and scaled to fit it. Exported so the
+ * IN-04 regressions can assert the added node's pre-tick seed against the very
+ * same pure function the render fallback uses.
+ */
+export function phyllotaxisLayout(
+  nodes: readonly NoteGraphNode[],
+): ReadonlyMap<string, { x: number; y: number }> {
+  const map = new Map<string, { x: number; y: number }>();
+  if (nodes.length === 0) return map;
+  const goldenAngle = Math.PI * (3 - Math.sqrt(5)); // ~137.507764°
+  // Scale so the outermost node (index n-1) stays inside the viewBox with a
+  // label/edge margin.
+  const scale =
+    nodes.length > 1 ? (Math.min(VIEW_W, VIEW_H) / 2 - 48) / Math.sqrt(nodes.length - 1) : 0;
+  nodes.forEach((node, index) => {
+    const radius = Math.sqrt(index) * scale;
+    const theta = index * goldenAngle;
+    map.set(node.id, {
+      x: VIEW_W / 2 + radius * Math.cos(theta),
+      y: VIEW_H / 2 + radius * Math.sin(theta),
+    });
+  });
+  return map;
+}
+
 export function NoteGraphView({
   notes,
   selectedNoteId,
@@ -88,7 +120,20 @@ export function NoteGraphView({
 
   // Derived graph data (D-05-17): edges from NoteGraph, nodes with degree
   // counts (isolated = degree 0 → reduced-opacity fill, UI-SPEC Color).
-  const edgeList = useMemo(() => edges(notes), [notes]);
+  // WR-04 (05-10): a failed derivation logs NOTE_GRAPH_FAILED and falls back to
+  // [] — the pane renders its normal empty/edge-less state, never throws (the
+  // page's error state is driven by listState and unchanged).
+  const edgeList = useMemo(() => {
+    try {
+      return edges(notes);
+    } catch (err) {
+      debugLog(ERROR_CODES.NOTE_GRAPH_FAILED, 'note graph derivation failed', {
+        error: err instanceof Error ? err : undefined,
+        module: 'NoteGraphView',
+      });
+      return [];
+    }
+  }, [notes]);
 
   const nodes = useMemo<NoteGraphNode[]>(() => {
     const degree = new Map<string, number>();
@@ -109,10 +154,45 @@ export function NoteGraphView({
     null,
   );
 
+  // IN-04: mirror of `positions` for the simulation effect. The effect must
+  // NOT depend on `positions` — setPositions fires on EVERY tick with a NEW
+  // Map reference, so adding it to the effect's deps would re-run the effect
+  // on every tick (rebuild sim → tick → setPositions → deps change) in an
+  // infinite loop that hangs the reduced-motion tick-stepping tests. The ref
+  // gives the seeding path the latest layout without widening the deps.
+  const positionsRef = useRef<ReadonlyMap<string, { x: number; y: number }> | null>(null);
+  useEffect(() => {
+    positionsRef.current = positions;
+  }, [positions]);
+
   useEffect(() => {
     // The simulation is NEVER constructed below 3 notes (spec §12, E5) nor
     // while a state surface owns the pane (loading/error).
     if (notes.length < 3 || loading || error) return;
+
+    // IN-04: seed each node's initial x/y BEFORE the simulation is built —
+    // from the previous layout (positionsRef mirror) when the node was already
+    // rendered, else from the deterministic phyllotaxis layout (first mount +
+    // newly added notes; NEVER left to d3's internal phyllotaxis). d3-force's
+    // initializeNodes keeps any non-NaN x/y as the initial position, so a list
+    // refresh (note:saved) no longer re-randomizes the layout. The ref read is
+    // deliberately not a dependency (see positionsRef comment above) — the
+    // effect already re-runs on nodes/edgeList change (the list-refresh case).
+    const previousPositions = positionsRef.current;
+    const phyllotaxis = phyllotaxisLayout(nodes);
+    for (const node of nodes) {
+      const prev = previousPositions?.get(node.id);
+      if (prev) {
+        node.x = prev.x;
+        node.y = prev.y;
+      } else {
+        const ph = phyllotaxis.get(node.id);
+        if (ph) {
+          node.x = ph.x;
+          node.y = ph.y;
+        }
+      }
+    }
 
     const snapshot = (): ReadonlyMap<string, { x: number; y: number }> => {
       const map = new Map<string, { x: number; y: number }>();
@@ -191,6 +271,14 @@ export function NoteGraphView({
     );
   }
 
+  // IN-04: pre-tick render fallback — the first frame renders the deterministic
+  // phyllotaxis layout instead of every node at (0,0). Once the simulation has
+  // produced positions, the real layout wins; on a list refresh the preserved
+  // `positions` map is non-null, so the OLD map renders unmoved for that frame
+  // (the added node renders at origin for one frame — its first real position
+  // comes from the seeded simulation).
+  const displayPositions = positions ?? phyllotaxisLayout(nodes);
+
   return (
     <svg
       data-np-graph-svg="1"
@@ -200,8 +288,8 @@ export function NoteGraphView({
     >
       <g>
         {edgeList.map((edge, index) => {
-          const source = positions?.get(edge.source);
-          const target = positions?.get(edge.target);
+          const source = displayPositions.get(edge.source);
+          const target = displayPositions.get(edge.target);
           return (
             <line
               key={`${edge.source}-${edge.target}-${index}`}
@@ -218,7 +306,7 @@ export function NoteGraphView({
       </g>
       <g>
         {nodes.map((node) => {
-          const position = positions?.get(node.id);
+          const position = displayPositions.get(node.id);
           const isolated = node.degree === 0;
           const fill = node.selected
             ? token.colorPrimary
