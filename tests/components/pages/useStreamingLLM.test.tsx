@@ -24,39 +24,48 @@ import { useWorkspaceStore } from '@/core/workspace/WorkspaceStore';
 import type { PageContext } from '@/core/content/PageContext';
 import type { PromptSection } from '@/core/ai/types';
 import type { AgentTurnOutcome } from '@/types/harness';
+import type { MemoryInjection } from '@/core/memory/types';
 import { FIXED_PREFERENCES } from '../../fixtures/optimizedContext';
 
 // ---------------------------------------------------------------------------
 // Module mocks (the hook's I/O boundaries — the hook itself stays real)
 // ---------------------------------------------------------------------------
 
-const { runAgentTurnMock, routerMock, readPersonaPrefsMock, readTrustPrefsMock, capsTierCalls } =
-  vi.hoisted(() => {
-    const capsTierCalls: string[] = [];
-    const createStageInvocation = vi.fn((input: { tier?: string; maxTokens?: number }) => ({
-      providerId: 'anthropic',
-      model: { modelId: 'claude-3-5-haiku-latest' },
-      jsonMode: 'native',
-      callProviderJsonMode: vi.fn(async () => '{}'),
-      // 04-05 (D-04-04): required field — deterministic fixture window.
-      modelContextWindow: 200_000,
-      ...input,
-    }));
-    const classifyProviderError = vi.fn((e: unknown) => ({
-      code:
-        e instanceof Error && /fetch failed|ECONNREFUSED|network/i.test(e.message)
-          ? 'NETWORK'
-          : 'UNKNOWN',
-      retryable: false,
-    }));
-    return {
-      runAgentTurnMock: vi.fn(),
-      routerMock: { createStageInvocation, classifyProviderError },
-      readPersonaPrefsMock: vi.fn(async () => FIXED_PREFERENCES),
-      readTrustPrefsMock: vi.fn(),
-      capsTierCalls,
-    };
-  });
+const {
+  runAgentTurnMock,
+  routerMock,
+  assembleMemoryMock,
+  readTrustPrefsMock,
+  capsTierCalls,
+} = vi.hoisted(() => {
+  const capsTierCalls: string[] = [];
+  const createStageInvocation = vi.fn((input: { tier?: string; maxTokens?: number }) => ({
+    providerId: 'anthropic',
+    model: { modelId: 'claude-3-5-haiku-latest' },
+    jsonMode: 'native',
+    callProviderJsonMode: vi.fn(async () => '{}'),
+    // 04-05 (D-04-04): required field — deterministic fixture window.
+    modelContextWindow: 200_000,
+    ...input,
+  }));
+  const classifyProviderError = vi.fn((e: unknown) => ({
+    code:
+      e instanceof Error && /fetch failed|ECONNREFUSED|network/i.test(e.message)
+        ? 'NETWORK'
+        : 'UNKNOWN',
+    retryable: false,
+  }));
+  return {
+    runAgentTurnMock: vi.fn(),
+    routerMock: { createStageInvocation, classifyProviderError },
+    // 05-06 (Task 3): the MemoryEngine boundary is mocked (like readPersonaPrefs
+    // was) — the hook calls getMemoryEngine().assemble per stage and passes the
+    // injection DATA; the store/DB behavior is MemoryEngine's own suite.
+    assembleMemoryMock: vi.fn(),
+    readTrustPrefsMock: vi.fn(),
+    capsTierCalls,
+  };
+});
 
 vi.mock('@/core/ai/AgentOrchestrator', () => ({
   runAgentTurn: runAgentTurnMock,
@@ -72,8 +81,12 @@ vi.mock('@/core/ai/ProviderRouter', () => ({
   getProviderRouter: () => routerMock,
 }));
 
-vi.mock('@/core/ai/persona/personaConfig', () => ({
-  readPersonaPrefs: readPersonaPrefsMock,
+// 05-06 (Task 3): the MemoryEngine boundary — the hook imports the
+// getMemoryEngine() singleton factory; the mock replaces the whole module with
+// a controllable assemble. Default injection (empty memories + FIXED_PREFERENCES)
+// is re-established in beforeEach so per-test gating cannot leak.
+vi.mock('@/core/memory/MemoryEngine', () => ({
+  getMemoryEngine: () => ({ assemble: assembleMemoryMock }),
 }));
 
 // 04b-05 (D-4b-09): the trust-accessor boundary is mocked; the optimizer stays
@@ -174,8 +187,15 @@ beforeEach(() => {
         : 'UNKNOWN',
     retryable: false,
   }));
-  readPersonaPrefsMock.mockReset();
-  readPersonaPrefsMock.mockImplementation(async () => FIXED_PREFERENCES);
+  assembleMemoryMock.mockReset();
+  // Default injection: empty memories (no memory section) + FIXED_PREFERENCES
+  // (the deterministic preferences/preferences-section source — the persona
+  // block derives from the SAME prefs, D-05-18).
+  assembleMemoryMock.mockImplementation(async () => ({
+    memories: [],
+    workingMemoryBlock: '',
+    preferences: FIXED_PREFERENCES,
+  }));
   readTrustPrefsMock.mockReset();
   readTrustPrefsMock.mockImplementation(async () => DEFAULT_TRUST_PREFS);
   // 04b-05: a page seeded by one test must never leak into the next — the
@@ -310,7 +330,7 @@ describe('useStreamingLLM — D-04-04 fallback-constant consistency', () => {
 });
 
 describe('useStreamingLLM — drop-in identity + honest terminal (04-06 rewire)', () => {
-  it('drop-in regression: the default-path section bytes equal the pre-04-06 snapshot (D-04-07/P4-8)', async () => {
+  it('drop-in regression: the default-path section bytes equal the canonical Phase-5 pack (D-05-08 slot REAL)', async () => {
     resolveTurn(['ok']);
     const { result } = renderHook(() => useStreamingLLM());
 
@@ -319,11 +339,15 @@ describe('useStreamingLLM — drop-in identity + honest terminal (04-06 rewire)'
     });
 
     const input = runAgentTurnMock.mock.calls[0][0] as AgentTurnInputLike;
-    // Pre-04-06 the hook built exactly [SYSTEM: personaBlock][USER INPUT: trimmed]
-    // via the Phase-3 context-helper; the optimizer's default path (200_000 →
-    // large, non-minimal) is byte-identical — the section bytes prove the
-    // drop-in (prompt-cache stability, D-04-07).
+    // 05-06 (Task 3, D-05-08): the previously-dead preferences slot is now
+    // REAL — the memory engine's FIXED_PREFERENCES inject as compact JSON
+    // (stable:true, cache-eligible); memoryHints [] → NO memory section. The
+    // [SYSTEM] persona block stays byte-stable (same prefs → same block — the
+    // D-05-18 store read replaces readPersonaPrefs with the same value); the
+    // added preferences section is the documented F-5 cache-prefix change (the
+    // A6 tradeoff, not a regression).
     const personaBlock = buildPersonaBlock(resolvePersona(DEFAULT_PERSONA, FIXED_PREFERENCES));
+    const prefsText = JSON.stringify(FIXED_PREFERENCES);
     expect((input.context as { sections: PromptSection[] }).sections).toEqual([
       {
         kind: 'system',
@@ -331,6 +355,13 @@ describe('useStreamingLLM — drop-in identity + honest terminal (04-06 rewire)'
         tokens: estimateTokens(personaBlock),
         stable: true,
         sourceId: 'system',
+      },
+      {
+        kind: 'preferences',
+        text: prefsText,
+        tokens: estimateTokens(prefsText),
+        stable: true,
+        sourceId: 'preferences',
       },
       {
         kind: 'user_input',
@@ -403,7 +434,7 @@ describe('useStreamingLLM — trust-aware page feed (04b-05, D-4b-09)', () => {
     );
   });
 
-  it('no currentPageContext → NO context section (pre-4b drop-in, D-4a-06)', async () => {
+  it('no currentPageContext → NO context section (no-page drop-in, D-4a-06)', async () => {
     resolveTurn(['ok']);
     const { result } = renderHook(() => useStreamingLLM());
 
@@ -414,8 +445,10 @@ describe('useStreamingLLM — trust-aware page feed (04b-05, D-4b-09)', () => {
     const input = runAgentTurnMock.mock.calls[0][0] as AgentTurnInputLike;
     const sections = (input.context as { sections: PromptSection[] }).sections;
     expect(sections.find((s) => s.kind === 'context')).toBeUndefined();
-    // Byte-identical to the pre-4b no-page path: [SYSTEM][USER INPUT] only.
-    expect(sections.map((s) => s.kind)).toEqual(['system', 'user_input']);
+    // 05-06 (D-05-08): the no-page path emits [SYSTEM][PREFERENCES][USER INPUT]
+    // — the preferences slot is REAL (the memory engine always returns prefs);
+    // the memory section stays absent (empty memories). No context section.
+    expect(sections.map((s) => s.kind)).toEqual(['system', 'preferences', 'user_input']);
   });
 
   it('np_trust page:false → NO context section (trust_disabled gate through the REAL optimizer)', async () => {
@@ -455,21 +488,22 @@ describe('useStreamingLLM — 5-state machine', () => {
     resolveTurn(['a']);
     const { result } = renderHook(() => useStreamingLLM());
 
-    // Gate the persona read so the streaming state is observable BEFORE the
-    // turn resolves (the hook sets streaming synchronously at send()).
-    let releasePersona!: (v: typeof FIXED_PREFERENCES) => void;
-    readPersonaPrefsMock.mockImplementationOnce(
-      () => new Promise((resolve) => (releasePersona = resolve)),
+    // Gate the per-stage memory assembly so the streaming state is observable
+    // BEFORE the turn resolves (the hook sets streaming synchronously at
+    // send(); the assembly is the first async boundary after that).
+    let releaseMemory!: (v: MemoryInjection) => void;
+    assembleMemoryMock.mockImplementationOnce(
+      () => new Promise((resolve) => (releaseMemory = resolve)),
     );
     let sendPromise: Promise<void> | undefined;
     await act(async () => {
       sendPromise = result.current.send('hi');
     });
-    // The hook set streaming synchronously BEFORE awaiting the persona read.
+    // The hook set streaming synchronously BEFORE awaiting the memory assembly.
     expect(result.current.state.state).toBe('streaming');
 
     await act(async () => {
-      releasePersona(FIXED_PREFERENCES);
+      releaseMemory({ memories: [], workingMemoryBlock: '', preferences: FIXED_PREFERENCES });
       await sendPromise;
     });
     expect(result.current.state.state).toBe('completed');

@@ -22,9 +22,11 @@ import { ERROR_CODES } from '@/core/error/errorCodes';
 import { estimateTokens } from '@/core/context/TokenBudget';
 import type { ModelContextTier } from '@/core/context/ModelContextTier';
 import type { MemoryDBSchema, MemoryMessage } from '@/core/storage/MemoryDB';
+import { openMemoryDB } from '@/core/storage/MemoryDB';
 import type { WorkingMemory } from '@/types/harness';
-import { DEFAULT_USER_PREFERENCES } from './PreferenceMemoryStore';
-import { WORKING_MEMORY_RESOURCE_ID } from './UserMemoryStore';
+import * as UserMemoryStore from './UserMemoryStore';
+import * as PreferenceMemoryStore from './PreferenceMemoryStore';
+import * as ConversationMemoryStore from './ConversationMemoryStore';
 import { scoreMemoryFact } from './MemoryScorer';
 import type { MemoryInjection, RetrievedMemory, UserMemoryFact, UserPreferences } from './types';
 
@@ -206,7 +208,7 @@ export async function assemble(
   }
 
   // 4. Preferences — np_persona source for the optimizer's preferences section.
-  let preferences: UserPreferences = DEFAULT_USER_PREFERENCES;
+  let preferences: UserPreferences = PreferenceMemoryStore.DEFAULT_USER_PREFERENCES;
   try {
     preferences = await deps.prefs.read();
   } catch (err) {
@@ -288,7 +290,7 @@ export async function updateWorkingMemory(
   try {
     const current =
       (await deps.facts.readWorkingMemory(db)) ??
-      deps.facts.initWorkingMemory(WORKING_MEMORY_RESOURCE_ID);
+      deps.facts.initWorkingMemory(UserMemoryStore.WORKING_MEMORY_RESOURCE_ID);
     const updated = deps.facts.updateWorkingMemory(current, patch);
     await deps.facts.putWorkingMemory(db, updated);
     notifyListeners({ kind: 'working-memory' });
@@ -298,7 +300,7 @@ export async function updateWorkingMemory(
       error: err instanceof Error ? err : undefined,
       module: 'MemoryEngine',
     });
-    return deps.facts.initWorkingMemory(WORKING_MEMORY_RESOURCE_ID);
+    return deps.facts.initWorkingMemory(UserMemoryStore.WORKING_MEMORY_RESOURCE_ID);
   }
 }
 
@@ -324,4 +326,57 @@ export async function addFacts(
       extra: { factCount: facts.length },
     });
   }
+}
+
+/**
+ * 05-06 (planner discretion — 05-04 shipped structural DI with NO singleton;
+ * the surface-facing factory the 05-06 hook imports is the sanctioned seam):
+ * the assemble()-only surface bound to the REAL store functions + the MemoryDB
+ * handle. The hook never constructs stores inline (single-writer D-05-02 — no
+ * store imports in useStreamingLLM); this factory wires the production deps
+ * ONCE. assemble opens the DB lazily per call; a closed/missing DB degrades to
+ * safe empties inside assemble (the never-throws contract holds).
+ */
+export interface MemoryEngineSurface {
+  assemble(opts: {
+    query: string;
+    conversationId: string;
+    tier: ModelContextTier;
+  }): Promise<MemoryInjection>;
+}
+
+/** Module-level lazy singleton (the module already owns the listener Set). */
+let memoryEngineSurface: MemoryEngineSurface | null = null;
+
+/**
+ * D-05-02/05-06: get the production memory-engine surface. Real store functions
+ * bound to openMemoryDB; assemble() is the only exposed op (surfaces never talk
+ * to the individual stores — R-4). Tests that exercise the hook mock this
+ * boundary; MemoryEngine's own suite keeps testing assemble() directly.
+ */
+export function getMemoryEngine(): MemoryEngineSurface {
+  if (memoryEngineSurface === null) {
+    const deps: MemoryEngineDeps = {
+      facts: {
+        retrieve: UserMemoryStore.retrieve,
+        readWorkingMemory: UserMemoryStore.readWorkingMemory,
+        initWorkingMemory: UserMemoryStore.initWorkingMemory,
+        updateWorkingMemory: UserMemoryStore.updateWorkingMemory,
+        putWorkingMemory: UserMemoryStore.putWorkingMemory,
+        putFact: UserMemoryStore.putFact,
+      },
+      prefs: { read: PreferenceMemoryStore.read },
+      conversation: {
+        appendTurn: ConversationMemoryStore.appendTurn,
+        summariseIfNeeded: ConversationMemoryStore.summariseIfNeeded,
+      },
+    };
+    memoryEngineSurface = {
+      assemble: async ({ query, conversationId, tier }) => {
+        const db = await openMemoryDB();
+        return assemble(db, deps, { query, conversationId, tier });
+      },
+    };
+  }
+  return memoryEngineSurface;
 }

@@ -28,12 +28,14 @@ import type { StageResolver } from '@/core/ai/AgentOrchestrator';
 import { getProviderRouter } from '@/core/ai/ProviderRouter';
 import { RENDERER_MAX_TOKENS } from '@/core/ai/RendererService';
 import { optimize, isContextTooLargeError } from '@/core/context/ContextOptimizer';
+import { classifyModelContext } from '@/core/context/ModelContextTier';
 import { privacyModeFromPrefs } from '@/core/ai/TierResolver';
 import type { ModelTier } from '@/core/ai/TierResolver';
 import { buildPersonaBlock, resolvePersona } from '@/core/ai/persona/PersonaInjector';
 import { DEFAULT_PERSONA } from '@/core/ai/persona/PersonaProfile';
-import { readPersonaPrefs } from '@/core/ai/persona/personaConfig';
 import { readTrustPrefs } from '@/core/preferences/trustConfig';
+import { getMemoryEngine } from '@/core/memory/MemoryEngine';
+import type { UserPreferences } from '@/core/memory/types';
 import { getProviderRegistry } from '@/core/ai/ProviderRegistry';
 import { ERROR_CODES } from '@/core/error/errorCodes';
 import { debugLog } from '@/core/error/debugLog';
@@ -148,11 +150,6 @@ export function useStreamingLLM(): UseStreamingLLMResult {
       lastUserInputRef.current = trimmed;
       setState({ state: 'streaming', operationId });
       try {
-        // D-02 / D-09: the persona pipeline (np_persona → schema gate →
-        // DEFAULT_PERSONA fallback) feeds the optimizer's byte-stable block.
-        const prefs = await readPersonaPrefs();
-        const persona = resolvePersona(DEFAULT_PERSONA, prefs);
-        const personaBlock = buildPersonaBlock(persona);
         // 04b-05 (D-4b-09): the trust-aware page feed — the hook is the ONLY
         // chrome-boundary input resolver (page + prefs, Pitfall 5); the
         // optimizer stays pure. readTrustPrefs is Zod-gated (never throws); the
@@ -164,6 +161,11 @@ export function useStreamingLLM(): UseStreamingLLMResult {
         const currentPage = useWorkspaceStore.getState().workspace.currentPageContext;
         // 03-05 seam: per-stage invocations (planner haiku 256 / renderer flash
         // 512 — §1.2) from the Router's createStageInvocation.
+        // 05-06 (D-05-18): prefs is late-bound — it is derived from the PLANNER
+        // memory injection below (the SAME UserPreferences the preferences
+        // section injects); privacyModeFromPrefs(prefs) reads it at closure
+        // call time, so runAgentTurn's invocations see the store value.
+        let prefs: UserPreferences | undefined;
         const invocation: StageResolver = (stage) =>
           getProviderRouter().createStageInvocation({
             operationId,
@@ -181,6 +183,26 @@ export function useStreamingLLM(): UseStreamingLLMResult {
         // src/core/prompts/index.ts (04-04).
         const plannerInv = invocation('planner');
         const rendererInv = invocation('renderer');
+        // 05-06 (Open Q3/Pitfall 5): per-stage memory assembly — the tier is
+        // DERIVED from the resolved StageInvocation window (T-04-22) and the
+        // §3.4 budgets (top-5/top-3-tiny/≤1000 tokens/working-memory-first)
+        // are enforced INSIDE MemoryEngine.assemble (05-04). Golden Rule 3:
+        // the hook calls the core builder and passes DATA — it never assembles
+        // the memory/preferences section text (ContextPack owns that).
+        const plannerTier = classifyModelContext(plannerInv.modelContextWindow);
+        const rendererTier = classifyModelContext(rendererInv.modelContextWindow);
+        const assembleMemory = async (tier: ModelContextTier) =>
+          getMemoryEngine().assemble({ query: trimmed, conversationId: 'default', tier }); // A5: 'default' until Phase 7
+        const [plannerInjection, rendererInjection] = await Promise.all([
+          assembleMemory(plannerTier),
+          assembleMemory(rendererTier),
+        ]);
+        // D-05-18 (read path stays compatible): the persona block now reads the
+        // SAME UserPreferences the preferences section injects — the store read
+        // replaces the Phase-3 readPersonaPrefs() seam.
+        prefs = plannerInjection.preferences;
+        const persona = resolvePersona(DEFAULT_PERSONA, prefs);
+        const personaBlock = buildPersonaBlock(persona);
         const optimizerBase = {
           operationId,
           userInput: trimmed,
@@ -189,8 +211,12 @@ export function useStreamingLLM(): UseStreamingLLMResult {
           workspaceId,
           activeSurface,
           selectedToolSchemas: [],
-          memoryHints: [],
-          preferences: prefs,
+          // 05-06 (Open Q6): the trustPrefs.memory gate — memory disabled →
+          // memoryHints dropped → no memory section in the OptimizedContext
+          // (mirrors the 04b page gate; the optimizer stays pure).
+          memoryHints: trustPrefs.memory ? plannerInjection.memories : [],
+          workingMemoryBlock: trustPrefs.memory ? plannerInjection.workingMemoryBlock : undefined,
+          preferences: plannerInjection.preferences,
           // 04b-05 (D-4b-09): the trust-aware feed — pageContext (undefined →
           // no context section, byte-identical pre-4b behavior) + trustPrefs
           // (np_trust) flow as DATA into the trust-wired optimizer (04b-04).
@@ -205,6 +231,9 @@ export function useStreamingLLM(): UseStreamingLLMResult {
         });
         const rendererCtx = optimize({
           ...optimizerBase,
+          // per-stage budgets: the renderer rides ITS OWN injection's memories
+          // (preferences are stage-independent — planner's stays for both)
+          memoryHints: trustPrefs.memory ? rendererInjection.memories : [],
           model: rendererInv.model.modelId,
           modelContextWindow: rendererInv.modelContextWindow,
           stage: 'renderer',
