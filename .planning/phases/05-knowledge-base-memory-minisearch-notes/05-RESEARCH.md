@@ -506,7 +506,9 @@ export function resolveLinks(
 | A5 | `conversationId: 'default'` stays the hook value until Phase 7 (no conversation store) — ConversationMemoryStore still implements per-conversation keying | Memory injection | If a conversation selector arrives mid-phase, the hook wiring changes — store design unaffected |
 | A6 | The memory `PromptSection` (stable:true) changing per turn breaks the anthropic cache prefix only when memory changes — acceptable, F-5 intent preserved | Memory section | If per-turn memory churn must not invalidate the cache, memory would need stable:false — contradicts ContextPack's documented F-5 mapping (do not change without an ADR) |
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+_All eight recommendations below were implemented during 05-01..05-08 (see the per-question summary lines and the 05-08 SUMMARY for the resolution evidence); no open item remains unresolved at gap closure._
 
 1. **np_persona storage shape — PersonaProfile vs UserPreferences (D-05-18)**
    - What we know: np_persona currently stores a PersonaProfile (Phase-3 schema); UserPreferences (with personaId/personaOverrides) is the Phase-5 injected shape; `readPersona()` has no external callers (verified).
