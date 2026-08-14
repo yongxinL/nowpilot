@@ -48,11 +48,11 @@ export function BacklinksPanel({ noteId, notes, onOpenNote }: BacklinksPanelProp
             style={{ backgroundColor: token.colorPrimary }}
           />
         )}
-        <Tooltip title={expanded ? STR.notes.backlinks : STR.notes.backlinks}>
+        <Tooltip title={expanded ? STR.notes.backlinksCollapse : STR.notes.backlinksExpand}>
           <Button
             type="text"
             size="small"
-            aria-label={STR.notes.backlinks}
+            aria-label={expanded ? STR.notes.backlinksCollapse : STR.notes.backlinksExpand}
             aria-expanded={expanded}
             icon={expanded ? <CaretDownOutlined /> : <CaretRightOutlined />}
             onClick={() => setExpanded((e) => !e)}

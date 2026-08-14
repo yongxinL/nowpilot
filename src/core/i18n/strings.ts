@@ -92,6 +92,10 @@ export const STR = {
     deleteFailed: "Couldn't delete the note. [Retry]",
     backlinks: 'Backlinks',
     backlinksEmpty: 'No backlinks yet.',
+    // 05-10 (IN-01): state-distinct collapse/expand tooltip + aria-label copy —
+    // the collapse control must announce WHAT it will do (expanded vs collapsed).
+    backlinksCollapse: 'Collapse backlinks',
+    backlinksExpand: 'Expand backlinks',
     graphLoading: 'Building graph...',
     graphEmpty: 'Create at least 3 notes to see the graph',
     graphFailed: 'Failed to render graph. [Retry]',

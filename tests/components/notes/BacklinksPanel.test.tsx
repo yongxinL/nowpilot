@@ -85,6 +85,24 @@ describe('BacklinksPanel — derived in-links (D-05-17)', () => {
     expect(onOpen).toHaveBeenCalledTimes(1);
     expect(onOpen).toHaveBeenCalledWith('alpha');
   });
+
+  it('collapse tooltip distinguishes state (IN-01): expanded → Collapse, collapsed → Expand', () => {
+    const onOpen = vi.fn();
+    const view = render(<BacklinksPanel noteId="cur" notes={FIXTURE} onOpenNote={onOpen} />);
+    // Expanded by default: the collapse control announces collapse.
+    const button = screen.getByRole('button', { name: STR.notes.backlinksCollapse });
+    expect(button.getAttribute('aria-expanded')).toBe('true');
+    // The section's own label stays STR.notes.backlinks (unchanged contract).
+    expect(screen.getByLabelText(STR.notes.backlinks)).toBeTruthy();
+    // Click to collapse → the control now announces expand, and the rows vanish.
+    fireEvent.click(button);
+    expect(screen.getByRole('button', { name: STR.notes.backlinksExpand })).toBeTruthy();
+    expect(document.querySelectorAll('[data-np-backlink-row]')).toHaveLength(0);
+    // Collapse is not a removal — re-expanding restores the rows.
+    fireEvent.click(screen.getByRole('button', { name: STR.notes.backlinksExpand }));
+    expect(document.querySelectorAll('[data-np-backlink-row]')).toHaveLength(1);
+    expect(view.container.textContent).toContain('Alpha');
+  });
 });
 
 describe('PortableMarkdown — wikilinks prop (Open Q4 / T-05-24)', () => {
