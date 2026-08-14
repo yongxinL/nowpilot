@@ -206,9 +206,18 @@ describe('optimizer pipeline — §2.3 shape determinism (D-02, D-04-08)', () =>
   it('emits PromptSection[] per @/core/ai/types — system stable:true, user_input stable:false', () => {
     const ctx = optimize({ ...baseInput, userInput: 'Summarize the current page.' });
 
-    expect(ctx.sections.map((s) => s.kind)).toEqual(['system', 'tool_schemas', 'user_input']);
+    // 05-06 (D-05-08): the previously-dead preferences slot is now REAL — the
+    // optimizer threads FIXED_PREFERENCES as compact JSON (stable:true,
+    // cache-eligible); memoryHints [] → no memory section. The canonical pack
+    // is [SYSTEM][TOOL SCHEMAS][PREFERENCES][USER INPUT].
+    expect(ctx.sections.map((s) => s.kind)).toEqual([
+      'system',
+      'tool_schemas',
+      'preferences',
+      'user_input',
+    ]);
     const system = ctx.sections[0];
-    const userInput = ctx.sections[2];
+    const userInput = ctx.sections[3];
     expect(system.kind).toBe('system');
     expect(system.stable).toBe(true); // cache-eligible — the byte-stable persona block
     expect(system.text).toBe(baseInput.personaBlock);
@@ -227,7 +236,9 @@ describe('optimizer pipeline — §2.3 shape determinism (D-02, D-04-08)', () =>
 
   it('omits the tool_schemas section when no refs are given (deterministic)', () => {
     const ctx = optimize({ ...baseInput, selectedToolSchemas: [], userInput: 'Hi there.' });
-    expect(ctx.sections.map((s) => s.kind)).toEqual(['system', 'user_input']);
+    // 05-06 (D-05-08): the REAL preferences slot rides between system and
+    // user_input even when tool schemas are omitted.
+    expect(ctx.sections.map((s) => s.kind)).toEqual(['system', 'preferences', 'user_input']);
   });
 
   it('provenance mirrors the sections — totalTokens = sum, truncated false (D-04-17)', () => {
