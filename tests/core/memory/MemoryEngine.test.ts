@@ -33,6 +33,7 @@ import {
   MAX_MEMORIES_TINY,
   addFacts,
   assemble,
+  getMemoryEngine,
   recordTurn,
   subscribe,
   summariseIfNeeded,
@@ -46,6 +47,7 @@ import * as PreferenceMemoryStore from '@/core/memory/PreferenceMemoryStore';
 import { DEFAULT_USER_PREFERENCES } from '@/core/memory/PreferenceMemoryStore';
 import { openMemoryDB, type MemoryDBSchema } from '@/core/storage/MemoryDB';
 import { estimateTokens } from '@/core/context/TokenBudget';
+import { buildMemorySectionText } from '@/core/context/ContextPack';
 import { scoreMemoryFact } from '@/core/memory/MemoryScorer';
 import { WORKING_MEMORY_TEMPLATE } from '@/types/harness';
 import type { UserMemoryFact, UserPreferences } from '@/core/memory/types';
@@ -411,5 +413,137 @@ describe('MemoryEngine — never throws (closed db)', () => {
       workingMemoryBlock: '',
       preferences: DEFAULT_USER_PREFERENCES,
     });
+  });
+});
+
+describe('MemoryEngine — WR-01 combined-section budget (§3.6 WMB counts)', () => {
+  /** Build a WorkingMemory whose markdown is ~targetTokens via ASCII filler
+   *  (estimateTokens = ceil(chars/4) — the only counter, Pitfall 1). */
+  function wmBlock(targetTokens: number): {
+    resourceId: string;
+    markdown: string;
+    tokens: number;
+    updatedAt: number;
+  } {
+    const filler = 'filler '.repeat(Math.max(0, Math.ceil(targetTokens * 4 / 7)));
+    const markdown = `${WORKING_MEMORY_TEMPLATE}\n\n${filler}`.trim();
+    return { resourceId: 'user', markdown, tokens: estimateTokens(markdown), updatedAt: NOW_MS };
+  }
+
+  /** 5 large facts (~250 tokens each) — 1000 ASCII chars = 250 tokens. */
+  function largeFacts(): UserMemoryFact[] {
+    const longContent = 'x'.repeat(1000);
+    return ['f-1', 'f-2', 'f-3', 'f-4', 'f-5'].map((id) =>
+      makeFact(id, { content: longContent, useCount: 20 }),
+    );
+  }
+
+  it('keeps the packed section (WMB + facts) ≤ MAX_MEMORY_TOKENS with whole facts dropped from the end', async () => {
+    const block = wmBlock(300);
+    const facts = largeFacts();
+    const deps: MemoryEngineDeps = {
+      facts: makeFakeFacts({
+        readWorkingMemory: async () => block,
+        retrieve: async () => facts,
+      }),
+      prefs: { read: async () => DEFAULT_USER_PREFERENCES },
+      conversation: { appendTurn: async () => {}, summariseIfNeeded: async () => {} },
+    };
+
+    const result = await assemble(DB, deps, {
+      query: 'alpha',
+      conversationId: 'c-1',
+      tier: 'medium',
+      nowMs: NOW_MS,
+    });
+
+    const packed = buildMemorySectionText({
+      memoryHints: result.memories,
+      workingMemoryBlock: result.workingMemoryBlock,
+    });
+    expect(estimateTokens(packed ?? '')).toBeLessThanOrEqual(MAX_MEMORY_TOKENS);
+    // Whole facts were dropped from the end (D-04-13): the survivors are a
+    // prefix of the scored list and every content string is INTACT.
+    expect(result.memories.length).toBeGreaterThan(0);
+    for (const m of result.memories) {
+      expect(m.content).toBe('x'.repeat(1000));
+    }
+  });
+
+  it('keeps the O.10-valid block byte-identical — facts degrade first, never the block', async () => {
+    const block = wmBlock(300);
+    const deps: MemoryEngineDeps = {
+      facts: makeFakeFacts({
+        readWorkingMemory: async () => block,
+        retrieve: async () => largeFacts(),
+      }),
+      prefs: { read: async () => DEFAULT_USER_PREFERENCES },
+      conversation: { appendTurn: async () => {}, summariseIfNeeded: async () => {} },
+    };
+
+    const result = await assemble(DB, deps, {
+      query: 'alpha',
+      conversationId: 'c-1',
+      tier: 'medium',
+      nowMs: NOW_MS,
+    });
+
+    // The O.10-valid block is kept WHOLE — facts were dropped to fit (the
+    // normal degradation order is facts-first; block truncation is the last
+    // resort that never fires for a ≤300 block).
+    expect(result.workingMemoryBlock).toBe(block.markdown);
+  });
+
+  it('truncates a corrupt oversized block as the LAST resort (facts at 0, block alone over the cap)', async () => {
+    const corrupt = wmBlock(1400); // >1000 tokens — outside the O.10 ≤300 write path
+    const deps: MemoryEngineDeps = {
+      facts: makeFakeFacts({
+        readWorkingMemory: async () => corrupt,
+        retrieve: async () => largeFacts(),
+      }),
+      prefs: { read: async () => DEFAULT_USER_PREFERENCES },
+      conversation: { appendTurn: async () => {}, summariseIfNeeded: async () => {} },
+    };
+
+    const result = await assemble(DB, deps, {
+      query: 'alpha',
+      conversationId: 'c-1',
+      tier: 'medium',
+      nowMs: NOW_MS,
+    });
+
+    // No fact can fit beside the corrupt block — memories degrades to empty,
+    // and the ≤1000-token truth still holds via the §3.6 last-resort block
+    // truncation (the drop loop never underflowed past empty).
+    expect(result.memories).toEqual([]);
+    const packed = buildMemorySectionText({
+      memoryHints: result.memories,
+      workingMemoryBlock: result.workingMemoryBlock,
+    });
+    expect(estimateTokens(packed ?? '')).toBeLessThanOrEqual(MAX_MEMORY_TOKENS);
+    expect(result.workingMemoryBlock.length).toBeLessThan(corrupt.markdown.length);
+  });
+});
+
+describe('MemoryEngine — WR-06 single IndexedDB connection (getMemoryEngine)', () => {
+  it('opens MemoryDB exactly once across two assemble calls', async () => {
+    vi.resetModules();
+    const MemoryDB = await import('@/core/storage/MemoryDB');
+    const MemoryEngine = await import('@/core/memory/MemoryEngine');
+    const openSpy = vi.spyOn(MemoryDB, 'openMemoryDB');
+
+    // The factory is lazy — the spy above is installed BEFORE the first
+    // getMemoryEngine() call so every open runs through it.
+    const surface = MemoryEngine.getMemoryEngine();
+    const first = await surface.assemble({ query: 'alpha', conversationId: 'c-1', tier: 'medium' });
+    const second = await surface.assemble({
+      query: 'beta',
+      conversationId: 'c-1',
+      tier: 'medium',
+    });
+
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    expect(first.memories).toBeDefined();
+    expect(second.memories).toBeDefined();
   });
 });

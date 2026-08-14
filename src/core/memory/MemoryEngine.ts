@@ -6,20 +6,28 @@
 // through structural dependency injection so deterministic tests need no
 // singletons or module-level store imports.
 //
-// assemble() enforces the §3.4 injection budgets (D-05-06/GR-6): top-5 (top-3
-// tiny), running total ≤ MAX_MEMORY_TOKENS (1000) via estimateTokens — the
-// ONLY token counter (Pitfall 1) — with WHOLE-ITEM drops from the end, never a
-// text.slice on a fact's content (D-04-13/D-05-06). The working-memory block
-// (§3.6, ≤300 tokens, O.10-written) is injected FIRST (D-05-09) so it can
-// never crowd out retrieved facts. No secrets ever reach the injection:
-// facts are redacted at write time (O.10, TraceRedactor) and the extractor
-// prompt forbids them (R-10). Writes dispatch to the stores and never throw
-// (GR-9 — every catch calls debugLog with a canonical STORE_READ/STORE_WRITE
-// code; retrieval failures reuse STORE_READ, no new C.2 codes).
+// assemble() enforces the §3.4/§3.6 injection budgets (D-05-06/GR-6): top-5
+// (top-3 tiny), combined memory section (working-memory block + fact lines +
+// separators) ≤ MAX_MEMORY_TOKENS (1000) measured against the REAL packed
+// section via estimateTokens — the ONLY token counter (Pitfall 1) — with
+// WHOLE-ITEM fact drops from the end, never a text.slice on a fact's content
+// (D-04-13/D-05-06). The working-memory block (§3.6, ≤300 tokens, O.10-written)
+// is injected FIRST (D-05-09) so it can never crowd out retrieved facts; the
+// §3.6 truncate-the-block-before-dropping-facts order is honored ONLY as a
+// last resort (an O.10-valid ≤300 block never reaches it — the normal
+// degradation stays facts-first whole-item drops; the truncation exists so the
+// ≤1000-token truth holds unconditionally against a corrupt >1000-token block).
+// No secrets ever reach the injection: facts are redacted at write time (O.10,
+// TraceRedactor) and the extractor prompt forbids them (R-10). Writes dispatch
+// to the stores and never throw (GR-9 — every catch calls debugLog with a
+// canonical STORE_READ/STORE_WRITE code; retrieval failures at THIS
+// orchestration boundary log ERROR_CODES.MEMORY_RETRIEVAL_FAILED — the
+// idb-level failure is already logged inside the store with STORE_READ).
 import type { IDBPDatabase } from 'idb';
 import { debugLog } from '@/core/error/debugLog';
 import { ERROR_CODES } from '@/core/error/errorCodes';
 import { estimateTokens } from '@/core/context/TokenBudget';
+import { buildMemorySectionText } from '@/core/context/ContextPack';
 import type { ModelContextTier } from '@/core/context/ModelContextTier';
 import type { MemoryDBSchema, MemoryMessage } from '@/core/storage/MemoryDB';
 import { openMemoryDB } from '@/core/storage/MemoryDB';
@@ -182,31 +190,47 @@ export async function assemble(
       score: scoreMemoryFact(fact, terms, nowMs),
     }));
   } catch (err) {
-    debugLog(ERROR_CODES.STORE_READ, 'memory retrieval failed during assemble', {
+    debugLog(ERROR_CODES.MEMORY_RETRIEVAL_FAILED, 'memory retrieval failed during assemble', {
       error: err instanceof Error ? err : undefined,
       module: 'MemoryEngine',
       extra: { conversationId: opts.conversationId },
     });
   }
 
-  // 3. Budgets (D-05-06/GR-6): top-k by tier, then the ≤1000-token running cap
-  //    with WHOLE-ITEM drops from the end — never a mid-structure slice.
+  // 3. Budgets (D-05-06/GR-6, WR-01): top-k by tier, then the ≤1000-token cap
+  //    measured against the REAL packed memory section (working-memory block +
+  //    fact lines + separators via buildMemorySectionText — the only honest
+  //    token measurement, §3.6 counts the block in the memory budget) with
+  //    WHOLE-ITEM fact drops from the end — never a mid-structure slice
+  //    (D-04-13). estimateTokens is the ONLY counter (Pitfall 1).
   const maxMemories = opts.tier === 'tiny' ? MAX_MEMORIES_TINY : MAX_MEMORIES;
   const memories: RetrievedMemory[] = [];
-  let totalTokens = 0;
+  const packedTokens = (hints: readonly RetrievedMemory[]): number =>
+    estimateTokens(
+      buildMemorySectionText({ memoryHints: hints, workingMemoryBlock }) ?? '',
+    );
   for (const m of scored) {
     if (memories.length >= maxMemories) break;
-    const tokens = estimateTokens(m.content);
-    if (memories.length > 0 && totalTokens + tokens > MAX_MEMORY_TOKENS) break;
+    if (memories.length > 0 && packedTokens([...memories, m]) > MAX_MEMORY_TOKENS) break;
     memories.push(m);
-    totalTokens += tokens;
   }
   // Whole-item drop from the END while over the cap (a single oversized fact
-  // degrades to empty, never to a truncated fragment — D-05-06 ladder).
-  while (totalTokens > MAX_MEMORY_TOKENS && memories.length > 0) {
-    const dropped = memories.pop();
-    if (dropped === undefined) break;
-    totalTokens -= estimateTokens(dropped.content);
+  // degrades to empty, never to a truncated fragment — D-05-06 ladder). The
+  // `memories.length > 0` guard is RETAINED so a corrupt oversized block can
+  // never drive the loop past empty and underflow the slice.
+  while (packedTokens(memories) > MAX_MEMORY_TOKENS && memories.length > 0) {
+    memories.pop();
+  }
+  // §3.6 LAST RESORT — truncate the working-memory block BEFORE dropping more
+  // retrieved facts when the block alone exceeds the cap (a corrupt
+  // >1000-token block outside the O.10 ≤300 sanctioned write path): facts are
+  // already gone, so the only lever left is the block. An O.10-valid ≤300
+  // block never reaches this branch — the normal degradation is facts-first
+  // whole-item drops (D-04-13). estimateTokens stays the only counter.
+  if (memories.length === 0 && packedTokens([]) > MAX_MEMORY_TOKENS) {
+    while (packedTokens([]) > MAX_MEMORY_TOKENS && workingMemoryBlock.length > 0) {
+      workingMemoryBlock = workingMemoryBlock.slice(0, Math.ceil(workingMemoryBlock.length * 0.75));
+    }
   }
 
   // 4. Preferences — np_persona source for the optimizer's preferences section.
@@ -350,6 +374,23 @@ export interface MemoryEngineSurface {
 /** Module-level lazy singleton (the module already owns the listener Set). */
 let memoryEngineSurface: MemoryEngineSurface | null = null;
 
+// WR-06: the single IndexedDB connection held across assemble calls. The open
+// promise is created once per factory lifetime and reused; a rejection resets
+// the holder so the NEXT call self-heals with a fresh open (assemble's
+// never-throws contract still degrades a failed open to safe empties).
+let memoryDbPromise: Promise<IDBPDatabase<MemoryDBSchema>> | null = null;
+
+/** Open MemoryDB once and reuse the connection (rejection self-heals). */
+function getMemoryDb(): Promise<IDBPDatabase<MemoryDBSchema>> {
+  if (memoryDbPromise === null) {
+    memoryDbPromise = openMemoryDB().catch((err) => {
+      memoryDbPromise = null;
+      throw err;
+    });
+  }
+  return memoryDbPromise;
+}
+
 /**
  * D-05-02/05-06: get the production memory-engine surface. Real store functions
  * bound to openMemoryDB; assemble() is the only exposed op (surfaces never talk
@@ -375,7 +416,7 @@ export function getMemoryEngine(): MemoryEngineSurface {
     };
     memoryEngineSurface = {
       assemble: async ({ query, conversationId, tier }) => {
-        const db = await openMemoryDB();
+        const db = await getMemoryDb();
         return assemble(db, deps, { query, conversationId, tier });
       },
     };
