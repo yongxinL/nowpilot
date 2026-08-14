@@ -2,8 +2,9 @@
 // + Appendix M.1 (lines 5868-5924, adapted to the 01-06 plan contract) + D-18.
 // The single source of truth for cross-surface workspace state. Canonical
 // durability is a storage ADAPTER that serializes ONLY the D-18 active fields
-// (workspaceId / conversationId / activeSurface / openedStandaloneTabId) plus
-// version / updatedAt to chrome.storage.local key np_workspace — deliberately NOT
+// (workspaceId / conversationId / activeSurface / openedStandaloneTabId /
+// selectedNotes) plus version / updatedAt to chrome.storage.local key
+// np_workspace — deliberately NOT
 // zustand's storage middleware (Pitfall 7: storage middleware writes localStorage,
 // which does not cross surfaces). chrome.storage.onChanged propagates foreign-surface
 // writes with version-LWW adoption (T-1-13: stored values are schema-validated
@@ -53,6 +54,7 @@ const ACTIVE_FIELDS = [
   'conversationId',
   'activeSurface',
   'openedStandaloneTabId',
+  'selectedNotes',
   'version',
   'updatedAt',
 ] as const;
@@ -107,6 +109,12 @@ export function sanitizeStored(value: unknown): Partial<WorkspaceState> | null {
   };
   if (typeof v.openedStandaloneTabId === 'number' && Number.isInteger(v.openedStandaloneTabId)) {
     out.openedStandaloneTabId = v.openedStandaloneTabId;
+  }
+  // CR-01 (T-1-13): selectedNotes merges only as an array of strings — a
+  // malformed stored value (non-array or non-string members) is dropped and
+  // degrades to the [] default, exactly like the openedStandaloneTabId guard.
+  if (Array.isArray(v.selectedNotes) && v.selectedNotes.every((id) => typeof id === 'string')) {
+    out.selectedNotes = v.selectedNotes;
   }
   return out;
 }

@@ -234,4 +234,55 @@ describe('WorkspaceStore', () => {
     expect(ws.activeSurface).toBe('sidepanel');
     expect(useWorkspaceStore.getState().isReady).toBe(true);
   });
+
+  it('star toggles persist through np_workspace (CR-01)', async () => {
+    await useWorkspaceStore.getState().init();
+    useWorkspaceStore.getState().toggleSelectedNote('note-a');
+
+    // Journaled writes are async (`void journaledUpdateWorkspace`) — wait until
+    // the stored np_workspace payload actually carries the star set.
+    await vi.waitFor(async () => {
+      const stored = (await fakeBrowser.storage.local.get(NP_WORKSPACE_KEY)) as Record<
+        string,
+        { selectedNotes?: string[] }
+      >;
+      expect(stored.np_workspace.selectedNotes).toEqual(['note-a']);
+    });
+
+    // Reload simulation: a fresh init must hydrate the star set from storage.
+    resetStore();
+    await useWorkspaceStore.getState().init();
+    expect(useWorkspaceStore.getState().workspace.selectedNotes).toContain('note-a');
+  });
+
+  it('malformed selectedNotes in storage is never merged (T-1-13)', async () => {
+    // Non-array shape — dropped.
+    await fakeBrowser.storage.local.set({
+      np_workspace: {
+        workspaceId: 'ws-malformed-1',
+        conversationId: 'conv-malformed-1',
+        activeSurface: 'sidepanel',
+        version: 3,
+        updatedAt: 3000,
+        selectedNotes: 'nope',
+      },
+    });
+    await useWorkspaceStore.getState().init();
+    expect(useWorkspaceStore.getState().workspace.selectedNotes).toEqual([]);
+
+    // Array with non-string members — dropped.
+    resetStore();
+    await fakeBrowser.storage.local.set({
+      np_workspace: {
+        workspaceId: 'ws-malformed-2',
+        conversationId: 'conv-malformed-2',
+        activeSurface: 'sidepanel',
+        version: 4,
+        updatedAt: 4000,
+        selectedNotes: [42],
+      },
+    });
+    await useWorkspaceStore.getState().init();
+    expect(useWorkspaceStore.getState().workspace.selectedNotes).toEqual([]);
+  });
 });
