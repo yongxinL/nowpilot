@@ -60,7 +60,18 @@ describe('LinkParser (05-05 — wikilink extraction + verbatim tie-break, WIKI-I
       title: `Note ${i}`,
       updated: 1_000 + i,
     }));
-    const targets = ['Note 0', 'Note 250', 'Note 500', 'Note 750', 'Note 999', 'Ghost-1', 'Ghost-2', 'Note 1', 'Note 2', 'Note 3'];
+    const targets = [
+      'Note 0',
+      'Note 250',
+      'Note 500',
+      'Note 750',
+      'Note 999',
+      'Ghost-1',
+      'Ghost-2',
+      'Note 1',
+      'Note 2',
+      'Note 3',
+    ];
     const t0 = performance.now();
     const result = resolveLinks(targets, notes);
     const elapsed = performance.now() - t0;
@@ -78,9 +89,7 @@ describe('LinkParser (05-05 — wikilink extraction + verbatim tie-break, WIKI-I
     ];
     const result = promoteUnresolvedLinks(notes, { id: 'newNoteId', title: 'Ghost' });
 
-    expect(result).toEqual([
-      { noteId: 'ref1', promoted: ['Ghost'], remaining: ['Other'] },
-    ]);
+    expect(result).toEqual([{ noteId: 'ref1', promoted: ['Ghost'], remaining: ['Other'] }]);
     // ref2 has no matching unresolved target — untouched, absent from the result.
   });
 
