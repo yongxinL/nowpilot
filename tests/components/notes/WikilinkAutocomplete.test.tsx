@@ -88,6 +88,24 @@ describe('WikilinkAutocomplete — anchored combobox (Open Q5)', () => {
     expect(props.onOpenChange).toHaveBeenCalledWith(false);
   });
 
+  it('Shift+Enter falls through to the TextArea default (WR-08): no insert, no preventDefault; plain Enter still inserts', () => {
+    const props = makeProps({ highlighted: 0 });
+    const ref = createRef<WikilinkAutocompleteHandle>();
+    const preventDefault = vi.fn();
+    render(<WikilinkAutocomplete ref={ref} {...props} />);
+
+    // Shift+Enter while the dropdown is open → the newline shortcut survives:
+    // onInsert NOT called and preventDefault NOT called (the TextArea default
+    // inserts the newline — nothing intercepts it).
+    ref.current?.handleKeyDown({ key: 'Enter', shiftKey: true, preventDefault });
+    expect(props.onInsert).not.toHaveBeenCalled();
+    expect(preventDefault).not.toHaveBeenCalled();
+
+    // Plain Enter keeps inserting (the existing keyboard contract).
+    ref.current?.handleKeyDown({ key: 'Enter', shiftKey: false, preventDefault });
+    expect(props.onInsert).toHaveBeenCalledWith('Alpha');
+  });
+
   it('empty matches → renders no listbox (silent close contract, WIKI-ID-03)', () => {
     const props = makeProps({ matches: [] });
     const { container } = render(<WikilinkAutocomplete {...props} />);

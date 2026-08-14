@@ -14,7 +14,9 @@
 // insertion is announced politely through a visually-hidden aria-live region.
 // Keyboard (the parent forwards keydown via the exposed handle): ↑/↓ move the
 // active item (wrap), Enter/Tab insert '[[Title]]' at the caret + close, Esc
-// closes. No matches → the dropdown closes SILENTLY (WIKI-ID-03 — no blocking
+// closes. WR-08: Shift+Enter is NEVER swallowed — it falls through to the
+// TextArea default (the universal newline shortcut) while the dropdown is open;
+// only plain Enter (and Tab) insert. No matches → the dropdown closes SILENTLY (WIKI-ID-03 — no blocking
 // state, no error). Dropdown max-height ~320 px + internal scroll (UI-SPEC ⚠
 // unresolved assumption, confirmed at verify time). Pure combobox — no
 // force-directed graph layout, no extension API (R-3); the MiniSearch instance
@@ -56,9 +58,11 @@ export interface WikilinkAutocompleteProps {
   listId?: string;
 }
 
-/** Imperative handle — the page forwards TextArea keydowns here. */
+/** Imperative handle — the page forwards TextArea keydowns here. WR-08: the
+    handler accepts the real event's shiftKey so Shift+Enter can fall through
+    to the TextArea default (the newline shortcut) instead of inserting. */
 export interface WikilinkAutocompleteHandle {
-  handleKeyDown: (event: { key: string; preventDefault?: () => void }) => void;
+  handleKeyDown: (event: { key: string; shiftKey?: boolean; preventDefault?: () => void }) => void;
 }
 
 /**
@@ -118,7 +122,11 @@ export const WikilinkAutocomplete = forwardRef<
         // Closed / no matches → silent close contract: the dropdown must not
         // swallow the page's editing keys (WIKI-ID-03).
         if (!open || matches.length === 0) return;
-        const { key } = event;
+        const { key, shiftKey } = event;
+        // WR-08: Shift+Enter is the universal newline shortcut — fall through
+        // to the TextArea default (no insert, no preventDefault) while the
+        // dropdown is open. Tab and plain Enter keep inserting.
+        if (key === 'Enter' && shiftKey === true) return;
         if (key === 'ArrowDown') {
           event.preventDefault?.();
           onHighlightChange((highlighted + 1) % matches.length);
