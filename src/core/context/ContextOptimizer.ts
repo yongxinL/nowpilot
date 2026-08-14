@@ -33,7 +33,7 @@
 import { classifyModelContext } from './ModelContextTier';
 import type { ModelContextTier } from './ModelContextTier';
 import { computeBudgets, computeSectionCaps } from './TokenBudget';
-import { packSections } from './ContextPack';
+import { buildMemorySectionText, buildPreferencesSectionText, packSections } from './ContextPack';
 import type { ContextPackInput } from './ContextPack';
 // 04b-04 (D-4b-04/08/09): the trust stage's building blocks — the ONLY place
 // trust logic runs (P4b-1 ownership). All four are pure/deterministic; the
@@ -125,6 +125,19 @@ function buildPackInput(
   const personaBlock = minimalMode
     ? `${compactSystemFor(input.stage)}\n\n${input.personaBlock}`
     : input.personaBlock;
+  // Phase 5 (05-06, D-05-07/08/09): the previously-DROPPED preferences/memory
+  // inputs become REAL — the shared ContextPack formatters build the section
+  // text (compact-JSON preferences incl. persona overrides; working memory
+  // FIRST then '- [score] content' fact lines). Spread only when non-empty so
+  // the no-memory path (empty memoryHints + no workingMemoryBlock — the
+  // trustPrefs.memory === false gate) stays byte-identical to pre-5.
+  const preferencesText = input.preferences
+    ? buildPreferencesSectionText(input.preferences)
+    : undefined;
+  const memoryText = buildMemorySectionText({
+    memoryHints: input.memoryHints,
+    workingMemoryBlock: input.workingMemoryBlock,
+  });
   return {
     personaBlock,
     userInput: input.userInput,
@@ -132,6 +145,8 @@ function buildPackInput(
       ? atMostOneSafeTool(input.selectedToolSchemas)
       : input.selectedToolSchemas,
     ...(contextText && contextText.length > 0 ? { contextText } : {}),
+    ...(preferencesText ? { preferencesText } : {}),
+    ...(memoryText ? { memoryText } : {}),
   };
 }
 

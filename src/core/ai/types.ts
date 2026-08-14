@@ -158,6 +158,8 @@ export interface ContextOptimizerInput {
   pageContext?: PageContext;
   selectedToolSchemas: ToolSchemaRef[];
   memoryHints: RetrievedMemory[];
+  /** Phase 5 (D-05-09): the always-on working-memory Markdown block, injected BEFORE retrieved facts in the memory section. */
+  workingMemoryBlock?: string;
   preferences: UserPreferences;
   // 04-04 (flagged planner-discretion input extension, D-04-07 — additive only;
   // the OUTPUT shape is untouched): the §2.3 spec input omits these, but F-5's

@@ -25,6 +25,7 @@
 import { estimateTokens } from './TokenBudget';
 import type { ToolSchemaRef } from '@/core/ai/toolSchemas';
 import type { PromptSection } from '@/core/ai/types';
+import type { RetrievedMemory, UserPreferences } from '@/core/memory/types';
 
 /** §1.3 inputs the hook/optimizer supply. All optional except personaBlock + userInput in P4. */
 export interface ContextPackInput {
@@ -41,6 +42,34 @@ export interface ContextPackInput {
 /** Deterministic tool-schemas text (fixed field order — Pitfall 5); mirrors contextHelper. */
 function buildToolSchemasText(refs: readonly ToolSchemaRef[]): string {
   return refs.map((t) => `${t.name}: ${t.description}`).join('\n');
+}
+
+/**
+ * Phase 5 (D-05-07/08/09): the memory-section formatter. Shared by
+ * buildPackInput (05-06) AND the reduce-topk fallback (ContextCompressor) so
+ * the section text can never diverge. Working memory rides FIRST (D-05-09 —
+ * it can never be crowded out by retrieved facts), then the facts as
+ * '- [score] content' lines (fixed 2-decimal score). Never slices a fact's
+ * content (D-04-13 — whole-item joins only). Returns undefined when there is
+ * nothing to emit (the memory-disabled gate: empty hints + no block).
+ */
+export function buildMemorySectionText(input: {
+  memoryHints: readonly RetrievedMemory[];
+  workingMemoryBlock?: string;
+}): string | undefined {
+  const factLines = input.memoryHints.map((f) => `- [${f.score.toFixed(2)}] ${f.content}`);
+  const parts = [input.workingMemoryBlock, ...factLines].filter((p) => p && p.length > 0);
+  return parts.length > 0 ? parts.join('\n\n') : undefined;
+}
+
+/**
+ * Phase 5 (D-05-08): the preferences-section formatter — compact JSON
+ * (deterministic key order, includes personaId/personaOverrides). Shared by
+ * buildPackInput and the reduce-topk fallback; never empty for a valid prefs
+ * object (JSON.stringify of an object literal).
+ */
+export function buildPreferencesSectionText(prefs: UserPreferences): string {
+  return JSON.stringify(prefs);
 }
 
 /**

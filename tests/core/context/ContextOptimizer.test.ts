@@ -32,12 +32,13 @@ import { optimize, isContextTooLargeError } from '@/core/context/ContextOptimize
 import type { ContextTooLargeError } from '@/core/context/ContextOptimizer';
 import { classifyModelContext } from '@/core/context/ModelContextTier';
 import type { ModelContextTier } from '@/core/context/ModelContextTier';
-import { computeBudgets } from '@/core/context/TokenBudget';
+import { computeBudgets, estimateTokens } from '@/core/context/TokenBudget';
 import { packSections } from '@/core/context/ContextPack';
 import { ContextProvenanceManifestSchema } from '@/core/context/ContextProvenanceManifest';
 import { PROMPTS } from '@/core/prompts';
 import type { ContextOptimizerInput, OptimizedContext, PromptSection } from '@/core/ai/types';
 import type { ToolSchemaRef } from '@/core/ai/toolSchemas';
+import type { RetrievedMemory, UserPreferences } from '@/core/memory/types';
 import { GET_PROVIDER_INFO_TOOL } from '@/core/ai/toolSchemas';
 import {
   FIXED_CONVERSATION_ID,
@@ -280,8 +281,16 @@ describe('optimize — drop-in identity + cache-stability (04-04 Task 3, D-04-07
   // for THIS exact input, captured while src/core/ai/contextHelper.ts still
   // existed (04-06 execution). Replaces the live import so the byte-identity
   // regression survives the deletion (D-04-07/P4-8 prompt-cache stability).
+  // 05-06 (Task 1, D-05-08): the previously-DEAD preferences slot is now REAL —
+  // baseInput always supplies preferences, so the canonical Phase-5 pack adds
+  // the stable:true 'preferences' section (compact JSON) between tool_schemas
+  // and user_input. The [SYSTEM] byte-identity + the no-memory-section
+  // behavior (memoryHints []) are what the regression pins now; the added
+  // preferences text is JSON.stringify(FIXED_PREFERENCES) verbatim (the F-5
+  // cache-prefix change when preferences land is the documented A6 tradeoff).
   // Texts: FIXED_PERSONA_BLOCK + buildToolSchemasText([GET_PROVIDER_INFO_TOOL])
-  // + the fixed userInput; tokens = the Phase-3 ceil(chars/4) counter.
+  // + JSON.stringify(FIXED_PREFERENCES) + the fixed userInput; tokens = the
+  // Phase-3 ceil(chars/4) counter.
   const PHASE3_SNAPSHOT_SECTIONS: PromptSection[] = [
     {
       kind: 'system',
@@ -298,6 +307,13 @@ describe('optimize — drop-in identity + cache-stability (04-04 Task 3, D-04-07
       sourceId: 'tool-schemas',
     },
     {
+      kind: 'preferences',
+      text: JSON.stringify(FIXED_PREFERENCES),
+      tokens: estimateTokens(JSON.stringify(FIXED_PREFERENCES)),
+      stable: true,
+      sourceId: 'preferences',
+    },
+    {
       kind: 'user_input',
       text: 'Summarize the current page.',
       tokens: 7,
@@ -306,17 +322,20 @@ describe('optimize — drop-in identity + cache-stability (04-04 Task 3, D-04-07
     },
   ];
 
-  it('default path deep-equals the hardcoded Phase-3 snapshot (byte-identity survives the deletion)', () => {
+  it('default path deep-equals the hardcoded snapshot (system/tool/preferences bytes; no memory section)', () => {
     const optimizerOut = optimize(baseInput({ modelContextWindow: 200_000 }));
     // Same section texts, same byte-stable [SYSTEM] (the persona block), same
     // token counts (English-equivalent inputs — the 04-01 CJK counting rule is
-    // a deliberate change, not a drop-in regression).
+    // a deliberate change, not a drop-in regression). The preferences slot is
+    // REAL (D-05-08) and the memory section is ABSENT (memoryHints: [] — the
+    // 05-06 no-memory regression pin).
     expect(optimizerOut.sections).toEqual(PHASE3_SNAPSHOT_SECTIONS);
     expect(optimizerOut.tier).toBe('large');
     expect(optimizerOut.inputBudget).toBe(Math.floor(200_000 * 0.7));
     expect(optimizerOut.outputBudget).toBe(Math.floor(200_000 * 0.2));
     const system = optimizerOut.sections.find((s) => s.kind === 'system');
     expect(system?.text).toBe(FIXED_PERSONA_BLOCK);
+    expect(optimizerOut.sections.find((s) => s.kind === 'memory')).toBeUndefined();
   });
 
   it('cache-stability: identical inputs produce deep-equal outputs (deterministic, no Date.now/crypto)', () => {
@@ -330,11 +349,14 @@ describe('optimize — drop-in identity + cache-stability (04-04 Task 3, D-04-07
 describe('optimize — section-granularity invariants (04-04 Task 3, D-04-13/D-04-15)', () => {
   it('never modifies user_input and emits only byte-identical known texts across tiers', () => {
     const compactPlannerSystem = `${PROMPTS.planner.compact.system}\n\n${FIXED_PERSONA_BLOCK}`;
+    // 05-06 (D-05-08): the preferences slot is REAL — the compact-JSON text is
+    // now a canonical known text (baseInput always supplies preferences).
     const knownTexts = new Set([
       FIXED_PERSONA_BLOCK,
       compactPlannerSystem,
       'get-provider-info: Active provider + model + limits',
       'Summarize the current page.',
+      JSON.stringify(FIXED_PREFERENCES),
     ]);
     for (const window of [4096, 16_384, 200_000]) {
       const out = optimize(baseInput({ modelContextWindow: window }));
@@ -441,5 +463,98 @@ describe('optimize — trust-aware pageContext feed (04b-04 Task 3, D-4b-09)', (
     expect(out.provenance.counters.screened).toBe(0);
     expect(out.provenance.counters.quarantined).toBe(0);
     expectValidManifest(out); // the empty-receipt manifest still passes GR-4
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 05-06 Task 1 — the Phase-5 threading (D-05-07/08/09): the previously-dead
+// preferences/memory PromptSection slots become REAL. buildPackInput now builds
+// both texts via the shared ContextPack formatters (buildMemorySectionText /
+// buildPreferencesSectionText) and spreads them into the pack input; the
+// no-memory path (empty memoryHints + no workingMemoryBlock — the
+// trustPrefs.memory === false gate) stays byte-identical to pre-5.
+// ---------------------------------------------------------------------------
+
+/** Fixed 2-fact memory fixture — deterministic scores (toFixed(2) pin). */
+const TWO_FACTS: RetrievedMemory[] = [
+  { id: 'fact-1', content: 'user prefers concise summaries', type: 'fact', tags: [], score: 0.87 },
+  { id: 'fact-2', content: 'works on the Chrome extension team', type: 'fact', tags: [], score: 0.5 },
+];
+
+/** Fixed memory-enabled preferences — includes personaId/personaOverrides (D-05-08). */
+const MEMORY_ENABLED_PREFS: UserPreferences = {
+  responseStyle: 'concise',
+  preferredLanguage: 'en',
+  preferStructuredOutput: true,
+  allowCloudFallbackFromLocal: false,
+  defaultProviderId: 'anthropic',
+  toolAutonomy: 'allow_safe_tools',
+  defaultSurface: 'sidepanel',
+  personaId: 'memory-persona',
+  personaOverrides: { name: 'Memory Persona', tone: 'concise', brevity: 'brief' },
+};
+
+describe('optimize — Phase-5 memory/preferences threading (05-06 Task 1, D-05-07/08/09)', () => {
+  it('memoryHints + workingMemoryBlock + preferences → real stable memory (WMB first) + preferences sections', () => {
+    const out = optimize(
+      baseInput({
+        memoryHints: TWO_FACTS,
+        workingMemoryBlock: '## Working memory\nName: Fixture User',
+        preferences: MEMORY_ENABLED_PREFS,
+      }),
+    );
+    const memory = out.sections.find((s) => s.kind === 'memory');
+    const prefsSection = out.sections.find((s) => s.kind === 'preferences');
+    // order pin (D-05-09): the working-memory block rides FIRST, then the
+    // '- [score] content' fact lines in descending-score order
+    expect(memory?.text).toBe(
+      '## Working memory\nName: Fixture User\n\n- [0.87] user prefers concise summaries\n\n- [0.50] works on the Chrome extension team',
+    );
+    expect(memory?.stable).toBe(true);
+    expect(memory?.sourceId).toBe('memory');
+    expect(memory?.tokens).toBe(estimateTokens(memory!.text));
+    // D-05-08: compact JSON verbatim (incl. personaId/personaOverrides)
+    expect(prefsSection?.text).toBe(JSON.stringify(MEMORY_ENABLED_PREFS));
+    expect(prefsSection?.stable).toBe(true);
+    expect(prefsSection?.sourceId).toBe('preferences');
+    expectValidManifest(out);
+  });
+
+  it('memoryHints [] + workingMemoryBlock undefined → NO memory section (the memory-disabled gate — regression pin)', () => {
+    const out = optimize(baseInput({ memoryHints: [], workingMemoryBlock: undefined }));
+    expect(out.sections.find((s) => s.kind === 'memory')).toBeUndefined();
+    // byte-identical to the existing empty fixture: baseInput() already has
+    // memoryHints: [] — the additive field never changes the no-memory path
+    expect(out).toEqual(optimize(baseInput()));
+  });
+
+  it('preferences with personaId/personaOverrides → JSON.stringify includes them (D-05-08 compact JSON)', () => {
+    const out = optimize(baseInput({ preferences: MEMORY_ENABLED_PREFS }));
+    const prefsSection = out.sections.find((s) => s.kind === 'preferences');
+    const parsed = JSON.parse(prefsSection!.text) as UserPreferences;
+    expect(parsed.personaId).toBe('memory-persona');
+    expect(parsed.personaOverrides).toEqual({
+      name: 'Memory Persona',
+      tone: 'concise',
+      brevity: 'brief',
+    });
+    expect(prefsSection?.text).toBe(JSON.stringify(MEMORY_ENABLED_PREFS));
+  });
+
+  it('section order follows the §1.3 canonical sequence with both new sections (system → tool → preferences → memory → user_input)', () => {
+    const out = optimize(
+      baseInput({
+        memoryHints: TWO_FACTS,
+        workingMemoryBlock: 'WMB',
+        preferences: MEMORY_ENABLED_PREFS,
+      }),
+    );
+    expect(out.sections.map((s) => s.kind)).toEqual([
+      'system',
+      'tool_schemas',
+      'preferences',
+      'memory',
+      'user_input',
+    ]);
   });
 });
