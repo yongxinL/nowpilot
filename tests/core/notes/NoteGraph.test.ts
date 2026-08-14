@@ -46,7 +46,12 @@ describe('NoteGraph (05-05 — derived edges + WIKI-ID-04 + §22.3 cosine, D-05-
   });
 
   it('edges returns [] for empty links', () => {
-    expect(edges([{ id: 'A', links: [] }, { id: 'B', links: [] }])).toEqual([]);
+    expect(
+      edges([
+        { id: 'A', links: [] },
+        { id: 'B', links: [] },
+      ]),
+    ).toEqual([]);
   });
 
   it('backlinkIndex buckets in-links in notes iteration order', () => {

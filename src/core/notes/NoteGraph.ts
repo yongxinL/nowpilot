@@ -21,11 +21,56 @@ export interface GraphEdge {
 
 /** §22.3 verbatim — the fixed 50-word English stop-word list, shipped inline. */
 export const STOP_WORDS: ReadonlySet<string> = new Set([
-  'a', 'an', 'the', 'and', 'or', 'but', 'if', 'then', 'else', 'when',
-  'while', 'of', 'at', 'by', 'for', 'with', 'about', 'against', 'between', 'into',
-  'through', 'during', 'before', 'after', 'above', 'below', 'to', 'from', 'up', 'down',
-  'in', 'out', 'on', 'off', 'over', 'under', 'again', 'further', 'once', 'here',
-  'there', 'all', 'any', 'both', 'each', 'few', 'more', 'most', 'other', 'some',
+  'a',
+  'an',
+  'the',
+  'and',
+  'or',
+  'but',
+  'if',
+  'then',
+  'else',
+  'when',
+  'while',
+  'of',
+  'at',
+  'by',
+  'for',
+  'with',
+  'about',
+  'against',
+  'between',
+  'into',
+  'through',
+  'during',
+  'before',
+  'after',
+  'above',
+  'below',
+  'to',
+  'from',
+  'up',
+  'down',
+  'in',
+  'out',
+  'on',
+  'off',
+  'over',
+  'under',
+  'again',
+  'further',
+  'once',
+  'here',
+  'there',
+  'all',
+  'any',
+  'both',
+  'each',
+  'few',
+  'more',
+  'most',
+  'other',
+  'some',
 ]);
 
 /** §22.3 tokenisation — lowercase, [a-z0-9]{3,} tokens, stop-words removed. */
@@ -54,9 +99,7 @@ export function edges(notes: readonly Pick<Note, 'id' | 'links'>[]): GraphEdge[]
  * D-05-17: in-link index — Map<noteId, noteId[]> of notes whose links[] point
  * at the key. Bucket order = notes iteration order (deterministic).
  */
-export function backlinkIndex(
-  notes: readonly Pick<Note, 'id' | 'links'>[],
-): Map<string, string[]> {
+export function backlinkIndex(notes: readonly Pick<Note, 'id' | 'links'>[]): Map<string, string[]> {
   const index = new Map<string, string[]>();
   for (const note of notes) {
     for (const target of note.links) {
@@ -131,9 +174,7 @@ export function topKSimilar(
     scored.push({ id: note.id, cosine, updated: note.updated });
   }
 
-  scored.sort(
-    (a, b) => b.cosine - a.cosine || b.updated - a.updated || (a.id < b.id ? -1 : 1),
-  );
+  scored.sort((a, b) => b.cosine - a.cosine || b.updated - a.updated || (a.id < b.id ? -1 : 1));
   return scored.slice(0, k).map((s) => s.id);
 }
 
