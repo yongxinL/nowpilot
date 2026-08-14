@@ -33,7 +33,6 @@ import {
   MAX_MEMORIES_TINY,
   addFacts,
   assemble,
-  getMemoryEngine,
   recordTurn,
   subscribe,
   summariseIfNeeded,
@@ -425,7 +424,7 @@ describe('MemoryEngine — WR-01 combined-section budget (§3.6 WMB counts)', ()
     tokens: number;
     updatedAt: number;
   } {
-    const filler = 'filler '.repeat(Math.max(0, Math.ceil(targetTokens * 4 / 7)));
+    const filler = 'filler '.repeat(Math.max(0, Math.ceil((targetTokens * 4) / 7)));
     const markdown = `${WORKING_MEMORY_TEMPLATE}\n\n${filler}`.trim();
     return { resourceId: 'user', markdown, tokens: estimateTokens(markdown), updatedAt: NOW_MS };
   }

@@ -138,9 +138,11 @@ async function putMeta(meta: ConversationMeta): Promise<void> {
  * composite key — §21.3/§20.2 idempotency key), update the np_conversation_meta
  * record via settingWrite (read-modify-write; missing meta → fresh active
  * record), then run the summarise trigger check. seq = last seq + 1 derived
- * from the by-conversation index read; when the read fails (returns []), the
- * count falls back to the stored meta.messageCount so the compactor trigger
- * never silently resets. Write path never throws (STORE_WRITE on failure).
+ * from the by-conversation index read; WR-05: when the index read fails
+ * (returns []), the seq base falls back to the stored meta.messageCount so a
+ * new turn can never overwrite the conversation's existing messages (a reused
+ * seq is composite-key data loss). Write path never throws (STORE_WRITE on
+ * failure).
  */
 export async function appendTurn(
   db: IDBPDatabase<MemoryDBSchema>,
@@ -155,9 +157,13 @@ export async function appendTurn(
     const existing = await getMeta(input.conversationId);
     const messages = await getMessagesForConversation(db, input.conversationId);
     const lastSeq = messages.length > 0 ? messages[messages.length - 1].seq : 0;
+    // WR-05: a failed index read yields [] — derive the new seq from the
+    // stored meta.messageCount instead of 0 so the composite key
+    // [conversationId, seq] never collides with an existing row.
+    const seqBase = messages.length > 0 ? lastSeq : (existing?.messageCount ?? 0);
     await putMemoryMessage(db, {
       conversationId: input.conversationId,
-      seq: lastSeq + 1,
+      seq: seqBase + 1,
       role: input.role,
       content: input.content,
       timestamp: input.timestamp,

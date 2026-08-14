@@ -206,9 +206,7 @@ export async function assemble(
   const maxMemories = opts.tier === 'tiny' ? MAX_MEMORIES_TINY : MAX_MEMORIES;
   const memories: RetrievedMemory[] = [];
   const packedTokens = (hints: readonly RetrievedMemory[]): number =>
-    estimateTokens(
-      buildMemorySectionText({ memoryHints: hints, workingMemoryBlock }) ?? '',
-    );
+    estimateTokens(buildMemorySectionText({ memoryHints: hints, workingMemoryBlock }) ?? '');
   for (const m of scored) {
     if (memories.length >= maxMemories) break;
     if (memories.length > 0 && packedTokens([...memories, m]) > MAX_MEMORY_TOKENS) break;

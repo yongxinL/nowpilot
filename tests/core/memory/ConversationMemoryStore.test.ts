@@ -25,7 +25,7 @@
 //      readable back through settingRead with status/messageCount intact.
 //   7. Write-never-throws: appendTurn against a CLOSED db resolves (GR-9).
 // @vitest-environment node
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { IDBFactory } from 'fake-indexeddb';
 import type { IDBPDatabase } from 'idb';
 import {
@@ -51,6 +51,42 @@ import { settingRead, settingWrite } from '@/core/storage/Setting';
 import { loadPendingEntries } from '@/core/storage/WriteJournal';
 import { estimateTokens } from '@/core/context/TokenBudget';
 import type { ConversationMeta } from '@/core/memory/types';
+
+// WR-05: whole-module mock of MemoryDB (importOriginal spread — real exports
+// preserved, RendererService.test.ts L50-53 pattern). A vi.spyOn on the ESM
+// namespace cannot replace the live binding appendTurn imports, so the
+// getMessagesForConversation seam lives here: the factory defaults to the REAL
+// function, and the WR-05 test swaps in a once-rejecting wrapper to exercise
+// the seq fallback. The source module's `import * as MemoryDBModule` style is
+// what this mirrors — the mock replaces the module for the whole file, so the
+// real default keeps every other test byte-identical.
+const { memoryDbGetMessagesMock } = vi.hoisted(() => ({
+  memoryDbGetMessagesMock: {
+    impl: null as
+      | null
+      | ((db: IDBPDatabase<MemoryDBSchema>, conversationId: string) => Promise<MemoryMessage[]>),
+    real: null as
+      | null
+      | ((db: IDBPDatabase<MemoryDBSchema>, conversationId: string) => Promise<MemoryMessage[]>),
+  },
+}));
+
+vi.mock('@/core/storage/MemoryDB', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/core/storage/MemoryDB')>();
+  memoryDbGetMessagesMock.real = actual.getMessagesForConversation;
+  return {
+    ...actual,
+    getMessagesForConversation: (async (
+      db: IDBPDatabase<MemoryDBSchema>,
+      conversationId: string,
+    ) => {
+      if (memoryDbGetMessagesMock.impl !== null) {
+        return memoryDbGetMessagesMock.impl(db, conversationId) as Promise<MemoryMessage[]>;
+      }
+      return actual.getMessagesForConversation(db, conversationId);
+    }) as typeof actual.getMessagesForConversation,
+  };
+});
 
 const NOW_MS = 1_752_000_000_000; // fixed literal — deterministic
 
@@ -291,6 +327,54 @@ describe('ConversationMemoryStore — appendTurn round-trip', () => {
     const meta = await settingRead(NP_CONVERSATION_META_KEY, (v) => v, undefined);
     expect((meta as Record<string, ConversationMeta>).c1?.status).toBe('active');
     expect((meta as Record<string, ConversationMeta>).c1?.messageCount).toBe(6);
+  });
+
+  it('WR-05: a failed index read must not overwrite the seq-1 message', async () => {
+    db = await openMemoryDB();
+    // Seed one turn normally → seq 1, meta.messageCount 1.
+    await appendTurn(db, { conversationId: 'c1', role: 'user', content: 'hello', timestamp: 1000 });
+
+    // Force the NEXT index read to fail — the store's catch converts the
+    // rejection to [] (getMessagesForConversation swallows into []), exercising
+    // the WR-05 seq fallback. The wrapper rejects once (mirroring the idb
+    // failure INSIDE the real read, which the real function's own catch would
+    // swallow to []), then delegates back to the real read so the post-condition
+    // assertions read the true rows.
+    const real = memoryDbGetMessagesMock.real!;
+    let failed = false;
+    memoryDbGetMessagesMock.impl = async (d, conversationId) => {
+      if (!failed) {
+        failed = true;
+        try {
+          await real(d, conversationId);
+        } catch {
+          // fall through — the real function's STORE_READ catch swallows the
+          // rejection to [] (GR-9); the WR-05 fallback path is what's under test
+        }
+        return [];
+      }
+      return real(d, conversationId);
+    };
+
+    try {
+      await appendTurn(db, {
+        conversationId: 'c1',
+        role: 'assistant',
+        content: 'second turn',
+        timestamp: 2000,
+      });
+    } finally {
+      memoryDbGetMessagesMock.impl = null;
+    }
+
+    // BOTH rows must exist: seq 1 'hello' (byte-intact — never overwritten by a
+    // reused composite key) and seq 2 'second turn'; meta.messageCount === 2.
+    const rows = await getMessagesForConversation(db, 'c1');
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatchObject({ seq: 1, content: 'hello', role: 'user' });
+    expect(rows[1]).toMatchObject({ seq: 2, content: 'second turn', role: 'assistant' });
+    const meta = await settingRead(NP_CONVERSATION_META_KEY, (v) => v, undefined);
+    expect((meta as Record<string, ConversationMeta>).c1?.messageCount).toBe(2);
   });
 });
 
