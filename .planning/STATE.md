@@ -6,7 +6,7 @@ current_phase: 05
 current_phase_name: knowledge-base-memory-minisearch-notes
 status: executing
 stopped_at: Completed 05-03-PLAN.md
-last_updated: "2026-08-14T00:12:25.121Z"
+last_updated: "2026-08-14T00:14:29.420Z"
 last_activity: 2026-08-13
 last_activity_desc: Phase 05 execution started
 progress:
@@ -269,6 +269,10 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 05]: MemoryScorer return statement prettier-ignore pinned — verbatim coefficient literal * 0.10 survives (prettier normalizes to 0.1; acceptance grep requires literal) — Acceptance grep pin vs prettier normalization conflict resolved at the source
 - [Phase 05]: Working memory persists as wm:user UserMemoryFact rows in the same userFacts store; retrieve() excludes wm: prefix so the always-on block never ranks as a retrieved fact — D-05-09: block injected separately BEFORE facts; survival + migration ride the v2 store
 - [Phase 05]: truncateToTokens implemented locally in UserMemoryStore per O.10 reference (slice cap*4 chars, ONE sanctioned slice); estimateTokens stays the ONLY token counter — Plan spec referenced a function that did not exist; RESEARCH Common Operation 2 defines it locally
+- [Phase 05]: Open Q8 executed: np_conversation_meta is a Record<conversationId, ConversationMeta> under ONE chrome.storage.local key, round-tripped through settingRead/settingWrite only — never direct chrome.storage (Pitfall 4 pin); bodies + summaries stay in MemoryDB (metadata-local / bodies-IDB split) — Legacy conversion: personaId = legacy.id per the test contract ('derived from the legacy id'); overrides derive through resolvePersona
+- [Phase 05]: Dual-shape storage read shim: one key accepts two schema generations — new schema first (pass-through), legacy schema fallback (convert via resolvePersona, legacy id preserved as personaId — the merged profile id is the base default), neither → defaults; Phase-3 pipeline output byte-identical — Pitfall 1 closed — a UserPreferences value can never PERSONA_LOAD_FAILED-reset the persona
+- [Phase 05]: UserPreferencesSchema defaultProviderId typed string vs interface ProviderId (05-01 pin): documented boundary casts at the two read seams (PreferenceMemoryStore.read, personaConfig.loadPersona); schema unchanged — Schema pinned by MemoryTypes.test.ts (05-01); changing it would break the prior plan's pin
+- [Phase 05]: ConversationMemoryStore: appendTurn reactivates archived conversations; seq from by-conversation index with meta.messageCount fallback; LRU eviction journals WriteJournal op 'evict-conversation' with targetIds.conversationId — §15.3 LRU semantics + §13 single-writer
 
 ### Pending Todos
 
