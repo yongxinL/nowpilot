@@ -1,0 +1,327 @@
+// src/core/memory/MemoryEngine.ts — D-05-02: the SINGLE orchestrator entry for
+// memory read/write from surfaces. assemble()/recordTurn()/summariseIfNeeded()/
+// updateWorkingMemory()/addFacts()/subscribe() — surfaces never talk to the
+// individual stores directly (R-4); this module composes the 05-02/05-03
+// stores (UserMemoryStore / PreferenceMemoryStore / ConversationMemoryStore)
+// through structural dependency injection so deterministic tests need no
+// singletons or module-level store imports.
+//
+// assemble() enforces the §3.4 injection budgets (D-05-06/GR-6): top-5 (top-3
+// tiny), running total ≤ MAX_MEMORY_TOKENS (1000) via estimateTokens — the
+// ONLY token counter (Pitfall 1) — with WHOLE-ITEM drops from the end, never a
+// text.slice on a fact's content (D-04-13/D-05-06). The working-memory block
+// (§3.6, ≤300 tokens, O.10-written) is injected FIRST (D-05-09) so it can
+// never crowd out retrieved facts. No secrets ever reach the injection:
+// facts are redacted at write time (O.10, TraceRedactor) and the extractor
+// prompt forbids them (R-10). Writes dispatch to the stores and never throw
+// (GR-9 — every catch calls debugLog with a canonical STORE_READ/STORE_WRITE
+// code; retrieval failures reuse STORE_READ, no new C.2 codes).
+import type { IDBPDatabase } from 'idb';
+import { debugLog } from '@/core/error/debugLog';
+import { ERROR_CODES } from '@/core/error/errorCodes';
+import { estimateTokens } from '@/core/context/TokenBudget';
+import type { ModelContextTier } from '@/core/context/ModelContextTier';
+import type { MemoryDBSchema, MemoryMessage } from '@/core/storage/MemoryDB';
+import type { WorkingMemory } from '@/types/harness';
+import { DEFAULT_USER_PREFERENCES } from './PreferenceMemoryStore';
+import { WORKING_MEMORY_RESOURCE_ID } from './UserMemoryStore';
+import { scoreMemoryFact } from './MemoryScorer';
+import type { MemoryInjection, RetrievedMemory, UserMemoryFact, UserPreferences } from './types';
+
+/** §3.4 (GR-6): the memory-section token cap (never exceed — whole-item drops). */
+export const MAX_MEMORY_TOKENS = 1000;
+/** §3.6 (D-05-09): the working-memory block token cap (O.10 updater enforces). */
+export const WORKING_MEMORY_MAX_TOKENS = 300;
+/** §3.4: top-k default — 5 memories for small/medium/large tiers. */
+export const MAX_MEMORIES = 5;
+/** §3.4 (D-05-06): top-k for the tiny tier — 3 memories. */
+export const MAX_MEMORIES_TINY = 3;
+
+/** §3.6 O.10 patch union — the only sanctioned working-memory edit surface. */
+export type WorkingMemoryPatch = Partial<
+  Record<'Name' | 'Role / Team' | 'Environment' | 'Preferences' | 'Long-term Goals', string>
+>;
+
+/** assemble() inputs — the hook resolves these per stage (Open Q3 resolved). */
+export interface AssembleOptions {
+  query: string;
+  conversationId: string;
+  tier: ModelContextTier;
+  nowMs?: number;
+}
+
+/** Structural UserMemoryStore surface (05-02) — real store functions in prod, fakes in tests. */
+export interface UserMemoryStoreAPI {
+  retrieve(db: IDBPDatabase<MemoryDBSchema>, query: string, nowMs: number): Promise<UserMemoryFact[]>;
+  readWorkingMemory(
+    db: IDBPDatabase<MemoryDBSchema>,
+    resourceId?: string,
+  ): Promise<WorkingMemory | undefined>;
+  initWorkingMemory(resourceId?: string, nowMs?: number): WorkingMemory;
+  updateWorkingMemory(cur: WorkingMemory, patch: WorkingMemoryPatch, nowMs?: number): WorkingMemory;
+  putWorkingMemory(db: IDBPDatabase<MemoryDBSchema>, wm: WorkingMemory): Promise<void>;
+  putFact(db: IDBPDatabase<MemoryDBSchema>, fact: UserMemoryFact): Promise<void>;
+}
+
+/** Structural PreferenceMemoryStore surface (05-03) — np_persona read. */
+export interface PreferenceMemoryStoreAPI {
+  read(): Promise<UserPreferences>;
+}
+
+/** Structural ConversationMemoryStore surface (05-03) — per-conversation turns. */
+export interface ConversationMemoryStoreAPI {
+  appendTurn(
+    db: IDBPDatabase<MemoryDBSchema>,
+    input: {
+      conversationId: string;
+      role: 'user' | 'assistant' | 'tool';
+      content: string;
+      timestamp: number;
+    },
+  ): Promise<void>;
+  summariseIfNeeded(
+    db: IDBPDatabase<MemoryDBSchema>,
+    conversationId: string,
+    opts?: { summarise?: (middle: readonly MemoryMessage[]) => Promise<string> },
+  ): Promise<void>;
+}
+
+/** The three stores MemoryEngine composes — injected, never imported as singletons. */
+export interface MemoryEngineDeps {
+  facts: UserMemoryStoreAPI;
+  prefs: PreferenceMemoryStoreAPI;
+  conversation: ConversationMemoryStoreAPI;
+}
+
+/** Lightweight change-notification payload (subscribe seam). */
+export type MemoryEngineEvent =
+  | { kind: 'turn'; conversationId: string }
+  | { kind: 'facts' }
+  | { kind: 'working-memory' };
+
+/** In-memory subscriber set — the subscribe() seam backing store. */
+const listeners = new Set<(event: MemoryEngineEvent) => void>();
+
+/** Fire listeners defensively — a listener must never break the engine. */
+function notifyListeners(event: MemoryEngineEvent): void {
+  for (const listener of [...listeners]) {
+    try {
+      listener(event);
+    } catch {
+      // listener failures are ignored — the engine stays available
+    }
+  }
+}
+
+/**
+ * Subscribe to memory change notifications (recordTurn/addFacts/
+ * updateWorkingMemory). Returns an unsubscribe function. The hook/UI may use
+ * this to trigger a re-assemble (planner discretion — kept minimal).
+ */
+export function subscribe(listener: (event: MemoryEngineEvent) => void): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+/**
+ * §3.4 tokenization shared with UserMemoryStore.retrieve — the same lowercase
+ * 3+ alnum terms so the DTO scores reproduce the retrieve ordering exactly.
+ */
+function queryTerms(query: string): string[] {
+  return query.toLowerCase().match(/[a-z0-9]{3,}/g) ?? [];
+}
+
+/**
+ * D-05-02/06/09: the budgeted injection DTO builder the hook (05-06) calls.
+ * Order: working-memory block FIRST (D-05-09 — never crowded out by facts),
+ * then facts scored via MemoryScorer (scores in [0,1], desc), budgeted
+ * top-5/top-3-tiny and ≤ MAX_MEMORY_TOKENS via whole-item drops from the end
+ * (never a substring of a fact — D-04-13), then preferences from the
+ * np_persona read. Every read degrades to a safe empty — assemble never
+ * throws; a closed/missing db yields { memories: [], workingMemoryBlock: '',
+ * preferences: defaults }.
+ */
+export async function assemble(
+  db: IDBPDatabase<MemoryDBSchema>,
+  deps: MemoryEngineDeps,
+  opts: AssembleOptions,
+): Promise<MemoryInjection> {
+  const nowMs = opts.nowMs ?? Date.now();
+
+  // 1. Working-memory block FIRST (D-05-09) — injected before facts so it can
+  //    never crowd them out; ≤300 tokens by construction (O.10 updater).
+  let workingMemoryBlock = '';
+  try {
+    const wm = await deps.facts.readWorkingMemory(db);
+    workingMemoryBlock = wm?.markdown ?? '';
+  } catch (err) {
+    debugLog(ERROR_CODES.STORE_READ, 'failed to read working-memory block during assemble', {
+      error: err instanceof Error ? err : undefined,
+      module: 'MemoryEngine',
+      extra: { conversationId: opts.conversationId },
+    });
+  }
+
+  // 2. User facts — scored via MemoryScorer ([0,1]), already desc-sorted by
+  //    the store's retrieve; re-score here so the DTO carries real scores.
+  let scored: RetrievedMemory[] = [];
+  try {
+    const facts = await deps.facts.retrieve(db, opts.query, nowMs);
+    const terms = queryTerms(opts.query);
+    scored = facts.map((fact) => ({
+      id: fact.id,
+      content: fact.content,
+      type: fact.type,
+      tags: fact.tags,
+      score: scoreMemoryFact(fact, terms, nowMs),
+    }));
+  } catch (err) {
+    debugLog(ERROR_CODES.STORE_READ, 'memory retrieval failed during assemble', {
+      error: err instanceof Error ? err : undefined,
+      module: 'MemoryEngine',
+      extra: { conversationId: opts.conversationId },
+    });
+  }
+
+  // 3. Budgets (D-05-06/GR-6): top-k by tier, then the ≤1000-token running cap
+  //    with WHOLE-ITEM drops from the end — never a mid-structure slice.
+  const maxMemories = opts.tier === 'tiny' ? MAX_MEMORIES_TINY : MAX_MEMORIES;
+  const memories: RetrievedMemory[] = [];
+  let totalTokens = 0;
+  for (const m of scored) {
+    if (memories.length >= maxMemories) break;
+    const tokens = estimateTokens(m.content);
+    if (memories.length > 0 && totalTokens + tokens > MAX_MEMORY_TOKENS) break;
+    memories.push(m);
+    totalTokens += tokens;
+  }
+  // Whole-item drop from the END while over the cap (a single oversized fact
+  // degrades to empty, never to a truncated fragment — D-05-06 ladder).
+  while (totalTokens > MAX_MEMORY_TOKENS && memories.length > 0) {
+    const dropped = memories.pop();
+    if (dropped === undefined) break;
+    totalTokens -= estimateTokens(dropped.content);
+  }
+
+  // 4. Preferences — np_persona source for the optimizer's preferences section.
+  let preferences: UserPreferences = DEFAULT_USER_PREFERENCES;
+  try {
+    preferences = await deps.prefs.read();
+  } catch (err) {
+    debugLog(ERROR_CODES.STORE_READ, 'failed to read preferences during assemble', {
+      error: err instanceof Error ? err : undefined,
+      module: 'MemoryEngine',
+    });
+  }
+
+  return { memories, workingMemoryBlock, preferences };
+}
+
+/**
+ * Append a turn through ConversationMemoryStore (05-03) and trigger the
+ * 12-message compactor seam. Write path — never throws (STORE_WRITE on
+ * failure, GR-9); a turn timestamp defaults to Date.now().
+ */
+export async function recordTurn(
+  db: IDBPDatabase<MemoryDBSchema>,
+  deps: MemoryEngineDeps,
+  input: {
+    conversationId: string;
+    role: 'user' | 'assistant' | 'tool';
+    content: string;
+    timestamp?: number;
+  },
+): Promise<void> {
+  try {
+    await deps.conversation.appendTurn(db, {
+      conversationId: input.conversationId,
+      role: input.role,
+      content: input.content,
+      timestamp: input.timestamp ?? Date.now(),
+    });
+    notifyListeners({ kind: 'turn', conversationId: input.conversationId });
+  } catch (err) {
+    debugLog(ERROR_CODES.STORE_WRITE, 'failed to record turn', {
+      error: err instanceof Error ? err : undefined,
+      module: 'MemoryEngine',
+      extra: { conversationId: input.conversationId },
+    });
+  }
+}
+
+/**
+ * Dispatch to ConversationMemoryStore.summariseIfNeeded (05-03) — the
+ * 12-message compactor; the LLM summarizer stage (PROMPTS.conversationSummarizer)
+ * is the documented injectable seam, not wired in Phase 5. Never throws.
+ */
+export async function summariseIfNeeded(
+  db: IDBPDatabase<MemoryDBSchema>,
+  deps: MemoryEngineDeps,
+  conversationId: string,
+  opts?: { summarise?: (middle: readonly MemoryMessage[]) => Promise<string> },
+): Promise<void> {
+  try {
+    await deps.conversation.summariseIfNeeded(db, conversationId, opts);
+  } catch (err) {
+    debugLog(ERROR_CODES.STORE_WRITE, 'failed to summarise conversation', {
+      error: err instanceof Error ? err : undefined,
+      module: 'MemoryEngine',
+      extra: { conversationId },
+    });
+  }
+}
+
+/**
+ * O.10 working-memory update: read the current block (or init the §3.6
+ * template), route the patch through the store's O.10 updater (TraceRedactor
+ * redaction + ≤300-token trim happen THERE — the ONE sanctioned slice, never a
+ * fact's content), persist, and return the new block. Never throws — a failure
+ * returns a fresh initialized block.
+ */
+export async function updateWorkingMemory(
+  db: IDBPDatabase<MemoryDBSchema>,
+  deps: MemoryEngineDeps,
+  patch: WorkingMemoryPatch,
+): Promise<WorkingMemory> {
+  try {
+    const current =
+      (await deps.facts.readWorkingMemory(db)) ??
+      deps.facts.initWorkingMemory(WORKING_MEMORY_RESOURCE_ID);
+    const updated = deps.facts.updateWorkingMemory(current, patch);
+    await deps.facts.putWorkingMemory(db, updated);
+    notifyListeners({ kind: 'working-memory' });
+    return updated;
+  } catch (err) {
+    debugLog(ERROR_CODES.STORE_WRITE, 'failed to update working memory', {
+      error: err instanceof Error ? err : undefined,
+      module: 'MemoryEngine',
+    });
+    return deps.facts.initWorkingMemory(WORKING_MEMORY_RESOURCE_ID);
+  }
+}
+
+/**
+ * Batch-persist extracted memory facts (single-writer surface for the 05a
+ * extractor/NoteTagger callers — D-05-02/§3.4 note). Write path — never
+ * throws; each fact rides the store's putFact (which never signals failure).
+ */
+export async function addFacts(
+  db: IDBPDatabase<MemoryDBSchema>,
+  deps: MemoryEngineDeps,
+  facts: UserMemoryFact[],
+): Promise<void> {
+  try {
+    for (const fact of facts) {
+      await deps.facts.putFact(db, fact);
+    }
+    if (facts.length > 0) notifyListeners({ kind: 'facts' });
+  } catch (err) {
+    debugLog(ERROR_CODES.STORE_WRITE, 'failed to add memory facts', {
+      error: err instanceof Error ? err : undefined,
+      module: 'MemoryEngine',
+      extra: { factCount: facts.length },
+    });
+  }
+}
