@@ -2,9 +2,15 @@
 
 **Document ID:** PRODUCT_SPEC_v0_1.md
 **Status:** Canonical, standalone implementation reference
-**Date:** 2026-08-02
+**Date:** 2026-08-02 (rev 2026-08-12)
 **Version:** v0.1
 **Scope:** NowPilot v0.1 — Chrome MV3 AI Assistant using Side Panel + Standalone view. Add-on architecture preserved. Page injection deferred to v0.2+.
+
+**Changelog (rev 2026-08-12):**
+- **Defuddle pinned to `^0.19` (≥ 0.19.2), superseding `^0.6`.** Adds CVE-2026-30830 (XSS) fix + `data:`/`blob:` URL rejection, iframe-`sandbox` retention, SVG `<style>` stripping, and non-mutating `parse()`. Requires `useAsync:false` + synchronous `parse()` (privacy: no third-party API fetches), the `defuddle/full` bundle for reliable Markdown, an effective-base-URL stamp for the panel's detached `DOMParser`, and an extended isolation grep (`mathml-to-latex`/`temml`/`turndown`). See §7.6, §26.4, §23, §24, Appendix G.
+- **Note file format is now OKF v0.2-aligned (OKF-compatible, not OKF-constrained).** `.md` YAML frontmatter gains OKF-required `type`, recommended `description`, and the `generated`/`status` trust-lifecycle families; NowPilot's immutable UUID `id` is retained as an OKF **extension key** and wikilinks remain the body edge syntax. Full-OKF markdown-link edges + path-as-identity + `sources`/`verified` families are deferred to v0.2+. See §21.2, §27.3 (SYNC-04), §18 (Phase 5 / 5a), §23, Appendix C.
+- **Implementability review pass (for cost-effective planning/coding models).** Closed gaps that would block a Haiku/DeepSeek-Flash/Gemini-Flash implementer: (1) LLM-WIKI-11 referenced a non-existent `NOTE_SUGGESTION_MAX_PER_SAVE` — corrected to the two real constants. (2) The settled **Phase 4a** extraction decisions (trigger model, subscription-gated re-extract, per-tab cache LRU, lazy heading-chunked index, payload cap, panel-side redaction, actionable-only APC walk, `CONTENT_EXTRACT_FAILED`) are now **normative in §26.4a/§26.5/§26.6** with tunables `PAGE_CACHE_MAX_TABS`/`PAGE_HTML_MAX_BYTES`/`INDEX_CHUNK_MAX_TOKENS`/`PAGE_EXTRACTION_TIMEOUT_MS` in Appendix C. (3) Zod-4 vs `zod-to-json-schema` ambiguity resolved to a single instruction (keep in v0.1; native migration is v0.2). (4) `resolveTier` now honors `prefer-local`. (5) Clarified the strategy-`id` vs result-`source` enums (no separate ReadabilityStrategy). (6) **§26.2 layers now tagged with owning phase** — ServiceNow Table API is explicitly **Phase 8, not 4a** (4a builds the read + actionable strategies only). (7) **Appendix D carries a model-ID verification warning** — the tier→model slugs are point-in-time and Phase 3 must verify them (incl. the exact current DeepSeek slug). See §26, Appendix C, Appendix D, Appendix L.
+- **Dependency version audit (§7) refreshed to current majors.** Notable bumps: **wxt `^0.19` -> `^0.21`** (Node 22 / Vite 6.3.4 / peer-dep changes), **@wxt-dev/module-react `^0.3` -> `^1`**, **ai (Vercel AI SDK) `^4` -> `^5`+** (breaking API: `inputSchema`/`maxOutputTokens`/`stopWhen`; `@ai-sdk/*` providers version independently), **zod `^3` -> `^4`** (enables dropping `zod-to-json-schema` via native `z.toJSONSchema()`), **immer `^10` -> `^11`**, **@mozilla/readability `^0.5` -> `^0.6`**, plus a **TypeScript 6.x** development recommendation. Packages already current via caret (react 19, antd 6, @ant-design/x 2, @modelcontextprotocol/sdk 1.30, zustand 5, idb 8, minisearch 7, turndown 7, dompurify 3) are unchanged. See §7 and §23.
 
 **Purpose:** This document is the single, self-contained product specification for NowPilot v0.1. It does not reference any prior document. Any AI coding agent implementing this spec must treat this file as authoritative and complete.
 
@@ -1110,8 +1116,8 @@ See §25 for the future page-injection reintroduction plan.
 
 | Package | Version | Purpose |
 |---|---|---|
-| wxt | ^0.19 | MV3 scaffold, HMR, manifest generation |
-| @wxt-dev/module-react | ^0.3 | React integration |
+| wxt | ^0.21 (≥ 0.21.4) | MV3 scaffold, HMR, manifest generation. **Rev 2026-08-12:** bumped from the draft `^0.19` (WXT is `0.x`, so `^0.19` would not auto-jump). v0.21 is breaking: **Node.js ≥ 22, Vite ≥ 6.3.4, TypeScript ≥ 5.4**, and `vite`/`web-ext`/`typescript` are now **peer dependencies** (add `vite` to devDependencies; `web-ext` optional for auto-open). Install footprint cut ~78%. |
+| @wxt-dev/module-react | ^1 (≥ 1.1.6) | React integration. **Rev 2026-08-12:** bumped from `^0.3` — the module reached **v1.x** (adds WXT v0.20/0.21 support); `^0.3` cannot resolve to 1.x. |
 
 ### §7.2 UI
 
@@ -1122,7 +1128,7 @@ See §25 for the future page-injection reintroduction plan.
 | @ant-design/icons | ^6 | Ant Design icon set (must match antd major version) |
 | @ant-design/x | ^2 | Ant Design X — AI chat presentation components (Bubble, Sender, Conversations, Prompts, Welcome, Attachments, Suggestion, Actions, ThoughtChain, Think, FileCard, Sources, Folder) — RICH building blocks |
 | @ant-design/x-markdown | ^2 | Streaming-aware Markdown renderer with built-in LaTeX, mermaid, and code-highlight plugins. Replaces react-markdown/remark-gfm/rehype-highlight/highlight.js/katex. |
-| motion | ^12 | Framer Motion v12; import from motion/react. **Do not install framer-motion.** |
+| motion | ^12 | Framer Motion (import from `motion/react`). **Do not install framer-motion.** **Rev 2026-08-12:** current latest is v13 (framer-motion 13.x); v12 remains fully React-19-compatible, so `^12` is retained as a conservative pin. Optionally move to `^13` for the newest features — the `motion/react` import surface is unchanged. |
 
 **Explicitly removed from v0.1:** tailwindcss, @tailwindcss/vite, shadcn/ui, @radix-ui/react-*, class-variance-authority, clsx, tailwind-merge, react-markdown, remark-gfm, rehype-highlight, highlight.js, katex (superseded by @ant-design/x-markdown).
 
@@ -1133,19 +1139,19 @@ See §25 for the future page-injection reintroduction plan.
 | Package | Version | Purpose |
 |---|---|---|
 | zustand | ^5 | Global stores (workspace, theme, chat) |
-| immer | ^10 | Immutable updates |
+| immer | ^11 (≥ 11.1.16) | Immutable updates. **Rev 2026-08-12:** bumped from `^10` — Immer is now on **v11** (`^10` cannot resolve to 11.x). v11 also carries prototype-pollution hardening; the `produce`/draft API is unchanged. |
 
 ### §7.4 AI & Workflow
 
 | Package | Version | Purpose |
 |---|---|---|
-| ai | ^4 | Vercel AI SDK: streamText, tool calling, abort |
-| @ai-sdk/openai | ^1 | OpenAI + Ollama (custom baseURL for OpenAI-compatible providers) |
-| @ai-sdk/anthropic | ^1 | Anthropic Claude |
-| @ai-sdk/google | ^1 | Google Gemini |
-| @modelcontextprotocol/sdk | ^1 | MCP client — StreamableHTTP transport |
-| zod | ^3 | Boundary validation |
-| zod-to-json-schema | ^3 | Zod → JSON Schema for tool definitions |
+| ai | ^5 (min modern baseline; latest 7.x) | Vercel AI SDK: streamText, tool calling, abort. **Rev 2026-08-12:** bumped from `^4` (three majors stale). AI SDK **v5** is the first "modern unified" line and the minimum this spec's code shape targets; latest stable is **7.x** (Aug 2026). Pin to the **current major at implementation time**. **Breaking vs v4** (insulated by the `ILLMProvider` abstraction, §10.1): tool `parameters` → `inputSchema`, `maxTokens` → `maxOutputTokens`, `maxSteps` → `stopWhen: stepCountIs(n)`, message `parts` model. Provider factories (`createOpenAI/createAnthropic/createGoogleGenerativeAI`) are unchanged. |
+| @ai-sdk/openai | current major (≈ 4.x) | OpenAI + Ollama (custom baseURL for OpenAI-compatible providers). **Rev 2026-08-12:** the `@ai-sdk/*` provider packages **version independently** — do **not** pin them to one shared `^1`. Install each at its own current major (openai ≈ 4.x, google ≈ 3.x, anthropic ≈ 3.x) matched to the chosen `ai` core version. |
+| @ai-sdk/anthropic | current major (≈ 3.x) | Anthropic Claude (see note above — independent major). |
+| @ai-sdk/google | current major (≈ 3.x) | Google Gemini (see note above — independent major). |
+| @modelcontextprotocol/sdk | ^1 (≥ 1.30) | MCP client — StreamableHTTP transport. ✓ current (caret resolves to 1.30.x). Note: the SDK now imports `zod/v4` internally but stays back-compatible with Zod v3.25+ — consistent with the Zod 4 bump below. |
+| zod | ^4 (≥ 4.4) | Boundary validation. **Rev 2026-08-12:** bumped from `^3` — **Zod 4 is stable** (root `zod` export), ~14× faster parsing, and is the version the MCP SDK and AI SDK 5+ already target. Existing `z.object(...)` schemas are source-compatible; review the [migration guide](https://zod.dev/v4) for edge cases (error `.issues` shape, `.email()` → `z.email()`). |
+| zod-to-json-schema | `^3` — **KEEP in v0.1** | Zod → JSON Schema for tool definitions. **Rev 2026-08-12 (definitive for implementers):** **v0.1 keeps `zod-to-json-schema` exactly as written in Appendix L** — do **not** change that code. Zod 4 also ships native `z.toJSONSchema()`, but migrating to it is a **v0.2 cleanup** (tracked, not in scope for any v0.1 phase). This avoids ambiguity: a Phase-implementer uses `zodToJsonSchema(schema)` per Appendix L and nothing else. |
 
 ### §7.5 Storage
 
@@ -1158,12 +1164,12 @@ See §25 for the future page-injection reintroduction plan.
 
 | Package | Version | Purpose |
 |---|---|---|
-| defuddle | ^0.6 | Primary main-content extraction → clean Markdown (Readability successor; preserves footnotes/math/code, richer metadata) |
-| @mozilla/readability | ^0.5 | Fallback article extraction when Defuddle yields low-confidence output |
+| defuddle | ^0.19 (≥ 0.19.2) | Primary main-content extraction → clean Markdown (Readability successor; preserves footnotes/math/code, richer metadata). Use the **`defuddle/full`** bundle (adds `mathml-to-latex` + `temml` for reliable Markdown/math). Call `parse()` **synchronously** with `{ markdown: true, url, useAsync: false }` — `useAsync:false` disables Defuddle's third-party API extractors (e.g. FxTwitter), which is mandatory for the privacy-first, no-data-leaves-the-machine posture (§0.2, §6.1). `^0.6` (spec draft) is superseded — see §23 ADR. |
+| @mozilla/readability | ^0.6 (≥ 0.6.0) | Fallback article extraction when Defuddle yields low-confidence output. **Rev 2026-08-12:** bumped from `^0.5` — 0.6.0 is current (Readability is `0.x`, so `^0.5` would not auto-jump to 0.6). API (`new Readability(doc).parse()`) unchanged. |
 | turndown | ^7 | HTML → Markdown (used by APC-lite path / non-Defuddle output) |
 | dompurify | ^3 | XSS sanitisation for AI/tool output |
 
-**Rationale:** Defuddle is a drop-in Readability replacement built for exactly this job (see §23 ADR). MIT-licensed.
+**Rationale:** Defuddle is a drop-in Readability replacement built for exactly this job (see §23 ADR). MIT-licensed. **Version note (rev 2026-08-12):** pinned to `^0.19` (≥ 0.19.2), not `^0.6`. Because Defuddle is a `0.x` package, `^0.19` correctly locks the `0.19.x` line (npm caret on a pre-1.0 package does **not** auto-jump minors), so a future `0.20` breaking change is not pulled in automatically. The `0.19.x` line adds the CVE-2026-30830 XSS fix and `data:`/`blob:` URL rejection, iframe-`sandbox` retention, and SVG `<style>` stripping — directly relevant since PageContentService parses arbitrary untrusted host-page HTML (§16.1). DOMPurify (§16.1) still runs on output; Defuddle hardening is defense-in-depth, not a replacement.
 
 ### §7.7 Search & Data
 
@@ -1181,7 +1187,7 @@ See §25 for the future page-injection reintroduction plan.
 | crypto.subtle (native) | AES-GCM encryption |
 | crypto.randomUUID() (native) | ID generation |
 | vitest, @testing-library/react, jsdom, msw | Testing |
-| typescript ≥5.5, strict: true | Type safety |
+| typescript ≥5.5, strict: true | Type safety. **Rev 2026-08-12:** `≥5.5` is a floor and remains valid (WXT 0.21 requires TS ≥ 5.4). Current releases are **TS 6.0** (last JS-based compiler; removes long-deprecated APIs) and **TS 7.0** (native Go compiler, preview→stable). Recommend developing on **TS 6.x** now; treat TS 7 as a fast-follow once the toolchain (WXT/Vite/vitest) certifies it. |
 | eslint, prettier | Linting / formatting |
 | **@types/wicg-file-system-access** | TypeScript types for File System Access API (§27) |
 
@@ -2661,6 +2667,8 @@ src/components/notes/{BacklinksPanel, WikilinkAutocomplete, NoteGraphView}.tsx  
 
 **Knowledge model established here:** atomic notes (the unit) + wikilinks (`links[]`, the connective web) + tags (many-to-many labels). The `categoryPath` field is introduced on the Note type here (populated later by LLM-Wiki in Phase 5a).
 
+**OKF v0.2 alignment — type declaration only (rev 2026-08-12).** Add the optional OKF-aligned field `type?: string` to the `Note` interface in `src/types/notes.ts` here (declaration only; default `Note` applied at serialization time in Phase 5a). This mirrors how `categoryPath` is *declared* in Phase 5 and *populated* by LLM-Wiki in Phase 5a — no serialization, no migration, and no LLM behaviour change in Phase 5. DONE-when (append): `Note.type?: string` exists in `src/types/notes.ts` and type-checks; no reader/writer consumes it yet (Phase 5a owns population + serialization).
+
 **Required tests:**
 
 ```
@@ -2698,7 +2706,18 @@ src/components/options/ImportExportSection.tsx       # + "Restore from folder"
 src/core/storage/migrations/v4_notes_backup_config.ts  # add notes_backup_config store + Note fields
 ```
 
-Implements the full §27 requirement set: CAT-01…05, LLM-WIKI-01…10, SYNC-01…11, NMEM-01…03.
+Implements the full §27 requirement set: CAT-01…05, LLM-WIKI-01…10, SYNC-01…11, NMEM-01…03, **plus the OKF v0.2 note-format alignment (OKF-WIKI-01…04, rev 2026-08-12).**
+
+**OKF v0.2 alignment — serialization, migration, restore (rev 2026-08-12).** These are additive changes to files **already created** in Phase 5a — no new files:
+- `src/core/notes/NoteFileSync.ts` — emit the OKF-aligned YAML frontmatter (SYNC-04): OKF-required `type` (default `Note`), recommended `description` (= `Note.summary` when present), and the `generated: { by: nowpilot/<tier-model>, at: <ISO 8601> }` + `status` families. `id` (UUID) is emitted as an OKF **extension key**; wikilinks stay in the body.
+- `src/core/storage/migrations/v4_notes_backup_config.ts` — fold the optional `Note.type` into the **existing v4 migration** (idempotent; skip if the field already exists — **no new v5 bump**).
+- `src/components/options/ImportExportSection.tsx` — the "Restore from folder" parser tolerates OKF keys (`type`/`description`/`generated`/`status`) and ignores unknown OKF fields (SYNC-09).
+
+**New requirements (rev 2026-08-12):**
+- **OKF-WIKI-01 (P1)** NoteFileSync emits OKF-required `type` (default `Note`) + recommended `description` (= `Note.summary` when present).
+- **OKF-WIKI-02 (P1)** NoteFileSync emits the OKF trust/lifecycle families `generated: { by, at }` (ISO 8601) and `status` (`draft`|`stable`, default `stable`).
+- **OKF-WIKI-03 (P1)** `Note.id` (UUID) is emitted and parsed as an OKF **extension key**; a write→restore round-trip preserves it and every wikilink edge (WIKI-ID-01/04 unchanged).
+- **OKF-WIKI-04 (P0 boundary)** v0.1 does **not** emit OKF standard-markdown-link edges and does **not** adopt path-as-identity; wikilinks + UUID identity remain authoritative. Strict-OKF link/identity conformance (and `sources`/`verified` families) is deferred to v0.2+ behind a dedicated ADR.
 
 **Required tests:**
 
@@ -2707,8 +2726,9 @@ tests/core/notes/NoteTagger.test.ts
 tests/core/notes/NoteQA.test.ts
 tests/core/notes/NoteChatConverter.test.ts
 tests/core/notes/NoteFileSync.test.ts
+tests/core/notes/NoteFileSync.okf-frontmatter.test.ts   # emitted frontmatter has type+generated+status; round-trips (OKF-WIKI-01/02/03)
 tests/core/notes/NoteMaintenance.test.ts
-tests/core/storage/migrations/v4.test.ts
+tests/core/storage/migrations/v4.test.ts                 # extended: v4 adds Note.type idempotently (skip if present)
 ```
 
 **DONE when:**
@@ -2719,10 +2739,12 @@ tests/core/storage/migrations/v4.test.ts
 - Chat/page → note conversion opens a pre-filled editor (user is the gatekeeper).
 - NMEM-02 upserts facts only on the primary surface.
 - showDirectoryPicker() + handle persist in notes_backup_config (Standalone view only).
-- Per-save .md sync with YAML frontmatter + nested folders + collision suffixing + external-change guard.
+- Per-save .md sync with **OKF v0.2-aligned YAML frontmatter** (`type`/`description`/`id`/`generated`/`status`, SYNC-04) + nested folders + collision suffixing + external-change guard.
+- Every emitted `.md` carries OKF-required `type` + `generated` + `status`, and the UUID `id` survives a write→restore round-trip (OKF-WIKI-01/02/03).
+- Restore parser tolerates OKF keys and ignores unknown OKF fields (SYNC-09); wikilinks (not OKF markdown-link edges) remain the body syntax (OKF-WIKI-04).
 - Delete-on-sync + empty-folder cleanup.
 - Restore preview + additive upsert (never deletes local notes not in the folder).
-- v4 migration idempotent.
+- v4 migration idempotent (adding `Note.type` is skipped when already present).
 - pnpm run verify:phase-5a passes.
 
 ### Phase 5b — Memory Governance and Experience Candidates
@@ -3124,7 +3146,7 @@ export interface IndexedDBMigration {
 - Every version bump includes a migration function.
 - Migrations are deterministic and idempotent where practical.
 - Migration failures record IDB_MIGRATION_FAILED in ErrorStore and enter degraded mode.
-- **v4 migration:** add the `notes_backup_config` object store; add optional Note fields `summary`, `categoryPath`, `summaryGeneratedAt`, `tagsGeneratedAt`; add `tags` and `summary` to the MiniSearch notes index fields. Idempotent: skip if store/fields already present.
+- **v4 migration:** add the `notes_backup_config` object store; add optional Note fields `summary`, `categoryPath`, `summaryGeneratedAt`, `tagsGeneratedAt`, **and `type` (OKF v0.2 alignment, default `Note`, rev 2026-08-12)**; add `tags` and `summary` to the MiniSearch notes index fields. Idempotent: skip if store/fields already present (adding `Note.type` is skipped when the field already exists — no new v5 bump).
 
 ### §20.5 Background Worker State
 
@@ -3278,15 +3300,19 @@ export interface Note {
     lastWikiRunAt?: number;
   };
   // --- LLM-Wiki fields (§27) ---
-  summary?: string;                // LLM-generated (LLM-WIKI-03)
+  summary?: string;                // LLM-generated (LLM-WIKI-03) — also emitted as OKF `description`
   categoryPath?: string;           // e.g. "InfoTech/Database/MySQL" (CAT-01) → filesystem folder
   summaryGeneratedAt?: number;     // staleness detection (LLM-WIKI-08)
   tagsGeneratedAt?: number;        // staleness detection (LLM-WIKI-08)
+  // --- OKF v0.2 alignment (rev 2026-08-12) ---
+  type?: string;                   // OKF-required frontmatter field; default 'Note' (declared Phase 5, serialized Phase 5a)
   version: number;
 }
 ```
 
 > **Knowledge model:** atomic note (unit) + `links[]` (wikilink web) + `tags[]` (many-to-many labels) + `categoryPath` (single hierarchy → folder). Categories and tags are deliberately separate (D-03, §27).
+
+> **OKF v0.2 alignment (rev 2026-08-12).** The on-disk `.md` file is **OKF v0.2-compatible**: a directory of Markdown files with YAML frontmatter and a free-form body — exactly OKF's container. The `type` field satisfies OKF's only always-required key (default `Note`); `summary` is additionally emitted as OKF's recommended `description`; and the trust-lifecycle families `generated`/`status` are added by the serializer (see §27.3 SYNC-04). NowPilot's immutable UUID `id` is retained and written as an OKF **extension key** — legal because OKF consumers "MUST NOT reject documents with unrecognized fields." Wikilinks remain the body edge syntax (WIKI-ID-01…04); NowPilot does **not** emit OKF standard-markdown-link edges or adopt path-as-identity in v0.1 (those conflict with the UUID-identity/wikilink model and are deferred to v0.2+). The `type` field is **declared here in Phase 5** (type only) and **populated/serialized in Phase 5a** — mirroring how `categoryPath` is declared in Phase 5 and populated by LLM-Wiki in Phase 5a.
 
 ### §21.3 Conversation Metadata + Memory Bodies
 
@@ -3501,13 +3527,16 @@ Runs nightly via Scheduler. v0.1 produces exactly three Insight values: tag-tren
 | **Content scripts** | Extraction-only in v0.1 | No UI in host pages; simpler bundle; page injection deferred |
 | **Page injection** | **Deferred to v0.2+** | Reduces v0.1 complexity; add-on architecture preserved |
 | **Page-content extraction placement** | **Core PageContentService**, not a tool | Shared infra for Chat/Agent/Summarize/research/add-ons; central cache, concurrency, redaction |
-| **Main-content extraction** | **Defuddle** | Purpose-built Readability successor; preserves footnotes/math/code; clean Markdown; MIT; runs in side panel/standalone view |
+| **Main-content extraction** | **Defuddle `^0.19` (≥ 0.19.2)** — full bundle, sync `parse()`, `useAsync:false` | Purpose-built Readability successor; preserves footnotes/math/code; clean Markdown; MIT; runs in side panel/standalone view. Pinned to `0.19.x` (superseding the draft `^0.6`) for the CVE-2026-30830 XSS fix + `data:`/`blob:` rejection + iframe-`sandbox` retention + non-mutating `parse()`. `useAsync:false` + synchronous `parse()` disable third-party API extractors (privacy). `defuddle/full` bundle for reliable Markdown/math; math deps stay out of the content bundle (rev 2026-08-12; §7.6, §26.4) |
 | **Extraction model** | **Layered strategy** (Defuddle → APC-lite → ServiceNow API) | Right tool per page type |
 | **Page-content retrieval** | **MiniSearch over extracted content** (ephemeral, per-tab) | Keeps large pages within the 2,000-token budget; reuses core engine; never persisted |
 | **Browser automation** | **Deferred to v2** (chrome.debugger + CDP Input) | Trusted-event automation needs the debugger; out of scope for read-only v0.1 |
 | State | Zustand | 1 KB, no boilerplate, works outside React |
 | AI SDK | Vercel AI SDK + custom orchestrator | Streaming/abort/tools; lighter than LangChain |
+| **AI SDK version** (rev 2026-08-12) | **`ai ^5`+ (min modern; latest 7.x)** — pin current major at implementation | v4 was three majors stale. v5+ is the unified modern API; the `ILLMProvider` abstraction (§10.1) insulates the app from the `parameters`→`inputSchema` / `maxTokens`→`maxOutputTokens` / `maxSteps`→`stopWhen` breaking changes, so only the provider adapters (§10.2) touch the SDK surface directly |
+| **AI provider packages** (rev 2026-08-12) | **Pin each `@ai-sdk/*` to its own current major** (openai ≈4.x, google ≈3.x, anthropic ≈3.x) | The provider packages version **independently** — a shared `^1` is incorrect; match each to the chosen `ai` core version |
 | AI providers | @ai-sdk/* only | Single codepath for 4 providers (OpenAI uses custom baseURL for compatible endpoints) |
+| **Validation library** (rev 2026-08-12) | **`zod ^4`**; **keep `zod-to-json-schema` in v0.1** | Zod 4 is stable, ~14× faster, and is what MCP SDK + AI SDK 5+ already target. Existing `z.object(...)` schemas are source-compatible. **v0.1 keeps `zod-to-json-schema` (Appendix L unchanged)**; migrating to native `z.toJSONSchema()` is a deferred **v0.2 cleanup** so no v0.1 phase has to touch it |
 | Runtime orchestration | Planner → Executor → Renderer | Cheap models cannot drive maxSteps=15 loops safely |
 | Tier resolution | TierResolver (Appendix D) | Prevents hallucinated model names |
 | Animation | motion | Do not install framer-motion — v12 is published under motion |
@@ -3539,6 +3568,7 @@ Runs nightly via Scheduler. v0.1 produces exactly three Insight values: tag-tren
 | **LLM-Wiki phase** | **Phase 5a** (LLM enrichment + RAG + filesystem sync together) | Single shared save pipeline; depends on Phases 4a/5 |
 | **Note enrichment** | **Single haiku call** (tags+category+summary+memory facts) | Cheaper/faster than separate calls (D-01) |
 | **Notes dual-friendly** | **Markdown body + YAML frontmatter** | Human reads body; LLM/machine reads frontmatter (D-02) |
+| **Note file format** | **OKF v0.2-aligned — OKF-compatible, not OKF-constrained** (rev 2026-08-12) | The `.md` + YAML-frontmatter + folder-tree container already matches OKF v0.2. Frontmatter adds OKF-required `type`, recommended `description`, and the `generated`/`status` trust-lifecycle families so a generic OKF consumer can read a NowPilot note. NowPilot's immutable UUID `id` (WIKI-ID-01) is retained as an OKF **extension key** (OKF §11: consumers must not reject unknown fields), and wikilinks stay the body edge syntax. Full-OKF markdown-link edges + path-as-identity + `sources`/`verified` provenance families conflict with the UUID-identity/wikilink model and are **deferred to v0.2+** behind a dedicated ADR (§21.2, §27.3 SYNC-04, §18 Phase 5/5a) |
 | **Category model** | **Path-based `categoryPath` → folders**, separate from tags | 1:1 filesystem mapping; tags stay many-to-many (D-03) |
 | **Notes↔Memory direction** | **Notes → Memory only** | Notes are user-owned; memory is system-owned (D-05) |
 | **Semantic search** | **LLM-routed reranking over MiniSearch** (no embeddings) | No model download; sufficient for v0.1 |
@@ -3591,7 +3621,7 @@ Each phase must define a real script. Minimum expected commands in package.json:
 }
 ```
 
-`tests/isolation/no-content-script-ui.test.ts` greps the content-script bundle and rejects if it finds `antd`, `React`, `react-dom` — **and `defuddle` or `yaml`, or any File System Access API usage.**
+`tests/isolation/no-content-script-ui.test.ts` greps the content-script bundle and rejects if it finds `antd`, `React`, `react-dom` — **and `defuddle` or `yaml`, or any File System Access API usage.** **Rev 2026-08-12:** because Defuddle is pinned to the `defuddle/full` bundle (§7.6, §26.4), the grep MUST also reject Defuddle's transitive Markdown/math deps in the content bundle — `mathml-to-latex`, `temml`, and `turndown` — so the panel-only extraction rule (R-3) stays enforced.
 
 ## §25 — Future Page Injection Architecture & Deferred UI Features
 
@@ -3643,19 +3673,19 @@ Page-content extraction is **core infrastructure**, not a tool (built in **Phase
 ```
 extract(tabId, mode)
    │
-   ├─ 1. ServiceNow record?  ── yes ─▶ ServiceNow add-on: Table API → SNowCaseData   [API-FIRST, §9.7]
+   ├─ 1. ServiceNow record?  ── yes ─▶ ServiceNow add-on: Table API → SNowCaseData   [API-FIRST, §9.7 — PHASE 8, not 4a]
    │
-   ├─ 2. mode = 'default' (read/summarize)
+   ├─ 2. mode = 'default' (read/summarize)                                  [PHASE 4a]
    │        └─▶ DefuddleStrategy  → clean Markdown (main content)          [PRIMARY read path]
    │             └─ low confidence? → Readability fallback
    │
-   └─ 3. mode = 'actionable' (Agent needs structure/interaction)
-            └─▶ ApcLiteStrategy   → APCLiteNode tree (roles, geometry, interaction)
+   └─ 3. mode = 'actionable' (Agent needs structure/interaction)           [PHASE 4a]
+            └─▶ ApcLiteStrategy   → APCLiteNode tree (roles, interaction; geometry omitted in v0.1, §26.6)
 ```
 
-- **DefuddleStrategy** is the default for reading/summarizing.
-- **ApcLiteStrategy** is used when the Agent needs structure (forms, tables, clickable/editable elements, node ids + geometry) — the substrate for future v2 automation (§26.7).
-- **ServiceNow** always tries the Table API first (§9.7); extraction is fallback only.
+- **DefuddleStrategy** is the default for reading/summarizing. **(Phase 4a)**
+- **ApcLiteStrategy** is used when the Agent needs structure (forms, tables, clickable/editable elements, node ids) — the substrate for future v2 automation (§26.7). **(Phase 4a; geometry omitted in v0.1 per §26.6.)**
+- **ServiceNow** always tries the Table API first (§9.7); extraction is fallback only. **⚠️ Phase 4a does NOT implement this layer** — it only reserves the `servicenow-api` strategy id and ordering; the ServiceNow add-on **registers** the strategy in **Phase 8** (§8.2, F5 note in Appendix C). A Phase-4a implementer builds strategies 2 and 3 only.
 
 ### §26.3 Strategy contract
 
@@ -3672,15 +3702,64 @@ export interface IExtractionStrategy {
 Defuddle is **not** bundled into the content script (would break the < 50 KB extraction-only bundle, §22.1, §5.6). Instead:
 
 ```
-Content script (tiny):  outerHTML (or targeted subtree)  ──RuntimeEnvelope──▶ Side Panel / Standalone view
-Side Panel / Standalone view:  DOMParser → new Defuddle(doc).parse()  → markdown → PageContext
+Content script (tiny):  stripped outerHTML clone + effective base URL  ──RuntimeEnvelope──▶ Side Panel / Standalone view
+Side Panel / Standalone view:  DOMParser → inject <base href> → Defuddle(doc, opts).parse()  → markdown → PageContext
 ```
 
 The content script only reads/serializes HTML; **Defuddle parsing runs in the side panel / standalone view**. Preserves the isolation rule (§5.6) and the 50 KB cap (§22.1).
 
+**Canonical Defuddle call shape (Defuddle ≥ 0.19.2, rev 2026-08-12).** The `0.19.x` API requires markdown to be requested explicitly and third-party API extractors to be disabled:
+
+```ts
+import { Defuddle } from 'defuddle/full';        // full bundle → reliable Markdown + math (mathml-to-latex, temml)
+
+// panel side: the payload from the content script carries the page's effective base URL
+const doc = new DOMParser().parseFromString(payload.html, 'text/html');
+// A detached DOMParser document has no layout and no base href, so relative URLs/images
+// resolve wrong. The content script stamps the effective base URL; the panel restores it:
+if (payload.baseUrl && !doc.querySelector('base')) {
+  const base = doc.createElement('base');
+  base.setAttribute('href', payload.baseUrl);
+  doc.head?.prepend(base);
+}
+const result = new Defuddle(doc, {
+  url: payload.baseUrl,   // feeds relative-URL resolution (0.19.x)
+  markdown: true,         // 0.19.x: markdown is opt-in
+  useAsync: false,        // PRIVACY-CRITICAL: never let Defuddle fetch third-party APIs (e.g. FxTwitter). §0.2, §6.1
+}).parse();               // synchronous parse() — async extractors never run on parse()
+// result.content = markdown; result.title/author/description/published/wordCount/... = metadata
+```
+
+**Why `useAsync:false` + `parse()` (not `parseAsync()`) is mandatory.** Defuddle `0.19.x` added async extractors that fetch from third-party APIs (e.g. FxTwitter for X/Twitter) when a page has no locally usable content. For a privacy-first extension where no data leaves the machine unless the user configures a cloud provider (§6.1), that silent outbound call is prohibited. Synchronous `parse()` never triggers async extractors, and `useAsync:false` is belt-and-braces. This also keeps §0.2's "no custom User-Agent in fetch" invariant intact, since Defuddle would otherwise be the fetch initiator.
+
+**Bundle choice.** Use `defuddle/full` (not the core `defuddle` bundle) in the panel: the core bundle "handles math but doesn't include fallbacks for converting between MathML and LaTeX," so clean-Markdown fidelity (which DefuddleStrategy depends on, §26.2) needs `full`. Size is acceptable because Defuddle runs in the Side Panel/Standalone view, **not** the < 50 KB content bundle — and its math deps (`mathml-to-latex`, `temml`) plus `turndown` must stay out of the content bundle (enforced by the isolation grep, §24, Appendix G).
+
+### §26.4a Extraction trigger & cache lifecycle (authoritative)
+
+This subsection is **normative** and fixes the timing/lifecycle rules a Phase-4a implementer must follow. All constants live in Appendix C.
+
+**Trigger model — on-demand extraction + subscription-gated auto re-extract:**
+- **Lightweight live context** (title, url, meta) updates **always** on navigation — this is the tiny content-bridge payload, not the heavy path.
+- **Full extraction** (Defuddle → Readability → APC-lite) runs **only when a surface requests it** (Chat/Summarize/agent `get-page-content`/pin/quick-action). NowPilot never proactively extracts every page (read-only + no MV3 background work + cost-effective posture).
+- **Auto re-extract** after `wxt:locationchange` (SPA-nav) or `tabs.onUpdated` fires **only if a surface is subscribed to that tab**. Unsubscribed tabs are **mark-stale only**.
+- **"Subscribed" is defined as:** the Side Panel/Standalone is active on that tab **OR** the tab is pinned as context (`WorkspaceState.pinnedTabs` / `currentPageContext`).
+
+**PageContentCache (per tab):**
+- Keyed by `tabId`; **separate** from the Phase-1 `PageRegistry` (which registers surface pages, not page content).
+- **Invalidate + evict** the tab's cache **and** its ephemeral MiniSearch index immediately on `wxt:locationchange`, `tabs.onUpdated`; evict on `tabs.onRemoved`.
+- **Bounded LRU:** keep at most `PAGE_CACHE_MAX_TABS` (default **20**) tab entries; on insert beyond the cap, evict the **least-recently-accessed** tab's entry+index. Access recency is bumped on every cache read/serve. Extraction and its index are **always evicted together** (never orphan an index).
+- **Never LRU-evict an in-flight or subscribed tab** (active extraction promise or live subscription). **Pinned tabs are eviction-last** (they count against the cap but are evicted only after unsubscribed/unpinned entries).
+- Cache is **ephemeral — never persisted** to IndexedDB.
+
+**Concurrency & race guard:** coalesce concurrent extractions per tab (dedup on the in-flight promise keyed by `tabId`). A read arriving **after invalidation but before re-extract completes** must **await the in-flight extraction**, never return the stale entry.
+
 ### §26.5 MiniSearch integration (retrieval-augmented context)
 
-- After extraction, PageIndexBuilder builds an **ephemeral** MiniSearch index (core engine) over the extracted content (Defuddle markdown chunked by heading, or APC-lite text nodes).
+- The ephemeral MiniSearch index is built **lazily on the first `query()` for a tab** (`PageIndexBuilder`). Until then the cache stores raw Defuddle markdown / APC-lite tree only; the index is **built once and memoized** for the tab, and evicted together with the extraction (§26.4a). Never persisted.
+- **Chunking (`chunked by heading`, authoritative):** chunk Defuddle markdown by heading boundaries (`h1–h6`); each chunk is a MiniSearch doc with fields `title`, `url`, `headingPath` (breadcrumb), `sectionText`, plus an index-wide `tabId`. Additional rules:
+  - **Preamble:** content before the first heading becomes a synthetic `"(preamble)"` chunk under the page title (never orphaned).
+  - **No-heading pages:** if the page has zero headings, fall back to **paragraph-block chunks** (blank-line separated) under the page title.
+  - **Oversized sections:** if a heading section exceeds `INDEX_CHUNK_MAX_TOKENS` (default **500**), split it into paragraph sub-chunks that **inherit the same `headingPath`**.
 - When extracted tokens exceed the **2,000-token webpage budget** (§22.2), inject only selectRelevant(query) results and mark compressionApplied:'topk' in the provenance manifest (§2.6).
 - Minimal mode (§2.5) always routes through selectRelevant.
 - Page indexes are ephemeral — **never persisted** to IndexedDB.
@@ -3689,12 +3768,14 @@ The content script only reads/serializes HTML; **Defuddle parsing runs in the si
 
 ### §26.6 Reliability & privacy
 
-- **Concurrency guard:** coalesce duplicate extractions per tab.
-- **Timeout:** 5 s hard cap (§13); on failure fall back (Defuddle→Readability, AX→DOM) and record source.
+- **HTML payload (content script → panel):** serialize a **pre-stripped clone** of `document.documentElement` (remove `script`/`style`/`noscript`/`svg`/cross-origin `iframe` markup and `form action` attributes; **keep** text, headings, links, and input controls). Stamp the page's **effective base URL** into the payload so the panel's detached `DOMParser` resolves relative URLs (§26.4). Apply a hard size cap `PAGE_HTML_MAX_BYTES` (default **2 MB**); if still larger, **truncate at an element boundary and set `truncated:true`** — no multi-envelope chunking protocol in v0.1.
+- **APC-lite depth (v0.1):** ship the **full `APCLiteNode` type** (Appendix C) but a **minimal structural walk** — roles + text + hierarchy + interaction flags + links + tables; **geometry omitted** (the optional `geometry?` field stays unset). If ever populated, geometry MUST be read **content-script-side** against live layout, never in the panel's detached doc. The `AxDomWalker` runs **only on a `mode:'actionable'` request** (zero AX cost on the default read/summarize path).
+- **Concurrency guard:** coalesce duplicate extractions per tab; serve the in-flight promise, never a stale entry (§26.4a).
+- **Timeout:** 5 s hard cap (§13) via a single `AbortController` threaded through the round-trip; on failure fall back (Defuddle→Readability, AX→DOM), record source, then surface the typed error `CONTENT_EXTRACT_FAILED` (Appendix C.2) — **never a silent empty result**.
 - **Invalidation:** SPANavigationWatcher (wxt:locationchange) + tabs.onUpdated.
-- **Redaction:** run TraceRedactor-style redaction **before** indexing or logging (§4.4, §16).
-- **Passwords:** field values never captured (isPassword ⇒ value omitted).
-- **Metrics:** duration, node/char count, source, truncation → Diagnostics (§4.5).
+- **Redaction:** run `TraceRedactor` **panel-side**, over the extracted markdown/tree, **before** indexing or logging (§4.4, §16). The content script performs **no** redaction (keeps the content bundle free of core deps, Appendix G) — it only strips markup and omits password values at capture.
+- **Passwords:** field values never captured (isPassword ⇒ value omitted), enforced at capture in the content-script `AxDomWalker` via `FormControlSchema.refine` (Appendix C).
+- **Metrics:** duration, node/char count, source, truncation → Diagnostics (§4.5); redacted, no raw body persisted.
 
 ### §26.7 Browser automation — deferred to v2
 
@@ -3731,19 +3812,54 @@ NowPilot v0.1 is **read-only**: content scripts are extraction-only (§5.6); the
 - **LLM-WIKI-08** Staleness: `summaryGeneratedAt`/`tagsGeneratedAt` vs `updated` → subtle "Content has changed — [Regenerate tags/summary]" hint.
 - **LLM-WIKI-09** Orphan detection (algorithmic, no LLM): 0 wikilinks + 0 backlinks → "Orphan" badge + "Find context" (triggers RAG).
 - **LLM-WIKI-10** "Re-analyze all notes" (Options → Notes), user-initiated only, sequential; updates stats in real time.
-- **LLM-WIKI-11** Suggestion confidence gating. Every enrichment item the model returns (`memoryFacts[]`, suggested `tags[]`, suggested wikilinks) carries a self-reported `confidence` in `[0,1]`. Items below `NOTE_SUGGESTION_DISPLAY_THRESHOLD = 0.60` are **never surfaced** to the user (silently discarded, not stored). Of the items at or above the threshold, at most `NOTE_SUGGESTION_MAX_PER_SAVE = 3` `memoryFacts` and `5` `tags` are shown per save, ordered by descending confidence; overflow is dropped. Accepted items persist at their reported confidence; rejected items are discarded and never re-suggested for the same `{noteId, version}`. When the note is edited before the (non-blocking) suggestions return, stale suggestions for the prior `version` are discarded (never applied to newer content).
+- **LLM-WIKI-11** Suggestion confidence gating. Every enrichment item the model returns (`memoryFacts[]`, suggested `tags[]`, suggested wikilinks) carries a self-reported `confidence` in `[0,1]`. Items below `NOTE_SUGGESTION_DISPLAY_THRESHOLD = 0.60` are **never surfaced** to the user (silently discarded, not stored). Of the items at or above the threshold, at most `NOTE_SUGGESTION_MAX_FACTS_PER_SAVE = 3` `memoryFacts` and `NOTE_SUGGESTION_MAX_TAGS_PER_SAVE = 5` `tags` are shown per save, ordered by descending confidence; overflow is dropped. (Both constants are defined in Appendix C — there is no single `NOTE_SUGGESTION_MAX_PER_SAVE`.) Accepted items persist at their reported confidence; rejected items are discarded and never re-suggested for the same `{noteId, version}`. When the note is edited before the (non-blocking) suggestions return, stale suggestions for the prior `version` are discarded (never applied to newer content).
 
 ### §27.3 One-Way Filesystem Sync (SYNC-01…11)
 
 - **SYNC-01** "Set backup folder" via `showDirectoryPicker()` (**Standalone view only**); FileSystemDirectoryHandle persisted in `notes_backup_config` IndexedDB store (cannot use chrome.storage.local — handles are non-serializable).
 - **SYNC-02** On NotesPage mount, verify `handle.queryPermission()`; if denied/missing → sync disabled + banner "Backup folder not accessible. [Re-select folder] [Dismiss]".
 - **SYNC-03** Per-save write/update/delete of the `.md` file; fire-and-forget (no loading state); 50 ms debounce prevents rapid-save bursts.
-- **SYNC-04** File format: `{categoryPath}/{title}.md` with YAML frontmatter (`id, created, updated, tags, categoryPath, summary`) + markdown body. Empty categoryPath → root folder. Filename sanitized: `/ \ : * ? " < > |` → `_`.
+- **SYNC-04 (OKF v0.2-aligned, rev 2026-08-12)** File path: `{categoryPath}/{title}.md`; empty categoryPath → root folder; filename sanitized: `/ \ : * ? " < > |` → `_`. Each file is a UTF-8 Markdown document with an **OKF v0.2-compatible YAML frontmatter block** followed by the Markdown body (wikilinks live inline in the body). Frontmatter fields:
+
+  | Field | OKF role | Source | Required |
+  |-------|----------|--------|----------|
+  | `type` | OKF **required** (only always-required key) | fixed default `Note` (or producer value, e.g. `Playbook`) | required |
+  | `title` | OKF recommended | `Note.title` | required |
+  | `description` | OKF recommended | `Note.summary` (when present) | optional |
+  | `id` | OKF **extension key** | `Note.id` (immutable UUID, WIKI-ID-01) | required (NowPilot identity) |
+  | `created` / `updated` | extension | `Note.created` / `Note.updated` (epoch) | required |
+  | `tags` | OKF `tags` | `Note.tags[]` | optional |
+  | `categoryPath` | extension | `Note.categoryPath` | optional |
+  | `generated` | OKF `generated` | `{ by: nowpilot/<tier-model>, at: <ISO 8601> }` from `tagsGeneratedAt`/`summaryGeneratedAt` | required |
+  | `status` | OKF `status` | `draft` | `stable` (default `stable`) | required |
+
+  **Canonical emitted example:**
+  ```markdown
+  ---
+  type: Note
+  title: INC Lifecycle Flow
+  description: One-row-per-state summary of the incident lifecycle in ServiceNow.
+  id: 6f2c1a90-7b3e-4d51-9c2a-1e77aa42b0c9
+  created: 1754870400000
+  updated: 1754956800000
+  tags: [servicenow, incident, lifecycle]
+  categoryPath: Work Knowledge Base/ServiceNow/Incident
+  generated: { by: nowpilot/claude-haiku-4, at: 2026-08-12T09:58:00Z }
+  status: stable
+  ---
+  # Incident lifecycle
+
+  New -> In Progress -> On Hold -> Resolved -> Closed.
+
+  See [[Problem Lifecycle Flow]] and [[Change Request Flow]] for related processes.
+  ```
+
+  **Contract notes.** (a) **Identity stays UUID** - OKF v0.2 treats the file *path* as the Concept ID, but NowPilot intentionally keeps the immutable `id` (WIKI-ID-01) as the source of truth and exposes it as an OKF extension key; a generic OKF consumer ignores it, restore (SYNC-09) keys off it. (b) **Links stay wikilinks** - `[[Title]]` remains inside the body so the atomic-note graph is fully reconstructable on restore (§27.7a); NowPilot does **not** emit OKF standard-markdown-link edges in v0.1. (c) **No secrets** - all frontmatter/body still passes through TraceRedactor before write; password field values are never written (§16.4, §27.6).
 - **SYNC-05** Title collision (same title + same category) → numeric suffix: `My Note.md`, `My Note (1).md`, … Scan existing files for highest suffix before writing.
 - **SYNC-06** External-change detection: if file lastModified newer than last sync (2 s tolerance) → confirm "Overwrite with app version? [Overwrite] [Skip]", default Skip.
 - **SYNC-07** No backup folder → all sync ops are no-ops; toolbar indicator "Backup: off [Configure]".
 - **SYNC-08** Status Tag: green "Backup: On" / gray "Backup: Off" / red "Backup: Error" (tooltip shows last error).
-- **SYNC-09** "Restore from backup" via `showDirectoryPicker()` → walk tree → parse `.md` frontmatter → upsert: id exists → update (preserve updated if newer); id missing → create; additive (notes not in folder are NOT deleted); categoryPath reconstructed from folder path.
+- **SYNC-09** "Restore from backup" via `showDirectoryPicker()` → walk tree → parse `.md` frontmatter → upsert: id exists → update (preserve updated if newer); id missing → create; additive (notes not in folder are NOT deleted); categoryPath reconstructed from folder path. **OKF tolerance (rev 2026-08-12):** the parser reads the OKF-aligned frontmatter (SYNC-04) — `type`/`description`/`generated`/`status` are parsed without error, and **any unknown OKF key is tolerated and preserved** (OKF §11: consumers must not reject unrecognized fields). Missing OKF families never reject a file; `id` is read from the OKF extension key to preserve identity and every wikilink edge on round-trip.
 - **SYNC-10** Restore preview modal: "Found 24 notes (12 new, 3 updated, 9 unchanged). Proceed? [Import] [Cancel]".
 - **SYNC-11** Delete-on-sync: deleting a note removes its `.md`; if the nested category folder becomes empty it is removed (clean backup).
 
@@ -3771,6 +3887,8 @@ TraceRedactor-style redaction runs **before** indexing, logging, or writing to d
 
 The method is **atomic notes + wikilinks** (the Phase 5 core), *extended* by LLM-Wiki with: `categoryPath` (single hierarchy → folder), `tags` (many-to-many labels), and an LLM `summary` (glanceable context). Wikilinks remain the primary linking mechanism and live inside the markdown body, so the atomic-note graph is fully reconstructable on restore. LLM wikilink *autocomplete* suggestions are **not** in v0.1 (D-04; MiniSearch title matching is sufficient) — but chat/page-to-note conversion (LLM-WIKI-07) still *suggests* wikilinks for the drafted note.
 
+**OKF v0.2 compatibility (informative, rev 2026-08-12).** The on-disk `.md` format is **OKF v0.2-compatible** (see the [Open Knowledge Format v0.2 spec](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md)): a directory of Markdown files with YAML frontmatter and a free-form body. The serialized frontmatter carries OKF's only always-required key `type` (default `Note`), the recommended `description` (= the LLM `summary`), and the `generated`/`status` trust-lifecycle families (SYNC-04). NowPilot deliberately keeps its **immutable UUID `id`** as the source of truth (written as an OKF *extension key*, which OKF consumers must tolerate) and keeps **wikilinks** — not OKF standard-markdown-link edges — as the body edge syntax, so the atomic-note graph survives rename/move/restore (WIKI-ID-01…04). Strict-OKF conformance (markdown-link edges as graph edges, path-as-Concept-ID, and the `sources`/`verified` provenance families) would break the UUID-identity/wikilink model and is therefore **out of scope for v0.1** — deferred to v0.2+ behind a dedicated ADR. The net posture is **OKF-compatible, not OKF-constrained**: a generic OKF consumer can read a NowPilot note today, while NowPilot's internal identity/link graph stays authoritative.
+
 ### §27.7a Note Identity, Rename & Unresolved Links (WIKI-ID-01…04)
 
 - **WIKI-ID-01 — Immutable identity.** A note's `id` is a `crypto.randomUUID()` assigned at creation and **never changes** — not on rename, move (category change), or filesystem restore. The `title` is mutable display text; the `id` is the stable referent. All graph edges (`links[]`, backlinks) are stored as **note IDs**, never titles, so renaming a note can never break an existing edge.
@@ -3784,6 +3902,7 @@ The method is **atomic notes + wikilinks** (the Phase 5 core), *extended* by LLM
 |---|---|---|
 | D-01 | Single LLM call for tags + category + summary | One haiku call is cheaper/faster than three; structured JSON returns all three |
 | D-02 | Notes dual-friendly: human body, machine frontmatter | Body is natural markdown; YAML frontmatter is structured metadata; both consumers served by one file |
+| D-02a | **Note frontmatter is OKF v0.2-aligned** (rev 2026-08-12) — OKF-compatible, not OKF-constrained | The `.md` + YAML-frontmatter + folder-tree container already matches OKF v0.2's "directory of markdown files with YAML frontmatter." Adding OKF `type`/`description`/`generated`/`status` makes a note readable by any generic OKF consumer while keeping the immutable UUID `id` as an OKF extension key and wikilinks as body edges. OKF's own value-add (provenance/trust/lifecycle) maps onto the harness `MemoryRecord`/`CompletionEvidence` taxonomy (§28.2/§28.4), avoiding two competing metadata vocabularies. Strict-OKF markdown-link edges + path-as-identity + `sources`/`verified` families conflict with WIKI-ID-01…04 and are deferred to v0.2+ behind a dedicated ADR |
 | D-03 | Category path-based, not flat | categoryPath maps 1:1 to folders; flat tags already cover many-to-many |
 | D-04 | LLM wikilink suggestions dropped from v0.1 | MiniSearch covers title-based matching; edge case rare |
 | D-05 | Notes feed into MemoryEngine, not the reverse | Notes are user-curated; extracting facts enriches chat context without polluting notes |
@@ -4559,6 +4678,18 @@ export interface IExtractionStrategy {
   canHandle(i: { url: string; mode: 'default' | 'actionable' }): boolean;
   run(i: StrategyInput): Promise<StrategyResult>;
 }
+// NOTE on the two enums (read before implementing): `IExtractionStrategy.id` enumerates the
+// installed STRATEGIES; there is intentionally NO separate ReadabilityStrategy — Readability is
+// Defuddle's internal fallback, so it appears in `StrategyResult.source` (result provenance) but
+// NOT as its own strategy id. `PageContext.source` (the z.enum at §Appendix C page-context block)
+// additionally carries 'dom'|'ax'|'hybrid' for the APC-lite walk provenance. Do not create a
+// ReadabilityStrategy or a ServiceNow strategy in Phase 4a (ServiceNow strategy registers in Phase 8).
+
+// §26.4a / §26.5 / §26.6 tunables (Phase 4a). All ephemeral; none persisted.
+export const PAGE_CACHE_MAX_TABS   = 20;         // per-tab PageContentCache LRU cap (§26.4a)
+export const PAGE_HTML_MAX_BYTES   = 2_000_000;  // serialized HTML hard cap → truncate+flag (§26.6)
+export const INDEX_CHUNK_MAX_TOKENS = 500;       // oversized heading-section split threshold (§26.5)
+export const PAGE_EXTRACTION_TIMEOUT_MS = 5_000; // hard cap, single AbortController (§26.6, §13)
 ```
 
 ```ts
@@ -4598,7 +4729,24 @@ export interface Note {
   categoryPath?: string;
   summaryGeneratedAt?: number;
   tagsGeneratedAt?: number;
+  type?: string;                 // OKF v0.2 frontmatter type (rev 2026-08-12); default 'Note'. Declared Phase 5, serialized Phase 5a.
   version: number;
+}
+// OKF v0.2 note-frontmatter contract (rev 2026-08-12). NoteFileSync emits this shape;
+// the restore parser tolerates it and ignores any unknown OKF keys (OKF §11).
+// `id` is emitted as an OKF EXTENSION key (UUID identity, WIKI-ID-01); wikilinks stay in the body.
+export const OKF_NOTE_DEFAULT_TYPE = 'Note';
+export interface OkfNoteFrontmatter {
+  type: string;                  // OKF-required (default OKF_NOTE_DEFAULT_TYPE)
+  title: string;                 // OKF-recommended
+  description?: string;          // OKF-recommended (= Note.summary when present)
+  id: string;                    // OKF extension key — immutable UUID (WIKI-ID-01)
+  created: number;
+  updated: number;
+  tags?: string[];               // OKF `tags`
+  categoryPath?: string;         // extension
+  generated: { by: string; at: string };  // OKF trust family; by = `nowpilot/<tier-model>`, at = ISO 8601
+  status: 'draft' | 'stable';    // OKF lifecycle family (default 'stable')
 }
 // Suggestion-gating constants (LLM-WIKI-11). Items below the threshold are never
 // surfaced; the caps bound how many gated items are shown per save.
@@ -4994,10 +5142,19 @@ export interface TierResolveResult {
   fallbackChain: TierCandidate[];
 }
 export function resolveTier(input: TierResolveInput): TierResolveResult | null {
-  const candidates = TIER_TO_MODEL_CANDIDATES[input.tier].filter(c => {
-    if (input.privacyMode === 'local-only') return c.providerId === 'ollama';
-    return true;
-  });
+  // privacyMode handling (all three values are honored):
+  //   'local-only'   → only ollama candidates are eligible.
+  //   'prefer-local' → all candidates eligible, but ollama is reordered to the front.
+  //   'cloud-ok'     → candidate order unchanged.
+  let candidates = TIER_TO_MODEL_CANDIDATES[input.tier].filter(c =>
+    input.privacyMode === 'local-only' ? c.providerId === 'ollama' : true,
+  );
+  if (input.privacyMode === 'prefer-local') {
+    candidates = [
+      ...candidates.filter(c => c.providerId === 'ollama'),
+      ...candidates.filter(c => c.providerId !== 'ollama'),
+    ];
+  }
   const enabled = input.configuredProviders.filter(p => p.enabled).sort((a, b) => a.priority - b.priority);
   const chosen: TierCandidate[] = [];
   for (const c of candidates) {
@@ -5015,6 +5172,8 @@ Rules:
 - If no candidate matches, callers must handle null.
 - Planner/Renderer must call resolveTier at request time.
 - **Note:** NoteTagger and NoteChatConverter resolve the `haiku` tier; NoteQA resolves the `flash` tier (§27, D-07).
+
+> **⚠️ Model-ID verification (rev 2026-08-12).** The model slugs in `TIER_TO_MODEL_CANDIDATES` (`claude-haiku-4-latest`, `gemini-2.5-flash`, `deepseek-chat`, `llama3.2:3b`, `qwen2.5:7b`) are **point-in-time**. Because the resolver "never invents a model name," a stale slug resolves to `null` and the caller falls back or errors. **Phase 3 implementers MUST verify each slug against the provider's current model list before wiring**, and update this table (not the calling code) if a provider has renamed a model. In particular, "DeepSeek Flash / V4" is reached via the `openai`-compatible provider using the `deepseek-chat` slug against DeepSeek's baseURL — confirm the exact current DeepSeek model id at build time. This table is the **single source of truth** for tier→model mapping; no other file hard-codes model names.
 
 ## Appendix E — MessageType Registry and Port Protocol
 
@@ -5341,6 +5500,10 @@ export default defineConfig({
             if (id.includes('node_modules/@ant-design/x')) return 'antd-x';
             if (id.includes('node_modules/@ant-design')) return 'ant-icons';
             if (id.includes('node_modules/defuddle')) return 'defuddle'; — keep out of content bundle
+            // Defuddle/full math deps (rev 2026-08-12) — also keep out of content bundle:
+            if (id.includes('node_modules/mathml-to-latex')) return 'defuddle';
+            if (id.includes('node_modules/temml')) return 'defuddle';
+            if (id.includes('node_modules/turndown')) return 'defuddle';
             if (id.includes('node_modules/yaml')) return 'yaml'; — keep out of content bundle
             if (id.includes('node_modules/react')) return 'react';
           },
@@ -5355,7 +5518,7 @@ Rules:
 
 - target: 'chrome120' matches the minimum supported Chrome for chrome.sidePanel.open. AntD v6 requires React ≥18 (this project uses React 19) and uses CSS-variable theming by default.
 - No @tailwindcss/vite plugin.
-- The content-script bundle MUST NOT include antd, @ant-design/x, @ant-design/x-markdown, react, react-dom, **defuddle, or yaml**. Enforced by tests/isolation/no-content-script-ui.test.ts.
+- The content-script bundle MUST NOT include antd, @ant-design/x, @ant-design/x-markdown, react, react-dom, **defuddle, or yaml** — **and (rev 2026-08-12) not `defuddle/full`'s math deps `mathml-to-latex`, `temml`, or `turndown`**. Enforced by tests/isolation/no-content-script-ui.test.ts.
 
 ## Appendix H — Reserved
 
@@ -5653,6 +5816,8 @@ Rules:
 - **Note:** the persona block sits in the stable `[SYSTEM]` section and is therefore cache-eligible; keep it byte-stable per persona (§1.3).
 
 ## Appendix L — Structured Output Repair Loop
+
+> **Implementer note (rev 2026-08-12):** v0.1 uses `zod-to-json-schema` exactly as shown below. Do **not** substitute Zod 4's native `z.toJSONSchema()` — that swap is a deferred v0.2 cleanup (§7.4). Implement this file verbatim.
 
 ```ts
 // src/core/ai/StructuredOutput.ts
