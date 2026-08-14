@@ -339,7 +339,7 @@ Plans:
   4. Memory retrieval returns top-5 (top-3 in tiny mode) with scores in [0, 1]; preference profile injects compact JSON including persona overrides.
   5. The end-to-end Page → PageContentService → Note → MiniSearch path works.
 
-**Plans**: 4/8 plans executed
+**Plans**: 6/8 plans executed
 
 **Wave 1** *(foundation)*
 
@@ -353,7 +353,7 @@ Plans:
 
 **Wave 3** *(orchestration)*
 
-- [ ] 05-04-PLAN.md — MemoryEngine (single orchestrator, assemble budgets top-5/top-3 tiny/≤1000) + MemoryExtractor (haiku-tier via PersonaInjector + requestJson) (wave 3)
+- [x] 05-04-PLAN.md — MemoryEngine (single orchestrator, assemble budgets top-5/top-3 tiny/≤1000) + MemoryExtractor (haiku-tier via PersonaInjector + requestJson) (wave 3)
 
 **Wave 4** *(pipeline wiring)*
 
@@ -361,7 +361,7 @@ Plans:
 
 **Wave 5** *(notes workspace UI)*
 
-- [ ] 05-07-PLAN.md — Notes workspace: PortableMarkdown wikilinks + NotesPage (list+editor+search+save pipeline+star+delete) + BacklinksPanel + WikilinkAutocomplete (wave 5)
+- [x] 05-07-PLAN.md — Notes workspace: PortableMarkdown wikilinks + NotesPage (list+editor+search+save pipeline+star+delete) + BacklinksPanel + WikilinkAutocomplete (wave 5)
 
 **Wave 6** *(graph + phase gate)*
 
@@ -548,7 +548,7 @@ Plans:
 | 4. Context-Adaptive Execution | 7/7 | Complete    | 2026-08-12 |
 | 4a. PageContentService (Knowledge Acquisition) | 10/10 | In Progress|  |
 | 4b. Trust-Aware Context and Receipts | 7/6 | Complete    | 2026-08-13 |
-| 5. Knowledge Base (Memory + MiniSearch + Notes) | 4/8 | In Progress|  |
+| 5. Knowledge Base (Memory + MiniSearch + Notes) | 6/8 | In Progress|  |
 | 5a. LLM-Wiki & Filesystem Sync | TBD | Not started | - |
 | 5b. Memory Governance and Experience Candidates | TBD | Not started | - |
 | 6. Transaction Logging and Diagnostics | TBD | Not started | - |
