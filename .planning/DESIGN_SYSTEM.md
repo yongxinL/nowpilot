@@ -2,8 +2,8 @@
 
 > **Document ID:** `NOWPILOT_DESIGN_SYSTEM.md`
 > **Status:** Design companion to `PRODUCT_SPEC_v0_1.md` (the implementation contract). This document owns **visual language, brand, layout blueprints, and theming aesthetics**. Where the two ever disagree on a *functional rule*, the product spec wins.
-> **Date:** 2026-08-02 (rev 2026-08-14 — annotated-mockup alignment)
-> **Changelog (rev 2026-08-14):** Reconciled §8 blueprints with the annotated mockups — Side Panel exact heights (composer 44 px, input min 60 px, status bar 28 px) + composer icons (Attach · History · New chat) + **Thought process** collapsible + assistant hover-action set; Standalone Sider 240/72 px + **Add-ons** group + sider-bottom profile + top-bar global search; Notes = **four** header column toggles (incl. persistent Content) + ⋮ More + Inspector Duplicate/Print + per-column shortcuts + bottom status bar; chat-history bottom sheet ≤ ~70 % height; right drawer **320 px** + More-menu (Export/Edit title/Delete); Options menu General · Notes · Advance + Help Center, top bar 56 px, provider cards get edit + enable toggle, theme-pack preview swatch; **provider dialog model list is now a 6-column table** (Model name · Type · Context window · Source · Recommended · Enabled). Added **§8.8 Message action sets** and **§8.9 State indicators**.
+> **Date:** 2026-08-02 (rev 2026-08-12 — annotated-mockup alignment)
+> **Changelog (rev 2026-08-12):** Reconciled §8 blueprints with the annotated mockups — Side Panel exact heights (composer 44 px, input min 60 px, status bar 28 px) + composer icons (Attach · History · New chat) + **Thought process** collapsible + assistant hover-action set; Standalone Sider 240/72 px + **Add-ons** group + sider-bottom profile + top-bar global search; Notes = **four** header column toggles (incl. persistent Content) + ⋮ More + Inspector Duplicate/Print + per-column shortcuts + bottom status bar; chat-history bottom sheet ≤ ~70 % height; right drawer **320 px** + More-menu (Export/Edit title/Delete); Options menu General · Notes · Advance + Help Center, top bar 56 px, provider cards get edit + enable toggle, theme-pack preview swatch; **provider dialog model list is now a 6-column table** (Model name · Type · Context window · Source · Recommended · Enabled). Added **§8.8 Message action sets** and **§8.9 State indicators**. **(rev 2026-08-12b)** Wired the annotated mockups in `.planning/mockup/` as the §8 visual acceptance reference (new **§8.0** mockup-reference table + precedence rule); `PRODUCT_SPEC` Phase 7/7a now point here for visual acceptance.
 > **Applies to:** WXT + React 19 + Ant Design v6 (pure CSS-variable theming) + Ant Design X 2.x.
 > **RICH alignment:** Responsive · Intuitive · Consistent · Human-centric (the visual expression of the RICH requirements in spec §17.7).
 
@@ -157,6 +157,24 @@ Warmer, paper-like reading mode (best on Notes / "Ask your notes").
 
 Two surfaces, one workspace. This section gives the visual grid; the spec owns behaviour.
 
+### 8.0 Mockup reference (visual source of truth)
+
+The annotated mockups in **`.planning/mockup/`** are the pinned visual ground-truth for the §8 blueprints. They are a **review + acceptance artifact**, not a model input: the text in §8 is self-sufficient for text-first implementers (Haiku / DeepSeek-Flash / Gemini-Flash), and the mockups are used at UI review/QA gates (Phase 7 / 7a) and by human reviewers.
+
+| Blueprint | Mockup file (`.planning/mockup/`) | Key anchors |
+|-----------|-----------------------------------|-------------|
+| §8.1 Side Panel — Focused Chat | `00-sidepanel-chat.png` | header 52 / composer 44 / input 60 / status 28 px; Thought-process; assistant hover set (6) |
+| §8.2 + §8.5 Standalone Chat | `01-standalone-chat.png` | Sider 240/72 + Add-ons group; right drawer 320 px; assistant(8)/user(4) action sets; More menu |
+| §8.3 Notes — 4-column workspace | `02-standalone-note.png` | 4 column toggles (Content persistent); Inspector Duplicate/Print; status bar; ⌘1–4 |
+| §8.6 + §8.7 Options + Provider modal | `03-options-general.png` | menu General·Notes·Advance; provider card edit+toggle; 6-column model table |
+
+**Precedence (on conflict):**
+- A **functional rule** always defers to `PRODUCT_SPEC_v0_1.md` (the implementation contract).
+- **Visual layout intent** defers to the mockup.
+- A **written measurement/description** in §8 supersedes a stale image — if they disagree, update the mockup and bump its rev.
+
+**Frozen baseline:** mockups are versioned with this document's rev date. Re-exporting a mockup requires a design-changelog line + a rev bump; otherwise §8 text remains the acceptance baseline. *(Current uploads use a mixed `00/01` prefix; the table above uses the normalized `00–03` names — rename in `.planning/mockup/` to match, or adjust the filenames here.)*
+
 ### 8.1 Side Panel — "Focused Chat" (Ask-Gemini style, **400 px**, compact)
 
 A single, uninterrupted chat surface. **No side nav rail.** Three stacked zones: **header**, **conversation**, **composer block** (toolbar → input → status bar). **Exact metrics (from mockup):** side-panel width **400 px** · header **52 px** · composer toolbar **44 px** · input min-height **60 px** · status bar **28 px** · chat-history bottom sheet slides up to **~70 %** of panel height.
@@ -176,7 +194,7 @@ A single, uninterrupted chat surface. **No side nav rail.** Three stacked zones:
 │  │ Suggested follow-up question            │ │     follow-up chips (RICH-C-05)
 │  └────────────────────────────────────────┘ │
 ├─────────────────────────────────────────────┤
-│ ⚡ gemma-4-2b-it ▾  📎             🕘   ▢    │  c) COMPOSER TOOLBAR (44px, above input)
+│ ⚡ gemma-4-2b-it ▾         📎   🕘      ▢    │  c) COMPOSER TOOLBAR (44px, above input)
 │ ┌─────────────────────────────────────────┐ │     model selector (L) · attach ·
 │ │ Ask anything, @ models, / prompts    ▷  │ │        history · New chat (R)
 │ └─────────────────────────────────────────┘ │  d) INPUT (min 60px; send inside, bottom-right)
