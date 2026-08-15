@@ -6,17 +6,10 @@
 **Version:** v0.1
 **Scope:** NowPilot v0.1 — Chrome MV3 AI Assistant using Side Panel + Standalone view. Add-on architecture preserved. Page injection deferred to v0.2+.
 
-**Changelog (rev 2026-08-12):**
-- **Defuddle pinned to `^0.19` (≥ 0.19.2), superseding `^0.6`.** Adds CVE-2026-30830 (XSS) fix + `data:`/`blob:` URL rejection, iframe-`sandbox` retention, SVG `<style>` stripping, and non-mutating `parse()`. Requires `useAsync:false` + synchronous `parse()` (privacy: no third-party API fetches), the `defuddle/full` bundle for reliable Markdown, an effective-base-URL stamp for the panel's detached `DOMParser`, and an extended isolation grep (`mathml-to-latex`/`temml`/`turndown`). See §7.6, §26.4, §23, §24, Appendix G.
-- **Note file format is now OKF v0.2-aligned (OKF-compatible, not OKF-constrained).** `.md` YAML frontmatter gains OKF-required `type`, recommended `description`, and the `generated`/`status` trust-lifecycle families; NowPilot's immutable UUID `id` is retained as an OKF **extension key** and wikilinks remain the body edge syntax. Full-OKF markdown-link edges + path-as-identity + `sources`/`verified` families are deferred to v0.2+. See §21.2, §27.3 (SYNC-04), §18 (Phase 5 / 5a), §23, Appendix C.
-- **Annotated mockups wired as visual acceptance reference.** The four annotated mockups now live in `.planning/mockup/` and are indexed in **DESIGN_SYSTEM §8.0** (visual source of truth). This spec stays functional-authoritative; Phase 7 gains a **visual-acceptance DONE-when** and Phase 7a a composer visual reference, both pointing to `.planning/mockup/` under the precedence rule (functional rule → spec; visual layout → mockup). See Phase 7 / 7a and DESIGN_SYSTEM §8.0.
-- **Implementability review pass (for cost-effective planning/coding models).** Closed gaps that would block a Haiku/DeepSeek-Flash/Gemini-Flash implementer: (1) LLM-WIKI-11 referenced a non-existent `NOTE_SUGGESTION_MAX_PER_SAVE` — corrected to the two real constants. (2) The settled **Phase 4a** extraction decisions (trigger model, subscription-gated re-extract, per-tab cache LRU, lazy heading-chunked index, payload cap, panel-side redaction, actionable-only APC walk, `CONTENT_EXTRACT_FAILED`) are now **normative in §26.4a/§26.5/§26.6** with tunables `PAGE_CACHE_MAX_TABS`/`PAGE_HTML_MAX_BYTES`/`INDEX_CHUNK_MAX_TOKENS`/`PAGE_EXTRACTION_TIMEOUT_MS` in Appendix C. (3) Zod-4 vs `zod-to-json-schema` ambiguity resolved to a single instruction (keep in v0.1; native migration is v0.2). (4) `resolveTier` now honors `prefer-local`. (5) Clarified the strategy-`id` vs result-`source` enums (no separate ReadabilityStrategy). (6) **§26.2 layers now tagged with owning phase** — ServiceNow Table API is explicitly **Phase 8, not 4a** (4a builds the read + actionable strategies only). (7) **Appendix D carries a model-ID verification warning** — the tier→model slugs are point-in-time and Phase 3 must verify them (incl. the exact current DeepSeek slug). See §26, Appendix C, Appendix D, Appendix L.
-- **Dependency version audit (§7) refreshed to current majors.** Notable bumps: **wxt `^0.19` -> `^0.21`** (Node 22 / Vite 6.3.4 / peer-dep changes), **@wxt-dev/module-react `^0.3` -> `^1`**, **ai (Vercel AI SDK) `^4` -> `^5`+** (breaking API: `inputSchema`/`maxOutputTokens`/`stopWhen`; `@ai-sdk/*` providers version independently), **zod `^3` -> `^4`** (enables dropping `zod-to-json-schema` via native `z.toJSONSchema()`), **immer `^10` -> `^11`**, **@mozilla/readability `^0.5` -> `^0.6`**, plus a **TypeScript 6.x** development recommendation. Packages already current via caret (react 19, antd 6, @ant-design/x 2, @modelcontextprotocol/sdk 1.30, zustand 5, idb 8, minisearch 7, turndown 7, dompurify 3) are unchanged. See §7 and §23.
-
 **Purpose:** This document is the single, self-contained product specification for NowPilot v0.1. It does not reference any prior document. Any AI coding agent implementing this spec must treat this file as authoritative and complete.
 
-**Target implementation agents:** Anthropic Claude Haiku, Google Gemini Flash, DeepSeek Flash, or equivalent cost-effective coding models.
-**Target runtime providers:** OpenAI, Anthropic, Gemini, Ollama
+**Target implementation agents:** any cost-effective coding model (e.g. DeepSeek V4 Flash, Anthropic Claude Haiku, Google Gemini Flash) — **operator's choice per GSD stage**. This spec mandates **no** specific build-agent model; a small number of high-complexity modules carry a vendor-neutral `@implementation-tier: advanced` marker the operator may stub or route to a stronger agent (see §0.3a).
+**Target runtime providers:** OpenAI, Anthropic, Gemini, Ollama (the product's runtime tier→model mapping is operator-configured; Appendix D).
 **Primary application:** Chrome MV3 extension using WXT + React + TypeScript + Ant Design v6 + Ant Design X 2.x.
 
 ### How to Read This Specification
@@ -149,8 +142,18 @@ These rules apply to every phase, every module, and every AI coding agent.
 
 - Every public module boundary must have a Zod schema and at least one fixture test.
 - Every phase must define a real npm script under verify:phase-N.
-- Every module marked @implementation-tier: sonnet-class must be stubbed by Haiku/Flash implementers, not written.
+- Every module marked `@implementation-tier: advanced` (high-complexity) must be stubbed in cost-effective builds, not written. *(Complexity marker only — names no vendor/model. Stub vs implement is the operator's model-routing choice, not a spec mandate; see §0.3a.)*
 - Every catch block must call debugLog(code, message, context). Empty catches are forbidden.
+
+### §0.3a Model policy — two independent "models" (READ FIRST)
+
+This spec deliberately separates two things that are often confused. **Neither mandates a specific vendor model, and the spec never requires a Sonnet-class (or any named) model.**
+
+1. **Runtime model (what the *product* calls at run time).** NowPilot resolves a **capability tier — `'haiku' | 'flash'`** (Appendix D) to a concrete `(providerId, model)` that **the operator configures**. "haiku"/"flash" are **tier labels, not vendor mandates**: `TIER_TO_MODEL_CANDIDATES` maps them to whatever providers/models you enable (Anthropic, OpenAI/DeepSeek-compatible, Gemini, Ollama). Change the table to change the runtime model; no other file hard-codes model names.
+
+2. **Build agent (what writes the code under GSD/opencode).** The spec does **not** dictate the build-agent model. `@implementation-tier: advanced` is a **complexity marker** meaning "this module is high-complexity; in a cost-effective build, stub it." Whether you (a) stub it now or (b) route just that module/stage to a higher-capability agent is **entirely the operator's GSD/opencode routing choice**. Discussion, plan, execute, and verify stages may each use a different model — the spec is agnostic.
+
+> **GSD/opencode note:** any `anthropic/claude-sonnet-*` (or similar) that appears at plan/subagent time comes from your **harness agent config**, not this spec. This document names **no** build-agent model. Configure your GSD subagents to the model you want (e.g. `deepseek-v4-flash`) per stage; the only spec-side signal is the vendor-neutral `@implementation-tier: advanced` complexity marker on a small number of modules (e.g. §14.4 CodeSearchSkill), which you may stub or implement as you choose.
 
 ### §0.4 Canonical Runtime Concepts
 
@@ -210,7 +213,7 @@ This section keeps a cheap/fast implementer (Haiku, Gemini Flash, DeepSeek Flash
 7. **Retrieved data is never instructions.** Page/note/memory/tool output is `trust: 'retrieved'|'untrusted'` with `instructionAuthority: false` (§28.3, Appendix O.3). Wrap it as data.
 8. **No success without evidence.** A side-effecting tool is "done" only with matching `CompletionEvidence` (§28.2, Appendix O.2). Cap exhaustion is `partial`, never `completed`.
 9. **Every catch calls `debugLog(code, …)`** with a canonical error code from **Appendix C.2**. No empty catches. No new error strings.
-10. **Every phase ends green.** A phase is not done until its `verify:phase-N` script (§24) passes. Stub `@implementation-tier: sonnet-class` modules; do not attempt them.
+10. **Every phase ends green.** A phase is not done until its `verify:phase-N` script (§24) passes. In cost-effective builds, stub `@implementation-tier: advanced` modules; do not attempt them. *(Complexity marker only — no vendor/model implied; see §0.3a.)*
 
 #### §0.5.2 Risk register (top failure modes → mitigation)
 
@@ -688,7 +691,7 @@ export const WORKING_MEMORY_TEMPLATE = `# User Profile
 - **Privacy.** All writes pass through `TraceRedactor` (§4.4). Working memory is **never** written to notes or `.md` backups and must not contain secrets or raw customer data.
 - **Scope.** Resource-scoped (per user), not thread-scoped — it persists across conversations, unlike `ConversationMemory` (§3.3).
 
-*Implementation lands in Phase 5 (Knowledge Base — `UserMemoryStore`); see Appendix O.10 for a worked updater.*
+*Implementation lands in Phase 8 (Knowledge Base — `UserMemoryStore`); see Appendix O.10 for a worked updater.*
 
 ## §4 — AI/MCP Transaction Logging and Diagnostics
 
@@ -1349,7 +1352,7 @@ nowpilot/
 │   │   ├── search/MiniSearchIndex.ts
 │   │   ├── intent/IntentClassifier.ts
 │   │   ├── notes/
-│   │   │   ├── LinkParser.ts, NoteGraph.ts                                    # Phase 5 (atomic notes + wikilinks)
+│   │   │   ├── LinkParser.ts, NoteGraph.ts                                    # Phase 8 (atomic notes + wikilinks)
 │   │   │   ├── NoteTagger.ts (§27)
 │   │   │   ├── NoteQA.ts (§27)
 │   │   │   ├── NoteChatConverter.ts (§27)
@@ -1877,9 +1880,9 @@ WorkflowRunner executes sequentially. Step N output is available as {{step_N_out
 
 ### §14.4 CodeSearchSkill Chunking Contract
 
-Marked @implementation-tier: sonnet-class — Haiku/Flash implementers must stub with { type: 'error', content: 'CODESEARCH_NEEDS_LARGE_MODEL' }.
+Marked `@implementation-tier: advanced` (high-complexity) — in a cost-effective build, stub with { type: 'error', content: 'CODESEARCH_NEEDS_ADVANCED_MODEL' }. *(Complexity marker only; the operator decides whether to route this module to a higher-capability agent — §0.3a.)*
 
-Full implementation shape (for Sonnet-class agents):
+Full implementation shape (when built by a high-capability agent):
 
 - **Input schema:** { query: string; scriptScope?: string; maxResults?: number }.
 - Fetch candidate scripts via SNowTableClient, rate-limited.
@@ -2241,7 +2244,7 @@ Full theme details in Appendix F.
 
 **Source:** [Ant Design X RICH Design Paradigm](https://x.ant.design/docs/spec/introduce).
 **Scope:** four pillars — **R**ole (角色), **I**ntention (意图), **C**onversation (会话), **H**ybrid UI (混合界面). 60 requirements total (17 P0 / 22 P1 / 21 P2).
-**Framework note:** RICH is implemented **on the already-adopted Ant Design X presentation components** (Bubble, Sender, Prompts, Welcome, Suggestion, Actions, ThoughtChain — §5.5, §7.2). No new UI framework. Persona runtime (RICH-R-01/02/10) built in Phase 3; all UI/behavior built in Phase 7 sub-waves 7.3/7.4/7.5 (§18).
+**Framework note:** RICH is implemented **on the already-adopted Ant Design X presentation components** (Bubble, Sender, Prompts, Welcome, Suggestion, Actions, ThoughtChain — §5.5, §7.2). No new UI framework. Persona runtime (RICH-R-01/02/10) built in Phase 3; all UI/behavior built in Phase 15 sub-waves 15.3/15.4/15.5 (§18).
 **Priority key:** P0 = must-have · P1 = should-have · P2 = nice-to-have. **Effort:** S <4h · M 4–16h · L >16h.
 
 #### §17.7.1 — R — Role (角色设计)
@@ -2324,7 +2327,7 @@ Full theme details in Appendix F.
 
 **[C-04] Structured Confirmation — 确认**
 
-- **RICH-C-12 (P1, L)** — Inline confirmation chip for side-effect chat actions ("I'll search the web. [Proceed] [Cancel]"). Depends on PermissionDialog (Phase 8).
+- **RICH-C-12 (P1, L)** — Inline confirmation chip for side-effect chat actions ("I'll search the web. [Proceed] [Cancel]"). Depends on PermissionDialog (Phase 17).
 - **RICH-C-13 (P1, S)** — Read-only actions execute immediately. Depends on C-12.
 
 **[C-05] Personalized Greeting — 开始**
@@ -2360,7 +2363,7 @@ Full theme details in Appendix F.
 - **RICH-H-11 (P1, L)** — Standalone view split-pane: left 60% chat, right 40% Context panel; toggle.
 - **RICH-H-12 (P1, L)** — Right-pane tabs: Context / Notes / Tools. Depends on H-11.
 - **RICH-H-13 (P2, S)** — Split-pane layout persistent. Depends on H-11.
-- **RICH-H-14 (P2, M)** — Inline notes Q&A layout. Depends on notes CRUD (Phase 5).
+- **RICH-H-14 (P2, M)** — Inline notes Q&A layout. Depends on notes CRUD (Phase 8).
 
 **[H-05] Sender Rich Input — 表达**
 
@@ -2402,24 +2405,24 @@ Role 11 · Intention 14 · Conversation 15 · Hybrid UI 20 = **60**. P0 17 · P1
 **Canonical order:**
 
 ```text
-1 → 2 → 3 → 3a → 4 → 4a → 4b → 5 → 5a → 5b
-  → 6 → 6a → 6b → 6c → 7 → 7a → 8 → 8a → 9
+1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10
+  → 11 → 12 → 13 → 14 → 15 → 16 → 17 → 18 → 19
 ```
 
 Do not implement more than one phase per response unless explicitly requested.
 
-**Reorganisation principle:** phases follow the product data-flow of _acquire → store → understand → display → extend → harden_, while governance and reliability sub-phases are placed immediately after the capability they extend. Key placements: **PageContentService → Phase 4a**; **Notes + Memory + MiniSearch → Phase 5**; **LLM-Wiki + Filesystem Sync → Phase 5a**; **Workspace Experience + RICH → Phase 7**; **Hardening & Release → Phase 9**.
+**Reorganisation principle:** phases follow the product data-flow of _acquire → store → understand → display → extend → harden_, while governance and reliability sub-phases are placed immediately after the capability they extend. Key placements: **PageContentService → Phase 6**; **Notes + Memory + MiniSearch → Phase 8**; **LLM-Wiki + Filesystem Sync → Phase 9**; **Workspace Experience + RICH → Phase 15**; **Hardening & Release → Phase 19**.
 
 ```text
-AI runtime (3) → reliability/evidence (3a)
-Page → context (4) → PageContentService (4a) → trust-aware context (4b)
-    → Knowledge Base (5) → LLM-Wiki and filesystem sync (5a)
-    → memory governance and experience candidates (5b)
-    → Diagnostics (6) → evaluation (6a) → verified evolution (6b)
-    → bounded multi-role collaboration (6c)
-    → Workspace Experience + RICH (7) → multimodal input (7a)
-    → Add-ons (8) → tool governance and active discovery (8a)
-    → Hardening & Release (9)
+AI runtime (3) → reliability/evidence (4)
+Page → context (5) → PageContentService (6) → trust-aware context (7)
+    → Knowledge Base (8) → LLM-Wiki and filesystem sync (9)
+    → memory governance and experience candidates (10)
+    → Diagnostics (11) → evaluation (12) → verified evolution (13)
+    → bounded multi-role collaboration (14)
+    → Workspace Experience + RICH (15) → multimodal input (16)
+    → Add-ons (17) → tool governance and active discovery (18)
+    → Hardening & Release (19)
 ```
 
 ### Phase 1 — MV3/WXT Runtime + AntD Shells + Workspace
@@ -2563,17 +2566,17 @@ tests/core/ai/persona/PersonaInjector.test.ts
 - **PersonaInjector prepends the persona block to the Planner, Executor, Renderer, and MemoryExtractor system prompts (persona-aware from day one), placed in the cached [SYSTEM] section so prompt caching is preserved.**
 - **UserPreferences.personaOverrides (name/tone/brevity) apply without a code change.**
 
-### Phase 3a — Agent Reliability and Evidence
+### Phase 4 — Agent Reliability and Evidence
 
 **Depends on:** Phase 3  
 **Create/modify:** AgentTrajectoryState, OutcomeVerifier, CompletionEvidence, AgentTurnOutcome, AgentOrchestrator integration, Renderer completion guard.  
 **Required tests:** `tests/core/ai/trajectory/**`, `tests/core/ai/OutcomeVerifier.test.ts`  
-**Verification:** `pnpm run verify:phase-3a`  
+**Verification:** `pnpm run verify:phase-4`  
 **Requirements (from §28.2):** AGT-01 (P0) trajectory states · AGT-02 (P0) side-effect success needs CompletionEvidence · AGT-03 (P0) structured AgentTurnOutcome, cap exhaustion is `partial` · AGT-04 (P0) deterministic replan/terminal policy.  
 **Types:** `AgentTrajectoryState`, `CompletionEvidence`, `AgentTurnOutcome` (Appendix C.1).  
 **DONE when:** transitions, evidence, partial/cap behaviour, abort, and false-completion tests pass.
 
-### Phase 4 — Context-Adaptive Execution
+### Phase 5 — Context-Adaptive Execution
 
 **Create:**
 
@@ -2601,7 +2604,7 @@ tests/core/context/TokenBudget.test.ts
 - Minimal mode blocks MCP chaining (and LLM-Wiki RAG synthesis).
 - ContextProvenanceManifest is attached to every OptimizedContext.
 
-### Phase 4a — PageContentService (Knowledge Acquisition)
+### Phase 6 — PageContentService (Knowledge Acquisition)
 
 **Create:**
 
@@ -2637,19 +2640,19 @@ tests/isolation/no-content-script-ui.test.ts        # verifies no React/AntD/def
 - PageIndexBuilder builds an ephemeral per-tab MiniSearch index (never persisted).
 - SPA-nav (wxt:locationchange) + tabs.onUpdated invalidation works.
 - Passwords never captured (isPassword ⇒ value omitted).
-- pnpm run verify:phase-4a passes.
+- pnpm run verify:phase-6 passes.
 
-### Phase 4b — Trust-Aware Context and Receipts
+### Phase 7 — Trust-Aware Context and Receipts
 
-**Depends on:** Phases 4 and 4a  
+**Depends on:** Phases 5 and 6  
 **Create/modify:** ContextItem, trust policy, context receipt, injection defences, stable-prefix snapshots, progressive skill disclosure.  
 **Required tests:** `tests/core/context/trust/**`, `tests/security/prompt-injection/**`  
-**Verification:** `pnpm run verify:phase-4b`  
+**Verification:** `pnpm run verify:phase-7`  
 **Requirements (from §28.3):** CTX-01 (P0) source trust/authority metadata · CTX-02 (P0) retrieved data is never instructions · CTX-03 (P0) ContextProvenanceManifest → context receipt · CTX-04 (P0) stable-prefix snapshot tests · CTX-05 (P1) progressive skill disclosure · CTX-06 (P1) context-quality diagnostics without raw text.  
 **Types:** `ContextItem`, `ContextReceiptEntry` (Appendix C.1).  
 **DONE when:** malicious page, note, and tool fixtures cannot alter policy, and Prompt Inspector reconstructs packing decisions.
 
-### Phase 5 — Knowledge Base (Memory + MiniSearch + Notes)
+### Phase 8 — Knowledge Base (Memory + MiniSearch + Notes)
 
 **Create:**
 
@@ -2666,9 +2669,9 @@ src/core/notes/NoteGraph.ts
 src/components/notes/{BacklinksPanel, WikilinkAutocomplete, NoteGraphView}.tsx   # core logic
 ```
 
-**Knowledge model established here:** atomic notes (the unit) + wikilinks (`links[]`, the connective web) + tags (many-to-many labels). The `categoryPath` field is introduced on the Note type here (populated later by LLM-Wiki in Phase 5a).
+**Knowledge model established here:** atomic notes (the unit) + wikilinks (`links[]`, the connective web) + tags (many-to-many labels). The `categoryPath` field is introduced on the Note type here (populated later by LLM-Wiki in Phase 9).
 
-**OKF v0.2 alignment — type declaration only (rev 2026-08-12).** Add the optional OKF-aligned field `type?: string` to the `Note` interface in `src/types/notes.ts` here (declaration only; default `Note` applied at serialization time in Phase 5a). This mirrors how `categoryPath` is *declared* in Phase 5 and *populated* by LLM-Wiki in Phase 5a — no serialization, no migration, and no LLM behaviour change in Phase 5. DONE-when (append): `Note.type?: string` exists in `src/types/notes.ts` and type-checks; no reader/writer consumes it yet (Phase 5a owns population + serialization).
+**OKF v0.2 alignment — type declaration only (rev 2026-08-12).** Add the optional OKF-aligned field `type?: string` to the `Note` interface in `src/types/notes.ts` here (declaration only; default `Note` applied at serialization time in Phase 9). This mirrors how `categoryPath` is *declared* in Phase 8 and *populated* by LLM-Wiki in Phase 9 — no serialization, no migration, and no LLM behaviour change in Phase 8. DONE-when (append): `Note.type?: string` exists in `src/types/notes.ts` and type-checks; no reader/writer consumes it yet (Phase 9 owns population + serialization).
 
 **Required tests:**
 
@@ -2689,9 +2692,9 @@ tests/core/notes/LinkParser.test.ts
 - MiniSearch < 50 ms over 1,000 notes.
 - Wikilinks resolve with tie-break rule.
 - End-to-end `Page → PageContentService → Note → MiniSearch` path works.
-- pnpm run verify:phase-5 passes.
+- pnpm run verify:phase-8 passes.
 
-### Phase 5a — LLM-Wiki & Filesystem Sync
+### Phase 9 — LLM-Wiki & Filesystem Sync
 
 **Create:**
 
@@ -2709,7 +2712,7 @@ src/core/storage/migrations/v4_notes_backup_config.ts  # add notes_backup_config
 
 Implements the full §27 requirement set: CAT-01…05, LLM-WIKI-01…10, SYNC-01…11, NMEM-01…03, **plus the OKF v0.2 note-format alignment (OKF-WIKI-01…04, rev 2026-08-12).**
 
-**OKF v0.2 alignment — serialization, migration, restore (rev 2026-08-12).** These are additive changes to files **already created** in Phase 5a — no new files:
+**OKF v0.2 alignment — serialization, migration, restore (rev 2026-08-12).** These are additive changes to files **already created** in Phase 9 — no new files:
 - `src/core/notes/NoteFileSync.ts` — emit the OKF-aligned YAML frontmatter (SYNC-04): OKF-required `type` (default `Note`), recommended `description` (= `Note.summary` when present), and the `generated: { by: nowpilot/<tier-model>, at: <ISO 8601> }` + `status` families. `id` (UUID) is emitted as an OKF **extension key**; wikilinks stay in the body.
 - `src/core/storage/migrations/v4_notes_backup_config.ts` — fold the optional `Note.type` into the **existing v4 migration** (idempotent; skip if the field already exists — **no new v5 bump**).
 - `src/components/options/ImportExportSection.tsx` — the "Restore from folder" parser tolerates OKF keys (`type`/`description`/`generated`/`status`) and ignores unknown OKF fields (SYNC-09).
@@ -2746,19 +2749,19 @@ tests/core/storage/migrations/v4.test.ts                 # extended: v4 adds Not
 - Delete-on-sync + empty-folder cleanup.
 - Restore preview + additive upsert (never deletes local notes not in the folder).
 - v4 migration idempotent (adding `Note.type` is skipped when already present).
-- pnpm run verify:phase-5a passes.
+- pnpm run verify:phase-9 passes.
 
-### Phase 5b — Memory Governance and Experience Candidates
+### Phase 10 — Memory Governance and Experience Candidates
 
-**Depends on:** Phases 5 and 5a  
+**Depends on:** Phases 8 and 9  
 **Create/modify:** MemoryRecord, conflict resolver, lifecycle controls, procedural experience candidate store, edge provenance.  
 **Required tests:** `tests/core/memory/governance/**`, `tests/core/knowledge/provenance/**`  
-**Verification:** `pnpm run verify:phase-5b`  
+**Verification:** `pnpm run verify:phase-10`  
 **Requirements (from §28.4):** MEM-01 (P0) working/episodic/semantic/preference/procedural taxonomy · MEM-02 (P0) source+confidence+lifecycle+sensitivity+verified-at · MEM-03 (P0) conflict precedence (correction > verified > prior > inference) · MEM-04 (P0) view/edit/pin/forget/disable/export/cloud-exclude controls · MEM-05 (P1) procedural experience gated by approval · KNW-01 (P1) edge provenance.  
 **Types:** `MemoryRecord`, `ProceduralExperience`, `KnowledgeEdgeSource` (Appendix C.1).  
 **DONE when:** conflicts, forget, expiry, sensitivity, provenance, and Notes/Memory boundaries pass.
 
-### Phase 6 — Transaction Logging and Diagnostics
+### Phase 11 — Transaction Logging and Diagnostics
 
 **Create:**
 
@@ -2787,22 +2790,22 @@ tests/components/DiagnosticsSection.test.tsx
 - Redaction test proves secrets (+ note content + filesystem paths) are not persisted.
 - Diagnostics panel in Options can copy operation ID.
 
-### Phase 6a — Agent Evaluation
+### Phase 12 — Agent Evaluation
 
-**Depends on:** Phase 6 and available core capabilities  
+**Depends on:** Phase 11 and available core capabilities  
 **Create:** `src/core/evaluation/**`, `tests/evals/**`, evaluation reports in Diagnostics.  
 **Required tests:** `tests/evals/**`  
-**Verification:** `pnpm run verify:phase-6a`  
+**Verification:** `pnpm run verify:phase-12`  
 **Requirements (from §28.6):** EVAL-01 (P0) versioned golden suites · EVAL-02 (P0) multi-dimension trajectory rubric · EVAL-03 (P0) deterministic validators, judges only for qualitative dims · EVAL-04 (P0) first-failing-layer diagnostics · EVAL-05 (P0) safety/leak/injection/false-completion/citation/isolation regressions block release · EVAL-06 (P1) cost/latency/quality Pareto · EVAL-07 (P1) calibrated, versioned judges.  
 **Types:** `FailureLayer` (Appendix C.1).  
 **DONE when:** golden suites produce per-dimension evidence and failure-layer categorisation.
 
-### Phase 6b — Verified Continual Evolution
+### Phase 13 — Verified Continual Evolution
 
-**Depends on:** Phases 5b and 6a  
+**Depends on:** Phases 10 and 12  
 **Create:** `src/core/evolution/**`, candidate store, sandbox runner, approval/version/rollback contracts.  
 **Required tests:** `tests/core/evolution/**`  
-**Verification:** `pnpm run verify:phase-6b`  
+**Verification:** `pnpm run verify:phase-13`  
 **Requirements (from §28.7):** EVO-01 (P1) trajectories create candidates, never direct prod changes · EVO-02 (P1) one target layer per candidate · EVO-03 (P1) EvolutionCandidate stores evidence/baseline/security/version/rollback · EVO-04 (P0) untrusted content cannot update active prompts/tools/permissions/code/procedural memory · EVO-05 (P1) sandbox→approve→scoped rollout→monitor→rollback · EVO-06 (P2) agent-generated tools stay sandbox proposals.  
 **Candidate Proposer (from §28.7a):** PROP-01 (P1) inputs = failing evals + trace evidence only · PROP-02 (P1) one layer per proposal (deterministic `FailureLayer`→`targetLayer`) · PROP-03 (P1) evidence threshold (≥3 agreeing failures, ≥0.15 score drop) · PROP-04 (P1) per-proposal sandbox cost cap · PROP-05 (P0) proposes only, never activates · PROP-06 (P1) reproducible (suite version + op-ids + hash).  
 **Create:** `src/core/evolution/CandidateProposer.ts` (deterministic proposer), candidate store, sandbox runner, approval/version/rollback contracts.  
@@ -2810,17 +2813,17 @@ tests/components/DiagnosticsSection.test.tsx
 **Worked example:** Appendix O.9.  
 **DONE when:** raw traces cannot self-activate; the proposer maps a failing eval to exactly one single-layer, cost-capped `proposed` candidate; and a candidate can be proposed, tested, approved, scoped, and rolled back.
 
-### Phase 6c — Bounded Multi-Role Collaboration
+### Phase 14 — Bounded Multi-Role Collaboration
 
-**Depends on:** Phases 3a, 4b, 6a, and 6b  
+**Depends on:** Phases 4, 7, 12, and 13  
 **Create:** `src/core/collaboration/**`, typed role policies and handoffs, collaboration coordinator, trace integration, and baseline evaluation fixtures.  
 **Required tests:** `tests/core/collaboration/**`, `tests/evals/collaboration/**`, `tests/security/collaboration-permissions.test.ts`  
-**Verification:** `pnpm run verify:phase-6c`  
+**Verification:** `pnpm run verify:phase-14`  
 **Requirements (from §30.2):** COLLAB-01 (P1) explicit activation · COLLAB-02 (P1) closed role registry · COLLAB-03 (P1) CollaborationPlan caps/deadline (single-agent = one-role plan) · COLLAB-04 (P1) typed handoffs, no hidden reasoning · COLLAB-05/06 (P0) coordinator owns commits, workers no side effects · COLLAB-07 (P1) independent reviewer · COLLAB-08 (P1) contained failure/fallback · COLLAB-09/10 (P1) shared projected context + traces · COLLAB-11 (P1) single-agent baseline gate · COLLAB-12 (P2) future isolated workers · COLLAB-13 (P0) no open-ended/unbounded agents.  
 **Types:** `CollaborationRole`, `RolePolicy`, `CollaborationPlan`, `AgentHandoffArtifact`, `CollaborationOutcome` (Appendix C.1).  
 **DONE when:** roles, tools, contexts, budgets, permissions, handoffs, independent review, failure fallback, and single-agent baseline gates pass. Full requirements are in §30.
 
-### Phase 7 — Workspace Experience (UI/UX) + RICH
+### Phase 15 — Workspace Experience (UI/UX) + RICH
 
 **Create:**
 
@@ -2862,13 +2865,13 @@ tests/core/intent/IntentClassifier.test.ts
 tests/core/notes/LinkParser.test.ts
 ```
 
-This phase exposes capabilities built in Phases 3–5a as polished surfaces, then layers RICH in sub-waves:
+This phase exposes capabilities built in Phases 3–9 as polished surfaces, then layers RICH in sub-waves:
 
-- **Phase 7.1 — Core screens:** Chat/Agent/Notes/Options render with Planner→Executor→Renderer, ChunkBuffer streaming, /write /ask presets, note wikilinks, Options forms, Diagnostics.
-- **Phase 7.2 — LLM-Wiki UI surfacing:** NotesPage "Ask notes" bar, category tree toggle, summary lines, orphan badges, AI-search toggle, backup status Tag, SaveToNoteDialog.
-- **Phase 7.3 — RICH Core (17 P0):** RICH-R-01/02/11, RICH-H-01, RICH-I-01/05/06, RICH-C-01/02/03/04, RICH-C-05/06/07/08, RICH-H-04 (clipboard-only insert), RICH-H-08. *(persona runtime seeds already in Phase 3.)*
-- **Phase 7.4 — RICH Enhance (22 P1):** RICH-R-03/05/06/08/09/10, RICH-I-02/03/08/09/10, RICH-C-09/12/13/14, RICH-H-02/03/05/06/11/12/16.
-- **Phase 7.5 — RICH Polish (21 P2):** all remaining P2 items (RICH-H-07 remains deferred, R1).
+- **Phase 15.1 — Core screens:** Chat/Agent/Notes/Options render with Planner→Executor→Renderer, ChunkBuffer streaming, /write /ask presets, note wikilinks, Options forms, Diagnostics.
+- **Phase 15.2 — LLM-Wiki UI surfacing:** NotesPage "Ask notes" bar, category tree toggle, summary lines, orphan badges, AI-search toggle, backup status Tag, SaveToNoteDialog.
+- **Phase 15.3 — RICH Core (17 P0):** RICH-R-01/02/11, RICH-H-01, RICH-I-01/05/06, RICH-C-01/02/03/04, RICH-C-05/06/07/08, RICH-H-04 (clipboard-only insert), RICH-H-08. *(persona runtime seeds already in Phase 3.)*
+- **Phase 15.4 — RICH Enhance (22 P1):** RICH-R-03/05/06/08/09/10, RICH-I-02/03/08/09/10, RICH-C-09/12/13/14, RICH-H-02/03/05/06/11/12/16.
+- **Phase 15.5 — RICH Polish (21 P2):** all remaining P2 items (RICH-H-07 remains deferred, R1).
 
 **DONE when:**
 
@@ -2878,22 +2881,22 @@ This phase exposes capabilities built in Phases 3–5a as polished surfaces, the
 - Options page shows all sub-sections (incl. Persona + Notes) with functional forms.
 - DiagnosticsPanel renders in Standalone view → Options → Diagnostics.
 - LLM-Wiki UI functional (Ask notes, category tree, backup status, SaveToNoteDialog).
-- RICH P0 (7.3) complete: persona header, welcome cards, quick-action chips, clarification + follow-up chips (max 2 rounds; graceful timeout), code-block Copy/Save-as-macro (Insert=clipboard-only), streaming stage indicators.
+- RICH P0 (15.3) complete: persona header, welcome cards, quick-action chips, clarification + follow-up chips (max 2 rounds; graceful timeout), code-block Copy/Save-as-macro (Insert=clipboard-only), streaming stage indicators.
 - **Visual acceptance (rev 2026-08-12):** the delivered Side Panel, Standalone chat, Notes 4-column workspace, and Options/provider-modal surfaces match the annotated mockups in `.planning/mockup/` (indexed in **DESIGN_SYSTEM §8.0**), within the precedence rule (a *functional rule* defers to this spec; *visual layout intent* defers to the mockup). Mockup-vs-build deltas are logged as UI-review findings. Exact metrics to verify: Side Panel width 400 / header 52 / composer 44 / input 60 / status 28 px (§8.1); Standalone Sider 240/72 px + Add-ons group (§8.2); Notes four column toggles with persistent Content + bottom status bar (§8.3); chat-history bottom sheet ≤ ~70 % vs right drawer 320 px (§8.4/§8.5); Options menu General·Notes·Advance (§8.6); provider dialog 6-column model table (§8.7); message action sets 6/8/4 (§8.8).
-- pnpm run verify:phase-7 passes.
+- pnpm run verify:phase-15 passes.
 
-### Phase 7a — Multimodal Input Foundation
+### Phase 16 — Multimodal Input Foundation
 
-**Depends on:** Phase 7 and Phase 4b  
+**Depends on:** Phase 15 and Phase 7  
 **Create:** `src/core/multimodal/**`, image input UI, voice transcription input, provider capability gates, modality fixtures.  
 **Required tests:** `tests/core/multimodal/**`, `tests/components/multimodal/**`  
-**Verification:** `pnpm run verify:phase-7a`  
+**Verification:** `pnpm run verify:phase-16`  
 **Requirements (from §29.2):** MM-01 (P1) ModalityInput (no inline binary) · MM-02 (P1) ModalityObservation with confidence/sensitivity · MM-03 (P1) image paste/upload via vision model · MM-04 (P1) voice → editable Sender, explicit send · MM-05 (P2) later fast/slow split · MM-06 (P1) AbortSignal across transcribe/plan/tool/render · MM-07 (P0 boundary) APC-lite ≠ browser automation.  
 **Types:** `ModalityInput`, `ModalityObservation` (Appendix C.1).  
 **Visual reference:** the multimodal input UI (image paste/upload, voice → editable Sender) follows DESIGN_SYSTEM §8.1 (composer **Attach**) and the `.planning/mockup/00-sidepanel-chat.png` composer annotations (indexed in DESIGN_SYSTEM §8.0).  
 **DONE when:** image and audio inputs become redacted ContextItems, unsupported providers fail safely, and abort works.
 
-### Phase 8 — Add-ons and Content Script Runtime (Extraction-Only)
+### Phase 17 — Add-ons and Content Script Runtime (Extraction-Only)
 
 **Create/complete:**
 
@@ -2931,17 +2934,17 @@ tests/isolation/no-content-script-ui.test.ts
 - TeamGQM add-on renders in Side Panel and Standalone view.
 - Add-ons can consume PageContentService + Memory + Notes + LLM-Wiki.
 
-### Phase 8a — Tool Governance and Active Discovery
+### Phase 18 — Tool Governance and Active Discovery
 
-**Depends on:** Phase 8 and Phase 3a  
+**Depends on:** Phase 17 and Phase 4  
 **Create/modify:** ToolCapabilityManifest, risk matrix, verifier registry, result shaping, idempotency, active tool discovery.  
 **Required tests:** `tests/core/tools/governance/**`, `tests/core/tools/discovery/**`  
-**Verification:** `pnpm run verify:phase-8a`  
+**Verification:** `pnpm run verify:phase-18`  
 **Requirements (from §28.5):** TOL-01 (P0) ToolCapabilityManifest (category/risk/side-effect/perms/scopes/timeout/cost/idempotency/verifier/hashes) · TOL-02 (P0) risk- & side-effect-based permission policy · TOL-03 (P0) postcondition verification · TOL-04 (P0) validate/redact/size-limit/shape/attribute results · TOL-05 (P0) idempotent write replay-safety · TOL-06 (P1) active discovery over tools budget · TOL-07 (P2) resumable long-running contract (future).  
 **Types:** `ToolCapabilityManifest` (Appendix C.1).  
 **DONE when:** manifests are complete, risky writes require confirmation, duplicate writes are prevented, and discovery stays within token budget.
 
-### Phase 9 — Hardening and Release
+### Phase 19 — Hardening and Release
 
 **Required test suites:**
 
@@ -3308,14 +3311,14 @@ export interface Note {
   summaryGeneratedAt?: number;     // staleness detection (LLM-WIKI-08)
   tagsGeneratedAt?: number;        // staleness detection (LLM-WIKI-08)
   // --- OKF v0.2 alignment (rev 2026-08-12) ---
-  type?: string;                   // OKF-required frontmatter field; default 'Note' (declared Phase 5, serialized Phase 5a)
+  type?: string;                   // OKF-required frontmatter field; default 'Note' (declared Phase 8, serialized Phase 9)
   version: number;
 }
 ```
 
 > **Knowledge model:** atomic note (unit) + `links[]` (wikilink web) + `tags[]` (many-to-many labels) + `categoryPath` (single hierarchy → folder). Categories and tags are deliberately separate (D-03, §27).
 
-> **OKF v0.2 alignment (rev 2026-08-12).** The on-disk `.md` file is **OKF v0.2-compatible**: a directory of Markdown files with YAML frontmatter and a free-form body — exactly OKF's container. The `type` field satisfies OKF's only always-required key (default `Note`); `summary` is additionally emitted as OKF's recommended `description`; and the trust-lifecycle families `generated`/`status` are added by the serializer (see §27.3 SYNC-04). NowPilot's immutable UUID `id` is retained and written as an OKF **extension key** — legal because OKF consumers "MUST NOT reject documents with unrecognized fields." Wikilinks remain the body edge syntax (WIKI-ID-01…04); NowPilot does **not** emit OKF standard-markdown-link edges or adopt path-as-identity in v0.1 (those conflict with the UUID-identity/wikilink model and are deferred to v0.2+). The `type` field is **declared here in Phase 5** (type only) and **populated/serialized in Phase 5a** — mirroring how `categoryPath` is declared in Phase 5 and populated by LLM-Wiki in Phase 5a.
+> **OKF v0.2 alignment (rev 2026-08-12).** The on-disk `.md` file is **OKF v0.2-compatible**: a directory of Markdown files with YAML frontmatter and a free-form body — exactly OKF's container. The `type` field satisfies OKF's only always-required key (default `Note`); `summary` is additionally emitted as OKF's recommended `description`; and the trust-lifecycle families `generated`/`status` are added by the serializer (see §27.3 SYNC-04). NowPilot's immutable UUID `id` is retained and written as an OKF **extension key** — legal because OKF consumers "MUST NOT reject documents with unrecognized fields." Wikilinks remain the body edge syntax (WIKI-ID-01…04); NowPilot does **not** emit OKF standard-markdown-link edges or adopt path-as-identity in v0.1 (those conflict with the UUID-identity/wikilink model and are deferred to v0.2+). The `type` field is **declared here in Phase 8** (type only) and **populated/serialized in Phase 9** — mirroring how `categoryPath` is declared in Phase 8 and populated by LLM-Wiki in Phase 9.
 
 ### §21.3 Conversation Metadata + Memory Bodies
 
@@ -3444,7 +3447,7 @@ SCHEMA_INVALID
 NETWORK
 PLANNER_FAILED
 CODESEARCH_NEEDS_16K_CONTEXT
-CODESEARCH_NEEDS_LARGE_MODEL
+CODESEARCH_NEEDS_ADVANCED_MODEL
 BACKGROUND_START_FAILED
 BACKGROUND_ROUTER_REGISTER_FAILED
 BACKGROUND_ALARM_RECREATE_FAILED
@@ -3566,19 +3569,19 @@ Runs nightly via Scheduler. v0.1 produces exactly three Insight values: tag-tren
 | Notes placement | Standalone view only | Rich workspace needs full viewport |
 | Cross-surface consistency | Same ThemeStore and WorkspaceStore | One product across two surfaces |
 | **Phase ordering** | **Knowledge-first data-flow** (acquire→store→understand→display→extend→harden) | Matches product value (Copilot + Obsidian + NotebookLM); PageContentService/Notes/LLM-Wiki are the core, not late add-ons |
-| **PageContentService placement** | **Phase 4a** (was Phase 8) | Core infrastructure (§26); consumers in every later phase |
-| **Knowledge Base consolidation** | Memory + MiniSearch + Notes + Wikilinks in **Phase 5** | One coherent knowledge layer before enrichment |
-| **LLM-Wiki phase** | **Phase 5a** (LLM enrichment + RAG + filesystem sync together) | Single shared save pipeline; depends on Phases 4a/5 |
+| **PageContentService placement** | **Phase 6** (was Phase 17) | Core infrastructure (§26); consumers in every later phase |
+| **Knowledge Base consolidation** | Memory + MiniSearch + Notes + Wikilinks in **Phase 8** | One coherent knowledge layer before enrichment |
+| **LLM-Wiki phase** | **Phase 9** (LLM enrichment + RAG + filesystem sync together) | Single shared save pipeline; depends on Phases 6/8 |
 | **Note enrichment** | **Single haiku call** (tags+category+summary+memory facts) | Cheaper/faster than separate calls (D-01) |
 | **Notes dual-friendly** | **Markdown body + YAML frontmatter** | Human reads body; LLM/machine reads frontmatter (D-02) |
-| **Note file format** | **OKF v0.2-aligned — OKF-compatible, not OKF-constrained** (rev 2026-08-12) | The `.md` + YAML-frontmatter + folder-tree container already matches OKF v0.2. Frontmatter adds OKF-required `type`, recommended `description`, and the `generated`/`status` trust-lifecycle families so a generic OKF consumer can read a NowPilot note. NowPilot's immutable UUID `id` (WIKI-ID-01) is retained as an OKF **extension key** (OKF §11: consumers must not reject unknown fields), and wikilinks stay the body edge syntax. Full-OKF markdown-link edges + path-as-identity + `sources`/`verified` provenance families conflict with the UUID-identity/wikilink model and are **deferred to v0.2+** behind a dedicated ADR (§21.2, §27.3 SYNC-04, §18 Phase 5/5a) |
+| **Note file format** | **OKF v0.2-aligned — OKF-compatible, not OKF-constrained** (rev 2026-08-12) | The `.md` + YAML-frontmatter + folder-tree container already matches OKF v0.2. Frontmatter adds OKF-required `type`, recommended `description`, and the `generated`/`status` trust-lifecycle families so a generic OKF consumer can read a NowPilot note. NowPilot's immutable UUID `id` (WIKI-ID-01) is retained as an OKF **extension key** (OKF §11: consumers must not reject unknown fields), and wikilinks stay the body edge syntax. Full-OKF markdown-link edges + path-as-identity + `sources`/`verified` provenance families conflict with the UUID-identity/wikilink model and are **deferred to v0.2+** behind a dedicated ADR (§21.2, §27.3 SYNC-04, §18 Phase 8/9) |
 | **Category model** | **Path-based `categoryPath` → folders**, separate from tags | 1:1 filesystem mapping; tags stay many-to-many (D-03) |
 | **Notes↔Memory direction** | **Notes → Memory only** | Notes are user-owned; memory is system-owned (D-05) |
 | **Semantic search** | **LLM-routed reranking over MiniSearch** (no embeddings) | No model download; sufficient for v0.1 |
 | **Filesystem sync** | **One-way app→FS + import-for-restore** | Backup use case; bidirectional deferred |
 | **Backup handle storage** | **`notes_backup_config` IndexedDB store** | FileSystemDirectoryHandle non-serializable (D-08) |
 | **Persona** | **PersonaProfile + PersonaInjector in Phase 3; config in PreferenceMemoryStore** | Persona-aware prompts from day one; user config ≠ inferred fact (R2) |
-| **RICH implementation** | **On Ant Design X presentation components, phased 7.3/7.4/7.5** | Reuses adopted stack; no new UI framework |
+| **RICH implementation** | **On Ant Design X presentation components, phased 15.3/15.4/15.5** | Reuses adopted stack; no new UI framework |
 | **Host-page write-back** | **Deferred (clipboard-only in v0.1)** | Extraction-only rule (§0.2); write-back needs v0.2+ injection (R1) |
 | **Agent architecture** | **Coordinator platform; single-agent = one-role plan** | One runtime, tool-governance, memory, evaluation & security model for both modes; multi-role added as data (roles + plans), not a second architecture (§1.6, §30) |
 | **Self-learning model** | **Human-verified continual evolution — NOT autonomous self-modification** | Live orchestration is deterministic; learning is a gated candidate pipeline (§28.6/§28.7/§28.7a). `CandidateProposer` only *proposes*; nothing activates without sandbox eval + human approval (EVO-01/04/05, PROP-05). Fits privacy/cost/safety posture |
@@ -3601,22 +3604,22 @@ Each phase must define a real script. Minimum expected commands in package.json:
     "verify:phase-1":  "tsc --noEmit && vitest run tests/core/runtime tests/core/events tests/core/workspace tests/core/theme",
     "verify:phase-2":  "tsc --noEmit && vitest run tests/core/storage tests/core/security tests/core/utils tests/core/workspace/WorkspacePersistence.test.ts",
     "verify:phase-3":  "tsc --noEmit && vitest run tests/core/ai tests/core/ai/persona",
-    "verify:phase-3a": "tsc --noEmit && vitest run tests/core/ai/trajectory tests/core/ai/OutcomeVerifier.test.ts",
-    "verify:phase-4":  "tsc --noEmit && vitest run tests/core/context",
-    "verify:phase-4a": "tsc --noEmit && vitest run tests/core/extraction tests/core/content tests/isolation/no-content-script-ui.test.ts",
-    "verify:phase-4b": "tsc --noEmit && vitest run tests/core/context/trust tests/security/prompt-injection",
-    "verify:phase-5":  "tsc --noEmit && vitest run tests/core/memory tests/core/search tests/core/notes/LinkParser.test.ts",
-    "verify:phase-5a": "tsc --noEmit && vitest run tests/core/notes tests/core/storage/migrations",
-    "verify:phase-5b": "tsc --noEmit && vitest run tests/core/memory/governance tests/core/knowledge/provenance",
-    "verify:phase-6":  "tsc --noEmit && vitest run tests/core/telemetry tests/components/DiagnosticsSection.test.tsx",
-    "verify:phase-6a": "tsc --noEmit && vitest run tests/evals",
-    "verify:phase-6b": "tsc --noEmit && vitest run tests/core/evolution tests/core/evolution/CandidateProposer.test.ts",
-    "verify:phase-6c": "tsc --noEmit && vitest run tests/core/collaboration tests/evals/collaboration tests/security/collaboration-permissions.test.ts",
-    "verify:phase-7":  "tsc --noEmit && vitest run tests/hooks tests/components tests/components/rich tests/core/intent tests/core/notes",
-    "verify:phase-7a": "tsc --noEmit && vitest run tests/core/multimodal tests/components/multimodal",
-    "verify:phase-8":  "tsc --noEmit && vitest run tests/core/content tests/addons tests/isolation",
-    "verify:phase-8a": "tsc --noEmit && vitest run tests/core/tools/governance tests/core/tools/discovery",
-    "verify:phase-9":  "tsc --noEmit && vitest run && pnpm run lint",
+    "verify:phase-4": "tsc --noEmit && vitest run tests/core/ai/trajectory tests/core/ai/OutcomeVerifier.test.ts",
+    "verify:phase-5":  "tsc --noEmit && vitest run tests/core/context",
+    "verify:phase-6": "tsc --noEmit && vitest run tests/core/extraction tests/core/content tests/isolation/no-content-script-ui.test.ts",
+    "verify:phase-7": "tsc --noEmit && vitest run tests/core/context/trust tests/security/prompt-injection",
+    "verify:phase-8":  "tsc --noEmit && vitest run tests/core/memory tests/core/search tests/core/notes/LinkParser.test.ts",
+    "verify:phase-9": "tsc --noEmit && vitest run tests/core/notes tests/core/storage/migrations",
+    "verify:phase-10": "tsc --noEmit && vitest run tests/core/memory/governance tests/core/knowledge/provenance",
+    "verify:phase-11":  "tsc --noEmit && vitest run tests/core/telemetry tests/components/DiagnosticsSection.test.tsx",
+    "verify:phase-12": "tsc --noEmit && vitest run tests/evals",
+    "verify:phase-13": "tsc --noEmit && vitest run tests/core/evolution tests/core/evolution/CandidateProposer.test.ts",
+    "verify:phase-14": "tsc --noEmit && vitest run tests/core/collaboration tests/evals/collaboration tests/security/collaboration-permissions.test.ts",
+    "verify:phase-15":  "tsc --noEmit && vitest run tests/hooks tests/components tests/components/rich tests/core/intent tests/core/notes",
+    "verify:phase-16": "tsc --noEmit && vitest run tests/core/multimodal tests/components/multimodal",
+    "verify:phase-17":  "tsc --noEmit && vitest run tests/core/content tests/addons tests/isolation",
+    "verify:phase-18": "tsc --noEmit && vitest run tests/core/tools/governance tests/core/tools/discovery",
+    "verify:phase-19":  "tsc --noEmit && vitest run && pnpm run lint",
     "verify:all":      "tsc --noEmit && vitest run && pnpm run lint",
     "test:perf":       "vitest run tests/perf",
     "test:isolation":  "vitest run tests/isolation"
@@ -3669,26 +3672,26 @@ Side Panel + Standalone view continue to use AntD. Injected UI uses Tailwind + R
 
 ### §26.1 Principle
 
-Page-content extraction is **core infrastructure**, not a tool (built in **Phase 4a**). A single PageContentService owns extraction for every surface (Chat, Agent, Summarize, /research, add-ons). It applies a **layered strategy**, caches per tab, redacts before use, and feeds ContextOptimizerInput.pageContext (§2.3).
+Page-content extraction is **core infrastructure**, not a tool (built in **Phase 6**). A single PageContentService owns extraction for every surface (Chat, Agent, Summarize, /research, add-ons). It applies a **layered strategy**, caches per tab, redacts before use, and feeds ContextOptimizerInput.pageContext (§2.3).
 
 ### §26.2 Layered strategy (ordered)
 
 ```
 extract(tabId, mode)
    │
-   ├─ 1. ServiceNow record?  ── yes ─▶ ServiceNow add-on: Table API → SNowCaseData   [API-FIRST, §9.7 — PHASE 8, not 4a]
+   ├─ 1. ServiceNow record?  ── yes ─▶ ServiceNow add-on: Table API → SNowCaseData   [API-FIRST, §9.7 — PHASE 17, not 4a]
    │
-   ├─ 2. mode = 'default' (read/summarize)                                  [PHASE 4a]
+   ├─ 2. mode = 'default' (read/summarize)                                  [PHASE 6]
    │        └─▶ DefuddleStrategy  → clean Markdown (main content)          [PRIMARY read path]
    │             └─ low confidence? → Readability fallback
    │
-   └─ 3. mode = 'actionable' (Agent needs structure/interaction)           [PHASE 4a]
+   └─ 3. mode = 'actionable' (Agent needs structure/interaction)           [PHASE 6]
             └─▶ ApcLiteStrategy   → APCLiteNode tree (roles, interaction; geometry omitted in v0.1, §26.6)
 ```
 
-- **DefuddleStrategy** is the default for reading/summarizing. **(Phase 4a)**
-- **ApcLiteStrategy** is used when the Agent needs structure (forms, tables, clickable/editable elements, node ids) — the substrate for future v2 automation (§26.7). **(Phase 4a; geometry omitted in v0.1 per §26.6.)**
-- **ServiceNow** always tries the Table API first (§9.7); extraction is fallback only. **⚠️ Phase 4a does NOT implement this layer** — it only reserves the `servicenow-api` strategy id and ordering; the ServiceNow add-on **registers** the strategy in **Phase 8** (§8.2, F5 note in Appendix C). A Phase-4a implementer builds strategies 2 and 3 only.
+- **DefuddleStrategy** is the default for reading/summarizing. **(Phase 6)**
+- **ApcLiteStrategy** is used when the Agent needs structure (forms, tables, clickable/editable elements, node ids) — the substrate for future v2 automation (§26.7). **(Phase 6; geometry omitted in v0.1 per §26.6.)**
+- **ServiceNow** always tries the Table API first (§9.7); extraction is fallback only. **⚠️ Phase 6 does NOT implement this layer** — it only reserves the `servicenow-api` strategy id and ordering; the ServiceNow add-on **registers** the strategy in **Phase 17** (§8.2, F5 note in Appendix C). A Phase-6 implementer builds strategies 2 and 3 only.
 
 ### §26.3 Strategy contract
 
@@ -3739,7 +3742,7 @@ const result = new Defuddle(doc, {
 
 ### §26.4a Extraction trigger & cache lifecycle (authoritative)
 
-This subsection is **normative** and fixes the timing/lifecycle rules a Phase-4a implementer must follow. All constants live in Appendix C.
+This subsection is **normative** and fixes the timing/lifecycle rules a Phase-6 implementer must follow. All constants live in Appendix C.
 
 **Trigger model — on-demand extraction + subscription-gated auto re-extract:**
 - **Lightweight live context** (title, url, meta) updates **always** on navigation — this is the tiny content-bridge payload, not the heavy path.
@@ -3791,7 +3794,7 @@ NowPilot v0.1 is **read-only**: content scripts are extraction-only (§5.6); the
 
 ## §27 — LLM-Wiki & Filesystem Sync
 
-**Built in Phase 5a.** Requires Phase 5 (Notes + Memory + MiniSearch), Phase 4a (PageContentService), Phase 3 (AI runtime). Extends the atomic-note-with-wikilinks system with LLM enrichment, a hierarchical category system that maps to filesystem folders, RAG Q&A, chat/page-to-note capture, Memory↔Notes integration, and one-way app→filesystem backup with import-for-restore.
+**Built in Phase 9.** Requires Phase 8 (Notes + Memory + MiniSearch), Phase 6 (PageContentService), Phase 3 (AI runtime). Extends the atomic-note-with-wikilinks system with LLM enrichment, a hierarchical category system that maps to filesystem folders, RAG Q&A, chat/page-to-note capture, Memory↔Notes integration, and one-way app→filesystem backup with import-for-restore.
 
 **Surfaces affected:** Standalone view (all features + Options); Side Panel (`ChatMessage` "Save to note" only). **Not touched:** BacklinksPanel, NoteGraphView, WikilinkAutocomplete, NotePreview — the atomic-note + wikilink core is preserved unchanged.
 
@@ -3847,7 +3850,7 @@ NowPilot v0.1 is **read-only**: content scripts are extraction-only (§5.6); the
   updated: 1754956800000
   tags: [servicenow, incident, lifecycle]
   categoryPath: Work Knowledge Base/ServiceNow/Incident
-  generated: { by: nowpilot/claude-haiku-4, at: 2026-08-12T09:58:00Z }
+  generated: { by: nowpilot/haiku-tier, at: 2026-08-12T09:58:00Z }
   status: stable
   ---
   # Incident lifecycle
@@ -3888,7 +3891,7 @@ TraceRedactor-style redaction runs **before** indexing, logging, or writing to d
 
 ### §27.7 Note-Taking Method (clarification)
 
-The method is **atomic notes + wikilinks** (the Phase 5 core), *extended* by LLM-Wiki with: `categoryPath` (single hierarchy → folder), `tags` (many-to-many labels), and an LLM `summary` (glanceable context). Wikilinks remain the primary linking mechanism and live inside the markdown body, so the atomic-note graph is fully reconstructable on restore. LLM wikilink *autocomplete* suggestions are **not** in v0.1 (D-04; MiniSearch title matching is sufficient) — but chat/page-to-note conversion (LLM-WIKI-07) still *suggests* wikilinks for the drafted note.
+The method is **atomic notes + wikilinks** (the Phase 8 core), *extended* by LLM-Wiki with: `categoryPath` (single hierarchy → folder), `tags` (many-to-many labels), and an LLM `summary` (glanceable context). Wikilinks remain the primary linking mechanism and live inside the markdown body, so the atomic-note graph is fully reconstructable on restore. LLM wikilink *autocomplete* suggestions are **not** in v0.1 (D-04; MiniSearch title matching is sufficient) — but chat/page-to-note conversion (LLM-WIKI-07) still *suggests* wikilinks for the drafted note.
 
 **OKF v0.2 compatibility (informative, rev 2026-08-12).** The on-disk `.md` format is **OKF v0.2-compatible** (see the [Open Knowledge Format v0.2 spec](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md)): a directory of Markdown files with YAML frontmatter and a free-form body. The serialized frontmatter carries OKF's only always-required key `type` (default `Note`), the recommended `description` (= the LLM `summary`), and the `generated`/`status` trust-lifecycle families (SYNC-04). NowPilot deliberately keeps its **immutable UUID `id`** as the source of truth (written as an OKF *extension key*, which OKF consumers must tolerate) and keeps **wikilinks** — not OKF standard-markdown-link edges — as the body edge syntax, so the atomic-note graph survives rename/move/restore (WIKI-ID-01…04). Strict-OKF conformance (markdown-link edges as graph edges, path-as-Concept-ID, and the `sources`/`verified` provenance families) would break the UUID-identity/wikilink model and is therefore **out of scope for v0.1** — deferred to v0.2+ behind a dedicated ADR. The net posture is **OKF-compatible, not OKF-constrained**: a generic OKF consumer can read a NowPilot note today, while NowPilot's internal identity/link graph stays authoritative.
 
@@ -3931,7 +3934,7 @@ Bidirectional filesystem sync (requires polling/Native Messaging) · embedding-b
 
 This section adds evidence-backed completion, trust-aware context, governed memory, capability-based tools, trajectory evaluation, and verified evolution. It does not replace the bounded Planner → Executor → Renderer architecture.
 
-> **Where each requirement is built:** the P0/P1 IDs below are folded next to their implementation phase in §18 (AGT→3a, CTX→4b, MEM/KNW→5b, TOL→8a, EVAL→6a, EVO→6b). Canonical shapes are in Appendix C.1; **worked reference implementations are in Appendix O**.
+> **Where each requirement is built:** the P0/P1 IDs below are folded next to their implementation phase in §18 (AGT→4, CTX→7, MEM/KNW→10, TOL→18, EVAL→12, EVO→13). Canonical shapes are in Appendix C.1; **worked reference implementations are in Appendix O**.
 
 ### §28.2 Agent reliability requirements
 
@@ -3994,13 +3997,13 @@ This section adds evidence-backed completion, trust-aware context, governed memo
 
 **Design intent.** NowPilot's self-learning is **human-verified continual evolution, not autonomous self-modification.** The live orchestration (§1.2, §1.6) is deterministic and never rewrites itself at runtime. Learning happens *beside* the runtime as a **gated candidate pipeline**: evaluation (§28.6) detects a weakness, the **Candidate Proposer** turns it into a typed `EvolutionCandidate`, and nothing activates without sandbox evaluation + human approval (EVO-01/04/05).
 
-`CandidateProposer` (`src/core/evolution/CandidateProposer.ts`, Phase 6b) is the missing bridge between *evaluation output* and *evolution input*. It is **deterministic**: same eval failures ⇒ same proposals.
+`CandidateProposer` (`src/core/evolution/CandidateProposer.ts`, Phase 13) is the missing bridge between *evaluation output* and *evolution input*. It is **deterministic**: same eval failures ⇒ same proposals.
 
 - **PROP-01 (P1):** The proposer's **only** inputs are (a) failed golden-suite results carrying a `FailureLayer` (EVAL-04) and (b) the `AITransactionLog` evidence for those operations. It never reads raw untrusted content (page/note/tool output) to form a proposal (EVO-04, §28.3).
 - **PROP-02 (P1):** Each proposal targets **exactly one** layer, mapped deterministically from `FailureLayer` → candidate `targetLayer` (EVO-02). A failure spanning multiple layers yields multiple single-layer proposals, never one blended patch.
 - **PROP-03 (P1):** A proposal is emitted **only** when the weakness clears an **evidence threshold**: at least `PROPOSE_MIN_FAILURES` (default **3**) failing trajectories agree on the same `FailureLayer`, over a rubric-score drop ≥ `PROPOSE_MIN_SCORE_DELTA` (default **0.15**). Below threshold ⇒ no proposal (avoids over-fitting to one bad run).
 - **PROP-04 (P1):** Every proposal carries a **cost cap**: an estimated token/latency budget for its sandbox evaluation. If the projected sandbox cost exceeds `PROPOSE_MAX_EVAL_TOKENS` (default **50_000**), the proposal is marked `deferred`, not run — keeping self-learning affordable for cost-effective deployments.
-- **PROP-05 (P0):** The proposer **only proposes**. It emits `status: 'proposed'` candidates into the Phase 6b store and can never activate, scope-roll, or write them into active prompts/tools/permissions/procedural memory (EVO-01/04/05). Activation stays human-gated.
+- **PROP-05 (P0):** The proposer **only proposes**. It emits `status: 'proposed'` candidates into the Phase 13 store and can never activate, scope-roll, or write them into active prompts/tools/permissions/procedural memory (EVO-01/04/05). Activation stays human-gated.
 - **PROP-06 (P1):** Every proposal is reproducible: it records the eval-suite version, the contributing `operationId`s, and a content hash so the same inputs regenerate an identical candidate (supports EVAL-07 judge/version calibration).
 
 Canonical types are in **Appendix C.1**; a worked implementation is in **Appendix O.9**. Constants live in Appendix C.1 alongside the types.
@@ -4011,7 +4014,7 @@ Canonical types are in **Appendix C.1**; a worked implementation is in **Appendi
 
 v0.1 adds a bounded multimodal input foundation, not a second agent architecture. Image, audio, and document inputs become normalised observations consumed by the existing ContextOptimizer and agent pipeline.
 
-> **Where each requirement is built:** the MM-* IDs below are folded into Phase 7a (§18). Canonical shapes are in Appendix C.1; a worked adapter is in **Appendix O.6**.
+> **Where each requirement is built:** the MM-* IDs below are folded into Phase 16 (§18). Canonical shapes are in Appendix C.1; a worked adapter is in **Appendix O.6**.
 
 ### §29.2 Requirements
 
@@ -4069,15 +4072,15 @@ Routine chat, summarisation, rewriting, and simple retrieval run on the default 
 
 ### §30.4 Required types
 
-Canonical Zod-validated shapes live in **Appendix C.1 (Harness-Track & Collaboration Types)** — implemented during Phase 6c: `CollaborationRole`, `RolePolicy`, `CollaborationPlan`, `AgentHandoffArtifact`, `CollaborationOutcome`. The `AssistantRole` used by the single-agent default is the one-role instance of `CollaborationRole`.
+Canonical Zod-validated shapes live in **Appendix C.1 (Harness-Track & Collaboration Types)** — implemented during Phase 14: `CollaborationRole`, `RolePolicy`, `CollaborationPlan`, `AgentHandoffArtifact`, `CollaborationOutcome`. The `AssistantRole` used by the single-agent default is the one-role instance of `CollaborationRole`.
 
 ### §30.5 Implementation & verification
 
-**Phase 6c (§18)** is the single source for the collaboration build steps, files, tests, and the `verify:phase-6c` command (also in §24). Collaboration error codes live in **Appendix C.2 (Error Code Registry)**.
+**Phase 14 (§18)** is the single source for the collaboration build steps, files, tests, and the `verify:phase-14` command (also in §24). Collaboration error codes live in **Appendix C.2 (Error Code Registry)**.
 
-### §30.6 Future Phase 8b — Isolated Parallel Workers
+### §30.6 Future (post-v0.1) — Isolated Parallel Workers
 
-Parallel worker execution is deferred until Phase 6c is stable and evaluated. It requires isolated contexts, bounded concurrency, cancellation, referenced artefacts, deterministic merge/review, and no shared mutable state. Agent-generated tool proposals remain a separate later capability and must not be combined with initial parallel-worker work.
+Parallel worker execution is deferred until Phase 14 is stable and evaluated. It requires isolated contexts, bounded concurrency, cancellation, referenced artefacts, deterministic merge/review, and no shared mutable state. Agent-generated tool proposals remain a separate later capability and must not be combined with initial parallel-worker work.
 
 ---
 
@@ -4686,9 +4689,9 @@ export interface IExtractionStrategy {
 // Defuddle's internal fallback, so it appears in `StrategyResult.source` (result provenance) but
 // NOT as its own strategy id. `PageContext.source` (the z.enum at §Appendix C page-context block)
 // additionally carries 'dom'|'ax'|'hybrid' for the APC-lite walk provenance. Do not create a
-// ReadabilityStrategy or a ServiceNow strategy in Phase 4a (ServiceNow strategy registers in Phase 8).
+// ReadabilityStrategy or a ServiceNow strategy in Phase 6 (ServiceNow strategy registers in Phase 17).
 
-// §26.4a / §26.5 / §26.6 tunables (Phase 4a). All ephemeral; none persisted.
+// §26.4a / §26.5 / §26.6 tunables (Phase 6). All ephemeral; none persisted.
 export const PAGE_CACHE_MAX_TABS   = 20;         // per-tab PageContentCache LRU cap (§26.4a)
 export const PAGE_HTML_MAX_BYTES   = 2_000_000;  // serialized HTML hard cap → truncate+flag (§26.6)
 export const INDEX_CHUNK_MAX_TOKENS = 500;       // oversized heading-section split threshold (§26.5)
@@ -4732,7 +4735,7 @@ export interface Note {
   categoryPath?: string;
   summaryGeneratedAt?: number;
   tagsGeneratedAt?: number;
-  type?: string;                 // OKF v0.2 frontmatter type (rev 2026-08-12); default 'Note'. Declared Phase 5, serialized Phase 5a.
+  type?: string;                 // OKF v0.2 frontmatter type (rev 2026-08-12); default 'Note'. Declared Phase 8, serialized Phase 9.
   version: number;
 }
 // OKF v0.2 note-frontmatter contract (rev 2026-08-12). NoteFileSync emits this shape;
@@ -4841,7 +4844,7 @@ These shapes are **self-contained** (there is no external `NOWPILOT_ADDITIONAL_R
 
 ```ts
 // src/types/harness.ts — single home for all types in this appendix section
-// ---- Agent reliability (Phase 3a, §28.2) ----
+// ---- Agent reliability (Phase 4, §28.2) ----
 export type AgentTrajectoryPhase =
   | 'assembling-context' | 'planning' | 'waiting-for-permission'
   | 'executing' | 'verifying' | 'replanning' | 'rendering'
@@ -4871,7 +4874,7 @@ export interface AgentTurnOutcome {
   toolCalls: number;
 }
 
-// ---- Trust-aware context (Phase 4b, §28.3) ----
+// ---- Trust-aware context (Phase 7, §28.3) ----
 export type TrustLevel = 'system' | 'user' | 'tool' | 'retrieved' | 'untrusted';
 export interface ContextItem {
   id: string;
@@ -4895,7 +4898,7 @@ export interface ContextReceiptEntry {
   omitReason?: string;
 }
 
-// ---- Memory & knowledge governance (Phase 5b, §28.4) ----
+// ---- Memory & knowledge governance (Phase 10, §28.4) ----
 export type MemoryKind = 'working' | 'episodic' | 'semantic' | 'preference' | 'procedural';
 export interface MemoryRecord {
   id: string;
@@ -4919,7 +4922,7 @@ export interface ProceduralExperience {
 }
 export type KnowledgeEdgeSource = 'explicit' | 'imported' | 'suggested' | 'accepted';
 
-// ---- Tool governance (Phase 8a, §28.5) ----
+// ---- Tool governance (Phase 18, §28.5) ----
 export interface ToolCapabilityManifest {
   toolName: string;
   category: string;
@@ -4935,7 +4938,7 @@ export interface ToolCapabilityManifest {
   outputSchemaHash: string;
 }
 
-// ---- Evaluation & evolution (Phase 6a/6b, §28.6/§28.7) ----
+// ---- Evaluation & evolution (Phase 12/13, §28.6/§28.7) ----
 export type FailureLayer =
   | 'knowledge' | 'retrieval' | 'context' | 'planning'
   | 'tool' | 'permission' | 'memory' | 'rendering' | 'safety';
@@ -4951,7 +4954,7 @@ export interface EvolutionCandidate {
   rollbackRef: string;
 }
 
-// ---- Multimodal input (Phase 7a, §29) ----
+// ---- Multimodal input (Phase 16, §29) ----
 export type Modality = 'text' | 'image' | 'audio' | 'document';
 export interface ModalityInput {
   id: string;
@@ -4970,7 +4973,7 @@ export interface ModalityObservation {
   createdAt: number;
 }
 
-// ---- Working memory (Phase 5, §3.6) ----
+// ---- Working memory (Phase 8, §3.6) ----
 export interface WorkingMemory {
   resourceId: string;              // user/owner scope (NOT thread) — §3.1
   markdown: string;                // fixed template below
@@ -4984,7 +4987,7 @@ export const WORKING_MEMORY_TEMPLATE = `# User Profile
 - **Preferences**:
 - **Long-term Goals**:`;
 
-// ---- Bounded multi-agent collaboration (Phase 6c, §30) ----
+// ---- Bounded multi-agent collaboration (Phase 14, §30) ----
 export interface CollaborationRole {
   id: string;
   label: string;
@@ -5041,7 +5044,7 @@ export type StageEvent =
 // trajectory states (AGT-01). It is WITHIN-TURN ONLY — no durable cross-session
 // suspend/resume/rewind in v0.1 (§17.7.7).
 
-// ---- Candidate Proposer (Phase 6b, §28.7a) ----
+// ---- Candidate Proposer (Phase 13, §28.7a) ----
 export const PROPOSE_MIN_FAILURES     = 3;       // PROP-03: agreeing failing trajectories
 export const PROPOSE_MIN_SCORE_DELTA  = 0.15;    // PROP-03: rubric-score drop
 export const PROPOSE_MAX_EVAL_TOKENS  = 50_000;  // PROP-04: sandbox cost cap
@@ -5082,7 +5085,7 @@ NOTE_TAGGER_FAILED
 RAG_NO_RESULTS
 # RICH
 RICH_SUGGESTION_TIMEOUT
-# Agent harness (Phases 3a/4b/5b/6a/6b/8a)
+# Agent harness (Phases 4/7/10/12/13/18)
 AGENT_STATE_INVALID
 TOOL_POSTCONDITION_FAILED
 COMPLETION_EVIDENCE_MISSING
@@ -5093,11 +5096,11 @@ TOOL_MANIFEST_INVALID
 TOOL_IDEMPOTENCY_CONFLICT
 EVALUATION_FAILED
 EVOLUTION_CANDIDATE_REJECTED
-# Multimodal (Phase 7a)
+# Multimodal (Phase 16)
 MULTIMODAL_MODEL_UNAVAILABLE
 MULTIMODAL_INPUT_INVALID
 MULTIMODAL_TRANSCRIPTION_FAILED
-# Bounded multi-agent collaboration (Phase 6c, §30)
+# Bounded multi-agent collaboration (Phase 14, §30)
 COLLAB_DISABLED
 COLLAB_PLAN_INVALID
 COLLAB_ROLE_UNKNOWN
@@ -6189,18 +6192,18 @@ Concrete, copy-pasteable references for the harness sub-phases and the coordinat
 | 1 — Runtime/Shells/Workspace | — | Appendix E, F, G, M |
 | 2 — Storage/Security/WriteJournal | **O.11** WriteJournal recover/replay | §15, §20.3 |
 | 3 — AI Runtime (+Persona) | Appendix I `runAgentTurn` | Appendix D, K, L, N |
-| 3a — Reliability & Evidence | **O.2** OutcomeVerifier | §28.2 |
-| 4 — Context-Adaptive | — (contract in §2.3) | §2.4 |
-| 4a — PageContentService | **O.12** layered extraction fallback | §26 |
-| 4b — Trust-Aware Context | **O.3** trust policy | §28.3 |
-| 5 — Knowledge Base | **O.10** working-memory updater | §3.4, §3.6 |
-| 5b — Memory Governance | **O.4** conflict resolver | §28.4 |
-| 6 — Logging & Diagnostics | **O.13** AITransactionLog + TraceRedactor | §4 |
-| 6a — Evaluation | **O.7** golden fixture + rubric | §28.6 |
-| 6b — Verified Evolution | **O.9** CandidateProposer | §28.7a |
-| 6c — Collaboration | **O.1** coordinator · **O.8** role registry | §30 |
-| 7a — Multimodal | **O.6** modality adapter | §29 |
-| 8a — Tool Governance | **O.5** manifest+verifier · §14.5 approval | §28.5 |
+| 4 — Reliability & Evidence | **O.2** OutcomeVerifier | §28.2 |
+| 5 — Context-Adaptive | — (contract in §2.3) | §2.4 |
+| 6 — PageContentService | **O.12** layered extraction fallback | §26 |
+| 7 — Trust-Aware Context | **O.3** trust policy | §28.3 |
+| 8 — Knowledge Base | **O.10** working-memory updater | §3.4, §3.6 |
+| 10 — Memory Governance | **O.4** conflict resolver | §28.4 |
+| 11 — Logging & Diagnostics | **O.13** AITransactionLog + TraceRedactor | §4 |
+| 12 — Evaluation | **O.7** golden fixture + rubric | §28.6 |
+| 13 — Verified Evolution | **O.9** CandidateProposer | §28.7a |
+| 14 — Collaboration | **O.1** coordinator · **O.8** role registry | §30 |
+| 16 — Multimodal | **O.6** modality adapter | §29 |
+| 18 — Tool Governance | **O.5** manifest+verifier · §14.5 approval | §28.5 |
 
 **Common pitfalls (do NOT do these):** build an event bus for `StageEvent` (it is a type only, §1.6.1); call a provider from a React component (use the pipeline, §2.3); nest retries (R-2); parse JSON by hand (use Appendix L); mark a write done without evidence (O.2); persist raw bodies (use TraceRedactor, O.13).
 
@@ -6314,7 +6317,7 @@ function review(_r: CollaborationRole, _h: AgentHandoffArtifact[], ev: Completio
 
 **Why this matters for cheap models:** ordinary chat calls `runCollaboration({ plan: DEFAULT_SINGLE_AGENT_PLAN, … })`. The implementer writes **one** coordinator; "multi-agent" is just a plan with more stages — no new architecture, no agent-to-agent chat.
 
-### O.2 OutcomeVerifier + CompletionEvidence (Phase 3a)
+### O.2 OutcomeVerifier + CompletionEvidence (Phase 4)
 
 No side effect may be reported as success without matching evidence (AGT-02).
 
@@ -6351,7 +6354,7 @@ export async function buildOutcome(
 }
 ```
 
-### O.3 Trust-aware context — stripping instruction authority (Phase 4b)
+### O.3 Trust-aware context — stripping instruction authority (Phase 7)
 
 Retrieved/untrusted content is data, never instructions (CTX-02).
 
@@ -6379,7 +6382,7 @@ export function applyTrustPolicy(items: ContextItem[]): ContextItem[] {
 //   throw Object.assign(new Error('blocked'), { code: 'CONTEXT_INSTRUCTION_INJECTION_BLOCKED' });
 ```
 
-### O.4 MemoryRecord conflict resolver (Phase 5b)
+### O.4 MemoryRecord conflict resolver (Phase 10)
 
 Deterministic precedence: correction > verified current > prior explicit > inference (MEM-03).
 
@@ -6401,7 +6404,7 @@ export function resolveConflict(a: MemoryRecord, b: MemoryRecord): MemoryRecord 
 }
 ```
 
-### O.5 ToolCapabilityManifest instance + verifier + idempotency (Phase 8a)
+### O.5 ToolCapabilityManifest instance + verifier + idempotency (Phase 18)
 
 A concrete write tool with a manifest, postcondition verifier, and replay-safe key.
 
@@ -6436,7 +6439,7 @@ export const workNoteVerifier = {
 function hash(s: string) { let h = 2166136261; for (let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=(h*16777619)>>>0;} return h.toString(16); }
 ```
 
-### O.6 ModalityInput → ModalityObservation adapter (Phase 7a)
+### O.6 ModalityInput → ModalityObservation adapter (Phase 16)
 
 Binary never enters prompts; only the extracted observation does (MM-01/02).
 
@@ -6464,7 +6467,7 @@ export async function toObservation(
 }
 ```
 
-### O.7 Golden eval fixture + rubric scoring (Phase 6a)
+### O.7 Golden eval fixture + rubric scoring (Phase 12)
 
 Deterministic validators first; judges only for qualitative dimensions (EVAL-03).
 
@@ -6525,7 +6528,7 @@ export const CollaborationRoleRegistry = {
 
 ---
 
-### O.9 CandidateProposer — evaluation failure → gated candidate (Phase 6b)
+### O.9 CandidateProposer — evaluation failure → gated candidate (Phase 13)
 
 Deterministic: same failing evals ⇒ same proposal. It **only proposes** (PROP-05); activation stays human-gated (EVO-05).
 
@@ -6577,9 +6580,9 @@ function hash(s: string) {
 }
 ```
 
-**Why this is safe & cheap:** it reads only eval results + trace IDs (PROP-01), emits one single-layer, cost-capped, reproducible `proposed` (or `deferred`) candidate, and cannot touch production — the sandbox runner + human approval come later in Phase 6b (EVO-05).
+**Why this is safe & cheap:** it reads only eval results + trace IDs (PROP-01), emits one single-layer, cost-capped, reproducible `proposed` (or `deferred`) candidate, and cannot touch production — the sandbox runner + human approval come later in Phase 13 (EVO-05).
 
-### O.10 Working-memory updater (Phase 5, §3.6)
+### O.10 Working-memory updater (Phase 8, §3.6)
 
 Budget-capped, single-writer, redacted. Slots into `UserMemoryStore`; not persona.
 
@@ -6665,7 +6668,7 @@ export async function recoverJournal(
 
 **Why:** covers the Phase 2 DONE-when "WriteJournal recovery test passes." Keep every `apply()` idempotent (e.g. upsert by id) so a replay after a crash is a no-op, not a duplicate.
 
-### O.12 PageContentService — layered extraction with recorded fallback (Phase 4a)
+### O.12 PageContentService — layered extraction with recorded fallback (Phase 6)
 
 The service tries strategies in order and **records which one produced the result** (§26). Heavy libs (Defuddle) run in the panel, never in the content bundle (isolation test).
 
@@ -6706,7 +6709,7 @@ export async function extractLayered(
 
 **Guardrails:** the content-script bundle must contain **no** React/AntD/Defuddle/yaml (isolation test, §24). Content scripts only serialise HTML; `extractLayered` runs in the Side Panel/Standalone view. Passwords are never captured (`isPassword ⇒ value omitted`, §16).
 
-### O.13 AITransactionLog + TraceRedactor — safe tracing (Phase 6)
+### O.13 AITransactionLog + TraceRedactor — safe tracing (Phase 11)
 
 Every AI/tool/provider op is traceable, but **nothing raw is persisted**. Redaction runs before *every* sink (persist, UI, console, export).
 
