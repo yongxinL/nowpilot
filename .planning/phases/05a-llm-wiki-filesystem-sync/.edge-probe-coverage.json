@@ -1,0 +1,93 @@
+{
+  "items": [
+    {
+      "requirement_id": "LLM-WIKI-01",
+      "category": "idempotency",
+      "status": "covered",
+      "verification": "explicit",
+      "resolution": "auto",
+      "reason": "Double-save never double-applies suggestions: acceptances persist at reported confidence; rejected items remembered per {noteId, version} and never re-suggested for the same version (LLM-WIKI-11)."
+    },
+    {
+      "requirement_id": "LLM-WIKI-01",
+      "category": "concurrency",
+      "status": "covered",
+      "verification": "explicit",
+      "resolution": "auto",
+      "reason": "Stale suggestions for a prior note version are discarded — never applied to newer content (version-stamp discard, LLM-WIKI-11)."
+    },
+    {
+      "requirement_id": "LLM-WIKI-02",
+      "category": "idempotency",
+      "status": "covered",
+      "verification": "explicit",
+      "resolution": "auto",
+      "reason": "When np_notes_llm_features autoTag/autoCategorize/autoSummary are off, no LLM call fires on save (test-asserted call-count = 0)."
+    },
+    {
+      "requirement_id": "LLM-WIKI-02",
+      "category": "concurrency",
+      "status": "backstop",
+      "verification": "backstop",
+      "resolution": "auto",
+      "reason": "Toggling LLM features off mid-flight never crashes the save path (fire-and-forget, never throws)."
+    },
+    {
+      "requirement_id": "LLM-WIKI-03",
+      "category": "empty",
+      "status": "covered",
+      "verification": "explicit",
+      "resolution": "auto",
+      "reason": "Summary is optional: absent summary renders without a placeholder and NoteList secondary text degrades gracefully."
+    },
+    {
+      "requirement_id": "LLM-WIKI-03",
+      "category": "encoding",
+      "status": "covered",
+      "verification": "explicit",
+      "resolution": "auto",
+      "reason": "Filename sanitization contract: / \\ : * ? \" < > | → _ (SYNC-04); YAML frontmatter round-trips Unicode titles/segments."
+    },
+    {
+      "requirement_id": "SYNC-01",
+      "category": "idempotency",
+      "status": "covered",
+      "verification": "explicit",
+      "resolution": "auto",
+      "reason": "Title collision → numeric suffix (My Note.md, My Note (1).md, …) by scanning existing files for highest suffix (SYNC-05); repeated sync of the same note is idempotent."
+    },
+    {
+      "requirement_id": "SYNC-01",
+      "category": "concurrency",
+      "status": "covered",
+      "verification": "explicit",
+      "resolution": "auto",
+      "reason": "Rapid saves coalesce via the 50ms debounce (SYNC-03); external-change guard (2s tolerance, default Skip) protects user edits (SYNC-06)."
+    },
+    {
+      "requirement_id": "SYNC-02",
+      "category": "idempotency",
+      "status": "covered",
+      "verification": "explicit",
+      "resolution": "auto",
+      "reason": "Restore is additive + idempotent: id exists → update preserving updated if newer; id missing → create; local notes not in the folder are NEVER deleted (SYNC-09)."
+    },
+    {
+      "requirement_id": "SYNC-02",
+      "category": "concurrency",
+      "status": "backstop",
+      "verification": "backstop",
+      "resolution": "auto",
+      "reason": "An interrupted restore leaves the notes DB consistent (no partial/corrupt note writes; preview counts before import)."
+    }
+  ],
+  "coverage": {
+    "applicable": 10,
+    "resolved": 10,
+    "unresolved": 0,
+    "byVerification": {
+      "explicit": 8,
+      "backstop": 2
+    }
+  }
+}
