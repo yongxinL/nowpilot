@@ -1,0 +1,110 @@
+# NowPilot
+
+## What This Is
+
+NowPilot is a privacy-first Chrome MV3 AI assistant and personal knowledge platform for ServiceNow Support Engineers. It runs entirely against user-configured AI providers (OpenAI, Anthropic, Gemini, Ollama) — no data leaves the machine unless the user opts into a cloud provider. Two extension-owned surfaces (Side Panel + Standalone view) share one WorkspaceStore, delivering Copilot + Obsidian + NotebookLM for support engineering: AI chat, atomic notes with wikilinks, LLM-Wiki (auto-tagging/summaries/RAG "Ask notes"), layered page extraction, and a ServiceNow add-on.
+
+## Core Value
+
+AI chat and a personal knowledge base that work together, locally-first, so a support engineer can capture knowledge once and retrieve it with citations — without any data leaving their machine unless they opt in.
+
+## Requirements
+
+### Validated
+
+- ✓ Extension entry points (background SW, content script, sidepanel, standalone, options) — existing
+- ✓ Side Panel compact chat UI + command palette + theme wiring — existing
+- ✓ Standalone full-tab workspace shell (sidebar nav to Chat/Tools/Note/Write/Teams) — existing
+- ✓ Options settings surface (AI providers, theme, translate, prompts) — existing
+- ✓ Core runtime: RuntimeEnvelope, MessageBus, EventBus, BroadcastBus, OperationId, PortReader, workerState — existing
+- ✓ State layer: Zustand + immer stores (useExtensionStore, WorkspaceStore, ThemeStore) with chrome.storage persistence — existing
+- ✓ AI provider service: SSE streaming, model discovery, simulated fallback — existing
+- ✓ Registries: commands, keymaps, addons, sidepanel/full-app pages — existing
+- ✓ Theme system: Ant Design light/dark tokens + ThemeSync broadcast — existing
+
+### Active
+
+All Active requirements are hypotheses until shipped and validated. Full atomic requirement set lives in `.planning/REQUIREMENTS.md` (anchored to spec-native IDs); this list is the summary view.
+
+- [ ] MV3/WXT runtime + AntD shells + workspace handoff (Phase 1)
+- [ ] Storage, security, WriteJournal, workspace persistence (Phase 2)
+- [ ] Cost-effective AI runtime with persona (Phase 3)
+- [ ] Agent reliability and evidence (Phase 4)
+- [ ] Context-adaptive execution (Phase 5)
+- [ ] PageContentService layered extraction (Phase 6)
+- [ ] Trust-aware context and receipts (Phase 7)
+- [ ] Knowledge base: memory + MiniSearch + notes (Phase 8)
+- [ ] LLM-Wiki & filesystem sync (Phase 9)
+- [ ] Memory governance and experience candidates (Phase 10)
+- [ ] Transaction logging and diagnostics (Phase 11)
+- [ ] Agent evaluation (Phase 12)
+- [ ] Verified continual evolution (Phase 13)
+- [ ] Bounded multi-role collaboration (Phase 14)
+- [ ] Workspace experience (UI/UX) + RICH (Phase 15)
+- [ ] Multimodal input foundation (Phase 16)
+- [ ] Add-ons and content-script runtime, extraction-only (Phase 17)
+- [ ] Tool governance and active discovery (Phase 18)
+- [ ] Hardening and release (Phase 19)
+
+### Out of Scope
+
+- Page injection / host-page UI (CaseInsightBox, serviceNowInjection.ts, Shadow DOM mount) — deferred to v0.2+ (§0.2, §25, R1)
+- Host-page write-back ("Fill this field", "Insert into page" = clipboard-only in v0.1) — reconciliation R1, §25
+- Strict OKF markdown-link edges + path-as-identity + `sources`/`verified` families — OKF-WIKI-04, deferred to v0.2+ behind a dedicated ADR
+- Browser automation (APC-lite ≠ browser automation) — MM-07 P0 boundary, §26.7
+- ServiceNow value outside side panel / Standalone view — §9.7 out of scope
+- Voice output (TTS) — input (RICH-H-17) in scope, output deferred
+- Real-time collaboration, webhooks, insights, TTS — P2 feature flags (§9.3)
+- Multi-modal animated 3D avatar, separate sentiment pipeline, full NLP intent parsing, drag-and-drop GUI macro builder, cross-session conversation resumption with full replay — §17.7.7
+
+## Context
+
+- **Authoritative spec:** `.planning/PRODUCT_SPEC_v0_1.md` (rev 2026-08-12) is the single source of truth. Planning artifacts must not invent scope, paths, or types beyond it. §18 is the sole source of implementation sequencing; Appendix C/E/F/G/I/J/K/L are canonical type/implementation references.
+- **Existing codebase:** extension scaffold already implements Phase 1-adjacent surfaces (UI shells, stores, runtime, registries, AI service). Phase 1 builds on the scaffold rather than rebuilding it.
+- **Codebase map:** `.planning/codebase/` (ARCHITECTURE, STACK, STRUCTURE, CONVENTIONS, TESTING, CONCERNS, INTEGRATIONS) refreshed 2026-08-18.
+- **Design system:** `.planning/DESIGN_SYSTEM.md` + annotated mockups in `.planning/mockup/`; visual layout intent defers to mockups, functional rules defer to spec (Phase 15 precedence rule).
+- **Model-agnostic runtime:** spec names no vendor model. Runtime resolves capability tiers `fast` | `balanced` (Appendix D) to operator-configured `(providerId, model)`; user picks concrete models in Options. Build-agent model is a GSD/OpenCode operator choice, never a spec mandate (§0.3a).
+- **Cost-effective-model implementability:** plans must be explicit and self-contained — fixed file paths (§8.5), canonical types (Appendix C / `@/types/harness`), closed tool enums, one-phase-per-response, no merge cognition.
+- **Architecture fences:** content scripts extraction-only (no host-page UI/write-back in v0.1); core never imports add-ons; AI/IndexedDB never run in the background SW; every boundary has a Zod schema + fixture test; every catch calls `debugLog(code, …)`.
+- **Phase gates:** a phase is DONE only when `verify:phase-N` passes (§24); acceptance recorded in VERIFICATION.md. One phase per response.
+
+## Constraints
+
+- **Tech stack**: WXT + React 19 + TypeScript + Ant Design v6 + Ant Design X 2.x + Zustand/immer + vitest — mandated by spec §7; no tailwind/shadcn/@radix-ui/framer-motion (spec §0.2)
+- **Verification**: `verify:phase-N` scripts already defined in package.json (§24); phase done = gate passes
+- **Implementation order**: §18 canonical order 1→19, one phase per response, never reordered
+- **Privacy**: no data leaves machine unless user opts into cloud provider; secrets AES-GCM encrypted in chrome.storage.local, tokens in chrome.storage.session; no raw bodies/logs by default (TraceRedactor)
+- **MV3 boundaries**: no AI providers/MCP/EventSource/IndexedDB/setInterval in background SW (§0.2)
+- **Timeline**: v0.1 single milestone; all 19 phases under it
+
+## Key Decisions
+
+| Decision | Rationale | Outcome |
+|----------|-----------|---------|
+| GSD roadmap mirrors spec §18 1:1 (19 phases) | Spec §18 is the sole authoritative implementation sequence; verify:phase-N gates exist for every phase | — Pending |
+| REQUIREMENTS.md anchors to spec-native IDs verbatim (RICH-*, AGT-*, CTX-*, MEM-*, KNW-*, TOL-*, EVAL-*, EVO-*, PROP-*, COLLAB-*, MM-*, CAT-*, LLM-WIKI-*, SYNC-*, NMEM-*, WIKI-ID-*, OKF-WIKI-*, APPR-*, NOTES-COL-*); REQ-* minted only for §9 features lacking native IDs | Never paraphrase the spec; preserve priority (P0/P1/P2), effort (S/M/L), and dependencies exactly | — Pending |
+| D-* records (§23, §27.8) are constraints/ADRs, not requirements | They record decisions, not user-facing capabilities | — Pending |
+| §12 component-state strings attach as acceptance criteria on feature requirements, not standalone requirements | Keeps requirement set atomic and user-centric | — Pending |
+| One v0.1 milestone for all 19 phases | Single release target; PROJECT.md evolves as phases validate | — Pending |
+| Product spec is the single source of truth; planning artifacts never invent scope/paths/types | Prevents drift between planning docs and implementation reference | — Pending |
+| Phase 1 builds on existing scaffold, not rebuild | UI shells, stores, runtime, registries already exist and are mapped | — Pending |
+
+## Evolution
+
+This document evolves at phase transitions and milestone boundaries.
+
+**After each phase transition** (via `/gsd-transition`):
+1. Requirements invalidated? → Move to Out of Scope with reason
+2. Requirements validated? → Move to Validated with phase reference
+3. New requirements emerged? → Add to Active
+4. Decisions to log? → Add to Key Decisions
+5. "What This Is" still accurate? → Update if drifted
+
+**After each milestone** (via `/gsd-complete-milestone`):
+1. Full review of all sections
+2. Core Value check — still the right priority?
+3. Audit Out of Scope — reasons still valid?
+4. Update Context with current state
+
+---
+*Last updated: 2026-08-19 after initialization*
