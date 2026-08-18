@@ -1,0 +1,307 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --background: #fafcfd;
+  --foreground: #12171a;
+  --card: #ffffff;
+  --card-foreground: #12171a;
+  --popover: #ffffff;
+  --popover-foreground: #12171a;
+  --primary: #1ba1dd;
+  --primary-foreground: #110c0d;
+  --secondary: #ebeff2;
+  --secondary-foreground: #243037;
+  --muted: #eff2f4;
+  --muted-foreground: #536068;
+  --accent: #d3ecfc;
+  --accent-foreground: #00324e;
+  --destructive: #ee343b;
+  --destructive-foreground: #ffffff;
+  --border: #dadfe1;
+  --input: #e1e5e8;
+  --ring: #1ba1dd;
+  --chart-1: #1ba1dd;
+  --chart-2: #4b76c0;
+  --chart-3: #0d6673;
+  --chart-4: #bebcfd;
+  --chart-5: #054a44;
+  --sidebar: #eff2f4;
+  --sidebar-foreground: #12171a;
+  --sidebar-primary: #1ba1dd;
+  --sidebar-primary-foreground: #110c0d;
+  --sidebar-accent: #d3ecfc;
+  --sidebar-accent-foreground: #00324e;
+  --sidebar-border: #dadfe1;
+  --sidebar-ring: #1ba1dd;
+  --font-sans: Inter, sans-serif;
+  --font-serif: Georgia, serif;
+  --font-mono: JetBrains Mono, monospace;
+  --radius: 0.375rem;
+  --shadow-x: 0px;
+  --shadow-y: 2px;
+  --shadow-blur: 12px;
+  --shadow-spread: 0px;
+  --shadow-opacity: 0.08;
+  --shadow-color: #4b575f;
+  --shadow-2xs: 0px 2px 12px 0px hsl(204 11.7647% 33.3333% / 0.04);
+  --shadow-xs: 0px 2px 12px 0px hsl(204 11.7647% 33.3333% / 0.04);
+  --shadow-sm: 0px 2px 12px 0px hsl(204 11.7647% 33.3333% / 0.08), 0px 1px 2px -1px hsl(204 11.7647% 33.3333% / 0.08);
+  --shadow: 0px 2px 12px 0px hsl(204 11.7647% 33.3333% / 0.08), 0px 1px 2px -1px hsl(204 11.7647% 33.3333% / 0.08);
+  --shadow-md: 0px 2px 12px 0px hsl(204 11.7647% 33.3333% / 0.08), 0px 2px 4px -1px hsl(204 11.7647% 33.3333% / 0.08);
+  --shadow-lg: 0px 2px 12px 0px hsl(204 11.7647% 33.3333% / 0.08), 0px 4px 6px -1px hsl(204 11.7647% 33.3333% / 0.08);
+  --shadow-xl: 0px 2px 12px 0px hsl(204 11.7647% 33.3333% / 0.08), 0px 8px 10px -1px hsl(204 11.7647% 33.3333% / 0.08);
+  --shadow-2xl: 0px 2px 12px 0px hsl(204 11.7647% 33.3333% / 0.20);
+  --tracking-normal: 0em;
+  --spacing: 0.25rem;
+
+  --np-primary: #1ba1dd;
+  --np-primary-light: rgba(27, 161, 221, 0.14);
+}
+
+.dark {
+  --background: #0b0e0f;
+  --foreground: #eceff1;
+  --card: #15191b;
+  --card-foreground: #eceff1;
+  --popover: #1c2023;
+  --popover-foreground: #eceff1;
+  --primary: #50c1fc;
+  --primary-foreground: #110c0d;
+  --secondary: #1e2225;
+  --secondary-foreground: #d8dfe4;
+  --muted: #191e20;
+  --muted-foreground: #8d9ba3;
+  --accent: #022d41;
+  --accent-foreground: #9dd6f9;
+  --destructive: #ff515a;
+  --destructive-foreground: #ffffff;
+  --border: #292f32;
+  --input: #292f32;
+  --ring: #50c1fc;
+  --chart-1: #50c1fc;
+  --chart-2: #b3cffd;
+  --chart-3: #7eeafd;
+  --chart-4: #8f8dce;
+  --chart-5: #9ef0e5;
+  --sidebar: #101417;
+  --sidebar-foreground: #eceff1;
+  --sidebar-primary: #50c1fc;
+  --sidebar-primary-foreground: #110c0d;
+  --sidebar-accent: #022d41;
+  --sidebar-accent-foreground: #9dd6f9;
+  --sidebar-border: #292f32;
+  --sidebar-ring: #50c1fc;
+  --font-sans: Segoe UI, Helvetica Neue, Helvetica, Lucida Grande, Arial, Ubuntu, Cantarell, Fira Sans, sans-serif;
+  --font-serif: Georgia, serif;
+  --font-mono: SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
+  --radius: 0.375rem;
+  --shadow-x: 0px;
+  --shadow-y: 4px;
+  --shadow-blur: 16px;
+  --shadow-spread: 0px;
+  --shadow-opacity: 0.35;
+  --shadow-color: #000000;
+  --shadow-2xs: 0px 4px 16px 0px hsl(0 0% 0% / 0.17);
+  --shadow-xs: 0px 4px 16px 0px hsl(0 0% 0% / 0.17);
+  --shadow-sm: 0px 4px 16px 0px hsl(0 0% 0% / 0.35), 0px 1px 2px -1px hsl(0 0% 0% / 0.35);
+  --shadow: 0px 4px 16px 0px hsl(0 0% 0% / 0.35), 0px 1px 2px -1px hsl(0 0% 0% / 0.35);
+  --shadow-md: 0px 4px 16px 0px hsl(0 0% 0% / 0.35), 0px 2px 4px -1px hsl(0 0% 0% / 0.35);
+  --shadow-lg: 0px 4px 16px 0px hsl(0 0% 0% / 0.35), 0px 4px 6px -1px hsl(0 0% 0% / 0.35);
+  --shadow-xl: 0px 4px 16px 0px hsl(0 0% 0% / 0.35), 0px 8px 10px -1px hsl(0 0% 0% / 0.35);
+  --shadow-2xl: 0px 4px 16px 0px hsl(0 0% 0% / 0.88);
+
+  --np-primary: #50c1fc;
+  --np-primary-light: rgba(80, 193, 252, 0.14);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --font-serif: var(--font-serif);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --shadow-2xs: var(--shadow-2xs);
+  --shadow-xs: var(--shadow-xs);
+  --shadow-sm: var(--shadow-sm);
+  --shadow: var(--shadow);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-xl: var(--shadow-xl);
+  --shadow-2xl: var(--shadow-2xl);
+}
+
+@layer base {
+  html, body, #root {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  html.dark {
+    color-scheme: dark;
+    background-color: var(--background);
+    color: var(--foreground);
+  }
+
+  html:not(.dark) {
+    color-scheme: light;
+    background-color: var(--background);
+    color: var(--foreground);
+  }
+}
+
+/* Global Markdown, Prose, and Bubble Dark Mode Legibility */
+html.dark .prose,
+html.dark .x-markdown,
+html.dark [class*="markdown"],
+html.dark [class*="x-markdown"] {
+  color: var(--foreground) !important;
+}
+
+html.dark .prose p,
+html.dark .prose li,
+html.dark .prose span,
+html.dark .prose div,
+html.dark .prose strong,
+html.dark .prose h1,
+html.dark .prose h2,
+html.dark .prose h3,
+html.dark .prose h4,
+html.dark .x-markdown p,
+html.dark .x-markdown li,
+html.dark .x-markdown span,
+html.dark .x-markdown div,
+html.dark .x-markdown strong,
+html.dark .x-markdown h1,
+html.dark .x-markdown h2,
+html.dark .x-markdown h3,
+html.dark .x-markdown h4 {
+  color: var(--foreground) !important;
+}
+
+html.dark .prose code,
+html.dark .x-markdown code {
+  color: var(--primary) !important;
+  background-color: var(--card) !important;
+}
+
+html.dark .prose pre,
+html.dark .x-markdown pre {
+  background-color: var(--popover) !important;
+  border-color: var(--border) !important;
+}
+
+html.dark .prose blockquote,
+html.dark .x-markdown blockquote {
+  color: var(--muted-foreground) !important;
+  border-left-color: var(--primary) !important;
+}
+
+html.dark .prose table,
+html.dark .x-markdown table {
+  color: var(--foreground) !important;
+  border-color: var(--border) !important;
+}
+
+html.dark .prose th,
+html.dark .prose td,
+html.dark .x-markdown th,
+html.dark .x-markdown td {
+  border-color: var(--border) !important;
+}
+
+@layer utilities {
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(150, 150, 150, 0.3);
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(150, 150, 150, 0.5);
+  }
+}
+
+/* Chat Message Font Size Presets */
+.message-font-small,
+.message-font-small p,
+.message-font-small li,
+.message-font-small span,
+.message-font-small div,
+.message-font-small .x-markdown,
+.message-font-small .x-markdown p,
+.message-font-small .x-markdown li {
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+}
+
+.message-font-regular,
+.message-font-regular p,
+.message-font-regular li,
+.message-font-regular span,
+.message-font-regular div,
+.message-font-regular .x-markdown,
+.message-font-regular .x-markdown p,
+.message-font-regular .x-markdown li {
+  font-size: 14.5px !important;
+  line-height: 1.6 !important;
+}
+
+.message-font-large,
+.message-font-large p,
+.message-font-large li,
+.message-font-large span,
+.message-font-large div,
+.message-font-large .x-markdown,
+.message-font-large .x-markdown p,
+.message-font-large .x-markdown li {
+  font-size: 16.5px !important;
+  line-height: 1.65 !important;
+}
+
+
