@@ -184,3 +184,6 @@ references/
 .output/
 dist/
 .wxt/
+
+# Local opencode tooling (overrides live in global config)
+.opencode/
