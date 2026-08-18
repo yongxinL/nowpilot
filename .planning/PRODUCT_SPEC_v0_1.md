@@ -8,7 +8,7 @@
 
 **Purpose:** This document is the single, self-contained product specification for NowPilot v0.1. It does not reference any prior document. Any AI coding agent implementing this spec must treat this file as authoritative and complete.
 
-**Target implementation agents:** any cost-effective coding model (e.g. DeepSeek V4 Flash, Anthropic Claude Haiku, Google Gemini Flash) — **operator's choice per GSD stage**. This spec mandates **no** specific build-agent model; a small number of high-complexity modules carry a vendor-neutral `@implementation-tier: advanced` marker the operator may stub or route to a stronger agent (see §0.3a).
+**Target implementation agents:** any cost-effective coding model of the operator's choice — **operator's choice per GSD stage**. This spec mandates **no** specific build-agent model; a small number of high-complexity modules carry a vendor-neutral `@implementation-tier: advanced` marker the operator may stub or route to a stronger agent (see §0.3a).
 **Target runtime providers:** OpenAI, Anthropic, Gemini, Ollama (the product's runtime tier→model mapping is operator-configured; Appendix D).
 **Primary application:** Chrome MV3 extension using WXT + React + TypeScript + Ant Design v6 + Ant Design X 2.x.
 
@@ -70,7 +70,7 @@ These rules apply to every phase, every module, and every AI coding agent.
 - **DO NOT** invent type names. Use Appendix C for every shape.
 - **DO NOT** invent tool names. Planner may only select tools from the enum passed by ExecutorService.
 - **DO NOT** invent provider IDs. The four valid IDs are `'openai' | 'anthropic' | 'gemini' | 'ollama'` (use `openai` with a custom `baseURL` for OpenAI-compatible providers).
-- **DO NOT** invent runtime model names. Resolve tier: `'haiku' | 'flash'` through Appendix D.
+- **DO NOT** invent runtime model names. Resolve tier: `'fast' | 'balanced'` through Appendix D.
 
 **MV3 / Chrome:**
 
@@ -112,7 +112,7 @@ These rules apply to every phase, every module, and every AI coding agent.
 **AI orchestration:**
 
 - **DO NOT** let the LLM execute tools directly. PlannerService may request tools; ExecutorService validates and runs them.
-- **DO NOT** use large-model agent loops (maxSteps=15) for Haiku/Gemini Flash/DeepSeek Flash. Use the tier caps in §1.4.
+- **DO NOT** use large-model agent loops (maxSteps=15) for cost-effective `fast`/`balanced`-tier runtime models. Use the tier caps in §1.4.
 - **DO NOT** use raw full history in prompts. All prompts pass through ContextOptimizer.
 - **DO NOT** assemble any system prompt without the persona block once `PersonaInjector` (RICH-R-02) exists. Every AI call (Planner, Executor, Renderer, MemoryExtractor) routes its system string through `PersonaInjector.inject()` (§17.7, Appendix A note).
 
@@ -147,13 +147,13 @@ These rules apply to every phase, every module, and every AI coding agent.
 
 ### §0.3a Model policy — two independent "models" (READ FIRST)
 
-This spec deliberately separates two things that are often confused. **Neither mandates a specific vendor model, and the spec never requires a Sonnet-class (or any named) model.**
+This spec deliberately separates two things that are often confused. **Neither mandates a specific vendor model, and the spec names no vendor model at all.**
 
-1. **Runtime model (what the *product* calls at run time).** NowPilot resolves a **capability tier — `'haiku' | 'flash'`** (Appendix D) to a concrete `(providerId, model)` that **the operator configures**. "haiku"/"flash" are **tier labels, not vendor mandates**: `TIER_TO_MODEL_CANDIDATES` maps them to whatever providers/models you enable (Anthropic, OpenAI/DeepSeek-compatible, Gemini, Ollama). Change the table to change the runtime model; no other file hard-codes model names.
+1. **Runtime model (what the *product* calls at run time).** NowPilot resolves a **capability tier — `'fast' | 'balanced'`** (Appendix D) to a concrete `(providerId, model)` that **the operator configures**. "fast"/"balanced" are **tier labels, not vendor mandates**: `TIER_TO_MODEL_CANDIDATES` maps them to whatever providers/models you enable (Anthropic, OpenAI/DeepSeek-compatible, Gemini, Ollama). Change the table to change the runtime model; no other file hard-codes model names.
 
 2. **Build agent (what writes the code under GSD/opencode).** The spec does **not** dictate the build-agent model. `@implementation-tier: advanced` is a **complexity marker** meaning "this module is high-complexity; in a cost-effective build, stub it." Whether you (a) stub it now or (b) route just that module/stage to a higher-capability agent is **entirely the operator's GSD/opencode routing choice**. Discussion, plan, execute, and verify stages may each use a different model — the spec is agnostic.
 
-> **GSD/opencode note:** any `anthropic/claude-sonnet-*` (or similar) that appears at plan/subagent time comes from your **harness agent config**, not this spec. This document names **no** build-agent model. Configure your GSD subagents to the model you want (e.g. `deepseek-v4-flash`) per stage; the only spec-side signal is the vendor-neutral `@implementation-tier: advanced` complexity marker on a small number of modules (e.g. §14.4 CodeSearchSkill), which you may stub or implement as you choose.
+> **GSD/opencode note:** any concrete build-agent model id (a `provider/model` slug) that appears at plan/subagent time comes from your **harness agent config**, not this spec. This document names **no** build-agent model. Configure your GSD subagents to the model you want per stage; the only spec-side signal is the vendor-neutral `@implementation-tier: advanced` complexity marker on a small number of modules (e.g. §14.4 CodeSearchSkill), which you may stub or implement as you choose.
 
 ### §0.4 Canonical Runtime Concepts
 
@@ -166,7 +166,7 @@ This spec deliberately separates two things that are often confused. **Neither m
 | CollaborationCoordinator | src/core/collaboration/CollaborationCoordinator.ts | Runs a CollaborationPlan; owns sequencing, permissions, commits, termination (§1.6, §30) |
 | CollaborationRoleRegistry | src/core/collaboration/CollaborationRoleRegistry.ts | Closed registry of allowed roles; the default one-role plan is the single-agent path |
 | ProviderRouter | src/core/ai/ProviderRouter.ts | Provider selection, retry, fallback, circuit breaker |
-| TierResolver | src/core/ai/TierResolver.ts | Maps haiku/flash tier → concrete (providerId, model) (Appendix D) |
+| TierResolver | src/core/ai/TierResolver.ts | Maps fast/balanced tier → concrete (providerId, model) (Appendix D) |
 | PromptCacheManager | src/core/ai/PromptCacheManager.ts | Prompt cache segmentation and provider hints |
 | PromptCacheAdapter | src/core/ai/PromptCacheAdapter.ts | Per-provider cache-hint transformation (Appendix K) |
 | StructuredOutput | src/core/ai/StructuredOutput.ts | JSON mode + schema validation + one-shot repair (Appendix L) |
@@ -200,12 +200,12 @@ This spec deliberately separates two things that are often confused. **Neither m
 
 ### §0.5 Implementation Guardrails & Risk Register (cost-effective models — READ FIRST)
 
-This section keeps a cheap/fast implementer (Haiku, Gemini Flash, DeepSeek Flash) on the right track. It is the concentrated "how to not go wrong" checklist; the detailed rules live in the referenced sections.
+This section keeps a cheap/fast implementer (a cost-effective `fast`/`balanced`-tier model) on the right track. It is the concentrated "how to not go wrong" checklist; the detailed rules live in the referenced sections.
 
 #### §0.5.1 The 10 golden rules
 
 1. **One phase per response.** Implement exactly one §18 phase (or sub-phase) at a time. Never jump ahead; later phases depend on earlier contracts.
-2. **Never invent identifiers.** File paths come from §8.5 and §18; type names from **Appendix C** (harness/collaboration types → `@/types/harness`, §C.1); tool names from the ExecutorService enum; provider IDs are exactly `'openai' | 'anthropic' | 'gemini' | 'ollama'`; runtime tiers are exactly `'haiku' | 'flash'` (Appendix D).
+2. **Never invent identifiers.** File paths come from §8.5 and §18; type names from **Appendix C** (harness/collaboration types → `@/types/harness`, §C.1); tool names from the ExecutorService enum; provider IDs are exactly `'openai' | 'anthropic' | 'gemini' | 'ollama'`; runtime tiers are exactly `'fast' | 'balanced'` (Appendix D).
 3. **All prompts through the pipeline.** No React component or hook assembles a prompt directly. Every AI call consumes an `OptimizedContext` (§2.3) and routes through PersonaInjector (§1.3).
 4. **Structured output = Zod + one repair only.** Use Appendix L's `requestJson`. Exactly one repair attempt, then throw `STRUCTURED_OUTPUT_FAILED`. Never hand-parse JSON with regex.
 5. **Retries do not multiply.** Only three retry layers exist (ProviderRouter §1.5, AGT-04 replan, one per-stage retry) and they are bounded by tier caps §1.4. Never nest them (§1.6.1). See risk R-2 below.
@@ -287,7 +287,7 @@ export const PlannerDecisionSchema = z.discriminatedUnion('action', [
 
 Rules:
 
-- Use haiku tier where available (Appendix D).
+- Use fast tier where available (Appendix D).
 - Return JSON only. Do not explain reasoning.
 - Timeout: 3 seconds.
 - One malformed-JSON repair retry only (Appendix L).
@@ -316,7 +316,7 @@ Renderer converts validated context and tool output into a concise answer.
 
 Rules:
 
-- Use flash tier where available (Appendix D).
+- Use balanced tier where available (Appendix D).
 - Do not invent missing tool results.
 - Use structured output for cards/tables/checklists.
 - Timeout: 5 seconds for normal answers.
@@ -409,7 +409,7 @@ Invariants across **both** modes, enforced by the same modules:
 
 Three orchestration rules keep the coordinator predictable and cheap. They are **internal contracts**, not a runtime engine — NowPilot deliberately does **not** ship an event bus/emitter or the (deprecated) LlamaIndex Workflows engine.
 
-- **Typed stage events (L1).** Each stage's input/output is a member of a **discriminated `StageEvent` union** (Appendix C.1), so a stage's shape is compile-time checked for Haiku/Flash implementers. This is a *type*, not an event system: the coordinator still calls stages directly in §18/§30 order.
+- **Typed stage events (L1).** Each stage's input/output is a member of a **discriminated `StageEvent` union** (Appendix C.1), so a stage's shape is compile-time checked for cost-effective `fast`/`balanced`-tier implementers. This is a *type*, not an event system: the coordinator still calls stages directly in §18/§30 order.
 - **Within-turn human input (L2).** A stage may emit an `input-required` `StageEvent` to pause **inside the current turn** for a clarification or a permission decision — surfaced as the `waiting-for-permission` / `ask_clarification` trajectory states (AGT-01). This is **within-turn only**; durable cross-session suspend/resume/rewind is explicitly **out of scope for v0.1** (§17.7.7) and deferred to v0.2+.
 - **Bounded, non-multiplying retry (L3).** NowPilot has exactly **three** retry layers and they **must not multiply**:
   1. `ProviderRouter` — pre-first-token provider retry + circuit breaker (§1.5);
@@ -439,7 +439,7 @@ export function classifyModelContext(contextWindow: number): ModelContextTier {
 | tiny | ≤4K | default local model | Minimal mode, one tool max |
 | small | 8K–16K | tuned local model | Summary + last few turns |
 | medium | 32K–128K | strong local/cloud model | Balanced context |
-| large | ≥200K | large cloud Flash/Haiku class | Full context with caching |
+| large | ≥200K | large cloud model | Full context with caching |
 
 ### §2.2 Token Budget Formula
 
@@ -1618,7 +1618,7 @@ export const ProviderConfigSchema = z.object({
 | 12 | execute-webhook | { event: string; payload: unknown } | yes | Fires a webhook |
 
 > **Tool-design guardrails (M4).** When adding or exposing tools (built-in or MCP), follow these principles — they keep the planner's tool budget small and behaviour predictable for cheap models:
-> - **Minimise surface area.** Prefer a few **workflow-shaped** capability tools (e.g. `search-notes`, `get-page-content`) over many narrow endpoint tools; a smaller enum is easier for Haiku/Flash to select correctly.
+> - **Minimise surface area.** Prefer a few **workflow-shaped** capability tools (e.g. `search-notes`, `get-page-content`) over many narrow endpoint tools; a smaller enum is easier for a `fast`/`balanced`-tier model to select correctly.
 > - **Read-only by default.** A tool is `dangerous: false` unless it has a side effect; side-effecting tools are the minority and each carries a `ToolCapabilityManifest` (§28.5) with a postcondition verifier.
 > - **Deterministic & bounded.** Tools validate input/output with Zod, are size-limited and redacted (TOL-04), and write tools are idempotent (TOL-05).
 > - **Discoverable.** When the combined schemas exceed the tools budget, use active discovery (TOL-06) rather than injecting every schema.
@@ -1729,7 +1729,7 @@ AntD Modal with Input + filtered list. Commands include Open Standalone view, Fo
 
 - User clicks "Save to note" on an assistant message (ChatMessage three-dot menu or first-class button, RICH-H-06).
 - SaveToNoteDialog opens.
-- NoteChatConverter.convert(messages, memoryContext) drafts title, content (markdown), tags, wikilinks, categoryPath (haiku tier + MemoryEngine.assemble(), NMEM-03).
+- NoteChatConverter.convert(messages, memoryContext) drafts title, content (markdown), tags, wikilinks, categoryPath (fast tier + MemoryEngine.assemble(), NMEM-03).
 - Dialog shows a pre-filled NoteEditor + NotePreview. **User is always the gatekeeper.**
 - User edits → save → NotesDB.createNote() → save pipeline: NoteTagger merge + NMEM-02 upsert (primary surface) + NoteFileSync.sync().
 
@@ -1737,7 +1737,7 @@ AntD Modal with Input + filtered list. Commands include Open Standalone view, Fo
 
 - User types a question in the Notes "Ask notes" bar (LLM-WIKI-06).
 - NoteQA.ask(query): MiniSearch top-5 snippets + MemoryEngine relevant facts (NMEM-01).
-- Flash-tier synthesis with per-statement citations.
+- Balanced-tier synthesis with per-statement citations.
 - Rendered as an ephemeral @ant-design/x Bubble with clickable citation Tags that navigate to the source note.
 - Tiny mode: falls back to plain MiniSearch results, no LLM synthesis (§2.5).
 
@@ -1757,7 +1757,7 @@ AntD Modal with Input + filtered list. Commands include Open Standalone view, Fo
 ### Flow 16 — RICH Clarification & Follow-up
 
 - Ambiguous intent → Planner returns ask_clarification → focused question + 2–4 option chips in the Bubble (RICH-C-01/04); chips inject into Sender; max 2 rounds then best-effort with caveat (RICH-C-03).
-- After a response, 1–3 follow-up chips are generated by a non-blocking haiku suggestion call (RICH-C-05/08); tapping sends as the next message; degrades to none on timeout.
+- After a response, 1–3 follow-up chips are generated by a non-blocking fast suggestion call (RICH-C-05/08); tapping sends as the next message; degrades to none on timeout.
 
 ### Flow 17 — Open Chat History
 - **Side Panel:** composer 🕘 → **bottom sheet** slides up over a dimmed conversation (§17.1b).
@@ -2317,7 +2317,7 @@ Full theme details in Appendix F.
 - **RICH-C-05 (P0, L)** — 1–3 contextual follow-up chips after a response. Depends on PlannerService.
 - **RICH-C-06 (P0, S)** — "Follow up" divider separating suggestions. Depends on C-05.
 - **RICH-C-07 (P0, S)** — Tapping a chip sends it as the next user message. Depends on C-05.
-- **RICH-C-08 (P0, M)** — Non-blocking haiku suggestion model, graceful timeout → no chips. Depends on C-05.
+- **RICH-C-08 (P0, M)** — Non-blocking fast suggestion model, graceful timeout → no chips. Depends on C-05.
 
 **[C-03] Conversation Closure — 结束**
 
@@ -2737,9 +2737,9 @@ tests/core/storage/migrations/v4.test.ts                 # extended: v4 adds Not
 
 **DONE when:**
 
-- Save pipeline runs NoteTagger.analyze() (haiku, combined tags+category+summary+memory-facts) non-blocking after the IndexedDB write.
+- Save pipeline runs NoteTagger.analyze() (fast, combined tags+category+summary+memory-facts) non-blocking after the IndexedDB write.
 - Auto-tag/category/summary suggestions render with accept/reject.
-- "Ask notes" RAG (flash) returns cited answers; tiny mode falls back to plain MiniSearch.
+- "Ask notes" RAG (balanced) returns cited answers; tiny mode falls back to plain MiniSearch.
 - Chat/page → note conversion opens a pre-filled editor (user is the gatekeeper).
 - NMEM-02 upserts facts only on the primary surface.
 - showDirectoryPicker() + handle persist in notes_backup_config (Standalone view only).
@@ -3087,7 +3087,7 @@ tests/perf/**
 
 ### §19.20 RICH Suggestion Timeout
 
-- Clarification/follow-up haiku call times out → render the response with no chips (graceful, RICH-C-08). Error code RICH_SUGGESTION_TIMEOUT (logged, non-fatal).
+- Clarification/follow-up fast call times out → render the response with no chips (graceful, RICH-C-08). Error code RICH_SUGGESTION_TIMEOUT (logged, non-fatal).
 
 ## §20 — Runtime State Models & Cross-Context Coordination
 
@@ -3488,8 +3488,8 @@ RICH_SUGGESTION_TIMEOUT
 | BroadcastBus round-trip (cross-surface) | < 100 ms p95 |
 | Workspace handoff | < 1 s |
 | ChunkBuffer flush rate | max every 16 ms (upgrade to 33 ms if enqueue > 8 kB/s) |
-| **NoteTagger analyze (haiku)** | non-blocking; save never waits |
-| **Ask-notes RAG synthesis (flash)** | < 4 s p95 |
+| **NoteTagger analyze (fast)** | non-blocking; save never waits |
+| **Ask-notes RAG synthesis (balanced)** | < 4 s p95 |
 | **Per-save .md file write** | < 200 ms; 50 ms debounce; fire-and-forget |
 | **Restore parse (100 notes)** | < 3 s |
 
@@ -3526,7 +3526,7 @@ Runs nightly via Scheduler. v0.1 produces exactly three Insight values: tag-tren
 | **AI chat components** | **Ant Design X 2.x** (presentation only) | Bubble, Sender, Conversations, ThoughtChain, Think, Attachments, Suggestion, Sources, FileCard map onto Chat/Agent needs. X 2.x targets antd v6 and is the actively developed line; X 1.x pairs with antd v5 (1-year bugfix-only window from Nov 2025) |
 | **Markdown/streaming rendering** | **@ant-design/x-markdown** | Purpose-built for incremental/streaming; built-in LaTeX/mermaid/code-highlight replace 5 packages |
 | **AI chat data flow** | **NOT @ant-design/x-sdk** — kept AgentOrchestrator/ProviderRouter/ContextOptimizer | x-sdk's useXChat/ChatProvider calls providers directly from the UI, bypassing Planner→Executor→Renderer, ContextOptimizer, MemoryEngine, AITransactionLog |
-| **Dynamic agent-generated UI (A2UI)** | **Deferred to v0.2+** — not @ant-design/x-card in v0.1 | A2UI's createSurface/updateComponents command stream is a harder JSON target than the 3-action PlannerDecisionSchema; unsafe for Haiku/Flash today (§25.6) |
+| **Dynamic agent-generated UI (A2UI)** | **Deferred to v0.2+** — not @ant-design/x-card in v0.1 | A2UI's createSurface/updateComponents command stream is a harder JSON target than the 3-action PlannerDecisionSchema; unsafe for `fast`/`balanced`-tier models today (§25.6) |
 | **Theming** | AntD ConfigProvider + XProvider + Zustand ThemeStore | Centralized token system, dark mode via darkAlgorithm, per-surface compact toggle |
 | **Two UI surfaces** | Side Panel + Standalone view | Side Panel = daily workflow, Standalone view = deep work / config / diagnostics |
 | **Shared workspace** | WorkspaceStore (Zustand) + BroadcastBus | Single source of truth across surfaces; cross-surface handoff |
@@ -3572,7 +3572,7 @@ Runs nightly via Scheduler. v0.1 produces exactly three Insight values: tag-tren
 | **PageContentService placement** | **Phase 6** (was Phase 17) | Core infrastructure (§26); consumers in every later phase |
 | **Knowledge Base consolidation** | Memory + MiniSearch + Notes + Wikilinks in **Phase 8** | One coherent knowledge layer before enrichment |
 | **LLM-Wiki phase** | **Phase 9** (LLM enrichment + RAG + filesystem sync together) | Single shared save pipeline; depends on Phases 6/8 |
-| **Note enrichment** | **Single haiku call** (tags+category+summary+memory facts) | Cheaper/faster than separate calls (D-01) |
+| **Note enrichment** | **Single fast call** (tags+category+summary+memory facts) | Cheaper/faster than separate calls (D-01) |
 | **Notes dual-friendly** | **Markdown body + YAML frontmatter** | Human reads body; LLM/machine reads frontmatter (D-02) |
 | **Note file format** | **OKF v0.2-aligned — OKF-compatible, not OKF-constrained** (rev 2026-08-12) | The `.md` + YAML-frontmatter + folder-tree container already matches OKF v0.2. Frontmatter adds OKF-required `type`, recommended `description`, and the `generated`/`status` trust-lifecycle families so a generic OKF consumer can read a NowPilot note. NowPilot's immutable UUID `id` (WIKI-ID-01) is retained as an OKF **extension key** (OKF §11: consumers must not reject unknown fields), and wikilinks stay the body edge syntax. Full-OKF markdown-link edges + path-as-identity + `sources`/`verified` provenance families conflict with the UUID-identity/wikilink model and are **deferred to v0.2+** behind a dedicated ADR (§21.2, §27.3 SYNC-04, §18 Phase 8/9) |
 | **Category model** | **Path-based `categoryPath` → folders**, separate from tags | 1:1 filesystem mapping; tags stay many-to-many (D-03) |
@@ -3662,7 +3662,7 @@ Side Panel + Standalone view continue to use AntD. Injected UI uses Tailwind + R
 
 ### §25.6 @ant-design/x-card / A2UI — Deferred to v0.2+
 
-**Why deferred:** JSON-generation difficulty mismatch — NowPilot's runtime keeps the JSON a Haiku/Flash model must emit small (PlannerDecisionSchema is a 3-branch union; StructuredOutput budgets one repair). A2UI's adjacency-list component trees + JSON-Pointer bindings are a much larger, error-prone target. New canonical types (Catalog, Surface, ActionPayload) would need Appendix C additions. Overlaps existing SkillResult card/table/checklist rendering.
+**Why deferred:** JSON-generation difficulty mismatch — NowPilot's runtime keeps the JSON a `fast`/`balanced`-tier model must emit small (PlannerDecisionSchema is a 3-branch union; StructuredOutput budgets one repair). A2UI's adjacency-list component trees + JSON-Pointer bindings are a much larger, error-prone target. New canonical types (Catalog, Surface, ActionPayload) would need Appendix C additions. Overlaps existing SkillResult card/table/checklist rendering.
 
 **Preserved for future:** RendererService's structured-output rule (§1.2) and SkillResult.type 'card-grid'|'list' (§14.1) are stepping stones. @ant-design/x-card is antd/@ant-design/x-adjacent (same tokens, same XProvider), so only new Zod schemas + capability gate needed later.
 
@@ -3808,12 +3808,12 @@ NowPilot v0.1 is **read-only**: content scripts are extraction-only (§5.6); the
 
 ### §27.2 LLM Features (LLM-WIKI-01…10)
 
-- **LLM-WIKI-01** On save, one **haiku-tier, temperature-0** call returns ≤5 tags + 1 categoryPath (or null) + a 1–2 sentence summary (+ memory facts, NMEM-02). Rendered as accept/reject Tags + inline category input.
+- **LLM-WIKI-01** On save, one **fast-tier, temperature-0** call returns ≤5 tags + 1 categoryPath (or null) + a 1–2 sentence summary (+ memory facts, NMEM-02). Rendered as accept/reject Tags + inline category input.
 - **LLM-WIKI-02** Independent toggles in Options → Notes (`np_notes_llm_features`: autoTag, autoCategorize, autoSummary, aiSearch). When off, no LLM call on save.
 - **LLM-WIKI-03** Optional `summary` field; displayed as secondary text in NoteList.
 - **LLM-WIKI-04** "Regenerate tags/summary" toolbar button; re-runs the combined call in place.
-- **LLM-WIKI-05** Natural-language search: MiniSearch fuzzy → if <3 results or "AI Search", a haiku call reranks top-10 by semantic relevance ("AI-enhanced" indicator). No embeddings/vector store.
-- **LLM-WIKI-06** "Ask your notes" RAG: MiniSearch top-5 + memory facts (NMEM-01) → **flash-tier** synthesis with per-statement citations → ephemeral @ant-design/x Bubble with clickable citation Tags (Flow 13).
+- **LLM-WIKI-05** Natural-language search: MiniSearch fuzzy → if <3 results or "AI Search", a fast call reranks top-10 by semantic relevance ("AI-enhanced" indicator). No embeddings/vector store.
+- **LLM-WIKI-06** "Ask your notes" RAG: MiniSearch top-5 + memory facts (NMEM-01) → **balanced-tier** synthesis with per-statement citations → ephemeral @ant-design/x Bubble with clickable citation Tags (Flow 13).
 - **LLM-WIKI-07** "Save to note" on any assistant message → `NoteChatConverter` drafts title/content/tags/wikilinks/categoryPath → pre-filled NoteEditor for review (user is gatekeeper).
 - **LLM-WIKI-08** Staleness: `summaryGeneratedAt`/`tagsGeneratedAt` vs `updated` → subtle "Content has changed — [Regenerate tags/summary]" hint.
 - **LLM-WIKI-09** Orphan detection (algorithmic, no LLM): 0 wikilinks + 0 backlinks → "Orphan" badge + "Find context" (triggers RAG).
@@ -3850,7 +3850,7 @@ NowPilot v0.1 is **read-only**: content scripts are extraction-only (§5.6); the
   updated: 1754956800000
   tags: [servicenow, incident, lifecycle]
   categoryPath: Work Knowledge Base/ServiceNow/Incident
-  generated: { by: nowpilot/haiku-tier, at: 2026-08-12T09:58:00Z }
+  generated: { by: nowpilot/fast-tier, at: 2026-08-12T09:58:00Z }
   status: stable
   ---
   # Incident lifecycle
@@ -3906,14 +3906,14 @@ The method is **atomic notes + wikilinks** (the Phase 8 core), *extended* by LLM
 
 | # | Decision | Rationale |
 |---|---|---|
-| D-01 | Single LLM call for tags + category + summary | One haiku call is cheaper/faster than three; structured JSON returns all three |
+| D-01 | Single LLM call for tags + category + summary | One fast call is cheaper/faster than three; structured JSON returns all three |
 | D-02 | Notes dual-friendly: human body, machine frontmatter | Body is natural markdown; YAML frontmatter is structured metadata; both consumers served by one file |
 | D-02a | **Note frontmatter is OKF v0.2-aligned** (rev 2026-08-12) — OKF-compatible, not OKF-constrained | The `.md` + YAML-frontmatter + folder-tree container already matches OKF v0.2's "directory of markdown files with YAML frontmatter." Adding OKF `type`/`description`/`generated`/`status` makes a note readable by any generic OKF consumer while keeping the immutable UUID `id` as an OKF extension key and wikilinks as body edges. OKF's own value-add (provenance/trust/lifecycle) maps onto the harness `MemoryRecord`/`CompletionEvidence` taxonomy (§28.2/§28.4), avoiding two competing metadata vocabularies. Strict-OKF markdown-link edges + path-as-identity + `sources`/`verified` families conflict with WIKI-ID-01…04 and are deferred to v0.2+ behind a dedicated ADR |
 | D-03 | Category path-based, not flat | categoryPath maps 1:1 to folders; flat tags already cover many-to-many |
 | D-04 | LLM wikilink suggestions dropped from v0.1 | MiniSearch covers title-based matching; edge case rare |
 | D-05 | Notes feed into MemoryEngine, not the reverse | Notes are user-curated; extracting facts enriches chat context without polluting notes |
 | D-06 | Maintenance is user-initiated | No background jobs in MV3; staleness is passive timestamp comparison |
-| D-07 | Haiku for analysis, Flash for synthesis | Tag/category/summary is low-complexity (Haiku); RAG synthesis benefits from Flash |
+| D-07 | `fast` tier for analysis, `balanced` tier for synthesis | Tag/category/summary is low-complexity (`fast` tier); RAG synthesis benefits from `balanced` tier |
 | D-08 | Backup handle in IndexedDB | FileSystemDirectoryHandle is non-serializable; dedicated store required |
 
 ### §27.9 Out of Scope (v0.1)
@@ -4092,59 +4092,59 @@ export const PROMPTS = {
   planner: {
     system: 'Select exactly one action: answer, run_tool, or ask_clarification. Return JSON only. Do not explain.',
     cacheable: true,
-    tier: 'haiku',
+    tier: 'fast',
   },
   renderer: {
     system: 'Answer using only the provided context and tool result. Be concise. If data is missing, say what is missing. Do not invent facts.',
     cacheable: true,
-    tier: 'flash',
+    tier: 'balanced',
   },
   memoryExtractor: {
     system: 'Extract durable user memory. Store only stable facts, preferences, or repeated patterns. Do not store secrets or raw customer data. Return JSON only.',
     cacheable: true,
-    tier: 'haiku',
+    tier: 'fast',
   },
   conversationSummarizer: {
     system: 'Summarise prior conversation into compact durable context. Preserve decisions, preferences, open tasks, and unresolved questions. Return plain text summary only.',
     cacheable: true,
-    tier: 'haiku',
+    tier: 'fast',
   },
   repairJson: {
     system: 'Repair the previous output into valid JSON matching the provided schema. Return JSON only.',
     cacheable: true,
-    tier: 'haiku',
+    tier: 'fast',
   },
   titleGen: {
     system: 'Summarize this message as a 3-6 word title. Reply with the title only, no quotes.',
     cacheable: false,
-    tier: 'haiku',
+    tier: 'fast',
   },
   // --- LLM-Wiki (§27) ---
   noteTagger: {
     system: 'Analyze the note title and content. Return JSON only: {tags:[{value:string,confidence:number}], categoryPath:string|null, summary:string, memoryFacts:[{content:string,confidence:number}]}. Each confidence is your own 0..1 estimate; the client discards items below its display threshold (LLM-WIKI-11). categoryPath uses "/" separators and should reuse an existing path when suitable. Do not invent facts. Do not include secrets.',
     cacheable: true,
-    tier: 'haiku',
+    tier: 'fast',
   },
   noteQA: {
     system: 'Answer the question using ONLY the provided note snippets and user memory facts. Cite each statement with its source note title. If the notes do not contain the answer, say so. Return concise markdown with inline citations.',
     cacheable: true,
-    tier: 'flash',
+    tier: 'balanced',
   },
   noteChatConvert: {
     system: 'Convert the conversation excerpt into a structured knowledge note. Return JSON only: {title:string, content:string(markdown), tags:string[<=5], categoryPath:string|null, wikilinks:string[]}. Extract durable knowledge; omit chit-chat. Do not include secrets.',
     cacheable: true,
-    tier: 'haiku',
+    tier: 'fast',
   },
   // --- RICH (§17.7) ---
   clarify: {
     system: 'The user request is ambiguous. Ask ONE focused clarifying question, then list 2-4 concrete options. Return JSON only: {question:string, options:string[]}. Do not answer the request yet.',
     cacheable: true,
-    tier: 'haiku',
+    tier: 'fast',
   },
   followUpSuggest: {
     system: 'Given the assistant answer, propose 1-3 short next-step suggestions the user might tap. Return JSON only: {suggestions:string[]}. Each <= 6 words. If none are useful, return {suggestions:[]}.',
     cacheable: true,
-    tier: 'haiku',
+    tier: 'fast',
   },
 } as const;
 ```
@@ -5119,22 +5119,27 @@ COLLAB_DEADLINE_EXCEEDED
 ```ts
 // src/core/ai/TierResolver.ts
 import type { ProviderId } from './types';
-export type ModelTier = 'haiku' | 'flash';
+export type ModelTier = 'fast' | 'balanced';
 export interface TierCandidate {
   providerId: ProviderId;
   model: string;
 }
+// OPERATOR-CONFIGURED. This table is the ONLY place runtime model ids live.
+// The spec names no vendor model: each `model` below is a placeholder the operator
+// fills in at Phase 3 with a currently-valid slug from the provider's model list.
+// A placeholder left unfilled will not match any configured provider model, so the
+// resolver returns null and the caller falls back or errors by design.
 export const TIER_TO_MODEL_CANDIDATES: Record<ModelTier, TierCandidate[]> = {
-  haiku: [
-    { providerId: 'anthropic',         model: 'claude-haiku-4-latest' },
-    { providerId: 'openai',            model: 'deepseek-chat' },
-    { providerId: 'ollama',            model: 'llama3.2:3b' },
+  fast: [
+    { providerId: 'anthropic',         model: '<configure-fast-model>' },
+    { providerId: 'openai',            model: '<configure-openai-compatible-fast-model>' },
+    { providerId: 'ollama',            model: '<configure-local-fast-model>' },
   ],
-  flash: [
-    { providerId: 'gemini',            model: 'gemini-2.5-flash' },
-    { providerId: 'anthropic',         model: 'claude-haiku-4-latest' },
-    { providerId: 'openai',            model: 'deepseek-chat' },
-    { providerId: 'ollama',            model: 'qwen2.5:7b' },
+  balanced: [
+    { providerId: 'gemini',            model: '<configure-balanced-model>' },
+    { providerId: 'anthropic',         model: '<configure-balanced-model>' },
+    { providerId: 'openai',            model: '<configure-openai-compatible-balanced-model>' },
+    { providerId: 'ollama',            model: '<configure-local-balanced-model>' },
   ],
 } as const;
 export interface TierResolveInput {
@@ -5177,9 +5182,9 @@ Rules:
 - The resolver never invents a model name.
 - If no candidate matches, callers must handle null.
 - Planner/Renderer must call resolveTier at request time.
-- **Note:** NoteTagger and NoteChatConverter resolve the `haiku` tier; NoteQA resolves the `flash` tier (§27, D-07).
+- **Note:** NoteTagger and NoteChatConverter resolve the `fast` tier; NoteQA resolves the `balanced` tier (§27, D-07).
 
-> **⚠️ Model-ID verification (rev 2026-08-12).** The model slugs in `TIER_TO_MODEL_CANDIDATES` (`claude-haiku-4-latest`, `gemini-2.5-flash`, `deepseek-chat`, `llama3.2:3b`, `qwen2.5:7b`) are **point-in-time**. Because the resolver "never invents a model name," a stale slug resolves to `null` and the caller falls back or errors. **Phase 3 implementers MUST verify each slug against the provider's current model list before wiring**, and update this table (not the calling code) if a provider has renamed a model. In particular, "DeepSeek Flash / V4" is reached via the `openai`-compatible provider using the `deepseek-chat` slug against DeepSeek's baseURL — confirm the exact current DeepSeek model id at build time. This table is the **single source of truth** for tier→model mapping; no other file hard-codes model names.
+> **⚠️ Model-ID configuration (rev 2026-08-12).** `TIER_TO_MODEL_CANDIDATES` ships with **operator-configured placeholders** (`<configure-…-model>`), not vendor model slugs — the spec deliberately names no runtime model. Because the resolver "never invents a model name," an unfilled placeholder resolves to `null` and the caller falls back or errors by design. **Phase 3 implementers MUST replace each placeholder with a currently-valid slug from the chosen provider's model list before wiring**, and update this table (not the calling code) whenever a provider renames a model. For an OpenAI-compatible provider, set the model against that provider's `baseURL`. This table is the **single source of truth** for tier→model mapping; no other file hard-codes model names.
 
 ## Appendix E — MessageType Registry and Port Protocol
 
@@ -6176,7 +6181,7 @@ export function classifyIntent(rawUrl: string): QuickAction[] {
 
 ## Appendix O — Worked Reference Implementations for Cost-Effective Models
 
-Concrete, copy-pasteable references for the harness sub-phases and the coordinator platform. These are **canonical**: a Haiku/Flash/DeepSeek implementer should adapt them rather than invent new shapes. Every example uses only the types in Appendix C.1, the tiers in Appendix D, and the prompts in Appendix A. Each block is self-contained — no missing detail must be inferred.
+Concrete, copy-pasteable references for the harness sub-phases and the coordinator platform. These are **canonical**: a cost-effective `fast`/`balanced`-tier implementer should adapt them rather than invent new shapes. Every example uses only the types in Appendix C.1, the tiers in Appendix D, and the prompts in Appendix A. Each block is self-contained — no missing detail must be inferred.
 
 #### How to use these examples
 
@@ -6457,7 +6462,7 @@ export async function toObservation(
   if (input.modality === 'text')
     return { sourceId: input.id, modality: 'text', extractedText: '', confidence: 1,
              sensitivity: 'none', createdAt: Date.now() };
-  const tier = resolveTier({ ...cfg, tier: 'flash' });     // vision-capable flash tier
+  const tier = resolveTier({ ...cfg, tier: 'balanced' });     // vision-capable balanced tier
   if (!tier) throw Object.assign(new Error('no vision model'),
     { code: 'MULTIMODAL_MODEL_UNAVAILABLE' });             // settings action
   const raw = await callVision(input.ref, tier.model);     // ref only — never inline bytes
