@@ -85,7 +85,9 @@ All inherited decisions are **— Pending** (awaiting first implementation to va
 | 12 | Defuddle panel-side extraction on detached doc | `.planning/adr/ADR-P6-01` (RESEARCH-RECONCILIATION §F) | Proposed (spike pending Phase 6) |
 | 13 | Selection → Ask AI promoted P1 → P0 | RESEARCH-RECONCILIATION §F (REQ-R24) | Accepted 2026-08-19; spec §9.1 updated |
 | 14 | G-1 similar-cases result card = §9.7 acceptance criterion (v0.1) | RESEARCH-RECONCILIATION §F (REQ-R22) | Accepted 2026-08-19 |
-
+| 15 | Phase-1 wxt.config.ts permissions DEVIATE from Appendix G: authoritative Phase-1 set = ['sidePanel','storage','tabs']; cookies/scripting/contextMenus→Phase 17, alarms/notifications→when used, unlimitedStorage→Phase 2, declarativeNetRequest→never (v0.1) | `01-CONTEXT.md` D-19a (REQ-R21 / §16.4 / ADR-STACK-02) | Accepted 2026-08-19 |
+| 16 | Entrypoints KEPT at root `entrypoints/` (WXT default; no migration to src/entrypoints/); content-script path shape normalized to `entrypoints/content/core.content.ts` (directory form, ISOLATED); MAIN-world servicenow content script → Phase 17 | `01-CONTEXT.md` D-07a (§5.1 / §6.2 / Appendix G) | Accepted 2026-08-19 |
+| 17 | Phase-1 `strict:true` lands via `@ts-expect-error NP-STRICT` sweep; verify:phase-1 is `tsc --noEmit` (noEmitOnError is a no-op and NOT relied upon); NP-STRICT ceiling tracked → reduce to 0 in Phase 2-3 | `01-CONTEXT.md` D-21 (§7.8 / §24 / §0.5.1) | Accepted 2026-08-19 |
 ---
 
 ## Accumulated Context — Open Questions / Blockers
