@@ -1,3 +1,19 @@
+---
+gsd_state_version: 1.0
+milestone: v0.1
+milestone_name: milestone
+current_phase: 1
+current_phase_name: MV3/WXT Runtime + AntD Shells + Workspace Handoff  .
+status: Not started.
+stopped_at: Phase 1 context gathered
+last_updated: "2026-08-19T03:52:46.207Z"
+progress:
+  total_phases: 1
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+---
+
 # NowPilot — Project State
 
 **Project:** NowPilot
@@ -85,6 +101,10 @@ All inherited decisions are **— Pending** (awaiting first implementation to va
 ---
 
 ## Session Continuity
+
+**Last session:** 2026-08-19T03:52:46.197Z
+**Stopped at:** Phase 1 context gathered
+**Resume file:** .planning/phases/01-mv3-wxt-runtime-antd-shells-workspace-handoff/01-CONTEXT.md
 
 - **Last action:** Initialization — `REQUIREMENTS.md`, `ROADMAP.md`, `STATE.md` created from PROJECT.md + spec §18 + RESEARCH-RECONCILIATION.md.
 - **Last updated:** 2026-08-19 after initialization.
