@@ -1143,7 +1143,7 @@ See §25 for the future page-injection reintroduction plan.
 | Package | Version | Purpose |
 |---|---|---|
 | zustand | ^5 | Global stores (workspace, theme, chat) |
-| immer | ^11 (≥ 11.1.16) | Immutable updates. **Rev 2026-08-12:** bumped from `^10` — Immer is now on **v11** (`^10` cannot resolve to 11.x). v11 also carries prototype-pollution hardening; the `produce`/draft API is unchanged. |
+| immer | ^11 (≥ 11.1.16) | Immutable updates. **Rev 2026-08-12:** bumped from `^10` — Immer is now on **v11** (`^10` cannot resolve to 11.x). v11 also carries prototype-pollution hardening; the `produce`/draft API is unchanged. Confirmed authoritative 2026-08-19 (RESEARCH-RECONCILIATION.md §F); STACK.md "hold 10.x" superseded. |
 
 ### §7.4 AI & Workflow
 
@@ -1154,7 +1154,7 @@ See §25 for the future page-injection reintroduction plan.
 | @ai-sdk/anthropic | current major (≈ 3.x) | Anthropic Claude (see note above — independent major). |
 | @ai-sdk/google | current major (≈ 3.x) | Google Gemini (see note above — independent major). |
 | @modelcontextprotocol/sdk | ^1 (≥ 1.30) | MCP client — StreamableHTTP transport. ✓ current (caret resolves to 1.30.x). Note: the SDK now imports `zod/v4` internally but stays back-compatible with Zod v3.25+ — consistent with the Zod 4 bump below. |
-| zod | ^4 (≥ 4.4) | Boundary validation. **Rev 2026-08-12:** bumped from `^3` — **Zod 4 is stable** (root `zod` export), ~14× faster parsing, and is the version the MCP SDK and AI SDK 5+ already target. Existing `z.object(...)` schemas are source-compatible; review the [migration guide](https://zod.dev/v4) for edge cases (error `.issues` shape, `.email()` → `z.email()`). |
+| zod | ^4 (≥ 4.4) | Boundary validation. **Rev 2026-08-12:** bumped from `^3` — **Zod 4 is stable** (root `zod` export), ~14× faster parsing, and is the version the MCP SDK and AI SDK 5+ already target. Existing `z.object(...)` schemas are source-compatible; review the [migration guide](https://zod.dev/v4) for edge cases (error `.issues` shape, `.email()` → `z.email()`). Confirmed authoritative 2026-08-19 (RESEARCH-RECONCILIATION.md §F); STACK.md "keep 3.24" superseded (below the 3.25+ floor). Appendix L zod-to-json-schema unchanged. |
 | zod-to-json-schema | `^3` — **KEEP in v0.1** | Zod → JSON Schema for tool definitions. **Rev 2026-08-12 (definitive for implementers):** **v0.1 keeps `zod-to-json-schema` exactly as written in Appendix L** — do **not** change that code. Zod 4 also ships native `z.toJSONSchema()`, but migrating to it is a **v0.2 cleanup** (tracked, not in scope for any v0.1 phase). This avoids ambiguity: a Phase-implementer uses `zodToJsonSchema(schema)` per Appendix L and nothing else. |
 
 ### §7.5 Storage
@@ -1416,7 +1416,7 @@ nowpilot/
 | Quick save to note | P1 | "Save this response as note" quick action (lightweight, non-LLM) |
 | Slash commands | P1 | /write, /ask, /research, etc. |
 | Tab pinning | P1 | Max 10 pinned |
-| Selection → Ask AI | P1 | Right-click context menu → opens side panel with selection prefilled |
+| Selection → Ask AI | P0 | Right-click context menu → opens side panel with selection prefilled. Promoted P1→P0 2026-08-19 (REQ-R24 / RESEARCH-RECONCILIATION.md §F) — #1 habit-forming entry point; assert in Phase 17 acceptance. |
 | Theme toggle | P1 | light/dark/auto |
 | Cmd+K palette | P1 | Includes "Open Standalone view" |
 | Error toast + "Open Diagnostics" link | P1 | Diagnostics lives in Standalone view → Options |
@@ -2041,7 +2041,8 @@ if (!MessageTypeValues.includes(message.type)) return false;
 ```
 permissions: [
   'sidePanel','storage','cookies','alarms','tabs',
-  'scripting','contextMenus','notifications'
+  'scripting','contextMenus','notifications',
+  'unlimitedStorage' // Added at Phase 2 when IndexedDB ships (ADR-STACK-02); exempts the extension origin from quota/eviction. Not present in the Phase 1 manifest (least-privilege).
 ],
 optional_permissions: ['webNavigation'],
 host_permissions: [

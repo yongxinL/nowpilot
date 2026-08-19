@@ -1,3 +1,5 @@
+> **⚠ PRECEDENCE NOTICE (added 2026-08-19).** Where this document conflicts with `.planning/PRODUCT_SPEC_v0_1.md`, **the spec wins** unless an ADR says otherwise. Several mitigations here add NEW scope beyond the spec (six-layer injection defense incl. dual-LLM quarantine, alias index, reserve-before-call budgets, CAS filesystem writes, ServiceNow-aware tokenizer). Each is registered with a `REQ-*` ID and a `consistent/augments/conflicts §X` tag in **`RESEARCH-RECONCILIATION.md`** — do not treat any mitigation here as authoritative until it appears there. Single-source/forward-dated claims (arXiv figures, CVE-2026-30830) are flagged `VERIFY-AT-IMPLEMENTATION` in the reconciliation doc.
+
 # Pitfalls Research
 
 **Domain:** Privacy-first Chrome MV3 AI assistant + local-first personal knowledge platform (ServiceNow Support Engineers)

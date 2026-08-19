@@ -1,3 +1,5 @@
+> **⚠ PRECEDENCE NOTICE (added 2026-08-19).** This is the recommended per-phase "research pack" for cost-effective models (use this + the spec + the relevant phase row — **not** all five raw docs). Where any research doc conflicts with `.planning/PRODUCT_SPEC_v0_1.md`, **the spec wins** unless an ADR says otherwise. All conflicts, stack-version deviations, forward-dated facts, and research-derived (non-spec) requirements are reconciled in **`RESEARCH-RECONCILIATION.md`** — that doc is the single authoritative resolution surface.
+
 # Project Research Summary
 
 **Project:** NowPilot
