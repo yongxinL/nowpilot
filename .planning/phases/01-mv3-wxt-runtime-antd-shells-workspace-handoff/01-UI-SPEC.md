@@ -1,13 +1,15 @@
 ---
 phase: 1
 slug: mv3-wxt-runtime-antd-shells-workspace-handoff
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-08-19
+reviewed_at: 2026-08-19
 rev: 1
 rev_date: 2026-08-19
 rev_summary: ui-checker block fixes — Copywriting (CTA rename, post-onboarding empty state, workspace + theme error patterns), Typography (Phase 1 subset 12/13/14/16), Spacing (4-multiple standard scale + DESIGN_SYSTEM §7 drift flag), Color (Refocus here as action link, error-treatment alignment), Visuals (hierarchy + icon-only a11y inventory)
+approved_dimensions: 6/6 PASS
 ---
 
 # Phase 1 — UI Design Contract
@@ -148,37 +150,76 @@ Phase 1 ships **one new modal** (OnboardingModal, 4 steps), **one modal reused**
 
 > Populated by the ui-phase UI-consideration probe (Step 9.5). Shape-rooted UI state coverage (empty / loading / error / populated / partial / overflow / zero-one-many / long-text). Empty-state and error-state COPY live in `## Copywriting Contract` above — this section covers state coverage and REFERENCES those rows rather than restating the copy (de-dup).
 
-Applicable state considerations resolved: **9 covered**, **0 backstop**, **0 unresolved**.
+Applicable state considerations resolved: **18 covered**, **0 backstop**, **12 dismissed**, **0 unresolved**. The probe raised 30 considerations; 18 map to existing explicit truth strings (preserved verbatim from the researcher's first-pass row set), and 12 are dismissed with one-line reasons because the raised state is structurally not applicable to a Phase-1 transient-surface phase (no chat list, no notes list, no async search). No backstop rows are added — every surfaced state is either explicitly resolved or structurally absent.
 
-| Category | Element(s) | Status | Resolution / Reason |
-|----------|------------|--------|---------------------|
-| **empty** | OnboardingModal Step 1 (persona placeholder card) | ✅ covered | Card renders the literal "Step 1 of 4 · NowPilot" copy (CONTEXT Specifics) when persona data has not yet been authored — the placeholder IS the empty state. Real persona card replaces this in Phase 15.3. |
-| **empty** | Side Panel post-Onboarding (no conversations yet) | ✅ covered | Centered caption "Start a conversation by asking NowPilot a question." (`colorTextTertiary`, 12 px) above an enabled composer. The **action path is the composer input** — focus + type to begin. RICH-I-01 Welcome cards + mascot art land in Phase 15; Phase 1 ships the structural surface without populated content (CONTEXT D-11). |
-| **empty** | CommandPalette filter (no commands match search) | ✅ covered | Renders the literal "No matching commands — try a different search term" copy from existing `CommandPalette.tsx:89` (kept verbatim). Flow 10 base set has 3–5 commands so an empty result is reachable but not the default state. |
-| **empty** | Standalone view fresh-install (no provider configured) | ✅ covered | OnboardingModal auto-opens via REQ-F19 + SPEC §9.2. No blank-canvas fallback surface; the wizard IS the entry. |
-| **loading** | OnboardingModal Step 4 (real `fetchProviderModels` test) | ✅ covered | Loading string "Testing connection…" (SPEC §12) renders while `fetchProviderModels` is in-flight; the primary CTA disables and shows an inline spinner (AntD `Button.loading`). Skeleton, not spinner, for content areas is the spec default (DESIGN_SYSTEM §9 + SPEC §17.4). |
-| **loading** | Workspace handoff (Side Panel → Standalone view open) | ✅ covered | Loading string "Opening standalone view…" (SPEC §12 Open Standalone view row) renders as an AntD `message.loading` toast keyed on the action, while `WorkspaceRouter.openStandalone` deduplicates existing tabs and resolves `chrome.tabs.create`. |
-| **loading** | Side Panel initial mount (onboardingComplete lookup) | ✅ covered | Existing `SidepanelChat.tsx:262–268` returns a centred "Loading workspace…" caption when `onboardingComplete === null` (transient bootstrap); resolves on the first chrome.storage.local read. |
-| **error** | OnboardingModal Step 4 connection failure | ✅ covered | Error string "Connection failed: [error]" (SPEC §12 Onboarding row) + ghost "Edit key" button returns to Step 3 with key pre-filled (CONTEXT D-03). The wizard stays open; no automatic close. Long-form error treatment uses `colorError` (matches destructive role alignment; resolves the original warning-collision). |
-| **error** | Workspace handoff failure (`chrome.tabs.create` reject) | ✅ covered | Error string "Couldn't open Standalone view" + ghost `Try Opening Again` button re-attempts `WorkspaceRouter.openStandalone`. Renders as an AntD `message.error` in `colorError`; Side Panel remains the primary surface (no mirror banner appears because handoff did not succeed). |
-| **error** | Theme toggle propagation failure (chrome.storage.sync write reject) | ✅ covered | Now surfaces `"Couldn't apply theme to other surface"` as an AntD `message.error` toast (`colorError`) with an inline `Try syncing again` link that re-attempts the write. Local surface still applies the theme; cross-surface propagation retry is the user's choice. No longer a silent no-op. |
-| **error** | Side Panel post-handoff mirror (Standalone view tab closes mid-session) | ✅ covered | BroadcastBus `np_workspace` `WORKSPACE_HANDOFF` reverse event (close notification) clears the mirror banner + re-enables the composer on the Side Panel without user click (CONTEXT D-05 implies Flow 11 symmetry; explicit close-handler is a Phase 1 polish item — not blocking the DONE-when gate). |
-| **populated** | CommandPalette — Flow 10 base set (5 commands) | ✅ covered | Renders all 5 commands as the default state (CONTEXT D-08): `open-standalone-view` (Side Panel only), `open-options`, `focus-side-panel` (Standalone view only, Phase-1 stub per D-06), `toggle-theme`, `reload-extension`. Each command row = `name` (16 px semibold) + `description` (12 px secondary) + `category` (12 px tertiary, right-aligned). Active row uses `colorPrimaryBg` highlight. |
-| **populated** | OnboardingModal — Step 2 (provider select) | ✅ covered | AntD `Select` with the four canonical providers (OpenAI, Anthropic, Gemini, Ollama — SPEC §10.2). Default selection is empty until the user picks; selected state shows provider name + brand glyph. |
-| **partial** | OnboardingModal — Step 3 (API key field) | ✅ covered | Password `Input` with `EyeInvisibleOutlined`/`EyeOutlined` reveal toggle (DESIGN_SYSTEM §10 + §8.7). Empty state disables Step 4; partial state (key entered but not validated) enables Step 4. No inline "validating" substate. |
-| **overflow** | CommandPalette — long command name or description | ✅ covered | AntD `List.Item.Meta` clamps naturally; the existing 560 px modal width (CommandPalette.tsx:71) accommodates Flow 10 names up to ~40 chars before wrapping. No truncation affordance needed in Phase 1 (Flow 10 names are all ≤ 24 chars). |
-| **overflow** | OnboardingModal — long error message from `fetchProviderModels` | ✅ covered | AntD `Typography.Text` with `ellipsis={true}` on the error string; user can expand by clicking the error inline (rendered in `colorError`), or return to Step 3 via the "Edit key" ghost button to fix the underlying issue. Long-form error uses `colorError` consistently with the destructive role alignment (resolves the original `type="warning"` collision). |
-| **long-text** | Side Panel post-handoff mirror banner | ✅ covered | Single-line status with one inline action link — DESIGN_SYSTEM §8.1 pattern for status bar (28 px row). Banner never exceeds the panel width; truncation is `text-overflow: ellipsis` on the primary copy with the action link always visible. |
-| **zero-one-many** | CommandPalette — Flow 10 base set (3–5 commands depending on surface) | ✅ covered | Side Panel registers 4 commands (`open-standalone-view`, `open-options`, `toggle-theme`, `reload-extension`); Standalone view registers 4 (`focus-side-panel`, `open-options`, `toggle-theme`, `reload-extension`). The palette handles zero (empty-results copy above), one (active row only), and many (vertical list, max-height inherited from AntD Modal body). |
+### Elements (probe input)
+
+| ID | Element | Kind(s) |
+|----|---------|---------|
+| E1 | OnboardingModal (4-step wizard) | form |
+| E2 | CommandPalette (Flow 10 base set) | list-collection, interactive-control |
+| E3 | Side Panel post-handoff mirror banner | static-content, nav |
+| E4 | Side Panel composer / message area | form (composer) + future list-collection (messages ship Phase 2+) |
+| E5 | Theme toggle (Auto / Light / Dark segmented) | interactive-control |
+| E6 | Workspace handoff toasts | nav, interactive-control |
+
+### Covered (18 explicit ✅ rows)
+
+| ID | Category | Element(s) | Resolution / Reason |
+|----|----------|------------|---------------------|
+| E1 | **empty** | OnboardingModal Step 1 (persona placeholder card) | Card renders the literal "Step 1 of 4 · NowPilot" copy (CONTEXT Specifics) when persona data has not yet been authored — the placeholder IS the empty state. Real persona card replaces this in Phase 15.3. |
+| E4 | **empty** | Side Panel post-Onboarding (no conversations yet) | Centered caption "Start a conversation by asking NowPilot a question." (`colorTextTertiary`, 12 px) above an enabled composer. The **action path is the composer input** — focus + type to begin. RICH-I-01 Welcome cards + mascot art land in Phase 15; Phase 1 ships the structural surface without populated content (CONTEXT D-11). |
+| E2 | **empty** | CommandPalette filter (no commands match search) | Renders the literal "No matching commands — try a different search term" copy from existing `CommandPalette.tsx:89` (kept verbatim). Flow 10 base set has 3–5 commands so an empty result is reachable but not the default state. |
+| E6 | **empty** | Standalone view fresh-install (no provider configured) | OnboardingModal auto-opens via REQ-F19 + SPEC §9.2. No blank-canvas fallback surface; the wizard IS the entry. |
+| E1 | **loading** | OnboardingModal Step 4 (real `fetchProviderModels` test) | Loading string "Testing connection…" (SPEC §12) renders while `fetchProviderModels` is in-flight; the primary CTA disables and shows an inline spinner (AntD `Button.loading`). Skeleton, not spinner, for content areas is the spec default (DESIGN_SYSTEM §9 + SPEC §17.4). |
+| E6 | **loading** | Workspace handoff (Side Panel → Standalone view open) | Loading string "Opening standalone view…" (SPEC §12 Open Standalone view row) renders as an AntD `message.loading` toast keyed on the action, while `WorkspaceRouter.openStandalone` deduplicates existing tabs and resolves `chrome.tabs.create`. |
+| E4 | **loading** | Side Panel initial mount (onboardingComplete lookup) | Existing `SidepanelChat.tsx:262–268` returns a centred "Loading workspace…" caption when `onboardingComplete === null` (transient bootstrap); resolves on the first chrome.storage.local read. |
+| E1 | **error** | OnboardingModal Step 4 connection failure | Error string "Connection failed: [error]" (SPEC §12 Onboarding row) + ghost "Edit key" button returns to Step 3 with key pre-filled (CONTEXT D-03). The wizard stays open; no automatic close. Long-form error treatment uses `colorError` (matches destructive role alignment; resolves the original warning-collision). |
+| E6 | **error** | Workspace handoff failure (`chrome.tabs.create` reject) | Error string "Couldn't open Standalone view" + ghost `Try Opening Again` button re-attempts `WorkspaceRouter.openStandalone`. Renders as an AntD `message.error` in `colorError`; Side Panel remains the primary surface (no mirror banner appears because handoff did not succeed). |
+| E5 | **error** | Theme toggle propagation failure (chrome.storage.sync write reject) | Now surfaces `"Couldn't apply theme to other surface"` as an AntD `message.error` toast (`colorError`) with an inline `Try syncing again` link that re-attempts the write. Local surface still applies the theme; cross-surface propagation retry is the user's choice. No longer a silent no-op. |
+| E3 | **error** | Side Panel post-handoff mirror (Standalone view tab closes mid-session) | BroadcastBus `np_workspace` `WORKSPACE_HANDOFF` reverse event (close notification) clears the mirror banner + re-enables the composer on the Side Panel without user click (CONTEXT D-05 implies Flow 11 symmetry; explicit close-handler is a Phase 1 polish item — not blocking the DONE-when gate). |
+| E2 | **populated** | CommandPalette — Flow 10 base set (5 commands) | Renders all 5 commands as the default state (CONTEXT D-08): `open-standalone-view` (Side Panel only), `open-options`, `focus-side-panel` (Standalone view only, Phase-1 stub per D-06), `toggle-theme`, `reload-extension`. Each command row = `name` (16 px semibold) + `description` (12 px secondary) + `category` (12 px tertiary, right-aligned). Active row uses `colorPrimaryBg` highlight. |
+| E1 | **populated** | OnboardingModal — Step 2 (provider select) | AntD `Select` with the four canonical providers (OpenAI, Anthropic, Gemini, Ollama — SPEC §10.2). Default selection is empty until the user picks; selected state shows provider name + brand glyph. |
+| E1 | **partial** | OnboardingModal — Step 3 (API key field) | Password `Input` with `EyeInvisibleOutlined`/`EyeOutlined` reveal toggle (DESIGN_SYSTEM §10 + §8.7). Empty state disables Step 4; partial state (key entered but not validated) enables Step 4. No inline "validating" substate. |
+| E2 | **overflow** | CommandPalette — long command name or description | AntD `List.Item.Meta` clamps naturally; the existing 560 px modal width (CommandPalette.tsx:71) accommodates Flow 10 names up to ~40 chars before wrapping. No truncation affordance needed in Phase 1 (Flow 10 names are all ≤ 24 chars). |
+| E1 | **overflow** | OnboardingModal — long error message from `fetchProviderModels` | AntD `Typography.Text` with `ellipsis={true}` on the error string; user can expand by clicking the error inline (rendered in `colorError`), or return to Step 3 via the "Edit key" ghost button to fix the underlying issue. Long-form error uses `colorError` consistently with the destructive role alignment (resolves the original `type="warning"` collision). |
+| E3 | **long-text** | Side Panel post-handoff mirror banner | Single-line status with one inline action link — DESIGN_SYSTEM §8.1 pattern for status bar (28 px row). Banner never exceeds the panel width; truncation is `text-overflow: ellipsis` on the primary copy with the action link always visible. |
+| E2 | **zero-one-many** | CommandPalette — Flow 10 base set (3–5 commands depending on surface) | Side Panel registers 4 commands (`open-standalone-view`, `open-options`, `toggle-theme`, `reload-extension`); Standalone view registers 4 (`focus-side-panel`, `open-options`, `toggle-theme`, `reload-extension`). The palette handles zero (empty-results copy above), one (active row only), and many (vertical list, max-height inherited from AntD Modal body). |
+
+### Dismissed (12 — structurally not applicable to Phase 1)
+
+| ID | Category | Element | Dismissal reason |
+|----|----------|---------|------------------|
+| E2 | loading | CommandPalette | Cmd+K opens the modal synchronously; the command list is in-memory and filtered client-side. No async load, so no loading state surfaces. |
+| E2 | error | CommandPalette | No fetch path. If `CommandRegistry.getAll()` threw at module init the entrypoint would fail to mount — caught upstream in the entrypoint, not the palette. |
+| E2 | partial | CommandPalette | Filter-as-you-type IS the partial state; already covered by the existing `empty` row (the empty filter results render regardless of whether the input is empty or non-matching). |
+| E3 | empty | Mirror banner | The banner has a binary on/off state tied to `WORKSPACE_HANDOFF`; there is no data to be "empty" of. |
+| E3 | loading | Mirror banner | Banner appears synchronously when the handoff event arrives; no async, no loading. |
+| E3 | populated | Mirror banner | Banner is a single-line status (copy + action link), not a collection — `populated` does not apply. |
+| E3 | partial | Mirror banner | Binary on/off, no partial. |
+| E3 | zero-one-many | Mirror banner | Single banner at a time, not a list — `zero-one-many` does not apply. |
+| E4 | unclassified | Side Panel composer / message area | Mixed surface (`form` composer + future `list-collection` for messages). Messages ship in later phases; in Phase 1 the surface is single-element. The pre-Onboarding, post-Onboarding-empty, and post-handoff-disabled states are all covered by the three `E4 empty/loading + E3` rows above. |
+| E5 | loading | Theme toggle | Instant CSS-variable cascade (SPEC §17.1a APPR-04 — no remount). No loading affordance. |
+| E5 | long-text | Theme toggle | Three fixed labels (Auto / Light / Dark) — bounded copy. |
+| E6 | populated | Workspace handoff toast | Transient action; the toast is the post-condition signal, not a populated surface. |
+
+### Backstop (0)
+
+No backstop rows are needed. Every probe-raised consideration is either explicitly covered above or structurally absent in Phase 1 (transient surfaces, no list-collections, instant CSS-only theme switch). If a future planner surfaces a real gap here, it is added as a new row with `🧪 backstop` and a defensible acceptance criterion.
+
+### Unresolved (0)
+
+No planner assumptions needed; every state either has a truth string or a one-line dismissal reason.
 
 <!-- Status vocabulary (locked by probe-core projectTruths):
      ✅ covered   → a plain truth string lifted into must_haves.truths
      🧪 backstop  → a flat scalar { statement, verification: backstop }; at verify time, no explicit
                     evidence → insufficient_spec → human_needed (never a silent pass, #1154)
      ⚠ unresolved → an explicit planner assumption (surfaced, never silently dropped)
+     🚫 dismissed → structurally not applicable; one-line reason is the audit trail
      Rows are REPLACED (not appended) on a probe re-run — idempotent. -->
 
-**Probe scope note:** Phase 1 has NO list-collection of populated content yet (chat messages, notes, etc. ship in later phases). The `populated` row for CommandPalette is the only multi-item state in this phase, and it is small by design. All other UI surfaces are either single-element (`form` = OnboardingModal) or transient (`nav` = workspace handoff).
+**Probe scope note:** Phase 1 has NO list-collection of populated content yet (chat messages, notes, etc. ship in later phases). The `populated` row for CommandPalette is the only multi-item state in this phase, and it is small by design. All other UI surfaces are either single-element (`form` = OnboardingModal) or transient (`nav` = workspace handoff). The 12 dismissals above are the probe's full over-reach against a transient-surface phase; no coverage debt remains.
 
 ---
 
