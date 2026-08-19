@@ -21,7 +21,7 @@
 - **D-05 (Side Panel post-handoff behavior):** Flow 11 says "side panel demotes to read-only mirror until refocused." Phase 1 implements the mirror, not a close. The mirror means: in Side Panel, the composer is disabled, the message list is read-only, and a thin status banner reads "Switched to Standalone. [Refocus here]". On user click, the banner clears and the composer re-enables. The current `handleOpenStandalone → window.close()` (entrypoints/sidepanel/main.tsx:36) is replaced. — **Reversibility:** `reversible` — rationale: pure UI-side behavior.
 - **D-06 (Standalone → Side Panel refocus):** Symmetric "Focus Side Panel" command (REQ-F21, Phase 15 full polish — but Phase 1 ships the framework; the actual command ships as a Flow 10 entry `focus-side-panel` that calls `chrome.sidePanel.open({ tabId })`). Phase 15 will swap the empty handler for the full UI merge. — **Reversibility:** `reversible` — rationale: command-stub; Phase 15 replaces.
 - **D-07 (Canonicalize Standalone naming):** Spec split: §5.1/§5.4/§18 use `standalone`; §8.1/§8.5 use `app`. Spec §0.4 says "single source of truth" — Phase 1 picks `standalone`. Rename in lockstep: `openFullApp → openStandalone`, `app.html → standalone.html` (reference paths only; the file at `entrypoints/standalone/index.html` already exists), `FullAppPageRegistry → StandalonePageRegistry`, `appPageId → standalonePageId` (consumers: `WorkspaceRouter.ts:12,21`, `entrypoints/standalone/main.tsx`, `src/core/registry/Registry.ts`, anything that mentions `app.html`). Fixes CONCERNS "Stale Architecture References". — **Reversibility:** `costly` — rationale: the names appear in CHANGELOG, type imports, and downstream references the planner will discover; one-time rename that must be exhaustive.
-- **D-07a (Entrypoint LOCATION canonicalization — not just naming):** D-07 fixes the *name* (app→standalone); this fixes the *location*. Spec §5.1 + Appendix G (`srcDir: 'src'`) place all entrypoints under **`src/entrypoints/`**, and the content script at **`src/entrypoints/content/core.content.ts`** (directory form, ISOLATED world) — NOT the scaffold's root-level `entrypoints/` or its single-file `entrypoints/content.core.ts`. **Decision:** migrate the scaffold's root `entrypoints/` under `src/entrypoints/` during the D-23 "scaffold import" prep (before remediation commits) so `srcDir:'src'` (Appendix G) holds. *(Alternative, if the planner elects to minimize churn: keep `srcDir` at repo root and set wxt.config.ts accordingly, reading every §5.1/§8.5 path relative to that root. Pick ONE and state it explicitly in Phase-01-PLAN-1.)* Rename the content script `entrypoints/content.core.ts` → `src/entrypoints/content/core.content.ts` in lockstep, and update the D-17 isolation-grep target to the chosen canonical path. The MAIN-world `servicenow-main.content.ts` (§5.1) is **Phase 17**, not Phase 1. — **Reversibility:** costly — rationale: path move touches every import + the isolation-grep targets; one-time, must be exhaustive.
+- **D-07a (Entrypoint LOCATION — LOCKED to repo root 2026-08-19):** D-07 fixes the _name_ (app→standalone); this fixes the _location_. **Decision: KEEP entrypoints at the project ROOT `entrypoints/`** — the WXT default, which the built scaffold already uses. Do NOT migrate to src/entrypoints/ (that file move is costly and delivers no benefit). Set wxt.config.ts `srcDir` to the repo root, and reconcile the spec's §5.1/§8.5 `src/entrypoints/` wording DOWN to root `entrypoints/`. Only the content-script PATH SHAPE is normalized: rename `entrypoints/content.core.ts` → `entrypoints/content/core.content.ts` (directory form, ISOLATED world), and point the D-17 isolation-grep at that path. The MAIN-world servicenow-main.content.ts (§5.1) is **Phase 17**, not Phase 1. (Consistent with PHASE-1-PLANNING-ADDENDUM §3 and STATE.md decision 16.) — **Reversibility:** reversible — rationale: no file move; only a single content-script rename + a `srcDir` setting in wxt.config.ts.
 
 #### Cross-surface Cmd+K palette (Flow 10)
 
@@ -102,7 +102,7 @@ Phase 1 converges the existing WXT/MV3 scaffold onto one typed messaging + persi
 
 The external research resolved the framework questions the phase depends on: WXT 0.20 entrypoint conventions (side panel/options are HTML entrypoints configured via `<meta name="manifest.*">` tags; `defineBackground` main() cannot be async; `defineContentScript` `world: 'MAIN'` is Chromium-only), `chrome.sidePanel.open()` (Chrome 116+, user-gesture-scoped with a ~1 ms gesture window — never `await` before calling), zustand v5 persist (`version`/`migrate`/`createJSONStorage` verified; debounce must live in the storage adapter — zustand has none), AntD v6 theming (runtime algorithm switching by updating `ConfigProvider.theme`; `open`/`destroyOnHidden`/`mask.closable` are the v6 Modal props), and `chrome.storage.onChanged` cross-surface sync with its one caveat: a hidden side panel may not process events until visible again — which is exactly why Flow 11's handoff must flush via BroadcastBus + storage *before* opening the tab.
 
-**Primary recommendation:** Plan the phase as the CONTEXT.md decision set D-01…D-23 in wave order: (1) git baseline + entrypoint relocation + dependency alignment (D-23/D-07a/D-20 + strict sweep D-21), (2) messaging convergence + frozen envelope types + isolation tests (D-13/D-14/D-15/D-16/D-17), (3) handoff + palette + onboarding + theme + manifest + storage coalescing (D-04…D-10, D-18/D-19/D-19a, D-22). Every task must keep `pnpm run verify:phase-1` (`tsc --noEmit && vitest run tests/core/runtime tests/core/events tests/core/workspace tests/core/theme`) green and the two grep gates at zero.
+**Primary recommendation:** Plan the phase as the CONTEXT.md decision set D-01…D-23 in wave order: (1) git baseline + entrypoint path-shape normalization (entrypoints kept at repo root) + dependency alignment (D-23/D-07a/D-20 + strict sweep D-21), (2) messaging convergence + frozen envelope types + isolation tests (D-13/D-14/D-15/D-16/D-17), (3) handoff + palette + onboarding + theme + manifest + storage coalescing (D-04…D-10, D-18/D-19/D-19a, D-22). Every task must keep `pnpm run verify:phase-1` (tsc --noEmit && vitest run tests — the whole tests/ tree, which MUST include tests/core, tests/background, tests/components, tests/isolation, and the NP-STRICT grep test) green and the two grep gates at zero. NOTE: the scaffold's verify:phase-1 script only globs tests/core/{runtime,events,workspace,theme} — widen it in package.json so every Wave-0 dir is gated, otherwise the new DONE-when tests (background/components/storage/isolation/NP-STRICT) pass locally but the phase gate never runs them.
 
 ## Architectural Responsibility Map
 
@@ -199,7 +199,7 @@ pnpm remove tailwindcss @tailwindcss/vite   # REQ-R19
                     │                   │                                      │
                     │   ┌───────────────┴───────────────┐                      │
                     │   │ Content script (ISOLATED)     │                      │
-                    │   │ src/entrypoints/content/      │                      │
+                    │   │ entrypoints/content/      │                      │
                     │   │ core.content.ts               │                      │
                     │   └───────────────────────────────┘                      │
                     │                                                          │
@@ -221,11 +221,11 @@ pnpm remove tailwindcss @tailwindcss/vite   # REQ-R19
 
 Trace the primary use case (Flow 11): Side Panel "Switch to Full chat" click → `WorkspaceRouter.openStandalone(wsId, convId?, page?)` → persist-flush via coalesced adapter → `tabs.query({url: getURL('standalone.html')})` (match patterns ignore query strings, so `?workspaceId=…` tabs still match — dedup works) → focus existing or `tabs.create` with `standalone.html?workspaceId=…&conversationId=…&page=…` → Standalone boots → `WorkspaceStore.hydrateFromURL(searchParams)` → fires `WORKSPACE_HANDOFF` on `np_workspace` → Side Panel demotes to read-only mirror with "Switched to Standalone. [Refocus here]" banner (no `window.close()`).
 
-### Recommended Project Structure (post D-07a canonicalization)
+### Recommended Project Structure (post D-07a — entrypoints KEPT at repo ROOT, NOT under src/)
 
 ```
 src/
-├── entrypoints/            # D-07a: moved from root entrypoints/ (srcDir:'src' per Appendix G)
+├── entrypoints/            D-07a LOCKED: entrypoints KEPT at repo ROOT — read these as entrypoints/*, NOT src/entrypoints/* (the src/ header above applies to components/core/store only)
 │   ├── background.ts       # BackgroundRouter.register() only (D-13/D-14)
 │   ├── content/
 │   │   └── core.content.ts # renamed from content.core.ts; ISOLATED world
@@ -510,10 +510,9 @@ return (
    - What we know: D-10 permits retaining it; APPR-03 makes sync+onChanged the source of truth.
    - What's unclear: the BroadcastBus adds an extra propagation path that can race with onChanged.
    - Recommendation: retain the channel as the *fast path* for same-window surfaces, storage.onChanged as the *recovery path* — but a single-path implementation (onChanged only) is also compliant. Planner picks one; document in code.
-3. **D-07a entrypoint relocation: `src/entrypoints/` vs keep root `entrypoints/`?**
-   - What we know: spec §5.1 + Appendix G say `srcDir: 'src'`; scaffold uses root `entrypoints/` with `srcDir` unset.
-   - What's unclear: churn trade-off (every import + isolation-grep target vs. wxt.config deviation).
-   - Recommendation: relocate to `src/entrypoints/` per spec (D-07a default); state the choice explicitly in Phase-01-PLAN-1 as required.
+3. **D-07a entrypoint location — RESOLVED (not open):**
+   - Decision: entrypoints KEPT at project root `entrypoints/` (WXT default; the built scaffold already uses it). No migration to src/entrypoints/. (PHASE-1-PLANNING-ADDENDUM §3 / STATE.md decision 16.)
+   - Consequence: set wxt.config.ts `srcDir` to root; reconcile spec §5.1/§8.5 `src/entrypoints/` wording DOWN to root. Only the content-script path shape is normalized to `entrypoints/content/core.content.ts`. No relocation task; no import rewrite.
 4. **Tailwind CSS usage extent in src/components**
    - What we know: `src/index.css:1` imports tailwind; plugin in wxt.config.ts:15; package.json devDeps.
    - What's unclear: how many components actually use `bg-`/`flex-`/`text-` utility classes (not yet counted this session) — determines the D-18 rewrite blast radius.
@@ -542,7 +541,7 @@ return (
 | Framework | Vitest 3.x (STACK.md 3.2.7) + jsdom 25 + @testing-library/react 16 |
 | Config file | vitest.config.ts (jsdom env, globals: true, setupFiles: tests/setup.ts, alias `@`) |
 | Quick run command | `pnpm vitest run tests/core/workspace -t openStandalone` |
-| Full suite command | `pnpm run verify:phase-1` = `tsc --noEmit && vitest run tests/core/runtime tests/core/events tests/core/workspace tests/core/theme` |
+| Full suite command | pnpm run verify:phase-1 = tsc --noEmit && vitest run tests (whole tests/ tree). **B2 fix:** the scaffold script only globs tests/core/{runtime,events,workspace,theme}, which EXCLUDES the Wave-0 tests in tests/background/, tests/components/, tests/core/storage/, tests/isolation/, and the NP-STRICT grep — widen the script (see below) so the phase gate actually runs them. Reconcile with spec §24: whatever §24 fixes verify:phase-1 to, the DONE-when tests MUST be inside its glob. |
 
 ### Phase Requirements → Test Map
 | Req ID | Behavior | Test Type | Automated Command | File Exists? |
