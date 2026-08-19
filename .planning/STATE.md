@@ -5,8 +5,8 @@ milestone_name: milestone
 current_phase: 1
 current_phase_name: MV3/WXT Runtime + AntD Shells + Workspace Handoff  .
 status: Not started.
-stopped_at: Phase 1 context gathered
-last_updated: "2026-08-19T03:52:46.207Z"
+stopped_at: Phase 1 UI-SPEC approved
+last_updated: "2026-08-19T07:00:50.022Z"
 progress:
   total_phases: 1
   completed_phases: 0
@@ -97,16 +97,19 @@ All inherited decisions are **— Pending** (awaiting first implementation to va
   - VAI-04: version numbers (TS 7.0.2, Vitest 4.1.11, Vite 8.2.1, antd 6.6.1, minisearch 7.2.0, defuddle 0.19.2, idb 8.0.3) — re-query npm at each phase install.
   - VAI-05: CWS v1 publish API shutdown 2026-10-15 — confirm `wxt submit init` v2 flow at Phase 19.
   - VAI-08: `CONCERNS.md`-referenced scaffold defects (simulated-AI `localhost:12380`, per-chunk full-store persistence, dual messaging, 5 unused permissions, vacuous isolation tests) — verify each against `src/` in Phase 1 before treating as fact (per RECONCILIATION §F).
+  - Phase-1 theme key: authoritative is chrome.storage.sync.np\_theme (§15.1 / §17.1a APPR-03) — NOT np\_theme\_mode (does not exist in spec) and NOT the scaffold's chrome.storage.local np\_theme\_store. ThemeStore declares mode + pack now; pack SELECTOR UI is Phase 15 (D-10 / A1).
+  - Phase-1 endpoint default: §10.6 ENDPOINTS are authoritative; localhost:12380 is NOT a canonical default and is not pre-filled in onboarding — real endpoint wiring is Phase 3 (D-12 / A4).
+  - Version axes: zustand-persist store `version` (D-22) is SEPARATE from IndexedDB DB_VERSION (§20.4, reaches v4 by Phase 9) — do not conflate when numbering later migrations (A5).
 
 ---
 
 ## Session Continuity
 
-**Last session:** 2026-08-19T03:52:46.197Z
-**Stopped at:** Phase 1 context gathered
-**Resume file:** .planning/phases/01-mv3-wxt-runtime-antd-shells-workspace-handoff/01-CONTEXT.md
+**Last session:** 2026-08-19T07:00:50.015Z
+**Stopped at:** Phase 1 UI-SPEC approved
+**Resume file:** .planning/phases/01-mv3-wxt-runtime-antd-shells-workspace-handoff/01-UI-SPEC.md
 
-- **Last action:** Initialization — `REQUIREMENTS.md`, `ROADMAP.md`, `STATE.md` created from PROJECT.md + spec §18 + RESEARCH-RECONCILIATION.md.
+- **Last action:** Phase-1 context review applied — 01-CONTEXT.md patched (B1 strict/noEmitOnError, B2 permissions + new D-19a, B3 entrypoint location + new D-07a, A1-A5 theme key/background/Cmd+K/endpoint/version). STATE.md decisions + watch items updated to match.
 - **Last updated:** 2026-08-19 after initialization.
 - **Resume with:** `/gsd-plan-phase 1` (Phase 1 plan generation).
 
