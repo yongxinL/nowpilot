@@ -17,8 +17,8 @@
   - `.planning/REQUIREMENTS.md` — 220 v1 requirements (spec-native IDs + `REQ-F*` for §9 gaps)
   - `.planning/ROADMAP.md` — 19 phases mirroring spec §18 1:1
   - `.planning/PRODUCT_SPEC_v0_1.md` — spec, §18 canonical phase ordering
-  - `.planning/RESEARCH-RECONCILIATION.md` — author of stack/version/research-derived decisions
-  - `.planning/research/SUMMARY.md` — recommended per-phase research pack for cost-effective models
+  - `.planning/RESEARCH-RECONCILIATION.md` — authority for stack/version/research-derived decisions
+  - `.planning/SUMMARY.md` — recommended per-phase research pack for cost-effective models (path must match the precedence banners in the research docs; pick ONE canonical location and use it everywhere)
   - `.planning/adr/` — ADR-STACK-01 (WXT hold), ADR-STACK-02 (`unlimitedStorage`), ADR-P6-01 (Defuddle panel-side, proposed), ADR-SEC-01 (dual-LLM quarantine v0.2), ADR-NOTE-01 (WIKI-ID UUID identity)
   - `.planning/DESIGN_SYSTEM.md` + `.planning/mockup/` — visual reference for Phase 15
 

@@ -213,13 +213,13 @@
 
 ### Phase 15: Workspace Experience (UI/UX) + RICH
 **Goal:** ChatPage / AgentPage / NotesPage / OptionsPage render with Planner → Executor → Renderer and ChunkBuffer streaming; Options sub-sections (incl. Persona + Notes) are functional; RICH 60 requirements ship across sub-waves 15.3 / 15.4 / 15.5; visual surfaces match `.planning/mockup/` per DESIGN_SYSTEM §8.0 precedence rule (functional rule defers to spec; visual layout intent defers to mockup).
-**Depends on:** Phase 14 (so Phase 14 capability is visible in UI) and Phase 9 (LLM-Wiki UI surfaces).
+**Depends on:** Phase 9 (LLM-Wiki UI surfaces); Phase 14 only in the sequential 1→19 sense (its capability becomes visible in UI, not a functional build dependency per §18).
 **Requirements:** REQ-F01, REQ-F02, REQ-F06, REQ-F07, REQ-F08, REQ-F09, REQ-F11, REQ-F13, REQ-F14, REQ-F15, REQ-F16, REQ-F18, REQ-F21, REQ-F22…REQ-F35 · APPR-01…06 · NOTES-COL-01…03 · RICH-R-03/04/06/07/08/11 · RICH-I-01…I-14 · RICH-C-01…C-15 · RICH-H-01…H-20 (excludes H-07 — v0.2) — 90 v1 requirements.
 **Sub-waves (preserved from spec §18):**
 - **Phase 15.1 — Core screens:** Chat/Agent/Notes/Options render with Planner→Executor→Renderer, ChunkBuffer streaming, /write /ask presets, note wikilinks, Options forms, Diagnostics.
 - **Phase 15.2 — LLM-Wiki UI surfacing:** NotesPage "Ask notes" bar, category tree toggle, summary lines, orphan badges, AI-search toggle, backup status Tag, SaveToNoteDialog.
 - **Phase 15.3 — RICH Core (17 P0):** RICH-R-01/02/11, RICH-H-01, RICH-I-01/05/06, RICH-C-01/02/03/04, RICH-C-05/06/07/08, RICH-H-04 (clipboard-only insert), RICH-H-08. *(persona runtime seeds already in Phase 3.)*
-- **Phase 15.4 — RICH Enhance (22 P1):** RICH-R-03/05/06/08/09/10, RICH-I-02/03/08/09/10, RICH-C-09/12/13/14, RICH-H-02/03/05/06/11/12/16.
+- **Phase 15.4 — RICH Enhance (22 P1):** RICH-R-03/06/08, RICH-I-02/03/08/09/10, RICH-C-09/12/13/14, RICH-H-02/03/05/06/11/12/16. _(Runtime for RICH-R-09/R-10 lands in Phase 3 and RICH-R-05 persona persistence in Phase 8 — see REQUIREMENTS §Traceability; 15.4 only surfaces/uses them, it does not re-implement them.)_
 - **Phase 15.5 — RICH Polish (21 P2):** all remaining P2 items (RICH-H-07 remains deferred, R1).
 **Success Criteria** (what must be TRUE):
   1. Both surfaces use Planner → Executor → Renderer; ChunkBuffer streaming.
@@ -247,7 +247,7 @@
 
 ### Phase 17: Add-ons and Content Script Runtime (Extraction-Only)
 **Goal:** ServiceNow / Write / TeamGQM add-ons render in Side Panel (and Standalone view for TeamGQM); Selection → Ask AI (promoted P1 → P0) opens Side Panel with selection prefilled; /research runs via ResearchSkill; content-script bundle stays extraction-only with no host-page UI.
-**Depends on:** Phase 16 (multimodal input available to add-ons) + Phase 14 (collaboration for /research) + Phase 6 (PageContentService consumed by add-ons).
+**Depends on:** Phase 16 (multimodal input available to add-ons) + Phase 6 (PageContentService consumed by add-ons). _(Sequential 1→19 order only; /research uses MCPClient per §9.8, not the collaboration coordinator — no functional Phase-14 dependency.)_
 **Requirements:** REQ-F03, REQ-F04, REQ-F10, REQ-F17 · REQ-F36…REQ-F54 (23 v1 requirements) — Side Panel Write add-on page, Side Panel TeamGQM add-on page, Selection → Ask AI (P0), Standalone TeamGQM add-on full-page, Write add-on page + Skills (DraftSkill/RewriteSkill/SummarizeSkill/CustomerUpdateSkill) + Input source + Output, TeamGQM Side Panel page + Standalone page + Skill + Settings, ServiceNow JSESSIONID / sysparmCK / case context extraction + Table API client + CaseAnalyzerSkill / CatchUpSkill / SentimentSkill / CodeSearchSkill + Side-panel page + Full-app page, ResearchSkill global tool.
 **Success Criteria** (what must be TRUE):
   1. Content-script bundle contains no React, no AntD, no UI code (isolation grep passes).
@@ -319,7 +319,7 @@
 ## Coverage
 
 - **Phases:** 19 (1 → 19, canonical spec §18 order).
-- **v1 requirements:** 220 (see `.planning/REQUIREMENTS.md` §Traceability).
+- **v1 requirements:** 220 (see `.planning/REQUIREMENTS.md` §Traceability; includes OKF-WIKI-04 / EVO-06 / COLLAB-12 / MM-07 as active v0.1 boundaries counted in Phases 9/13/14/16).
 - **Mapped:** 220 / 220 → **Coverage 100%**.
 - **Sub-waves preserved:** Phase 15.1 / 15.2 / 15.3 / 15.4 / 15.5 (per spec §18).
 - **§18 "Requirements (from §28.X)" lines reused verbatim** for phases 4, 7, 10, 12, 13, 14, 16, 18.

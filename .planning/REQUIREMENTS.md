@@ -123,7 +123,7 @@
 | RICH-H-14 | P2 | 15.5 | Inline notes Q&A layout. Depends on notes CRUD (Phase 8). |
 | RICH-H-15 | P2 | 15.5 | `@` mention (`@note:`, `@tab:`, `@prompt:`) + autocomplete. Depends on SlashCommandRegistry. |
 | RICH-H-16 | P1 | 15.4 | Image-paste attach. |
-| RICH-H-17 | P2 | 15.5 | Voice input (Web Speech, input only; TTS output deferred). Depends on SlashCommandRegistry. |
+| RICH-H-17 | P2 | 15.5 | Voice input (Web Speech, input only; TTS output deferred). |
 | RICH-H-18 | P2 | 15.5 | TL;DR expand/collapse for long responses (>500 chars). |
 | RICH-H-19 | P2 | 15.5 | Step-cards with checkoff for numbered/step lists. |
 | RICH-H-20 | P2 | 15.5 | Sticky table headers + horizontal scroll (XMarkdown). Depends on CHAT-07. |
@@ -191,15 +191,16 @@
 | WIKI-ID-03 | P0 | A `[[Title]]` with no matching note resolves to no ID and is recorded in the source note's `unresolvedLinks[]`. The editor renders unresolved links distinctly. When a matching note is later created, a save-time reconciliation pass promotes matching `unresolvedLinks[]` entries into `links[]`. |
 | WIKI-ID-04 | P0 | Deleting a note does not rewrite source bodies; the referencing edges become dangling and are moved from `links[]` back into `unresolvedLinks[]` on those notes at the next save/graph rebuild. Filesystem restore (§27.3) reconstructs IDs from YAML frontmatter, so round-tripping a vault preserves every edge. |
 
-### §18 OKF v0.2 alignment (OKF-WIKI-01…03) — Phase 9
+### §18 OKF v0.2 alignment (OKF-WIKI-01…04) — Phase 9
 
 | ID | Priority | Description (verbatim from spec) |
 |---|---|---|
 | OKF-WIKI-01 | P1 | NoteFileSync emits OKF-required `type` (default `Note`) + recommended `description` (= `Note.summary` when present). |
 | OKF-WIKI-02 | P1 | NoteFileSync emits the OKF trust/lifecycle families `generated: { by, at }` (ISO 8601) and `status` (`draft`\|`stable`, default `stable`). |
 | OKF-WIKI-03 | P1 | `Note.id` (UUID) is emitted and parsed as an OKF extension key; a write→restore round-trip preserves it and every wikilink edge (WIKI-ID-01/04 unchanged). |
+| OKF-WIKI-04 | P0 | v0.1 boundary — NoteFileSync does NOT emit OKF standard-markdown-link edges and does NOT adopt path-as-identity; wikilinks + UUID identity remain authoritative (verified in Phase 9 DONE-when, §18). Strict-OKF link/identity conformance (+ sources/verified families) is deferred to v0.2+ behind a dedicated ADR. |
 
-> **Boundary (deferred to v0.2+):** OKF-WIKI-04 — strict OKF standard-markdown-link edges + path-as-identity + `sources`/`verified` provenance families. See §v2 Requirements.
+> **Boundary framing:** OKF-WIKI-04 is an **active v0.1 boundary** (a *prohibition* verified in Phase 9), counted in the Phase-9 set above. Only the positive *feature* — strict OKF standard-markdown-link edges + path-as-identity + `sources`/`verified` provenance families — is deferred to v0.2+ (see §v2 Requirements).
 
 ### §28.2 Agent reliability requirements (AGT-01…04) — Phase 4
 
@@ -274,6 +275,8 @@
 | PROP-05 | P0 | The proposer only proposes. It emits `status: 'proposed'` candidates and can never activate, scope-roll, or write them into active prompts/tools/permissions/procedural memory. |
 | PROP-06 | P1 | Every proposal is reproducible: eval-suite version, contributing `operationId`s, content hash. |
 
+> **Boundary note (EVO-06):** EVO-06 is an **active v0.1 prohibition** — agent-generated tools remain sandbox proposals and cannot self-publish. Its Phase-13 acceptance is that **no self-publish path exists** (§28.7). Only the future self-publishing *capability* is v2; the guard ships in v0.1.
+
 ### §29.2 Multimodal Input (MM-01…06) — Phase 16
 
 | ID | Priority | Description (verbatim from spec) |
@@ -305,6 +308,8 @@
 | COLLAB-12 | P2 | Future isolated parallel workers are allowed only for independent sub-tasks and communicate through validated artefacts or referenced files. |
 | COLLAB-13 | P0 | Open-ended agent chat, dynamic unbounded spawning, peer-granted permissions, shared mutable worker memory, and agreement-as-verification are forbidden. |
 
+> **Boundary note (COLLAB-12):** COLLAB-12 is **defined, not implemented** in v0.1 — the types/design leave room for isolated parallel workers, but none ship (§30.6). Its Phase-14 acceptance is that the boundary holds (no unbounded/parallel workers). Only full isolated-worker *execution* is v2.
+
 ---
 
 ## v1 Requirements — §9 Features Without Native IDs (`REQ-F*`)
@@ -313,8 +318,8 @@
 
 | ID | Priority | Phase | Description (verbatim from spec §9.1) |
 |---|---|---|---|
-| REQ-F01 | P0 | Phase 15 | Chat — Streaming, abort, slash commands, quick context. |
-| REQ-F02 | P0 | Phase 15 | Agent — AgentOrchestrator with tier caps + permission prompts. |
+| REQ-F01 | P0 | Phase 15 | Chat — Streaming, abort, slash commands, quick context. _§12 acceptance: ChatPage Loading/Empty/Error/Success strings verbatim (Appendix B STR.chat)._ |
+| REQ-F02 | P0 | Phase 15 | Agent — AgentOrchestrator with tier caps + permission prompts. _§12 acceptance: AgentPage state strings verbatim (Appendix B STR.agent)._ |
 | REQ-F03 | P0 | Phase 17 | Write add-on page — Draft/rewrite/summarize/customer-update workflows. |
 | REQ-F04 | P0 | Phase 17 | TeamGQM add-on page — Quick TeamGQM summary/actions. |
 | REQ-F05 | P0 | Phase 1 | Open Standalone view action — Opens standalone.html with workspace handoff (Flow 11). |
@@ -335,9 +340,9 @@
 
 | ID | Priority | Phase | Description (verbatim from spec §9.2) |
 |---|---|---|---|
-| REQ-F14 | P0 | Phase 15 | Chat (full-screen) — Shares WorkspaceStore + conversation with side panel. |
-| REQ-F15 | P0 | Phase 15 | Agent (full-screen) — Shares WorkspaceStore + conversation with Chat. |
-| REQ-F16 | P0 | Phase 15 | Notes — List, editor, wikilinks, backlinks, graph, search, + LLM-Wiki + Filesystem Sync (§27). |
+| REQ-F14 | P0 | Phase 15 | Chat (full-screen) — Shares WorkspaceStore + conversation with side panel. _§12 acceptance: ChatPage strings verbatim (both surfaces)._ |
+| REQ-F15 | P0 | Phase 15 | Agent (full-screen) — Shares WorkspaceStore + conversation with Chat. _§12 acceptance: AgentPage strings verbatim (both surfaces)._ |
+| REQ-F16 | P0 | Phase 15 | Notes — List, editor, wikilinks, backlinks, graph, search, + LLM-Wiki + Filesystem Sync (§27). _§12 acceptance: NotesPage / NoteEditor / NoteGraph + Ask-Notes / Backup-status / Restore state strings verbatim (Appendix B STR.notes)._ |
 | REQ-F17 | P0 | Phase 17 | TeamGQM add-on (full-page) — Full workspace for TeamGQM add-on. |
 | REQ-F18 | P0 | Phase 15 | Options — See §9.3. |
 | REQ-F19 | P0 | Phase 1 | First-run onboarding entry point — If user opens Standalone view without provider configured (+ RICH-R-03 persona card). |
@@ -355,7 +360,7 @@
 | REQ-F26 | P0 | Phase 15 | **Prompt Templates** — Create/edit/delete prompt templates + `{{variable}}` editor. |
 | REQ-F27 | P0 | Phase 15 | **Slash Commands** — Manage slash command → template mapping. |
 | REQ-F28 | P0 | Phase 15 | **Memory** — View/edit user memory facts; enable/disable memory. |
-| REQ-F29 | P0 | Phase 15 | **Diagnostics** — DiagnosticsPanel, transaction traces, export debug bundle. |
+| REQ-F29 | P0 | Phase 15 | **Diagnostics** — DiagnosticsPanel, transaction traces, export debug bundle. _§12 acceptance: DiagnosticsPanel state strings verbatim (Appendix B STR.diagnostics)._ |
 | REQ-F30 | P0 | Phase 15 | **Import / Export** — Sanitised JSON/ZIP export; import merge; Restore from folder (§27). |
 | REQ-F31 | P0 | Phase 15 | **Feature Flags** — Toggle P2 features (webhooks, insights, TTS). |
 | REQ-F32 | P0 | Phase 15 | **Add-on Settings** — Namespaced settings per registered add-on. |
@@ -404,7 +409,7 @@
 
 | ID | Priority | Description (verbatim from spec §9.8) |
 |---|---|---|
-| REQ-F54 | P0 | Lives at `src/addons/global/ResearchSkill.ts`. `inputSchema: { query: string; maxSources?: number }`. Uses in priority order: user-connected MCP web-search server via MCPClient; a built-in web-search MCP tool if configured; graceful failure otherwise — never silently fall back to model-only answers. `outputSchema: { answer: string; sources: Array<{ title: string; url: string; snippet: string }> }`. Subject to PermissionGate and RateLimiter. Surfaced through `/research` slash command in both surfaces. |
+| REQ-F54 | P0 | Lives at `src/addons/global/ResearchSkill.ts`. `inputSchema: { query: string; maxSources?: number }`. Uses in priority order: user-connected MCP web-search server via MCPClient; a built-in web-search MCP tool if configured; graceful failure otherwise — never silently fall back to model-only answers. `outputSchema: { answer: string; sources: Array<{ title: string; url: string; snippet: string }> }`. Subject to PermissionGate and RateLimiter. Surfaced through `/research` slash command in both surfaces. _§12 acceptance: Research state strings verbatim incl. "Research failed: no web-search tool connected. [Open Settings]" (Appendix B STR.tools)._ |
 
 ---
 
@@ -415,13 +420,13 @@ These items are explicitly out of v0.1 per the spec and PROJECT.md "Out of Scope
 | ID | Source | Description | Why deferred |
 |---|---|---|---|
 | **RICH-H-07** | spec §17.7.4 | "Fill this field…" page write-back. | §17.7.5 R1 / §0.2 / §25 — host-page write-back requires v0.2+ page-injection architecture. |
-| **OKF-WIKI-04** | spec §18 Phase 9 rev 2026-08-12 | Strict OKF standard-markdown-link edges + path-as-identity + `sources`/`verified` provenance families. | Conflicts with WIKI-ID-01…04 (UUID identity + wikilinks). Deferred behind a dedicated ADR per §23 / §27.7. |
+| **OKF-WIKI-04** (feature only) | spec §18 Phase 9 rev 2026-08-12 | *Feature deferred:* strict OKF standard-markdown-link edges + path-as-identity + `sources`/`verified` provenance families. | The v0.1 **boundary** (do NOT emit OKF link-edges / path-identity) is active and verified in Phase 9. Only the positive feature is v2 — conflicts with WIKI-ID-01…04; behind a dedicated ADR per §23 / §27.7. |
 | **G-1 similar-cases card** | REQ-R22 (RESEARCH-RECONCILIATION §D.1) | Structured similar-cases result card on §9.7 ServiceNow add-on (Table API query → ranked card list with resolution previews). | Not v1 — acceptance criterion for Phase 17 §9.7 per RECONCILIATION §F. (Listed as §9.7 acceptance, not as a top-level requirement.) |
 | **G-2 auto-suggest replies** | REQ-R25 (RESEARCH-RECONCILIATION §D.1) | Real-time auto-suggested replies on support copilots. | Spec §25 / §27.9 — needs host-page integration; deferred. |
 | **G-5 PDF chat** | REQ-R25 (RESEARCH-RECONCILIATION §D.1) | PDF chat (case data lives in ServiceNow). | Spec §27.9 — correctly deferred. |
 | **G-6 source-derived questions** | REQ-R25 (RESEARCH-RECONCILIATION §D.1) | Source-derived question suggestions. | Spec §27.9 — deferred. |
 | **Bidirectional filesystem sync** | spec §27.9 | Two-way note ↔ filesystem sync. | Requires polling / Native Messaging. |
-| **Browser automation (MM-07 boundary)** | spec §26.7 / §29.2 MM-07 | "debugger" permission + DebuggerSession manager + automation tools (clickElement / typeText / navigate). | APC-lite ≠ browser automation. APCLiteNode schema is automation-ready but automation itself is v2. |
+| **Browser automation** (feature only) | spec §26.7 / §29.2 MM-07 | *Feature deferred:* "debugger" permission + DebuggerSession manager + automation tools (clickElement / typeText / navigate). | **MM-07 itself is an active v0.1 boundary** counted in Phase 16 ("APC-lite does NOT authorise computer use"). Only the automation *feature* is v2; the APCLiteNode schema is automation-ready but automation does not ship in v0.1. |
 | **Page injection (CaseInsightBox / serviceNowInjection.ts)** | spec §0.2 / §25 / R1 | Host-page UI mount via Shadow DOM / case insight boxes. | v0.1 is read-only / extraction-only per §5.6. |
 | **Voice output (TTS)** | spec §17.7.7 | TTS output for AI responses. | Input (RICH-H-17) in scope; output deferred. |
 | **Multi-modal animated 3D avatar** | spec §17.7.7 | Static identity (RICH-R-11) sufficient. | Over-scoped. |
@@ -431,8 +436,6 @@ These items are explicitly out of v0.1 per the spec and PROJECT.md "Out of Scope
 | **Cross-session conversation resumption w/ full replay** | spec §17.7.7 | Deferred. | v0.1 stateless between sessions. |
 | **TOL-07** (resumable long-running contract) | spec §28.5 | Future phase. | P2 future contract. |
 | **MM-05** (later fast/slow architecture) | spec §29.2 | Separates low-latency interaction from deep reasoning. | P2 future. |
-| **COLLAB-12** (isolated parallel workers) | spec §30.2 / §30.6 | Independent sub-tasks via validated artefacts. | P2 future; deferred until Phase 14 stable + evaluated. |
-| **EVO-06** (agent-generated tools self-publish) | spec §28.7 | Agent-generated tools become sandbox proposals only in v0.1. | P2 future capability. |
 
 ---
 
@@ -453,7 +456,7 @@ Verbatim from `.planning/PROJECT.md` §Requirements → Out of Scope:
 
 ## Traceability
 
-Every v1 requirement maps to exactly one phase. Counts: v1 = 220, mapped = 220, unmapped = 0. **Coverage 100%.**
+Every v1 requirement maps to exactly one phase. Counts: v1 = 220, mapped = 220, unmapped = 0. **Coverage 100%.** (Includes OKF-WIKI-04 as an active v0.1 boundary in Phase 9; EVO-06 and COLLAB-12 are active v0.1 boundaries counted in Phases 13/14, not v2 features.)
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
@@ -509,6 +512,7 @@ Every v1 requirement maps to exactly one phase. Counts: v1 = 220, mapped = 220, 
 | OKF-WIKI-01 | Phase 9 | Pending |
 | OKF-WIKI-02 | Phase 9 | Pending |
 | OKF-WIKI-03 | Phase 9 | Pending |
+| OKF-WIKI-04 | Phase 9 | Pending |
 | MEM-01 | Phase 10 | Pending |
 | MEM-02 | Phase 10 | Pending |
 | MEM-03 | Phase 10 | Pending |
@@ -689,7 +693,7 @@ Every v1 requirement maps to exactly one phase. Counts: v1 = 220, mapped = 220, 
 | 6 | 0 | Infrastructure (PageContentService layered extraction) — no §9 features |
 | 7 | 6 | CTX-01…06 (trust-aware context + receipts) |
 | 8 | 1 | RICH-R-05 (PreferenceMemoryStore np_persona persistence) |
-| 9 | 37 | CAT-01…05 · LLM-WIKI-01…11 · SYNC-01…11 · NMEM-01…03 · WIKI-ID-01…04 · OKF-WIKI-01…03 (excludes OKF-WIKI-04 deferred to v2) |
+| 9 | 38 | CAT-01…05 · LLM-WIKI-01…11 · SYNC-01…11 · NMEM-01…03 · WIKI-ID-01…04 · OKF-WIKI-01…04 (OKF-WIKI-04 is an active v0.1 boundary, verified in Phase 9) |
 | 10 | 6 | MEM-01…05 · KNW-01 |
 | 11 | 0 | Infrastructure (AITransactionLog, TraceRedactor, PromptInspector) — no §9 features |
 | 12 | 7 | EVAL-01…07 |
