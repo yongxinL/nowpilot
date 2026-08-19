@@ -5,6 +5,9 @@ status: draft
 shadcn_initialized: false
 preset: none
 created: 2026-08-19
+rev: 1
+rev_date: 2026-08-19
+rev_summary: ui-checker block fixes — Copywriting (CTA rename, post-onboarding empty state, workspace + theme error patterns), Typography (Phase 1 subset 12/13/14/16), Spacing (4-multiple standard scale + DESIGN_SYSTEM §7 drift flag), Color (Refocus here as action link, error-treatment alignment), Visuals (hierarchy + icon-only a11y inventory)
 ---
 
 # Phase 1 — UI Design Contract
@@ -21,7 +24,7 @@ created: 2026-08-19
 | Preset | not applicable | — |
 | Component library | Ant Design v6 (config tokens via `getAntdConfig({ mode, pack, compact })`) + Ant Design X 2.x presentation components (Bubble, Sender, Prompts, Welcome, Suggestion, Actions, ThoughtChain) | DESIGN_SYSTEM §1, §9; SPEC §5.5 |
 | Icon library | `@ant-design/icons` v6 (no second icon library) | DESIGN_SYSTEM §10 |
-| Font | Inter (UI/display) + JetBrains Mono (code) — system fallbacks `system-ui, -apple-system, Segoe UI, Roboto` / `ui-monospace, SFMono, Menlo` | DESIGN_SYSTEM §5 |
+| Font | Inter (UI/display) + JetBrains Mono (code — token declared, no rendering in Phase 1) — system fallbacks `system-ui, -apple-system, Segoe UI, Roboto` / `ui-monospace, SFMono, Menlo` | DESIGN_SYSTEM §5 |
 
 > **shadcn gate:** not applicable. Project is locked to AntD v6 + AntD X by spec §0.2 (`tailwind`/`shadcn`/`@radix-ui`/`framer-motion` → zero in `package.json`, verified by `pnpm run verify:phase-1` grep gate). No `components.json` exists; Phase 1 grep gate enforces `tailwind|shadcn|@radix-ui|framer-motion` → zero (CONTEXT D-18).
 >
@@ -31,20 +34,20 @@ created: 2026-08-19
 
 ## Spacing Scale
 
-NowPilot uses an **8-pt-multiple scale** with **4-pt half-step for compact surfaces** (DESIGN_SYSTEM §7). Phase 1 spacing is token-only — every value routes through AntD `sizeUnit=4`. The Side Panel (compact) leans `8/12`; Standalone view (default density) leans `16/20`.
+Phase 1 uses **multiples of 4 only** — the standard 4-pt scale `(4, 8, 16, 24, 32)`. Sub-4 values are reserved for **border / stroke thickness**, not spacing (see table).
 
 | Token | Value | Usage | Source |
 |-------|-------|-------|--------|
-| 2xs | 2px | Hairline gaps, icon-internal | default |
 | xs | 4px | Icon gaps, inline padding | default |
-| sm | 8px | Compact element spacing (Side Panel composer row, chip strip gaps) | DESIGN_SYSTEM §7 |
-| md | 12px | Default compact spacing (Side Panel message list padding, modal padding) | DESIGN_SYSTEM §7 |
-| base | 16px | Default element spacing (Standalone view content padding) | DESIGN_SYSTEM §7 |
-| lg | 20px | Standalone view section padding, settings card padding | DESIGN_SYSTEM §7 |
-| xl | 24px | Section breaks, modal vertical rhythm | DESIGN_SYSTEM §7 |
-| 2xl | 32px | Major section breaks, page-level gutters | DESIGN_SYSTEM §7 |
+| sm | 8px | Compact element spacing (Side Panel composer row, chip strip gaps) | default |
+| md | 16px | Default element spacing (Standalone view content padding, settings card padding) | default |
+| lg | 24px | Section breaks, modal vertical rhythm | default |
+| xl | 32px | Major section breaks, page-level gutters | default |
+| **Border / stroke (NOT spacing)** | 1px, 2px | Hairline borders, focus ring (2 px `colorPrimary` per DESIGN_SYSTEM §12), dividers | 1–2 px values are border tokens — never declared as `padding`/`margin`/`gap` |
 
-**Exceptions:** None for Phase 1. The Side Panel composer is `400 × ~640 px` (DESIGN_SYSTEM §8.1a–e), so spacing tightens to `sm/md` (8/12 px) within it; the Standalone view uses `base/lg` (16/20 px). Per-context, not per-token — values above hold.
+**Drift flag (informational, not action for Phase 1):** `.planning/DESIGN_SYSTEM.md §7` currently declares `2·4·8·12·16·20·24·32 px` (includes `12 px` and `20 px`, neither on the 4-multiple standard set). This UI-SPEC is the authoritative Phase 1 contract — values outside `(4, 8, 16, 24, 32)` MUST NOT be used as spacing in Phase 1. The DESIGN_SYSTEM §7 drift is recorded here for a future design-rev; no Phase 1 implementation uses `12 px` or `20 px` spacing (those values re-classify to `8`/`16` or `16`/`24` respectively).
+
+**Exceptions:** None for Phase 1. The Side Panel composer is `400 × ~640 px` (DESIGN_SYSTEM §8.1a–e), so spacing tightens to `xs/sm` (4/8 px) within it; the Standalone view uses `md` (16 px) as base. Per-context, not per-token — values above hold.
 
 ---
 
@@ -56,11 +59,12 @@ NowPilot uses an **8-pt-multiple scale** with **4-pt half-step for compact surfa
 | Body (Side Panel base) | 13 px | 400 (regular) | 1.5 | DESIGN_SYSTEM §5 (Side Panel base = 13 px compact) |
 | Body (Standalone view base) | 14 px | 400 (regular) | 1.5 | DESIGN_SYSTEM §5 (Standalone view base = 14 px) |
 | Label / heading (step title, modal title, command name) | 16 px | 600 (semibold) | 1.3 | DESIGN_SYSTEM §5 |
-| Display (wordmark, hero card) | 20 px | 600 (semibold) | 1.3 | DESIGN_SYSTEM §5 |
 
-**Weights in Phase 1: exactly 2** — `400` (regular) for body/caption, `600` (semibold) for labels/headings/wordmark. **Sizes: exactly 5** (the four above + 24 px reserved for the wordmark lockup per DESIGN_SYSTEM §3.2, used in Side Panel header only — not an extra body size).
+**Sizes in Phase 1: exactly 4** — `12 / 13 / 14 / 16 px`. **Weights in Phase 1: exactly 2** — `400` (regular) for body/caption, `600` (semibold) for labels/headings.
 
-Mono: JetBrains Mono at 13 px / 400 weight for code/IDs (RICH-H-04 inline code blocks in Phase 15; Phase 1 declares the token but does not render code yet).
+**Display roles deferred:** the 20 px hero card and 24 px wordmark lockup (DESIGN_SYSTEM §3.2 + §5) are NOT declared in Phase 1 — the wordmark lives in the Side Panel header at 16 px label size until Phase 15 introduces the full "N" mark lockup + RICH-R-03 persona card. This avoids 5+ size declarations in the Phase 1 subset.
+
+Mono: JetBrains Mono declared as the code face (DESIGN_SYSTEM §5); Phase 1 ships no code rendering (RICH-H-04 inline code blocks land in Phase 15), so no mono size is declared here.
 
 **Anti-pattern gate:** never below 12 px (DESIGN_SYSTEM §5). `colorTextTertiary` is reserved for captions only.
 
@@ -74,14 +78,17 @@ The Phase 1 surface uses AntD v6 design tokens exclusively. Tokens cascade throu
 |------|-------|------|-------|--------|
 | **Dominant (60%)** `colorBgBase` | `#FCFCFD` | `#0E1117` | Page background (Side Panel + Standalone view) | DESIGN_SYSTEM §6.2 |
 | **Secondary (30%)** `colorBgContainer` | `#FFFFFF` | `#161A22` | Cards, bubbles, command palette list rows, modal surface, mirror banner | DESIGN_SYSTEM §6.2 |
-| **Accent (10%)** `colorPrimary` | `#3B82F6` | `#5B9BFF` | **Reserved for:** primary CTA button (`Save` / `Save & Continue` / `Connect`), focus ring, active segmented control, primary brand mark gradient, send-button circle | DESIGN_SYSTEM §6.2 + §13 |
-| **Destructive** `colorError` | `#EF4444` | `#F87171` | Connection-failed state, mirror-banner "Refocus here" link, "Reset onboarding" affordance | DESIGN_SYSTEM §6.2 + §8.9 |
+| **Accent (10%)** `colorPrimary` | `#3B82F6` | `#5B9BFF` | **Reserved for:** primary CTA button (`Connect Provider`), focus ring, active segmented control, primary brand mark gradient, send-button circle, active command row in palette | DESIGN_SYSTEM §6.2 + §13 |
+| **Destructive** `colorError` | `#EF4444` | `#F87171` | Connection-failed state (long-form error treatment), workspace-handoff failure, theme-propagation failure, "Reset onboarding" affordance | DESIGN_SYSTEM §6.2 + §8.9 |
 | `colorSuccess` | `#10B981` | `#34D399` | "Connected" success state, healthy provider dot | DESIGN_SYSTEM §6.2 + §8.9 |
 | `colorWarning` | `#F59E0B` | `#FBBF24` | Saving… in-flight dot, unsaved-changes dot | DESIGN_SYSTEM §8.9 |
 | `colorTextBase` | `#1F2430` | `#E6E8ED` | Body text | DESIGN_SYSTEM §6.2 |
 | `colorTextTertiary` | (derived) | (derived) | Caption text (status bar, command category) | DESIGN_SYSTEM §5 |
+| **Action link** `colorPrimary` | `#3B82F6` | `#5B9BFF` | Side Panel post-handoff "Refocus here" link (normal action link, **NOT destructive** — clicking only re-enables the composer, no data loss) | derived from CONTEXT D-05 |
 
-**Accent reserved for:** primary action buttons (Onboarding Step 4 "Connect" / `Save` button), focus ring (visible 2 px `colorPrimary` ring on every interactive element per DESIGN_SYSTEM §12), active segmented control, brand mark gradient (NowPilot "N" avatar 28 px header), and the active command row in the palette (replaces the scaffold's hardcoded `#e6f4ff`). **Never** used for: body text, headings, decorative surfaces, hover-only affordances (those use `colorPrimaryBg` / `colorTextSecondary`).
+**Accent reserved for:** primary action buttons (OnboardingModal Step 4 `Connect Provider`), focus ring (visible 2 px `colorPrimary` ring on every interactive element per DESIGN_SYSTEM §12), active segmented control, brand mark gradient (NowPilot "N" avatar 28 px header — Phase 15), and the active command row in the palette (replaces the scaffold's hardcoded `#e6f4ff`). **Never** used for: body text, headings, decorative surfaces, hover-only affordances, or generic action links (those use `colorPrimaryBg` / `colorTextSecondary`).
+
+**`colorError` discipline:** reserved for **genuine errors or destructive actions only**. (a) OnboardingModal Step 4 long connection-error treatment uses `colorError`. (b) Workspace-handoff failure toast uses `colorError`. (c) Theme-propagation failure toast uses `colorError`. (d) "Reset onboarding" affordance uses `colorError`. The post-handoff **mirror banner** itself is **not** an error surface — it is informational, so the banner background uses `colorPrimaryBg` (not `colorWarning`/`colorError`), and the inline "Refocus here" link uses `colorPrimary` (a normal action link, not destructive).
 
 **Dark base** is a blue-tinted near-black (`#0E1117`) — "cockpit at night" — softer than pure black (DESIGN_SYSTEM §6.2).
 
@@ -98,33 +105,42 @@ Phase 1 ships **one new modal** (OnboardingModal, 4 steps), **one modal reused**
 | **OnboardingModal — Step 2 heading** | "Pick a provider" | CONTEXT.md Specifics + D-01 (provider select) |
 | **OnboardingModal — Step 3 heading** | "Enter your API key" | CONTEXT.md D-01 |
 | **OnboardingModal — Step 4 heading** | "Validate connection" | CONTEXT.md D-01 |
-| **OnboardingModal — Step 4 button label (primary CTA)** | "Connect" (verb + noun, single word, `colorPrimary`) | spec §12 Onboarding state strings (Loading: "Testing connection...") — CTA completes the action described by the loading string |
+| **OnboardingModal — Step 4 button label (primary CTA)** | "Connect Provider" (verb + noun, `colorPrimary`) | spec §12 Onboarding state strings (Loading: "Testing connection...") — CTA completes the action described by the loading string |
 | **OnboardingModal — Step 4 loading string** | "Testing connection…" | SPEC §12 Onboarding row |
 | **OnboardingModal — Step 4 success string** | "Connected" | SPEC §12 Onboarding row → focus composer |
-| **OnboardingModal — Step 4 error string** | "Connection failed: [error]" | SPEC §12 Onboarding row (verbatim) |
+| **OnboardingModal — Step 4 error string (short)** | "Connection failed: [error]" | SPEC §12 Onboarding row (verbatim) |
 | **OnboardingModal — Step 4 error next action** | "Edit key" (button, ghost) → returns to Step 3 with key pre-filled | CONTEXT.md D-03 (failed connection keeps wizard open, shows spec §12 string) |
 | **OnboardingModal — Skip / close affordance** | "Skip for now" (link, `colorTextTertiary`) — keeps `onboardingComplete=false` so it re-triggers on next Side Panel open | SPEC §12 + CONTEXT D-01 (no auto-advance) |
 | **CommandPalette — input placeholder** | "Search commands…" | existing `CommandPalette.tsx:77` (kept verbatim) |
 | **CommandPalette — empty-results body** | "No matching commands — try a different search term" | existing `CommandPalette.tsx:89` (kept verbatim) |
 | **CommandPalette — Flow 10 base set commands** | `name`: "Open Standalone view" · "Open Options" · "Focus Side Panel" · "Toggle theme" · "Reload extension" — `description`: short verb-phrase per command (e.g. "Switch the current chat to the Standalone view tab") | CONTEXT.md D-08 |
-| **CommandPalette — category label** | "Navigation" / "Workspace" / "Theme" / "Extension" (one per command, right-aligned `colorTextTertiary`, fontSize 11) | existing CommandPalette renderer pattern |
+| **CommandPalette — category label** | "Navigation" / "Workspace" / "Theme" / "Extension" (one per command, right-aligned `colorTextTertiary`, 12 px) | existing CommandPalette renderer pattern |
 | **Side Panel post-handoff mirror banner — primary copy** | "Switched to Standalone." | CONTEXT.md D-05 |
-| **Side Panel post-handoff mirror banner — action link** | "Refocus here" (`colorError`, underlined link — destructive because the user is leaving the focused surface) | CONTEXT.md D-05 |
-| **Side Panel post-handoff — disabled composer placeholder** | "Open the Standalone view to send a message." (read-only state, `colorTextTertiary`) | derived from CONTEXT.md D-05 (composer disabled, message list read-only) |
+| **Side Panel post-handoff mirror banner — action link** | "Refocus here" (`colorPrimary`, underlined link — normal action link, NOT destructive; clicking it only re-enables the composer, no data loss) | CONTEXT.md D-05 |
+| **Side Panel post-handoff — disabled composer placeholder** | "Standalone view is active" (read-only state, `colorTextTertiary`; the **action path is the mirror banner's "Refocus here" link**, not the composer) | derived from CONTEXT.md D-05 (composer disabled, action lives in banner) |
+| **Side Panel — empty fresh-install composer placeholder (pre-Onboarding)** | "Loading workspace…" (transient bootstrap) → OnboardingModal auto-opens | existing `SidepanelChat.tsx:266` + CONTEXT.md D-11 |
+| **Side Panel — empty post-onboarding conversation copy** | "Start a conversation by asking NowPilot a question." (centered caption, `colorTextTertiary`; the **action path is the composer input** — focus and type to begin) | derived from CONTEXT.md D-11 + Phase 15 RICH-I-01 placeholder (no mascot art or Welcome cards in Phase 1) |
 | **Theme toggle — current-mode label** | Auto / Light / Dark (one of three, segmented) | SPEC §17.1a APPR-02 (Segemented with three options) |
-| **Theme toggle — propagation toast (one-shot)** | "Theme applied to both surfaces" (auto-dismiss 1.5 s, `colorSuccess`) | derived from CONTEXT.md D-10 (cross-surface propagation on first toggle) |
+| **Theme toggle — propagation toast (success)** | "Theme applied to both surfaces" (auto-dismiss 1.5 s, `colorSuccess`) | derived from CONTEXT.md D-10 (cross-surface propagation on first toggle) |
+| **Theme toggle — propagation toast (failure)** | "Couldn't apply theme to other surface" (`colorError`, dismissible toast) + inline action link "Try syncing again" (`colorPrimary`, underlined) → re-attempts the `chrome.storage.sync` write | derived from CONTEXT.md D-10 + D-22 (storage write failures surface to user when propagation is the value) |
 | **Workspace handoff — loading state (Open Standalone view)** | "Opening standalone view…" | SPEC §12 Component State Matrix — "Open Standalone view" row, Loading column |
-| **Workspace handoff — error state** | "Failed to open Standalone view" | SPEC §12 Component State Matrix — "Open Standalone view" row, Error column |
+| **Workspace handoff — error state (short)** | "Couldn't open Standalone view" (`colorError`) | SPEC §12 Component State Matrix — "Open Standalone view" row, Error column — phrased as actionable |
+| **Workspace handoff — error next action** | "Try Opening Again" (button, ghost, verb phrase) — re-attempts `WorkspaceRouter.openStandalone` | derived (actionable pattern; mirrors Onboarding "Edit key" recovery) |
 | **Empty fresh-install state — Side Panel** | "Loading workspace…" (transient bootstrap) → OnboardingModal auto-opens | existing `SidepanelChat.tsx:266` + CONTEXT.md D-11 |
 | **Empty fresh-install state — Standalone view** | OnboardingModal auto-opens if no provider configured (REQ-F19) | SPEC §9.2 (Standalone view features) |
 
-**Primary CTA across Phase 1:** `Connect` (OnboardingModal Step 4) is the single primary CTA. It is a verb + noun, fits on one line, and uses `colorPrimary`. There is no other primary CTA in Phase 1.
+**Primary CTA across Phase 1:** `Connect Provider` (OnboardingModal Step 4) is the single primary CTA. It is verb + noun, fits on one line, and uses `colorPrimary`. No other primary CTA ships in Phase 1.
 
-**Destructive actions in Phase 1:** exactly one — the "Refocus here" link in the Side Panel post-handoff mirror banner. No confirmation modal needed: clicking it only re-enables the composer (no data loss, no side effect). No "Are you sure?" prompt.
+**Destructive actions in Phase 1:** exactly one — the **"Reset onboarding"** affordance (resets `onboardingComplete=false`, re-triggers OnboardingModal on next Side Panel open). No confirmation modal needed: it only re-triggers the wizard, no data loss. No "Are you sure?" prompt.
 
-**Empty state copy:** Phase 1 ships no populated UI yet (per CONTEXT D-11 — all demo content is purged). The single empty surface is the fresh-install Side Panel, which is gated behind OnboardingModal auto-open. There is no in-chat empty state yet (Phase 15 ships RICH-I-01 Welcome cards).
+**Empty state copy:** Phase 1 ships **two distinct empty surfaces**, both with explicit copy + action paths.
+- (a) **Pre-Onboarding Side Panel:** `"Loading workspace…"` → OnboardingModal auto-opens (transient bootstrap). The wizard IS the entry — no user action required.
+- (b) **Post-Onboarding Side Panel (no conversations yet):** centered caption `"Start a conversation by asking NowPilot a question."` (`colorTextTertiary`). The **action path is the composer input** — focus + type to begin. RICH-I-01 Welcome cards + mascot art land in Phase 15; Phase 1 ships only the caption (no suggestion chips, no mascot).
 
-**Error state copy:** two patterns. (a) Spec §12 verbatim: `"Connection failed: [error]"` (Onboarding), `"Failed to open Standalone view"` (handoff). (b) Derived from CONTEXT D-05/D-10/D-22: the mirror banner shows `Failed to switch workspace. [Retry]` if `chrome.tabs.create` rejects; the theme-toggle propagation toast shows `Theme applied to both surfaces` on success or silently no-ops on write failure (chrome.storage.sync is offline-tolerant).
+**Error state copy:** three patterns. All are **actionable** — no silent no-ops.
+- (a) **Spec §12 verbatim (short):** `"Connection failed: [error]"` (Onboarding), `"Couldn't open Standalone view"` (handoff).
+- (b) **Recovery actions:** `"Edit key"` returns to Onboarding Step 3 with key pre-filled (CONTEXT D-03); `"Try Opening Again"` re-attempts `WorkspaceRouter.openStandalone`; `"Try syncing again"` re-attempts the theme `chrome.storage.sync` write.
+- (c) **Theme propagation failure (previously silent):** now surfaces `"Couldn't apply theme to other surface"` with an inline `"Try syncing again"` link. Local-surface theme still applies; cross-surface propagation retry is the user's choice. No longer a silent no-op.
 
 ---
 
@@ -132,28 +148,28 @@ Phase 1 ships **one new modal** (OnboardingModal, 4 steps), **one modal reused**
 
 > Populated by the ui-phase UI-consideration probe (Step 9.5). Shape-rooted UI state coverage (empty / loading / error / populated / partial / overflow / zero-one-many / long-text). Empty-state and error-state COPY live in `## Copywriting Contract` above — this section covers state coverage and REFERENCES those rows rather than restating the copy (de-dup).
 
-Applicable state considerations resolved: **8 covered**, **0 backstop**, **0 unresolved**.
+Applicable state considerations resolved: **9 covered**, **0 backstop**, **0 unresolved**.
 
 | Category | Element(s) | Status | Resolution / Reason |
 |----------|------------|--------|---------------------|
 | **empty** | OnboardingModal Step 1 (persona placeholder card) | ✅ covered | Card renders the literal "Step 1 of 4 · NowPilot" copy (CONTEXT Specifics) when persona data has not yet been authored — the placeholder IS the empty state. Real persona card replaces this in Phase 15.3. |
-| **empty** | Side Panel fresh-install (post Onboarding completion, no conversations yet) | ✅ covered | No chat list rendered in Phase 1 (CONTEXT D-11 — all `INITIAL_*` arrays emptied). Side Panel shows only the ChatComposer + empty conversation area; the empty-state greeting + RICH-I-01 Welcome cards are Phase 15. Phase 1 ships the structural surface without populated content. |
+| **empty** | Side Panel post-Onboarding (no conversations yet) | ✅ covered | Centered caption "Start a conversation by asking NowPilot a question." (`colorTextTertiary`, 12 px) above an enabled composer. The **action path is the composer input** — focus + type to begin. RICH-I-01 Welcome cards + mascot art land in Phase 15; Phase 1 ships the structural surface without populated content (CONTEXT D-11). |
 | **empty** | CommandPalette filter (no commands match search) | ✅ covered | Renders the literal "No matching commands — try a different search term" copy from existing `CommandPalette.tsx:89` (kept verbatim). Flow 10 base set has 3–5 commands so an empty result is reachable but not the default state. |
 | **empty** | Standalone view fresh-install (no provider configured) | ✅ covered | OnboardingModal auto-opens via REQ-F19 + SPEC §9.2. No blank-canvas fallback surface; the wizard IS the entry. |
 | **loading** | OnboardingModal Step 4 (real `fetchProviderModels` test) | ✅ covered | Loading string "Testing connection…" (SPEC §12) renders while `fetchProviderModels` is in-flight; the primary CTA disables and shows an inline spinner (AntD `Button.loading`). Skeleton, not spinner, for content areas is the spec default (DESIGN_SYSTEM §9 + SPEC §17.4). |
 | **loading** | Workspace handoff (Side Panel → Standalone view open) | ✅ covered | Loading string "Opening standalone view…" (SPEC §12 Open Standalone view row) renders as an AntD `message.loading` toast keyed on the action, while `WorkspaceRouter.openStandalone` deduplicates existing tabs and resolves `chrome.tabs.create`. |
 | **loading** | Side Panel initial mount (onboardingComplete lookup) | ✅ covered | Existing `SidepanelChat.tsx:262–268` returns a centred "Loading workspace…" caption when `onboardingComplete === null` (transient bootstrap); resolves on the first chrome.storage.local read. |
-| **error** | OnboardingModal Step 4 connection failure | ✅ covered | Error string "Connection failed: [error]" (SPEC §12 Onboarding row) + ghost "Edit key" button returns to Step 3 with key pre-filled (CONTEXT D-03). The wizard stays open; no automatic close. |
-| **error** | Workspace handoff failure (`chrome.tabs.create` reject) | ✅ covered | Error string "Failed to open Standalone view" (SPEC §12 Open Standalone view row) as an AntD `message.error`; Side Panel remains the primary surface (no mirror banner appears because handoff did not succeed). |
-| **error** | Theme toggle propagation failure (chrome.storage.sync write reject) | ✅ covered | Silent no-op — `chrome.storage.sync` failures are surfaced through `chrome.runtime.lastError` console only; user-facing toast does NOT show `colorError` because the local surface still applied the theme (DESIGN_SYSTEM §12 + SPEC §17.1a APPR-04). |
+| **error** | OnboardingModal Step 4 connection failure | ✅ covered | Error string "Connection failed: [error]" (SPEC §12 Onboarding row) + ghost "Edit key" button returns to Step 3 with key pre-filled (CONTEXT D-03). The wizard stays open; no automatic close. Long-form error treatment uses `colorError` (matches destructive role alignment; resolves the original warning-collision). |
+| **error** | Workspace handoff failure (`chrome.tabs.create` reject) | ✅ covered | Error string "Couldn't open Standalone view" + ghost `Try Opening Again` button re-attempts `WorkspaceRouter.openStandalone`. Renders as an AntD `message.error` in `colorError`; Side Panel remains the primary surface (no mirror banner appears because handoff did not succeed). |
+| **error** | Theme toggle propagation failure (chrome.storage.sync write reject) | ✅ covered | Now surfaces `"Couldn't apply theme to other surface"` as an AntD `message.error` toast (`colorError`) with an inline `Try syncing again` link that re-attempts the write. Local surface still applies the theme; cross-surface propagation retry is the user's choice. No longer a silent no-op. |
 | **error** | Side Panel post-handoff mirror (Standalone view tab closes mid-session) | ✅ covered | BroadcastBus `np_workspace` `WORKSPACE_HANDOFF` reverse event (close notification) clears the mirror banner + re-enables the composer on the Side Panel without user click (CONTEXT D-05 implies Flow 11 symmetry; explicit close-handler is a Phase 1 polish item — not blocking the DONE-when gate). |
-| **populated** | CommandPalette — Flow 10 base set (5 commands) | ✅ covered | Renders all 5 commands as the default state (CONTEXT D-08): `open-standalone-view` (Side Panel only), `open-options`, `focus-side-panel` (Standalone view only, Phase-1 stub per D-06), `toggle-theme`, `reload-extension`. Each command row = `name` (semibold) + `description` (12 px secondary) + `category` (11 px tertiary, right-aligned). Active row uses `colorPrimaryBg` highlight. |
+| **populated** | CommandPalette — Flow 10 base set (5 commands) | ✅ covered | Renders all 5 commands as the default state (CONTEXT D-08): `open-standalone-view` (Side Panel only), `open-options`, `focus-side-panel` (Standalone view only, Phase-1 stub per D-06), `toggle-theme`, `reload-extension`. Each command row = `name` (16 px semibold) + `description` (12 px secondary) + `category` (12 px tertiary, right-aligned). Active row uses `colorPrimaryBg` highlight. |
 | **populated** | OnboardingModal — Step 2 (provider select) | ✅ covered | AntD `Select` with the four canonical providers (OpenAI, Anthropic, Gemini, Ollama — SPEC §10.2). Default selection is empty until the user picks; selected state shows provider name + brand glyph. |
 | **partial** | OnboardingModal — Step 3 (API key field) | ✅ covered | Password `Input` with `EyeInvisibleOutlined`/`EyeOutlined` reveal toggle (DESIGN_SYSTEM §10 + §8.7). Empty state disables Step 4; partial state (key entered but not validated) enables Step 4. No inline "validating" substate. |
 | **overflow** | CommandPalette — long command name or description | ✅ covered | AntD `List.Item.Meta` clamps naturally; the existing 560 px modal width (CommandPalette.tsx:71) accommodates Flow 10 names up to ~40 chars before wrapping. No truncation affordance needed in Phase 1 (Flow 10 names are all ≤ 24 chars). |
-| **overflow** | OnboardingModal — long error message from `fetchProviderModels` | ✅ covered | AntD `Typography.Text` with `ellipsis={true}` on the error string; user can expand by clicking the error inline (`type="warning"` color), or return to Step 3 via the "Edit key" ghost button to fix the underlying issue. |
+| **overflow** | OnboardingModal — long error message from `fetchProviderModels` | ✅ covered | AntD `Typography.Text` with `ellipsis={true}` on the error string; user can expand by clicking the error inline (rendered in `colorError`), or return to Step 3 via the "Edit key" ghost button to fix the underlying issue. Long-form error uses `colorError` consistently with the destructive role alignment (resolves the original `type="warning"` collision). |
 | **long-text** | Side Panel post-handoff mirror banner | ✅ covered | Single-line status with one inline action link — DESIGN_SYSTEM §8.1 pattern for status bar (28 px row). Banner never exceeds the panel width; truncation is `text-overflow: ellipsis` on the primary copy with the action link always visible. |
-| **zero-one-many** | CommandPalette — Flow 10 base set (3–5 commands depending on surface) | ✅ covered | Side Panel registers 3 commands (`open-standalone-view`, `open-options`, `toggle-theme` + `reload-extension` = 4 actually); Standalone view registers 3 (`focus-side-panel`, `open-options`, `toggle-theme` + `reload-extension` = 4 actually). The palette handles zero (empty-results copy above), one (active row only), and many (vertical list, max-height inherited from AntD Modal body). |
+| **zero-one-many** | CommandPalette — Flow 10 base set (3–5 commands depending on surface) | ✅ covered | Side Panel registers 4 commands (`open-standalone-view`, `open-options`, `toggle-theme`, `reload-extension`); Standalone view registers 4 (`focus-side-panel`, `open-options`, `toggle-theme`, `reload-extension`). The palette handles zero (empty-results copy above), one (active row only), and many (vertical list, max-height inherited from AntD Modal body). |
 
 <!-- Status vocabulary (locked by probe-core projectTruths):
      ✅ covered   → a plain truth string lifted into must_haves.truths
@@ -177,7 +193,7 @@ Reused from existing scaffold + new in Phase 1:
 | `SidepanelChat` | modified | `src/components/chat/SidepanelChat.tsx` | `handleOpenStandalone → window.close()` replaced with mirror-banner path (CONTEXT D-05). Empty-fresh-install state wired (CONTEXT D-11). |
 | `StandaloneWorkspace` | renamed + extended | `src/components/standalone/StandaloneWorkspace.tsx` (61 lines) → `src/components/standalone/StandaloneShell.tsx` (CONTEXT D-07/D-07a) | Renames `appPageId` → `standalonePageId`; integrates `WorkspaceStore.hydrateFromURL` on mount. |
 | `WorkspaceSidebar` | reused | `src/components/standalone/WorkspaceSidebar.tsx` | Standalone Sider at 240/72 px (DESIGN_SYSTEM §8.2). Phase 1 only needs the chrome — full Chat/Notes/Write/Tools surfaces arrive in Phase 15. |
-| `ThemeToggle` | reused | `src/components/common/ThemeToggle.tsx` | Wired to `useThemeStore.mode` (authoritative per D-10). Cross-surface propagation via `chrome.storage.onChanged('np_theme')` listener — instant (CSS-variable cascade, no remount, APPR-04). |
+| `ThemeToggle` | reused | `src/components/common/ThemeToggle.tsx` | Wired to `useThemeStore.mode` (authoritative per D-10). Cross-surface propagation via `chrome.storage.onChanged('np_theme')` listener — instant (CSS-variable cascade, no remount, APPR-04). Failure path is now an actionable `colorError` toast with `Try syncing again` (no longer silent). |
 | `ThemeStore` | modified | `src/core/theme/ThemeStore.ts` | D-10: `mode` + new `pack` field; persist target `chrome.storage.sync.np_theme` (was `chrome.storage.local.np_theme_store`). |
 | `WorkspaceStore` | modified | `src/core/workspace/WorkspaceStore.ts` | Adds `isPrimaryWriter(): boolean` predicate (D-16, returns `true` in Phase 1) + `hydrateFromURL(searchParams)` for Standalone view boot. |
 | `WorkspaceRouter` | modified | `src/core/workspace/WorkspaceRouter.ts` | `openFullApp → openStandalone` rename; targets `standalone.html?workspaceId=…`; deduplicates existing tabs before creating new (CONTEXT D-04). |
@@ -223,6 +239,8 @@ grep 'tailwind|shadcn|@radix-ui'                  package.json             → z
 grep 'framer-motion'                              package.json             → zero (DONE-when, spec §18)
 grep -r 'fetch('                                  entrypoints/content/**   → zero (D-17 isolation gate)
 grep -r 'NP-STRICT-'                              src/ entrypoints/        → ≤ declared ceiling (D-21 strict-mode marker sweep)
+grep -rE '(padding|margin|gap):\s*(2px|12px|20px)' src/ entrypoints/      → zero (UI-SPEC spacing gate — 4-multiple only)
+grep -rE 'fontSize:\s*(11|20|24|28|30)'           src/ entrypoints/        → zero (UI-SPEC typography gate — 12/13/14/16 only)
 ```
 
 ---
@@ -231,12 +249,35 @@ grep -r 'NP-STRICT-'                              src/ entrypoints/        → �
 
 These are Phase 1's only NEW visual elements (per DESIGN_SYSTEM §8):
 
-| Anchor | Metric | Source |
-|--------|--------|--------|
-| OnboardingModal | AntD `Modal` `width={520}`, `centered`, `destroyOnHidden`, `footer={null}` (custom footer with primary CTA + Skip link). `Steps` indicator at top: 4 dots, active dot = `colorPrimary`, completed dots = `colorSuccess`, future dots = `colorBorder`. | AntD v6 `Steps` component pattern |
-| CommandPalette | AntD `Modal` `width={560}`, `centered`, `destroyOnHidden`, `footer={null}`. Input at top (`size="large"`, autofocus, placeholder "Search commands…"). List below with `List.Item` rows = command name + description + category. Active row uses `colorPrimaryBg`. | existing `CommandPalette.tsx:67-126` (kept verbatim) |
-| Side Panel post-handoff mirror banner | Height 32 px, full-width, `colorWarning` background at 8% opacity, hairline `colorWarning` top + bottom border. Left = "Switched to Standalone." (caption 12 px `colorTextBase`). Right = "Refocus here" link (12 px `colorError`, underlined). Banner slides down 150 ms on appear (DESIGN_SYSTEM §11 motion table). | derived from CONTEXT D-05 + DESIGN_SYSTEM §11 |
-| Theme toggle (cross-surface) | AntD `Segmented` 3-option (Auto / Light / Dark) per SPEC §17.1a APPR-02. Selected option uses `colorPrimaryBg` fill + `colorPrimary` text. No standalone button — wired into existing composer/header per surface. | SPEC §17.1a APPR-02 + DESIGN_SYSTEM §13 |
+| Anchor | Metric | Visual hierarchy (what draws the eye first) | Icon-only controls in this surface |
+|--------|--------|---------------------------------------------|-------------------------------------|
+| OnboardingModal | AntD `Modal` `width={520}`, `centered`, `destroyOnHidden`, `footer={null}` (custom footer with primary CTA + Skip link). `Steps` indicator at top: 4 dots, active dot = `colorPrimary`, completed dots = `colorSuccess`, future dots = `colorBorder`. | **Step heading (16 px semibold) → body copy (14 px) → Steps indicator → primary CTA `Connect Provider` (16 px semibold, `colorPrimary`).** Skip link (`colorTextTertiary`) is tertiary — last to be noticed. | None — modal is form-based, no icon-only controls in Phase 1. AntD Modal's default `closeIcon` (X, top-right) carries the AntD built-in `aria-label="Close"`; explicit tooltip binding not required by Phase 1 contract. |
+| CommandPalette | AntD `Modal` `width={560}`, `centered`, `destroyOnHidden`, `footer={null}`. Input at top (`size="large"`, autofocus, placeholder "Search commands…"). List below with `List.Item` rows = command name + description + category. Active row uses `colorPrimaryBg`. | **Input → active result row (`colorPrimaryBg` highlight + 16 px semibold name) → inactive results (13 px regular name).** Active result is the visual anchor; eye lands on input first, then the highlighted match. |
+| Side Panel post-handoff mirror banner | Height 32 px, full-width, `colorPrimaryBg` background (subtle, NOT `colorWarning`/`colorError` — the banner is informational), hairline `colorBorder` top + bottom. Left = "Switched to Standalone." (caption 12 px `colorTextBase`). Right = "Refocus here" link (12 px `colorPrimary`, underlined — normal action link, **NOT destructive**). Banner slides down 150 ms on appear (DESIGN_SYSTEM §11 motion table). | **Copy ("Switched to Standalone.") → refocus action ("Refocus here" link).** Banner is a status announcement; eye lands on copy first, then the action link. |
+| Theme toggle (cross-surface) | AntD `Segmented` 3-option (Auto / Light / Dark) per SPEC §17.1a APPR-02. Selected option uses `colorPrimaryBg` fill + `colorPrimary` text. No standalone button — wired into existing composer/header per surface. | **Selected option (`colorPrimaryBg` pill + `colorPrimary` text) → unselected options (`colorTextBase`).** Selection state is the visual anchor. |
+
+**Cross-surface hierarchy rule (Phase 1):** every surface names ONE primary visual anchor and ONE primary action. OnboardingModal = heading → `Connect Provider` button. CommandPalette = input → active result. Side Panel post-handoff = copy → `Refocus here` link. Theme toggle = selected option. No surface competes for the eye; the user always knows what to look at first.
+
+**Icon-only control accessibility inventory (DESIGN_SYSTEM §12, all surfaces):**
+
+Per DESIGN_SYSTEM §12, every icon-only control MUST carry both an `aria-label` AND a tooltip. Phase 1 ships **zero new icon-only controls** in the new visual surfaces (modal / banner / toggle are all text-labeled). For the existing scaffold's icon-only controls in the Side Panel header / composer toolbar / status bar (DESIGN_SYSTEM §8.1a/c/e — not modified by Phase 1), the Phase 1 contract documents the binding now:
+
+| Surface | Icon (AntD name) | aria-label | Tooltip |
+|---------|------------------|------------|---------|
+| Side Panel header (§8.1a) | `SettingOutlined` | "Options" | "Open Options" |
+| Side Panel header (§8.1a) | `ExpandAltOutlined` | "Switch to Full chat" | "Open in Standalone view" |
+| Side Panel composer toolbar (§8.1c) | `PaperClipOutlined` | "Attach" | "Attach a file" |
+| Side Panel composer toolbar (§8.1c) | `HistoryOutlined` | "Chat history" | "Show chat history" |
+| Side Panel composer toolbar (§8.1c) | `FormOutlined` | "New chat" | "Start a new chat" |
+| Side Panel status bar (§8.1e) | `QuestionCircleOutlined` | "Help" | "Open Help Center" |
+| Side Panel status bar (§8.1e) | `MailOutlined` | "Feedback" | "Send feedback" |
+| Standalone top bar (§8.2) | `LeftOutlined` | "Back" | "Go back" |
+| Standalone top bar (§8.2) | `MoreOutlined` | "More" | "Show more options" |
+| Standalone Sider collapse (§8.2) | `DoubleLeftOutlined` / `DoubleRightOutlined` | "Collapse sidebar" / "Expand sidebar" | "Collapse sidebar" / "Expand sidebar" |
+| Provider dialog (§8.7) | `EyeInvisibleOutlined` / `EyeOutlined` | "Show API key" / "Hide API key" | "Show API key" / "Hide API key" |
+| Modal close (AntD default, all modals) | `CloseOutlined` (AntD built-in) | "Close" (AntD built-in) | not required in Phase 1 (AntD default close is recognised by `Esc` + scrim click) |
+
+This inventory is the authoritative binding table for Phase 2+ implementers. Phase 1 does not introduce new icon-only controls in the four new visual surfaces; the inventory is locked now to prevent Phase 2+ drift.
 
 **Phase 1 reuses the Side Panel layout per DESIGN_SYSTEM §8.1** (400 px wide, header 52 px, composer toolbar 44 px, input min 60 px, status bar 28 px) without modifying its structural dimensions. The mirror banner sits between the header and the conversation area (additive; does not displace existing zones).
 
@@ -258,6 +299,11 @@ These are Phase 1's only NEW visual elements (per DESIGN_SYSTEM §8):
 | `localhost:12380` as canonical default | in onboarding proxy field, provider config defaults | SPEC §10.6 ENDPOINTS + CONTEXT D-12 |
 | Unsplash image thumbnails, hardcoded "critical thinking" demo responses | in `INITIAL_*` arrays (useExtensionStore.ts) | CONTEXT D-11 |
 | `window.close()` on Side Panel post-handoff | in `entrypoints/sidepanel/main.tsx` (replaced with mirror banner per D-05) | CONTEXT D-05 |
+| **Spacing values outside `(4, 8, 16, 24, 32)` as `padding` / `margin` / `gap`** | anywhere in `src/` + `entrypoints/`. `12 px` → re-classify to `8`/`16`; `20 px` → re-classify to `16`/`24`. `1–2 px` values are **border / stroke** tokens, NEVER spacing. | UI-SPEC Spacing Scale + standard 4-multiple rule |
+| **Typography sizes outside `(12, 13, 14, 16)`** | anywhere in `src/` + `entrypoints/`. Phase 1 declares exactly 4 sizes; `20 px`/`24 px` display roles are deferred to Phase 15. | UI-SPEC Typography + Phase 1 typography subset |
+| **Icon-only control without `aria-label` + tooltip** | anywhere in `src/` + `entrypoints/` (when icon-only controls ship in Phase 2+). Phase 1 inventory locks the bindings in `## Visual Anchors` (icon-only a11y table). | DESIGN_SYSTEM §12 + Visual Anchors a11y inventory |
+| **`colorError` applied to non-error / non-destructive affordances** | anywhere in `src/` + `entrypoints/`. The post-handoff "Refocus here" link is a normal action link (`colorPrimary`), not destructive. `colorError` is reserved for genuine errors and destructive actions only. | UI-SPEC Color + DESIGN_SYSTEM §8.9 |
+| **Silent no-op error paths** | anywhere user-facing. Theme-propagation failure now surfaces `"Couldn't apply theme to other surface"` with `Try syncing again`; no error path may drop a failure to `console.warn` alone when the user expected the action to take effect. | UI-SPEC Copywriting + PITFALLS P2 (silent data loss) |
 
 ---
 
@@ -276,3 +322,4 @@ These are Phase 1's only NEW visual elements (per DESIGN_SYSTEM §8):
 
 *Phase: 1 — MV3/WXT Runtime + AntD Shells + Workspace Handoff*
 *UI-SPEC pre-populated from `01-CONTEXT.md` (locked decisions D-01 through D-23-note) + `.planning/DESIGN_SYSTEM.md` (visual contract, §1–§13) + `.planning/PRODUCT_SPEC_v0_1.md` §12 (Component State Matrix) + §17.1a APPR-02/04 + §18 Phase 1 DONE-when.*
+*Rev 1 (2026-08-19): fix ui-checker blocks — Copywriting (rename CTA → `Connect Provider`, add post-onboarding empty state, standardize workspace error → `Couldn't open Standalone view` + `Try Opening Again`, theme error actionable), Typography (Phase 1 subset `12/13/14/16`; 20/24 display roles deferred), Spacing (4-multiple standard scale `(4/8/16/24/32)`; flag DESIGN_SYSTEM §7 drift for future rev), Color (Refocus here as `colorPrimary` action link; `colorError` reserved for genuine errors; long connection error aligned to `colorError`), Visuals (per-surface hierarchy contract + icon-only a11y inventory with bindings).*
