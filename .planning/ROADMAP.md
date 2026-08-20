@@ -294,7 +294,7 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. MV3/WXT Runtime + AntD Shells + Workspace Handoff | 0/3 | Not started | — |
+| 1. MV3/WXT Runtime + AntD Shells + Workspace Handoff | 0/8 | Planned | — |
 | 2. Storage, Security, WriteJournal, Workspace Persistence | 0/3 | Not started | — |
 | 3. Cost-Effective AI Runtime (+ Persona seed) | 0/3 | Not started | — |
 | 4. Agent Reliability and Evidence | 0/2 | Not started | — |
