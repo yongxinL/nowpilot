@@ -7,6 +7,14 @@ export const MessageTypeValues = [
   'WORKSPACE_HANDOFF',
   'WORKSPACE_UPDATED',
   'STREAM_STATE_CHANGED',
+  // Scaffold-local runtime types (NOT part of spec Appendix E).
+  // The content script sends these on page-load and on SPA navigation;
+  // BackgroundRouter pre-registers advisory (console.debug-only) handlers
+  // for them. They are scaffold-only — when the typed MessageType registry
+  // (Appendix E) is wired in a later plan, these two values migrate there
+  // and out of MessageTypeValues.
+  'CONTENT_SCRIPT_READY',
+  'SPA_NAVIGATION',
 ] as const;
 
 export type MessageType = (typeof MessageTypeValues)[number];

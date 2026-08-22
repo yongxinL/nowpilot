@@ -1,4 +1,5 @@
 import { defineBackground } from 'wxt/utils/define-background';
+import * as BackgroundRouter from '../src/core/messaging/BackgroundRouter';
 
 export default defineBackground({
   type: 'module',
@@ -7,6 +8,27 @@ export default defineBackground({
     // eslint-disable-next-line no-console
     console.log('NowPilot Background Service Worker initialized');
 
+    // Phase 1 background.ts registers exactly THREE things per D-13:
+    //   (1) the BackgroundRouter typed wrapper — the single message entry
+    //       symbol (internally calls MessageBus.init() + pre-registers the
+    //       CONTENT_SCRIPT_READY / SPA_NAVIGATION advisory handlers);
+    //   (2) chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+    //   (3) the onboardingComplete flag init inside chrome.runtime.onInstalled.
+    //
+    // What this file does NOT yet register (later-phase TODOs):
+    //   - Phase 2+:  WorkspaceStore.isPrimaryWriter() election (CAS + heartbeat).
+    //   - Phase 2+:  LifecycleManager / KeepAliveManager (when streaming lands).
+    //   - Phase 17:  ContextMenuHost.
+    //   - Phase 17:  ServiceNow MCP permissions (scripting / declarativeNetRequest).
+    //   - Phase N:   CORS proxy host handlers (PROXY_FETCH envelope).
+
+    // (1) Single message entry symbol — synchronous, attaches the typed
+    // chrome.runtime.onMessage listener before the first message on every SW
+    // wake. Idempotent across re-entries (BackgroundRouter's module-level
+    // `registered` flag + MessageBus's `initialized` flag).
+    BackgroundRouter.register();
+
+    // (2) Side panel click behavior — kept verbatim from the scaffold.
     chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {
       // side panel may not be available in all contexts
     });
@@ -15,6 +37,7 @@ export default defineBackground({
       chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
     });
 
+    // (3) Onboarding flag init — kept verbatim from the scaffold.
     chrome.runtime.onInstalled.addListener((details) => {
       if (details.reason === chrome.runtime.OnInstalledReason.INSTALL) {
         chrome.storage.local.set({ onboardingComplete: false });
@@ -22,15 +45,6 @@ export default defineBackground({
         chrome.storage.local.set({ onboardingComplete: true });
       }
       chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
-    });
-
-    // Handle raw content script messages (not using RuntimeEnvelope yet)
-    chrome.runtime.onMessage.addListener((message, sender) => {
-      if (message.type === 'CONTENT_SCRIPT_READY') {
-        console.debug('[BG] Content script ready:', sender.tab?.id, message.url);
-      } else if (message.type === 'SPA_NAVIGATION') {
-        console.debug('[BG] SPA navigation:', message.url);
-      }
     });
   },
 });
