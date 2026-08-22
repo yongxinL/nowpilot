@@ -936,6 +936,12 @@ export const useExtensionStore = create<ExtensionState>()(
         const { activeSession, activeAttachments, availableTabs, ...rest } = state;
         return rest;
       },
+      // D-22: schema versioning. v1 IS the current schema — a no-op migrate.
+      // NOTE: this zustand-persist `version` counter is SEPARATE from the
+      // IndexedDB `DB_VERSION` (§20.4), which reaches v4 by Phase 9 — do not
+      // conflate the two counters when numbering later migrations (A5).
+      version: 1,
+      migrate: npStoreMigrate,
       merge: (persisted, current) => {
         const merged = { ...current, ...(persisted as Partial<ExtensionState>) };
         merged.activeSession = computeActiveSession(merged.sessions, merged.activeSessionId);
@@ -946,3 +952,21 @@ export const useExtensionStore = create<ExtensionState>()(
     },
   ),
 );
+
+/**
+ * Pure, throw-free migration for useExtensionStore's persist config (D-22).
+ * v1 IS the current schema; a v1 (or unversioned) blob is returned unchanged
+ * so existing user data hydrates without disruption.
+ *
+ * A5 separation: this zustand-persist version counter is distinct from the
+ * IndexedDB `DB_VERSION` (§20.4). IndexedDB migrations will live in a
+ * separate adapter path and must NOT be wired through here.
+ */
+export function npStoreMigrate(persisted: unknown, version: number): unknown {
+  if (persisted && typeof persisted === 'object') {
+    return persisted;
+  }
+  // Unparseable / non-object blob — return {} so zustand's merge() handles
+  // the empty shape against current state without throwing.
+  return {};
+}
