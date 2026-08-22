@@ -30,8 +30,21 @@ export async function dispatch(
   const set = handlers.get(message.type);
   if (!set || set.size === 0) return;
 
+  // Wrap each handler invocation in try/catch so a synchronous throw from
+  // one handler cannot escape the .map() callback and abort the dispatch
+  // for the others. allSettled isolates rejections that surface as Promise
+  // rejections; without this try/catch, a handler that throws synchronously
+  // propagates the throw out of .map() BEFORE allSettled can see it, and the
+  // dispatch promise itself rejects. With it, the synchronous throw is
+  // converted to a Promise rejection and allSettled handles it correctly.
   const results = await Promise.allSettled(
-    Array.from(set).map((handler) => handler(message as RuntimeEnvelope, sender)),
+    Array.from(set).map((handler) => {
+      try {
+        return handler(message as RuntimeEnvelope, sender);
+      } catch (error) {
+        return Promise.reject(error);
+      }
+    }),
   );
 
   const errors = results
