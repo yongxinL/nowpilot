@@ -18,6 +18,11 @@ interface ChatComposerProps {
   config: ProviderConfig;
   onUpdateConfig: (partial: Partial<ProviderConfig>) => void;
   isStandalone: boolean;
+  // D-05 / REQ-F05: when true the composer is a read-only mirror of the
+  // Standalone view — input + send are disabled, placeholder reads
+  // "Standalone view is active" (M12). The disabled state must NEVER
+  // silently accept + drop input.
+  disabled?: boolean;
   inputPrompt: string;
   onChangeInputPrompt: (val: string) => void;
   onSend: (overridePrompt?: string) => void;
@@ -45,6 +50,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
   config,
   onUpdateConfig,
   isStandalone,
+  disabled = false,
   inputPrompt,
   onChangeInputPrompt,
   onSend,
@@ -195,11 +201,12 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
-                  onSend();
+                  if (!disabled) onSend();
                 }
               }}
-              placeholder="Ask anything, @ models, / prompts"
-              className="w-full bg-transparent border-none outline-none resize-none text-zinc-800 dark:text-zinc-100 placeholder-zinc-400 text-xs sm:text-sm font-sans flex-1 min-h-[64px]"
+              placeholder={disabled ? 'Standalone view is active' : 'Ask anything, @ models, / prompts'}
+              disabled={disabled}
+              className="w-full bg-transparent border-none outline-none resize-none text-zinc-800 dark:text-zinc-100 placeholder-zinc-400 text-xs sm:text-sm font-sans flex-1 min-h-[64px] disabled:cursor-not-allowed disabled:opacity-50"
               rows={3}
             />
           </div>
@@ -224,7 +231,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
             {/* Right: Circular Send Button with Paper Plane Icon */}
             <button
               type="button"
-              disabled={!inputPrompt.trim() && activeAttachments.length === 0}
+              disabled={disabled || (!inputPrompt.trim() && activeAttachments.length === 0)}
               onClick={() => onSend()}
               className="w-8 h-8 rounded-full text-white flex items-center justify-center shadow-xs cursor-pointer disabled:cursor-not-allowed disabled:opacity-40 transition-all shrink-0 ml-auto"
               style={{ backgroundColor: 'var(--np-primary, #1677ff)' }}

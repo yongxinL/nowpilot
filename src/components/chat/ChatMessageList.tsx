@@ -1,4 +1,5 @@
 import React from 'react';
+import { Typography } from 'antd';
 import { ChatMessageItem } from './ChatMessageItem';
 import { Message, ChatSession } from '../../types';
 
@@ -51,59 +52,18 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
 }) => {
   if (!activeSession || activeSession.messages.length === 0) {
     return (
+      // RICH-I-01 Welcome cards are explicitly deferred to Phase 15 per
+      // 01-UI-SPEC.md. The Phase-1 post-onboarding empty Side Panel state
+      // is a single centered caption with no chips / no mascot art — the
+      // composer remains enabled (the user can type a first message).
       <div className="flex flex-col items-center justify-center min-h-[320px] pt-10 sm:pt-20 px-4 w-full">
-        <div className="text-left w-full max-w-2xl mb-6">
-          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 mb-1">
-            Hi,
-          </h1>
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
-            How can I assist you today?
-          </h2>
-        </div>
-
-        <div className="flex flex-wrap items-center justify-start gap-2.5 sm:gap-3 w-full max-w-2xl">
-          <button
-            type="button"
-            onClick={() => {
-              if (onOpenStandalone) {
-                onOpenStandalone();
-              } else {
-                onCreateNewSession();
-              }
-            }}
-            className="flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-zinc-200/90 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700/80 text-zinc-700 dark:text-zinc-200 text-xs font-medium shadow-2xs cursor-pointer transition-all hover:scale-[1.02]"
-          >
-            <span className="text-zinc-500 dark:text-zinc-400">📖</span>
-            <span>Full Screen Chat</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onSend('Perform deep research and comprehensive synthesis on this topic.')}
-            className="flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-zinc-200/90 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700/80 text-zinc-700 dark:text-zinc-200 text-xs font-medium shadow-2xs cursor-pointer transition-all hover:scale-[1.02]"
-          >
-            <span className="text-purple-500">🕸️</span>
-            <span>Deep Research</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onSend('Extract key highlights, takeaways, and structured insights.')}
-            className="flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-zinc-200/90 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700/80 text-zinc-700 dark:text-zinc-200 text-xs font-medium shadow-2xs cursor-pointer transition-all hover:scale-[1.02]"
-          >
-            <span className="text-amber-500">📑</span>
-            <span>My Highlights</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onSend('Generate presentation slides structure and key points for this topic.')}
-            className="flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-zinc-200/90 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700/80 text-zinc-700 dark:text-zinc-200 text-xs font-medium shadow-2xs cursor-pointer transition-all hover:scale-[1.02]"
-          >
-            <span className="text-blue-500">🖥️</span>
-            <span>AI Slides</span>
-          </button>
-        </div>
+        <Typography.Text
+          type="secondary"
+          style={{ fontSize: 12 }}
+          data-testid="empty-state-caption"
+        >
+          Start a conversation by asking NowPilot a question.
+        </Typography.Text>
       </div>
     );
   }

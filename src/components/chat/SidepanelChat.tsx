@@ -11,8 +11,11 @@ import { ChatMessageList } from './ChatMessageList';
 import { ChatComposer } from './ChatComposer';
 import { ChatExportBar } from './ChatExportBar';
 import { useChatStreaming } from './useChatStreaming';
+import { MirrorBanner } from '../common/MirrorBanner';
 
 import { useExtensionStore } from '../../store/useExtensionStore';
+import { useWorkspaceStore } from '../../core/workspace/WorkspaceStore';
+import { onWorkspaceSync } from '../../core/workspace/WorkspaceSync';
 import { PromptItem } from '../../types';
 
 interface SidepanelChatProps {
@@ -70,6 +73,10 @@ export const SidepanelChat: React.FC<SidepanelChatProps> = ({
   const [onboardingComplete, setOnboardingComplete] = useState<boolean | null>(null);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   const [containerWidth, setContainerWidth] = useState<number>(() => typeof window !== 'undefined' ? window.innerWidth : 400);
+  // D-05 / REQ-F05: read-only mirror state — set true on WORKSPACE_HANDOFF
+  // from the Standalone view, cleared by the user clicking "Refocus here"
+  // inside MirrorBanner.
+  const [mirrored, setMirrored] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const mainContainerRef = useRef<HTMLDivElement>(null);
 
@@ -181,6 +188,22 @@ export const SidepanelChat: React.FC<SidepanelChatProps> = ({
     setOnboardingOpen(false);
   };
 
+  // D-05 / REQ-F05: subscribe to WORKSPACE_HANDOFF so the Side Panel can
+  // demote to a read-only mirror when the Standalone view takes primary
+  // authorship. Only matches when the broadcast carries the same
+  // workspaceId — a stale handoff for a different workspace must NOT
+  // invoke mirror mode here.
+  useEffect(() => {
+    const unsubscribe = onWorkspaceSync((msg) => {
+      if (msg.type !== 'WORKSPACE_HANDOFF') return;
+      const localWsId = useWorkspaceStore.getState().workspaceId;
+      if (msg.workspaceId === localWsId) {
+        setMirrored(true);
+      }
+    });
+    return unsubscribe;
+  }, []);
+
   useEffect(() => {
     if (!activeSession) {
       createNewSession();
@@ -284,6 +307,14 @@ export const SidepanelChat: React.FC<SidepanelChatProps> = ({
         />
       )}
 
+      {/* D-05: Mirror banner appears between header and message area when
+          the Side Panel has been demoted to a read-only mirror after
+          WORKSPACE_HANDOFF. The Standalone surface never renders this —
+          Standalone IS the primary surface. */}
+      {!isStandalone && mirrored && (
+        <MirrorBanner onRefocus={() => setMirrored(false)} />
+      )}
+
       {/* Main Chat Flow Container */}
       <div className={`flex-1 flex flex-col h-full overflow-hidden ${isStandalone ? 'max-w-3xl mx-auto w-full' : 'w-full'}`}>
         <div className="relative flex-1 min-h-0 overflow-hidden flex flex-col">
@@ -385,6 +416,7 @@ export const SidepanelChat: React.FC<SidepanelChatProps> = ({
             config={config}
             onUpdateConfig={updateConfig}
             isStandalone={isStandalone}
+            disabled={mirrored}
             inputPrompt={inputPrompt}
             onChangeInputPrompt={setInputPrompt}
             onSend={handleSend}
