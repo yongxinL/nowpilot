@@ -15,7 +15,7 @@
     "lint": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "verify:phase-1": "tsc --noEmit && vitest run tests/core/runtime tests/core/events tests/core/workspace tests/core/theme tests/core/strict",
+    "verify:phase-1": "tsc --noEmit && vitest run tests/core tests/background tests/components tests/isolation",
     "verify:phase-2": "tsc --noEmit && vitest run tests/core/storage tests/core/security tests/core/utils tests/core/workspace/WorkspacePersistence.test.ts",
     "verify:phase-3": "tsc --noEmit && vitest run tests/core/ai tests/core/ai/persona",
     "verify:phase-4": "tsc --noEmit && vitest run tests/core/context",

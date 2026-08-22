@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { App, Tooltip, theme } from 'antd';
 import { StopOutlined, DownOutlined } from '@ant-design/icons';
 
-import { OnboardingWizard } from '../common/OnboardingWizard';
+import { OnboardingModal } from '../OnboardingModal';
 import { ChatHistoryModal } from '../history/ChatHistoryModal';
 import { PromptManagerModal } from '../common/PromptManagerModal';
 
@@ -186,6 +186,18 @@ export const SidepanelChat: React.FC<SidepanelChatProps> = ({
     }
     setOnboardingComplete(true);
     setOnboardingOpen(false);
+  };
+
+  // REQ-F19: Skip keeps `onboardingComplete=false` so the modal
+  // re-triggers on next Side Panel open — it does NOT permanently
+  // dismiss itself. This is the explicit distinction between
+  // OnboardingModal's `onSkip` (close only) and `onComplete`
+  // (close + mark complete).
+  const handleOnboardingSkip = () => {
+    setOnboardingOpen(false);
+    // Do NOT set onboardingComplete=true — leave it false so the
+    // storage-read effect at lines ~162-179 reopens the modal on the
+    // next Side Panel mount.
   };
 
   // D-05 / REQ-F05: subscribe to WORKSPACE_HANDOFF so the Side Panel can
@@ -439,10 +451,15 @@ export const SidepanelChat: React.FC<SidepanelChatProps> = ({
         )}
       </div>
 
-      {/* Onboarding Wizard Modal */}
-      <OnboardingWizard
+      {/* Onboarding Modal (D-01/D-02/D-03, REQ-F19) — thin 4-step modal
+          matching 01-UI-SPEC's copy verbatim. Same two-prop contract
+          plus an explicit onSkip for the "Skip for now" path (keeps
+          onboardingComplete=false so the modal re-triggers on next
+          Side Panel open). */}
+      <OnboardingModal
         open={onboardingOpen}
         onComplete={handleOnboardingComplete}
+        onSkip={handleOnboardingSkip}
       />
 
       {/* History Modal */}

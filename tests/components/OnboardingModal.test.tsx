@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { ConfigProvider } from 'antd';
+import { ConfigProvider, App as AntdApp } from 'antd';
 
 // Mock the aiProvider module so we can control `testProviderConnection` from
 // the test (D-03 / REQ-F19: Step 4 calls the real, error-surfacing
@@ -22,7 +22,15 @@ import { testProviderConnection } from '../../src/services/aiProvider';
 const mockedTest = testProviderConnection as ReturnType<typeof vi.fn>;
 
 function renderWithAntd(ui: React.ReactElement) {
-  return render(<ConfigProvider>{ui}</ConfigProvider>);
+  // Wrapping with both ConfigProvider AND AntdApp matches the established
+  // pattern in tests/core/theme/ThemeSync.test.tsx — AntdApp is required so
+  // the component's `AntdApp.useApp()` message hook resolves to a real
+  // function in the success path.
+  return render(
+    <ConfigProvider>
+      <AntdApp>{ui}</AntdApp>
+    </ConfigProvider>,
+  );
 }
 
 describe('OnboardingModal (Plan 01-08 — D-01/D-02/D-03, REQ-F19)', () => {
@@ -103,7 +111,11 @@ describe('OnboardingModal (Plan 01-08 — D-01/D-02/D-03, REQ-F19)', () => {
 
   // ---- Test 4: Step 4 failure path — error surfaces, modal stays open, Edit key returns to Step 3 ----
   it('Test 4: Step 4 "Connect Provider" with mocked {ok:false} surfaces error, modal stays open, "Edit key" returns to Step 3 with key preserved', async () => {
-    mockedTest.mockResolvedValueOnce({
+    // Use mockResolvedValue (persistent) so the second call after
+    // Edit key -> Step 4 -> Connect Provider still returns the same
+    // shape; mockResolvedValueOnce would be consumed on the first call
+    // and leave the retry path returning undefined.
+    mockedTest.mockResolvedValue({
       ok: false,
       error: 'HTTP 401: Incorrect API key provided',
     });
@@ -127,8 +139,8 @@ describe('OnboardingModal (Plan 01-08 — D-01/D-02/D-03, REQ-F19)', () => {
     // surfaces the real testProviderConnection result (not a fallback).
     await waitFor(() => {
       expect(
-        screen.getByText(/Connection failed: HTTP 401: Incorrect API key provided/i),
-      ).toBeTruthy();
+        screen.getByTestId('onboarding-error-text').textContent,
+      ).toMatch(/Connection failed: HTTP 401: Incorrect API key provided/i);
     });
 
     // Modal must NOT have called onComplete on failure.
@@ -154,8 +166,8 @@ describe('OnboardingModal (Plan 01-08 — D-01/D-02/D-03, REQ-F19)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Connect Provider/i }));
     await waitFor(() => {
       expect(
-        screen.getByText(/Connection failed: HTTP 401: Incorrect API key provided/i),
-      ).toBeTruthy();
+        screen.getByTestId('onboarding-error-text').textContent,
+      ).toMatch(/Connection failed: HTTP 401: Incorrect API key provided/i);
     });
     for (const call of [...consoleSpy.mock.calls, ...consoleErrorSpy.mock.calls]) {
       for (const arg of call) {
@@ -233,8 +245,13 @@ describe('OnboardingModal (Plan 01-08 — D-01/D-02/D-03, REQ-F19)', () => {
       expect(screen.getByText(/Testing connection/i)).toBeTruthy();
     });
 
-    // Connect button must be disabled while in flight (no double-submit).
-    expect(connectBtn.hasAttribute('disabled')).toBe(true);
+    // Once the test is in flight, the original Connect button has been
+    // replaced by a "Testing connection…" button that must be disabled
+    // (no double-submit). Look up the current in-flight button instead
+    // of asserting on the stale `connectBtn` reference (it has been
+    // unmounted by the conditional render).
+    const inFlightBtn = screen.getByRole('button', { name: /Testing connection/i });
+    expect(inFlightBtn.hasAttribute('disabled')).toBe(true);
 
     // Resolve to keep the test from leaking a pending promise.
     resolveFn({ ok: true, models: [{ id: 'm', name: 'm', enabled: true }] });
