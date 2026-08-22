@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App as AntdApp } from 'antd';
-import { StandaloneWorkspace } from '../../src/components/standalone/StandaloneWorkspace';
+import { StandaloneShell } from '../../src/components/standalone/StandaloneShell';
 import { CommandPalette } from '../../src/components/common/CommandPalette';
 import { CommandRegistry } from '../../src/core/commands/CommandRegistry';
 import { useThemeStore, type ThemeMode } from '../../src/core/theme/ThemeStore';
@@ -89,7 +89,7 @@ const StandaloneApp = () => {
   return (
     <ThemeProvider>
       <AntdApp className="h-screen w-screen overflow-hidden">
-        <StandaloneWorkspace onOpenOptions={handleOpenOptions} onOpenSidepanel={handleOpenSidepanel} />
+        <StandaloneShell onOpenOptions={handleOpenOptions} onOpenSidepanel={handleOpenSidepanel} />
         <CommandPalette
           commands={CommandRegistry.getAll()}
           open={paletteOpen}

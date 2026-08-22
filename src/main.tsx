@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App as AntdApp, Layout, Segmented, Typography, theme } from 'antd';
 import { AppstoreOutlined, MessageOutlined, SettingOutlined } from '@ant-design/icons';
-import { StandaloneWorkspace } from './components/standalone/StandaloneWorkspace';
+import { StandaloneShell } from './components/standalone/StandaloneShell';
 import { SidepanelChat } from './components/chat/SidepanelChat';
 import { OptionsPage } from './components/options/OptionsPage';
 import { CommandPalette } from './components/common/CommandPalette';
@@ -158,7 +158,7 @@ const AppShell: React.FC = () => {
 
       <Content style={{ height: 'calc(100vh - 48px)', overflow: 'hidden', position: 'relative' }}>
         {activeView === 'workspace' && (
-          <StandaloneWorkspace
+          <StandaloneShell
             onOpenOptions={() => setActiveView('options')}
             onOpenSidepanel={() => setActiveView('sidepanel')}
           />

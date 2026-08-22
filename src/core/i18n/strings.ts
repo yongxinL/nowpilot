@@ -32,9 +32,9 @@ const strings: Record<string, string> = {
   'diagnostics.error': 'Failed to load traces',
 
   // Side Panel
-  'sidepanel.openFullApp': 'Open Full App',
-  'sidepanel.openingFullApp': 'Opening full app...',
-  'sidepanel.fullAppFailed': 'Failed to open Full App tab',
+  'sidepanel.openStandaloneView': 'Open Standalone view',
+  'sidepanel.openingStandaloneView': 'Opening standalone view...',
+  'sidepanel.standaloneViewFailed': 'Failed to open Standalone view tab',
 
   // Onboarding — OLD keys (keep for old OnboardingModal until Plan 01-05)
   'onboarding.welcome': 'Welcome to NowPilot',

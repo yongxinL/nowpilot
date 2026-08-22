@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { theme } from 'antd';
 import { WorkspaceSidebar, WorkspaceTab } from './WorkspaceSidebar';
 import { SidepanelChat } from '../chat/SidepanelChat';
@@ -6,19 +6,29 @@ import { NotesWorkspace } from '../notes/NotesWorkspace';
 import { StandaloneWritePage } from './StandaloneWritePage';
 import { ToolsGridPanel } from './ToolsGridPanel';
 import { TeamsPanel } from './TeamsPanel';
+import { hydrateFromURL } from '../../core/workspace/WorkspaceRouter';
 
-interface StandaloneWorkspaceProps {
+interface StandaloneShellProps {
   onOpenOptions?: () => void;
   onOpenSidepanel?: () => void;
 }
 
-export const StandaloneWorkspace: React.FC<StandaloneWorkspaceProps> = ({
+export const StandaloneShell: React.FC<StandaloneShellProps> = ({
   onOpenOptions,
   onOpenSidepanel,
 }) => {
   const { token } = theme.useToken();
   const [collapsed, setCollapsed] = useState(false);
   const [activeMenu, setActiveMenu] = useState<WorkspaceTab>('Chat');
+
+  // D-04 / H2: hydrate the WorkspaceStore from this tab's query string
+  // (`?workspaceId=&conversationId=&page=`) on mount. openStandalone
+  // (WorkspaceRouter) produces this URL shape; hydrateFromURL routes
+  // through setWorkspaceId/setConversationId so persistence + subscribers
+  // fire (T-01-16). Empty/missing params are handled inside hydrateFromURL.
+  useEffect(() => {
+    hydrateFromURL(new URLSearchParams(window.location.search));
+  }, []);
 
   // Spacing scale {4,8,16,24,32}; only {4,8,16,24,32} per UI-SPEC.
   // Border-radius token for the rounded left-corner workspace card.

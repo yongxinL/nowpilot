@@ -5,7 +5,7 @@ export interface SidePanelPageRegistration {
   component: React.ComponentType;
 }
 
-export interface FullAppPageRegistration {
+export interface StandalonePageRegistration {
   id: string;
   label: string;
   icon: string;
@@ -16,5 +16,5 @@ export interface AddonRegistration {
   id: string;
   name: string;
   sidePanelPages?: SidePanelPageRegistration[];
-  fullAppPages?: FullAppPageRegistration[];
+  standalonePages?: StandalonePageRegistration[];
 }
