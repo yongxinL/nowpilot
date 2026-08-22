@@ -1,5 +1,6 @@
 import { publish } from '../runtime/BroadcastBus';
 import { useWorkspaceStore } from './WorkspaceStore';
+import { notifyWorkspaceHandoff } from './WorkspaceSync';
 
 const WORKSPACE_CHANNEL = 'np_workspace';
 
@@ -74,6 +75,54 @@ export function openStandalone(
 }
 
 /**
+ * Open the Options page in a new tab — or focus the existing one
+ * (Plan 01-07 — D-08 command-set wiring).
+ *
+ * Mirrors `openStandalone`'s callback-style + dedup shape so the Side
+ * Panel / Standalone entrypoints don't roll their own `chrome.tabs.query({})`
+ * + `.find()` dedup implementations. The dedup queries
+ * `chrome.runtime.getURL('options.html*')` so the same tab is matched
+ * regardless of any future query-string variant.
+ */
+export function openOptions(
+  opts?: { onSettled?: (result: { ok: true } | { ok: false; error: string }) => void },
+): void {
+  const url = chrome.runtime.getURL('options.html');
+
+  chrome.tabs.query({ url: chrome.runtime.getURL('options.html*') }, (tabs) => {
+    if (chrome.runtime.lastError) {
+      opts?.onSettled?.({ ok: false, error: String(chrome.runtime.lastError.message) });
+      return;
+    }
+    if (tabs.length > 0 && tabs[0].id) {
+      const tabId = tabs[0].id;
+      const windowId = tabs[0].windowId;
+      chrome.tabs.update(tabId, { active: true }, () => {
+        if (chrome.runtime.lastError) {
+          opts?.onSettled?.({ ok: false, error: String(chrome.runtime.lastError.message) });
+          return;
+        }
+        if (windowId !== undefined) {
+          chrome.windows.update(windowId, { focused: true }, () => {
+            opts?.onSettled?.({ ok: true });
+          });
+        } else {
+          opts?.onSettled?.({ ok: true });
+        }
+      });
+    } else {
+      chrome.tabs.create({ url }, (tab) => {
+        if (chrome.runtime.lastError) {
+          opts?.onSettled?.({ ok: false, error: String(chrome.runtime.lastError.message) });
+          return;
+        }
+        opts?.onSettled?.({ ok: true });
+      });
+    }
+  });
+}
+
+/**
  * H2: hydrate the WorkspaceStore from the Standalone view's `?workspaceId&`
  * `&conversationId&` query string (which `openStandalone` produced above).
  *
@@ -81,6 +130,12 @@ export function openStandalone(
  * actions), so persistence and subscriber notifications fire. The previous
  * `Object.assign(store, { workspaceId })` bypassed `set()` and silently
  * failed to trigger persist/subscribers — fixed in Plan 01-06.
+ *
+ * Plan 01-07: when `workspaceId` is present, also publishes a
+ * `WORKSPACE_HANDOFF` message on the `np_workspace` BroadcastChannel so
+ * the Side Panel can demote to a read-only mirror (REQ-F05). A no-op call
+ * (empty params) does NOT broadcast — that path is taken on direct
+ * Standalone opens (not the cross-surface handoff).
  *
  * Empty/missing params set empty string / null respectively; downstream
  * empty-state UIs handle it.
@@ -96,5 +151,9 @@ export function hydrateFromURL(searchParams: URLSearchParams): void {
   }
   if (convId) {
     store.setConversationId(convId);
+  }
+
+  if (wsId) {
+    notifyWorkspaceHandoff(wsId, convId ?? '');
   }
 }

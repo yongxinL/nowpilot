@@ -7,29 +7,11 @@ import { CommandRegistry } from '../../src/core/commands/CommandRegistry';
 import { useThemeStore, type ThemeMode } from '../../src/core/theme/ThemeStore';
 import { ThemeProvider } from '../../src/components/ThemeProvider';
 import { registerStandaloneCommands } from '../../src/core/commands/registerWorkspaceCommands';
+import { openOptions } from '../../src/core/workspace/WorkspaceRouter';
 import '../../src/index.css';
 
-const handleOpenOptions = async () => {
-  try {
-    const url = chrome.runtime.getURL('options.html');
-    const tabs = await chrome.tabs.query({});
-    const existingTab = tabs.find(
-      (t) => t.url && (t.url === url || t.url.includes('options.html'))
-    );
-    if (existingTab && existingTab.id !== undefined) {
-      await chrome.tabs.update(existingTab.id, { active: true });
-      if (existingTab.windowId !== undefined) {
-        await chrome.windows.update(existingTab.windowId, { focused: true });
-      }
-    } else {
-      await chrome.tabs.create({ url });
-    }
-  } catch {
-    const fallbackUrl = typeof chrome !== 'undefined' && chrome?.runtime?.getURL
-      ? chrome.runtime.getURL('options.html')
-      : 'options.html';
-    window.open(fallbackUrl, '_blank');
-  }
+const handleOpenOptions = () => {
+  openOptions();
 };
 
 const handleOpenSidepanel = async () => {

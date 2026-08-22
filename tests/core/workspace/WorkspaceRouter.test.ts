@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useWorkspaceStore } from '../../../src/core/workspace/WorkspaceStore';
+import { onWorkspaceSync } from '../../../src/core/workspace/WorkspaceSync';
+import * as BroadcastBus from '../../../src/core/runtime/BroadcastBus';
 
 // Mock chrome API — callback-style (matches WorkspaceRouter.ts convention)
 const chromeApi = {
@@ -134,6 +136,98 @@ describe('WorkspaceRouter', () => {
       // Initial workspaceId is a UUID; empty-string URLSearchParams must NOT clobber it.
       expect(useWorkspaceStore.getState().workspaceId).toBe(beforeWsId);
       expect(useWorkspaceStore.getState().conversationId).toBe(beforeConvId);
+    });
+  });
+
+  describe('openStandalone onSettled (Plan 01-07 — loading/error toast contract)', () => {
+    it('calls onSettled({ ok: true }) on a successful tabs.create callback', () => {
+      chromeApi.tabs.query.mockImplementation((_q: unknown, cb: (tabs: chrome.tabs.Tab[]) => void) =>
+        cb([]),
+      );
+      chromeApi.tabs.create.mockImplementation(
+        (_opts: chrome.tabs.CreateProperties, cb: (tab: chrome.tabs.Tab) => void) =>
+          cb({ id: 200, windowId: 1 } as chrome.tabs.Tab),
+      );
+
+      const onSettled = vi.fn();
+      openStandalone('ws1', undefined, undefined, { onSettled });
+
+      expect(onSettled).toHaveBeenCalledTimes(1);
+      expect(onSettled.mock.calls[0]?.[0]).toEqual({ ok: true });
+    });
+
+    it('calls onSettled with { ok: false, error } when tabs.create surfaces chrome.runtime.lastError', () => {
+      chromeApi.tabs.query.mockImplementation((_q: unknown, cb: (tabs: chrome.tabs.Tab[]) => void) =>
+        cb([]),
+      );
+      chromeApi.tabs.create.mockImplementation(
+        (_opts: chrome.tabs.CreateProperties, cb: (tab: chrome.tabs.Tab) => void) => {
+          chromeApi.runtime.lastError = { message: 'fake create error' };
+          cb({} as chrome.tabs.Tab);
+          chromeApi.runtime.lastError = undefined;
+        },
+      );
+
+      const onSettled = vi.fn();
+      openStandalone('ws1', undefined, undefined, { onSettled });
+
+      expect(onSettled).toHaveBeenCalledTimes(1);
+      const arg = onSettled.mock.calls[0]?.[0] as { ok: false; error: string };
+      expect(arg.ok).toBe(false);
+      expect(arg.error).toBe('fake create error');
+    });
+
+    it('calls onSettled with { ok: false, error } when tabs.query surfaces chrome.runtime.lastError', () => {
+      chromeApi.tabs.query.mockImplementation(
+        (_q: unknown, cb: (tabs: chrome.tabs.Tab[]) => void) => {
+          chromeApi.runtime.lastError = { message: 'fake query error' };
+          cb([]);
+          chromeApi.runtime.lastError = undefined;
+        },
+      );
+
+      const onSettled = vi.fn();
+      openStandalone('ws1', undefined, undefined, { onSettled });
+
+      expect(onSettled).toHaveBeenCalledTimes(1);
+      const arg = onSettled.mock.calls[0]?.[0] as { ok: false; error: string };
+      expect(arg.ok).toBe(false);
+      expect(arg.error).toBe('fake query error');
+    });
+  });
+
+  describe('hydrateFromURL broadcasts WORKSPACE_HANDOFF (Plan 01-07 — Side Panel mirror trigger)', () => {
+    it('publishes WORKSPACE_HANDOFF on the np_workspace channel when workspaceId is present', () => {
+      const publishSpy = vi.spyOn(BroadcastBus, 'publish');
+
+      hydrateFromURL(new URLSearchParams('workspaceId=ws3&conversationId=c9'));
+
+      const handoffCall = publishSpy.mock.calls.find(
+        ([channel, payload]) =>
+          channel === 'np_workspace' &&
+          typeof payload === 'object' &&
+          payload !== null &&
+          (payload as { type?: string }).type === 'WORKSPACE_HANDOFF',
+      );
+      expect(handoffCall).toBeDefined();
+      const payload = handoffCall?.[1] as { type: string; workspaceId: string; conversationId: string };
+      expect(payload.workspaceId).toBe('ws3');
+      expect(payload.conversationId).toBe('c9');
+    });
+
+    it('does NOT publish WORKSPACE_HANDOFF when workspaceId is absent (no phantom handoff)', () => {
+      const publishSpy = vi.spyOn(BroadcastBus, 'publish');
+
+      hydrateFromURL(new URLSearchParams('conversationId=c9'));
+
+      const handoffCall = publishSpy.mock.calls.find(
+        ([channel, payload]) =>
+          channel === 'np_workspace' &&
+          typeof payload === 'object' &&
+          payload !== null &&
+          (payload as { type?: string }).type === 'WORKSPACE_HANDOFF',
+      );
+      expect(handoffCall).toBeUndefined();
     });
   });
 });

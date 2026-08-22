@@ -6,104 +6,84 @@ import { CommandPalette } from '../../src/components/common/CommandPalette';
 import { CommandRegistry } from '../../src/core/commands/CommandRegistry';
 import { useThemeStore, type ThemeMode } from '../../src/core/theme/ThemeStore';
 import { ThemeProvider } from '../../src/components/ThemeProvider';
+import { openStandalone, openOptions } from '../../src/core/workspace/WorkspaceRouter';
+import { useWorkspaceStore } from '../../src/core/workspace/WorkspaceStore';
+import { registerSidepanelCommands } from '../../src/core/commands/registerWorkspaceCommands';
+import { debugLog } from '../../src/core/log/debugLog';
 import '../../src/index.css';
 
-const handleOpenStandalone = async () => {
-  const url = chrome.runtime.getURL('standalone.html');
-  try {
-    // 1. Check if a standalone tab is already open
-    const tabs = await chrome.tabs.query({});
-    const existingTab = tabs.find(
-      (t) => t.url && (t.url === url || t.url.includes('standalone.html'))
-    );
-
-    if (existingTab && existingTab.id !== undefined) {
-      // Focus existing tab instead of opening duplicate
-      await chrome.tabs.update(existingTab.id, { active: true });
-      if (existingTab.windowId !== undefined) {
-        await chrome.windows.update(existingTab.windowId, { focused: true });
-      }
-    } else {
-      // Open new tab
-      await chrome.tabs.create({ url });
-    }
-  } catch {
-    window.open(url, '_blank');
-  }
-
-  // 2. Close side panel when standalone view is opened
-  try {
-    window.close();
-  } catch {
-    // ignore
-  }
-};
-
-const handleOpenOptions = async () => {
-  try {
-    const url = chrome.runtime.getURL('options.html');
-    const tabs = await chrome.tabs.query({});
-    const existingTab = tabs.find(
-      (t) => t.url && (t.url === url || t.url.includes('options.html'))
-    );
-    if (existingTab && existingTab.id !== undefined) {
-      await chrome.tabs.update(existingTab.id, { active: true });
-      if (existingTab.windowId !== undefined) {
-        await chrome.windows.update(existingTab.windowId, { focused: true });
-      }
-    } else {
-      await chrome.tabs.create({ url });
-    }
-  } catch {
-    const fallbackUrl = typeof chrome !== 'undefined' && chrome?.runtime?.getURL
-      ? chrome.runtime.getURL('options.html')
-      : 'options.html';
-    window.open(fallbackUrl, '_blank');
-  }
+const handleOpenOptions = () => {
+  openOptions();
 };
 
 const MODE_CYCLE: ThemeMode[] = ['auto', 'light', 'dark'];
 
 const SidepanelApp = () => {
+  const { message: antMessage } = AntdApp.useApp();
   const [paletteOpen, setPaletteOpen] = useState(false);
 
+  /**
+   * D-04 / D-05 / REQ-F05: Side Panel post-handoff = read-only mirror,
+   * NOT a window close. This handler:
+   *  - shows the keyed "Opening standalone view…" loading toast immediately
+   *  - delegates the entire tabs.query → tabs.update/create dance to
+   *    `WorkspaceRouter.openStandalone` (no local duplicate dedup impl)
+   *  - resolves the loading toast on `onSettled` — destroy on success
+   *    (mirror banner IS the success signal), error toast with retry on failure
+   *
+   * The Side Panel stays primary on failure (we do NOT demote to mirror) —
+   * mirror mode is driven exclusively by the WORKSPACE_HANDOFF broadcast
+   * that hydrateFromURL publishes inside openStandalone's callback path
+   * (T-01-19).
+   */
+  const openStandaloneWithToasts = () => {
+    antMessage.loading({ content: 'Opening standalone view…', key: 'open-standalone', duration: 0 });
+
+    const { workspaceId, conversationId } = useWorkspaceStore.getState();
+    openStandalone(workspaceId, conversationId ?? undefined, undefined, {
+      onSettled: (result) => {
+        if (result.ok) {
+          antMessage.destroy('open-standalone');
+          // Success: do NOT additionally toast — the MirrorBanner arriving
+          // via WORKSPACE_HANDOFF IS the success signal (T-01-19).
+          return;
+        }
+        debugLog('SIDEPANEL_STANDALONE_OPEN_FAILED', result.error);
+        antMessage.destroy('open-standalone');
+        antMessage.error({
+          content: "Couldn't open Standalone view",
+          key: 'open-standalone',
+          duration: 4,
+          onClick: () => openStandaloneWithToasts(),
+        });
+      },
+    });
+  };
+
   useEffect(() => {
-    CommandRegistry.register({
-      id: 'toggle-theme',
-      name: 'Toggle Theme',
-      description: 'Cycle between light, dark, and auto theme modes',
-      category: 'Appearance',
-      action: () => {
+    const cleanup = registerSidepanelCommands({
+      openStandalone: () => {
+        openStandaloneWithToasts();
+        setPaletteOpen(false);
+      },
+      openOptions: () => {
+        handleOpenOptions();
+        setPaletteOpen(false);
+      },
+      toggleTheme: () => {
         const cur = useThemeStore.getState().mode;
         const next = MODE_CYCLE[(MODE_CYCLE.indexOf(cur) + 1) % MODE_CYCLE.length];
         useThemeStore.getState().setMode(next);
         setPaletteOpen(false);
       },
-    });
-    CommandRegistry.register({
-      id: 'open-full-app',
-      name: 'Open in Full Tab',
-      description: 'Open the full application in a new tab',
-      category: 'Navigation',
-      action: () => {
-        handleOpenStandalone();
-        setPaletteOpen(false);
-      },
-    });
-    CommandRegistry.register({
-      id: 'reload-extension',
-      name: 'Reload Extension',
-      description: 'Reload the extension to apply changes',
-      category: 'System',
-      action: () => {
+      reloadExtension: () => {
+        // Explicit-only destructive action (REQ-F12 prohibition) — the
+        // command palette never auto-runs reload-extension on partial
+        // match, only on full Enter/click selection.
         chrome.runtime.reload();
       },
     });
-    return () => {
-      CommandRegistry.unregister('toggle-theme');
-      CommandRegistry.unregister('open-full-app');
-      CommandRegistry.unregister('reload-extension');
-    };
+    return cleanup;
   }, []);
 
   useEffect(() => {
@@ -120,7 +100,10 @@ const SidepanelApp = () => {
   return (
     <ThemeProvider>
       <AntdApp className="h-screen w-screen overflow-hidden">
-        <SidepanelChat onOpenStandalone={handleOpenStandalone} onOpenOptions={handleOpenOptions} />
+        <SidepanelChat
+          onOpenStandalone={openStandaloneWithToasts}
+          onOpenOptions={handleOpenOptions}
+        />
         <CommandPalette
           commands={CommandRegistry.getAll()}
           open={paletteOpen}

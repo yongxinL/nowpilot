@@ -2,11 +2,20 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { CommandRegistry } from '../../../src/core/commands/CommandRegistry';
 import {
   registerStandaloneCommands,
+  registerSidepanelCommands,
   type StandaloneCommandDeps,
+  type SidepanelCommandDeps,
 } from '../../../src/core/commands/registerWorkspaceCommands';
 
 const STANDALONE_COMMAND_IDS = [
   'focus-side-panel',
+  'open-options',
+  'toggle-theme',
+  'reload-extension',
+] as const;
+
+const SIDEPANEL_COMMAND_IDS = [
+  'open-standalone-view',
   'open-options',
   'toggle-theme',
   'reload-extension',
@@ -119,5 +128,117 @@ describe('registerStandaloneCommands (D-08, REQ-F20)', () => {
     registerStandaloneCommands(deps);
     const results = CommandRegistry.search('');
     expect(results.map((c) => c.id)).toEqual(STANDALONE_COMMAND_IDS);
+  });
+});
+
+describe('registerSidepanelCommands (D-08, REQ-F05, REQ-F12)', () => {
+  const makeDeps = (): {
+    deps: SidepanelCommandDeps;
+    spies: { [K in keyof SidepanelCommandDeps]: ReturnType<typeof vi.fn> };
+  } => {
+    const openStandalone = vi.fn();
+    const openOptions = vi.fn();
+    const toggleTheme = vi.fn();
+    const reloadExtension = vi.fn();
+    return {
+      deps: { openStandalone, openOptions, toggleTheme, reloadExtension },
+      spies: { openStandalone, openOptions, toggleTheme, reloadExtension },
+    };
+  };
+
+  beforeEach(() => {
+    // Reset CommandRegistry between tests.
+    for (const cmd of CommandRegistry.getAll()) {
+      CommandRegistry.unregister(cmd.id);
+    }
+  });
+
+  it('registers exactly the 4-command Flow-10 base set in the documented order', () => {
+    const { deps } = makeDeps();
+    registerSidepanelCommands(deps);
+
+    const ids = CommandRegistry.getAll().map((c) => c.id);
+    expect(ids).toEqual(SIDEPANEL_COMMAND_IDS);
+  });
+
+  it('each registered command carries the name/category required by UI-SPEC Copywriting Contract', () => {
+    const { deps } = makeDeps();
+    registerSidepanelCommands(deps);
+
+    const get = (id: string) => CommandRegistry.get(id);
+    expect(get('open-standalone-view')?.name).toBe('Open Standalone view');
+    expect(get('open-standalone-view')?.category).toBe('Navigation');
+
+    expect(get('open-options')?.name).toBe('Open Options');
+    expect(get('open-options')?.category).toBe('Navigation');
+
+    expect(get('toggle-theme')?.name).toBe('Toggle theme');
+    expect(get('toggle-theme')?.category).toBe('Theme');
+
+    expect(get('reload-extension')?.name).toBe('Reload extension');
+    expect(get('reload-extension')?.category).toBe('Extension');
+  });
+
+  it('returned cleanup unregisters all 4 ids (no leftover registrations, no throw on subsequent register)', () => {
+    const { deps } = makeDeps();
+    const cleanup = registerSidepanelCommands(deps);
+    expect(CommandRegistry.getAll()).toHaveLength(4);
+
+    cleanup();
+
+    expect(CommandRegistry.getAll()).toHaveLength(0);
+
+    // RE-registration must NOT throw — the cleanup ran, so no duplicate.
+    expect(() => registerSidepanelCommands(deps)).not.toThrow();
+  });
+
+  it('invoking open-standalone-view.action calls deps.openStandalone exactly once', () => {
+    const { deps, spies } = makeDeps();
+    registerSidepanelCommands(deps);
+    CommandRegistry.get('open-standalone-view')!.action();
+    expect(spies.openStandalone).toHaveBeenCalledTimes(1);
+    expect(spies.openOptions).not.toHaveBeenCalled();
+    expect(spies.toggleTheme).not.toHaveBeenCalled();
+    expect(spies.reloadExtension).not.toHaveBeenCalled();
+  });
+
+  it('invoking open-options.action calls deps.openOptions exactly once', () => {
+    const { deps, spies } = makeDeps();
+    registerSidepanelCommands(deps);
+    CommandRegistry.get('open-options')!.action();
+    expect(spies.openOptions).toHaveBeenCalledTimes(1);
+  });
+
+  it('invoking toggle-theme.action calls deps.toggleTheme exactly once', () => {
+    const { deps, spies } = makeDeps();
+    registerSidepanelCommands(deps);
+    CommandRegistry.get('toggle-theme')!.action();
+    expect(spies.toggleTheme).toHaveBeenCalledTimes(1);
+  });
+
+  it('invoking reload-extension.action calls deps.reloadExtension exactly once (destructive; explicit-only per REQ-F12)', () => {
+    const { deps, spies } = makeDeps();
+    registerSidepanelCommands(deps);
+    CommandRegistry.get('reload-extension')!.action();
+    expect(spies.reloadExtension).toHaveBeenCalledTimes(1);
+  });
+
+  it('registering twice without cleanup throws on the duplicate id (CommandRegistry contract)', () => {
+    const { deps } = makeDeps();
+    registerSidepanelCommands(deps);
+    expect(() => registerSidepanelCommands(deps)).toThrow(/Command already registered/);
+  });
+
+  it('CommandRegistry.search("") returns the 4 commands in registration order', () => {
+    const { deps } = makeDeps();
+    registerSidepanelCommands(deps);
+    const results = CommandRegistry.search('');
+    expect(results.map((c) => c.id)).toEqual(SIDEPANEL_COMMAND_IDS);
+  });
+
+  it('does NOT register a focus-side-panel command (the user is already in the Side Panel)', () => {
+    const { deps } = makeDeps();
+    registerSidepanelCommands(deps);
+    expect(CommandRegistry.get('focus-side-panel')).toBeUndefined();
   });
 });
