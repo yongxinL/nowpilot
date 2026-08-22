@@ -1,6 +1,7 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
+import { chromeStorageAdapter } from '../theme/chromeStorageAdapter';
 
 export type ActiveSurface = 'sidepanel' | 'full-app';
 
@@ -46,6 +47,24 @@ const initialState: WorkspaceStateData = {
   openedFullAppTabId: null,
   version: 0,
 };
+
+/**
+ * D-22 / H1: throw-free no-op migration for the WorkspaceStore persist
+ * config. v1 IS the current schema — a v1 blob (or an unversioned legacy
+ * blob from before Plan 01-04 adopted chromeStorageAdapter) is returned
+ * unchanged so existing user data hydrates without disruption.
+ *
+ * This is the third and final persisted store to gain the
+ * version/migrate scaffold (`useExtensionStore` and `ThemeStore` landed
+ * it in Plan 01-01). The shape of `WorkspaceStateData` is unchanged, so
+ * the no-op is genuinely a no-op.
+ */
+export function workspaceMigrate(persisted: unknown, version: number): unknown {
+  if (persisted && typeof persisted === 'object') {
+    return persisted;
+  }
+  return {};
+}
 
 export const useWorkspaceStore = create<WorkspaceStore>()(
   persist(
@@ -106,6 +125,13 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
     })),
     {
       name: 'np_workspace_store',
+      // H1: WorkspaceStore previously had NO `storage:` key — zustand's
+      // implicit default is a `localStorage`-backed adapter, which is
+      // wrong for an extension: it (a) loses data when the service worker
+      // is the only context writing, (b) bypasses the debounced
+      // chromeStorageAdapter that useExtensionStore + ThemeStore now
+      // share. This line puts WorkspaceStore on the same choke point.
+      storage: createJSONStorage(() => chromeStorageAdapter),
       partialize: (state) => ({
         workspaceId: state.workspaceId,
         conversationId: state.conversationId,
@@ -116,6 +142,11 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
         openedFullAppTabId: state.openedFullAppTabId,
         version: state.version,
       }),
+      // D-22: zustand-persist schema version. SEPARATE axis from
+      // IndexedDB `DB_VERSION` (§20.4) — do not conflate when numbering
+      // later migrations (A5).
+      version: 1,
+      migrate: workspaceMigrate,
     },
   ),
 );

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useThemeStore, themeMigrate } from '../../../src/core/theme/ThemeStore';
-import { chromeStorageAdapter, syncStorageAdapter } from '../../../src/core/theme/chromeStorageAdapter';
+import { chromeStorageAdapter, syncStorageAdapter, flushPendingWrites, __test__ } from '../../../src/core/theme/chromeStorageAdapter';
 import { useExtensionStore } from '../../../src/store/useExtensionStore';
 
 describe('ThemeStore', () => {
@@ -58,6 +58,9 @@ describe('chromeStorageAdapter', () => {
     const map = (globalThis as any).__chromeStorageMap;
     if (map) map.clear();
     vi.clearAllMocks();
+    // D-22: clear any pending debounced writes from prior tests so
+    // each test asserts on an empty starting state.
+    __test__.resetPendingState();
   });
 
   it('getItem returns null for missing key', async () => {
@@ -95,6 +98,9 @@ describe('chromeStorageAdapter', () => {
   it('delegates to chrome.storage.local.set', async () => {
     const setSpy = vi.spyOn(chrome.storage.local, 'set');
     await chromeStorageAdapter.setItem('spy_key', '"value"');
+    // D-22: setItem is trailing-debounced; force the flush so the spy
+    // assertion sees the call without waiting on real wall-clock time.
+    await flushPendingWrites();
     expect(setSpy).toHaveBeenCalledWith({ spy_key: '"value"' });
   });
 
@@ -116,11 +122,16 @@ describe('syncStorageAdapter (D-10 — chrome.storage.sync target for ThemeStore
     const map = (globalThis as any).__chromeStorageMap;
     if (map) map.clear();
     vi.clearAllMocks();
+    __test__.resetPendingState();
   });
 
   it('delegates to chrome.storage.sync.set', async () => {
     const setSpy = vi.spyOn(chrome.storage.sync, 'set');
     await syncStorageAdapter.setItem('np_theme', '"value"');
+    // D-22: setItem is trailing-debounced — force flush for the spy
+    // assertion (otherwise spy.toHaveBeenCalledWith runs against an
+    // empty mock).
+    await flushPendingWrites();
     expect(setSpy).toHaveBeenCalledWith({ np_theme: '"value"' });
   });
 
@@ -138,6 +149,8 @@ describe('syncStorageAdapter (D-10 — chrome.storage.sync target for ThemeStore
 
   it('round-trips through sync store', async () => {
     await syncStorageAdapter.setItem('np_theme', '"light"');
+    // getItem short-circuits to the pending map before the debounce fires,
+    // so this assertion holds without an explicit flush.
     const raw = await syncStorageAdapter.getItem('np_theme');
     expect(raw).toBe('"light"');
   });
@@ -148,6 +161,7 @@ describe('ThemeStore persist — D-10 storage key + version/migrate', () => {
     const map = (globalThis as any).__chromeStorageMap;
     if (map) map.clear();
     vi.clearAllMocks();
+    __test__.resetPendingState();
   });
 
   // D-10 — setMode must persist via the sync adapter under key 'np_theme',
@@ -157,8 +171,11 @@ describe('ThemeStore persist — D-10 storage key + version/migrate', () => {
     const localSetSpy = vi.spyOn(chrome.storage.local, 'set');
 
     useThemeStore.getState().setMode('dark');
-    // Allow zustand's async persist microtask to flush.
+    // Zustand's persist middleware schedules the chrome.storage write
+    // asynchronously (one microtask + the adapter's 300ms debounce). Let
+    // the microtask reach `syncStorageAdapter.setItem` first, THEN flush.
     await new Promise((r) => setTimeout(r, 0));
+    await flushPendingWrites();
 
     const syncCalls = syncSetSpy.mock.calls.flatMap(([items]) => Object.keys(items ?? {}));
     expect(syncCalls).toContain('np_theme');

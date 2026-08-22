@@ -10,7 +10,11 @@ import { testProviderConnection } from '../../../src/services/aiProvider';
  * so the old "fallback defaults" path is unreachable from this entry point.
  */
 describe('testProviderConnection (D-12 / T-01-10 — real, error-surfacing connection test)', () => {
-  let fetchSpy: ReturnType<typeof vi.spyOn>;
+  // `any` here is intentional: the test mocks the full `fetch` function and
+  // asserts on the resolved value. The signature varies by overload
+  // (RequestInfo | URL, with/without init) and vitest's MockInstance type
+  // narrows it too aggressively for our purposes.
+  let fetchSpy: any;
 
   beforeEach(() => {
     fetchSpy = vi.spyOn(globalThis, 'fetch');
