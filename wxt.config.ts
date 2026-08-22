@@ -28,17 +28,14 @@ export default defineConfig({
     name: 'NowPilot',
     description: 'Privacy-first AI assistant and personal knowledge platform for Chrome',
     version: '0.1.0',
-    permissions: [
-      'sidePanel',
-      'storage',
-      'cookies',
-      'alarms',
-      'tabs',
-      'scripting',
-      'contextMenus',
-      'notifications',
-      'declarativeNetRequest',
-    ],
+    // Least-privilege Phase-1 manifest permissions per D-19a (REQ-R21).
+    // Authoritative Phase-1 permission set is exactly the 3 entries below.
+    // Do NOT re-add any non-Phase-1 permission to this array in a later
+    // wave; the spec's six forbidden permissions re-add at their owning
+    // phases ONLY via chrome.permissions.request() / optional_permissions,
+    // never as a blanket manifest re-add (see 01-CONTEXT.md D-19a).
+    // host_permissions stays limited to ServiceNow domains only — never all_urls.
+    permissions: ['sidePanel', 'storage', 'tabs'],
     host_permissions: [
       '*://*.service-now.com/*',
       '*://support.servicenow.com/*',
