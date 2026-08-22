@@ -96,7 +96,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
                     className="border border-zinc-200 dark:border-zinc-700/80 bg-white dark:bg-zinc-900 rounded-2xl overflow-hidden max-w-sm shadow-2xs p-1"
                   >
                     <img
-                      src={img.thumbnail || img.url || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400&auto=format&fit=crop&q=80'}
+                      src={img.thumbnail || img.url || ''}
                       alt={img.title}
                       className="w-full h-auto max-h-60 object-cover rounded-xl"
                     />

@@ -231,7 +231,6 @@ export const SidepanelChat: React.FC<SidepanelChatProps> = ({
         id: 'cut_' + Date.now(),
         type: 'screen_cut',
         title: 'Screen snippet (Captured)',
-        thumbnail: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80',
       });
       antMessage.success({ content: 'Screen snippet attached!', key: 'screencut' });
     }, 1000);

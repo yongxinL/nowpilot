@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
-import { App as AntdApp, Layout, Segmented, Typography, Tag, theme } from 'antd';
+import { App as AntdApp, Layout, Segmented, Typography, theme } from 'antd';
 import { AppstoreOutlined, MessageOutlined, SettingOutlined } from '@ant-design/icons';
 import { StandaloneWorkspace } from './components/standalone/StandaloneWorkspace';
 import { SidepanelChat } from './components/chat/SidepanelChat';
@@ -128,17 +128,6 @@ const AppShell: React.FC = () => {
           <Text strong style={{ fontSize: 14, color: token.colorText }}>
             NowPilot
           </Text>
-          <Tag
-            style={{
-              margin: 0,
-              backgroundColor: `${token.colorPrimary}18`,
-              borderColor: `${token.colorPrimary}40`,
-              color: token.colorPrimary,
-              fontWeight: 500,
-            }}
-          >
-            Default AntD v6 & X
-          </Tag>
         </div>
 
         <div className="flex items-center gap-3">

@@ -125,6 +125,11 @@ export interface ProviderConfig {
   language: string;
   sidepanelPosition: 'Right' | 'Left';
   chatGptWebappEnabled: boolean;
+  // D-12: explicit flag controlling whether `simulateStreamResponse` (the
+  // canned critical-thinking / "Good morning" response) is reachable.
+  // The flag is gated by `import.meta.env.DEV` at the simulator call
+  // sites — neither flag alone is sufficient. Default: false (no demo).
+  demoMode?: boolean;
   translateService?: string;
   translateTargetLang?: 'English' | 'Simplified Chinese' | 'Traditional Chinese' | 'Japanese';
   translateDisplayMode?: 'Bilingual' | 'Translation only';

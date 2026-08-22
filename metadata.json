@@ -1,6 +1,5 @@
 {
   "name": "NowPilot",
   "description": "All-in-one AI assistant extension featuring a standalone workspace, sidepanel chat, multi-provider model routing, and unified theme customization across all surfaces.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "requestFramePermissions": []
 }
