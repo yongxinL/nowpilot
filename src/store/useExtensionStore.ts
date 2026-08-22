@@ -576,15 +576,12 @@ export const useExtensionStore = create<ExtensionState>()(
         activeSession: INITIAL_SESSIONS[0],
 
         updateConfig: (updates) => {
+          // D-10: duplicate theme-state bridge deleted. ThemeStore is the
+          // single source of truth for the active theme; `config.themeMode`
+          // is now a read-only field, no longer drives `useThemeStore.setMode`.
           set((state) => {
             Object.assign(state.config, updates);
           });
-          if (updates.themeMode) {
-            const targetMode = updates.themeMode.toLowerCase() as ThemeMode;
-            if (useThemeStore.getState().mode !== targetMode) {
-              useThemeStore.getState().setMode(targetMode);
-            }
-          }
         },
 
         setActiveSessionId: (id) => {
