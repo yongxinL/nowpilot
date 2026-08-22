@@ -2,6 +2,7 @@ import React from 'react';
 import { Tooltip, theme } from 'antd';
 import { BulbOutlined } from '@ant-design/icons';
 import { NowPilotAvatar } from '../common/NowPilotAvatar';
+import { ThemeToggle } from '../common/ThemeToggle';
 
 interface ChatHeaderProps {
   onOpenOptions?: () => void;
@@ -32,6 +33,11 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
       </div>
 
       <div className="flex items-center gap-1">
+        {/* Plan 01-07: visible Segmented theme control (D-10 UI half).
+            Mounted identically in WorkspaceSidebar for the Standalone
+            top chrome (APPR-04 — no per-surface copy). */}
+        <ThemeToggle />
+
         {/* Onboarding Tour */}
         <Tooltip title="Onboarding Tour">
           <button

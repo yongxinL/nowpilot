@@ -3,6 +3,7 @@ import { Tooltip, Popover, Button, theme } from 'antd';
 import { SettingOutlined, RightOutlined, CheckCircleFilled } from '@ant-design/icons';
 import { NowPilotAvatar } from '../common/NowPilotAvatar';
 import { UserAvatar } from '../common/UserAvatar';
+import { ThemeToggle } from '../common/ThemeToggle';
 
 export type WorkspaceTab = 'Chat' | 'Note' | 'Write' | 'Tools' | 'Teams';
 
@@ -301,6 +302,23 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
             )}
           </div>
         )}
+
+        {/* Plan 01-07: same Segmented theme control as the Side Panel —
+            mounted in the top chrome (APPR-04). In collapsed mode it
+            tucks under the avatar with `width: 100%` so the segmented
+            rows align with the icon buttons below. */}
+        <div
+          style={{
+            width: '100%',
+            display: 'flex',
+            justifyContent: 'center',
+            marginBottom: token.padding,
+            paddingLeft: token.paddingXXS,
+            paddingRight: token.paddingXXS,
+          }}
+        >
+          <ThemeToggle />
+        </div>
 
         {/* Navigation Menu Items */}
         <nav

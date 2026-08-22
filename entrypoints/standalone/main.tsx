@@ -8,6 +8,7 @@ import { useThemeStore, type ThemeMode } from '../../src/core/theme/ThemeStore';
 import { ThemeProvider } from '../../src/components/ThemeProvider';
 import { registerStandaloneCommands } from '../../src/core/commands/registerWorkspaceCommands';
 import { openOptions } from '../../src/core/workspace/WorkspaceRouter';
+import { applyThemeToSync } from '../../src/core/theme/ThemeSync';
 import '../../src/index.css';
 
 const handleOpenOptions = () => {
@@ -45,6 +46,11 @@ const StandaloneApp = () => {
         const cur = useThemeStore.getState().mode;
         const next = MODE_CYCLE[(MODE_CYCLE.indexOf(cur) + 1) % MODE_CYCLE.length];
         useThemeStore.getState().setMode(next);
+        // Cross-surface propagation via chrome.storage.onChanged (D-10 UI half).
+        // The local BroadcastBus path in `setMode` stays as the auxiliary
+        // same-window fast path; this write lights up the other surface's
+        // `startThemeOnChangedSync` listener.
+        void applyThemeToSync(next, useThemeStore.getState().pack);
         setPaletteOpen(false);
       },
       reloadExtension: () => {

@@ -9,6 +9,7 @@ import { ThemeProvider } from '../../src/components/ThemeProvider';
 import { openStandalone, openOptions } from '../../src/core/workspace/WorkspaceRouter';
 import { useWorkspaceStore } from '../../src/core/workspace/WorkspaceStore';
 import { registerSidepanelCommands } from '../../src/core/commands/registerWorkspaceCommands';
+import { applyThemeToSync } from '../../src/core/theme/ThemeSync';
 import { debugLog } from '../../src/core/log/debugLog';
 import '../../src/index.css';
 
@@ -74,6 +75,11 @@ const SidepanelApp = () => {
         const cur = useThemeStore.getState().mode;
         const next = MODE_CYCLE[(MODE_CYCLE.indexOf(cur) + 1) % MODE_CYCLE.length];
         useThemeStore.getState().setMode(next);
+        // Cross-surface propagation via chrome.storage.onChanged (D-10 UI half).
+        // The local BroadcastBus path in `setMode` stays as the auxiliary
+        // same-window fast path; this write lights up the other surface's
+        // `startThemeOnChangedSync` listener.
+        void applyThemeToSync(next, useThemeStore.getState().pack);
         setPaletteOpen(false);
       },
       reloadExtension: () => {
