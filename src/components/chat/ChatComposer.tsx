@@ -1,5 +1,5 @@
 import React from 'react';
-import { Tooltip } from 'antd';
+import { Tooltip, theme } from 'antd';
 import {
   HistoryOutlined,
   PlusSquareOutlined,
@@ -70,13 +70,37 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
   onOpenOnboarding,
   onOpenFeedback,
 }) => {
+  const { token } = theme.useToken();
   return (
-    <div className="bg-transparent p-0 flex flex-col gap-1.5">
+    <div
+      style={{
+        background: 'transparent',
+        padding: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 6,
+      }}
+    >
       {/* Sidepanel-only Top Toolbar (32px) */}
       {!isStandalone && (
-        <div className="flex items-center justify-between px-0.5 h-8">
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingLeft: 2,
+            paddingRight: 2,
+            height: 32,
+          }}
+        >
           {/* Left: Model Selector & Attach */}
-          <div className="flex items-center gap-1.5">
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+          >
             <ModelSelector
               selectedModelId={config.selectedModel}
               onSelectModel={(m) => onUpdateConfig({ selectedModel: m })}
@@ -92,14 +116,31 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
           </div>
 
           {/* Right: Icon-only actions (Chat history, New chat) */}
-          <div className="flex items-center gap-1">
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+            }}
+          >
             <Tooltip title="Chat history">
               <button
                 type="button"
                 onClick={onOpenHistory}
-                className="p-1.5 hover:bg-zinc-200/70 dark:hover:bg-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-300 transition-colors cursor-pointer flex items-center justify-center"
+                style={{
+                  padding: 6,
+                  borderRadius: 8,
+                  color: 'var(--muted-foreground)',
+                  transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'transparent',
+                  border: 'none',
+                }}
               >
-                <HistoryOutlined className="text-base" />
+                <HistoryOutlined style={{ fontSize: 16 }} />
               </button>
             </Tooltip>
 
@@ -107,9 +148,20 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
               <button
                 type="button"
                 onClick={onCreateNewSession}
-                className="p-1.5 hover:bg-zinc-200/70 dark:hover:bg-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-300 transition-colors cursor-pointer flex items-center justify-center"
+                style={{
+                  padding: 6,
+                  borderRadius: 8,
+                  color: 'var(--muted-foreground)',
+                  transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'transparent',
+                  border: 'none',
+                }}
               >
-                <PlusSquareOutlined className="text-base" />
+                <PlusSquareOutlined style={{ fontSize: 16 }} />
               </button>
             </Tooltip>
           </div>
@@ -124,12 +176,41 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
         open={slashOpen}
         onOpenChange={onOpenSlashChange}
       >
-        <div className="relative bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/90 dark:border-zinc-700/80 p-3.5 min-h-[120px] flex flex-col justify-between shadow-2xs focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/15 transition-all">
+        <div
+          style={{
+            position: 'relative',
+            background: 'var(--card)',
+            borderRadius: 16,
+            border: '1px solid var(--border)',
+            padding: 14,
+            minHeight: 120,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+            transition: 'all 200ms ease',
+          }}
+        >
           {/* Standalone Top Toolbar inside Card */}
           {isStandalone && (
-            <div className="flex items-center justify-between pb-2 mb-1 border-b border-zinc-100 dark:border-zinc-800/80">
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                paddingBottom: 8,
+                marginBottom: 4,
+                borderBottom: '1px solid var(--border)',
+              }}
+            >
               {/* Left: Pill Model Selector & Add Attachment */}
-              <div className="flex items-center gap-2">
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                }}
+              >
                 <ModelSelector
                   selectedModelId={config.selectedModel}
                   onSelectModel={(m) => onUpdateConfig({ selectedModel: m })}
@@ -146,14 +227,31 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
               </div>
 
               {/* Right: History & New chat */}
-              <div className="flex items-center gap-1.5">
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
                 <Tooltip title="Chat history">
                   <button
                     type="button"
                     onClick={onOpenHistory}
-                    className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 rounded-lg transition-colors cursor-pointer flex items-center justify-center"
+                    style={{
+                      padding: 6,
+                      color: 'var(--muted-foreground)',
+                      borderRadius: 8,
+                      transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: 'transparent',
+                      border: 'none',
+                    }}
                   >
-                    <HistoryOutlined className="text-sm" />
+                    <HistoryOutlined style={{ fontSize: 14 }} />
                   </button>
                 </Tooltip>
 
@@ -161,9 +259,20 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
                   <button
                     type="button"
                     onClick={onCreateNewSession}
-                    className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 rounded-lg transition-colors cursor-pointer flex items-center justify-center"
+                    style={{
+                      padding: 6,
+                      color: 'var(--muted-foreground)',
+                      borderRadius: 8,
+                      transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: 'transparent',
+                      border: 'none',
+                    }}
                   >
-                    <PlusSquareOutlined className="text-sm" />
+                    <PlusSquareOutlined style={{ fontSize: 14 }} />
                   </button>
                 </Tooltip>
               </div>
@@ -171,7 +280,13 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
           )}
 
           {/* Top Section inside Input Area */}
-          <div className="flex-1 flex flex-col">
+          <div
+            style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+          >
             {/* Pinned Tabs Bar */}
             {!isStandalone && (
               <PinnedTabsBar
@@ -206,22 +321,62 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
               }}
               placeholder={disabled ? 'Standalone view is active' : 'Ask anything, @ models, / prompts'}
               disabled={disabled}
-              className="w-full bg-transparent border-none outline-none resize-none text-zinc-800 dark:text-zinc-100 placeholder-zinc-400 text-xs sm:text-sm font-sans flex-1 min-h-[64px] disabled:cursor-not-allowed disabled:opacity-50"
+              style={{
+                width: '100%',
+                background: 'transparent',
+                border: 'none',
+                outline: 'none',
+                resize: 'none',
+                color: 'var(--foreground)',
+                fontSize: 12,
+                flex: 1,
+                minHeight: 64,
+                cursor: disabled ? 'not-allowed' : undefined,
+                opacity: disabled ? 0.5 : 1,
+              }}
               rows={3}
             />
           </div>
 
           {/* Bottom Actions Row inside Input Area */}
-          <div className="flex items-center justify-between pt-1">
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingTop: 4,
+            }}
+          >
             {/* Left: Quick chips if pinned context exists */}
-            <div className="flex items-center gap-1.5 overflow-x-auto text-xs">
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                overflowX: 'auto',
+                fontSize: 12,
+              }}
+            >
               {((!isStandalone && availableTabs.some((t) => t.selected)) || activeAttachments.length > 0) &&
                 ['For YouTube', 'Summarize', 'Explain'].map((chip, idx) => (
                   <button
                     key={idx}
                     type="button"
                     onClick={() => onChangeInputPrompt(inputPrompt + (inputPrompt ? ' ' : '') + chip)}
-                    className="px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-md text-[11px] font-medium text-zinc-600 dark:text-zinc-300 transition-colors"
+                    style={{
+                      paddingLeft: 8,
+                      paddingRight: 8,
+                      paddingTop: 2,
+                      paddingBottom: 2,
+                      background: 'var(--muted)',
+                      borderRadius: 6,
+                      fontSize: 11,
+                      fontWeight: 500,
+                      color: 'var(--muted-foreground)',
+                      transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+                      border: 'none',
+                      cursor: 'pointer',
+                    }}
                   >
                     {chip}
                   </button>
@@ -233,8 +388,23 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
               type="button"
               disabled={disabled || (!inputPrompt.trim() && activeAttachments.length === 0)}
               onClick={() => onSend()}
-              className="w-8 h-8 rounded-full text-white flex items-center justify-center shadow-xs cursor-pointer disabled:cursor-not-allowed disabled:opacity-40 transition-all shrink-0 ml-auto"
-              style={{ backgroundColor: 'var(--np-primary, #1677ff)' }}
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 9999,
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: token.boxShadow,
+                cursor: 'pointer',
+                transition: 'all 200ms ease',
+                flexShrink: 0,
+                marginLeft: 'auto',
+                backgroundColor: 'var(--np-primary, #1677ff)',
+                border: 'none',
+                opacity: disabled || (!inputPrompt.trim() && activeAttachments.length === 0) ? 0.4 : 1,
+              }}
               title="Send message (Enter)"
             >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -247,9 +417,30 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
       </SlashCommandModal>
 
       {/* 5. Status Bar (28px) */}
-      <div className="flex items-center justify-between px-1 text-xs text-zinc-500 dark:text-zinc-400 h-7 select-none">
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingLeft: 4,
+          paddingRight: 4,
+          fontSize: 12,
+          color: 'var(--muted-foreground)',
+          height: 28,
+          userSelect: 'none',
+        }}
+      >
         {/* Left: Active Provider with Green Status Indicator */}
-        <div className="flex items-center gap-1.5 font-medium text-xs text-zinc-700 dark:text-zinc-300">
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            fontWeight: 500,
+            fontSize: 12,
+            color: 'var(--muted-foreground)',
+          }}
+        >
           <span>
             {(() => {
               const selectedModelObj = AVAILABLE_MODELS.find((m) => m.id === config.selectedModel) || AVAILABLE_MODELS[0];
@@ -261,27 +452,65 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
               return 'OpenAI';
             })()}
           </span>
-          <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block shadow-2xs"></span>
+          <span
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: 9999,
+              background: '#10b981',
+              display: 'inline-block',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+            }}
+          ></span>
         </div>
 
         {/* Right: Help & Feedback Icons */}
-        <div className="flex items-center gap-2 text-zinc-400">
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            color: 'var(--muted-foreground)',
+          }}
+        >
           <Tooltip title="Help center">
             <button
               type="button"
               onClick={onOpenOnboarding}
-              className="hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors p-1 rounded-md cursor-pointer flex items-center justify-center"
+              style={{
+                transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+                padding: 4,
+                borderRadius: 6,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: 'transparent',
+                border: 'none',
+                color: 'inherit',
+              }}
             >
-              <QuestionCircleOutlined className="text-sm" />
+              <QuestionCircleOutlined style={{ fontSize: 14 }} />
             </button>
           </Tooltip>
           <Tooltip title="Feedback">
             <button
               type="button"
               onClick={onOpenFeedback}
-              className="hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors p-1 rounded-md cursor-pointer flex items-center justify-center"
+              style={{
+                transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+                padding: 4,
+                borderRadius: 6,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: 'transparent',
+                border: 'none',
+                color: 'inherit',
+              }}
             >
-              <MailOutlined className="text-sm" />
+              <MailOutlined style={{ fontSize: 14 }} />
             </button>
           </Tooltip>
         </div>

@@ -64,26 +64,53 @@ export const PromptManagerModal: React.FC<PromptManagerModalProps> = ({
       open={open}
       onCancel={onClose}
       footer={null}
-      closeIcon={<CloseOutlined className="text-zinc-400" />}
+      closeIcon={<CloseOutlined style={{ color: 'var(--muted-foreground)' }} />}
       width={560}
-      title={<span className="font-bold text-base">Prompt Manager</span>}
+      title={<span style={{ fontWeight: 700, fontSize: 16 }}>Prompt Manager</span>}
     >
       {/* Category Tabs & Add Button */}
-      <div className="flex items-center justify-between mb-4 border-b border-zinc-100 dark:border-zinc-800 pb-3">
-        <div className="flex items-center gap-2">
-          {(['Chat/Ask', 'Reading', 'Writing'] as PromptCategory[]).map(cat => (
-            <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors ${
-                activeCategory === cat
-                  ? 'bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300'
-                  : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: 16,
+          borderBottom: '1px solid var(--border)',
+          paddingBottom: 12,
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}
+        >
+          {(['Chat/Ask', 'Reading', 'Writing'] as PromptCategory[]).map(cat => {
+            const isActive = activeCategory === cat;
+            return (
+              <button
+                key={cat}
+                onClick={() => setActiveCategory(cat)}
+                style={{
+                  paddingLeft: 12,
+                  paddingRight: 12,
+                  paddingTop: 6,
+                  paddingBottom: 6,
+                  borderRadius: 8,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+                  background: isActive ? '#f3e8ff' : 'transparent',
+                  color: isActive ? '#6b21a8' : 'var(--muted-foreground)',
+                  border: 'none',
+                }}
+              >
+                {cat}
+              </button>
+            );
+          })}
         </div>
         <Button
           type="primary"
@@ -103,7 +130,15 @@ export const PromptManagerModal: React.FC<PromptManagerModalProps> = ({
 
       {/* Create / Edit Form Drawer */}
       {isCreating && (
-        <div className="p-4 bg-zinc-50 dark:bg-zinc-800/80 rounded-xl mb-4 border border-zinc-200 dark:border-zinc-700">
+        <div
+          style={{
+            padding: 16,
+            background: 'var(--muted)',
+            borderRadius: 12,
+            marginBottom: 16,
+            border: '1px solid var(--border)',
+          }}
+        >
           <Form form={form} layout="vertical" size="small">
             <Form.Item name="title" label="Title" rules={[{ required: true, message: 'Please enter title' }]}>
               <Input placeholder="e.g. Summarize text" />
@@ -111,7 +146,13 @@ export const PromptManagerModal: React.FC<PromptManagerModalProps> = ({
             <Form.Item name="content" label="Prompt Content" rules={[{ required: true, message: 'Please enter content' }]}>
               <Input.TextArea rows={3} placeholder="Prompt template..." />
             </Form.Item>
-            <div className="grid grid-cols-2 gap-3">
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: 12,
+              }}
+            >
               <Form.Item name="category" label="Category">
                 <Select
                   options={[
@@ -125,7 +166,14 @@ export const PromptManagerModal: React.FC<PromptManagerModalProps> = ({
                 <Switch />
               </Form.Item>
             </div>
-            <div className="flex justify-end gap-2 mt-2">
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: 8,
+                marginTop: 8,
+              }}
+            >
               <Button size="small" onClick={() => setIsCreating(false)}>
                 Cancel
               </Button>
@@ -138,30 +186,93 @@ export const PromptManagerModal: React.FC<PromptManagerModalProps> = ({
       )}
 
       {/* Prompts List Columns: Show in list vs Hide from list */}
-      <div className="grid grid-cols-2 gap-4 max-h-80 overflow-y-auto pr-1">
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: 16,
+          maxHeight: 320,
+          overflowY: 'auto',
+          paddingRight: 4,
+        }}
+      >
         <div>
-          <Text type="secondary" className="text-xs font-semibold block mb-2 uppercase tracking-wider">
+          <Text
+            type="secondary"
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              display: 'block',
+              marginBottom: 8,
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+            }}
+          >
             Show in list
           </Text>
-          <div className="space-y-1.5">
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 6,
+            }}
+          >
             {prompts
               .filter(p => p.category === activeCategory && p.showInList)
               .map(p => (
                 <div
                   key={p.id}
-                  className="flex items-center justify-between p-2 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 text-xs"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: 8,
+                    background: 'var(--card)',
+                    borderRadius: 8,
+                    border: '1px solid var(--border)',
+                    fontSize: 12,
+                  }}
                 >
-                  <span className="font-medium text-zinc-800 dark:text-zinc-200 truncate pr-1">{p.title}</span>
-                  <div className="flex items-center gap-1">
+                  <span
+                    style={{
+                      fontWeight: 500,
+                      color: 'var(--foreground)',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      paddingRight: 4,
+                    }}
+                  >
+                    {p.title}
+                  </span>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                    }}
+                  >
                     <button
                       onClick={() => startEdit(p)}
-                      className="p-1 text-zinc-400 hover:text-violet-600 cursor-pointer"
+                      style={{
+                        padding: 4,
+                        color: 'var(--muted-foreground)',
+                        cursor: 'pointer',
+                        background: 'transparent',
+                        border: 'none',
+                      }}
                     >
                       <EditOutlined />
                     </button>
                     <button
                       onClick={() => onDeletePrompt(p.id)}
-                      className="p-1 text-zinc-400 hover:text-red-500 cursor-pointer"
+                      style={{
+                        padding: 4,
+                        color: 'var(--muted-foreground)',
+                        cursor: 'pointer',
+                        background: 'transparent',
+                        border: 'none',
+                      }}
                     >
                       <DeleteOutlined />
                     </button>
@@ -172,21 +283,64 @@ export const PromptManagerModal: React.FC<PromptManagerModalProps> = ({
         </div>
 
         <div>
-          <Text type="secondary" className="text-xs font-semibold block mb-2 uppercase tracking-wider">
+          <Text
+            type="secondary"
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              display: 'block',
+              marginBottom: 8,
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+            }}
+          >
             Hide from list
           </Text>
-          <div className="space-y-1.5">
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 6,
+            }}
+          >
             {prompts
               .filter(p => p.category === activeCategory && !p.showInList)
               .map(p => (
                 <div
                   key={p.id}
-                  className="flex items-center justify-between p-2 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg border border-zinc-200/60 dark:border-zinc-800 text-xs text-zinc-500"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: 8,
+                    background: 'var(--muted)',
+                    borderRadius: 8,
+                    border: '1px solid var(--border)',
+                    fontSize: 12,
+                    color: 'var(--muted-foreground)',
+                  }}
                 >
-                  <span className="truncate pr-1">{p.title}</span>
+                  <span
+                    style={{
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      paddingRight: 4,
+                    }}
+                  >
+                    {p.title}
+                  </span>
                   <button
                     onClick={() => onUpdatePrompt(p.id, { showInList: true })}
-                    className="text-[10px] text-violet-600 hover:underline cursor-pointer"
+                    style={{
+                      fontSize: 10,
+                      color: '#7c3aed',
+                      cursor: 'pointer',
+                      background: 'transparent',
+                      border: 'none',
+                      textDecoration: 'underline',
+                      padding: 0,
+                    }}
                   >
                     Show
                   </button>

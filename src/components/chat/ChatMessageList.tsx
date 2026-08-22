@@ -56,7 +56,19 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
       // 01-UI-SPEC.md. The Phase-1 post-onboarding empty Side Panel state
       // is a single centered caption with no chips / no mascot art — the
       // composer remains enabled (the user can type a first message).
-      <div className="flex flex-col items-center justify-center min-h-[320px] pt-10 sm:pt-20 px-4 w-full">
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: 320,
+          paddingTop: 40,
+          paddingLeft: 16,
+          paddingRight: 16,
+          width: '100%',
+        }}
+      >
         <Typography.Text
           type="secondary"
           style={{ fontSize: 12 }}

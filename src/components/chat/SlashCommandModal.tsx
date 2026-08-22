@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Popover, Tooltip } from 'antd';
+import { Popover, Tooltip, theme } from 'antd';
 import {
   SettingOutlined,
   RightOutlined,
@@ -44,6 +44,7 @@ export const SlashCommandModal: React.FC<SlashCommandModalProps> = ({
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const [hoveredTranslate, setHoveredTranslate] = useState(false);
   const [selectedLangName, setSelectedLangName] = useState('British English');
+  const { token } = theme.useToken();
 
   const isControlled = controlledOpen !== undefined;
   const isOpen = isControlled ? controlledOpen : uncontrolledOpen;
@@ -61,14 +62,14 @@ export const SlashCommandModal: React.FC<SlashCommandModalProps> = ({
   };
 
   const getPromptIcon = (title: string, index: number) => {
-    if (title.toLowerCase().includes('youtube')) return <YoutubeOutlined className="text-red-500 text-sm" />;
-    if (title.toLowerCase().includes('explain')) return <ReadOutlined className="text-emerald-500 text-sm" />;
-    if (title.toLowerCase().includes('translate')) return <TranslationOutlined className="text-indigo-500 text-sm" />;
-    if (title.toLowerCase().includes('improve')) return <EditOutlined className="text-amber-500 text-sm" />;
+    if (title.toLowerCase().includes('youtube')) return <YoutubeOutlined style={{ color: token.colorError, fontSize: 14 }} />;
+    if (title.toLowerCase().includes('explain')) return <ReadOutlined style={{ color: '#10b981', fontSize: 14 }} />;
+    if (title.toLowerCase().includes('translate')) return <TranslationOutlined style={{ color: '#6366f1', fontSize: 14 }} />;
+    if (title.toLowerCase().includes('improve')) return <EditOutlined style={{ color: '#f59e0b', fontSize: 14 }} />;
     if (title.toLowerCase().includes('summarize')) {
-      return index === 1 ? <MailOutlined className="text-blue-500 text-sm" /> : <TagOutlined className="text-violet-500 text-sm" />;
+      return index === 1 ? <MailOutlined style={{ color: '#3b82f6', fontSize: 14 }} /> : <TagOutlined style={{ color: '#8b5cf6', fontSize: 14 }} />;
     }
-    return <CheckCircleOutlined className="text-zinc-400 text-sm" />;
+    return <CheckCircleOutlined style={{ color: 'var(--muted-foreground)', fontSize: 14 }} />;
   };
 
   // Default active list matching screenshot 01-sidepanel-chatPage-slash-modal.png
@@ -82,10 +83,31 @@ export const SlashCommandModal: React.FC<SlashCommandModalProps> = ({
   ];
 
   const menuContent = (
-    <div className="w-64 p-2 relative text-xs bg-white dark:bg-zinc-900 rounded-2xl select-none">
+    <div
+      style={{
+        width: 256,
+        padding: 8,
+        position: 'relative',
+        fontSize: 12,
+        background: 'var(--card)',
+        borderRadius: 16,
+        userSelect: 'none',
+      }}
+    >
       {/* Header */}
-      <div className="flex items-center justify-between px-2 pt-0.5 pb-2 mb-1">
-        <span className="text-[12px] font-medium text-zinc-400 dark:text-zinc-500">Select prompt</span>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingLeft: 8,
+          paddingRight: 8,
+          paddingTop: 2,
+          paddingBottom: 8,
+          marginBottom: 4,
+        }}
+      >
+        <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--muted-foreground)' }}>Select prompt</span>
         <Tooltip title="Manage prompts" placement="top">
           <button
             type="button"
@@ -93,7 +115,16 @@ export const SlashCommandModal: React.FC<SlashCommandModalProps> = ({
               handleOpenChange(false);
               onOpenPromptManager();
             }}
-            className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer transition-colors text-xs"
+            style={{
+              padding: 4,
+              borderRadius: 6,
+              color: 'var(--muted-foreground)',
+              cursor: 'pointer',
+              transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+              fontSize: 12,
+              background: 'transparent',
+              border: 'none',
+            }}
           >
             <SettingOutlined />
           </button>
@@ -101,7 +132,13 @@ export const SlashCommandModal: React.FC<SlashCommandModalProps> = ({
       </div>
 
       {/* Prompts List */}
-      <div className="flex flex-col gap-0.5">
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 2,
+        }}
+      >
         {activePromptItems.map((prompt, idx) => {
           const isTranslate = prompt.id === 'trans';
 
@@ -123,22 +160,58 @@ export const SlashCommandModal: React.FC<SlashCommandModalProps> = ({
                   handleOpenChange(false);
                 }
               }}
-              className={`flex items-center justify-between px-2.5 py-2 hover:bg-zinc-100/90 dark:hover:bg-zinc-800/90 rounded-xl cursor-pointer transition-colors ${
-                isTranslate && hoveredTranslate ? 'bg-zinc-100 dark:bg-zinc-800' : ''
-              }`}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                paddingLeft: 10,
+                paddingRight: 10,
+                paddingTop: 8,
+                paddingBottom: 8,
+                borderRadius: 12,
+                cursor: 'pointer',
+                transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+                background: isTranslate && hoveredTranslate ? 'var(--muted)' : 'transparent',
+              }}
             >
-              <div className="flex items-center gap-2.5 overflow-hidden pr-1">
-                <span className="shrink-0">{getPromptIcon(prompt.title, idx)}</span>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  overflow: 'hidden',
+                  paddingRight: 4,
+                }}
+              >
+                <span style={{ flexShrink: 0 }}>{getPromptIcon(prompt.title, idx)}</span>
                 {isTranslate ? (
-                  <div className="truncate font-medium text-zinc-800 dark:text-zinc-200">
+                  <div
+                    style={{
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      fontWeight: 500,
+                      color: 'var(--foreground)',
+                    }}
+                  >
                     <span>Translate into: </span>
-                    <span className="text-zinc-400 dark:text-zinc-500 font-normal">{prompt.targetLang}</span>
+                    <span style={{ color: 'var(--muted-foreground)', fontWeight: 400 }}>{prompt.targetLang}</span>
                   </div>
                 ) : (
-                  <span className="font-medium text-zinc-800 dark:text-zinc-200 truncate">{prompt.title}</span>
+                  <span
+                    style={{
+                      fontWeight: 500,
+                      color: 'var(--foreground)',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {prompt.title}
+                  </span>
                 )}
               </div>
-              {isTranslate && <RightOutlined className="text-[10px] text-zinc-400 dark:text-zinc-500 shrink-0 ml-1" />}
+              {isTranslate && <RightOutlined style={{ fontSize: 10, color: 'var(--muted-foreground)', flexShrink: 0, marginLeft: 4 }} />}
             </div>
           );
         })}
@@ -149,7 +222,23 @@ export const SlashCommandModal: React.FC<SlashCommandModalProps> = ({
         <div
           onMouseEnter={() => setHoveredTranslate(true)}
           onMouseLeave={() => setHoveredTranslate(false)}
-          className="absolute left-full top-0 ml-2 w-60 p-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-2xl shadow-2xl z-50 flex flex-col gap-1 animate-in fade-in duration-150"
+          className="np-fade-in"
+          style={{
+            position: 'absolute',
+            left: '100%',
+            top: 0,
+            marginLeft: 8,
+            width: 240,
+            padding: 8,
+            background: 'var(--card)',
+            border: '1px solid var(--border)',
+            borderRadius: 16,
+            boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+            zIndex: 50,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 4,
+          }}
         >
           {LANGUAGES.map(lang => {
             const isSelected = selectedLangName === lang.name;
@@ -169,14 +258,21 @@ export const SlashCommandModal: React.FC<SlashCommandModalProps> = ({
                   setHoveredTranslate(false);
                   handleOpenChange(false);
                 }}
-                className={`px-3 py-2 rounded-xl cursor-pointer flex flex-col transition-colors ${
-                  isSelected || lang.name === 'English (India)'
-                    ? 'bg-zinc-100 dark:bg-zinc-800'
-                    : 'hover:bg-zinc-100/80 dark:hover:bg-zinc-800/80'
-                }`}
+                style={{
+                  paddingLeft: 12,
+                  paddingRight: 12,
+                  paddingTop: 8,
+                  paddingBottom: 8,
+                  borderRadius: 12,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+                  background: isSelected || lang.name === 'English (India)' ? 'var(--muted)' : 'transparent',
+                }}
               >
-                <span className="font-semibold text-zinc-800 dark:text-zinc-200 text-xs">{lang.name}</span>
-                <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-normal">{lang.detail}</span>
+                <span style={{ fontWeight: 600, color: 'var(--foreground)', fontSize: 12 }}>{lang.name}</span>
+                <span style={{ fontSize: 10, color: 'var(--muted-foreground)', fontWeight: 400 }}>{lang.detail}</span>
               </div>
             );
           })}
@@ -197,10 +293,28 @@ export const SlashCommandModal: React.FC<SlashCommandModalProps> = ({
       {children || (
         <button
           type="button"
-          className="px-2.5 py-1 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-700/70 dark:hover:bg-zinc-700 rounded-lg text-zinc-700 dark:text-zinc-200 font-medium cursor-pointer transition-colors text-[11px] flex items-center justify-center gap-1 shrink-0"
+          style={{
+            paddingLeft: 10,
+            paddingRight: 10,
+            paddingTop: 4,
+            paddingBottom: 4,
+            background: 'var(--muted)',
+            borderRadius: 8,
+            color: 'var(--muted-foreground)',
+            fontWeight: 500,
+            cursor: 'pointer',
+            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+            fontSize: 11,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 4,
+            flexShrink: 0,
+            border: 'none',
+          }}
           title="More prompts"
         >
-          <EllipsisOutlined className="text-base leading-none" />
+          <EllipsisOutlined style={{ fontSize: 16, lineHeight: 1 }} />
         </button>
       )}
     </Popover>

@@ -36,7 +36,7 @@ export const ActionPanel: React.FC<ActionPanelProps> = ({
   onQuote,
   onSaveToNote,
   onShare,
-  className = '',
+  className,
 }) => {
   const { message: antMessage } = App.useApp();
   const [copied, setCopied] = useState(false);
@@ -103,20 +103,42 @@ export const ActionPanel: React.FC<ActionPanelProps> = ({
   };
 
   // Visibility logic:
-  const visibilityClass = type === 'ai' && isLatest
-    ? 'opacity-90 hover:opacity-100'
-    : 'opacity-0 group-hover:opacity-100 transition-opacity duration-200';
+  const visibilityStyle: React.CSSProperties =
+    type === 'ai' && isLatest
+      ? { opacity: 0.9 }
+      : { opacity: 0, transition: 'opacity 200ms ease' };
 
   if (type === 'user') {
     return (
       <div
-        className={`flex items-center gap-1 mt-1 text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 justify-end ${visibilityClass} ${className}`}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 4,
+          marginTop: 4,
+          color: 'var(--muted-foreground)',
+          justifyContent: 'flex-end',
+          ...visibilityStyle,
+          ...(className ? { className } : {}),
+        }}
       >
         {onEdit && (
           <Tooltip title="Edit">
             <button
               onClick={onEdit}
-              className="p-1 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-md transition-colors text-xs flex items-center justify-center cursor-pointer"
+              style={{
+                padding: 4,
+                borderRadius: 6,
+                transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+                fontSize: 12,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                background: 'transparent',
+                border: 'none',
+                color: 'inherit',
+              }}
             >
               <EditOutlined />
             </button>
@@ -126,9 +148,21 @@ export const ActionPanel: React.FC<ActionPanelProps> = ({
         <Tooltip title="Copy">
           <button
             onClick={handleCopy}
-            className="p-1 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-md transition-colors text-xs flex items-center justify-center cursor-pointer"
+            style={{
+              padding: 4,
+              borderRadius: 6,
+              transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+              fontSize: 12,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              background: 'transparent',
+              border: 'none',
+              color: 'inherit',
+            }}
           >
-            {copied ? <CheckOutlined className="text-emerald-500" /> : <CopyOutlined />}
+            {copied ? <CheckOutlined style={{ color: '#10b981' }} /> : <CopyOutlined />}
           </button>
         </Tooltip>
 
@@ -136,7 +170,19 @@ export const ActionPanel: React.FC<ActionPanelProps> = ({
           <Tooltip title="Quote">
             <button
               onClick={() => onQuote(content)}
-              className="p-1 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-md transition-colors text-xs flex items-center justify-center cursor-pointer"
+              style={{
+                padding: 4,
+                borderRadius: 6,
+                transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+                fontSize: 12,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                background: 'transparent',
+                border: 'none',
+                color: 'inherit',
+              }}
             >
               <MessageOutlined />
             </button>
@@ -146,9 +192,20 @@ export const ActionPanel: React.FC<ActionPanelProps> = ({
         <Tooltip title={speaking ? "Stop speaking" : "Read aloud"}>
           <button
             onClick={handleTTS}
-            className={`p-1 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-md transition-colors text-xs flex items-center justify-center cursor-pointer ${
-              speaking ? 'text-blue-600 dark:text-blue-400 animate-pulse' : ''
-            }`}
+            className={speaking ? 'np-pulse' : undefined}
+            style={{
+              padding: 4,
+              borderRadius: 6,
+              transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+              fontSize: 12,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              background: 'transparent',
+              border: 'none',
+              color: speaking ? '#3b82f6' : 'inherit',
+            }}
           >
             <SoundOutlined />
           </button>
@@ -159,15 +216,35 @@ export const ActionPanel: React.FC<ActionPanelProps> = ({
 
   return (
     <div
-      className={`flex items-center gap-0.5 mt-2 text-zinc-400 dark:text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 ${visibilityClass} ${className}`}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 2,
+        marginTop: 8,
+        color: 'var(--muted-foreground)',
+        ...visibilityStyle,
+        ...(className ? { className } : {}),
+      }}
     >
       {/* 1. Copy */}
       <Tooltip title="Copy">
         <button
           onClick={handleCopy}
-          className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md transition-colors text-xs flex items-center justify-center cursor-pointer"
+          style={{
+            padding: 6,
+            borderRadius: 6,
+            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+            fontSize: 12,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            background: 'transparent',
+            border: 'none',
+            color: 'inherit',
+          }}
         >
-          {copied ? <CheckOutlined className="text-emerald-500" /> : <CopyOutlined />}
+          {copied ? <CheckOutlined style={{ color: '#10b981' }} /> : <CopyOutlined />}
         </button>
       </Tooltip>
 
@@ -176,7 +253,19 @@ export const ActionPanel: React.FC<ActionPanelProps> = ({
         <Tooltip title="Save as a note">
           <button
             onClick={() => onSaveToNote(content)}
-            className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md transition-colors text-xs flex items-center justify-center cursor-pointer"
+            style={{
+              padding: 6,
+              borderRadius: 6,
+              transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+              fontSize: 12,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              background: 'transparent',
+              border: 'none',
+              color: 'inherit',
+            }}
           >
             <FileAddOutlined />
           </button>
@@ -187,7 +276,19 @@ export const ActionPanel: React.FC<ActionPanelProps> = ({
       <Tooltip title="Regenerate response">
         <button
           onClick={onRegenerate}
-          className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md transition-colors text-xs flex items-center justify-center cursor-pointer"
+          style={{
+            padding: 6,
+            borderRadius: 6,
+            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+            fontSize: 12,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            background: 'transparent',
+            border: 'none',
+            color: 'inherit',
+          }}
         >
           <ReloadOutlined />
         </button>
@@ -198,7 +299,19 @@ export const ActionPanel: React.FC<ActionPanelProps> = ({
         <Tooltip title="Quote">
           <button
             onClick={() => onQuote(content)}
-            className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md transition-colors text-xs flex items-center justify-center cursor-pointer"
+            style={{
+              padding: 6,
+              borderRadius: 6,
+              transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+              fontSize: 12,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              background: 'transparent',
+              border: 'none',
+              color: 'inherit',
+            }}
           >
             <MessageOutlined />
           </button>
@@ -209,9 +322,20 @@ export const ActionPanel: React.FC<ActionPanelProps> = ({
       <Tooltip title={speaking ? "Stop speaking" : "Read aloud"}>
         <button
           onClick={handleTTS}
-          className={`p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md transition-colors text-xs flex items-center justify-center cursor-pointer ${
-            speaking ? 'text-blue-600 dark:text-blue-400 animate-pulse' : ''
-          }`}
+          className={speaking ? 'np-pulse' : undefined}
+          style={{
+            padding: 6,
+            borderRadius: 6,
+            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+            fontSize: 12,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            background: 'transparent',
+            border: 'none',
+            color: speaking ? '#3b82f6' : 'inherit',
+          }}
         >
           <SoundOutlined />
         </button>
@@ -221,9 +345,20 @@ export const ActionPanel: React.FC<ActionPanelProps> = ({
       <Tooltip title="Like">
         <button
           onClick={handleLike}
-          className={`p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md transition-colors text-xs flex items-center justify-center cursor-pointer ${
-            liked === true ? 'text-blue-500 font-bold' : ''
-          }`}
+          style={{
+            padding: 6,
+            borderRadius: 6,
+            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+            fontSize: 12,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            background: 'transparent',
+            border: 'none',
+            color: liked === true ? '#3b82f6' : 'inherit',
+            fontWeight: liked === true ? 700 : 400,
+          }}
         >
           {liked === true ? <LikeFilled /> : <LikeOutlined />}
         </button>
@@ -233,9 +368,20 @@ export const ActionPanel: React.FC<ActionPanelProps> = ({
       <Tooltip title="Dislike">
         <button
           onClick={handleDislike}
-          className={`p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md transition-colors text-xs flex items-center justify-center cursor-pointer ${
-            liked === false ? 'text-rose-500 font-bold' : ''
-          }`}
+          style={{
+            padding: 6,
+            borderRadius: 6,
+            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+            fontSize: 12,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            background: 'transparent',
+            border: 'none',
+            color: liked === false ? '#f43f5e' : 'inherit',
+            fontWeight: liked === false ? 700 : 400,
+          }}
         >
           {liked === false ? <DislikeFilled /> : <DislikeOutlined />}
         </button>
@@ -245,7 +391,19 @@ export const ActionPanel: React.FC<ActionPanelProps> = ({
       <Tooltip title="Share">
         <button
           onClick={handleShare}
-          className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md transition-colors text-xs flex items-center justify-center cursor-pointer"
+          style={{
+            padding: 6,
+            borderRadius: 6,
+            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+            fontSize: 12,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            background: 'transparent',
+            border: 'none',
+            color: 'inherit',
+          }}
         >
           <ShareAltOutlined />
         </button>
@@ -253,5 +411,3 @@ export const ActionPanel: React.FC<ActionPanelProps> = ({
     </div>
   );
 };
-
-

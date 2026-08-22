@@ -80,11 +80,29 @@ export const TabContextSelector: React.FC<TabContextSelectorProps> = ({
   };
 
   const popoverContent = (
-    <div className="w-72 p-1.5 text-xs text-zinc-800 dark:text-zinc-200 select-none">
+    <div
+      style={{
+        width: 288,
+        padding: 6,
+        fontSize: 12,
+        color: 'var(--foreground)',
+        userSelect: 'none',
+      }}
+    >
       {view === 'main' ? (
         <div>
           {/* Header */}
-          <div className="font-semibold text-zinc-900 dark:text-zinc-100 text-xs px-2 pt-0.5 pb-2">
+          <div
+            style={{
+              fontWeight: 600,
+              color: 'var(--foreground)',
+              fontSize: 12,
+              paddingLeft: 8,
+              paddingRight: 8,
+              paddingTop: 2,
+              paddingBottom: 8,
+            }}
+          >
             Add context
           </div>
 
@@ -94,41 +112,113 @@ export const TabContextSelector: React.FC<TabContextSelectorProps> = ({
               <button
                 type="button"
                 onClick={() => setView('tabs')}
-                className="w-full flex items-center justify-between px-2 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-left font-medium text-zinc-800 dark:text-zinc-200 cursor-pointer transition-colors"
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  paddingLeft: 8,
+                  paddingRight: 8,
+                  paddingTop: 6,
+                  paddingBottom: 6,
+                  borderRadius: 8,
+                  textAlign: 'left',
+                  fontWeight: 500,
+                  color: 'var(--foreground)',
+                  cursor: 'pointer',
+                  transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+                  background: 'transparent',
+                  border: 'none',
+                }}
               >
-                <div className="flex items-center gap-2">
-                  <LinkOutlined className="text-zinc-500 text-sm" />
-                  <span className="font-medium">Add tabs</span>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                  }}
+                >
+                  <LinkOutlined style={{ color: 'var(--muted-foreground)', fontSize: 14 }} />
+                  <span style={{ fontWeight: 500 }}>Add tabs</span>
                 </div>
-                <RightOutlined className="text-[10px] text-zinc-400" />
+                <RightOutlined style={{ fontSize: 10, color: 'var(--muted-foreground)' }} />
               </button>
 
               {/* Preview top 3 tabs */}
               {availableTabs.length > 0 && (
-                <div className="flex flex-col gap-0.5 my-1 pl-1">
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 2,
+                    marginTop: 4,
+                    marginBottom: 4,
+                    paddingLeft: 4,
+                  }}
+                >
                   {availableTabs.slice(0, 3).map(tab => {
                     const isGithub = tab.url?.includes('github');
                     return (
                       <div
                         key={tab.id}
                         onClick={() => onToggleTab(tab.id)}
-                        className="flex items-center justify-between px-2 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg cursor-pointer transition-colors text-xs"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          paddingLeft: 8,
+                          paddingRight: 8,
+                          paddingTop: 6,
+                          paddingBottom: 6,
+                          borderRadius: 8,
+                          cursor: 'pointer',
+                          transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+                          fontSize: 12,
+                        }}
                       >
-                        <div className="flex items-center gap-2 truncate pr-2">
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            paddingRight: 8,
+                          }}
+                        >
                           {isGithub ? (
-                            <GithubOutlined className="text-sm text-zinc-700 dark:text-zinc-300 shrink-0" />
+                            <GithubOutlined style={{ fontSize: 14, color: 'var(--muted-foreground)', flexShrink: 0 }} />
                           ) : (
-                            <GlobalOutlined className="text-sm text-blue-500 shrink-0" />
+                            <GlobalOutlined style={{ fontSize: 14, color: '#3b82f6', flexShrink: 0 }} />
                           )}
-                          <span className="truncate text-zinc-700 dark:text-zinc-300 font-normal">{tab.title}</span>
+                          <span
+                            style={{
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              color: 'var(--muted-foreground)',
+                              fontWeight: 400,
+                            }}
+                          >
+                            {tab.title}
+                          </span>
                           {tab.isCurrent && (
-                            <span className="text-[10px] text-zinc-400 dark:text-zinc-500 shrink-0">• Current tab</span>
+                            <span style={{ fontSize: 10, color: 'var(--muted-foreground)', flexShrink: 0 }}>• Current tab</span>
                           )}
                         </div>
                         {tab.selected ? (
-                          <CheckCircleFilled className="text-blue-500 text-sm shrink-0" />
+                          <CheckCircleFilled style={{ color: '#3b82f6', fontSize: 14, flexShrink: 0 }} />
                         ) : (
-                          <div className="w-3.5 h-3.5 rounded-full border border-zinc-300 dark:border-zinc-600 shrink-0" />
+                          <div
+                            style={{
+                              width: 14,
+                              height: 14,
+                              borderRadius: 9999,
+                              border: '1px solid var(--border)',
+                              flexShrink: 0,
+                            }}
+                          />
                         )}
                       </div>
                     );
@@ -136,7 +226,14 @@ export const TabContextSelector: React.FC<TabContextSelectorProps> = ({
                 </div>
               )}
 
-              <div className="h-px bg-zinc-200 dark:bg-zinc-700/60 my-1.5" />
+              <div
+                style={{
+                  height: 1,
+                  background: 'var(--border)',
+                  marginTop: 6,
+                  marginBottom: 6,
+                }}
+              />
             </>
           )}
 
@@ -144,9 +241,27 @@ export const TabContextSelector: React.FC<TabContextSelectorProps> = ({
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="w-full flex items-center gap-2 px-2 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-left font-medium text-zinc-800 dark:text-zinc-200 cursor-pointer transition-colors text-xs"
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              paddingLeft: 8,
+              paddingRight: 8,
+              paddingTop: 6,
+              paddingBottom: 6,
+              borderRadius: 8,
+              textAlign: 'left',
+              fontWeight: 500,
+              color: 'var(--foreground)',
+              cursor: 'pointer',
+              transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+              fontSize: 12,
+              background: 'transparent',
+              border: 'none',
+            }}
           >
-            <PaperClipOutlined className="text-zinc-500 text-sm" />
+            <PaperClipOutlined style={{ color: 'var(--muted-foreground)', fontSize: 14 }} />
             <span>Attach files</span>
           </button>
 
@@ -154,9 +269,27 @@ export const TabContextSelector: React.FC<TabContextSelectorProps> = ({
           <button
             type="button"
             onClick={() => imageInputRef.current?.click()}
-            className="w-full flex items-center gap-2 px-2 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-left font-medium text-zinc-800 dark:text-zinc-200 cursor-pointer transition-colors text-xs"
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              paddingLeft: 8,
+              paddingRight: 8,
+              paddingTop: 6,
+              paddingBottom: 6,
+              borderRadius: 8,
+              textAlign: 'left',
+              fontWeight: 500,
+              color: 'var(--foreground)',
+              cursor: 'pointer',
+              transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+              fontSize: 12,
+              background: 'transparent',
+              border: 'none',
+            }}
           >
-            <PictureOutlined className="text-zinc-500 text-sm" />
+            <PictureOutlined style={{ color: 'var(--muted-foreground)', fontSize: 14 }} />
             <span>Add image</span>
           </button>
 
@@ -167,18 +300,63 @@ export const TabContextSelector: React.FC<TabContextSelectorProps> = ({
               onSelectScreenCut();
               setOpen(false);
             }}
-            className="w-full flex items-center justify-between px-2 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-left font-medium text-zinc-800 dark:text-zinc-200 cursor-pointer transition-colors text-xs"
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingLeft: 8,
+              paddingRight: 8,
+              paddingTop: 6,
+              paddingBottom: 6,
+              borderRadius: 8,
+              textAlign: 'left',
+              fontWeight: 500,
+              color: 'var(--foreground)',
+              cursor: 'pointer',
+              transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+              fontSize: 12,
+              background: 'transparent',
+              border: 'none',
+            }}
           >
-            <div className="flex items-center gap-2">
-              <DesktopOutlined className="text-zinc-500 text-sm" />
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+              }}
+            >
+              <DesktopOutlined style={{ color: 'var(--muted-foreground)', fontSize: 14 }} />
               <span>Select from screen</span>
             </div>
-            <span className="bg-blue-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
+            <span
+              style={{
+                background: '#2563eb',
+                color: '#ffffff',
+                fontSize: 9,
+                fontWeight: 700,
+                paddingLeft: 6,
+                paddingRight: 6,
+                paddingTop: 2,
+                paddingBottom: 2,
+                borderRadius: 2,
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+              }}
+            >
               NEW
             </span>
           </button>
 
-          <div className="h-px bg-zinc-200 dark:bg-zinc-700/60 my-1.5" />
+          <div
+            style={{
+              height: 1,
+              background: 'var(--border)',
+              marginTop: 6,
+              marginBottom: 6,
+            }}
+          />
 
           {/* Browse skills - Moved to bottom */}
           <button
@@ -189,9 +367,27 @@ export const TabContextSelector: React.FC<TabContextSelectorProps> = ({
               }
               setOpen(false);
             }}
-            className="w-full flex items-center gap-2 px-2 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-left font-medium text-zinc-800 dark:text-zinc-200 cursor-pointer transition-colors text-xs"
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              paddingLeft: 8,
+              paddingRight: 8,
+              paddingTop: 6,
+              paddingBottom: 6,
+              borderRadius: 8,
+              textAlign: 'left',
+              fontWeight: 500,
+              color: 'var(--foreground)',
+              cursor: 'pointer',
+              transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+              fontSize: 12,
+              background: 'transparent',
+              border: 'none',
+            }}
           >
-            <CompassOutlined className="text-zinc-500 text-sm" />
+            <CompassOutlined style={{ color: 'var(--muted-foreground)', fontSize: 14 }} />
             <span>Browse skills</span>
           </button>
         </div>
@@ -199,42 +395,107 @@ export const TabContextSelector: React.FC<TabContextSelectorProps> = ({
         /* Tabs Sub-View */
         <div>
           {/* Back Button Header */}
-          <div className="mb-2">
+          <div style={{ marginBottom: 8 }}>
             <button
               type="button"
               onClick={() => setView('main')}
-              className="flex items-center gap-1.5 px-3 py-1 bg-zinc-200/80 dark:bg-zinc-700/80 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded-lg text-xs font-semibold text-zinc-800 dark:text-zinc-200 cursor-pointer transition-colors"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                paddingLeft: 12,
+                paddingRight: 12,
+                paddingTop: 4,
+                paddingBottom: 4,
+                background: 'var(--muted)',
+                borderRadius: 8,
+                fontSize: 12,
+                fontWeight: 600,
+                color: 'var(--foreground)',
+                cursor: 'pointer',
+                transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+                border: 'none',
+              }}
             >
-              <LeftOutlined className="text-[10px]" />
+              <LeftOutlined style={{ fontSize: 10 }} />
               <span>Back</span>
             </button>
           </div>
 
           {/* List of All Tabs */}
-          <div className="flex flex-col gap-1 max-h-64 overflow-y-auto pr-1">
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 4,
+              maxHeight: 256,
+              overflowY: 'auto',
+              paddingRight: 4,
+            }}
+          >
             {availableTabs.map(tab => {
               const isGithub = tab.url?.includes('github');
               return (
                 <div
                   key={tab.id}
                   onClick={() => onToggleTab(tab.id)}
-                  className="flex items-center justify-between px-2 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg cursor-pointer transition-colors text-xs"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    paddingLeft: 8,
+                    paddingRight: 8,
+                    paddingTop: 6,
+                    paddingBottom: 6,
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+                    fontSize: 12,
+                  }}
                 >
-                  <div className="flex items-center gap-2 truncate pr-2">
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      paddingRight: 8,
+                    }}
+                  >
                     {isGithub ? (
-                      <GithubOutlined className="text-sm text-zinc-700 dark:text-zinc-300 shrink-0" />
+                      <GithubOutlined style={{ fontSize: 14, color: 'var(--muted-foreground)', flexShrink: 0 }} />
                     ) : (
-                      <GlobalOutlined className="text-sm text-blue-500 shrink-0" />
+                      <GlobalOutlined style={{ fontSize: 14, color: '#3b82f6', flexShrink: 0 }} />
                     )}
-                    <span className="truncate text-zinc-700 dark:text-zinc-300 font-normal">{tab.title}</span>
+                    <span
+                      style={{
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        color: 'var(--muted-foreground)',
+                        fontWeight: 400,
+                      }}
+                    >
+                      {tab.title}
+                    </span>
                     {tab.isCurrent && (
-                      <span className="text-[10px] text-zinc-400 dark:text-zinc-500 shrink-0">• Current tab</span>
+                      <span style={{ fontSize: 10, color: 'var(--muted-foreground)', flexShrink: 0 }}>• Current tab</span>
                     )}
                   </div>
                   {tab.selected ? (
-                    <CheckCircleFilled className="text-blue-500 text-sm shrink-0" />
+                    <CheckCircleFilled style={{ color: '#3b82f6', fontSize: 14, flexShrink: 0 }} />
                   ) : (
-                    <div className="w-3.5 h-3.5 rounded-full border border-zinc-300 dark:border-zinc-600 shrink-0" />
+                    <div
+                      style={{
+                        width: 14,
+                        height: 14,
+                        borderRadius: 9999,
+                        border: '1px solid var(--border)',
+                        flexShrink: 0,
+                      }}
+                    />
                   )}
                 </div>
               );
@@ -248,14 +509,14 @@ export const TabContextSelector: React.FC<TabContextSelectorProps> = ({
         ref={fileInputRef}
         type="file"
         accept=".doc,.docx,.txt,.md,.pdf,.json,.csv"
-        className="hidden"
+        style={{ display: 'none' }}
         onChange={handleFileChange}
       />
       <input
         ref={imageInputRef}
         type="file"
         accept="image/*"
-        className="hidden"
+        style={{ display: 'none' }}
         onChange={handleImageChange}
       />
     </div>
@@ -273,9 +534,21 @@ export const TabContextSelector: React.FC<TabContextSelectorProps> = ({
       <Tooltip title="Attach">
         <button
           type="button"
-          className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-300 cursor-pointer transition-colors text-xs flex items-center justify-center"
+          style={{
+            padding: 6,
+            borderRadius: 8,
+            color: 'var(--muted-foreground)',
+            cursor: 'pointer',
+            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+            fontSize: 12,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'transparent',
+            border: 'none',
+          }}
         >
-          <PaperClipOutlined className="text-base" />
+          <PaperClipOutlined style={{ fontSize: 16 }} />
         </button>
       </Tooltip>
     </Popover>

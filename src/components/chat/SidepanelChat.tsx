@@ -295,8 +295,16 @@ export const SidepanelChat: React.FC<SidepanelChatProps> = ({
 
   if (onboardingComplete === null) {
     return (
-      <div className="flex items-center justify-center h-full bg-white dark:bg-zinc-900">
-        <div className="text-zinc-400 text-sm">Loading workspace…</div>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100%',
+          background: token.colorBgContainer,
+        }}
+      >
+        <div style={{ color: 'var(--muted-foreground)', fontSize: 14 }}>Loading workspace…</div>
       </div>
     );
   }
@@ -304,10 +312,15 @@ export const SidepanelChat: React.FC<SidepanelChatProps> = ({
   return (
     <div
       ref={mainContainerRef}
-      className="flex flex-col h-full bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans relative overflow-hidden select-none"
       style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
         background: token.colorBgContainer,
         color: token.colorText,
+        position: 'relative',
+        overflow: 'hidden',
+        userSelect: 'none',
       }}
     >
       {/* Header Toolbar */}
@@ -328,13 +341,44 @@ export const SidepanelChat: React.FC<SidepanelChatProps> = ({
       )}
 
       {/* Main Chat Flow Container */}
-      <div className={`flex-1 flex flex-col h-full overflow-hidden ${isStandalone ? 'max-w-3xl mx-auto w-full' : 'w-full'}`}>
-        <div className="relative flex-1 min-h-0 overflow-hidden flex flex-col">
+      <div
+        style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100%',
+          overflow: 'hidden',
+          maxWidth: isStandalone ? 768 : undefined,
+          marginLeft: isStandalone ? 'auto' : undefined,
+          marginRight: isStandalone ? 'auto' : undefined,
+          width: '100%',
+        }}
+      >
+        <div
+          style={{
+            position: 'relative',
+            flex: 1,
+            minHeight: 0,
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
           {/* Chat Messages Area */}
           <div
             ref={scrollRef}
             onScroll={handleScroll}
-            className="flex-1 overflow-y-auto px-3.5 py-3 space-y-4"
+            style={{
+              flex: 1,
+              overflowY: 'auto',
+              paddingLeft: 14,
+              paddingRight: 14,
+              paddingTop: 12,
+              paddingBottom: 12,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 16,
+            }}
           >
             <ChatMessageList
               activeSession={activeSession}
@@ -377,13 +421,50 @@ export const SidepanelChat: React.FC<SidepanelChatProps> = ({
 
             {/* Floating Stop Generating Button (Screenshots 1 & 2) */}
             {isGenerating && (
-              <div className="sticky bottom-2 flex justify-center z-30 my-2 pointer-events-auto">
+              <div
+                style={{
+                  position: 'sticky',
+                  bottom: 8,
+                  display: 'flex',
+                  justifyContent: 'center',
+                  zIndex: 30,
+                  marginTop: 8,
+                  marginBottom: 8,
+                  pointerEvents: 'auto',
+                }}
+              >
                 <button
                   type="button"
                   onClick={handleStopGenerating}
-                  className="flex items-center gap-2 px-3.5 py-1.5 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 border border-zinc-200/90 dark:border-zinc-700/90 rounded-full text-xs font-medium shadow-md hover:shadow-lg hover:bg-zinc-50 dark:hover:bg-zinc-750 transition-all cursor-pointer select-none active:scale-95"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    paddingLeft: 14,
+                    paddingRight: 14,
+                    paddingTop: 6,
+                    paddingBottom: 6,
+                    background: 'var(--card)',
+                    color: 'var(--muted-foreground)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 9999,
+                    fontSize: 12,
+                    fontWeight: 500,
+                    boxShadow: '0 4px 8px rgba(0,0,0,0.12)',
+                    transition: 'all 200ms ease',
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                  }}
                 >
-                  <span className="w-2.5 h-2.5 bg-zinc-800 dark:bg-zinc-200 rounded-[2px] inline-block" />
+                  <span
+                    style={{
+                      width: 10,
+                      height: 10,
+                      background: 'var(--foreground)',
+                      borderRadius: 2,
+                      display: 'inline-block',
+                    }}
+                  />
                   <span>Stop generating</span>
                 </button>
               </div>
@@ -392,15 +473,39 @@ export const SidepanelChat: React.FC<SidepanelChatProps> = ({
 
           {/* Floating Goto bottom button */}
           {showScrollBottom && (
-            <div className="absolute bottom-2.5 right-4 z-20 pointer-events-auto transition-all animate-fade-in">
+            <div
+              className="np-fade-in"
+              style={{
+                position: 'absolute',
+                bottom: 10,
+                right: 16,
+                zIndex: 20,
+                pointerEvents: 'auto',
+                transition: 'all 200ms ease',
+              }}
+            >
               <Tooltip title="Scroll to bottom" placement="left">
                 <button
                   type="button"
                   onClick={scrollToBottom}
-                  className="w-8 h-8 rounded-full bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-200 border border-zinc-200/90 dark:border-zinc-700 shadow-md hover:shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-sm"
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 9999,
+                    background: 'var(--card)',
+                    color: 'var(--muted-foreground)',
+                    border: '1px solid var(--border)',
+                    boxShadow: '0 4px 8px rgba(0,0,0,0.12)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 200ms ease',
+                    cursor: 'pointer',
+                    backdropFilter: 'blur(4px)',
+                  }}
                   aria-label="Goto bottom"
                 >
-                  <DownOutlined className="text-xs" />
+                  <DownOutlined style={{ fontSize: 12 }} />
                 </button>
               </Tooltip>
             </div>
@@ -410,7 +515,23 @@ export const SidepanelChat: React.FC<SidepanelChatProps> = ({
 
       {/* Bottom Composer Area */}
       <div
-        className={isStandalone ? 'p-4 pt-0 bg-transparent max-w-3xl w-full mx-auto' : 'p-3 pt-0 bg-transparent'}
+        style={
+          isStandalone
+            ? {
+                padding: 16,
+                paddingTop: 0,
+                background: 'transparent',
+                maxWidth: 768,
+                width: '100%',
+                marginLeft: 'auto',
+                marginRight: 'auto',
+              }
+            : {
+                padding: 12,
+                paddingTop: 0,
+                background: 'transparent',
+              }
+        }
       >
         {isExporting ? (
           <ChatExportBar

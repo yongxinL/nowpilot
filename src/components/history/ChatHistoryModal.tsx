@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Drawer, Input, Dropdown } from 'antd';
+import { Drawer, Input, Dropdown, theme } from 'antd';
 import {
   SearchOutlined,
   ExportOutlined,
@@ -39,6 +39,7 @@ export const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
   onStartExport,
   isStandalone = false,
 }) => {
+  const { token } = theme.useToken();
   const [activeTab, setActiveTab] = useState<'All' | 'Starred'>('All');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -123,80 +124,185 @@ export const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
             backdropFilter: 'blur(2px)',
           },
         }}
-        className="chat-history-drawer bg-white dark:bg-zinc-900"
+        className="chat-history-drawer"
       >
         {/* Top Handle Bar for Bottom Sheet */}
         {!isStandalone && (
-          <div className="w-10 h-1 bg-zinc-300 dark:bg-zinc-600 rounded-full mx-auto mb-2 shrink-0 cursor-pointer" onClick={onClose} />
+          <div
+            style={{
+              width: 40,
+              height: 4,
+              background: 'var(--border)',
+              borderRadius: 9999,
+              marginLeft: 'auto',
+              marginRight: 'auto',
+              marginBottom: 8,
+              flexShrink: 0,
+              cursor: 'pointer',
+            }}
+            onClick={onClose}
+          />
         )}
 
         {/* Drawer Header */}
-        <div className="flex items-center justify-between pb-2.5 flex-shrink-0">
-          <div className="flex items-center gap-1.5">
-            <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100 m-0">
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingBottom: 10,
+            flexShrink: 0,
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+          >
+            <h3
+              style={{
+                fontSize: 16,
+                fontWeight: 700,
+                color: token.colorText,
+                margin: 0,
+              }}
+            >
               Chat history
             </h3>
-            <span className="text-xs text-zinc-400 font-normal">
+            <span
+              style={{
+                fontSize: 12,
+                color: token.colorTextTertiary,
+                fontWeight: 400,
+              }}
+            >
               ({filteredSessions.length})
             </span>
           </div>
           <button
             onClick={() => setShowDeleteAllModal(true)}
-            className="p-1.5 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg text-zinc-400 hover:text-red-500 transition-colors cursor-pointer"
+            style={{
+              padding: 6,
+              borderRadius: 8,
+              color: token.colorTextTertiary,
+              cursor: 'pointer',
+              background: 'transparent',
+              border: 'none',
+            }}
             title="Delete all conversations"
           >
-            <DeleteOutlined className="text-sm" />
+            <DeleteOutlined style={{ fontSize: 14 }} />
           </button>
         </div>
 
         {/* Filter Tabs */}
-        <div className="flex items-center gap-4 text-xs font-semibold mb-2.5 border-b border-zinc-100 dark:border-zinc-800 pb-2 flex-shrink-0">
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 16,
+            fontSize: 12,
+            fontWeight: 600,
+            marginBottom: 10,
+            borderBottom: '1px solid var(--border)',
+            paddingBottom: 8,
+            flexShrink: 0,
+          }}
+        >
           <button
             onClick={() => setActiveTab('All')}
-            className={`pb-1 relative cursor-pointer transition-colors ${
-              activeTab === 'All'
-                ? 'text-blue-600 dark:text-blue-400 font-bold border-b-2 border-blue-600 dark:border-blue-400'
-                : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'
-            }`}
+            style={{
+              paddingBottom: 4,
+              position: 'relative',
+              cursor: 'pointer',
+              background: 'transparent',
+              border: 'none',
+              ...(activeTab === 'All'
+                ? {
+                    color: token.colorInfo,
+                    fontWeight: 700,
+                    borderBottom: `2px solid ${token.colorInfo}`,
+                  }
+                : {
+                    color: token.colorTextTertiary,
+                  }),
+            }}
           >
             All
           </button>
           <button
             onClick={() => setActiveTab('Starred')}
-            className={`pb-1 relative cursor-pointer transition-colors ${
-              activeTab === 'Starred'
-                ? 'text-blue-600 dark:text-blue-400 font-bold border-b-2 border-blue-600 dark:border-blue-400'
-                : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'
-            }`}
+            style={{
+              paddingBottom: 4,
+              position: 'relative',
+              cursor: 'pointer',
+              background: 'transparent',
+              border: 'none',
+              ...(activeTab === 'Starred'
+                ? {
+                    color: token.colorInfo,
+                    fontWeight: 700,
+                    borderBottom: `2px solid ${token.colorInfo}`,
+                  }
+                : {
+                    color: token.colorTextTertiary,
+                  }),
+            }}
           >
             Starred
           </button>
         </div>
 
         {/* Search Input */}
-        <div className="mb-3 flex-shrink-0">
+        <div style={{ marginBottom: 12, flexShrink: 0 }}>
           <Input
-            prefix={<SearchOutlined className="text-zinc-400 mr-1.5" />}
+            prefix={<SearchOutlined style={{ color: 'var(--muted-foreground)', marginRight: 6 }} />}
             placeholder="Search conversations"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             allowClear
-            className="bg-zinc-100/80 dark:bg-zinc-800/60 border-none rounded-xl py-1.5 text-xs focus:bg-white dark:focus:bg-zinc-800"
           />
         </div>
 
         {/* History List Grouped by Time */}
-        <div className="flex-1 overflow-y-auto space-y-3 pr-1 min-h-0">
+        <div
+          style={{
+            flex: 1,
+            overflowY: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 12,
+            paddingRight: 4,
+            minHeight: 0,
+          }}
+        >
           {(['Today', 'Yesterday', 'This Week', 'This Month', 'Older'] as HistoryGroup[]).map(groupKey => {
             const groupSessions = grouped[groupKey];
             if (!groupSessions || groupSessions.length === 0) return null;
 
             return (
               <div key={groupKey}>
-                <div className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500 mb-1 px-1">
+                <div
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: token.colorTextTertiary,
+                    marginBottom: 4,
+                    paddingLeft: 4,
+                    paddingRight: 4,
+                  }}
+                >
                   {groupKey}
                 </div>
-                <div className="space-y-1">
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 4,
+                  }}
+                >
                   {groupSessions.map(session => {
                     const isActive = session.id === activeSessionId;
 
@@ -224,8 +330,8 @@ export const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
                       },
                       {
                         key: 'delete',
-                        icon: <DeleteOutlined className="text-red-500" />,
-                        label: <span className="text-red-500">Delete</span>,
+                        icon: <DeleteOutlined style={{ color: token.colorError }} />,
+                        label: <span style={{ color: token.colorError }}>Delete</span>,
                         onClick: (info: any) => {
                           info?.domEvent?.stopPropagation();
                           setDeletingSessionId(session.id);
@@ -237,23 +343,69 @@ export const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
                       <div
                         key={session.id}
                         onClick={() => handleSessionClick(session)}
-                        className={`group relative p-2 rounded-xl cursor-pointer transition-all flex items-center justify-between ${
-                          isActive
-                            ? 'bg-zinc-100 dark:bg-zinc-800/90 shadow-xs'
-                            : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/50'
-                        }`}
+                        style={{
+                          position: 'relative',
+                          padding: 8,
+                          borderRadius: 12,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          ...(isActive
+                            ? {
+                                background: 'var(--muted)',
+                                boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                              }
+                            : {}),
+                        }}
                       >
-                        <div className="flex items-center gap-2 flex-1 min-w-0 pr-2">
-                          <MessageOutlined className="text-zinc-400 text-xs shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <div className="text-xs font-medium text-zinc-900 dark:text-zinc-100 truncate">
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            flex: 1,
+                            minWidth: 0,
+                            paddingRight: 8,
+                          }}
+                        >
+                          <MessageOutlined
+                            style={{
+                              color: 'var(--muted-foreground)',
+                              fontSize: 12,
+                              flexShrink: 0,
+                            }}
+                          />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div
+                              style={{
+                                fontSize: 12,
+                                fontWeight: 500,
+                                color: token.colorText,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
                               {session.title}
                             </div>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span className="text-[11px] text-zinc-400">
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            flexShrink: 0,
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontSize: 11,
+                              color: 'var(--muted-foreground)',
+                            }}
+                          >
                             {formatSessionTime(session.updatedAt)}
                           </span>
 
@@ -261,7 +413,14 @@ export const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
                             <button
                               type="button"
                               onClick={e => e.stopPropagation()}
-                              className="p-1 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-md hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 cursor-pointer transition-colors"
+                              style={{
+                                padding: 4,
+                                color: token.colorTextTertiary,
+                                borderRadius: 6,
+                                cursor: 'pointer',
+                                background: 'transparent',
+                                border: 'none',
+                              }}
                               title="More options"
                             >
                               <EllipsisOutlined />
@@ -274,11 +433,17 @@ export const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
                               e.stopPropagation();
                               onToggleStar(session.id);
                             }}
-                            className="p-1 cursor-pointer transition-colors text-zinc-400 hover:text-amber-500"
+                            style={{
+                              padding: 4,
+                              cursor: 'pointer',
+                              color: token.colorTextTertiary,
+                              background: 'transparent',
+                              border: 'none',
+                            }}
                             title={session.isStarred ? "Starred" : "Star"}
                           >
                             {session.isStarred ? (
-                              <StarFilled className="text-amber-500" />
+                              <StarFilled style={{ color: '#f59e0b' }} />
                             ) : (
                               <StarOutlined />
                             )}
@@ -293,7 +458,15 @@ export const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
           })}
 
           {filteredSessions.length === 0 && (
-            <div className="text-center py-8 text-zinc-400 text-xs">
+            <div
+              style={{
+                textAlign: 'center',
+                paddingTop: 32,
+                paddingBottom: 32,
+                color: token.colorTextTertiary,
+                fontSize: 12,
+              }}
+            >
               No history found
             </div>
           )}
@@ -303,22 +476,98 @@ export const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
       {/* 1. Delete single conversation confirmation modal */}
 
       {deletingSessionId && (
-        <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl p-6 max-w-xs w-full shadow-2xl border border-zinc-200/80 dark:border-zinc-800 text-center animate-in fade-in zoom-in-95 duration-150">
-            <div className="w-11 h-11 rounded-full bg-red-500 text-white flex items-center justify-center mx-auto mb-3 text-xl font-bold shadow-md shadow-red-500/20">
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            right: 0,
+            bottom: 0,
+            left: 0,
+            zIndex: 2000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 16,
+            background: 'rgba(0, 0, 0, 0.5)',
+            backdropFilter: 'blur(2px)',
+          }}
+        >
+          <div
+            className="np-zoom-fade-in"
+            style={{
+              background: token.colorBgContainer,
+              borderRadius: 16,
+              padding: 24,
+              maxWidth: 320,
+              width: '100%',
+              boxShadow: '0 25px 50px rgba(0,0,0,0.25)',
+              border: '1px solid var(--border)',
+              textAlign: 'center',
+            }}
+          >
+            <div
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 9999,
+                background: token.colorError,
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginLeft: 'auto',
+                marginRight: 'auto',
+                marginBottom: 12,
+                fontSize: 20,
+                fontWeight: 700,
+                boxShadow: '0 4px 8px rgba(0,0,0,0.12)',
+              }}
+            >
               !
             </div>
-            <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 mb-1">
+            <h3
+              style={{
+                fontSize: 14,
+                fontWeight: 700,
+                color: token.colorText,
+                marginBottom: 4,
+              }}
+            >
               Delete this conversation?
             </h3>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-5">
+            <p
+              style={{
+                fontSize: 12,
+                color: token.colorTextTertiary,
+                marginBottom: 20,
+              }}
+            >
               This action cannot be undone.
             </p>
-            <div className="flex items-center gap-2.5">
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+              }}
+            >
               <button
                 type="button"
                 onClick={() => setDeletingSessionId(null)}
-                className="flex-1 py-2.5 px-3 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+                style={{
+                  flex: 1,
+                  paddingTop: 10,
+                  paddingBottom: 10,
+                  paddingLeft: 12,
+                  paddingRight: 12,
+                  background: 'var(--muted)',
+                  color: token.colorTextSecondary,
+                  borderRadius: 12,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  border: 'none',
+                }}
               >
                 Cancel
               </button>
@@ -328,7 +577,21 @@ export const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
                   onDeleteSession(deletingSessionId);
                   setDeletingSessionId(null);
                 }}
-                className="flex-1 py-2.5 px-3 bg-red-500 hover:bg-red-600 text-white rounded-xl text-xs font-semibold transition-colors cursor-pointer shadow-xs"
+                style={{
+                  flex: 1,
+                  paddingTop: 10,
+                  paddingBottom: 10,
+                  paddingLeft: 12,
+                  paddingRight: 12,
+                  background: token.colorError,
+                  color: '#ffffff',
+                  borderRadius: 12,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  border: 'none',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                }}
               >
                 Delete
               </button>
@@ -339,31 +602,126 @@ export const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
 
       {/* 2. Delete all conversations confirmation modal */}
       {showDeleteAllModal && (
-        <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl p-6 max-w-xs w-full shadow-2xl border border-zinc-200/80 dark:border-zinc-800 text-center animate-in fade-in zoom-in-95 duration-150">
-            <div className="w-11 h-11 rounded-full bg-red-500 text-white flex items-center justify-center mx-auto mb-3 text-xl font-bold shadow-md shadow-red-500/20">
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            right: 0,
+            bottom: 0,
+            left: 0,
+            zIndex: 2000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 16,
+            background: 'rgba(0, 0, 0, 0.5)',
+            backdropFilter: 'blur(2px)',
+          }}
+        >
+          <div
+            className="np-zoom-fade-in"
+            style={{
+              background: token.colorBgContainer,
+              borderRadius: 16,
+              padding: 24,
+              maxWidth: 320,
+              width: '100%',
+              boxShadow: '0 25px 50px rgba(0,0,0,0.25)',
+              border: '1px solid var(--border)',
+              textAlign: 'center',
+            }}
+          >
+            <div
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 9999,
+                background: token.colorError,
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginLeft: 'auto',
+                marginRight: 'auto',
+                marginBottom: 12,
+                fontSize: 20,
+                fontWeight: 700,
+                boxShadow: '0 4px 8px rgba(0,0,0,0.12)',
+              }}
+            >
               !
             </div>
-            <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 mb-1">
+            <h3
+              style={{
+                fontSize: 14,
+                fontWeight: 700,
+                color: token.colorText,
+                marginBottom: 4,
+              }}
+            >
               Delete all
             </h3>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-4">
+            <p
+              style={{
+                fontSize: 12,
+                color: token.colorTextTertiary,
+                marginBottom: 16,
+              }}
+            >
               This action cannot be undone.
             </p>
-            <label className="flex items-center justify-center gap-2 text-xs text-zinc-600 dark:text-zinc-300 mb-5 cursor-pointer select-none">
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                fontSize: 12,
+                color: token.colorTextSecondary,
+                marginBottom: 20,
+                cursor: 'pointer',
+                userSelect: 'none',
+              }}
+            >
               <input
                 type="checkbox"
                 checked={includeStarred}
                 onChange={e => setIncludeStarred(e.target.checked)}
-                className="w-4 h-4 rounded border-zinc-300 text-violet-600 focus:ring-violet-500 cursor-pointer"
+                style={{
+                  width: 16,
+                  height: 16,
+                  borderRadius: 4,
+                  border: '1px solid #d4d4d8',
+                  color: '#7c3aed',
+                  cursor: 'pointer',
+                }}
               />
               <span>Include Starred</span>
             </label>
-            <div className="flex items-center gap-2.5">
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+              }}
+            >
               <button
                 type="button"
                 onClick={() => setShowDeleteAllModal(false)}
-                className="flex-1 py-2.5 px-3 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+                style={{
+                  flex: 1,
+                  paddingTop: 10,
+                  paddingBottom: 10,
+                  paddingLeft: 12,
+                  paddingRight: 12,
+                  background: 'var(--muted)',
+                  color: token.colorTextSecondary,
+                  borderRadius: 12,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  border: 'none',
+                }}
               >
                 Cancel
               </button>
@@ -373,7 +731,21 @@ export const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
                   onClearAll(includeStarred);
                   setShowDeleteAllModal(false);
                 }}
-                className="flex-1 py-2.5 px-3 bg-red-500 hover:bg-red-600 text-white rounded-xl text-xs font-semibold transition-colors cursor-pointer shadow-xs"
+                style={{
+                  flex: 1,
+                  paddingTop: 10,
+                  paddingBottom: 10,
+                  paddingLeft: 12,
+                  paddingRight: 12,
+                  background: token.colorError,
+                  color: '#ffffff',
+                  borderRadius: 12,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  border: 'none',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                }}
               >
                 Delete all
               </button>
@@ -384,12 +756,60 @@ export const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
 
       {/* 3. Edit title modal with 200 char limit */}
       {editingSession && (
-        <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl p-5 max-w-sm w-full shadow-2xl border border-zinc-200/80 dark:border-zinc-800 animate-in fade-in zoom-in-95 duration-150">
-            <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 mb-3">
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            right: 0,
+            bottom: 0,
+            left: 0,
+            zIndex: 2000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 16,
+            background: 'rgba(0, 0, 0, 0.5)',
+            backdropFilter: 'blur(2px)',
+          }}
+        >
+          <div
+            className="np-zoom-fade-in"
+            style={{
+              background: token.colorBgContainer,
+              borderRadius: 16,
+              padding: 20,
+              maxWidth: 384,
+              width: '100%',
+              boxShadow: '0 25px 50px rgba(0,0,0,0.25)',
+              border: '1px solid var(--border)',
+            }}
+          >
+            <h3
+              style={{
+                fontSize: 14,
+                fontWeight: 700,
+                color: token.colorText,
+                marginBottom: 12,
+              }}
+            >
               Edit title
             </h3>
-            <div className="relative flex items-center border border-violet-400 dark:border-violet-500 focus-within:ring-2 focus-within:ring-violet-500/20 rounded-xl px-3 py-2 bg-white dark:bg-zinc-800 shadow-xs mb-5">
+            <div
+              style={{
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                border: '1px solid #a78bfa',
+                borderRadius: 12,
+                paddingLeft: 12,
+                paddingRight: 12,
+                paddingTop: 8,
+                paddingBottom: 8,
+                background: token.colorBgContainer,
+                boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                marginBottom: 20,
+              }}
+            >
               <input
                 type="text"
                 maxLength={200}
@@ -404,17 +824,54 @@ export const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
                     setEditingSession(null);
                   }
                 }}
-                className="w-full text-xs text-zinc-800 dark:text-zinc-100 bg-transparent outline-none pr-14"
+                style={{
+                  width: '100%',
+                  fontSize: 12,
+                  color: token.colorText,
+                  background: 'transparent',
+                  outline: 'none',
+                  paddingRight: 56,
+                  border: 'none',
+                }}
               />
-              <span className="absolute right-3 text-xs text-zinc-400 font-medium select-none pointer-events-none">
+              <span
+                style={{
+                  position: 'absolute',
+                  right: 12,
+                  fontSize: 12,
+                  color: token.colorTextTertiary,
+                  fontWeight: 500,
+                  userSelect: 'none',
+                  pointerEvents: 'none',
+                }}
+              >
                 {editingTitle.length} / 200
               </span>
             </div>
-            <div className="flex items-center gap-2.5">
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+              }}
+            >
               <button
                 type="button"
                 onClick={() => setEditingSession(null)}
-                className="flex-1 py-2.5 px-3 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+                style={{
+                  flex: 1,
+                  paddingTop: 10,
+                  paddingBottom: 10,
+                  paddingLeft: 12,
+                  paddingRight: 12,
+                  background: 'var(--muted)',
+                  color: token.colorTextSecondary,
+                  borderRadius: 12,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  border: 'none',
+                }}
               >
                 Cancel
               </button>
@@ -426,7 +883,21 @@ export const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
                   }
                   setEditingSession(null);
                 }}
-                className="flex-1 py-2.5 px-3 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-semibold transition-colors cursor-pointer shadow-xs"
+                style={{
+                  flex: 1,
+                  paddingTop: 10,
+                  paddingBottom: 10,
+                  paddingLeft: 12,
+                  paddingRight: 12,
+                  background: '#7c3aed',
+                  color: '#ffffff',
+                  borderRadius: 12,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  border: 'none',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                }}
               >
                 Save
               </button>

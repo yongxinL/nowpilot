@@ -34,7 +34,6 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   selectedModelId,
   onSelectModel,
   variant = 'subtle',
-  className = '',
 }) => {
   const [open, setOpen] = useState(false);
   const { config } = useExtensionStore();
@@ -85,6 +84,45 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
     setOpen(false);
   };
 
+  const buttonStyle: React.CSSProperties =
+    variant === 'pill'
+      ? {
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          paddingLeft: 10,
+          paddingRight: 10,
+          paddingTop: 4,
+          paddingBottom: 4,
+          background: 'var(--muted)',
+          color: 'var(--foreground)',
+          fontWeight: 500,
+          fontSize: 12,
+          borderRadius: 8,
+          transition: 'all 200ms ease',
+          cursor: 'pointer',
+          userSelect: 'none',
+          border: '1px solid var(--border)',
+        }
+      : {
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          paddingLeft: 10,
+          paddingRight: 10,
+          paddingTop: 4,
+          paddingBottom: 4,
+          color: 'var(--foreground)',
+          fontWeight: 600,
+          fontSize: 12,
+          borderRadius: 12,
+          transition: 'all 200ms ease',
+          cursor: 'pointer',
+          userSelect: 'none',
+          background: 'transparent',
+          border: 'none',
+        };
+
   return (
     <Dropdown
       open={open}
@@ -92,31 +130,92 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
       trigger={['click']}
       placement="topLeft"
       popupRender={() => (
-        <div className="bg-white dark:bg-zinc-800 rounded-2xl shadow-xl border border-zinc-100 dark:border-zinc-700/80 p-2 min-w-[210px] max-w-[280px]">
+        <div
+          style={{
+            background: 'var(--card)',
+            borderRadius: 16,
+            boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+            border: '1px solid var(--border)',
+            padding: 8,
+            minWidth: 210,
+            maxWidth: 280,
+          }}
+        >
           {groups.map((groupName) => {
             const groupModels = availableModels.filter((m) => m.group === groupName);
             return (
-              <div key={groupName} className="mb-2 last:mb-0">
-                <div className="px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+              <div key={groupName} style={{ marginBottom: 8 }}>
+                <div
+                  style={{
+                    paddingLeft: 10,
+                    paddingRight: 10,
+                    paddingTop: 4,
+                    paddingBottom: 4,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    color: 'var(--muted-foreground)',
+                  }}
+                >
                   {groupName}
                 </div>
-                <div className="space-y-1 mt-0.5">
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 4,
+                    marginTop: 2,
+                  }}
+                >
                   {groupModels.map((m) => {
                     const isSelected = m.id === selectedModelId;
                     return (
                       <div
                         key={m.id}
                         onClick={() => handleSelect(m.id)}
-                        className={`px-2.5 py-1.5 rounded-xl flex items-center gap-2 cursor-pointer text-xs transition-all ${
-                          isSelected
-                            ? 'bg-violet-100/90 dark:bg-violet-950/80 text-violet-900 dark:text-violet-100 font-semibold'
-                            : 'hover:bg-zinc-100/80 dark:hover:bg-zinc-700/60 text-zinc-700 dark:text-zinc-300 font-normal'
-                        }`}
+                        style={{
+                          paddingLeft: 10,
+                          paddingRight: 10,
+                          paddingTop: 6,
+                          paddingBottom: 6,
+                          borderRadius: 12,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          cursor: 'pointer',
+                          fontSize: 12,
+                          transition: 'all 200ms ease',
+                          background: isSelected ? 'var(--muted)' : 'transparent',
+                          color: isSelected ? 'var(--foreground)' : 'var(--muted-foreground)',
+                          fontWeight: isSelected ? 600 : 400,
+                        }}
                       >
-                        <div className="w-5 h-5 rounded-full bg-violet-50 dark:bg-zinc-700 flex items-center justify-center text-[10px] text-violet-600 dark:text-violet-400 flex-shrink-0">
+                        <div
+                          style={{
+                            width: 20,
+                            height: 20,
+                            borderRadius: 9999,
+                            background: 'var(--muted)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: 10,
+                            color: '#7c3aed',
+                            flexShrink: 0,
+                          }}
+                        >
                           <ThunderboltOutlined style={{ fontSize: 11 }} />
                         </div>
-                        <span className="truncate">{m.name}</span>
+                        <span
+                          style={{
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {m.name}
+                        </span>
                       </div>
                     );
                   })}
@@ -129,20 +228,32 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
     >
       <button
         type="button"
-        className={
-          className ||
-          (variant === 'pill'
-            ? 'flex items-center gap-1.5 px-2.5 py-1 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200/80 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-medium text-xs rounded-lg transition-all cursor-pointer select-none border border-zinc-200/60 dark:border-zinc-700/60'
-            : 'flex items-center gap-1.5 px-2.5 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 font-semibold text-xs rounded-xl transition-all cursor-pointer select-none')
-        }
+        style={buttonStyle}
       >
-        <span className="text-violet-600 dark:text-violet-400 text-xs flex items-center shrink-0">
+        <span
+          style={{
+            color: '#7c3aed',
+            fontSize: 12,
+            display: 'flex',
+            alignItems: 'center',
+            flexShrink: 0,
+          }}
+        >
           <ThunderboltOutlined />
         </span>
-        <span className="truncate max-w-[140px] font-medium">{currentModel.name}</span>
-        <DownOutlined className="text-[9px] text-zinc-400 shrink-0 ml-0.5" />
+        <span
+          style={{
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            maxWidth: 140,
+            fontWeight: 500,
+          }}
+        >
+          {currentModel.name}
+        </span>
+        <DownOutlined style={{ fontSize: 9, color: 'var(--muted-foreground)', flexShrink: 0, marginLeft: 2 }} />
       </button>
     </Dropdown>
   );
 };
-

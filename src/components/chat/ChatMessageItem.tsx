@@ -58,27 +58,93 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
     const otherAttachments = msg.attachments?.filter((a) => a.type !== 'quote' && a.type !== 'image' && a.type !== 'screen_cut') || [];
 
     return (
-      <div className="group flex items-start gap-3 my-3 w-full">
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 12,
+          marginTop: 12,
+          marginBottom: 12,
+          width: '100%',
+        }}
+      >
         {isExporting && (
-          <div className="pt-2 shrink-0">
+          <div
+            style={{
+              paddingTop: 8,
+              flexShrink: 0,
+            }}
+          >
             <input
               type="checkbox"
               checked={isExportSelected}
               onChange={(e) => onToggleExportSelect(msg.id, e.target.checked)}
-              className="w-4 h-4 rounded border-zinc-300 text-violet-600 focus:ring-violet-500 cursor-pointer"
+              style={{
+                width: 16,
+                height: 16,
+                borderRadius: 4,
+                border: '1px solid var(--border)',
+                color: '#7c3aed',
+                cursor: 'pointer',
+              }}
             />
           </div>
         )}
 
-        <div className="flex-1 min-w-0 flex flex-col items-end">
-          <div className={isEditingThis ? 'w-full' : 'max-w-[90%] w-fit flex flex-col items-end'}>
+        <div
+          style={{
+            flex: 1,
+            minWidth: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-end',
+          }}
+        >
+          <div
+            style={
+              isEditingThis
+                ? { width: '100%' }
+                : {
+                    maxWidth: '90%',
+                    width: 'fit-content',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-end',
+                  }
+            }
+          >
             {/* Quoted Text Capsule above input / bubble (Screenshots 3 & 4) */}
             {quoteAttachments.length > 0 && (
-              <div className="flex flex-col items-end gap-1.5 mb-1.5 w-full">
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'flex-end',
+                  gap: 6,
+                  marginBottom: 6,
+                  width: '100%',
+                }}
+              >
                 {quoteAttachments.map((quote) => (
                   <div
                     key={quote.id}
-                    className="border border-zinc-200 dark:border-zinc-700/80 bg-white dark:bg-zinc-900 rounded-2xl px-4 py-2 text-xs text-zinc-400 dark:text-zinc-500 max-w-[90%] truncate shadow-2xs select-text"
+                    style={{
+                      border: '1px solid var(--border)',
+                      background: 'var(--card)',
+                      borderRadius: 16,
+                      paddingLeft: 16,
+                      paddingRight: 16,
+                      paddingTop: 8,
+                      paddingBottom: 8,
+                      fontSize: 12,
+                      color: 'var(--muted-foreground)',
+                      maxWidth: '90%',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+                      userSelect: 'text',
+                    }}
                     title={quote.content || quote.title}
                   >
                     {quote.content || quote.title}
@@ -89,16 +155,39 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
 
             {/* Attached Images Preview Card (Screenshot 3) */}
             {imageAttachments.length > 0 && (
-              <div className="flex flex-col items-end gap-2 mb-2 w-full">
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'flex-end',
+                  gap: 8,
+                  marginBottom: 8,
+                  width: '100%',
+                }}
+              >
                 {imageAttachments.map((img) => (
                   <div
                     key={img.id}
-                    className="border border-zinc-200 dark:border-zinc-700/80 bg-white dark:bg-zinc-900 rounded-2xl overflow-hidden max-w-sm shadow-2xs p-1"
+                    style={{
+                      border: '1px solid var(--border)',
+                      background: 'var(--card)',
+                      borderRadius: 16,
+                      overflow: 'hidden',
+                      maxWidth: 384,
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+                      padding: 4,
+                    }}
                   >
                     <img
                       src={img.thumbnail || img.url || ''}
                       alt={img.title}
-                      className="w-full h-auto max-h-60 object-cover rounded-xl"
+                      style={{
+                        width: '100%',
+                        height: 'auto',
+                        maxHeight: 240,
+                        objectFit: 'cover',
+                        borderRadius: 12,
+                      }}
                     />
                   </div>
                 ))}
@@ -107,13 +196,37 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
 
             {/* Other Document / Tab Attachments */}
             {otherAttachments.length > 0 && (
-              <div className="flex flex-wrap justify-end gap-1.5 mb-2">
+              <div
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  justifyContent: 'flex-end',
+                  gap: 6,
+                  marginBottom: 8,
+                }}
+              >
                 {otherAttachments.map((att) => (
                   <div
                     key={att.id}
-                    className="text-xs px-2.5 py-1 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 truncate flex items-center gap-1.5"
+                    style={{
+                      fontSize: 12,
+                      paddingLeft: 10,
+                      paddingRight: 10,
+                      paddingTop: 4,
+                      paddingBottom: 4,
+                      borderRadius: 8,
+                      border: '1px solid var(--border)',
+                      background: 'var(--card)',
+                      color: 'var(--muted-foreground)',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                    }}
                   >
-                    <PaperClipOutlined className="text-zinc-400" />
+                    <PaperClipOutlined style={{ color: 'var(--muted-foreground)' }} />
                     <span>{att.title}</span>
                   </div>
                 ))}
@@ -121,7 +234,21 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
             )}
 
             {isEditingThis ? (
-              <div className="w-full bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-2xl p-3.5 shadow-2xs transition-all flex flex-col justify-between min-h-[90px]">
+              <div
+                style={{
+                  width: '100%',
+                  background: 'var(--card)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 16,
+                  padding: 14,
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+                  transition: 'all 200ms ease',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  minHeight: 90,
+                }}
+              >
                 <textarea
                   value={editingText}
                   onChange={(e) => onChangeEditText(e.target.value)}
@@ -135,18 +262,47 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
                       onCancelEdit();
                     }
                   }}
-                  className="w-full bg-transparent border-none outline-none resize-none text-zinc-800 dark:text-zinc-100 font-sans text-xs sm:text-sm min-h-[50px] leading-relaxed"
+                  style={{
+                    width: '100%',
+                    background: 'transparent',
+                    border: 'none',
+                    outline: 'none',
+                    resize: 'none',
+                    color: 'var(--foreground)',
+                    fontSize: 12,
+                    minHeight: 50,
+                    lineHeight: 1.625,
+                  }}
                   rows={2}
                   autoFocus
                 />
-                <div className="flex items-center justify-end gap-3 mt-1 pt-1">
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'flex-end',
+                    gap: 12,
+                    marginTop: 4,
+                    paddingTop: 4,
+                  }}
+                >
                   <button
                     type="button"
                     onClick={onCancelEdit}
-                    className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors cursor-pointer flex items-center justify-center"
+                    style={{
+                      padding: 4,
+                      color: 'var(--muted-foreground)',
+                      transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: 'transparent',
+                      border: 'none',
+                    }}
                     title="Cancel"
                   >
-                    <CloseOutlined className="text-xs" />
+                    <CloseOutlined style={{ fontSize: 12 }} />
                   </button>
                   <button
                     type="button"
@@ -155,7 +311,17 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
                         onSubmitEdit(editingText.trim());
                       }
                     }}
-                    className="p-1 text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer flex items-center justify-center"
+                    style={{
+                      padding: 4,
+                      color: 'var(--muted-foreground)',
+                      transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: 'transparent',
+                      border: 'none',
+                    }}
                     title="Save & Submit"
                   >
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -166,7 +332,22 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
                 </div>
               </div>
             ) : (
-              <div className={`bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 rounded-2xl px-4 py-2.5 font-normal max-w-fit leading-relaxed select-text ${fontSizeClass}`}>
+              <div
+                className={fontSizeClass}
+                style={{
+                  background: 'var(--muted)',
+                  color: 'var(--foreground)',
+                  borderRadius: 16,
+                  paddingLeft: 16,
+                  paddingRight: 16,
+                  paddingTop: 10,
+                  paddingBottom: 10,
+                  fontWeight: 400,
+                  maxWidth: 'fit-content',
+                  lineHeight: 1.625,
+                  userSelect: 'text',
+                }}
+              >
                 {msg.content}
               </div>
             )}
@@ -184,8 +365,19 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
         </div>
 
         {/* User Avatar to the right of message */}
-        <div className="shrink-0 pt-0.5">
-          <UserAvatar size={28} className="border border-zinc-200 dark:border-zinc-700 shadow-2xs" />
+        <div
+          style={{
+            flexShrink: 0,
+            paddingTop: 2,
+          }}
+        >
+          <UserAvatar
+            size={28}
+            style={{
+              border: '1px solid var(--border)',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+            }}
+          />
         </div>
       </div>
     );
@@ -198,35 +390,131 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
   const displayModel = msg.model || 'gemma-4-E2B-it-MLX-4bit';
 
   return (
-    <div className="group flex items-start gap-3 my-3 w-full">
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 12,
+        marginTop: 12,
+        marginBottom: 12,
+        width: '100%',
+      }}
+    >
       {isExporting && (
-        <div className="pt-2 shrink-0">
+        <div
+          style={{
+            paddingTop: 8,
+            flexShrink: 0,
+          }}
+        >
           <input
             type="checkbox"
             checked={isExportSelected}
             onChange={(e) => onToggleExportSelect(msg.id, e.target.checked)}
-            className="w-4 h-4 rounded border-zinc-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+            style={{
+              width: 16,
+              height: 16,
+              borderRadius: 4,
+              border: '1px solid var(--border)',
+              color: '#3b82f6',
+              cursor: 'pointer',
+            }}
           />
         </div>
       )}
 
-      <div className="flex-1 min-w-0 flex flex-col items-start">
+      <div
+        style={{
+          flex: 1,
+          minWidth: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'flex-start',
+        }}
+      >
         {/* Assistant Header Row with AI Avatar on left of title */}
-        <div className="flex items-center justify-between w-full mb-1.5">
-          <div className="flex items-center gap-2 text-xs text-zinc-700 dark:text-zinc-300 font-medium">
-            <NowPilotAvatar size={22} className="shadow-2xs" />
-            <span className="font-semibold text-xs sm:text-sm text-zinc-900 dark:text-zinc-100">NowPilot</span>
-            <span className="text-[11px] text-zinc-400 dark:text-zinc-500 font-normal truncate max-w-[200px]">({displayModel})</span>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            width: '100%',
+            marginBottom: 6,
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              fontSize: 12,
+              color: 'var(--muted-foreground)',
+              fontWeight: 500,
+            }}
+          >
+            <NowPilotAvatar
+              size={22}
+              style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.06)' }}
+            />
+            <span
+              style={{
+                fontWeight: 600,
+                fontSize: 12,
+                color: 'var(--foreground)',
+              }}
+            >
+              NowPilot
+            </span>
+            <span
+              style={{
+                fontSize: 11,
+                color: 'var(--muted-foreground)',
+                fontWeight: 400,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                maxWidth: 200,
+              }}
+            >
+              ({displayModel})
+            </span>
           </div>
 
           {/* Version Switcher */}
           {versions.length > 1 && (
-            <div className="text-[10px] text-zinc-400 dark:text-zinc-500 font-medium flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800/80 px-2 py-0.5 rounded-full select-none border border-zinc-200/60 dark:border-zinc-700/60">
+            <div
+              style={{
+                fontSize: 10,
+                color: 'var(--muted-foreground)',
+                fontWeight: 500,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                background: 'var(--muted)',
+                paddingLeft: 8,
+                paddingRight: 8,
+                paddingTop: 2,
+                paddingBottom: 2,
+                borderRadius: 9999,
+                userSelect: 'none',
+                border: '1px solid var(--border)',
+              }}
+            >
               <button
                 type="button"
                 onClick={() => onSwitchVersion(msg.id, -1)}
                 disabled={currentVersionIdx <= 0}
-                className="hover:text-zinc-800 dark:hover:text-zinc-200 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer font-bold px-0.5 transition-colors"
+                style={{
+                  color: 'var(--foreground)',
+                  cursor: 'pointer',
+                  fontWeight: 700,
+                  paddingLeft: 2,
+                  paddingRight: 2,
+                  transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+                  background: 'transparent',
+                  border: 'none',
+                  opacity: currentVersionIdx <= 0 ? 0.3 : 1,
+                }}
                 title="Previous version"
               >
                 &lt;
@@ -238,7 +526,17 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
                 type="button"
                 onClick={() => onSwitchVersion(msg.id, 1)}
                 disabled={currentVersionIdx >= versions.length - 1}
-                className="hover:text-zinc-800 dark:hover:text-zinc-200 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer font-bold px-0.5 transition-colors"
+                style={{
+                  color: 'var(--foreground)',
+                  cursor: 'pointer',
+                  fontWeight: 700,
+                  paddingLeft: 2,
+                  paddingRight: 2,
+                  transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+                  background: 'transparent',
+                  border: 'none',
+                  opacity: currentVersionIdx >= versions.length - 1 ? 0.3 : 1,
+                }}
                 title="Next version"
               >
                 &gt;
@@ -258,10 +556,31 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
 
         {/* AI Markdown Response via PortableMarkdown with streaming cursor */}
         {(!msg.isThinking || currentContent) && (
-          <div className={`w-full font-normal text-zinc-800 dark:text-zinc-100 leading-relaxed font-sans ${fontSizeClass} my-1`}>
+          <div
+            className={fontSizeClass}
+            style={{
+              width: '100%',
+              fontWeight: 400,
+              color: 'var(--foreground)',
+              lineHeight: 1.625,
+              marginTop: 4,
+              marginBottom: 4,
+            }}
+          >
             <PortableMarkdown content={currentContent} />
             {msg.isStreaming && !msg.isThinking && (
-              <span className="inline-block w-2 h-2 rounded-full bg-zinc-900 dark:bg-zinc-100 animate-pulse ml-1 align-middle" />
+              <span
+                className="np-pulse"
+                style={{
+                  display: 'inline-block',
+                  width: 8,
+                  height: 8,
+                  borderRadius: 9999,
+                  background: 'var(--foreground)',
+                  marginLeft: 4,
+                  verticalAlign: 'middle',
+                }}
+              />
             )}
           </div>
         )}
