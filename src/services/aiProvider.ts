@@ -12,21 +12,44 @@ export interface StreamChatParams {
   signal?: AbortSignal;
 }
 
-export async function fetchProviderModels(
+/**
+ * Outcome of a connection test. Either the endpoint returned a usable
+ * (non-empty) model list (`ok: true`) or it did not (`ok: false`, with a
+ * real error message — never a silent fallback).
+ *
+ * D-12 / T-01-10: the `error` string is built from the provider's own
+ * response (HTTP status + server-provided error body). The raw `apiKey`
+ * parameter is NEVER interpolated into this string.
+ */
+export type ProviderConnectionResult =
+  | { ok: true; models: CustomModelItem[] }
+  | { ok: false; error: string };
+
+/**
+ * Internal helper that performs the same provider fetch logic as
+ * `fetchProviderModels` but surfaces errors instead of swallowing them.
+ *
+ * Returns either:
+ *   - `{ ok: true, models }` — endpoint reachable, returned a non-empty list
+ *   - `{ ok: false, error }` — fetch threw OR the response was non-ok OR
+ *     the endpoint returned an empty list. `error` is built from the
+ *     provider's own status / error body; the apiKey is never logged.
+ */
+async function fetchModelsOrError(
   providerId: CustomProviderId,
   apiKey?: string,
   proxyUrl?: string
-): Promise<CustomModelItem[]> {
+): Promise<ProviderConnectionResult> {
+  const url = proxyUrl ? proxyUrl.replace(/\/+$/, '') : (
+    providerId === 'openai' ? 'https://api.openai.com/v1' :
+    providerId === 'claude' ? 'https://api.anthropic.com' :
+    providerId === 'gemini' ? 'https://generativelanguage.googleapis.com' :
+    'http://localhost:11434'
+  );
+
+  let fetchedNames: string[] = [];
+
   try {
-    const url = proxyUrl ? proxyUrl.replace(/\/+$/, '') : (
-      providerId === 'openai' ? 'https://api.openai.com/v1' :
-      providerId === 'claude' ? 'https://api.anthropic.com' :
-      providerId === 'gemini' ? 'https://generativelanguage.googleapis.com' :
-      'http://localhost:11434'
-    );
-
-    let fetchedNames: string[] = [];
-
     if (providerId === 'gemini') {
       const resp = await fetch(`${url}/v1beta/models?key=${apiKey || ''}`);
       if (resp.ok) {
@@ -36,6 +59,11 @@ export async function fetchProviderModels(
             .map((m: any) => m.name?.replace('models/', ''))
             .filter((n: string) => n);
         }
+      } else {
+        const errorData = await resp.json().catch(() => ({}));
+        const serverMsg = errorData?.error?.message || errorData?.error;
+        const errMsg = serverMsg ? String(serverMsg) : `HTTP error ${resp.status}`;
+        return { ok: false, error: `HTTP ${resp.status}: ${errMsg}` };
       }
     } else if (providerId === 'ollama') {
       const resp = await fetch(`${url}/api/tags`).catch(() => fetch(`${url}/v1/models`));
@@ -43,6 +71,9 @@ export async function fetchProviderModels(
         const data = await resp.json();
         const list = data.models || data.data || [];
         fetchedNames = list.map((m: any) => m.name || m.id);
+      } else {
+        const status = resp?.status ?? 'unknown';
+        return { ok: false, error: `HTTP ${status}: Connection failed` };
       }
     } else {
       const headers: Record<string, string> = {};
@@ -59,21 +90,50 @@ export async function fetchProviderModels(
         const data = await resp.json();
         const list = data.data || data.models || [];
         fetchedNames = list.map((m: any) => m.id || m.name);
+      } else {
+        const errorData = await resp.json().catch(() => ({}));
+        const serverMsg = errorData?.error?.message || errorData?.error;
+        const errMsg = serverMsg ? String(serverMsg) : `HTTP error ${resp.status}`;
+        return { ok: false, error: `HTTP ${resp.status}: ${errMsg}` };
       }
     }
-
-    if (fetchedNames.length > 0) {
-      return fetchedNames.map((name) => ({
-        id: name,
-        name: name,
-        enabled: true,
-      }));
-    }
   } catch (err) {
-    console.warn('Failed to fetch provider models dynamically:', err);
+    // Network-level failure (DNS, offline, CORS, etc.). `err` cannot contain
+    // the apiKey — fetch errors carry network metadata only.
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: `Network error: ${message}` };
   }
 
-  // Fallback defaults if endpoint is unreachable or CORS restricted
+  if (fetchedNames.length > 0) {
+    return {
+      ok: true,
+      models: fetchedNames.map((name) => ({ id: name, name, enabled: true })),
+    };
+  }
+
+  return { ok: false, error: 'Provider returned no models' };
+}
+
+/**
+ * "Refresh Models" convenience path. Same underlying fetch as
+ * `testProviderConnection` but on failure substitutes a hardcoded fallback
+ * model list — the permissive behavior is acceptable for the manual
+ * "Refresh Models" UI button (the user can still see SOMETHING and edit it).
+ *
+ * Kept distinct from `testProviderConnection` so the connection-test
+ * semantics (D-12 / D-03) are not silently masked.
+ */
+export async function fetchProviderModels(
+  providerId: CustomProviderId,
+  apiKey?: string,
+  proxyUrl?: string
+): Promise<CustomModelItem[]> {
+  const result = await fetchModelsOrError(providerId, apiKey, proxyUrl);
+  if (result.ok) return result.models;
+
+  // Connection couldn't be verified; fall back to the canonical static list
+  // for the "Refresh Models" UI. The `error` is intentionally NOT surfaced
+  // here — this function's contract is "give me SOMETHING to render".
   const fallbacks: Record<CustomProviderId, string[]> = {
     openai: ['gpt-4o', 'gpt-4o-mini', 'o1-mini', 'o3-mini'],
     claude: ['claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022'],
@@ -81,11 +141,33 @@ export async function fetchProviderModels(
     ollama: ['llama3.2', 'deepseek-r1:8b', 'qwen2.5-coder:7b'],
   };
 
-  return (fallbacks[providerId] || ['default-model']).map((m, idx) => ({
+  return (fallbacks[providerId] || ['default-model']).map((m) => ({
     id: m,
     name: m,
     enabled: true,
   }));
+}
+
+/**
+ * Real, error-surfacing connection test (D-12 / D-03 / T-01-10).
+ *
+ * Replaces the always-success 1s `setTimeout` previously used in
+ * OptionsPage and the (Phase-1-08) OnboardingModal. Issues the same fetch
+ * as `fetchProviderModels` but DOES NOT swallow the failure: a non-ok
+ * response, network throw, or empty model list returns
+ * `{ ok: false, error }` so the calling UI can render the real reason.
+ *
+ * Privacy (T-01-10): `error` strings are built from `resp.status` and
+ * server-provided error body fields only. The raw `apiKey` parameter is
+ * NEVER interpolated into the `error` string, never logged, and never
+ * echoed back to the user.
+ */
+export async function testProviderConnection(
+  providerId: CustomProviderId,
+  apiKey?: string,
+  proxyUrl?: string
+): Promise<ProviderConnectionResult> {
+  return fetchModelsOrError(providerId, apiKey, proxyUrl);
 }
 
 function buildEndpointUrl(config: ProviderConfig): string {
@@ -227,18 +309,33 @@ export async function streamChatResponse({
   onError,
   signal,
 }: StreamChatParams) {
+  // D-12: the canned critical-thinking / "Good morning" simulator is only
+  // reachable when the user has BOTH opted into DEMO_MODE in the provider
+  // config AND is running a development build (`import.meta.env.DEV`). In
+  // production, OR when DEMO_MODE is false, a provider failure (webapp
+  // session missing, fetch throw, non-ok HTTP response) calls `onError`
+  // with the real failure reason — never substitutes a canned response.
+  const DEMO_MODE = config.demoMode === true && import.meta.env.DEV === true;
+
   try {
     const isWebapp = config.serviceProvider === 'ChatGPT Webapp';
 
     if (isWebapp) {
-      await simulateStreamResponse(
-        prompt,
-        modelId,
-        onChunk,
-        onDone,
-        signal,
-        'Operating via ChatGPT Webapp session'
-      );
+      if (DEMO_MODE) {
+        await simulateStreamResponse(
+          prompt,
+          modelId,
+          onChunk,
+          onDone,
+          signal,
+          'Operating via ChatGPT Webapp session'
+        );
+      } else {
+        onError(new Error(
+          'ChatGPT Webapp session provider is not implemented in this build — ' +
+          'configure a real provider in Options > General > AI Provider.'
+        ));
+      }
       return;
     }
 
@@ -264,30 +361,44 @@ export async function streamChatResponse({
         signal,
       });
     } catch (fetchErr) {
-      await simulateStreamResponse(
-        prompt,
-        modelId,
-        onChunk,
-        onDone,
-        signal,
-        'Offline / Local Provider Mode active. You can set up custom API credentials in Options > General > AI Provider.'
-      );
+      // Real network failure. The apiKey is a header value and is NOT
+      // reflected in `fetchErr.message` (fetch error messages carry URL
+      // + Type, never the header values), so passing `fetchErr.message`
+      // through to `onError` is T-01-10 safe.
+      if (DEMO_MODE) {
+        await simulateStreamResponse(
+          prompt,
+          modelId,
+          onChunk,
+          onDone,
+          signal,
+          'Offline / Local Provider Mode active. You can set up custom API credentials in Options > General > AI Provider.'
+        );
+      } else {
+        const message = fetchErr instanceof Error ? fetchErr.message : String(fetchErr);
+        onError(new Error(`Network error reaching AI provider: ${message}`));
+      }
       return;
     }
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      const errMsg = errorData.error?.message || errorData.error || `HTTP error ${response.status}`;
-      
-      // Fallback gracefully on API key errors or server error
-      await simulateStreamResponse(
-        prompt,
-        modelId,
-        onChunk,
-        onDone,
-        signal,
-        `Provider Notice: ${errMsg}. Showing fallback AI response.`
-      );
+      const serverMsg = errorData.error?.message || errorData.error;
+      const errMsg = serverMsg ? String(serverMsg) : `HTTP error ${response.status}`;
+      // D-12: in production this is a real failure surfaced to the user; in
+      // DEMO_MODE+DEV only, the simulator takes over (legacy fallback).
+      if (DEMO_MODE) {
+        await simulateStreamResponse(
+          prompt,
+          modelId,
+          onChunk,
+          onDone,
+          signal,
+          `Provider Notice: ${errMsg}. Showing fallback AI response.`
+        );
+      } else {
+        onError(new Error(`Provider returned HTTP ${response.status}: ${errMsg}`));
+      }
       return;
     }
 

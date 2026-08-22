@@ -65,7 +65,12 @@ export function useChatStreaming() {
 
     abortControllerRef.current = new AbortController();
 
-    const currentHistory = useExtensionStore.getState().activeSession?.messages || [userMessage];
+    // CONCERNS.md bug fix: the just-added assistant placeholder has
+    // `content: ''` (lines above). Filtering by `m.content` (truthy /
+    // non-empty) excludes it from what we send to the provider so a blank
+    // assistant bubble is never included in the request history.
+    const currentHistory = (useExtensionStore.getState().activeSession?.messages || [userMessage])
+      .filter((m) => m.content);
 
     await streamChatResponse({
       messages: currentHistory,

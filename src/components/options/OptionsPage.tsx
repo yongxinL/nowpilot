@@ -30,6 +30,7 @@ import { NowPilotAvatar } from '../common/NowPilotAvatar';
 import { UserAvatar } from '../common/UserAvatar';
 import { PromptsOptionsTab } from './PromptsOptionsTab';
 import { PromptCategory, CustomProviderId, CustomModelItem, CustomProviderDetail } from '../../types';
+import { testProviderConnection } from '../../services/aiProvider';
 
 const { Title } = Typography;
 
@@ -237,23 +238,42 @@ export const OptionsPage: React.FC = () => {
     antMessage.info(`${PROVIDER_INFO[providerId].name} ${enabled ? 'enabled' : 'disabled'}`);
   };
 
-  const handleCheckConnection = () => {
+  const handleCheckConnection = async () => {
     if (!activeModalProviderId) return;
     setModalCheckingConn(true);
-    setTimeout(() => {
-      setModalCheckingConn(false);
-      antMessage.success('Connection verified successfully!');
-
-      // Populate models if empty
-      if (modalModels.length === 0) {
-        const defaults = PROVIDER_INFO[activeModalProviderId].defaultModels.map((m, idx) => ({
-          id: m,
-          name: m,
-          enabled: idx === 1 || idx === 0,
-        }));
-        setModalModels(defaults);
+    try {
+      // D-12 / D-03: real connection test. The previous 1s setTimeout
+      // unconditionally reported success and silently populated defaults
+      // — that masked broken credentials / wrong endpoint. testProviderConnection
+      // surfaces the real success / failure; on success we still seed the
+      // model list with defaults if the user hasn't customised it yet.
+      const result = await testProviderConnection(
+        activeModalProviderId,
+        modalApiKey || undefined,
+        modalUseCustomProxy && modalProxyUrl ? modalProxyUrl : undefined,
+      );
+      if (result.ok) {
+        antMessage.success('Connection verified successfully!');
+        if (modalModels.length === 0 && activeModalProviderId) {
+          const defaults = PROVIDER_INFO[activeModalProviderId].defaultModels.map((m, idx) => ({
+            id: m,
+            name: m,
+            enabled: idx === 1 || idx === 0,
+          }));
+          setModalModels(defaults);
+        }
+      } else {
+        antMessage.error(result.error);
       }
-    }, 1000);
+    } catch (err) {
+      // Defensive — testProviderConnection itself doesn't throw, but any
+      // unforeseen runtime error in the call chain must NOT leave the UI
+      // stuck in a "checking" state.
+      const message = err instanceof Error ? err.message : String(err);
+      antMessage.error(`Connection test failed: ${message}`);
+    } finally {
+      setModalCheckingConn(false);
+    }
   };
 
   const handleUpdateList = () => {
