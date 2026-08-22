@@ -7,7 +7,6 @@ const WORKSPACE_CHANNEL = 'np_workspace';
  * D-04 / D-07: open the Standalone view in a new tab — or focus the
  * existing one if it's already open (REQ-F05 cross-surface handoff).
  *
- * Pre-fix this was `openFullApp` and pointed at a non-existent `app.html`.
  * The real surface is `entrypoints/standalone/index.html`, which WXT
  * outputs as `standalone.html`. The query string shape
  * (`workspaceId=&conversationId=&page=`) is what `hydrateFromURL` reads on
