@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { useWorkspaceStore } from '../../../src/core/workspace/WorkspaceStore';
+import {
+  useWorkspaceStore,
+  isPrimaryWriter,
+  type ActiveSurface,
+} from '../../../src/core/workspace/WorkspaceStore';
 
 describe('WorkspaceStore', () => {
   beforeEach(() => {
@@ -43,8 +47,8 @@ describe('WorkspaceStore', () => {
 
   it('tracks active surface', () => {
     const store = useWorkspaceStore.getState();
-    store.setActiveSurface('full-app');
-    expect(useWorkspaceStore.getState().activeSurface).toBe('full-app');
+    store.setActiveSurface('standalone');
+    expect(useWorkspaceStore.getState().activeSurface).toBe('standalone');
   });
 
   it('bumps version', () => {
@@ -64,3 +68,41 @@ describe('WorkspaceStore', () => {
     expect(newState.version).toBe(0);
   });
 });
+
+describe('isPrimaryWriter() predicate (D-16, REQ-R05)', () => {
+  // Phase 1 contract: always returns true. Phase 2 will swap in real
+  // election semantics — see WorkspaceStore.ts swap-point comment.
+
+  it('returns true when called with no arguments', () => {
+    expect(isPrimaryWriter()).toBe(true);
+  });
+
+  it('returns true on a second call (proves the stub is not stateful)', () => {
+    expect(isPrimaryWriter()).toBe(true);
+    expect(isPrimaryWriter()).toBe(true);
+  });
+});
+
+describe('ActiveSurface union (D-07 canonicalization)', () => {
+  it("accepts 'standalone' as a valid value", () => {
+    const surface: ActiveSurface = 'standalone';
+    expect(surface).toBe('standalone');
+  });
+
+  it("accepts 'sidepanel' as a valid value", () => {
+    const surface: ActiveSurface = 'sidepanel';
+    expect(surface).toBe('sidepanel');
+  });
+
+  it("rejects 'full-app' at the type level (canonical rename)", () => {
+    // @ts-expect-error 'full-app' is no longer a member of ActiveSurface — canonicalized to 'standalone' (D-07).
+    const surface: ActiveSurface = 'full-app';
+    // Runtime belt-and-braces: if 'full-app' ever re-joined the union, the
+    // ts-expect-error directive just above would itself error and this
+    // file would fail to compile. The runtime assertion below confirms
+    // the literal did reach the assignment (proves the directive was
+    // exercised).
+    expect(surface).toBe('full-app');
+  });
+});
+

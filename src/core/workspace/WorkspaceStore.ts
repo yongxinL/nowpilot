@@ -3,7 +3,21 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import { chromeStorageAdapter } from '../theme/chromeStorageAdapter';
 
-export type ActiveSurface = 'sidepanel' | 'full-app';
+export type ActiveSurface = 'sidepanel' | 'standalone';
+
+/**
+ * Single-writer election predicate (D-16 / REQ-R05).
+ *
+ * Phase 1: always `true` (interface frozen, no election yet).
+ * Phase 2 implements real election semantics (background-SW
+ * authoritative vs. tabs.query highest-id vs. BroadcastBus subscriber)
+ * before MemoryEngine write paths gate on this — do NOT assume this
+ * always returns true past Phase 2. SWAP POINT (Phase 2): replace with
+ * leader-election over `np_workspace_primary` channel (CAS + heartbeat).
+ */
+export function isPrimaryWriter(): boolean {
+  return true;
+}
 
 export interface TabContext {
   tabId: number;
