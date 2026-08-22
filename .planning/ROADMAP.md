@@ -13,7 +13,7 @@
 
 ## Phases
 
-- [ ] **Phase 1: MV3/WXT Runtime + AntD Shells + Workspace Handoff** — AntD shells, RuntimeEnvelope, WorkspaceStore, Cmd+K palette shell, onboarding
+- [x] **Phase 1: MV3/WXT Runtime + AntD Shells + Workspace Handoff** — AntD shells, RuntimeEnvelope, WorkspaceStore, Cmd+K palette shell, onboarding *(8/8 plans complete; verify:phase-1 green at 166 tests; see `.planning/VERIFICATION.md`)*
 - [ ] **Phase 2: Storage, Security, WriteJournal, Workspace Persistence** — EncryptedStorage, IndexedDB, KeyVault, WriteJournal, AES-GCM secrets
 - [ ] **Phase 3: Cost-Effective AI Runtime (+ Persona seed)** — ProviderRouter, AgentOrchestrator, structured output, persona runtime foundation
 - [ ] **Phase 4: Agent Reliability and Evidence** — Trajectory states, CompletionEvidence, AgentTurnOutcome, deterministic replan/terminal policy
