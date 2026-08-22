@@ -1,5 +1,4 @@
 import { defineConfig } from 'wxt';
-import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
   webExt: {
@@ -12,7 +11,6 @@ export default defineConfig({
     },
   },
   vite: () => ({
-    plugins: [tailwindcss() as any],
     build: {
       chunkSizeWarningLimit: 1500,
       rollupOptions: {

@@ -1,4 +1,6 @@
-@import "tailwindcss";
+/* Tailwind removed per D-18 (REQ-R19) — spec §0.2 forbids tailwind/shadcn/@radix-ui.
+   Theme tokens (--background, --foreground, --primary, etc.) remain declared below
+   for AntD ConfigProvider + CSS-var consumption. */
 
 @custom-variant dark (&:is(.dark *));
 

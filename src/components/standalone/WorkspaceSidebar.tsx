@@ -1,5 +1,5 @@
 import React from 'react';
-import { Tooltip, Popover, Button } from 'antd';
+import { Tooltip, Popover, Button, theme } from 'antd';
 import { SettingOutlined, RightOutlined, CheckCircleFilled } from '@ant-design/icons';
 import { NowPilotAvatar } from '../common/NowPilotAvatar';
 import { UserAvatar } from '../common/UserAvatar';
@@ -15,6 +15,15 @@ interface WorkspaceSidebarProps {
   onOpenOptions?: () => void;
 }
 
+// Sider widths per DESIGN_SYSTEM §8.2 — locked to 72px / 240px (overriding
+// the scaffold's 64/230 px drift in the same edit).
+const SIDER_WIDTH_COLLAPSED = 72;
+const SIDER_WIDTH_EXPANDED = 240;
+const ICON_BUTTON_SIZE = 40; // 8px scale
+const ICON_BUTTON_SIZE_SMALL = 28; // 4px scale
+const AVATAR_SIZE_COLLAPSED = 36;
+const AVATAR_SIZE_EXPANDED = 32;
+
 export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
   activeMenu,
   onSelectMenu,
@@ -23,6 +32,20 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
   onOpenSidepanel,
   onOpenOptions,
 }) => {
+  const { token } = theme.useToken();
+
+  // Sidebar tokens (light/dark aware via AntD theme.useToken()).
+  const SIDEBAR_BG = token.colorBgLayout;
+  const SIDEBAR_FG = token.colorTextSecondary;
+  const ITEM_ACTIVE_BG = token.colorBgContainer;
+  const ITEM_ACTIVE_FG = token.colorText;
+  const ITEM_HOVER_BG = token.colorFillTertiary;
+  const ITEM_IDLE_FG = token.colorTextTertiary;
+  const ACCENT = token.colorPrimary;
+  const DIVIDER = token.colorBorderSecondary;
+  const BADGE_BG = token.colorPrimaryBg;
+  const BADGE_FG = token.colorPrimary;
+
   const navMenuItems: { key: WorkspaceTab; label: string; icon: React.ReactNode }[] = [
     {
       key: 'Chat',
@@ -81,24 +104,53 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
   ];
 
   const userProfileContent = (
-    <div className="w-56 p-2">
-      <div className="flex items-center gap-3 pb-3 border-b border-zinc-100 dark:border-zinc-800">
+    <div style={{ width: 224, padding: token.paddingXS }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: token.paddingSM,
+          paddingBottom: token.paddingSM,
+          borderBottom: `1px solid ${DIVIDER}`,
+        }}
+      >
         <UserAvatar size={36} />
         <div>
-          <div className="font-semibold text-xs text-zinc-900 dark:text-zinc-100">User Account</div>
-          <div className="text-[11px] text-zinc-400">NowPilot Workspace</div>
+          <div style={{ fontWeight: 600, fontSize: 12, color: token.colorText }}>
+            User Account
+          </div>
+          <div style={{ fontSize: 12, color: token.colorTextQuaternary }}>
+            NowPilot Workspace
+          </div>
         </div>
       </div>
-      <div className="py-2 space-y-1.5 text-xs text-zinc-600 dark:text-zinc-300">
-        <div className="flex items-center justify-between">
+      <div
+        style={{
+          padding: `${token.paddingXS}px 0`,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 6, // 6px ≈ 4+2 stack — within allowed stack margin (≤8)
+          fontSize: 12,
+          color: token.colorTextSecondary,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span>Plan</span>
-          <span className="font-medium text-emerald-600 flex items-center gap-1">
-            <CheckCircleFilled className="text-[10px]" /> Pro Active
+          <span
+            style={{
+              fontWeight: 500,
+              color: token.colorSuccess,
+              display: 'flex',
+              alignItems: 'center',
+              gap: token.paddingXXS,
+            }}
+          >
+            <CheckCircleFilled style={{ fontSize: 10 }} /> Pro Active
           </span>
         </div>
-        <div className="flex items-center justify-between">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span>Mode</span>
-          <span className="font-medium">Standalone Tab</span>
+          <span style={{ fontWeight: 500 }}>Standalone Tab</span>
         </div>
       </div>
       {onOpenOptions && (
@@ -108,7 +160,7 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
           block
           icon={<SettingOutlined />}
           onClick={onOpenOptions}
-          className="mt-1"
+          style={{ marginTop: token.paddingXXS }}
         >
           Manage Settings
         </Button>
@@ -116,27 +168,97 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
     </div>
   );
 
+  const collapsedStyle: React.CSSProperties = {
+    width: SIDER_WIDTH_COLLAPSED,
+    alignItems: 'center',
+    paddingLeft: token.paddingXXS,
+    paddingRight: token.paddingXXS,
+    paddingTop: token.paddingSM,
+    paddingBottom: token.paddingSM,
+  };
+  const expandedStyle: React.CSSProperties = {
+    width: SIDER_WIDTH_EXPANDED,
+    paddingLeft: token.padding,
+    paddingRight: token.padding,
+    paddingTop: token.paddingSM,
+    paddingBottom: token.paddingSM,
+  };
+
   return (
     <aside
-      className={`flex flex-col justify-between transition-all duration-200 select-none shrink-0 ${
-        collapsed ? 'w-16 items-center px-2 py-3' : 'w-[230px] px-3.5 py-3'
-      } bg-[#eceef0] dark:bg-zinc-950 text-zinc-700 dark:text-zinc-300`}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        transition: 'all 200ms',
+        userSelect: 'none',
+        flexShrink: 0,
+        backgroundColor: SIDEBAR_BG,
+        color: SIDEBAR_FG,
+        ...(collapsed ? collapsedStyle : expandedStyle),
+      }}
     >
       {/* Top Section */}
-      <div className="w-full flex flex-col items-center">
+      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         {collapsed ? (
-          <div className="mb-6 flex justify-center items-center">
-            <div className="w-9 h-9 rounded-full overflow-hidden flex items-center justify-center shadow-xs">
-              <NowPilotAvatar size={36} />
+          <div
+            style={{
+              marginBottom: token.paddingLG + token.paddingXS, // 24 = lg (16) + xs (8)
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}
+          >
+            <div
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: '50%',
+                overflow: 'hidden',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <NowPilotAvatar size={AVATAR_SIZE_COLLAPSED} />
             </div>
           </div>
         ) : (
-          <div className="w-full flex items-center justify-between mb-5 px-1">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center shadow-xs shrink-0">
-                <NowPilotAvatar size={32} />
+          <div
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: token.paddingLG,
+              paddingLeft: token.paddingXXS,
+              paddingRight: token.paddingXXS,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: '50%',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                <NowPilotAvatar size={AVATAR_SIZE_EXPANDED} />
               </div>
-              <span className="font-bold text-sm tracking-tight text-zinc-800 dark:text-zinc-100 select-none">
+              <span
+                style={{
+                  fontWeight: 700,
+                  fontSize: 13, // 14 → 13 (within {12,13,14,16})
+                  letterSpacing: -0.2,
+                  color: token.colorText,
+                  userSelect: 'none',
+                }}
+              >
                 NowPilot
               </span>
             </div>
@@ -146,7 +268,27 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
                 <button
                   type="button"
                   onClick={onOpenSidepanel}
-                  className="w-7 h-7 rounded-lg hover:bg-zinc-200/80 dark:hover:bg-zinc-800 text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-100 flex items-center justify-center transition-colors cursor-pointer"
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: token.borderRadiusSM,
+                    background: 'transparent',
+                    border: 'none',
+                    color: token.colorTextTertiary,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    transition: 'background-color 150ms, color 150ms',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = ITEM_HOVER_BG;
+                    e.currentTarget.style.color = token.colorText;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.color = token.colorTextTertiary;
+                  }}
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="4 14 10 14 10 20" />
@@ -161,7 +303,14 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
         )}
 
         {/* Navigation Menu Items */}
-        <nav className="w-full flex flex-col gap-1.5">
+        <nav
+          style={{
+            width: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: token.paddingXXS, // 8 (within {4,8,16,24,32})
+          }}
+        >
           {navMenuItems.map((item) => {
             const isActive = activeMenu === item.key;
             const isTeams = item.key === 'Teams';
@@ -169,8 +318,8 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
             return (
               <React.Fragment key={item.key}>
                 {isTeams && (
-                  <div className="my-1.5 px-2">
-                    <div className="h-[1px] w-full bg-zinc-300/80 dark:bg-zinc-800" />
+                  <div style={{ margin: `${token.paddingXXS}px 0`, paddingLeft: token.paddingXS, paddingRight: token.paddingXS }}>
+                    <div style={{ height: 1, width: '100%', backgroundColor: DIVIDER }} />
                   </div>
                 )}
 
@@ -179,15 +328,37 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
                     <button
                       type="button"
                       onClick={() => onSelectMenu(item.key)}
-                      className={`w-10 h-10 mx-auto rounded-xl flex items-center justify-center cursor-pointer transition-all relative ${
-                        isActive
-                          ? 'bg-white dark:bg-zinc-800 text-blue-600 dark:text-blue-400 shadow-xs'
-                          : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 hover:bg-zinc-200/60 dark:hover:bg-zinc-800/80'
-                      }`}
+                      style={{
+                        width: ICON_BUTTON_SIZE,
+                        height: ICON_BUTTON_SIZE,
+                        marginLeft: 'auto',
+                        marginRight: 'auto',
+                        borderRadius: token.borderRadius,
+                        background: 'transparent',
+                        border: 'none',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        transition: 'all 150ms',
+                        position: 'relative',
+                        color: isActive ? ACCENT : ITEM_IDLE_FG,
+                        backgroundColor: isActive ? ITEM_ACTIVE_BG : 'transparent',
+                      }}
                     >
                       {item.icon}
                       {isTeams && (
-                        <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-blue-500" />
+                        <span
+                          style={{
+                            position: 'absolute',
+                            top: 6,
+                            right: 6,
+                            width: 6,
+                            height: 6,
+                            borderRadius: '50%',
+                            backgroundColor: ACCENT,
+                          }}
+                        />
                       )}
                     </button>
                   </Tooltip>
@@ -195,24 +366,49 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
                   <button
                     type="button"
                     onClick={() => onSelectMenu(item.key)}
-                    className={`w-full px-3.5 py-2.5 rounded-xl flex items-center justify-between text-sm font-medium cursor-pointer transition-all ${
-                      isActive
-                        ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-semibold shadow-xs'
-                        : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200/60 dark:hover:bg-zinc-800/80'
-                    }`}
+                    style={{
+                      width: '100%',
+                      paddingLeft: token.padding,
+                      paddingRight: token.padding,
+                      paddingTop: token.paddingSM,
+                      paddingBottom: token.paddingSM,
+                      borderRadius: token.borderRadius,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      fontSize: 13, // 14 → 13 (within {12,13,14,16})
+                      cursor: 'pointer',
+                      transition: 'all 150ms',
+                      border: 'none',
+                      color: isActive ? token.colorText : token.colorTextTertiary,
+                      backgroundColor: isActive ? ITEM_ACTIVE_BG : 'transparent',
+                      fontWeight: isActive ? 600 : 500,
+                    }}
                   >
-                    <div className="flex items-center gap-3">
-                      <span className={isActive ? 'text-blue-600 dark:text-blue-400' : ''}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: token.paddingSM }}>
+                      <span style={{ color: isActive ? ACCENT : 'inherit' }}>
                         {item.icon}
                       </span>
                       <span>{item.label}</span>
                     </div>
                     {isTeams && (
-                      <div className="flex items-center gap-1">
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400 font-semibold">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: token.paddingXXS }}>
+                        <span
+                          style={{
+                            fontSize: 10,
+                            paddingLeft: 6,
+                            paddingRight: 6,
+                            paddingTop: 2,
+                            paddingBottom: 2,
+                            borderRadius: token.borderRadiusXS,
+                            backgroundColor: BADGE_BG,
+                            color: BADGE_FG,
+                            fontWeight: 600,
+                          }}
+                        >
                           Add-on
                         </span>
-                        <RightOutlined className="text-[11px] text-zinc-400" />
+                        <RightOutlined style={{ fontSize: 12, color: token.colorTextQuaternary }} />
                       </div>
                     )}
                   </button>
@@ -224,23 +420,61 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
       </div>
 
       {/* Bottom Section */}
-      <div className="w-full pt-3">
+      <div style={{ width: '100%', paddingTop: token.paddingSM }}>
         {collapsed ? (
-          <div className="flex flex-col items-center gap-2">
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: token.paddingXS }}>
             {onOpenOptions && (
               <Tooltip title="Options" placement="right">
                 <button
                   type="button"
                   onClick={onOpenOptions}
-                  className="w-10 h-10 rounded-xl flex items-center justify-center text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-200/60 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                  style={{
+                    width: ICON_BUTTON_SIZE,
+                    height: ICON_BUTTON_SIZE,
+                    borderRadius: token.borderRadius,
+                    background: 'transparent',
+                    border: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: token.colorTextTertiary,
+                    cursor: 'pointer',
+                    transition: 'background-color 150ms, color 150ms',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = ITEM_HOVER_BG;
+                    e.currentTarget.style.color = token.colorText;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.color = token.colorTextTertiary;
+                  }}
                 >
-                  <SettingOutlined className="text-base" />
+                  <SettingOutlined style={{ fontSize: token.fontSize }} />
                 </button>
               </Tooltip>
             )}
 
             <Popover content={userProfileContent} trigger="click" placement="rightBottom">
-              <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center cursor-pointer hover:ring-2 hover:ring-blue-500/30 transition-all shadow-2xs">
+              <div
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: '50%',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  transition: 'all 150ms',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.boxShadow = `0 0 0 2px ${ACCENT}55`;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
                 <UserAvatar size={32} />
               </div>
             </Popover>
@@ -249,7 +483,28 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
               <button
                 type="button"
                 onClick={() => onToggleCollapsed(false)}
-                className="w-10 h-10 rounded-xl flex items-center justify-center text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-200/60 dark:hover:bg-zinc-800 transition-colors cursor-pointer mt-1"
+                style={{
+                  width: ICON_BUTTON_SIZE,
+                  height: ICON_BUTTON_SIZE,
+                  borderRadius: token.borderRadius,
+                  background: 'transparent',
+                  border: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: token.colorTextTertiary,
+                  cursor: 'pointer',
+                  transition: 'background-color 150ms, color 150ms',
+                  marginTop: token.paddingXXS,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = ITEM_HOVER_BG;
+                  e.currentTarget.style.color = token.colorText;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.color = token.colorTextTertiary;
+                }}
               >
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="19" y1="5" x2="19" y2="19" />
@@ -259,10 +514,38 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
             </Tooltip>
           </div>
         ) : (
-          <div className="flex items-center justify-between px-1 py-1">
-            <div className="flex items-center gap-2.5">
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingLeft: token.paddingXXS,
+              paddingRight: token.paddingXXS,
+              paddingTop: token.paddingXXS,
+              paddingBottom: token.paddingXXS,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <Popover content={userProfileContent} trigger="click" placement="topLeft">
-                <div className="w-7 h-7 rounded-full overflow-hidden flex items-center justify-center cursor-pointer hover:ring-2 hover:ring-blue-500/30 transition-all shadow-2xs">
+                <div
+                  style={{
+                    width: ICON_BUTTON_SIZE_SMALL,
+                    height: ICON_BUTTON_SIZE_SMALL,
+                    borderRadius: '50%',
+                    overflow: 'hidden',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    transition: 'all 150ms',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.boxShadow = `0 0 0 2px ${ACCENT}55`;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
                   <UserAvatar size={28} />
                 </div>
               </Popover>
@@ -272,9 +555,29 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
                   <button
                     type="button"
                     onClick={onOpenOptions}
-                    className="w-7 h-7 rounded-lg flex items-center justify-center text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-200/60 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                    style={{
+                      width: ICON_BUTTON_SIZE_SMALL,
+                      height: ICON_BUTTON_SIZE_SMALL,
+                      borderRadius: token.borderRadiusSM,
+                      background: 'transparent',
+                      border: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: token.colorTextTertiary,
+                      cursor: 'pointer',
+                      transition: 'background-color 150ms, color 150ms',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = ITEM_HOVER_BG;
+                      e.currentTarget.style.color = token.colorText;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                      e.currentTarget.style.color = token.colorTextTertiary;
+                    }}
                   >
-                    <SettingOutlined className="text-sm" />
+                    <SettingOutlined style={{ fontSize: token.fontSizeSM }} />
                   </button>
                 </Tooltip>
               )}
@@ -284,7 +587,27 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
               <button
                 type="button"
                 onClick={() => onToggleCollapsed(true)}
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-200/60 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                style={{
+                  width: ICON_BUTTON_SIZE_SMALL,
+                  height: ICON_BUTTON_SIZE_SMALL,
+                  borderRadius: token.borderRadiusSM,
+                  background: 'transparent',
+                  border: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: token.colorTextTertiary,
+                  cursor: 'pointer',
+                  transition: 'background-color 150ms, color 150ms',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = ITEM_HOVER_BG;
+                  e.currentTarget.style.color = token.colorText;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.color = token.colorTextTertiary;
+                }}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="5" y1="5" x2="5" y2="19" />

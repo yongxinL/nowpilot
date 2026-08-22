@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { theme } from 'antd';
 import { WorkspaceSidebar, WorkspaceTab } from './WorkspaceSidebar';
 import { SidepanelChat } from '../chat/SidepanelChat';
 import { NotesWorkspace } from '../notes/NotesWorkspace';
@@ -15,11 +16,27 @@ export const StandaloneWorkspace: React.FC<StandaloneWorkspaceProps> = ({
   onOpenOptions,
   onOpenSidepanel,
 }) => {
+  const { token } = theme.useToken();
   const [collapsed, setCollapsed] = useState(false);
   const [activeMenu, setActiveMenu] = useState<WorkspaceTab>('Chat');
 
+  // Spacing scale {4,8,16,24,32}; only {4,8,16,24,32} per UI-SPEC.
+  // Border-radius token for the rounded left-corner workspace card.
+  const SURFACE_BG = token.colorBgLayout; // outer Sider surface
+  const CARD_BG = token.colorBgContainer; // inner workspace card surface
+  const CARD_BORDER = token.colorBorderSecondary;
+
   return (
-    <div className="h-full w-full flex overflow-hidden bg-[#eceef0] dark:bg-zinc-950 font-sans">
+    <div
+      style={{
+        height: '100%',
+        width: '100%',
+        display: 'flex',
+        overflow: 'hidden',
+        backgroundColor: SURFACE_BG,
+        fontFamily: token.fontFamily,
+      }}
+    >
       {/* NowPilot Navigation */}
       <WorkspaceSidebar
         activeMenu={activeMenu}
@@ -31,9 +48,33 @@ export const StandaloneWorkspace: React.FC<StandaloneWorkspaceProps> = ({
       />
 
       {/* Main Content Workspace Card with Rounded Left Corner */}
-      <main className="flex-1 flex flex-col h-full overflow-hidden bg-white dark:bg-zinc-900 rounded-tl-3xl rounded-bl-3xl shadow-xs border-l border-t border-b border-zinc-200/60 dark:border-zinc-800/80 relative">
+      <main
+        style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100%',
+          overflow: 'hidden',
+          backgroundColor: CARD_BG,
+          borderTopLeftRadius: token.borderRadiusLG * 3,
+          borderBottomLeftRadius: token.borderRadiusLG * 3,
+          borderLeft: `1px solid ${CARD_BORDER}`,
+          borderTop: `1px solid ${CARD_BORDER}`,
+          borderBottom: `1px solid ${CARD_BORDER}`,
+          position: 'relative',
+        }}
+      >
         {activeMenu === 'Chat' && (
-          <div className="h-full w-full relative overflow-hidden flex flex-col">
+          <div
+            style={{
+              height: '100%',
+              width: '100%',
+              position: 'relative',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+          >
             <SidepanelChat
               onOpenOptions={onOpenOptions}
               onOpenStandalone={() => {}}
@@ -45,7 +86,7 @@ export const StandaloneWorkspace: React.FC<StandaloneWorkspaceProps> = ({
         {activeMenu === 'Tools' && <ToolsGridPanel />}
 
         {activeMenu === 'Note' && (
-          <div className="h-full w-full overflow-hidden">
+          <div style={{ height: '100%', width: '100%', overflow: 'hidden' }}>
             <NotesWorkspace />
           </div>
         )}
