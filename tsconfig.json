@@ -5,7 +5,11 @@
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
     "noEmit": true,
-    "strict": false,
+    // strict:true per D-21 (REQ-R19, spec §7.8). Phase 1 sweep resolves
+    // every trivial cast to a real type; genuinely-structural residue is
+    // suppressed with sequential // @ts-expect-error NP-STRICT-<n>:
+    // markers (Phase 2-3 reduce this ceiling to 0 per D-21/STACK §35).
+    "strict": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,

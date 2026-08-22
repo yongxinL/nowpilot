@@ -69,7 +69,7 @@ export const WriteInputPanel: React.FC<WriteInputPanelProps> = ({
       {/* 2. Control Row: Model Selector on Left, Formatting on Right */}
       <div className="flex items-center justify-between gap-3 w-full">
         <ModelSelector
-          selectedModelId={selectedModelId}
+          selectedModelId={selectedModelId ?? ''}
           onSelectModel={onSelectModel}
           variant="pill"
         />
