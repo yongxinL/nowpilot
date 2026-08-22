@@ -53,7 +53,15 @@ export const ToolsGridPanel: React.FC = () => {
   };
 
   return (
-    <div className="h-full overflow-y-auto p-6 sm:p-8 max-w-5xl mx-auto w-full">
+    <div style={{
+            height: '100%',
+            overflowY: 'auto',
+            padding: 24,
+            maxWidth: 1024,
+            marginLeft: 'auto',
+            marginRight: 'auto',
+            width: '100%',
+          }}>
       <Title level={2} style={{ marginBottom: 8 }}>
         Tools Directory
       </Title>
@@ -62,7 +70,9 @@ export const ToolsGridPanel: React.FC = () => {
       </Paragraph>
 
       {(['Reading', 'Agents', 'Translate'] as const).map((cat) => (
-        <div key={cat} className="mb-8">
+        <div key={cat} style={{
+            marginBottom: 32,
+          }}>
           <Title level={5} type="secondary" style={{ textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 14 }}>
             {cat}
           </Title>
@@ -85,15 +95,34 @@ export const ToolsGridPanel: React.FC = () => {
                     borderColor: token.colorBorderSecondary,
                   }}
                 >
-                  <div className="flex items-start gap-3">
+                  <div style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 12,
+          }}>
                     <div
-                      className="p-2 rounded-lg flex items-center justify-center shrink-0"
-                      style={{ background: token.colorBgElevated }}
+                      style={{
+            padding: 8,
+            borderRadius: 8,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+            background: token.colorBgElevated,
+          }}
                     >
                       {renderToolIcon(tool.iconName)}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 mb-1">
+                    <div style={{
+            flex: 1,
+            minWidth: 0,
+          }}>
+                      <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            marginBottom: 4,
+          }}>
                         <Text strong ellipsis style={{ fontSize: 13 }}>
                           {tool.name}
                         </Text>
@@ -124,7 +153,11 @@ export const ToolsGridPanel: React.FC = () => {
           footer={null}
           width={540}
           title={
-            <div className="flex items-center gap-2">
+            <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}>
               {renderToolIcon(selectedTool.iconName)}
               <Text strong>{selectedTool.name}</Text>
             </div>
@@ -142,7 +175,11 @@ export const ToolsGridPanel: React.FC = () => {
             style={{ marginBottom: 16 }}
           />
 
-          <div className="flex justify-end mb-4">
+          <div style={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            marginBottom: 16,
+          }}>
             <Button
               type="primary"
               onClick={handleRunTool}

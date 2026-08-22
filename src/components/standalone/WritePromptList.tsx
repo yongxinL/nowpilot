@@ -32,9 +32,24 @@ export const WritePromptList: React.FC<WritePromptListProps> = ({
 
   if (!isExpanded) {
     return (
-      <div className="w-full flex items-center justify-between gap-2 overflow-hidden flex-nowrap">
+      <div style={{
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 8,
+            overflow: 'hidden',
+            flexWrap: 'nowrap',
+          }}>
         {/* Single-row prompt list that cuts off when container width is not enough */}
-        <div className="flex items-center gap-2 overflow-hidden flex-1 flex-nowrap">
+        <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            overflow: 'hidden',
+            flex: 1,
+            flexWrap: 'nowrap',
+          }}>
           {displayedPrompts.map((promptTitle) => {
             const isSelected = promptTitle === selectedPrompt;
             return (
@@ -58,10 +73,27 @@ export const WritePromptList: React.FC<WritePromptListProps> = ({
         <button
           type="button"
           onClick={() => setIsExpanded(true)}
-          className="px-2 py-1.5 rounded-xl bg-zinc-100/90 dark:bg-zinc-800 text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-200/80 dark:hover:bg-zinc-700 text-xs flex items-center justify-center shrink-0 cursor-pointer transition-colors"
+          style={{
+            paddingLeft: 8,
+            paddingRight: 8,
+            paddingTop: 6,
+            paddingBottom: 6,
+            borderRadius: 12,
+            background: 'var(--muted)',
+            color: 'var(--muted-foreground)',
+            fontSize: 12,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+            cursor: 'pointer',
+            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+          }}
           title="Expand all prompts"
         >
-          <DownOutlined className="text-[10px]" />
+          <DownOutlined style={{
+            fontSize: '10px',
+          }} />
         </button>
       </div>
     );
@@ -69,7 +101,13 @@ export const WritePromptList: React.FC<WritePromptListProps> = ({
 
   // Expanded View: all prompts in original position, flex-wrap across multiple lines
   return (
-    <div className="w-full flex flex-wrap items-center gap-2">
+    <div style={{
+            width: '100%',
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            gap: 8,
+          }}>
       {displayedPrompts.map((promptTitle) => {
         const isSelected = promptTitle === selectedPrompt;
         return (
@@ -92,20 +130,55 @@ export const WritePromptList: React.FC<WritePromptListProps> = ({
       <button
         type="button"
         onClick={() => setIsExpanded(false)}
-        className="px-2 py-1.5 rounded-xl bg-zinc-100/90 dark:bg-zinc-800 text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-200/80 dark:hover:bg-zinc-700 text-xs flex items-center justify-center shrink-0 cursor-pointer transition-colors"
+        style={{
+            paddingLeft: 8,
+            paddingRight: 8,
+            paddingTop: 6,
+            paddingBottom: 6,
+            borderRadius: 12,
+            background: 'var(--muted)',
+            color: 'var(--muted-foreground)',
+            fontSize: 12,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+            cursor: 'pointer',
+            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+          }}
         title="Collapse prompts"
       >
-        <UpOutlined className="text-[10px]" />
+        <UpOutlined style={{
+            fontSize: '10px',
+          }} />
       </button>
 
       {/* Add Custom Prompt Button */}
       <button
         type="button"
         onClick={onOpenAddPrompt}
-        className="px-2.5 py-1.5 rounded-xl bg-zinc-100/90 dark:bg-zinc-800 text-zinc-600 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200/80 dark:hover:bg-zinc-700 text-xs font-bold flex items-center justify-center shrink-0 cursor-pointer transition-colors"
+        style={{
+            paddingLeft: 10,
+            paddingRight: 10,
+            paddingTop: 6,
+            paddingBottom: 6,
+            borderRadius: 12,
+            background: 'var(--muted)',
+            color: 'var(--muted-foreground)',
+            fontSize: 12,
+            fontWeight: 700,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+            cursor: 'pointer',
+            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+          }}
         title="Add custom prompt preset"
       >
-        <PlusOutlined className="text-[11px]" />
+        <PlusOutlined style={{
+            fontSize: '11px',
+          }} />
       </button>
     </div>
   );

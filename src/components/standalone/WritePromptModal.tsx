@@ -26,16 +26,25 @@ export const WritePromptModal: React.FC<WritePromptModalProps> = ({
       open={open}
       onCancel={onClose}
       footer={null}
-      title={<span className="font-bold">Add {activeTab === 'write' ? 'Write' : 'Reply'} Prompt</span>}
+      title={<span style={{
+            fontWeight: 700,
+          }}>Add {activeTab === 'write' ? 'Write' : 'Reply'} Prompt</span>}
     >
-      <Form form={form} layout="vertical" onFinish={handleFinish} className="mt-4">
+      <Form form={form} layout="vertical" onFinish={handleFinish} style={{
+            marginTop: 16,
+          }}>
         <Form.Item name="title" label="Title / Tag" rules={[{ required: true, message: 'Please enter a title' }]}>
           <Input placeholder="e.g. LinkedIn Post, Summary, Support Reply..." />
         </Form.Item>
         <Form.Item name="content" label="Prompt Instruction Template" rules={[{ required: true, message: 'Please enter prompt content' }]}>
           <Input.TextArea rows={4} placeholder="Draft a concise, engaging post about..." />
         </Form.Item>
-        <div className="flex justify-end gap-2 pt-2">
+        <div style={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: 8,
+            paddingTop: 8,
+          }}>
           <Button onClick={onClose}>Cancel</Button>
           <Button type="primary" htmlType="submit" style={{ backgroundColor: '#7c3aed' }}>
             Add Prompt

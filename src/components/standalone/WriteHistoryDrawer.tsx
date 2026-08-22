@@ -90,11 +90,35 @@ export const WriteHistoryDrawer: React.FC<WriteHistoryDrawerProps> = ({
   return (
     <Drawer
       title={
-        <div className="flex items-center justify-between w-full pr-2">
-          <div className="flex items-center gap-2">
-            <ClockCircleOutlined className="text-violet-600 dark:text-violet-400" />
-            <span className="font-bold text-base text-zinc-900 dark:text-zinc-100">Write History</span>
-            <Tag color="purple" variant="filled" className="rounded-full px-2 py-0.5 text-xs font-semibold">
+        <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            width: '100%',
+            paddingRight: 8,
+          }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}>
+            <ClockCircleOutlined style={{
+            color: '#7c3aed',
+          }} />
+            <span style={{
+            fontWeight: 700,
+            fontSize: 16,
+            color: 'var(--foreground)',
+          }}>Write History</span>
+            <Tag color="purple" variant="filled" style={{
+            borderRadius: 9999,
+            paddingLeft: 8,
+            paddingRight: 8,
+            paddingTop: 2,
+            paddingBottom: 2,
+            fontSize: 12,
+            fontWeight: 600,
+          }}>
               {filteredHistory.length}
             </Tag>
           </div>
@@ -111,7 +135,12 @@ export const WriteHistoryDrawer: React.FC<WriteHistoryDrawerProps> = ({
             >
               <button
                 type="button"
-                className="text-xs text-zinc-400 hover:text-red-500 transition-colors cursor-pointer"
+                style={{
+            fontSize: 12,
+            color: 'var(--muted-foreground)',
+            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+            cursor: 'pointer',
+          }}
               >
                 Clear all
               </button>
@@ -137,18 +166,30 @@ export const WriteHistoryDrawer: React.FC<WriteHistoryDrawerProps> = ({
       }}
     >
       {/* Search and Filters */}
-      <div className="space-y-3">
+      <div style={{
+            rowGap: 12,
+            display: 'flex',
+            flexDirection: 'column',
+          }}>
         <Input
           placeholder="Search writing history..."
-          prefix={<SearchOutlined className="text-zinc-400" />}
+          prefix={<SearchOutlined style={{
+            color: 'var(--muted-foreground)',
+          }} />}
           allowClear
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="rounded-xl"
+          style={{
+            borderRadius: 12,
+          }}
         />
 
         {/* Filter Badges */}
-        <div className="flex items-center gap-1.5">
+        <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+          }}>
           {(['all', 'write', 'reply'] as const).map((t) => (
             <button
               key={t}
@@ -166,13 +207,27 @@ export const WriteHistoryDrawer: React.FC<WriteHistoryDrawerProps> = ({
       </div>
 
       {/* History Items List */}
-      <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+      <div style={{
+            flex: 1,
+            overflowY: 'auto',
+            rowGap: 12,
+            display: 'flex',
+            flexDirection: 'column',
+            paddingRight: 4,
+          }}>
         {filteredHistory.length === 0 ? (
-          <div className="py-16 text-center">
+          <div style={{
+            paddingTop: 64,
+            paddingBottom: 64,
+            textAlign: 'center',
+          }}>
             <Empty
               image={Empty.PRESENTED_IMAGE_SIMPLE}
               description={
-                <span className="text-xs text-zinc-400">
+                <span style={{
+            fontSize: 12,
+            color: 'var(--muted-foreground)',
+          }}>
                   {searchQuery ? 'No matching history records found' : 'No writing history yet'}
                 </span>
               }
@@ -186,24 +241,62 @@ export const WriteHistoryDrawer: React.FC<WriteHistoryDrawerProps> = ({
                 onSelectRecord(item);
                 onClose();
               }}
-              className="p-3.5 rounded-2xl border border-zinc-200/90 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-violet-400 dark:hover:border-violet-600/80 hover:shadow-xs transition-all cursor-pointer group flex flex-col gap-2 relative"
+              style={{
+            padding: 14,
+            borderRadius: 16,
+            borderWidth: 1,
+            borderStyle: 'solid',
+            borderColor: 'var(--border)',
+            background: 'var(--card)',
+            transition: 'all 200ms ease',
+            cursor: 'pointer',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+            position: 'relative',
+          }} className="group"
             >
               {/* Top Row: Type Tag, Model & Date */}
-              <div className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-1.5">
+              <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            fontSize: 12,
+          }}>
+                <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+          }}>
                   <Tag
                     color={item.type === 'write' ? 'blue' : 'purple'}
                     variant="filled"
-                    className="rounded-md font-semibold text-[11px] m-0"
+                    style={{
+            borderRadius: 6,
+            fontWeight: 600,
+            fontSize: '11px',
+            margin: 0,
+          }}
                   >
                     {item.type === 'write' ? 'Write' : 'Reply'} • {item.format}
                   </Tag>
-                  <span className="text-[11px] text-zinc-400 flex items-center gap-0.5">
-                    <ThunderboltOutlined className="text-[10px]" />
+                  <span style={{
+            fontSize: '11px',
+            color: 'var(--muted-foreground)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 2,
+          }}>
+                    <ThunderboltOutlined style={{
+            fontSize: '10px',
+          }} />
                     {item.model}
                   </span>
                 </div>
-                <span className="text-[11px] text-zinc-400">
+                <span style={{
+            fontSize: '11px',
+            color: 'var(--muted-foreground)',
+          }}>
                   {new Date(item.createdAt).toLocaleDateString([], {
                     month: 'short',
                     day: 'numeric',
@@ -216,7 +309,11 @@ export const WriteHistoryDrawer: React.FC<WriteHistoryDrawerProps> = ({
               {/* Title Section (with inline edit) */}
               {editingId === item.id ? (
                 <div
-                  className="flex items-center gap-1.5"
+                  style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+          }}
                   onClick={(e) => e.stopPropagation()}
                 >
                   <Input
@@ -224,7 +321,10 @@ export const WriteHistoryDrawer: React.FC<WriteHistoryDrawerProps> = ({
                     value={editTitleInput}
                     onChange={(e) => setEditTitleInput(e.target.value)}
                     onPressEnter={() => handleSaveTitle(item.id)}
-                    className="text-xs rounded-md"
+                    style={{
+            fontSize: 12,
+            borderRadius: 6,
+          }}
                     autoFocus
                   />
                   <Button
@@ -244,36 +344,87 @@ export const WriteHistoryDrawer: React.FC<WriteHistoryDrawerProps> = ({
                   />
                 </div>
               ) : (
-                <div className="flex items-start justify-between gap-2">
-                  <h4 className="text-xs font-bold text-zinc-800 dark:text-zinc-100 line-clamp-1 group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">
+                <div style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'space-between',
+            gap: 8,
+          }}>
+                  <h4 style={{
+            fontSize: 12,
+            fontWeight: 700,
+            color: 'var(--foreground)',
+            display: '-webkit-box',
+            WebkitLineClamp: 1,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+          }}>
                     {item.title}
                   </h4>
                   <button
                     type="button"
                     onClick={(e) => handleStartEditTitle(item, e)}
-                    className="opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-opacity p-0.5"
+                    style={{
+            opacity: 0,
+            color: 'var(--muted-foreground)',
+            transition: 'opacity 150ms ease',
+            padding: 2,
+          }}
                     title="Edit title"
                   >
-                    <EditOutlined className="text-xs" />
+                    <EditOutlined style={{
+            fontSize: 12,
+          }} />
                   </button>
                 </div>
               )}
 
               {/* Snippet / Preview */}
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 line-clamp-2 leading-relaxed bg-zinc-50 dark:bg-zinc-800/50 p-2 rounded-xl border border-zinc-100 dark:border-zinc-800/60 font-sans">
+              <p style={{
+            fontSize: 12,
+            color: 'var(--muted-foreground)',
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+            lineHeight: 1.625,
+            background: 'var(--muted)',
+            padding: 8,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderStyle: 'solid',
+            borderColor: 'var(--border)',
+            fontFamily: 'var(--font-sans)',
+          }}>
                 {item.output}
               </p>
 
               {/* Card Footer Actions */}
               <div
-                className="flex items-center justify-between pt-1 border-t border-zinc-100 dark:border-zinc-800/80 text-[11px] text-zinc-400"
+                style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingTop: 4,
+            borderTopWidth: 1,
+            borderTopStyle: 'solid',
+            borderTopColor: 'var(--border)',
+            borderColor: 'var(--border)',
+            fontSize: '11px',
+            color: 'var(--muted-foreground)',
+          }}
                 onClick={(e) => e.stopPropagation()}
               >
                 <span>
                   {item.tone} • {item.length} • {item.language}
                 </span>
 
-                <div className="flex items-center gap-1.5">
+                <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+          }}>
                   <Dropdown
                     menu={{
                       items: [
@@ -301,10 +452,21 @@ export const WriteHistoryDrawer: React.FC<WriteHistoryDrawerProps> = ({
                   >
                     <button
                       type="button"
-                      className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 rounded-md transition-colors cursor-pointer flex items-center gap-1"
+                      style={{
+            padding: 4,
+            color: 'var(--muted-foreground)',
+            borderRadius: 6,
+            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+          }}
                       title="Export options"
                     >
-                      <DownloadOutlined className="text-xs" />
+                      <DownloadOutlined style={{
+            fontSize: 12,
+          }} />
                       <span>Export</span>
                     </button>
                   </Dropdown>
@@ -321,10 +483,18 @@ export const WriteHistoryDrawer: React.FC<WriteHistoryDrawerProps> = ({
                   >
                     <button
                       type="button"
-                      className="p-1 hover:bg-red-50 dark:hover:bg-red-950/40 text-zinc-400 hover:text-red-500 rounded-md transition-colors cursor-pointer"
+                      style={{
+            padding: 4,
+            color: 'var(--muted-foreground)',
+            borderRadius: 6,
+            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+            cursor: 'pointer',
+          }}
                       title="Delete record"
                     >
-                      <DeleteOutlined className="text-xs" />
+                      <DeleteOutlined style={{
+            fontSize: 12,
+          }} />
                     </button>
                   </Popconfirm>
                 </div>

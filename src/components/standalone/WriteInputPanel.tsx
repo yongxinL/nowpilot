@@ -57,7 +57,12 @@ export const WriteInputPanel: React.FC<WriteInputPanelProps> = ({
   onChangeLanguage,
 }) => {
   return (
-    <div className="flex flex-col gap-3.5 w-full">
+    <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 14,
+            width: '100%',
+          }}>
       {/* 1. Prompt List in Left Column */}
       <WritePromptList
         prompts={prompts}
@@ -67,7 +72,13 @@ export const WriteInputPanel: React.FC<WriteInputPanelProps> = ({
       />
 
       {/* 2. Control Row: Model Selector on Left, Formatting on Right */}
-      <div className="flex items-center justify-between gap-3 w-full">
+      <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+            width: '100%',
+          }}>
         <ModelSelector
           selectedModelId={selectedModelId ?? ''}
           onSelectModel={onSelectModel}
@@ -86,12 +97,37 @@ export const WriteInputPanel: React.FC<WriteInputPanelProps> = ({
 
       {/* 3. Input Box */}
       {activeTab === 'write' ? (
-        <div className="relative bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/90 dark:border-zinc-700/80 p-4 min-h-[300px] flex flex-col justify-between shadow-2xs focus-within:border-violet-500 focus-within:ring-2 focus-within:ring-violet-500/15 transition-all">
+        <div style={{
+            position: 'relative',
+            background: 'var(--card)',
+            borderRadius: 16,
+            borderWidth: 1,
+            borderStyle: 'solid',
+            borderColor: 'var(--border)',
+            padding: 16,
+            minHeight: 300,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+            transition: 'all 200ms ease',
+          }}>
           <textarea
             value={writeInput}
             onChange={(e) => onChangeWriteInput(e.target.value)}
             placeholder="Enter the topic you want to write about..."
-            className="w-full bg-transparent border-none outline-none resize-none text-zinc-800 dark:text-zinc-100 placeholder-zinc-400 text-sm font-sans flex-1 min-h-[200px]"
+            style={{
+            width: '100%',
+            background: 'transparent',
+            borderStyle: 'none',
+            outline: 'none',
+            resize: 'none',
+            color: 'var(--foreground)',
+            fontSize: 14,
+            fontFamily: 'var(--font-sans)',
+            flex: 1,
+            minHeight: 200,
+          }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
                 e.preventDefault();
@@ -100,45 +136,125 @@ export const WriteInputPanel: React.FC<WriteInputPanelProps> = ({
             }}
           />
 
-          <div className="flex items-center justify-between pt-2">
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingTop: 8,
+          }}>
             <button
               type="button"
               onClick={onClear}
-              className="text-zinc-400 hover:text-red-500 p-1.5 rounded-lg transition-colors cursor-pointer flex items-center justify-center"
+              style={{
+            color: 'var(--muted-foreground)',
+            padding: 6,
+            borderRadius: 8,
+            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
               title="Clear input"
             >
-              <DeleteOutlined className="text-base" />
+              <DeleteOutlined style={{
+            fontSize: 16,
+          }} />
             </button>
 
             <button
               type="button"
               onClick={onSubmit}
               disabled={!writeInput.trim() || isGenerating}
-              className="px-6 py-2 rounded-xl bg-[#5433ff] hover:bg-[#4323e0] disabled:opacity-40 disabled:hover:bg-[#5433ff] text-white text-xs font-semibold shadow-2xs cursor-pointer disabled:cursor-not-allowed transition-all"
+              style={{
+            paddingLeft: 24,
+            paddingRight: 24,
+            paddingTop: 8,
+            paddingBottom: 8,
+            borderRadius: 12,
+            background: '#5433ff',
+            color: '#ffffff',
+            fontSize: 12,
+            fontWeight: 600,
+            boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+            cursor: 'pointer',
+            transition: 'all 200ms ease',
+          }}
             >
               {isGenerating ? 'Generating...' : 'Submit'}
             </button>
           </div>
         </div>
       ) : (
-        <div className="flex flex-col gap-3.5">
+        <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 14,
+          }}>
           {/* Top Box: Original Text */}
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-violet-400 dark:border-violet-600/80 p-4 min-h-[140px] shadow-2xs flex flex-col transition-all">
+          <div style={{
+            background: 'var(--card)',
+            borderRadius: 16,
+            borderWidth: 1,
+            borderStyle: 'solid',
+            borderColor: '#a78bfa',
+            padding: 16,
+            minHeight: 140,
+            boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+            display: 'flex',
+            flexDirection: 'column',
+            transition: 'all 200ms ease',
+          }}>
             <textarea
               value={replyOriginalText}
               onChange={(e) => onChangeReplyOriginalText(e.target.value)}
               placeholder="Enter the original text you want to reply to"
-              className="w-full bg-transparent border-none outline-none resize-none text-zinc-800 dark:text-zinc-100 placeholder-zinc-400 text-sm font-sans flex-1 min-h-[100px]"
+              style={{
+            width: '100%',
+            background: 'transparent',
+            borderStyle: 'none',
+            outline: 'none',
+            resize: 'none',
+            color: 'var(--foreground)',
+            fontSize: 14,
+            fontFamily: 'var(--font-sans)',
+            flex: 1,
+            minHeight: 100,
+          }}
             />
           </div>
 
           {/* Bottom Box: Response Idea & Submit */}
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/90 dark:border-zinc-700/80 p-4 min-h-[160px] shadow-2xs flex flex-col justify-between focus-within:border-violet-500 focus-within:ring-2 focus-within:ring-violet-500/15 transition-all">
+          <div style={{
+            background: 'var(--card)',
+            borderRadius: 16,
+            borderWidth: 1,
+            borderStyle: 'solid',
+            borderColor: 'var(--border)',
+            padding: 16,
+            minHeight: 160,
+            boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            transition: 'all 200ms ease',
+          }}>
             <textarea
               value={replyIdeaText}
               onChange={(e) => onChangeReplyIdeaText(e.target.value)}
               placeholder="Describe the general idea of your response"
-              className="w-full bg-transparent border-none outline-none resize-none text-zinc-800 dark:text-zinc-100 placeholder-zinc-400 text-sm font-sans flex-1 min-h-[90px]"
+              style={{
+            width: '100%',
+            background: 'transparent',
+            borderStyle: 'none',
+            outline: 'none',
+            resize: 'none',
+            color: 'var(--foreground)',
+            fontSize: 14,
+            fontFamily: 'var(--font-sans)',
+            flex: 1,
+            minHeight: 90,
+          }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
                   e.preventDefault();
@@ -147,21 +263,50 @@ export const WriteInputPanel: React.FC<WriteInputPanelProps> = ({
               }}
             />
 
-            <div className="flex items-center justify-between pt-2">
+            <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingTop: 8,
+          }}>
               <button
                 type="button"
                 onClick={onClear}
-                className="text-zinc-400 hover:text-red-500 p-1.5 rounded-lg transition-colors cursor-pointer flex items-center justify-center"
+                style={{
+            color: 'var(--muted-foreground)',
+            padding: 6,
+            borderRadius: 8,
+            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
                 title="Clear input"
               >
-                <DeleteOutlined className="text-base" />
+                <DeleteOutlined style={{
+            fontSize: 16,
+          }} />
               </button>
 
               <button
                 type="button"
                 onClick={onSubmit}
                 disabled={(!replyOriginalText.trim() && !replyIdeaText.trim()) || isGenerating}
-                className="px-6 py-2 rounded-xl bg-[#5433ff] hover:bg-[#4323e0] disabled:bg-zinc-200 dark:disabled:bg-zinc-800 disabled:text-zinc-400 text-white text-xs font-semibold shadow-2xs cursor-pointer disabled:cursor-not-allowed transition-all"
+                style={{
+            paddingLeft: 24,
+            paddingRight: 24,
+            paddingTop: 8,
+            paddingBottom: 8,
+            borderRadius: 12,
+            background: '#5433ff',
+            color: '#ffffff',
+            fontSize: 12,
+            fontWeight: 600,
+            boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+            cursor: 'pointer',
+            transition: 'all 200ms ease',
+          }}
               >
                 {isGenerating ? 'Generating...' : 'Submit'}
               </button>

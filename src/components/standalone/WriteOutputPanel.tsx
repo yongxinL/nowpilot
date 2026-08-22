@@ -115,67 +115,160 @@ export const WriteOutputPanel: React.FC<WriteOutputPanelProps> = ({
 
   if (!currentOutput) {
     return (
-      <div className="h-full min-h-[360px] flex items-center justify-center p-8 text-center text-zinc-300 dark:text-zinc-700">
-        <span className="text-xs font-medium">Output will appear here upon submission</span>
+      <div style={{
+            height: '100%',
+            minHeight: 360,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 32,
+            textAlign: 'center',
+            color: 'var(--muted)',
+          }}>
+        <span style={{
+            fontSize: 12,
+            fontWeight: 500,
+          }}>Output will appear here upon submission</span>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col justify-between h-full min-h-[420px] flex-1 min-h-0 pl-0 lg:pl-2">
+    <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            height: '100%',
+            minHeight: 0,
+            flex: 1,
+            paddingLeft: 0,
+          }}>
       {/* Output Top Header: Model Tag & Version Navigator */}
-      <div className="flex items-center justify-between pb-2 mb-2 shrink-0">
-        <div className="flex items-center gap-1.5 text-xs font-bold text-zinc-900 dark:text-zinc-100">
-          <ThunderboltOutlined className="text-zinc-900 dark:text-zinc-100" />
+      <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingBottom: 8,
+            marginBottom: 8,
+            flexShrink: 0,
+          }}>
+        <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            fontSize: 12,
+            fontWeight: 700,
+            color: 'var(--foreground)',
+          }}>
+          <ThunderboltOutlined style={{
+            color: 'var(--foreground)',
+          }} />
           <span>{selectedModelName}</span>
         </div>
 
         {/* Version pagination (< 1/2 >) if multiple versions exist */}
         {outputVersions.length > 1 && (
-          <div className="flex items-center gap-2 text-xs text-zinc-500">
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            fontSize: 12,
+            color: 'var(--muted-foreground)',
+          }}>
             <button
               type="button"
               onClick={onPrevVersion}
               disabled={currentVersionIndex === 0}
-              className="p-1 hover:text-zinc-800 dark:hover:text-zinc-200 disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
+              style={{
+            padding: 4,
+            cursor: 'pointer',
+          }}
               title="Previous revision"
             >
-              <LeftOutlined className="text-[10px]" />
+              <LeftOutlined style={{
+            fontSize: '10px',
+          }} />
             </button>
-            <span className="font-mono text-xs">
+            <span style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: 12,
+          }}>
               {currentVersionIndex + 1} / {outputVersions.length}
             </span>
             <button
               type="button"
               onClick={onNextVersion}
               disabled={currentVersionIndex === outputVersions.length - 1}
-              className="p-1 hover:text-zinc-800 dark:hover:text-zinc-200 disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
+              style={{
+            padding: 4,
+            cursor: 'pointer',
+          }}
               title="Next revision"
             >
-              <RightOutlined className="text-[10px]" />
+              <RightOutlined style={{
+            fontSize: '10px',
+          }} />
             </button>
           </div>
         )}
       </div>
 
       {/* Output Title & Body or Full-Height Editing Area */}
-      <div className="flex-1 flex flex-col min-h-0 py-2">
+      <div style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: 0,
+            paddingTop: 8,
+            paddingBottom: 8,
+          }}>
         {isEditingOutput ? (
           <textarea
             value={editableOutputText}
             onChange={(e) => onChangeEditableOutputText(e.target.value)}
-            className="w-full h-full min-h-[380px] flex-1 bg-zinc-50 dark:bg-zinc-800/60 p-4 rounded-xl border border-violet-400 focus:ring-2 focus:ring-violet-500/20 outline-none text-zinc-800 dark:text-zinc-100 text-sm leading-relaxed font-sans resize-none"
+            style={{
+            width: '100%',
+            height: '100%',
+            minHeight: 380,
+            flex: 1,
+            background: 'var(--muted)',
+            padding: 16,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderStyle: 'solid',
+            borderColor: '#a78bfa',
+            outline: 'none',
+            color: 'var(--foreground)',
+            fontSize: 14,
+            lineHeight: 1.625,
+            fontFamily: 'var(--font-sans)',
+            resize: 'none',
+          }}
             autoFocus
             placeholder="Edit your response..."
           />
         ) : (
           <div>
             {parsed.title && (
-              <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 mb-4">
+              <h3 style={{
+            fontSize: 20,
+            fontWeight: 700,
+            letterSpacing: '-0.01em',
+            color: 'var(--foreground)',
+            marginBottom: 16,
+          }}>
                 {parsed.title}
               </h3>
             )}
-            <div className="space-y-4 text-sm leading-relaxed text-zinc-800 dark:text-zinc-200 font-sans">
+            <div style={{
+            rowGap: 16,
+            display: 'flex',
+            flexDirection: 'column',
+            fontSize: 14,
+            lineHeight: 1.625,
+            color: 'var(--foreground)',
+            fontFamily: 'var(--font-sans)',
+          }}>
               {parsed.paragraphs.map((para, idx) => (
                 <p key={idx}>{para}</p>
               ))}
@@ -185,17 +278,40 @@ export const WriteOutputPanel: React.FC<WriteOutputPanelProps> = ({
       </div>
 
       {/* Output Footer Action Buttons */}
-      <div className="flex items-center justify-between pt-4 mt-auto shrink-0 text-zinc-400">
+      <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingTop: 16,
+            marginTop: 'auto',
+            flexShrink: 0,
+            color: 'var(--muted-foreground)',
+          }}>
         {/* Left Action Icons: Copy, Save as a note, Regenerate response, Read aloud, Like, Dislike, Share */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}>
           {/* 1. Copy */}
           <Tooltip title="Copy">
             <button
               type="button"
               onClick={onCopy}
-              className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-lg transition-colors cursor-pointer flex items-center justify-center"
+              style={{
+            padding: 6,
+            color: 'var(--muted-foreground)',
+            borderRadius: 8,
+            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
             >
-              <CopyOutlined className="text-base" />
+              <CopyOutlined style={{
+            fontSize: 16,
+          }} />
             </button>
           </Tooltip>
 
@@ -204,9 +320,20 @@ export const WriteOutputPanel: React.FC<WriteOutputPanelProps> = ({
             <button
               type="button"
               onClick={onSaveToNote}
-              className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-lg transition-colors cursor-pointer flex items-center justify-center"
+              style={{
+            padding: 6,
+            color: 'var(--muted-foreground)',
+            borderRadius: 8,
+            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
             >
-              <FileAddOutlined className="text-base" />
+              <FileAddOutlined style={{
+            fontSize: 16,
+          }} />
             </button>
           </Tooltip>
 
@@ -215,9 +342,20 @@ export const WriteOutputPanel: React.FC<WriteOutputPanelProps> = ({
             <button
               type="button"
               onClick={onRegenerate}
-              className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-lg transition-colors cursor-pointer flex items-center justify-center"
+              style={{
+            padding: 6,
+            color: 'var(--muted-foreground)',
+            borderRadius: 8,
+            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
             >
-              <ReloadOutlined className="text-base" />
+              <ReloadOutlined style={{
+            fontSize: 16,
+          }} />
             </button>
           </Tooltip>
 
@@ -232,7 +370,9 @@ export const WriteOutputPanel: React.FC<WriteOutputPanelProps> = ({
                   : 'hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
               }`}
             >
-              <SoundOutlined className="text-base" />
+              <SoundOutlined style={{
+            fontSize: 16,
+          }} />
             </button>
           </Tooltip>
 
@@ -247,7 +387,11 @@ export const WriteOutputPanel: React.FC<WriteOutputPanelProps> = ({
                   : 'text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
               }`}
             >
-              {liked === true ? <LikeFilled className="text-base" /> : <LikeOutlined className="text-base" />}
+              {liked === true ? <LikeFilled style={{
+            fontSize: 16,
+          }} /> : <LikeOutlined style={{
+            fontSize: 16,
+          }} />}
             </button>
           </Tooltip>
 
@@ -262,7 +406,11 @@ export const WriteOutputPanel: React.FC<WriteOutputPanelProps> = ({
                   : 'text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
               }`}
             >
-              {liked === false ? <DislikeFilled className="text-base" /> : <DislikeOutlined className="text-base" />}
+              {liked === false ? <DislikeFilled style={{
+            fontSize: 16,
+          }} /> : <DislikeOutlined style={{
+            fontSize: 16,
+          }} />}
             </button>
           </Tooltip>
 
@@ -271,30 +419,78 @@ export const WriteOutputPanel: React.FC<WriteOutputPanelProps> = ({
             <button
               type="button"
               onClick={handleShare}
-              className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-lg transition-colors cursor-pointer flex items-center justify-center"
+              style={{
+            padding: 6,
+            color: 'var(--muted-foreground)',
+            borderRadius: 8,
+            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
             >
-              <ShareAltOutlined className="text-base" />
+              <ShareAltOutlined style={{
+            fontSize: 16,
+          }} />
             </button>
           </Tooltip>
         </div>
 
         {/* Right Action: Edit Button */}
         {isEditingOutput ? (
-          <div className="flex items-center gap-1.5">
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+          }}>
             <button
               type="button"
               onClick={onSaveEdit}
-              className="flex items-center gap-1 px-3 py-1 bg-violet-600 hover:bg-violet-700 text-white rounded-lg text-xs font-semibold shadow-2xs cursor-pointer transition-colors"
+              style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            paddingLeft: 12,
+            paddingRight: 12,
+            paddingTop: 4,
+            paddingBottom: 4,
+            background: '#7c3aed',
+            color: '#ffffff',
+            borderRadius: 8,
+            fontSize: 12,
+            fontWeight: 600,
+            boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+            cursor: 'pointer',
+            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+          }}
             >
-              <CheckOutlined className="text-xs" />
+              <CheckOutlined style={{
+            fontSize: 12,
+          }} />
               <span>Save</span>
             </button>
             <button
               type="button"
               onClick={onCancelEdit}
-              className="flex items-center gap-1 px-2.5 py-1 text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 rounded-lg text-xs cursor-pointer transition-colors"
+              style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            paddingLeft: 10,
+            paddingRight: 10,
+            paddingTop: 4,
+            paddingBottom: 4,
+            color: 'var(--muted-foreground)',
+            borderRadius: 8,
+            fontSize: 12,
+            cursor: 'pointer',
+            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+          }}
             >
-              <CloseOutlined className="text-xs" />
+              <CloseOutlined style={{
+            fontSize: 12,
+          }} />
               <span>Cancel</span>
             </button>
           </div>
@@ -302,9 +498,27 @@ export const WriteOutputPanel: React.FC<WriteOutputPanelProps> = ({
           <button
             type="button"
             onClick={onStartEdit}
-            className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100/80 dark:bg-purple-950/50 dark:hover:bg-purple-900/60 text-[#6035f5] dark:text-purple-300 text-xs font-medium cursor-pointer transition-all shadow-2xs"
+            style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            paddingLeft: 16,
+            paddingRight: 16,
+            paddingTop: 6,
+            paddingBottom: 6,
+            borderRadius: 12,
+            background: '#faf5ff',
+            color: '#6035f5',
+            fontSize: 12,
+            fontWeight: 500,
+            cursor: 'pointer',
+            transition: 'all 200ms ease',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+          }}
           >
-            <EditOutlined className="text-xs" />
+            <EditOutlined style={{
+            fontSize: 12,
+          }} />
             <span>Edit</span>
           </button>
         )}

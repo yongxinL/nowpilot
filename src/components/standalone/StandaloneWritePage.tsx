@@ -278,10 +278,31 @@ export const StandaloneWritePage: React.FC<StandaloneWritePageProps> = ({ onOpen
   const selectedModelName = config.selectedModel || 'gemma-4-e2b-it-4bit';
 
   return (
-    <div className="flex flex-col h-full w-full bg-white dark:bg-zinc-900 overflow-hidden relative font-sans">
+    <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            height: '100%',
+            width: '100%',
+            background: 'var(--card)',
+            overflow: 'hidden',
+            position: 'relative',
+            fontFamily: 'var(--font-sans)',
+          }}>
       {/* 1. Header Bar: Write / Reply Tabs & Write History Button */}
-      <div className="flex items-center justify-between px-8 pt-5 pb-3">
-        <div className="flex items-center gap-6">
+      <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingLeft: 32,
+            paddingRight: 32,
+            paddingTop: 20,
+            paddingBottom: 12,
+          }}>
+        <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 24,
+          }}>
           <button
             type="button"
             onClick={() => setActiveTab('write')}
@@ -293,7 +314,15 @@ export const StandaloneWritePage: React.FC<StandaloneWritePageProps> = ({ onOpen
           >
             Write
             {activeTab === 'write' && (
-              <div className="absolute -bottom-1 left-0 w-8 h-[3px] bg-zinc-900 dark:bg-zinc-100 rounded-full" />
+              <div style={{
+            position: 'absolute',
+            bottom: -4,
+            left: 0,
+            width: 32,
+            height: 3,
+            background: 'var(--card)',
+            borderRadius: 9999,
+          }} />
             )}
           </button>
 
@@ -308,7 +337,15 @@ export const StandaloneWritePage: React.FC<StandaloneWritePageProps> = ({ onOpen
           >
             Reply
             {activeTab === 'reply' && (
-              <div className="absolute -bottom-1 left-0 w-8 h-[3px] bg-zinc-900 dark:bg-zinc-100 rounded-full" />
+              <div style={{
+            position: 'absolute',
+            bottom: -4,
+            left: 0,
+            width: 32,
+            height: 3,
+            background: 'var(--card)',
+            borderRadius: 9999,
+          }} />
             )}
           </button>
         </div>
@@ -317,15 +354,37 @@ export const StandaloneWritePage: React.FC<StandaloneWritePageProps> = ({ onOpen
           <button
             type="button"
             onClick={() => setHistoryDrawerOpen(true)}
-            className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 rounded-lg transition-colors cursor-pointer flex items-center justify-center"
+            style={{
+            padding: 8,
+            color: 'var(--foreground)',
+            borderRadius: 8,
+            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
           >
-            <ClockCircleOutlined className="text-xl" />
+            <ClockCircleOutlined style={{
+            fontSize: 20,
+          }} />
           </button>
         </Tooltip>
       </div>
 
       {/* 2. Main 2-Column Content Area */}
-      <div className="flex-1 min-h-0 overflow-y-auto px-8 py-4 grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div style={{
+            flex: 1,
+            minHeight: 0,
+            overflowY: 'auto',
+            paddingLeft: 32,
+            paddingRight: 32,
+            paddingTop: 16,
+            paddingBottom: 16,
+            display: 'grid',
+            gridTemplateColumns: '1fr',
+            gap: 32,
+          }}>
         {/* Left Column: Prompt list, Model Selector + Format, Input Box */}
         <WriteInputPanel
           activeTab={activeTab}
@@ -375,18 +434,56 @@ export const StandaloneWritePage: React.FC<StandaloneWritePageProps> = ({ onOpen
       </div>
 
       {/* 3. Bottom Status Bar */}
-      <div className="px-8 py-3 flex items-center justify-between border-t border-zinc-100 dark:border-zinc-800 text-xs text-zinc-500">
-        <div className="flex items-center gap-2">
+      <div style={{
+            paddingLeft: 32,
+            paddingRight: 32,
+            paddingTop: 12,
+            paddingBottom: 12,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderTopWidth: 1,
+            borderTopStyle: 'solid',
+            borderTopColor: 'var(--border)',
+            borderColor: 'var(--border)',
+            fontSize: 12,
+            color: 'var(--muted-foreground)',
+          }}>
+        <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}>
           <span>{config.serviceProvider || 'Custom API Key'}</span>
-          <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block shadow-2xs" />
+          <span style={{
+            width: 8,
+            height: 8,
+            borderRadius: 9999,
+            background: '#10b981',
+            display: 'inline-block',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+          }} />
         </div>
 
-        <div className="flex items-center gap-2.5 text-zinc-400">
+        <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            color: 'var(--muted-foreground)',
+          }}>
           <Tooltip title="Help center">
             <button
               type="button"
               onClick={() => onOpenOptions?.()}
-              className="hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors p-1 rounded-md cursor-pointer flex items-center justify-center"
+              style={{
+            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+            padding: 4,
+            borderRadius: 6,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
             >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10"></circle>
@@ -399,7 +496,15 @@ export const StandaloneWritePage: React.FC<StandaloneWritePageProps> = ({ onOpen
             <button
               type="button"
               onClick={() => antMessage.info('Feedback support channel opened')}
-              className="hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors p-1 rounded-md cursor-pointer flex items-center justify-center"
+              style={{
+            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+            padding: 4,
+            borderRadius: 6,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
             >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <rect width="20" height="16" x="2" y="4" rx="2"></rect>

@@ -108,21 +108,58 @@ export const WriteFormattingPopover: React.FC<WriteFormattingPopoverProps> = ({
   }, [languageValue]);
 
   return (
-    <div className="relative inline-block" ref={containerRef}>
+    <div style={{
+            position: 'relative',
+            display: 'inline-block',
+          }} ref={containerRef}>
       {/* Trigger Button Pill */}
       <button
         type="button"
         id="write-formatting-trigger"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-100/90 dark:bg-zinc-800 hover:bg-zinc-200/70 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 text-xs font-normal border border-zinc-200/60 dark:border-zinc-700/60 shadow-2xs cursor-pointer transition-all select-none"
+        style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            paddingLeft: 12,
+            paddingRight: 12,
+            paddingTop: 6,
+            paddingBottom: 6,
+            borderRadius: 12,
+            background: 'var(--muted)',
+            color: 'var(--foreground)',
+            fontSize: 12,
+            fontWeight: 400,
+            borderWidth: 1,
+            borderStyle: 'solid',
+            borderColor: 'var(--border)',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+            cursor: 'pointer',
+            transition: 'all 200ms ease',
+            userSelect: 'none',
+          }}
       >
         <span>{styleValue}</span>
-        <span className="text-zinc-400 dark:text-zinc-500 font-bold">·</span>
+        <span style={{
+            color: 'var(--muted-foreground)',
+            fontWeight: 700,
+          }}>·</span>
         <span>{lengthValue}</span>
-        <span className="text-zinc-400 dark:text-zinc-500 font-bold">·</span>
+        <span style={{
+            color: 'var(--muted-foreground)',
+            fontWeight: 700,
+          }}>·</span>
         <span>{languageValue}</span>
-        <span className="text-zinc-400 text-[10px] ml-0.5">
-          {isOpen ? <UpOutlined className="text-[9px]" /> : <DownOutlined className="text-[9px]" />}
+        <span style={{
+            color: 'var(--muted-foreground)',
+            fontSize: '10px',
+            marginLeft: 2,
+          }}>
+          {isOpen ? <UpOutlined style={{
+            fontSize: '9px',
+          }} /> : <DownOutlined style={{
+            fontSize: '9px',
+          }} />}
         </span>
       </button>
 
@@ -130,14 +167,40 @@ export const WriteFormattingPopover: React.FC<WriteFormattingPopoverProps> = ({
       {isOpen && (
         <div
           id="write-formatting-popover"
-          className="absolute right-0 top-full mt-2 z-50 w-[270px] bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl border border-zinc-100 dark:border-zinc-800 p-4 animate-in fade-in zoom-in-95 duration-150"
+          style={{
+            position: 'absolute',
+            right: 0,
+            top: '100%',
+            marginTop: 8,
+            zIndex: 50,
+            width: 270,
+            background: 'var(--card)',
+            borderRadius: 16,
+            boxShadow: '0 25px 50px rgba(0,0,0,0.25)',
+            borderWidth: 1,
+            borderStyle: 'solid',
+            borderColor: 'var(--border)',
+            padding: 16,
+          }} className="np-zoom-fade-in np-fade-in np-zoom-fade-in"
         >
           {/* 1. Style Section */}
-          <div className="mb-4">
-            <div className="text-[12px] font-medium text-zinc-500 dark:text-zinc-400 mb-2 select-none">
+          <div style={{
+            marginBottom: 16,
+          }}>
+            <div style={{
+            fontSize: '12px',
+            fontWeight: 500,
+            color: 'var(--muted-foreground)',
+            marginBottom: 8,
+            userSelect: 'none',
+          }}>
               Style
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 8,
+          }}>
               {WRITE_STYLES.map((style) => {
                 const isSelected = styleValue === style;
                 return (
@@ -159,11 +222,23 @@ export const WriteFormattingPopover: React.FC<WriteFormattingPopoverProps> = ({
           </div>
 
           {/* 2. Length Section */}
-          <div className="mb-4">
-            <div className="text-[12px] font-medium text-zinc-500 dark:text-zinc-400 mb-2 select-none">
+          <div style={{
+            marginBottom: 16,
+          }}>
+            <div style={{
+            fontSize: '12px',
+            fontWeight: 500,
+            color: 'var(--muted-foreground)',
+            marginBottom: 8,
+            userSelect: 'none',
+          }}>
               Length
             </div>
-            <div className="flex items-center gap-2">
+            <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}>
               {WRITE_LENGTHS.map((len) => {
                 const isSelected = lengthValue === len;
                 return (
@@ -185,16 +260,41 @@ export const WriteFormattingPopover: React.FC<WriteFormattingPopoverProps> = ({
           </div>
 
           {/* 3. Language Section */}
-          <div className="relative">
-            <div className="text-[12px] font-medium text-zinc-500 dark:text-zinc-400 mb-2 select-none">
+          <div style={{
+            position: 'relative',
+          }}>
+            <div style={{
+            fontSize: '12px',
+            fontWeight: 500,
+            color: 'var(--muted-foreground)',
+            marginBottom: 8,
+            userSelect: 'none',
+          }}>
               Language
             </div>
-            <div className="flex items-center gap-2">
+            <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}>
               {/* Primary Active Language Button */}
               <button
                 type="button"
                 onClick={() => onChangeLanguage(activeLanguageObj.name)}
-                className="px-3.5 py-1.5 rounded-xl text-xs font-normal bg-[#ece6f8] text-zinc-900 dark:bg-purple-950/80 dark:text-purple-200 font-medium shadow-2xs cursor-pointer select-none"
+                style={{
+            paddingLeft: 14,
+            paddingRight: 14,
+            paddingTop: 6,
+            paddingBottom: 6,
+            borderRadius: 12,
+            fontSize: 12,
+            fontWeight: 500,
+            background: '#ece6f8',
+            color: 'var(--foreground)',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+            cursor: 'pointer',
+            userSelect: 'none',
+          }}
               >
                 {activeLanguageObj.name}
               </button>
@@ -220,26 +320,72 @@ export const WriteFormattingPopover: React.FC<WriteFormattingPopoverProps> = ({
               <div
                 ref={langMenuRef}
                 id="write-language-dropdown"
-                className="absolute left-0 top-full mt-2 z-50 w-[190px] bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl border border-zinc-100 dark:border-zinc-800 p-2 flex flex-col animate-in fade-in zoom-in-95 duration-150"
-                style={{ maxHeight: '310px' }}
+                style={{
+            position: 'absolute',
+            left: 0,
+            top: '100%',
+            marginTop: 8,
+            zIndex: 50,
+            width: 190,
+            background: 'var(--card)',
+            borderRadius: 16,
+            boxShadow: '0 25px 50px rgba(0,0,0,0.25)',
+            borderWidth: 1,
+            borderStyle: 'solid',
+            borderColor: 'var(--border)',
+            padding: 8,
+            display: 'flex',
+            flexDirection: 'column',
+            maxHeight: '310px',
+          }} className="np-zoom-fade-in np-fade-in np-zoom-fade-in"
               >
                 {/* Search Bar */}
-                <div className="relative mb-2">
-                  <div className="flex items-center gap-2 bg-zinc-100/90 dark:bg-zinc-800/90 rounded-xl px-2.5 py-1.5">
-                    <SearchOutlined className="text-zinc-400 text-xs" />
+                <div style={{
+            position: 'relative',
+            marginBottom: 8,
+          }}>
+                  <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            background: 'var(--muted)',
+            borderRadius: 12,
+            paddingLeft: 10,
+            paddingRight: 10,
+            paddingTop: 6,
+            paddingBottom: 6,
+          }}>
+                    <SearchOutlined style={{
+            color: 'var(--muted-foreground)',
+            fontSize: 12,
+          }} />
                     <input
                       type="text"
                       value={langSearch}
                       onChange={(e) => setLangSearch(e.target.value)}
                       placeholder="Search"
                       autoFocus
-                      className="bg-transparent border-none outline-none text-xs text-zinc-800 dark:text-zinc-100 placeholder-zinc-400 w-full"
+                      style={{
+            background: 'transparent',
+            borderStyle: 'none',
+            outline: 'none',
+            fontSize: 12,
+            color: 'var(--foreground)',
+            width: '100%',
+          }}
                     />
                   </div>
                 </div>
 
                 {/* Scrollable Language List */}
-                <div className="overflow-y-auto max-h-[230px] pr-1 space-y-0.5 custom-scrollbar">
+                <div style={{
+            overflowY: 'auto',
+            maxHeight: 230,
+            paddingRight: 4,
+            rowGap: 2,
+            display: 'flex',
+            flexDirection: 'column',
+          }} className="custom-scrollbar">
                   {filteredLanguages.length > 0 ? (
                     filteredLanguages.map((lang) => {
                       const isSelected = languageValue === lang.name;
@@ -253,15 +399,31 @@ export const WriteFormattingPopover: React.FC<WriteFormattingPopoverProps> = ({
                               : 'hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200'
                           }`}
                         >
-                          <span className="text-xs leading-tight font-normal">{lang.name}</span>
-                          <span className="text-[10px] text-zinc-400 dark:text-zinc-500 leading-tight">
+                          <span style={{
+            fontSize: 12,
+            lineHeight: 1.25,
+            fontWeight: 400,
+          }}>{lang.name}</span>
+                          <span style={{
+            fontSize: '10px',
+            color: 'var(--muted-foreground)',
+            lineHeight: 1.25,
+          }}>
                             {lang.nativeName}
                           </span>
                         </div>
                       );
                     })
                   ) : (
-                    <div className="px-2 py-4 text-center text-xs text-zinc-400">
+                    <div style={{
+            paddingLeft: 8,
+            paddingRight: 8,
+            paddingTop: 16,
+            paddingBottom: 16,
+            textAlign: 'center',
+            fontSize: 12,
+            color: 'var(--muted-foreground)',
+          }}>
                       No language found
                     </div>
                   )}
