@@ -36,13 +36,20 @@ const { Title } = Typography;
 
 // Provider SVG Icons
 const OpenAiIcon: React.FC = () => (
-  <svg className="w-4 h-4 text-zinc-800 dark:text-zinc-200" viewBox="0 0 24 24" fill="currentColor">
+  <svg style={{
+            width: 16,
+            height: 16,
+            color: 'var(--foreground)',
+          }} viewBox="0 0 24 24" fill="currentColor">
     <path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.5045 4.5045 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.47 4.47 0 0 1-.5355-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4997 4.4997 0 0 1-6.1408-1.6464zM2.3423 8.587a4.4652 4.4652 0 0 1 2.3655-1.9728V12.15a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1685a.0757.0757 0 0 1-.071 0l-4.8303-2.7865A4.5045 4.5045 0 0 1 2.3423 8.587zm16.5963 3.8558L13.101 9.0792l2.02-1.1638a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.682a.7901.7901 0 0 0-.407-.686zm2.0107-3.0231l-.142-.0852-4.7735-2.7582a.7712.7712 0 0 0-.7806 0L9.4104 9.9448V7.6124a.0757.0757 0 0 1 .0332-.0615l4.8303-2.7866a4.4997 4.4997 0 0 1 6.6802 4.6577zm-12.6403 1.2827l2.8344-1.6325 2.8344 1.6325v3.265l-2.8344 1.6326-2.8344-1.6326z" />
   </svg>
 );
 
 const GoogleGeminiIcon: React.FC = () => (
-  <svg className="w-4 h-4" viewBox="0 0 24 24">
+  <svg style={{
+            width: 16,
+            height: 16,
+          }} viewBox="0 0 24 24">
     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
     <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
     <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
@@ -51,13 +58,21 @@ const GoogleGeminiIcon: React.FC = () => (
 );
 
 const OllamaIcon: React.FC = () => (
-  <svg className="w-4 h-4 text-zinc-800 dark:text-zinc-200" viewBox="0 0 24 24" fill="currentColor">
+  <svg style={{
+            width: 16,
+            height: 16,
+            color: 'var(--foreground)',
+          }} viewBox="0 0 24 24" fill="currentColor">
     <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8zm-3-9a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm6 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm-6.8 4a5 5 0 0 0 7.6 0 .8.8 0 0 0-1.2-1 3.4 3.4 0 0 1-5.2 0 .8.8 0 0 0-1.2 1z"/>
   </svg>
 );
 
 const ClaudeIcon: React.FC = () => (
-  <svg className="w-4 h-4 text-zinc-800 dark:text-zinc-200" viewBox="0 0 24 24" fill="currentColor">
+  <svg style={{
+            width: 16,
+            height: 16,
+            color: 'var(--foreground)',
+          }} viewBox="0 0 24 24" fill="currentColor">
     <path d="M12 2L2 22h4l2-4h8l2 4h4L12 2zm-2.5 12L12 8.5l2.5 5.5h-5z" />
   </svg>
 );
@@ -358,18 +373,71 @@ export const OptionsPage: React.FC = () => {
   const providerListKeys: CustomProviderId[] = ['openai', 'gemini', 'ollama', 'claude'];
 
   return (
-    <div className="flex h-screen w-screen bg-zinc-100 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-100 font-sans overflow-hidden p-[10px] gap-[10px]">
+    <div style={{
+            display: 'flex',
+            height: '100vh',
+            width: '100vw',
+            background: 'var(--muted)',
+            color: 'var(--foreground)',
+            fontFamily: 'var(--font-sans)',
+            overflow: 'hidden',
+            padding: 10,
+            gap: 10,
+          }}>
       {/* Options Sidebar Navigation */}
-      <div className="w-60 bg-[#f6f6f8] dark:bg-zinc-900 rounded-[20px] border border-zinc-200/80 dark:border-zinc-800 p-4 flex flex-col justify-between flex-shrink-0 select-none shadow-2xs">
+      <div style={{
+            width: 240,
+            background: '#f6f6f8',
+            borderRadius: 20,
+            borderWidth: 1,
+            borderStyle: 'solid',
+            borderColor: 'var(--border)',
+            padding: 16,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            flexShrink: 0,
+            userSelect: 'none',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+          }}>
         <div>
-          <div className="flex items-center gap-2.5 px-2 mb-8">
-            <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center">
-              <NowPilotAvatar className="w-full h-full object-cover" />
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            paddingLeft: 8,
+            paddingRight: 8,
+            marginBottom: 32,
+          }}>
+            <div style={{
+            width: 32,
+            height: 32,
+            borderRadius: 9999,
+            overflow: 'hidden',
+            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+              <NowPilotAvatar style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+          }} />
             </div>
-            <span className="font-bold text-base tracking-tight text-zinc-900 dark:text-zinc-100">NowPilot</span>
+            <span style={{
+            fontWeight: 700,
+            fontSize: 16,
+            letterSpacing: '-0.01em',
+            color: 'var(--foreground)',
+          }}>NowPilot</span>
           </div>
 
-          <div className="space-y-1">
+          <div style={{
+            rowGap: 4,
+            display: 'flex',
+            flexDirection: 'column',
+          }}>
             {[
               { key: 'General', label: 'General', icon: <ControlOutlined /> },
               { key: 'Translate', label: 'Translate', icon: <TranslationOutlined /> },
@@ -384,56 +452,166 @@ export const OptionsPage: React.FC = () => {
                     : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200/60 dark:hover:bg-zinc-800/80'
                 }`}
               >
-                <span className="text-lg">{item.icon}</span>
+                <span style={{
+            fontSize: 18,
+          }}>{item.icon}</span>
                 <span>{item.label}</span>
               </button>
             ))}
 
-            <div className="my-2 border-t border-zinc-200/80 dark:border-zinc-800" />
+            <div style={{
+            marginTop: 8,
+            marginBottom: 8,
+            borderTopWidth: 1,
+            borderTopStyle: 'solid',
+            borderTopColor: 'var(--border)',
+            borderColor: 'var(--border)',
+          }} />
 
             <a
               href="#"
               onClick={e => { e.preventDefault(); antMessage.info('Help Center opened'); }}
-              className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-base font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200/60 dark:hover:bg-zinc-800/80 transition-all cursor-pointer"
+              style={{
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingLeft: 12,
+            paddingRight: 12,
+            paddingTop: 10,
+            paddingBottom: 10,
+            borderRadius: 12,
+            fontSize: 16,
+            fontWeight: 500,
+            color: 'var(--muted-foreground)',
+            transition: 'all 200ms ease',
+            cursor: 'pointer',
+          }}
             >
-              <span className="flex items-center gap-3">
-                <span className="text-lg"><QuestionCircleOutlined /></span>
+              <span style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+          }}>
+                <span style={{
+            fontSize: 18,
+          }}><QuestionCircleOutlined /></span>
                 <span>Help Center</span>
               </span>
-              <span className="text-zinc-400 text-sm">↗</span>
+              <span style={{
+            color: 'var(--muted-foreground)',
+            fontSize: 14,
+          }}>↗</span>
             </a>
           </div>
         </div>
       </div>
 
       {/* Main Options Content */}
-      <div className="flex-1 overflow-y-auto p-8 max-w-4xl bg-transparent">
+      <div style={{
+            flex: 1,
+            overflowY: 'auto',
+            padding: 32,
+            maxWidth: 896,
+            background: 'transparent',
+          }}>
         {activeTab === 'General' && (
-          <div className="space-y-8">
+          <div style={{
+            rowGap: 32,
+            display: 'flex',
+            flexDirection: 'column',
+          }}>
             {/* Account Card */}
             <div>
-              <div className="flex items-center justify-between mb-4">
-                <Title level={3} className="!mb-0 font-bold text-zinc-900 dark:text-zinc-100">Account</Title>
+              <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 16,
+          }}>
+                <Title level={3} style={{
+            marginBottom: 0,
+            fontWeight: 700,
+            color: 'var(--foreground)',
+          }}>Account</Title>
                 {listUpdated && (
-                  <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 rounded-full text-xs font-semibold text-emerald-600 dark:text-emerald-400 shadow-2xs">
-                    <CheckOutlined className="text-xs" />
+                  <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            paddingLeft: 12,
+            paddingRight: 12,
+            paddingTop: 4,
+            paddingBottom: 4,
+            background: '#ecfdf5',
+            borderWidth: 1,
+            borderStyle: 'solid',
+            borderColor: '#a7f3d0',
+            borderRadius: 9999,
+            fontSize: 12,
+            fontWeight: 600,
+            color: '#059669',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+          }}>
+                    <CheckOutlined style={{
+            fontSize: 12,
+          }} />
                     <span>Model updated successfully</span>
                   </div>
                 )}
               </div>
-              <div className="p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 flex items-center justify-between shadow-2xs">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full overflow-hidden">
-                    <UserAvatar className="w-full h-full object-cover" />
+              <div style={{
+            padding: 16,
+            background: 'var(--card)',
+            borderRadius: 16,
+            borderWidth: 1,
+            borderStyle: 'solid',
+            borderColor: 'var(--border)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+          }}>
+                <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+          }}>
+                  <div style={{
+            width: 40,
+            height: 40,
+            borderRadius: 9999,
+            overflow: 'hidden',
+          }}>
+                    <UserAvatar style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+          }} />
                   </div>
                   <div>
-                    <div className="font-bold text-sm text-zinc-900 dark:text-zinc-100">George Li</div>
-                    <div className="text-xs text-zinc-400">oraclexp@hotmail.com</div>
+                    <div style={{
+            fontWeight: 700,
+            fontSize: 14,
+            color: 'var(--foreground)',
+          }}>George Li</div>
+                    <div style={{
+            fontSize: 12,
+            color: 'var(--muted-foreground)',
+          }}>oraclexp@hotmail.com</div>
                   </div>
                 </div>
                 <Button
                   size="middle"
-                  className="!rounded-full !px-5 !border-zinc-200 dark:!border-zinc-700 !text-violet-600 dark:!text-violet-400 font-medium text-xs hover:!border-violet-300"
+                  style={{
+            borderRadius: 9999,
+            paddingLeft: 20,
+            paddingRight: 20,
+            borderColor: 'var(--border)',
+            color: '#7c3aed',
+            fontWeight: 500,
+            fontSize: 12,
+          }}
                 >
                   Log out
                 </Button>
@@ -442,10 +620,33 @@ export const OptionsPage: React.FC = () => {
 
             {/* AI Access Settings */}
             <div>
-              <Title level={3} className="!mb-4 font-bold text-zinc-900 dark:text-zinc-100">AI access</Title>
-              <div className="p-5 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 space-y-4 shadow-2xs">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">Service provider</span>
+              <Title level={3} style={{
+            marginBottom: 16,
+            fontWeight: 700,
+            color: 'var(--foreground)',
+          }}>AI access</Title>
+              <div style={{
+            padding: 20,
+            background: 'var(--card)',
+            borderRadius: 16,
+            borderWidth: 1,
+            borderStyle: 'solid',
+            borderColor: 'var(--border)',
+            rowGap: 16,
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+          }}>
+                <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}>
+                  <span style={{
+            fontWeight: 600,
+            fontSize: 14,
+            color: 'var(--foreground)',
+          }}>Service provider</span>
                   <Select
                     value={config.serviceProvider || 'ChatGPT Webapp'}
                     onChange={(val) => updateConfig({ serviceProvider: val })}
@@ -453,36 +654,93 @@ export const OptionsPage: React.FC = () => {
                       { value: 'ChatGPT Webapp', label: 'ChatGPT Webapp' },
                       { value: 'Custom API Key', label: 'Custom API Key' },
                     ]}
-                    className="w-48"
+                    style={{
+            width: 192,
+          }}
                   />
                 </div>
 
                 {(config.serviceProvider || 'ChatGPT Webapp') === 'ChatGPT Webapp' ? (
                   <>
-                    <div className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                    <div style={{
+            fontSize: 12,
+            color: 'var(--muted-foreground)',
+            lineHeight: 1.625,
+          }}>
                       Experience may vary for visitors and logged-in users due to OpenAI's restrictions.
                     </div>
 
-                    <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/80 space-y-4">
+                    <div style={{
+            paddingTop: 8,
+            borderTopWidth: 1,
+            borderTopStyle: 'solid',
+            borderTopColor: 'var(--border)',
+            borderColor: 'var(--border)',
+            rowGap: 16,
+            display: 'flex',
+            flexDirection: 'column',
+          }}>
                       <Button
                         onClick={() => {
                           setListUpdated(true);
                           antMessage.success('Model updated successfully');
                           setTimeout(() => setListUpdated(false), 3500);
                         }}
-                        className="!rounded-full !px-4 !border-zinc-200 dark:!border-zinc-700 text-xs font-medium text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5"
+                        style={{
+            borderRadius: 9999,
+            paddingLeft: 16,
+            paddingRight: 16,
+            borderColor: 'var(--border)',
+            fontSize: 12,
+            fontWeight: 500,
+            color: 'var(--muted-foreground)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+          }}
                       >
-                        <ReloadOutlined className="text-xs text-zinc-500" />
+                        <ReloadOutlined style={{
+            fontSize: 12,
+            color: 'var(--muted-foreground)',
+          }} />
                         <span>Refresh models</span>
                       </Button>
 
                       {/* Important Reminders Box */}
-                      <div className="p-4 bg-emerald-50/40 dark:bg-emerald-950/20 rounded-xl border border-emerald-100/80 dark:border-emerald-900/30 text-xs space-y-2 text-zinc-700 dark:text-zinc-300">
-                        <div className="font-bold flex items-center gap-1.5 text-zinc-800 dark:text-zinc-200">
-                          <InfoCircleOutlined className="text-emerald-600 dark:text-emerald-400 text-sm" />
+                      <div style={{
+            padding: 16,
+            background: '#ecfdf5',
+            borderRadius: 12,
+            borderWidth: 1,
+            borderStyle: 'solid',
+            borderColor: '#d1fae5',
+            fontSize: 12,
+            rowGap: 8,
+            display: 'flex',
+            flexDirection: 'column',
+            color: 'var(--muted-foreground)',
+          }}>
+                        <div style={{
+            fontWeight: 700,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            color: 'var(--foreground)',
+          }}>
+                          <InfoCircleOutlined style={{
+            color: '#059669',
+            fontSize: 14,
+          }} />
                           <span>Important reminders</span>
                         </div>
-                        <ul className="list-disc pl-5 space-y-1 text-zinc-600 dark:text-zinc-400">
+                        <ul style={{
+            listStyleType: 'disc',
+            paddingLeft: 20,
+            rowGap: 4,
+            display: 'flex',
+            flexDirection: 'column',
+            color: 'var(--muted-foreground)',
+          }}>
                           <li>Remain logged in to your account.</li>
                           <li>
                             This service may be unstable due to OpenAI policy changes. For fast and stable performance, we recommend using NowPilot.
@@ -493,12 +751,21 @@ export const OptionsPage: React.FC = () => {
                   </>
                 ) : (
                   <>
-                    <div className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                    <div style={{
+            fontSize: 12,
+            color: 'var(--muted-foreground)',
+            lineHeight: 1.625,
+          }}>
                       Your API key is stored locally in your browser and is never sent elsewhere.
                     </div>
 
                     {/* 4 Providers Grid */}
-                    <div className="grid grid-cols-2 gap-3 pt-2">
+                    <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, 1fr)',
+            gap: 12,
+            paddingTop: 8,
+          }}>
                       {providerListKeys.map((key) => {
                         const info = PROVIDER_INFO[key];
                         const detail = config.providers?.[key] || {
@@ -515,25 +782,67 @@ export const OptionsPage: React.FC = () => {
                         return (
                           <div
                             key={key}
-                            className="p-3 bg-zinc-50/70 dark:bg-zinc-800/40 rounded-xl border border-zinc-200/80 dark:border-zinc-800 flex items-center justify-between transition-all hover:border-zinc-300 dark:hover:border-zinc-700"
+                            style={{
+            padding: 12,
+            background: 'var(--muted)',
+            borderRadius: 12,
+            borderWidth: 1,
+            borderStyle: 'solid',
+            borderColor: 'var(--border)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            transition: 'all 200ms ease',
+          }}
                           >
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-6 h-6 rounded-md bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-700/80 flex items-center justify-center shadow-2xs">
+                            <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+          }}>
+                              <div style={{
+            width: 24,
+            height: 24,
+            borderRadius: 6,
+            background: 'var(--card)',
+            borderWidth: 1,
+            borderStyle: 'solid',
+            borderColor: 'var(--border)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+          }}>
                                 {info.icon}
                               </div>
-                              <span className="font-medium text-xs text-zinc-900 dark:text-zinc-100">
+                              <span style={{
+            fontWeight: 500,
+            fontSize: 12,
+            color: 'var(--foreground)',
+          }}>
                                 {info.name}
                               </span>
                             </div>
 
-                            <div className="flex items-center gap-2">
+                            <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}>
                               {detail.isConfigured ? (
                                 <>
                                   <button
                                     onClick={() => handleOpenProviderModal(key)}
-                                    className="text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 p-1 transition-colors cursor-pointer"
+                                    style={{
+            color: 'var(--muted-foreground)',
+            padding: 4,
+            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+            cursor: 'pointer',
+          }}
                                   >
-                                    <EditOutlined className="text-xs" />
+                                    <EditOutlined style={{
+            fontSize: 12,
+          }} />
                                   </button>
                                   <Switch
                                     checked={detail.enabled}
@@ -544,7 +853,12 @@ export const OptionsPage: React.FC = () => {
                               ) : (
                                 <button
                                   onClick={() => handleOpenProviderModal(key)}
-                                  className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                                  style={{
+            fontSize: 12,
+            fontWeight: 600,
+            color: '#2563eb',
+            cursor: 'pointer',
+          }}
                                 >
                                   Set up
                                 </button>
@@ -561,13 +875,46 @@ export const OptionsPage: React.FC = () => {
 
             {/* Appearance Settings */}
             <div>
-              <Title level={3} className="!mb-4 font-bold text-zinc-900 dark:text-zinc-100">Appearance</Title>
-              <div className="p-5 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 space-y-5 shadow-2xs">
+              <Title level={3} style={{
+            marginBottom: 16,
+            fontWeight: 700,
+            color: 'var(--foreground)',
+          }}>Appearance</Title>
+              <div style={{
+            padding: 20,
+            background: 'var(--card)',
+            borderRadius: 16,
+            borderWidth: 1,
+            borderStyle: 'solid',
+            borderColor: 'var(--border)',
+            rowGap: 20,
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+          }}>
                 {/* Display mode */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-100 dark:border-zinc-800/80 pb-4">
+                <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            gap: 12,
+            borderBottomWidth: 1,
+            borderBottomStyle: 'solid',
+            borderBottomColor: 'var(--border)',
+            borderColor: 'var(--border)',
+            paddingBottom: 16,
+          }}>
                   <div>
-                    <div className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">Display mode</div>
-                    <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                    <div style={{
+            fontWeight: 600,
+            fontSize: 14,
+            color: 'var(--foreground)',
+          }}>Display mode</div>
+                    <div style={{
+            fontSize: 12,
+            color: 'var(--muted-foreground)',
+            marginTop: 2,
+          }}>
                       Choose between light mode, dark mode, or follow your system preferences.
                     </div>
                   </div>
@@ -583,8 +930,14 @@ export const OptionsPage: React.FC = () => {
                       {
                         value: 'Auto',
                         label: (
-                          <div className="flex items-center gap-2">
-                            <DesktopOutlined className="text-zinc-400" />
+                          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}>
+                            <DesktopOutlined style={{
+            color: 'var(--muted-foreground)',
+          }} />
                             <span>Auto</span>
                           </div>
                         ),
@@ -592,8 +945,14 @@ export const OptionsPage: React.FC = () => {
                       {
                         value: 'Light',
                         label: (
-                          <div className="flex items-center gap-2">
-                            <SunOutlined className="text-amber-500" />
+                          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}>
+                            <SunOutlined style={{
+            color: '#f59e0b',
+          }} />
                             <span>Light</span>
                           </div>
                         ),
@@ -601,8 +960,14 @@ export const OptionsPage: React.FC = () => {
                       {
                         value: 'Dark',
                         label: (
-                          <div className="flex items-center gap-2">
-                            <MoonOutlined className="text-indigo-400" />
+                          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}>
+                            <MoonOutlined style={{
+            color: '#818cf8',
+          }} />
                             <span>Dark</span>
                           </div>
                         ),
@@ -612,10 +977,28 @@ export const OptionsPage: React.FC = () => {
                 </div>
 
                 {/* Theme */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-100 dark:border-zinc-800/80 pb-4">
+                <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            gap: 12,
+            borderBottomWidth: 1,
+            borderBottomStyle: 'solid',
+            borderBottomColor: 'var(--border)',
+            borderColor: 'var(--border)',
+            paddingBottom: 16,
+          }}>
                   <div>
-                    <div className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">Theme</div>
-                    <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                    <div style={{
+            fontWeight: 600,
+            fontSize: 14,
+            color: 'var(--foreground)',
+          }}>Theme</div>
+                    <div style={{
+            fontSize: 12,
+            color: 'var(--muted-foreground)',
+            marginTop: 2,
+          }}>
                       Select the color theme applied across workspace, sidepanel chat, and options.
                     </div>
                   </div>
@@ -630,10 +1013,20 @@ export const OptionsPage: React.FC = () => {
                     options={COLOR_THEMES.map((themeItem) => ({
                       value: themeItem.id,
                       label: (
-                        <div className="flex items-center gap-2">
+                        <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}>
                           <span
-                            className="w-3.5 h-3.5 rounded-full shrink-0 shadow-2xs"
-                            style={{ backgroundColor: themeItem.primary }}
+                            style={{
+                              width: 14,
+                              height: 14,
+                              borderRadius: 9999,
+                              flexShrink: 0,
+                              boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+                              backgroundColor: themeItem.primary,
+                            }}
                           />
                           <span>{themeItem.name}</span>
                         </div>
@@ -643,21 +1036,43 @@ export const OptionsPage: React.FC = () => {
                 </div>
 
                 {/* Display language */}
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">Display language</span>
+                <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}>
+                  <span style={{
+            fontWeight: 600,
+            fontSize: 14,
+            color: 'var(--foreground)',
+          }}>Display language</span>
                   <Select
                     value={config.language || 'English'}
                     onChange={val => updateConfig({ language: val })}
                     options={[
                       { value: 'English', label: 'English' },
                     ]}
-                    className="w-36"
+                    style={{
+            width: 144,
+          }}
                   />
                 </div>
               </div>
 
               {/* Shoutout Banner Box */}
-              <div className="mt-4 p-5 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 space-y-4 shadow-2xs">
+              <div style={{
+            marginTop: 16,
+            padding: 20,
+            background: 'var(--card)',
+            borderRadius: 16,
+            borderWidth: 1,
+            borderStyle: 'solid',
+            borderColor: 'var(--border)',
+            rowGap: 16,
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+          }}>
                 <div className={`p-4 rounded-2xl bg-gradient-to-r from-zinc-50 via-zinc-50/50 to-zinc-50/80 dark:from-zinc-800/40 dark:via-zinc-800/20 dark:to-zinc-800/40 border border-zinc-200/60 dark:border-zinc-700/60 space-y-2 max-w-[340px] shadow-2xs transition-all ${
                   (config.fontSize || 'Auto') === 'Small'
                     ? 'message-font-small'
@@ -665,28 +1080,63 @@ export const OptionsPage: React.FC = () => {
                     ? 'message-font-large'
                     : 'message-font-regular'
                 }`}>
-                  <div className="text-zinc-600 dark:text-zinc-400">
+                  <div style={{
+            color: 'var(--muted-foreground)',
+          }}>
                     Give a shoutout to the NowPilot extension.
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}>
                     <div
-                      className="w-5 h-5 rounded-full text-white flex items-center justify-center text-[10px] font-bold"
-                      style={{ backgroundColor: 'var(--np-primary, #1677ff)' }}
+                      style={{
+                        width: 20,
+                        height: 20,
+                        borderRadius: 9999,
+                        color: '#ffffff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '10px',
+                        fontWeight: 700,
+                        backgroundColor: 'var(--np-primary, #1677ff)',
+                      }}
                     >
                       N
                     </div>
-                    <span className="font-bold text-zinc-900 dark:text-zinc-100">NowPilot</span>
+                    <span style={{
+            fontWeight: 700,
+            color: 'var(--foreground)',
+          }}>NowPilot</span>
                   </div>
-                  <div className="text-zinc-600 dark:text-zinc-300 leading-relaxed">
+                  <div style={{
+            color: 'var(--muted-foreground)',
+            lineHeight: 1.625,
+          }}>
                     NowPilot enhances browsing with AI, streamlining tasks and boosting productivity. An essential tool for efficient online navigation!
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-1">
+                <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingTop: 4,
+          }}>
                   <div>
-                    <div className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">Font size for message</div>
+                    <div style={{
+            fontWeight: 600,
+            fontSize: 14,
+            color: 'var(--foreground)',
+          }}>Font size for message</div>
                     {(config.fontSize === 'Auto' || !config.fontSize) && (
-                      <div className="text-xs text-zinc-400 dark:text-zinc-500 mt-0.5">
+                      <div style={{
+            fontSize: 12,
+            color: 'var(--muted-foreground)',
+            marginTop: 2,
+          }}>
                         Auto adjust according to sidebar width
                       </div>
                     )}
@@ -700,19 +1150,43 @@ export const OptionsPage: React.FC = () => {
                       { value: 'Regular', label: 'Regular' },
                       { value: 'Large', label: 'Large' },
                     ]}
-                    className="w-36"
+                    style={{
+            width: 144,
+          }}
                   />
                 </div>
               </div>
             </div>
 
             {/* Side panel position */}
-            <div className="p-5 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 flex items-center justify-between shadow-2xs">
+            <div style={{
+            padding: 20,
+            background: 'var(--card)',
+            borderRadius: 16,
+            borderWidth: 1,
+            borderStyle: 'solid',
+            borderColor: 'var(--border)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+          }}>
               <div>
-                <div className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">Side panel position</div>
-                <div className="text-xs text-zinc-400 mt-0.5">For Chrome 114 or higher, can only be changed in browser settings</div>
+                <div style={{
+            fontWeight: 600,
+            fontSize: 14,
+            color: 'var(--foreground)',
+          }}>Side panel position</div>
+                <div style={{
+            fontSize: 12,
+            color: 'var(--muted-foreground)',
+            marginTop: 2,
+          }}>For Chrome 114 or higher, can only be changed in browser settings</div>
               </div>
-              <a href="#" onClick={(e) => { e.preventDefault(); antMessage.info('Opened browser settings'); }} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 text-sm">
+              <a href="#" onClick={(e) => { e.preventDefault(); antMessage.info('Opened browser settings'); }} style={{
+            color: 'var(--muted-foreground)',
+            fontSize: 14,
+          }}>
                 ↗
               </a>
             </div>
@@ -720,23 +1194,79 @@ export const OptionsPage: React.FC = () => {
         )}
 
         {activeTab !== 'General' && activeTab !== 'Translate' && activeTab !== 'Prompts' && (
-          <div className="p-8 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 space-y-4 max-w-2xl shadow-2xs">
-            <Title level={3} className="!mb-2 font-bold text-zinc-900 dark:text-zinc-100">{activeTab}</Title>
-            <p className="text-xs text-zinc-500 leading-relaxed">
+          <div style={{
+            padding: 32,
+            background: 'var(--card)',
+            borderRadius: 16,
+            borderWidth: 1,
+            borderStyle: 'solid',
+            borderColor: 'var(--border)',
+            rowGap: 16,
+            display: 'flex',
+            flexDirection: 'column',
+            maxWidth: 672,
+            boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+          }}>
+            <Title level={3} style={{
+            marginBottom: 8,
+            fontWeight: 700,
+            color: 'var(--foreground)',
+          }}>{activeTab}</Title>
+            <p style={{
+            fontSize: 12,
+            color: 'var(--muted-foreground)',
+            lineHeight: 1.625,
+          }}>
               Configure options and settings for {activeTab}. Preferences are synchronized automatically.
             </p>
           </div>
         )}
 
         {activeTab === 'Translate' && (
-          <div className="space-y-6 max-w-3xl">
-            <Title level={2} className="!mb-6 font-bold text-zinc-900 dark:text-zinc-100">Page translate</Title>
+          <div style={{
+            rowGap: 24,
+            display: 'flex',
+            flexDirection: 'column',
+            maxWidth: 768,
+          }}>
+            <Title level={2} style={{
+            marginBottom: 24,
+            fontWeight: 700,
+            color: 'var(--foreground)',
+          }}>Page translate</Title>
 
-            <div className="p-6 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200/80 dark:border-zinc-800 shadow-2xs space-y-6">
+            <div style={{
+            padding: 24,
+            background: 'var(--card)',
+            borderRadius: 24,
+            borderWidth: 1,
+            borderStyle: 'solid',
+            borderColor: 'var(--border)',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+            rowGap: 24,
+            display: 'flex',
+            flexDirection: 'column',
+          }}>
               {/* Sample translation preview box */}
-              <div className="p-6 bg-gradient-to-b from-zinc-50/80 to-zinc-50/30 dark:from-zinc-800/40 dark:to-zinc-800/20 rounded-2xl border border-zinc-100/80 dark:border-zinc-800/60 shadow-2xs space-y-3">
+              <div style={{
+            padding: 24,
+            background: 'linear-gradient(to bottom, var(--muted) 0%, var(--card) 100%)',
+            borderRadius: 16,
+            borderWidth: 1,
+            borderStyle: 'solid',
+            borderColor: 'var(--border)',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+            rowGap: 12,
+            display: 'flex',
+            flexDirection: 'column',
+          }}>
                 {(config.translateDisplayMode || 'Bilingual') === 'Bilingual' && (
-                  <p className="text-zinc-700 dark:text-zinc-300 font-normal leading-relaxed text-sm">
+                  <p style={{
+            color: 'var(--muted-foreground)',
+            fontWeight: 400,
+            lineHeight: 1.625,
+            fontSize: 14,
+          }}>
                     {sampleOriginalText}
                   </p>
                 )}
@@ -752,26 +1282,57 @@ export const OptionsPage: React.FC = () => {
               </div>
 
               {/* Translation service */}
-              <div className="flex items-center justify-between pt-1">
-                <span className="font-bold text-sm text-zinc-900 dark:text-zinc-100">Translation service</span>
+              <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingTop: 4,
+          }}>
+                <span style={{
+            fontWeight: 700,
+            fontSize: 14,
+            color: 'var(--foreground)',
+          }}>Translation service</span>
                 <Select
                   value={config.translateService || 'MiniCPM5-1B-OptiQ-4bit'}
                   onChange={(val) => updateConfig({ translateService: val })}
                   options={availableTranslationModels.map(m => ({
                     value: m.value,
                     label: (
-                      <span className="flex items-center gap-1.5 font-medium">
-                        <span className="text-xs">⚡</span> {m.label}
+                      <span style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            fontWeight: 500,
+          }}>
+                        <span style={{
+            fontSize: 12,
+          }}>⚡</span> {m.label}
                       </span>
                     )
                   }))}
-                  className="w-64"
+                  style={{
+            width: 256,
+          }}
                 />
               </div>
 
               {/* Target language */}
-              <div className="flex items-center justify-between border-t border-zinc-100 dark:border-zinc-800/80 pt-5">
-                <span className="font-bold text-sm text-zinc-900 dark:text-zinc-100">Target language</span>
+              <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderTopWidth: 1,
+            borderTopStyle: 'solid',
+            borderTopColor: 'var(--border)',
+            borderColor: 'var(--border)',
+            paddingTop: 20,
+          }}>
+                <span style={{
+            fontWeight: 700,
+            fontSize: 14,
+            color: 'var(--foreground)',
+          }}>Target language</span>
                 <Select
                   value={config.translateTargetLang || 'English'}
                   onChange={(val) => updateConfig({ translateTargetLang: val })}
@@ -781,13 +1342,28 @@ export const OptionsPage: React.FC = () => {
                     { value: 'Traditional Chinese', label: 'Traditional Chinese' },
                     { value: 'Japanese', label: 'Japanese' },
                   ]}
-                  className="w-64"
+                  style={{
+            width: 256,
+          }}
                 />
               </div>
 
               {/* Display mode */}
-              <div className="flex items-center justify-between border-t border-zinc-100 dark:border-zinc-800/80 pt-5">
-                <span className="font-bold text-sm text-zinc-900 dark:text-zinc-100">Display mode</span>
+              <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderTopWidth: 1,
+            borderTopStyle: 'solid',
+            borderTopColor: 'var(--border)',
+            borderColor: 'var(--border)',
+            paddingTop: 20,
+          }}>
+                <span style={{
+            fontWeight: 700,
+            fontSize: 14,
+            color: 'var(--foreground)',
+          }}>Display mode</span>
                 <Select
                   value={config.translateDisplayMode || 'Bilingual'}
                   onChange={(val) => updateConfig({ translateDisplayMode: val })}
@@ -795,15 +1371,34 @@ export const OptionsPage: React.FC = () => {
                     { value: 'Bilingual', label: 'Bilingual' },
                     { value: 'Translation only', label: 'Translation only' },
                   ]}
-                  className="w-64"
+                  style={{
+            width: 256,
+          }}
                 />
               </div>
 
               {/* Display style */}
-              <div className="flex items-center justify-between border-t border-zinc-100 dark:border-zinc-800/80 pt-5">
+              <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderTopWidth: 1,
+            borderTopStyle: 'solid',
+            borderTopColor: 'var(--border)',
+            borderColor: 'var(--border)',
+            paddingTop: 20,
+          }}>
                 <div>
-                  <div className="font-bold text-sm text-zinc-900 dark:text-zinc-100">Display style</div>
-                  <div className="text-xs text-zinc-400 mt-0.5">Only for translations in bilingual comparison mode</div>
+                  <div style={{
+            fontWeight: 700,
+            fontSize: 14,
+            color: 'var(--foreground)',
+          }}>Display style</div>
+                  <div style={{
+            fontSize: 12,
+            color: 'var(--muted-foreground)',
+            marginTop: 2,
+          }}>Only for translations in bilingual comparison mode</div>
                 </div>
                 <Select
                   value={config.translateDisplayStyle || 'Underline'}
@@ -813,7 +1408,9 @@ export const OptionsPage: React.FC = () => {
                     { value: 'Underline', label: 'Underline' },
                     { value: 'Weaken', label: 'Weaken' },
                   ]}
-                  className="w-64"
+                  style={{
+            width: 256,
+          }}
                 />
               </div>
             </div>
@@ -833,16 +1430,32 @@ export const OptionsPage: React.FC = () => {
         okText="Save"
         okButtonProps={{ style: { backgroundColor: '#7c3aed' } }}
         title={
-          <span className="font-bold text-lg text-zinc-900 dark:text-zinc-100">
+          <span style={{
+            fontWeight: 700,
+            fontSize: 18,
+            color: 'var(--foreground)',
+          }}>
             {activeModalProviderId ? PROVIDER_INFO[activeModalProviderId].name : ''}
           </span>
         }
         width={480}
       >
-        <div className="space-y-5 py-2">
+        <div style={{
+            rowGap: 20,
+            display: 'flex',
+            flexDirection: 'column',
+            paddingTop: 8,
+            paddingBottom: 8,
+          }}>
           {/* API key */}
           <div>
-            <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">
+            <label style={{
+            fontSize: 12,
+            fontWeight: 600,
+            color: 'var(--muted-foreground)',
+            display: 'block',
+            marginBottom: 4,
+          }}>
               API key
             </label>
             <Input.Password
@@ -850,14 +1463,25 @@ export const OptionsPage: React.FC = () => {
               value={modalApiKey}
               onChange={e => setModalApiKey(e.target.value)}
               iconRender={visible => (visible ? <EyeOutlined /> : <EyeInvisibleOutlined />)}
-              className="rounded-lg"
+              style={{
+            borderRadius: 8,
+          }}
             />
           </div>
 
           {/* API proxy URL (optional) */}
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+            <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 4,
+          }}>
+              <label style={{
+            fontSize: 12,
+            fontWeight: 600,
+            color: 'var(--muted-foreground)',
+          }}>
                 API proxy URL (optional)
               </label>
               <Switch
@@ -871,18 +1495,33 @@ export const OptionsPage: React.FC = () => {
                 placeholder={activeModalProviderId ? PROVIDER_INFO[activeModalProviderId].defaultProxy : 'http://localhost:12380/v1'}
                 value={modalProxyUrl}
                 onChange={e => setModalProxyUrl(e.target.value)}
-                className="rounded-lg mt-1"
+                style={{
+            borderRadius: 8,
+            marginTop: 4,
+          }}
               />
             )}
           </div>
 
           {/* Check connection */}
           <div>
-            <div className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-0.5">
+            <div style={{
+            fontSize: 12,
+            fontWeight: 600,
+            color: 'var(--muted-foreground)',
+            marginBottom: 2,
+          }}>
               Check connection
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-zinc-400">Check if your API key and proxy (if used) are valid.</span>
+            <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}>
+              <span style={{
+            fontSize: 12,
+            color: 'var(--muted-foreground)',
+          }}>Check if your API key and proxy (if used) are valid.</span>
               <Button
                 type="primary"
                 onClick={handleCheckConnection}
@@ -896,23 +1535,62 @@ export const OptionsPage: React.FC = () => {
           </div>
 
           {/* Model list */}
-          <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800">
-            <div className="flex items-center justify-between text-xs mb-2">
-              <div className="font-semibold text-zinc-800 dark:text-zinc-200">
-                Model list <span className="text-zinc-400 font-normal ml-1">({modalModels.length} models available)</span>
+          <div style={{
+            paddingTop: 12,
+            borderTopWidth: 1,
+            borderTopStyle: 'solid',
+            borderTopColor: 'var(--border)',
+            borderColor: 'var(--border)',
+          }}>
+            <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            fontSize: 12,
+            marginBottom: 8,
+          }}>
+              <div style={{
+            fontWeight: 600,
+            color: 'var(--foreground)',
+          }}>
+                Model list <span style={{
+            color: 'var(--muted-foreground)',
+            fontWeight: 400,
+            marginLeft: 4,
+          }}>({modalModels.length} models available)</span>
               </div>
-              <div className="flex items-center gap-3">
+              <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+          }}>
                 {listUpdated ? (
                   <button
                     onClick={handleUpdateList}
-                    className="text-emerald-500 dark:text-emerald-400 font-medium flex items-center gap-1 cursor-pointer text-xs"
+                    style={{
+            color: '#10b981',
+            fontWeight: 500,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            cursor: 'pointer',
+            fontSize: 12,
+          }}
                   >
                     <CheckOutlined /> Updated
                   </button>
                 ) : (
                   <button
                     onClick={handleUpdateList}
-                    className="text-violet-600 dark:text-violet-400 hover:underline flex items-center gap-1 font-normal cursor-pointer text-xs"
+                    style={{
+            color: '#7c3aed',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            fontWeight: 400,
+            cursor: 'pointer',
+            fontSize: 12,
+          }}
                   >
                     <ReloadOutlined /> Update list
                   </button>
@@ -922,7 +1600,17 @@ export const OptionsPage: React.FC = () => {
                     setAddCustomModelOpen(true);
                     setNewModelNameInput('');
                   }}
-                  className="text-zinc-600 dark:text-zinc-300 hover:text-violet-600 font-bold px-1.5 py-0.5 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 text-sm cursor-pointer"
+                  style={{
+            color: 'var(--muted-foreground)',
+            fontWeight: 700,
+            paddingLeft: 6,
+            paddingRight: 6,
+            paddingTop: 2,
+            paddingBottom: 2,
+            borderRadius: 6,
+            fontSize: 14,
+            cursor: 'pointer',
+          }}
                 >
                   +
                 </button>
@@ -931,27 +1619,78 @@ export const OptionsPage: React.FC = () => {
 
             {/* Add Custom Model Inline Box matching screenshot */}
             {addCustomModelOpen && (
-              <div className="flex items-center justify-between p-2 px-3 mb-2.5 rounded-xl border-2 border-violet-600 dark:border-violet-500 bg-white dark:bg-zinc-900 shadow-2xs">
+              <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: 8,
+            paddingLeft: 12,
+            paddingRight: 12,
+            marginBottom: 10,
+            borderRadius: 12,
+            borderWidth: 2,
+            borderStyle: 'solid',
+            borderColor: '#7c3aed',
+            background: 'var(--card)',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+          }}>
                 <input
                   type="text"
                   placeholder="Enter model name (e.g. test1)"
                   value={newModelNameInput}
                   onChange={e => setNewModelNameInput(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') handleAddCustomModel(); }}
-                  className="w-full bg-transparent outline-none text-xs text-zinc-800 dark:text-zinc-200 placeholder-zinc-400 font-mono"
+                  style={{
+            width: '100%',
+            background: 'transparent',
+            outline: 'none',
+            fontSize: 12,
+            color: 'var(--foreground)',
+            fontFamily: 'var(--font-mono)',
+          }}
                   autoFocus
                 />
-                <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
+                <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            marginLeft: 8,
+            flexShrink: 0,
+          }}>
                   <button
                     onClick={handleAddCustomModel}
-                    className="w-6 h-6 rounded-md bg-violet-600 hover:bg-violet-700 text-white flex items-center justify-center text-xs shadow-2xs cursor-pointer transition-colors"
+                    style={{
+            width: 24,
+            height: 24,
+            borderRadius: 6,
+            background: '#7c3aed',
+            color: '#ffffff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 12,
+            boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+            cursor: 'pointer',
+            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+          }}
                     title="Confirm"
                   >
                     <CheckOutlined />
                   </button>
                   <button
                     onClick={() => { setAddCustomModelOpen(false); setNewModelNameInput(''); }}
-                    className="w-6 h-6 rounded-md text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 flex items-center justify-center text-xs cursor-pointer transition-colors"
+                    style={{
+            width: 24,
+            height: 24,
+            borderRadius: 6,
+            color: 'var(--muted-foreground)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 12,
+            cursor: 'pointer',
+            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+          }}
                     title="Cancel"
                   >
                     <CloseOutlined />
@@ -962,37 +1701,105 @@ export const OptionsPage: React.FC = () => {
 
             {/* Model List Rendering */}
             {modalModels.length === 0 && !addCustomModelOpen ? (
-              <div className="text-center py-6 text-xs text-zinc-400 bg-zinc-50 dark:bg-zinc-800/40 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-700">
+              <div style={{
+            textAlign: 'center',
+            paddingTop: 24,
+            paddingBottom: 24,
+            fontSize: 12,
+            color: 'var(--muted-foreground)',
+            background: 'var(--muted)',
+            borderRadius: 12,
+            borderWidth: 1,
+            borderStyle: 'dashed',
+            borderColor: 'var(--border)',
+          }}>
                 No models available. Click 'Update list' or 'Check' to load models, or click '+' to add.
               </div>
             ) : (
-              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+              <div style={{
+            rowGap: 8,
+            display: 'flex',
+            flexDirection: 'column',
+            maxHeight: 192,
+            overflowY: 'auto',
+            paddingRight: 4,
+          }}>
                 {modalModels.map(m => {
                   if (editingCustomModelId === m.id) {
                     return (
                       <div
                         key={m.id}
-                        className="flex items-center justify-between p-2 px-3 rounded-xl border-2 border-violet-600 dark:border-violet-500 bg-white dark:bg-zinc-900 shadow-2xs"
+                        style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: 8,
+            paddingLeft: 12,
+            paddingRight: 12,
+            borderRadius: 12,
+            borderWidth: 2,
+            borderStyle: 'solid',
+            borderColor: '#7c3aed',
+            background: 'var(--card)',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+          }}
                       >
                         <input
                           type="text"
                           value={editingModelNameInput}
                           onChange={e => setEditingModelNameInput(e.target.value)}
                           onKeyDown={e => { if (e.key === 'Enter') handleSaveEditingCustomModel(); }}
-                          className="w-full bg-transparent outline-none text-xs text-zinc-800 dark:text-zinc-200 font-mono"
+                          style={{
+            width: '100%',
+            background: 'transparent',
+            outline: 'none',
+            fontSize: 12,
+            color: 'var(--foreground)',
+            fontFamily: 'var(--font-mono)',
+          }}
                           autoFocus
                         />
-                        <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
+                        <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            marginLeft: 8,
+            flexShrink: 0,
+          }}>
                           <button
                             onClick={handleSaveEditingCustomModel}
-                            className="w-6 h-6 rounded-md bg-violet-600 hover:bg-violet-700 text-white flex items-center justify-center text-xs shadow-2xs cursor-pointer transition-colors"
+                            style={{
+            width: 24,
+            height: 24,
+            borderRadius: 6,
+            background: '#7c3aed',
+            color: '#ffffff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 12,
+            boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+            cursor: 'pointer',
+            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+          }}
                             title="Save"
                           >
                             <CheckOutlined />
                           </button>
                           <button
                             onClick={() => { setEditingCustomModelId(null); setEditingModelNameInput(''); }}
-                            className="w-6 h-6 rounded-md text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 flex items-center justify-center text-xs cursor-pointer transition-colors"
+                            style={{
+            width: 24,
+            height: 24,
+            borderRadius: 6,
+            color: 'var(--muted-foreground)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 12,
+            cursor: 'pointer',
+            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+          }}
                             title="Cancel"
                           >
                             <CloseOutlined />
@@ -1005,28 +1812,70 @@ export const OptionsPage: React.FC = () => {
                   return (
                     <div
                       key={m.id}
-                      className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/70 text-xs border border-zinc-100 dark:border-zinc-700/50"
+                      style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: 10,
+            borderRadius: 12,
+            background: 'var(--muted)',
+            fontSize: 12,
+            borderWidth: 1,
+            borderStyle: 'solid',
+            borderColor: 'var(--border)',
+          }}
                     >
-                      <div className="flex items-center gap-1.5 min-w-0 pr-2">
-                        <span className="font-mono text-zinc-800 dark:text-zinc-200 truncate">{m.name}</span>
+                      <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            minWidth: 0,
+            paddingRight: 8,
+          }}>
+                        <span style={{
+            fontFamily: 'var(--font-mono)',
+            color: 'var(--foreground)',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}>{m.name}</span>
                         {m.isCustom && (
-                          <div className="flex items-center gap-0.5 ml-1">
+                          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 2,
+            marginLeft: 4,
+          }}>
                             <button
                               onClick={() => {
                                 setEditingCustomModelId(m.id);
                                 setEditingModelNameInput(m.name);
                               }}
-                              className="text-zinc-400 hover:text-violet-600 cursor-pointer transition-colors p-0.5"
+                              style={{
+            color: 'var(--muted-foreground)',
+            cursor: 'pointer',
+            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+            padding: 2,
+          }}
                               title="Edit model name"
                             >
-                              <EditOutlined className="text-xs" />
+                              <EditOutlined style={{
+            fontSize: 12,
+          }} />
                             </button>
                             <button
                               onClick={() => handleDeleteCustomModel(m.id)}
-                              className="text-zinc-400 hover:text-red-500 cursor-pointer transition-colors p-0.5"
+                              style={{
+            color: 'var(--muted-foreground)',
+            cursor: 'pointer',
+            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+            padding: 2,
+          }}
                               title="Remove custom model"
                             >
-                              <DeleteOutlined className="text-xs" />
+                              <DeleteOutlined style={{
+            fontSize: 12,
+          }} />
                             </button>
                           </div>
                         )}
@@ -1050,9 +1899,13 @@ export const OptionsPage: React.FC = () => {
         open={newPromptModalOpen}
         onCancel={() => setNewPromptModalOpen(false)}
         footer={null}
-        title={<span className="font-bold">{editingPromptId ? 'Edit Prompt' : 'New Prompt'}</span>}
+        title={<span style={{
+            fontWeight: 700,
+          }}>{editingPromptId ? 'Edit Prompt' : 'New Prompt'}</span>}
       >
-        <Form form={promptForm} layout="vertical" onFinish={handleSavePrompt} className="mt-4">
+        <Form form={promptForm} layout="vertical" onFinish={handleSavePrompt} style={{
+            marginTop: 16,
+          }}>
           <Form.Item name="title" label="Title" rules={[{ required: true }]}>
             <Input placeholder="Prompt Title" />
           </Form.Item>
@@ -1072,7 +1925,11 @@ export const OptionsPage: React.FC = () => {
           <Form.Item name="showInList" label="Show in list" valuePropName="checked">
             <Switch />
           </Form.Item>
-          <div className="flex justify-end gap-2">
+          <div style={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: 8,
+          }}>
             <Button onClick={() => setNewPromptModalOpen(false)}>Cancel</Button>
             <Button type="primary" htmlType="submit" style={{ backgroundColor: '#7c3aed' }}>Save</Button>
           </div>

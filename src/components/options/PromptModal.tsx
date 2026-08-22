@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Tooltip, Popover } from 'antd';
+import { Tooltip, Popover, theme } from 'antd';
 import { QuestionCircleOutlined, CloseOutlined, CheckOutlined } from '@ant-design/icons';
 import { PromptItem, PromptCategory } from '../../types';
 import { PromptIcon, PROMPT_ICON_NAMES } from './PromptIcon';
@@ -28,6 +28,7 @@ export const PromptModal: React.FC<PromptModalProps> = ({
   onClose,
   onSave,
 }) => {
+  const { token } = theme.useToken();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [usedIn, setUsedIn] = useState<PromptCategory[]>(['Chat/Ask', 'Reading', 'Writing']);
@@ -111,35 +112,74 @@ export const PromptModal: React.FC<PromptModalProps> = ({
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs animate-fade-in">
+    <div
+      className="np-fade-in"
+      style={{
+        position: 'fixed',
+        top: 0,
+        right: 0,
+        bottom: 0,
+        left: 0,
+        zIndex: 50,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 16,
+        background: 'rgba(0, 0, 0, 0.45)',
+        backdropFilter: 'blur(2px)',
+      }}
+    >
       <div
-        className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl border border-zinc-200/80 dark:border-zinc-800 w-full max-w-[490px] overflow-hidden transition-all transform animate-scale-up"
+        className="np-scale-up"
         onClick={(e) => e.stopPropagation()}
+        style={{
+          background: token.colorBgContainer,
+          borderRadius: 24,
+          boxShadow: '0 25px 50px rgba(0,0,0,0.25)',
+          border: `1px solid ${token.colorBorderSecondary}`,
+          width: '100%',
+          maxWidth: 490,
+          overflow: 'hidden',
+          transition: 'all 200ms ease',
+          transform: 'translate(0,0)',
+        }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-7 pt-6 pb-2">
-          <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 m-0">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '24px 28px 8px' }}>
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: token.colorText, margin: 0 }}>
             {prompt ? 'Edit Prompt' : 'New Prompt'}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="w-7 h-7 rounded-full bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 flex items-center justify-center transition-colors cursor-pointer"
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: '50%',
+              background: token.colorFillQuaternary,
+              color: token.colorTextTertiary,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 150ms ease',
+            }}
           >
-            <CloseOutlined className="text-xs" />
+            <CloseOutlined style={{ fontSize: 12 }} />
           </button>
         </div>
 
         {/* Content Body */}
-        <div className="px-7 py-4 space-y-5 max-h-[78vh] overflow-y-auto">
+        <div style={{ padding: '16px 28px', display: 'flex', flexDirection: 'column', gap: 20, maxHeight: '78vh', overflowY: 'auto' }}>
           {/* Prompt Name */}
           <div>
-            <label className="block text-sm font-bold text-zinc-900 dark:text-zinc-100 mb-1.5">
-              {!isSystemPrompt && <span className="text-red-500 mr-1">*</span>}
+            <label style={{ display: 'block', fontSize: 14, fontWeight: 700, color: token.colorText, marginBottom: 6 }}>
+              {!isSystemPrompt && <span style={{ color: token.colorError, marginRight: 4 }}>*</span>}
               Prompt Name
             </label>
             {isSystemPrompt ? (
-              <div className="text-sm text-zinc-500 dark:text-zinc-400 select-text py-0.5 font-normal">
+              <div style={{ fontSize: 14, color: token.colorTextTertiary, userSelect: 'text', padding: '2px 0', fontWeight: 400 }}>
                 {title}
               </div>
             ) : (
@@ -152,30 +192,36 @@ export const PromptModal: React.FC<PromptModalProps> = ({
                     setTitle(e.target.value);
                     if (error.title) setError((prev) => ({ ...prev, title: undefined }));
                   }}
-                  className={`w-full px-3.5 py-2.5 rounded-xl border text-sm text-zinc-900 dark:text-zinc-100 bg-white dark:bg-zinc-800/80 placeholder-zinc-400 outline-none transition-all ${
-                    error.title
-                      ? 'border-red-500 ring-2 ring-red-500/10'
-                      : 'border-zinc-200 dark:border-zinc-700 focus:border-[#6035f5] focus:ring-2 focus:ring-[#6035f5]/10'
-                  }`}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: 12,
+                    border: `1px solid ${error.title ? token.colorError : token.colorBorderSecondary}`,
+                    fontSize: 14,
+                    color: token.colorText,
+                    background: token.colorBgContainer,
+                    outline: 'none',
+                    transition: 'all 150ms ease',
+                  }}
                 />
-                {error.title && <p className="text-red-500 text-xs mt-1">{error.title}</p>}
+                {error.title && <p style={{ color: token.colorError, fontSize: 12, marginTop: 4 }}>{error.title}</p>}
               </>
             )}
           </div>
 
           {/* Prompt Content */}
           <div>
-            <div className="flex items-center gap-1.5 mb-1.5">
-              <label className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
-                {!isSystemPrompt && <span className="text-red-500 mr-1">*</span>}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+              <label style={{ fontSize: 14, fontWeight: 700, color: token.colorText }}>
+                {!isSystemPrompt && <span style={{ color: token.colorError, marginRight: 4 }}>*</span>}
                 Prompt Content
               </label>
               <Tooltip title="Prompt templates can include context or instructions for AI response generation.">
-                <QuestionCircleOutlined className="text-zinc-400 text-xs cursor-help hover:text-zinc-600" />
+                <QuestionCircleOutlined style={{ color: token.colorTextTertiary, fontSize: 12, cursor: 'help' }} />
               </Tooltip>
             </div>
             {isSystemPrompt ? (
-              <div className="text-sm text-zinc-500 dark:text-zinc-400 select-text leading-relaxed whitespace-pre-wrap py-0.5 font-normal">
+              <div style={{ fontSize: 14, color: token.colorTextTertiary, userSelect: 'text', lineHeight: 1.625, whiteSpace: 'pre-wrap', padding: '2px 0', fontWeight: 400 }}>
                 {content}
               </div>
             ) : (
@@ -188,39 +234,67 @@ export const PromptModal: React.FC<PromptModalProps> = ({
                     if (error.content) setError((prev) => ({ ...prev, content: undefined }));
                   }}
                   rows={6}
-                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm text-zinc-900 dark:text-zinc-100 bg-white dark:bg-zinc-800/80 placeholder-zinc-400 outline-none resize-y font-sans leading-relaxed transition-all ${
-                    error.content
-                      ? 'border-red-500 ring-2 ring-red-500/10'
-                      : 'border-zinc-200 dark:border-zinc-700 focus:border-[#6035f5] focus:ring-2 focus:ring-[#6035f5]/10'
-                  }`}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: 12,
+                    border: `1px solid ${error.content ? token.colorError : token.colorBorderSecondary}`,
+                    fontSize: 14,
+                    color: token.colorText,
+                    background: token.colorBgContainer,
+                    outline: 'none',
+                    resize: 'vertical',
+                    fontFamily: 'var(--font-sans)',
+                    lineHeight: 1.625,
+                    transition: 'all 150ms ease',
+                  }}
                 />
-                {error.content && <p className="text-red-500 text-xs mt-1">{error.content}</p>}
+                {error.content && <p style={{ color: token.colorError, fontSize: 12, marginTop: 4 }}>{error.content}</p>}
               </>
             )}
           </div>
 
           {/* Used in */}
           <div>
-            <label className="block text-sm font-bold text-zinc-900 dark:text-zinc-100 mb-3">
+            <label style={{ display: 'block', fontSize: 14, fontWeight: 700, color: token.colorText, marginBottom: 12 }}>
               Used in
             </label>
-            <div className="flex items-center gap-5 flex-wrap">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
               {/* All Checkbox */}
               <button
                 type="button"
                 onClick={handleToggleAll}
-                className="flex items-center gap-2 text-sm text-zinc-800 dark:text-zinc-200 cursor-pointer select-none group"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  fontSize: 14,
+                  color: token.colorTextSecondary,
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                }}
               >
                 <div
-                  className={`w-4 h-4 rounded-[4px] flex items-center justify-center transition-all ${
-                    isAllSelected
-                      ? 'bg-[#6035f5] text-white shadow-2xs'
-                      : 'border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800'
-                  }`}
+                  style={{
+                    width: 16,
+                    height: 16,
+                    borderRadius: 4,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 150ms ease',
+                    background: isAllSelected ? '#6035f5' : token.colorBgContainer,
+                    color: isAllSelected ? '#ffffff' : token.colorText,
+                    border: isAllSelected ? 'none' : `1px solid ${token.colorBorderSecondary}`,
+                    boxShadow: isAllSelected ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                  }}
                 >
-                  {isAllSelected && <CheckOutlined className="text-[10px] stroke-[3]" />}
+                  {isAllSelected && <CheckOutlined style={{ fontSize: 10 }} />}
                 </div>
-                <span className="font-medium">All</span>
+                <span style={{ fontWeight: 500 }}>All</span>
               </button>
 
               {/* Individual Categories */}
@@ -231,18 +305,37 @@ export const PromptModal: React.FC<PromptModalProps> = ({
                     key={cat.key}
                     type="button"
                     onClick={() => handleToggleCategory(cat.key)}
-                    className="flex items-center gap-2 text-sm text-zinc-800 dark:text-zinc-200 cursor-pointer select-none group"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      fontSize: 14,
+                      color: token.colorTextSecondary,
+                      cursor: 'pointer',
+                      userSelect: 'none',
+                      background: 'transparent',
+                      border: 'none',
+                      padding: 0,
+                    }}
                   >
                     <div
-                      className={`w-4 h-4 rounded-[4px] flex items-center justify-center transition-all ${
-                        checked
-                          ? 'bg-[#6035f5] text-white shadow-2xs'
-                          : 'border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800'
-                      }`}
+                      style={{
+                        width: 16,
+                        height: 16,
+                        borderRadius: 4,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'all 150ms ease',
+                        background: checked ? '#6035f5' : token.colorBgContainer,
+                        color: checked ? '#ffffff' : token.colorText,
+                        border: checked ? 'none' : `1px solid ${token.colorBorderSecondary}`,
+                        boxShadow: checked ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                      }}
                     >
-                      {checked && <CheckOutlined className="text-[10px] stroke-[3]" />}
+                      {checked && <CheckOutlined style={{ fontSize: 10 }} />}
                     </div>
-                    <span className="font-medium">{cat.label}</span>
+                    <span style={{ fontWeight: 500 }}>{cat.label}</span>
                   </button>
                 );
               })}
@@ -252,11 +345,22 @@ export const PromptModal: React.FC<PromptModalProps> = ({
           {/* Icon Selection (Only for custom/new prompts) */}
           {!isSystemPrompt && (
             <div>
-              <label className="block text-sm font-bold text-zinc-900 dark:text-zinc-100 mb-2">
+              <label style={{ display: 'block', fontSize: 14, fontWeight: 700, color: token.colorText, marginBottom: 8 }}>
                 Icon
               </label>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/80 flex items-center justify-center text-zinc-700 dark:text-zinc-200 shadow-2xs">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 12,
+                  border: `1px solid ${token.colorBorderSecondary}`,
+                  background: token.colorFillQuaternary,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: token.colorTextSecondary,
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+                }}>
                   <PromptIcon name={icon} size={18} />
                 </div>
 
@@ -266,41 +370,79 @@ export const PromptModal: React.FC<PromptModalProps> = ({
                   trigger="click"
                   placement="bottomLeft"
                   content={
-                    <div className="w-64 p-2">
+                    <div style={{ width: 256, padding: 8 }}>
                       <input
                         type="text"
                         placeholder="Search icon..."
                         value={iconSearch}
                         onChange={(e) => setIconSearch(e.target.value)}
-                        className="w-full px-2.5 py-1.5 mb-2 rounded-lg border border-zinc-200 dark:border-zinc-700 text-xs bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 outline-none"
+                        style={{
+                          width: '100%',
+                          padding: '6px 10px',
+                          marginBottom: 8,
+                          borderRadius: 8,
+                          border: `1px solid ${token.colorBorderSecondary}`,
+                          fontSize: 12,
+                          background: token.colorFillQuaternary,
+                          color: token.colorText,
+                          outline: 'none',
+                        }}
                         autoFocus
                       />
-                      <div className="grid grid-cols-6 gap-1.5 max-h-48 overflow-y-auto p-1">
-                        {filteredIcons.map((iconName) => (
-                          <button
-                            key={iconName}
-                            type="button"
-                            onClick={() => {
-                              setIcon(iconName);
-                              setIconPickerOpen(false);
-                            }}
-                            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${
-                              icon.toLowerCase() === iconName.toLowerCase()
-                                ? 'bg-[#6035f5] text-white'
-                                : 'hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
-                            }`}
-                            title={iconName}
-                          >
-                            <PromptIcon name={iconName} size={16} />
-                          </button>
-                        ))}
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(6, 1fr)',
+                        gap: 6,
+                        maxHeight: 192,
+                        overflowY: 'auto',
+                        padding: 4,
+                      }}>
+                        {filteredIcons.map((iconName) => {
+                          const isActive = icon.toLowerCase() === iconName.toLowerCase();
+                          return (
+                            <button
+                              key={iconName}
+                              type="button"
+                              onClick={() => {
+                                setIcon(iconName);
+                                setIconPickerOpen(false);
+                              }}
+                              style={{
+                                width: 32,
+                                height: 32,
+                                borderRadius: 8,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                transition: 'all 150ms ease',
+                                cursor: 'pointer',
+                                background: isActive ? '#6035f5' : 'transparent',
+                                color: isActive ? '#ffffff' : token.colorTextSecondary,
+                                border: 'none',
+                              }}
+                              title={iconName}
+                            >
+                              <PromptIcon name={iconName} size={16} />
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   }
                 >
                   <button
                     type="button"
-                    className="px-4 py-2 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 rounded-xl text-xs font-semibold text-zinc-800 dark:text-zinc-200 transition-colors cursor-pointer"
+                    style={{
+                      padding: '8px 16px',
+                      background: token.colorFillQuaternary,
+                      borderRadius: 12,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: token.colorTextSecondary,
+                      transition: 'all 150ms ease',
+                      cursor: 'pointer',
+                      border: 'none',
+                    }}
                   >
                     Change
                   </button>
@@ -311,18 +453,47 @@ export const PromptModal: React.FC<PromptModalProps> = ({
         </div>
 
         {/* Footer Actions */}
-        <div className="flex items-center justify-end gap-3 px-7 py-4.5 bg-zinc-50/50 dark:bg-zinc-900/50 border-t border-zinc-100 dark:border-zinc-800">
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'flex-end',
+          gap: 12,
+          padding: '18px 28px',
+          background: token.colorFillQuaternary,
+          borderTop: `1px solid ${token.colorBorderSecondary}`,
+        }}>
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 text-sm font-medium transition-colors cursor-pointer"
+            style={{
+              padding: '8px 20px',
+              borderRadius: 12,
+              background: token.colorFillQuaternary,
+              color: token.colorTextSecondary,
+              fontSize: 14,
+              fontWeight: 500,
+              transition: 'all 150ms ease',
+              cursor: 'pointer',
+              border: 'none',
+            }}
           >
             Cancel
           </button>
           <button
             type="button"
             onClick={handleSave}
-            className="px-6 py-2 rounded-xl bg-[#6035f5] hover:bg-[#522cd9] text-white text-sm font-medium shadow-xs transition-colors cursor-pointer"
+            style={{
+              padding: '8px 24px',
+              borderRadius: 12,
+              background: '#6035f5',
+              color: '#ffffff',
+              fontSize: 14,
+              fontWeight: 500,
+              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+              transition: 'all 150ms ease',
+              cursor: 'pointer',
+              border: 'none',
+            }}
           >
             Save
           </button>

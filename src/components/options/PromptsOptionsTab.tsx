@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { App, Tooltip } from 'antd';
+import { App, Tooltip, theme } from 'antd';
 import {
   ReloadOutlined,
   PlusOutlined,
@@ -71,6 +71,7 @@ const ShowIcon: React.FC = () => (
 
 export const PromptsOptionsTab: React.FC = () => {
   const { message: antMessage } = App.useApp();
+  const { token } = theme.useToken();
   const { prompts, addPrompt, updatePrompt, deletePrompt } = useExtensionStore();
 
   const [activeCategory, setActiveCategory] = useState<PromptCategory>('Chat/Ask');
@@ -258,22 +259,35 @@ export const PromptsOptionsTab: React.FC = () => {
   };
 
   return (
-    <div className="w-full max-w-5xl mx-auto py-2">
+    <div style={{ width: '100%', maxWidth: 1024, margin: '0 auto', padding: '8px 0' }}>
       {/* Header Row */}
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 m-0">
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <h1 style={{ fontSize: 24, fontWeight: 700, color: token.colorText, margin: 0 }}>
           Prompts
         </h1>
 
-        <div className="flex items-center gap-3">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {/* Refresh / Reset Button */}
           <Tooltip title="Reset prompts to default">
             <button
               type="button"
               onClick={handleResetPrompts}
-              className="w-9 h-9 rounded-full bg-[#1677ff] hover:bg-blue-600 text-white flex items-center justify-center shadow-xs transition-colors cursor-pointer"
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: '50%',
+                background: '#1677ff',
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                transition: 'all 150ms ease',
+                cursor: 'pointer',
+                border: 'none',
+              }}
             >
-              <ReloadOutlined className="text-sm" />
+              <ReloadOutlined style={{ fontSize: 14 }} />
             </button>
           </Tooltip>
 
@@ -281,16 +295,30 @@ export const PromptsOptionsTab: React.FC = () => {
           <button
             type="button"
             onClick={handleOpenNewPrompt}
-            className="flex items-center gap-1.5 px-4 py-2 bg-[#1677ff] hover:bg-blue-600 text-white font-semibold text-xs rounded-full shadow-xs transition-colors cursor-pointer"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '8px 16px',
+              background: '#1677ff',
+              color: '#ffffff',
+              fontWeight: 600,
+              fontSize: 12,
+              borderRadius: 9999,
+              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+              transition: 'all 150ms ease',
+              cursor: 'pointer',
+              border: 'none',
+            }}
           >
-            <PlusOutlined className="text-xs" />
+            <PlusOutlined style={{ fontSize: 12 }} />
             <span>New Prompt</span>
           </button>
         </div>
       </div>
 
       {/* Category Tabs */}
-      <div className="flex items-center gap-2 mb-2">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
         {CATEGORIES.map((cat) => {
           const isActive = activeCategory === cat.key;
           return (
@@ -298,11 +326,19 @@ export const PromptsOptionsTab: React.FC = () => {
               key={cat.key}
               type="button"
               onClick={() => setActiveCategory(cat.key)}
-              className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer select-none ${
-                isActive
-                  ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-2xs'
-                  : 'bg-transparent text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
-              }`}
+              style={{
+                padding: '6px 16px',
+                borderRadius: 9999,
+                fontSize: 12,
+                fontWeight: 600,
+                transition: 'all 150ms ease',
+                cursor: 'pointer',
+                userSelect: 'none',
+                background: isActive ? token.colorText : 'transparent',
+                color: isActive ? token.colorBgContainer : token.colorTextSecondary,
+                boxShadow: isActive ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                border: 'none',
+              }}
             >
               {cat.label}
             </button>
@@ -311,28 +347,37 @@ export const PromptsOptionsTab: React.FC = () => {
       </div>
 
       {/* Category Subtitle Description */}
-      <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-5">
+      <p style={{ fontSize: 12, color: token.colorTextTertiary, marginBottom: 20, marginTop: 0 }}>
         {currentCategoryMeta.description}
       </p>
 
       {/* Two Columns Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
         {/* LEFT COLUMN: Show in list */}
-        <div className="flex flex-col">
-          <div className="flex items-center gap-2 text-xs font-semibold text-zinc-600 dark:text-zinc-400 mb-2.5 px-1">
-            <BookOutlined className="text-sm text-zinc-500" />
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 600, color: token.colorTextSecondary, marginBottom: 10, padding: '0 4px' }}>
+            <BookOutlined style={{ fontSize: 14, color: token.colorTextTertiary }} />
             <span>Show in list</span>
-            <span className="text-zinc-400 font-normal ml-auto">
+            <span style={{ color: token.colorTextTertiary, fontWeight: 400, marginLeft: 'auto' }}>
               ({showList.length})
             </span>
           </div>
 
-          <div className="bg-[#f4f5f7] dark:bg-zinc-900/60 p-3 rounded-2xl border border-zinc-200/60 dark:border-zinc-800/80 flex flex-col gap-2 min-h-[500px]">
+          <div style={{
+            background: '#f4f5f7',
+            padding: 12,
+            borderRadius: 16,
+            border: `1px solid ${token.colorBorderSecondary}`,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+            minHeight: 500,
+          }}>
             {showList.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-zinc-400 text-xs text-center">
-                <InboxOutlined className="text-2xl mb-2 opacity-50" />
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '64px 0', color: token.colorTextTertiary, fontSize: 12, textAlign: 'center' }}>
+                <InboxOutlined style={{ fontSize: 24, marginBottom: 8, opacity: 0.5 }} />
                 <span>No active prompts for this category</span>
-                <span className="text-[11px] mt-1 text-zinc-400">
+                <span style={{ fontSize: 11, marginTop: 4, color: token.colorTextTertiary }}>
                   Click 'Show' on any item in the right list to add it here
                 </span>
               </div>
@@ -344,6 +389,7 @@ export const PromptsOptionsTab: React.FC = () => {
                 return (
                   <div
                     key={prompt.id}
+                    className="np-reveal-on-hover"
                     draggable
                     onDragStart={(e) => handleDragStart(e, prompt.id)}
                     onDragOver={(e) => handleDragOver(e, prompt.id)}
@@ -352,48 +398,71 @@ export const PromptsOptionsTab: React.FC = () => {
                       setDraggedPromptId(null);
                       setDragOverPromptId(null);
                     }}
-                    className={`bg-white dark:bg-zinc-800/90 rounded-xl px-3.5 py-3 border transition-all flex items-center justify-between group shadow-2xs hover:shadow-xs select-none ${
-                      isDragging ? 'opacity-40 border-dashed border-blue-400' : ''
-                    } ${
-                      isDragOver ? 'border-[#1677ff] ring-2 ring-[#1677ff]/20' : 'border-zinc-200/70 dark:border-zinc-700/60'
-                    }`}
+                    style={{
+                      background: token.colorBgContainer,
+                      borderRadius: 12,
+                      padding: '12px 14px',
+                      border: `1px solid ${isDragging ? token.colorInfo : isDragOver ? '#1677ff' : token.colorBorderSecondary}`,
+                      borderStyle: isDragging ? 'dashed' : 'solid',
+                      transition: 'all 150ms ease',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      opacity: isDragging ? 0.4 : 1,
+                      boxShadow: isDragOver ? '0 0 0 2px rgba(22,119,255,0.2)' : '0 1px 2px rgba(0,0,0,0.06)',
+                      userSelect: 'none',
+                    }}
                   >
                     {/* Left: Drag handle, Icon, Title */}
-                    <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                      <span className="text-zinc-300 dark:text-zinc-600 group-hover:text-zinc-500 cursor-grab active:cursor-grabbing flex items-center justify-center">
-                        <HolderOutlined className="text-xs" />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, paddingRight: 8 }}>
+                      <span style={{ color: token.colorTextTertiary, cursor: 'grab', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <HolderOutlined style={{ fontSize: 12 }} />
                       </span>
 
-                      <span className="text-zinc-600 dark:text-zinc-300 flex items-center justify-center flex-shrink-0">
+                      <span style={{ color: token.colorTextSecondary, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         <PromptIcon name={prompt.icon} size={15} />
                       </span>
 
-                      <span className="text-xs sm:text-sm font-medium text-zinc-800 dark:text-zinc-200 truncate">
+                      <span style={{ fontSize: 14, fontWeight: 500, color: token.colorTextSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {prompt.title}
                       </span>
                     </div>
 
                     {/* Right: Actions (Edit, Delete, Hide, Up/Down) */}
-                    <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center gap-1.5 flex-shrink-0">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, opacity: 0, transition: 'opacity 150ms ease' }} className="np-prompt-actions">
                       {/* Reorder Up/Down Helpers */}
-                      <div className="flex items-center gap-0.5 mr-1 text-zinc-400">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 2, marginRight: 4, color: token.colorTextTertiary }}>
                         <button
                           type="button"
                           disabled={index === 0}
                           onClick={() => handleMovePrompt(showList, index, 'up')}
-                          className="p-1 hover:text-zinc-700 dark:hover:text-zinc-200 disabled:opacity-20 disabled:hover:text-zinc-400 cursor-pointer"
+                          style={{
+                            padding: 4,
+                            cursor: 'pointer',
+                            opacity: index === 0 ? 0.2 : 1,
+                            background: 'transparent',
+                            border: 'none',
+                            color: 'inherit',
+                          }}
                           title="Move Up"
                         >
-                          <ArrowUpOutlined className="text-[10px]" />
+                          <ArrowUpOutlined style={{ fontSize: 10 }} />
                         </button>
                         <button
                           type="button"
                           disabled={index === showList.length - 1}
                           onClick={() => handleMovePrompt(showList, index, 'down')}
-                          className="p-1 hover:text-zinc-700 dark:hover:text-zinc-200 disabled:opacity-20 disabled:hover:text-zinc-400 cursor-pointer"
+                          style={{
+                            padding: 4,
+                            cursor: 'pointer',
+                            opacity: index === showList.length - 1 ? 0.2 : 1,
+                            background: 'transparent',
+                            border: 'none',
+                            color: 'inherit',
+                          }}
                           title="Move Down"
                         >
-                          <ArrowDownOutlined className="text-[10px]" />
+                          <ArrowDownOutlined style={{ fontSize: 10 }} />
                         </button>
                       </div>
 
@@ -402,9 +471,17 @@ export const PromptsOptionsTab: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleOpenEditPrompt(prompt)}
-                          className="p-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+                          style={{
+                            padding: 6,
+                            color: token.colorTextTertiary,
+                            borderRadius: 6,
+                            transition: 'all 150ms ease',
+                            cursor: 'pointer',
+                            background: 'transparent',
+                            border: 'none',
+                          }}
                         >
-                          <EditOutlined className="text-xs" />
+                          <EditOutlined style={{ fontSize: 12 }} />
                         </button>
                       </Tooltip>
 
@@ -414,9 +491,17 @@ export const PromptsOptionsTab: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => handleDeletePrompt(prompt)}
-                            className="p-1.5 text-zinc-400 hover:text-red-500 rounded-md hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
+                            style={{
+                              padding: 6,
+                              color: token.colorTextTertiary,
+                              borderRadius: 6,
+                              transition: 'all 150ms ease',
+                              cursor: 'pointer',
+                              background: 'transparent',
+                              border: 'none',
+                            }}
                           >
-                            <DeleteOutlined className="text-xs" />
+                            <DeleteOutlined style={{ fontSize: 12 }} />
                           </button>
                         </Tooltip>
                       )}
@@ -426,7 +511,15 @@ export const PromptsOptionsTab: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleTogglePromptVisibility(prompt, activeCategory)}
-                          className="p-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+                          style={{
+                            padding: 6,
+                            color: token.colorTextTertiary,
+                            borderRadius: 6,
+                            transition: 'all 150ms ease',
+                            cursor: 'pointer',
+                            background: 'transparent',
+                            border: 'none',
+                          }}
                         >
                           <HideIcon />
                         </button>
@@ -440,19 +533,28 @@ export const PromptsOptionsTab: React.FC = () => {
         </div>
 
         {/* RIGHT COLUMN: Hide from list */}
-        <div className="flex flex-col">
-          <div className="flex items-center gap-2 text-xs font-semibold text-zinc-600 dark:text-zinc-400 mb-2.5 px-1">
-            <InboxOutlined className="text-sm text-zinc-500" />
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 600, color: token.colorTextSecondary, marginBottom: 10, padding: '0 4px' }}>
+            <InboxOutlined style={{ fontSize: 14, color: token.colorTextTertiary }} />
             <span>Hide from list</span>
-            <span className="text-zinc-400 font-normal ml-auto">
+            <span style={{ color: token.colorTextTertiary, fontWeight: 400, marginLeft: 'auto' }}>
               ({hideList.length})
             </span>
           </div>
 
-          <div className="bg-[#f4f5f7] dark:bg-zinc-900/60 p-3 rounded-2xl border border-zinc-200/60 dark:border-zinc-800/80 flex flex-col gap-2 min-h-[500px]">
+          <div style={{
+            background: '#f4f5f7',
+            padding: 12,
+            borderRadius: 16,
+            border: `1px solid ${token.colorBorderSecondary}`,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+            minHeight: 500,
+          }}>
             {hideList.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-zinc-400 text-xs text-center">
-                <InboxOutlined className="text-2xl mb-2 opacity-50" />
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '64px 0', color: token.colorTextTertiary, fontSize: 12, textAlign: 'center' }}>
+                <InboxOutlined style={{ fontSize: 24, marginBottom: 8, opacity: 0.5 }} />
                 <span>No hidden prompts for this category</span>
               </div>
             ) : (
@@ -463,6 +565,7 @@ export const PromptsOptionsTab: React.FC = () => {
                 return (
                   <div
                     key={prompt.id}
+                    className="np-reveal-on-hover"
                     draggable
                     onDragStart={(e) => handleDragStart(e, prompt.id)}
                     onDragOver={(e) => handleDragOver(e, prompt.id)}
@@ -471,48 +574,71 @@ export const PromptsOptionsTab: React.FC = () => {
                       setDraggedPromptId(null);
                       setDragOverPromptId(null);
                     }}
-                    className={`bg-white dark:bg-zinc-800/90 rounded-xl px-3.5 py-3 border transition-all flex items-center justify-between group shadow-2xs hover:shadow-xs select-none ${
-                      isDragging ? 'opacity-40 border-dashed border-blue-400' : ''
-                    } ${
-                      isDragOver ? 'border-[#1677ff] ring-2 ring-[#1677ff]/20' : 'border-zinc-200/70 dark:border-zinc-700/60'
-                    }`}
+                    style={{
+                      background: token.colorBgContainer,
+                      borderRadius: 12,
+                      padding: '12px 14px',
+                      border: `1px solid ${isDragging ? token.colorInfo : isDragOver ? '#1677ff' : token.colorBorderSecondary}`,
+                      borderStyle: isDragging ? 'dashed' : 'solid',
+                      transition: 'all 150ms ease',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      opacity: isDragging ? 0.4 : 1,
+                      boxShadow: isDragOver ? '0 0 0 2px rgba(22,119,255,0.2)' : '0 1px 2px rgba(0,0,0,0.06)',
+                      userSelect: 'none',
+                    }}
                   >
                     {/* Left: Drag handle, Icon, Title */}
-                    <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                      <span className="text-zinc-300 dark:text-zinc-600 group-hover:text-zinc-500 cursor-grab active:cursor-grabbing flex items-center justify-center">
-                        <HolderOutlined className="text-xs" />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, paddingRight: 8 }}>
+                      <span style={{ color: token.colorTextTertiary, cursor: 'grab', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <HolderOutlined style={{ fontSize: 12 }} />
                       </span>
 
-                      <span className="text-zinc-600 dark:text-zinc-300 flex items-center justify-center flex-shrink-0">
+                      <span style={{ color: token.colorTextSecondary, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         <PromptIcon name={prompt.icon} size={15} />
                       </span>
 
-                      <span className="text-xs sm:text-sm font-medium text-zinc-800 dark:text-zinc-200 truncate">
+                      <span style={{ fontSize: 14, fontWeight: 500, color: token.colorTextSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {prompt.title}
                       </span>
                     </div>
 
                     {/* Right: Actions (Edit, Delete, Show) */}
-                    <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center gap-1.5 flex-shrink-0">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, opacity: 0, transition: 'opacity 150ms ease' }} className="np-prompt-actions">
                       {/* Reorder Up/Down Helpers */}
-                      <div className="flex items-center gap-0.5 mr-1 text-zinc-400">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 2, marginRight: 4, color: token.colorTextTertiary }}>
                         <button
                           type="button"
                           disabled={index === 0}
                           onClick={() => handleMovePrompt(hideList, index, 'up')}
-                          className="p-1 hover:text-zinc-700 dark:hover:text-zinc-200 disabled:opacity-20 disabled:hover:text-zinc-400 cursor-pointer"
+                          style={{
+                            padding: 4,
+                            cursor: 'pointer',
+                            opacity: index === 0 ? 0.2 : 1,
+                            background: 'transparent',
+                            border: 'none',
+                            color: 'inherit',
+                          }}
                           title="Move Up"
                         >
-                          <ArrowUpOutlined className="text-[10px]" />
+                          <ArrowUpOutlined style={{ fontSize: 10 }} />
                         </button>
                         <button
                           type="button"
                           disabled={index === hideList.length - 1}
                           onClick={() => handleMovePrompt(hideList, index, 'down')}
-                          className="p-1 hover:text-zinc-700 dark:hover:text-zinc-200 disabled:opacity-20 disabled:hover:text-zinc-400 cursor-pointer"
+                          style={{
+                            padding: 4,
+                            cursor: 'pointer',
+                            opacity: index === hideList.length - 1 ? 0.2 : 1,
+                            background: 'transparent',
+                            border: 'none',
+                            color: 'inherit',
+                          }}
                           title="Move Down"
                         >
-                          <ArrowDownOutlined className="text-[10px]" />
+                          <ArrowDownOutlined style={{ fontSize: 10 }} />
                         </button>
                       </div>
 
@@ -521,9 +647,17 @@ export const PromptsOptionsTab: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleOpenEditPrompt(prompt)}
-                          className="p-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+                          style={{
+                            padding: 6,
+                            color: token.colorTextTertiary,
+                            borderRadius: 6,
+                            transition: 'all 150ms ease',
+                            cursor: 'pointer',
+                            background: 'transparent',
+                            border: 'none',
+                          }}
                         >
-                          <EditOutlined className="text-xs" />
+                          <EditOutlined style={{ fontSize: 12 }} />
                         </button>
                       </Tooltip>
 
@@ -533,9 +667,17 @@ export const PromptsOptionsTab: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => handleDeletePrompt(prompt)}
-                            className="p-1.5 text-zinc-400 hover:text-red-500 rounded-md hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
+                            style={{
+                              padding: 6,
+                              color: token.colorTextTertiary,
+                              borderRadius: 6,
+                              transition: 'all 150ms ease',
+                              cursor: 'pointer',
+                              background: 'transparent',
+                              border: 'none',
+                            }}
                           >
-                            <DeleteOutlined className="text-xs" />
+                            <DeleteOutlined style={{ fontSize: 12 }} />
                           </button>
                         </Tooltip>
                       )}
@@ -545,7 +687,15 @@ export const PromptsOptionsTab: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleTogglePromptVisibility(prompt, activeCategory)}
-                          className="p-1.5 text-zinc-400 hover:text-[#1677ff] rounded-md hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors cursor-pointer"
+                          style={{
+                            padding: 6,
+                            color: token.colorTextTertiary,
+                            borderRadius: 6,
+                            transition: 'all 150ms ease',
+                            cursor: 'pointer',
+                            background: 'transparent',
+                            border: 'none',
+                          }}
                         >
                           <ShowIcon />
                         </button>
