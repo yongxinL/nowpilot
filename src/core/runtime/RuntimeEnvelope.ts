@@ -3,7 +3,7 @@ export const MessageTypeValues = [
   'EXTRACT_PAGE_CONTENT',
   'PROXY_FETCH',
   'SIDE_PANEL_OPEN',
-  'FULL_APP_OPEN',
+  'STANDALONE_OPEN',
   'WORKSPACE_HANDOFF',
   'WORKSPACE_UPDATED',
   'STREAM_STATE_CHANGED',
@@ -49,7 +49,7 @@ export interface RuntimeEnvelope<T = unknown> {
   type: MessageType;
   operationId: string;
   timestamp: number;
-  source: 'background' | 'sidepanel' | 'full-app' | 'content' | 'popup';
+  source: 'background' | 'sidepanel' | 'standalone' | 'content' | 'popup';
   payload: T;
 }
 

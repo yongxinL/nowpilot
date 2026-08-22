@@ -33,18 +33,19 @@ export interface WorkspaceStateData {
   selectedModel: string | null;
   pinnedTabs: TabContext[];
   activeSurface: ActiveSurface;
-  openedFullAppTabId: number | null;
+  openedStandaloneTabId: number | null;
   version: number;
 }
 
 interface WorkspaceActions {
+  setWorkspaceId: (id: string) => void;
   setConversationId: (id: string) => void;
   setActiveProvider: (provider: string) => void;
   setSelectedModel: (model: string) => void;
   pinTab: (tab: TabContext) => void;
   unpinTab: (tabId: number) => void;
   setActiveSurface: (surface: ActiveSurface) => void;
-  setOpenedFullAppTabId: (tabId: number | null) => void;
+  setOpenedStandaloneTabId: (tabId: number | null) => void;
   bumpVersion: () => void;
   reset: () => void;
 }
@@ -58,7 +59,7 @@ const initialState: WorkspaceStateData = {
   selectedModel: null,
   pinnedTabs: [],
   activeSurface: 'sidepanel' as ActiveSurface,
-  openedFullAppTabId: null,
+  openedStandaloneTabId: null,
   version: 0,
 };
 
@@ -84,6 +85,12 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
   persist(
     immer((set) => ({
       ...initialState,
+
+      setWorkspaceId: (id: string) =>
+        set((state) => {
+          state.workspaceId = id;
+          state.version++;
+        }),
 
       setConversationId: (id: string) =>
         set((state) => {
@@ -122,9 +129,9 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
           state.activeSurface = surface;
         }),
 
-      setOpenedFullAppTabId: (tabId: number | null) =>
+      setOpenedStandaloneTabId: (tabId: number | null) =>
         set((state) => {
-          state.openedFullAppTabId = tabId;
+          state.openedStandaloneTabId = tabId;
         }),
 
       bumpVersion: () =>
@@ -153,7 +160,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
         selectedModel: state.selectedModel,
         pinnedTabs: state.pinnedTabs,
         activeSurface: state.activeSurface,
-        openedFullAppTabId: state.openedFullAppTabId,
+        openedStandaloneTabId: state.openedStandaloneTabId,
         version: state.version,
       }),
       // D-22: zustand-persist schema version. SEPARATE axis from

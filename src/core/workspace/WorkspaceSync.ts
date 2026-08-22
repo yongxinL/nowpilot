@@ -4,7 +4,7 @@ const WORKSPACE_CHANNEL = 'np_workspace';
 
 export type WorkspaceSyncMessage =
   | { type: 'WORKSPACE_UPDATED'; workspaceId: string; conversationId: string | null }
-  | { type: 'FULL_APP_OPEN'; workspaceId: string; conversationId?: string; page?: string }
+  | { type: 'STANDALONE_OPEN'; workspaceId: string; conversationId?: string; page?: string }
   | { type: 'WORKSPACE_HANDOFF'; workspaceId: string; conversationId: string };
 
 type SyncHandler = (message: WorkspaceSyncMessage) => void;
