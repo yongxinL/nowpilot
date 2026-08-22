@@ -27,9 +27,17 @@ export const NowPilotAvatar: React.FC<NowPilotAvatarProps> = ({
           maxWidth: sizePx,
           maxHeight: sizePx,
           backgroundColor: 'var(--np-primary, #1677ff)',
+          borderRadius: '50%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#ffffff',
+          flexShrink: 0,
+          boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+          userSelect: 'none',
           ...style,
         }}
-        className={`rounded-full flex items-center justify-center text-white shrink-0 shadow-2xs select-none ${className}`}
+        className={className}
         title="NowPilot AI"
       >
         <svg
@@ -65,9 +73,11 @@ export const NowPilotAvatar: React.FC<NowPilotAvatarProps> = ({
         display: 'inline-block',
         verticalAlign: 'middle',
         flexShrink: 0,
+        border: 0,
+        userSelect: 'none',
         ...style,
       }}
-      className={`rounded-full object-cover border-0 select-none ${className}`}
+      className={className}
       draggable={false}
     />
   );

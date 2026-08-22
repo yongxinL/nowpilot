@@ -73,7 +73,7 @@ const StandaloneApp = () => {
 
   return (
     <ThemeProvider>
-      <AntdApp className="h-screen w-screen overflow-hidden">
+      <AntdApp style={{ height: '100vh', width: '100vw', overflow: 'hidden' }}>
         <StandaloneShell onOpenOptions={handleOpenOptions} onOpenSidepanel={handleOpenSidepanel} />
         <CommandPalette
           commands={CommandRegistry.getAll()}

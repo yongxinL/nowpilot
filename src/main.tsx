@@ -107,7 +107,7 @@ const AppShell: React.FC = () => {
   }, []);
 
   return (
-    <Layout className="h-screen w-screen overflow-hidden bg-slate-50 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-100">
+    <Layout style={{ height: '100vh', width: '100vw', overflow: 'hidden' }}>
       <Header
         style={{
           padding: '0 16px',
@@ -121,8 +121,8 @@ const AppShell: React.FC = () => {
           zIndex: 10,
         }}
       >
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-full overflow-hidden flex items-center justify-center shrink-0">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ width: 24, height: 24, borderRadius: '50%', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <NowPilotAvatar size={24} />
           </div>
           <Text strong style={{ fontSize: 14, color: token.colorText }}>
@@ -130,7 +130,7 @@ const AppShell: React.FC = () => {
           </Text>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <ThemeToggle />
           <Segmented
             value={activeView}
@@ -195,7 +195,7 @@ const AppShell: React.FC = () => {
 const MainApp = () => {
   return (
     <ThemeProvider>
-      <AntdApp className="h-screen w-screen overflow-hidden">
+      <AntdApp style={{ height: '100vh', width: '100vw', overflow: 'hidden' }}>
         <AppShell />
       </AntdApp>
     </ThemeProvider>

@@ -26,9 +26,19 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
           minHeight: sizePx,
           maxWidth: sizePx,
           maxHeight: sizePx,
+          borderRadius: '50%',
+          background: 'linear-gradient(135deg, var(--muted) 0%, var(--border) 100%)',
+          color: 'var(--muted-foreground)',
+          border: '1px solid var(--border)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+          boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+          userSelect: 'none',
           ...style,
         }}
-        className={`rounded-full bg-gradient-to-br from-zinc-200 to-zinc-300 dark:from-zinc-700 dark:to-zinc-800 text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center shrink-0 shadow-2xs select-none ${className}`}
+        className={className}
         title="User"
       >
         <svg
@@ -65,9 +75,11 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
         display: 'inline-block',
         verticalAlign: 'middle',
         flexShrink: 0,
+        border: 0,
+        userSelect: 'none',
         ...style,
       }}
-      className={`rounded-full object-cover border-0 select-none ${className}`}
+      className={className}
       draggable={false}
     />
   );

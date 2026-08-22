@@ -27,19 +27,24 @@ export const ChatExportBar: React.FC<ChatExportBarProps> = ({
 
   return (
     <div
-      className="p-3 rounded-2xl shadow-lg flex flex-col gap-2.5"
       style={{
+        padding: 12,
+        borderRadius: 16,
+        boxShadow: token.boxShadowSecondary,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10,
         background: token.colorBgElevated,
         border: `1px solid ${token.colorBorderSecondary}`,
       }}
     >
-      <div className="flex items-center justify-between px-1">
-        <label className="flex items-center gap-2 text-xs font-semibold cursor-pointer select-none">
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', userSelect: 'none' }}>
           <input
             type="checkbox"
             checked={isAllSelected}
             onChange={(e) => onToggleSelectAll(e.target.checked)}
-            className="w-4 h-4 rounded border-zinc-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+            style={{ width: 16, height: 16, borderRadius: 4, cursor: 'pointer' }}
           />
           <span>Select all</span>
         </label>

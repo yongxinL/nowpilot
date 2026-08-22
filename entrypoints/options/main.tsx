@@ -8,7 +8,7 @@ import '../../src/index.css';
 const OptionsApp = () => {
   return (
     <ThemeProvider>
-      <AntdApp className="h-screen w-screen overflow-hidden">
+      <AntdApp style={{ height: '100vh', width: '100vw', overflow: 'hidden' }}>
         <OptionsPage />
       </AntdApp>
     </ThemeProvider>

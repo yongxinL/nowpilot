@@ -1,4 +1,5 @@
 import React from 'react';
+import { theme } from 'antd';
 import { CloseOutlined, PictureOutlined, ScissorOutlined, GlobalOutlined } from '@ant-design/icons';
 import { Attachment } from '../../types';
 
@@ -11,27 +12,48 @@ export const AttachmentBar: React.FC<AttachmentBarProps> = ({
   attachments,
   onRemove,
 }) => {
+  const { token } = theme.useToken();
   if (!attachments || attachments.length === 0) return null;
 
+  const baseBtnStyle: React.CSSProperties = {
+    color: token.colorTextTertiary,
+    cursor: 'pointer',
+    flexShrink: 0,
+  };
+
   return (
-    <div className="flex flex-col gap-1.5 mb-2 w-full">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8, width: '100%' }}>
       {attachments.map((att) => {
         if (att.type === 'quote') {
           return (
             <div
               key={att.id}
-              className="self-end max-w-[90%] border border-zinc-200 dark:border-zinc-700/80 bg-white dark:bg-zinc-900 rounded-2xl px-3.5 py-1.5 text-xs text-zinc-400 dark:text-zinc-500 shadow-2xs flex items-center justify-between gap-2"
+              style={{
+                alignSelf: 'flex-end',
+                maxWidth: '90%',
+                border: `1px solid ${token.colorBorderSecondary}`,
+                background: token.colorBgContainer,
+                borderRadius: 16,
+                padding: '6px 14px',
+                fontSize: 12,
+                color: token.colorTextTertiary,
+                boxShadow: token.boxShadow,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 8,
+              }}
             >
-              <span className="truncate" title={att.content || att.title}>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={att.content || att.title}>
                 {att.content || att.title}
               </span>
               <button
                 type="button"
                 onClick={() => onRemove(att.id)}
-                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer shrink-0 ml-1"
+                style={{ ...baseBtnStyle, marginLeft: 4 }}
                 title="Remove quote"
               >
-                <CloseOutlined className="text-[10px]" />
+                <CloseOutlined style={{ fontSize: 10 }} />
               </button>
             </div>
           );
@@ -41,25 +63,35 @@ export const AttachmentBar: React.FC<AttachmentBarProps> = ({
           return (
             <div
               key={att.id}
-              className="inline-flex items-center gap-2 p-1.5 bg-zinc-50 dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700 text-xs self-start"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: 6,
+                background: token.colorFillQuaternary,
+                borderRadius: 12,
+                border: `1px solid ${token.colorBorderSecondary}`,
+                fontSize: 12,
+                alignSelf: 'flex-start',
+              }}
             >
               {att.thumbnail ? (
-                <img src={att.thumbnail} alt="Attachment" className="w-9 h-9 object-cover rounded-lg" />
+                <img src={att.thumbnail} alt="Attachment" style={{ width: 36, height: 36, objectFit: 'cover', borderRadius: 8 }} />
               ) : (
-                <div className="w-9 h-9 bg-blue-50 dark:bg-blue-900/40 text-blue-600 flex items-center justify-center rounded-lg">
+                <div style={{ width: 36, height: 36, background: token.colorInfoBg, color: token.colorInfo, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8 }}>
                   {att.type === 'screen_cut' ? <ScissorOutlined /> : <PictureOutlined />}
                 </div>
               )}
-              <span className="max-w-[130px] truncate text-zinc-700 dark:text-zinc-200 font-medium text-xs">
+              <span style={{ maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: token.colorTextSecondary, fontWeight: 500, fontSize: 12 }}>
                 {att.title}
               </span>
               <button
                 type="button"
                 onClick={() => onRemove(att.id)}
-                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer p-1"
+                style={{ ...baseBtnStyle, padding: 4 }}
                 title="Remove image"
               >
-                <CloseOutlined className="text-[10px]" />
+                <CloseOutlined style={{ fontSize: 10 }} />
               </button>
             </div>
           );
@@ -68,16 +100,26 @@ export const AttachmentBar: React.FC<AttachmentBarProps> = ({
         return (
           <div
             key={att.id}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-zinc-50 dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 text-xs self-start"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '4px 10px',
+              background: token.colorFillQuaternary,
+              borderRadius: 8,
+              border: `1px solid ${token.colorBorderSecondary}`,
+              fontSize: 12,
+              alignSelf: 'flex-start',
+            }}
           >
-            <GlobalOutlined className="text-blue-500" />
-            <span className="max-w-[180px] truncate text-zinc-700 dark:text-zinc-300 font-medium">{att.title}</span>
+            <GlobalOutlined style={{ color: token.colorInfo }} />
+            <span style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: token.colorTextSecondary, fontWeight: 500 }}>{att.title}</span>
             <button
               type="button"
               onClick={() => onRemove(att.id)}
-              className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer ml-1"
+              style={{ ...baseBtnStyle, marginLeft: 4 }}
             >
-              <CloseOutlined className="text-[10px]" />
+              <CloseOutlined style={{ fontSize: 10 }} />
             </button>
           </div>
         );

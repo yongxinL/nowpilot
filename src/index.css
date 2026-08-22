@@ -269,7 +269,86 @@ html.dark .x-markdown td {
   }
 }
 
-/* Chat Message Font Size Presets */
+/* ============================================================================
+   NowPilot motion utility classes (Phase 1b — Tailwind removal completion).
+   Replaces the inert Tailwind animate-* class strings that shipped in the AI
+   Studio scaffold and were left unbuilt when the Tailwind build pipeline was
+   removed (D-18, REQ-R19). Use these by name in className; they coexist with
+   the `motion` package imports elsewhere (no behavior conflict).
+   ============================================================================ */
+
+@keyframes npFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes npScaleUp {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes npZoomFadeIn {
+  from { opacity: 0; transform: scale(0.95) translateY(-4px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes npPulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.4; }
+}
+@keyframes npSpin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.np-fade-in {
+  animation: npFadeIn 150ms ease-out both;
+}
+.np-scale-up {
+  animation: npScaleUp 150ms ease-out both;
+}
+.np-zoom-fade-in {
+  animation: npZoomFadeIn 150ms ease-out both;
+}
+.np-pulse {
+  animation: npPulse 1.4s ease-in-out infinite;
+}
+.np-spin {
+  animation: npSpin 1s linear infinite;
+}
+
+/* Custom scrollbar — was `custom-scrollbar` in the AI Studio scaffold. */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(150, 150, 150, 0.3);
+  border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(150, 150, 150, 0.5);
+}
+
+/* Chat-history drawer — anchored to bottom 70% of side panel per
+   DESIGN_SYSTEM §8.4; the markup supplies its own bg + border tokens. */
+.chat-history-drawer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 70%;
+  display: flex;
+  flex-direction: column;
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.12);
+  z-index: 30;
+}
+
+/* ============================================================================
+   Chat Message Font Size Presets (legitimate utility — not a Tailwind shim).
+   ============================================================================ */
 .message-font-small,
 .message-font-small p,
 .message-font-small li,
