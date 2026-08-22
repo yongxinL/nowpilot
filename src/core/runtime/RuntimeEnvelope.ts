@@ -15,9 +15,35 @@ export const MessageTypeValues = [
   // and out of MessageTypeValues.
   'CONTENT_SCRIPT_READY',
   'SPA_NAVIGATION',
+  // D-15 / REQ-R04: Phase 6 (extraction) consumes these; Phase 1 declares
+  // types only — no runtime handler. Phase 17 reserves `strategyId` on the
+  // PAGE_HTML_PAYLOAD shape for the ServiceNow strategy registration. Do
+  // NOT register a BackgroundRouter/MessageBus handler here until the
+  // Phase 6 spike (Defuddle-vs-Readability architecture decision) lands.
+  'PAGE_LIVE_CONTEXT',
+  'PAGE_EXTRACTION_REQUESTED',
+  'PAGE_HTML_PAYLOAD',
 ] as const;
 
 export type MessageType = (typeof MessageTypeValues)[number];
+
+/**
+ * D-15 / REQ-R04: payload shape for the frozen extraction envelope.
+ *
+ * Phase 1 declares this shape only — no production code constructs or
+ * consumes a `PageHtmlPayload` yet. Phase 6 imports this exact shape
+ * (per finding M8) when wiring `PageContentService` (Defuddle/Readability
+ * decision is settled by the Phase 6 spike in RESEARCH.md). The optional
+ * `strategyId` field is reserved for Phase 17's ServiceNow strategy
+ * registration; leaving it `undefined` in Phase 1 is correct.
+ */
+export interface PageHtmlPayload {
+  html: string;
+  baseUrl: string;
+  truncated: boolean;
+  /** Reserved for Phase 17 ServiceNow strategy registration. */
+  strategyId?: string;
+}
 
 export interface RuntimeEnvelope<T = unknown> {
   type: MessageType;
