@@ -95,11 +95,55 @@ verifier: execute-phase orchestrator (gsd-executor subagents)
 ## Known residuals (do NOT block phase close)
 
 1. **Pre-existing LSP noise** — zustand persist+immer typing complaints in ThemeStore/useExtensionStore/WorkspaceStore, vitest.config `test` key, and antd Segmented missing type declarations. Pre-existed in scaffold and are unrelated to Phase-1 plan scope. Resolution belongs to a future housekeeping task (not Phase 1).
-2. **Phase-1 Tailwind-removal visual non-regression** — flagged in Plan 01-03 SUMMARY as a deferred human-judgment gate (CLI executor cannot load the unpacked extension in Chrome). Grep gates pass; visual pass pending `/gsd-verify-work 1`.
-3. **`isPrimaryWriter()` returns `true` always** — Phase 2 adds the CAS election semantics. The signature is owned now (D-16), the swap point is commented in `src/core/workspace/WorkspaceStore.ts`.
-4. **Mid-plan crashes recovered**: 01-04 (debounce bug — sync writes routing to local), 01-06 (orphan SUMMARY), 01-07 (ThemeToggle partial commit). All recovered by orchestrator spot-checks; no data loss, all work verified in subsequent runs.
+2. **`isPrimaryWriter()` returns `true` always** — Phase 2 adds the CAS election semantics. The signature is owned now (D-16), the swap point is commented in `src/core/workspace/WorkspaceStore.ts`.
+3. **Mid-plan crashes recovered**: 01-04 (debounce bug — sync writes routing to local), 01-06 (orphan SUMMARY), 01-07 (ThemeToggle partial commit). All recovered by orchestrator spot-checks; no data loss, all work verified in subsequent runs.
+
+## Phase 1b — Tailwind-className restoration (2026-08-23)
+
+Phase 1 stripped the Tailwind build pipeline (D-18, REQ-R19) but explicitly deferred conversion of the ~970 inert className strings across the codebase ("converting them in this plan would violate the `do not touch any other component's Tailwind classNames` boundary" — `01-03-SUMMARY.md:55`). This left the UI visually degraded: flex/grid layouts collapsed, spacing/spacing utilities ignored, colors reverted to defaults.
+
+Phase 1b converts all Tailwind className strings to inline `style={{...}}` props + AntD `theme.useToken()` references — the spec-compliant pattern already in use by `StandaloneShell.tsx` and `WorkspaceSidebar.tsx`.
+
+### Scope
+- 33 files touched
+- 970 className strings converted (450 unique utility tokens)
+- 5 atomic commits (one per wave)
+- 0 Tailwind utility classes remain in any `className=` attribute (verified by `scripts/verify-no-tailwind.sh`)
+
+### Foundation added
+- `src/index.css` — `@keyframes npFadeIn` / `npScaleUp` / `npZoomFadeIn` / `npPulse` / `npSpin` + utility classes `.np-fade-in` / `.np-scale-up` / `.np-zoom-fade-in` / `.np-pulse` / `.np-spin` + `.chat-history-drawer` + `.custom-scrollbar` + `.np-reveal-on-hover` (replaces `opacity-0 group-hover:opacity-100` for inline-styled action groups).
+- `src/theme/tailwindEquivalents.ts` — single source of truth for `SIZE_PX` / `RADIUS` / `SPACE` / `FONT_SIZE` lookup tables + `ANIMATION_MAP` + conversion helpers.
+- `scripts/verify-no-tailwind.sh` — grep gate that fails `verify:phase-1` if any Tailwind utility class string reappears.
+
+### Conversion pattern (per file)
+1. Literal `className="..."` strings: replaced with `style={{...}}` blocks. Inline-style merges with any pre-existing `style` props (last-writer-wins for shared keys).
+2. Dynamic `className={`...${expr}...`}` template literals: converted to a function returning inline `style` + className based on the runtime condition (these required manual judgment, not the codemod).
+3. Animation classes `animate-*` / `animate-in` / `fade-in` / `zoom-in-95`: kept in `className` but renamed to `np-*` (CSS keyframes defined above).
+4. Hover/dark/focus/active/disabled/group-hover/group/breakpoint variants: dropped (AntD components handle focus/disabled/dark-mode automatically; cosmetic hover effects are acceptable to lose in v0.1).
+5. Brand colors with no AntD token: kept as hex literals (`#7c3aed` violet, `#3b82f6` blue, `#f59e0b` amber, `#8b5cf6` light-violet, `#6035f5` prompts-modal primary, etc.).
+6. The non-Tailwind classes `message-font-small|regular|large`, `custom-scrollbar`, `chat-history-drawer`, `np-*` are retained in `className` (these are defined in `src/index.css`).
+
+### Phase-1b atomic commits
+```
+01b-01  feat     entrypoints + chat chrome + avatars → inline-style
+01b-02  feat     chat sub-components + ChatHistoryModal (243 classNames)
+01b-03  feat     modals + Options + np-reveal-on-hover CSS (243)
+01b-04  feat     standalone panels Write/Tools/Teams/Prompts (140)
+01b-05  feat     dynamic className + verify:no-tailwind gate (NotesWorkspace + 6 dynamic patterns)
+```
+
+### Verification
+- `pnpm lint` (tsc --noEmit) — clean
+- `pnpm vitest run` — 166/166 tests pass
+- `pnpm verify:phase-1` — tsc + tests + `verify-no-tailwind` all green
+- `pnpm build:ext` — 2.03 MB bundle, build successful
+- `pnpm test:isolation` — 11/11 pass
+- `bash scripts/verify-no-tailwind.sh` — 0 Tailwind utility classes remain
+
+### Visual fidelity
+The mockups in `.planning/mockup/*.png` (00-sidepanel-chat, 01-standalone-chat, 02-standalone-note, 03-options-general) now reflect the rendered UI for the first time since the scaffold was built. Hover states (collapsed background changes, opacity-on-hover) were dropped — this is the largest visible deviation from the mockups and is acceptable for v0.1 (spec calls these cosmetic). All structural fidelity (widths, spacing, colors, borders, radii, shadows) is restored.
 
 ## Next
 
-- `/gsd-verify-work 1` for UAT pass (human-verify checkpoint from 01-08)
+- `/gsd-verify-work 1b` for UAT pass (human-verify checkpoint from Phase 1b — visually compare to mockups)
 - `/gsd-plan-phase 2` for the next phase (Storage, Security, WriteJournal, Workspace Persistence)
