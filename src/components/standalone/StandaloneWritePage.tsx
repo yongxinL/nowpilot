@@ -306,11 +306,16 @@ export const StandaloneWritePage: React.FC<StandaloneWritePageProps> = ({ onOpen
           <button
             type="button"
             onClick={() => setActiveTab('write')}
-            className={`relative pb-1 text-3xl font-bold tracking-tight cursor-pointer transition-all ${
-              activeTab === 'write'
-                ? 'text-zinc-900 dark:text-zinc-100'
-                : 'text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
-            }`}
+            style={{
+              position: 'relative',
+              paddingBottom: 4,
+              fontSize: 30,
+              fontWeight: 700,
+              letterSpacing: '-0.01em',
+              cursor: 'pointer',
+              transition: 'all 200ms ease',
+              color: activeTab === 'write' ? 'var(--foreground)' : 'var(--muted-foreground)',
+            }}
           >
             Write
             {activeTab === 'write' && (
@@ -329,11 +334,16 @@ export const StandaloneWritePage: React.FC<StandaloneWritePageProps> = ({ onOpen
           <button
             type="button"
             onClick={() => setActiveTab('reply')}
-            className={`relative pb-1 text-3xl font-bold tracking-tight cursor-pointer transition-all ${
-              activeTab === 'reply'
-                ? 'text-zinc-900 dark:text-zinc-100'
-                : 'text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
-            }`}
+            style={{
+              position: 'relative',
+              paddingBottom: 4,
+              fontSize: 30,
+              fontWeight: 700,
+              letterSpacing: '-0.01em',
+              cursor: 'pointer',
+              transition: 'all 200ms ease',
+              color: activeTab === 'reply' ? 'var(--foreground)' : 'var(--muted-foreground)',
+            }}
           >
             Reply
             {activeTab === 'reply' && (

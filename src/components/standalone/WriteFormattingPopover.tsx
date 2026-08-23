@@ -208,11 +208,18 @@ export const WriteFormattingPopover: React.FC<WriteFormattingPopoverProps> = ({
                     key={style}
                     type="button"
                     onClick={() => onChangeStyle(style)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-normal cursor-pointer transition-all select-none ${
-                      isSelected
-                        ? 'bg-[#ece6f8] text-zinc-900 dark:bg-purple-950/80 dark:text-purple-200 font-medium shadow-2xs'
-                        : 'bg-zinc-100/90 dark:bg-zinc-800/90 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200/80 dark:hover:bg-zinc-700/80'
-                    }`}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: 12,
+                      fontSize: 12,
+                      fontWeight: isSelected ? 500 : 400,
+                      cursor: 'pointer',
+                      transition: 'all 200ms ease',
+                      userSelect: 'none',
+                      background: isSelected ? '#ece6f8' : 'var(--muted)',
+                      color: isSelected ? 'var(--foreground)' : 'var(--muted-foreground)',
+                      boxShadow: isSelected ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                    }}
                   >
                     {style}
                   </button>
@@ -246,11 +253,20 @@ export const WriteFormattingPopover: React.FC<WriteFormattingPopoverProps> = ({
                     key={len}
                     type="button"
                     onClick={() => onChangeLength(len)}
-                    className={`flex-1 text-center py-1.5 rounded-xl text-xs font-normal cursor-pointer transition-all select-none ${
-                      isSelected
-                        ? 'bg-[#ece6f8] text-zinc-900 dark:bg-purple-950/80 dark:text-purple-200 font-medium shadow-2xs'
-                        : 'bg-zinc-100/90 dark:bg-zinc-800/90 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200/80 dark:hover:bg-zinc-700/80'
-                    }`}
+                    style={{
+                      flex: 1,
+                      textAlign: 'center',
+                      padding: '6px 0',
+                      borderRadius: 12,
+                      fontSize: 12,
+                      fontWeight: isSelected ? 500 : 400,
+                      cursor: 'pointer',
+                      transition: 'all 200ms ease',
+                      userSelect: 'none',
+                      background: isSelected ? '#ece6f8' : 'var(--muted)',
+                      color: isSelected ? 'var(--foreground)' : 'var(--muted-foreground)',
+                      boxShadow: isSelected ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                    }}
                   >
                     {len}
                   </button>
@@ -304,11 +320,17 @@ export const WriteFormattingPopover: React.FC<WriteFormattingPopoverProps> = ({
                 type="button"
                 id="write-language-more-btn"
                 onClick={() => setIsLangMenuOpen(!isLangMenuOpen)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer select-none ${
-                  isLangMenuOpen
-                    ? 'bg-zinc-300 dark:bg-zinc-600 text-zinc-900 dark:text-zinc-100'
-                    : 'bg-zinc-100/90 dark:bg-zinc-800/90 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200/80 dark:hover:bg-zinc-700/80'
-                }`}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: 12,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  transition: 'all 200ms ease',
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  background: isLangMenuOpen ? 'var(--border)' : 'var(--muted)',
+                  color: isLangMenuOpen ? 'var(--foreground)' : 'var(--muted-foreground)',
+                }}
                 title="More languages"
               >
                 ···
@@ -393,11 +415,17 @@ export const WriteFormattingPopover: React.FC<WriteFormattingPopoverProps> = ({
                         <div
                           key={lang.code}
                           onClick={() => handleSelectLanguage(lang.name)}
-                          className={`px-2.5 py-1.5 rounded-xl cursor-pointer transition-colors flex flex-col ${
-                            isSelected
-                              ? 'bg-purple-50 dark:bg-purple-950/50 text-purple-900 dark:text-purple-200 font-medium'
-                              : 'hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200'
-                          }`}
+                          style={{
+                            padding: '6px 10px',
+                            borderRadius: 12,
+                            cursor: 'pointer',
+                            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            background: isSelected ? '#faf5ff' : 'transparent',
+                            color: isSelected ? '#6b21a8' : 'var(--foreground)',
+                            fontWeight: isSelected ? 500 : 400,
+                          }}
                         >
                           <span style={{
             fontSize: 12,

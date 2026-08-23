@@ -194,11 +194,17 @@ export const WriteHistoryDrawer: React.FC<WriteHistoryDrawerProps> = ({
             <button
               key={t}
               onClick={() => setFilterType(t)}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
-                filterType === t
-                  ? 'bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300 shadow-2xs font-bold'
-                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200/70 dark:hover:bg-zinc-700'
-              }`}
+              style={{
+                padding: '4px 12px',
+                borderRadius: 8,
+                fontSize: 12,
+                fontWeight: filterType === t ? 700 : 600,
+                cursor: 'pointer',
+                transition: 'all 200ms ease',
+                background: filterType === t ? '#ede9fe' : 'var(--muted)',
+                color: filterType === t ? '#6d28d9' : 'var(--muted-foreground)',
+                boxShadow: filterType === t ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+              }}
             >
               {t === 'all' ? 'All Records' : t === 'write' ? '✍️ Write' : '💬 Reply'}
             </button>

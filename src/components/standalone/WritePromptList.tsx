@@ -57,11 +57,20 @@ export const WritePromptList: React.FC<WritePromptListProps> = ({
                 key={promptTitle}
                 type="button"
                 onClick={() => onSelectPrompt(promptTitle)}
-                className={`whitespace-nowrap px-3.5 py-1.5 rounded-xl text-xs cursor-pointer transition-all shrink-0 select-none ${
-                  isSelected
-                    ? 'bg-[#ece6f8] text-zinc-900 dark:bg-purple-950/80 dark:text-purple-200 font-semibold shadow-2xs'
-                    : 'bg-zinc-100/90 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-200/80 dark:hover:bg-zinc-700 font-medium'
-                }`}
+                style={{
+                  whiteSpace: 'nowrap',
+                  padding: '6px 14px',
+                  borderRadius: 12,
+                  fontSize: 12,
+                  cursor: 'pointer',
+                  transition: 'all 200ms ease',
+                  flexShrink: 0,
+                  userSelect: 'none',
+                  background: isSelected ? '#ece6f8' : 'var(--muted)',
+                  color: isSelected ? 'var(--foreground)' : 'var(--foreground)',
+                  fontWeight: isSelected ? 600 : 500,
+                  boxShadow: isSelected ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                }}
               >
                 {promptTitle}
               </button>
@@ -115,11 +124,19 @@ export const WritePromptList: React.FC<WritePromptListProps> = ({
             key={promptTitle}
             type="button"
             onClick={() => onSelectPrompt(promptTitle)}
-            className={`whitespace-nowrap px-3.5 py-1.5 rounded-xl text-xs cursor-pointer transition-all select-none ${
-              isSelected
-                ? 'bg-[#ece6f8] text-zinc-900 dark:bg-purple-950/80 dark:text-purple-200 font-semibold shadow-2xs'
-                : 'bg-zinc-100/90 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-200/80 dark:hover:bg-zinc-700 font-medium'
-            }`}
+            style={{
+              whiteSpace: 'nowrap',
+              padding: '6px 14px',
+              borderRadius: 12,
+              fontSize: 12,
+              cursor: 'pointer',
+              transition: 'all 200ms ease',
+              userSelect: 'none',
+              background: isSelected ? '#ece6f8' : 'var(--muted)',
+              color: isSelected ? 'var(--foreground)' : 'var(--foreground)',
+              fontWeight: isSelected ? 600 : 500,
+              boxShadow: isSelected ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+            }}
           >
             {promptTitle}
           </button>

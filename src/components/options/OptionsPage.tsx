@@ -446,11 +446,21 @@ export const OptionsPage: React.FC = () => {
               <button
                 key={item.key}
                 onClick={() => setActiveTab(item.key as any)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-base font-medium cursor-pointer transition-all ${
-                  activeTab === item.key
-                    ? 'bg-violet-100/90 dark:bg-violet-950/80 text-violet-700 dark:text-violet-300 font-semibold shadow-2xs'
-                    : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200/60 dark:hover:bg-zinc-800/80'
-                }`}
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '10px 12px',
+                  borderRadius: 12,
+                  fontSize: 16,
+                  fontWeight: activeTab === item.key ? 600 : 500,
+                  cursor: 'pointer',
+                  transition: 'all 200ms ease',
+                  background: activeTab === item.key ? '#ede9fe' : 'transparent',
+                  color: activeTab === item.key ? '#6d28d9' : 'var(--muted-foreground)',
+                  boxShadow: activeTab === item.key ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                }}
               >
                 <span style={{
             fontSize: 18,
@@ -1073,13 +1083,29 @@ export const OptionsPage: React.FC = () => {
             flexDirection: 'column',
             boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
           }}>
-                <div className={`p-4 rounded-2xl bg-gradient-to-r from-zinc-50 via-zinc-50/50 to-zinc-50/80 dark:from-zinc-800/40 dark:via-zinc-800/20 dark:to-zinc-800/40 border border-zinc-200/60 dark:border-zinc-700/60 space-y-2 max-w-[340px] shadow-2xs transition-all ${
-                  (config.fontSize || 'Auto') === 'Small'
-                    ? 'message-font-small'
-                    : (config.fontSize || 'Auto') === 'Large'
-                    ? 'message-font-large'
-                    : 'message-font-regular'
-                }`}>
+                <div
+                  className={
+                    (config.fontSize || 'Auto') === 'Small'
+                      ? 'message-font-small'
+                      : (config.fontSize || 'Auto') === 'Large'
+                        ? 'message-font-large'
+                        : 'message-font-regular'
+                  }
+                  style={{
+                    padding: 16,
+                    borderRadius: 16,
+                    background: 'linear-gradient(to right, var(--muted) 0%, var(--muted) 50%, var(--muted) 80%)',
+                    borderWidth: 1,
+                    borderStyle: 'solid',
+                    borderColor: 'var(--border)',
+                    rowGap: 8,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    maxWidth: 340,
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+                    transition: 'all 200ms ease',
+                  }}
+                >
                   <div style={{
             color: 'var(--muted-foreground)',
           }}>
@@ -1270,13 +1296,19 @@ export const OptionsPage: React.FC = () => {
                     {sampleOriginalText}
                   </p>
                 )}
-                <p className={`text-sm font-normal leading-relaxed ${
-                  (config.translateDisplayStyle || 'Underline') === 'Underline'
-                    ? 'text-zinc-800 dark:text-zinc-200 underline decoration-dotted decoration-zinc-400 dark:decoration-zinc-500 underline-offset-4'
-                    : (config.translateDisplayStyle || 'Underline') === 'Weaken'
-                    ? 'text-zinc-400 dark:text-zinc-500'
-                    : 'text-zinc-800 dark:text-zinc-200'
-                }`}>
+                <p
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 400,
+                    lineHeight: 1.625,
+                    color: (config.translateDisplayStyle || 'Underline') === 'Weaken'
+                      ? 'var(--muted-foreground)'
+                      : 'var(--foreground)',
+                    textDecoration: (config.translateDisplayStyle || 'Underline') === 'Underline' ? 'underline' : 'none',
+                    textDecorationStyle: (config.translateDisplayStyle || 'Underline') === 'Underline' ? 'dotted' : 'solid',
+                    textUnderlineOffset: (config.translateDisplayStyle || 'Underline') === 'Underline' ? 4 : 'auto',
+                  }}
+                >
                   {getSampleTranslation(config.translateTargetLang || 'English')}
                 </p>
               </div>

@@ -364,11 +364,18 @@ export const WriteOutputPanel: React.FC<WriteOutputPanelProps> = ({
             <button
               type="button"
               onClick={onToggleSpeech}
-              className={`p-1.5 rounded-lg transition-colors cursor-pointer flex items-center justify-center ${
-                isPlayingAudio
-                  ? 'text-violet-600 bg-violet-50 dark:bg-violet-950/60 animate-pulse'
-                  : 'hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
-              }`}
+              className={isPlayingAudio ? 'np-pulse' : undefined}
+              style={{
+                padding: 6,
+                borderRadius: 8,
+                transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: isPlayingAudio ? '#7c3aed' : 'var(--muted-foreground)',
+                background: isPlayingAudio ? '#f5f3ff' : 'transparent',
+              }}
             >
               <SoundOutlined style={{
             fontSize: 16,
@@ -381,11 +388,18 @@ export const WriteOutputPanel: React.FC<WriteOutputPanelProps> = ({
             <button
               type="button"
               onClick={handleLike}
-              className={`p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer flex items-center justify-center ${
-                liked === true
-                  ? 'text-blue-500 font-bold bg-blue-50/60 dark:bg-blue-950/40'
-                  : 'text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
-              }`}
+              style={{
+                padding: 6,
+                borderRadius: 8,
+                transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: liked === true ? '#3b82f6' : 'var(--muted-foreground)',
+                background: liked === true ? '#eff6ff' : 'transparent',
+                fontWeight: liked === true ? 700 : 400,
+              }}
             >
               {liked === true ? <LikeFilled style={{
             fontSize: 16,
@@ -400,11 +414,18 @@ export const WriteOutputPanel: React.FC<WriteOutputPanelProps> = ({
             <button
               type="button"
               onClick={handleDislike}
-              className={`p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer flex items-center justify-center ${
-                liked === false
-                  ? 'text-rose-500 font-bold bg-rose-50/60 dark:bg-rose-950/40'
-                  : 'text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
-              }`}
+              style={{
+                padding: 6,
+                borderRadius: 8,
+                transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: liked === false ? '#f43f5e' : 'var(--muted-foreground)',
+                background: liked === false ? '#fff1f2' : 'transparent',
+                fontWeight: liked === false ? 700 : 400,
+              }}
             >
               {liked === false ? <DislikeFilled style={{
             fontSize: 16,
