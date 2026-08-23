@@ -4,8 +4,8 @@ milestone: v0.1
 milestone_name: milestone
 current_phase: 01
 status: completed
-stopped_at: Phase 2 context gathered
-last_updated: "2026-08-23T12:48:39.285Z"
+stopped_at: Phase 2 UI-SPEC approved
+last_updated: "2026-08-23T13:07:48.452Z"
 progress:
   total_phases: 2
   completed_phases: 0
@@ -107,9 +107,9 @@ All inherited decisions are **— Pending** (awaiting first implementation to va
 
 ## Session Continuity
 
-**Last session:** 2026-08-23T12:48:39.276Z
-**Stopped at:** Phase 2 context gathered
-**Resume file:** /Users/george.li/Documents/workspaces/nowpilot/.planning/phases/02-storage-security-writejournal-workspace-persistence/02-CONTEXT.md
+**Last session:** 2026-08-23T13:07:48.438Z
+**Stopped at:** Phase 2 UI-SPEC approved
+**Resume file:** /Users/george.li/Documents/workspaces/nowpilot/.planning/phases/02-storage-security-writejournal-workspace-persistence/02-UI-SPEC.md
 
 - **Last action:** Phase-1 context review applied — 01-CONTEXT.md patched (B1 strict/noEmitOnError, B2 permissions + new D-19a, B3 entrypoint location + new D-07a, A1-A5 theme key/background/Cmd+K/endpoint/version). STATE.md decisions + watch items updated to match.
 - **Last updated:** 2026-08-19 after initialization.
