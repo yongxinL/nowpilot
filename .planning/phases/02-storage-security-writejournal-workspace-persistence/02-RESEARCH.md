@@ -636,27 +636,31 @@ export async function recordError(err: { code: string; message: string; context?
 | A7 | PBKDF2/deriveKey mechanics (`importKey('raw', ..., 'PBKDF2', false, ['deriveKey'])` + `deriveKey(Pbkdf2Params, ..., AesKeyGenParams)`): parameters verified via MDN deriveBits example; `deriveKey` composition is standard WebCrypto | Code Examples | Low: MDN states `deriveKey()` = `deriveBits()` + `importKey()` |
 | A8 | `unlimitedStorage` in wxt.config permissions is sufficient to exempt the extension origin from IndexedDB quota/eviction in Chrome | Pattern 4 / D-40 | Low: documented Chrome behavior (local quota ignored with the permission; IDB origin quota lifted) |
 
-## Open Questions
+## Open Questions (RESOLVED — all four resolved at planning time 2026-08-24; see inline outcomes)
 
-1. **Persisted workspace key name: `np_workspace_store` (scaffold) vs `np_workspace` (spec §15.1)**
+1. **Persisted workspace key name: `np_workspace_store` (scaffold) vs `np_workspace` (spec §15.1)** — **(RESOLVED: the rename WAS decided, overriding this section's original recommendation)**
    - What we know: WorkspaceStore persists under `name: 'np_workspace_store'` [VERIFIED: src/core/workspace/WorkspaceStore.ts:148]; the spec's storage layout and §20.3 ordering reference `np_workspace` [VERIFIED: PRODUCT_SPEC_v0_1.md:1955, 3136]; the BroadcastChannel is named `np_workspace` [VERIFIED: src/core/workspace/WorkspaceSync.ts:3].
    - What's unclear: whether Phase 2 should rename the persisted key (requires a data migration of existing blobs + `np_workspace_primary`/channel naming consistency) or keep the scaffold key and treat `np_workspace` as the spec's logical name.
    - Recommendation: keep `np_workspace_store` in Phase 2 (no re-open; journal writes that key); flag the rename for the discuss-phase if the user wants spec-exact key naming. Journal entries would replay to the wrong key if the rename is decided later — decide before implementing the journal adapter.
+   - **Outcome:** Phase 2 renames the persisted key to `np_workspace` (plan 02-07 Task 1 persist `name` change) with a one-time idempotent lift (read → write → verify → delete) inside the journalingAdapter's `getItem` (plan 02-05 Task 2; PATTERNS Workspace-key migration rule, 02-PATTERNS.md:123). The lift makes the rename crash-safe: journal entries target the single canonical `np_workspace` key from day one and the replay-to-wrong-key hazard is eliminated. All Phase-2 journal/recovery code, tests, and plan 02-07's persist config target `np_workspace` only.
 
-2. **Heartbeat record refresh frequency in session storage**
+2. **Heartbeat record refresh frequency in session storage** — **(RESOLVED)**
    - What we know: D-43 says heartbeats write `np_workspace_primary` to session, not debounced; D-26 says the heartbeat message rides the `np_workspace` channel.
    - What's unclear: whether `electedAt` is refreshed on *every* 3 s tick (20 session writes/min) or only on startup/re-election (heartbeat = channel message only).
    - Recommendation: refresh on every tick (simplest, matches "heartbeat" semantics; 20/min is safe). The freshness check that drives 2-miss detection then uses the session record's `electedAt`.
+   - **Outcome:** adopted — plan 02-06 Task 1's heartbeat loop refreshes `electedAt` on every 3 s tick (20 session writes/min, NOT debounced per D-43); 2-miss detection reads the session record's freshness.
 
-3. **Where `recoverJournal()` and `WorkspaceElection.start()` mount in the entrypoints**
+3. **Where `recoverJournal()` and `WorkspaceElection.start()` mount in the entrypoints** — **(RESOLVED)**
    - What we know: `recoverJournal` must run on surface boot [D-31]; election on surface boot [D-24]; the entrypoints are `entrypoints/sidepanel/main.tsx`, `entrypoints/standalone/main.tsx`, `entrypoints/options/main.tsx` (WXT directory form).
    - What's unclear: a shared boot module vs per-entrypoint calls; whether Options needs the full election (it does not write workspace state — likely election-free, but must read `np_providers` and run the secret migration).
    - Recommendation: a small `bootstrap()` per surface (sidepanel/standalone: recoverJournal → migrator → election; options: migrator → secret migration → providers read); planner wires per entrypoint.
+   - **Outcome:** adopted — per-entrypoint boot in plan 02-07 Task 2: sidepanel/standalone = recoverJournal → IndexedDBMigrator.bootstrap → startElection(surface) → setStorageErrorReporter; options = IndexedDBMigrator.bootstrap → migrateProviderSecrets → hydrateProviderSecrets (decrypt-on-read) → setStorageErrorReporter → encrypted providers read (no election — Options does not write workspace state).
 
-4. **ErrorStore failure semantics when IDB itself is unavailable**
+4. **ErrorStore failure semantics when IDB itself is unavailable** — **(RESOLVED)**
    - What we know: ErrorStore writes can fail (IDB blocked/degraded); §20.4 mandates degraded mode on migration failure.
    - What's unclear: whether a failed ErrorStore write cascades (e.g. adapter flush must not throw into the zustand persist path).
    - Recommendation: ErrorStore.record is best-effort — internal try/catch + `debugLog` fallback (in-memory sibling); never rethrow into the caller.
+   - **Outcome:** adopted — plan 02-04 Task 3 wraps `record` in an internal try/catch with a `debugLog(code, message)` fallback and never rethrows into the caller (best-effort contract).
 
 ## Environment Availability
 

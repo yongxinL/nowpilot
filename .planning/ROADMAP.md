@@ -61,7 +61,7 @@
   4. IndexedDB migration from v1 → v2 fixture passes (idempotent; backward-compatible).
   5. Workspace state persists across page reload and cross-surface handoff (no message loss, no scroll jump).
 **Verification gate:** `pnpm run verify:phase-2` (§24).
-**Plans:** 7 plans (waves 1-3)
+**Plans:** 7 plans (waves 1-4)
 Plans:
 - [ ] 02-01-PLAN.md — Wave-0 test infra: idb/fake-indexeddb installs + tests/setup.ts (IndexedDB + chrome.storage.session harness)
 - [ ] 02-02-PLAN.md — Crypto foundation: KeyVault + EncryptedStorage + redactSensitive + np_store→np_providers migration + Options modal masking
