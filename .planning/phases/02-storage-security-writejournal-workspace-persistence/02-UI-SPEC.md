@@ -1,10 +1,11 @@
 ---
 phase: 2
 slug: storage-security-writejournal-workspace-persistence
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-08-23
+reviewed_at: 2026-08-23
 ---
 
 # Phase 2 — UI Design Contract
