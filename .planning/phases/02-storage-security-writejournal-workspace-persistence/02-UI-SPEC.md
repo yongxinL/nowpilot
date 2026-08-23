@@ -16,7 +16,7 @@ created: 2026-08-23
 1. **Options page provider modal** (`src/components/options/OptionsPage.tsx`) — provider config reads/writes move to the encrypted `np_providers` key (D-28/D-30), and the API-key field must now render the DESIGN_SYSTEM §8.7 masked "key saved" state — **the field never shows the stored key in plaintext on reload** (§8.7 line 386; mockup line 366 renders `•••••••••••••••••••••••••••••`). This closes the scaffold's plaintext pre-fill (`OptionsPage.tsx:198` `setModalApiKey(detail.apiKey || '')`).
 2. **Side Panel mirror banner** (`src/components/common/MirrorBanner.tsx`) — visual contract inherited from Phase 1 **unchanged**; the election (D-24) makes "secondary surface" a real state (not handoff-only), which broadens the banner's trigger condition at the wiring level only.
 
-This contract inherits **every token** from the approved Phase 1 UI-SPEC (6/6 PASS) and adds **exactly one field-state contract** (the masked saved-key field). Where a category below says "inherited verbatim", the Phase 1 values are the law — no re-derivation, no re-asking.
+This contract inherits **every token** from the approved Phase 1 UI-SPEC (6/6 PASS) and adds **exactly one field-state contract** (the masked saved-key field) plus **two CTA label renames** — the provider modal primary CTA `Save` → `Save Provider` and the connection-check button `Check` → `Check Connection` — to satisfy the Dimension 1 verb+noun contract (bare `Save` / bare `Check` are on the CTA block list). Where a category below says "inherited verbatim", the Phase 1 values are the law — no re-derivation, no re-asking.
 
 ---
 
@@ -76,28 +76,28 @@ Inherited verbatim — Phase 2 introduces **zero new color roles**. Only existin
 |------|-------|------|---------------|
 | **Dominant (60%)** `colorBgBase` | `#FCFCFD` | `#0E1117` | Page backgrounds — unchanged |
 | **Secondary (30%)** `colorBgContainer` | `#FFFFFF` | `#161A22` | Provider modal surface, mirror banner background — unchanged |
-| **Accent (10%)** `colorPrimary` | `#3B82F6` | `#5B9BFF` | Provider modal `Save` (primary), mirror banner "Refocus here" link, focus ring — unchanged |
+| **Accent (10%)** `colorPrimary` | `#3B82F6` | `#5B9BFF` | Provider modal `Save Provider` (primary), mirror banner "Refocus here" link, focus ring — unchanged |
 | **Destructive** `colorError` | `#EF4444` | `#F87171` | Reserved for genuine errors only — no new Phase-2 consumer |
 | `colorSuccess` | `#10B981` | `#34D399` | Provider modal inline "Connection successful" (§8.7) — unchanged |
 | `colorWarning` | `#F59E0B` | `#FBBF24` | No Phase-2 use (informational banner stays `colorPrimaryBg`) |
 
-**Accent reserved for:** unchanged from Phase 1 list (primary action buttons, focus ring, active command row, brand mark). **No new accent consumers in Phase 2.** The mirror banner remains informational (`colorPrimaryBg`), never `colorWarning`/`colorError` (frozen from Phase 1 — 01-07-PLAN: "MUST NOT use warning/error color").
+**Accent reserved for:** unchanged from Phase 1 list, fully enumerated (primary action buttons, focus ring, active command row, brand mark, active segmented control — per 01-UI-SPEC §Color line 91). **No new accent consumers in Phase 2.** The mirror banner remains informational (`colorPrimaryBg`), never `colorWarning`/`colorError` (frozen from Phase 1 — 01-07-PLAN: "MUST NOT use warning/error color").
 
 ---
 
 ## Copywriting Contract
 
-**Phase 2 adds ZERO new copy strings.** Every string the touched surfaces render already exists (inherited from the Phase 1 contract + DESIGN_SYSTEM §8.7):
+**Phase 2 adds ZERO new copy strings and renames two existing CTA labels** to satisfy the Dimension 1 verb+noun contract (bare `Save` and bare `Check` are on the CTA block list): the provider modal primary CTA becomes **`Save Provider`** (mirrors the modal's subject; consistent with the existing save toast `{Provider name} settings saved`), and the connection-check button becomes **`Check Connection`** (matches the §8.7 blueprint heading "Check connection"). Every other string the touched surfaces render already exists (inherited from the Phase 1 contract + DESIGN_SYSTEM §8.7):
 
 | Element | Copy | Source |
 |---------|------|--------|
-| Provider modal footer | "Cancel" (ghost) / "Save" (primary) | DESIGN_SYSTEM §8.7 (verbatim) |
-| Provider modal connection check | "Check" button → inline "Connection successful" (`colorSuccess`) or error (`colorError`) | DESIGN_SYSTEM §8.7 line 388 (inherited) |
+| Provider modal footer | "Cancel" (ghost) / "Save Provider" (primary — renamed from the scaffold's bare `Save`; verb + noun, Dimension 1) | DESIGN_SYSTEM §8.7 (labels; primary label renamed per Dimension 1 contract) |
+| Provider modal connection check | "Check Connection" button (renamed from bare `Check`; verb + noun, Dimension 1, matches §8.7 blueprint heading "Check connection") → inline "Connection successful" (`colorSuccess`) or error (`colorError`) | DESIGN_SYSTEM §8.7 line 388 (button label renamed per Dimension 1 contract) |
 | Provider modal save toast | "{Provider name} settings saved" | existing `OptionsPage.tsx:237` (kept verbatim) |
 | Provider enable/disable toast | "{Provider name} enabled" / "{Provider name} disabled" | existing `OptionsPage.tsx:253` (kept verbatim) |
 | Mirror banner | "Switched to Standalone." + "Refocus here" (link) | Phase 1 contract (frozen, verbatim) |
 
-**Primary CTA:** none new — the provider modal's `Save` is the existing primary (inherited).
+**Primary CTA:** none new as an affordance — the provider modal's primary action is the renamed **`Save Provider`** (verb + noun; consistent with the `{Provider name} settings saved` toast).
 **Empty state:** none new — no-key field renders empty (existing behavior); no new empty copy.
 **Error state:** none new — **storage quota/rate-limit failures surface to the debug-only `ErrorStore` (spec §15.1 "ErrorStore (debug only, FIFO max 100)") and `debugLog`, NOT to the user (D-39)**. No toast, no banner, no inline error copy ships for `STORAGE_QUOTA` / `STORAGE_RATE_LIMIT`. Connection-check errors keep the Phase-1 pattern (§8.7 inline error).
 **Destructive actions:** **none** in Phase 2. Replacing a saved API key follows the masked-field overwrite convention (type to replace) — no confirmation modal, matching the §8.7 mockup which shows no confirm affordance.
@@ -122,8 +122,8 @@ Applicable state considerations resolved: **5 covered**, **1 backstop**, **10 di
 | ID | Category | Element(s) | Resolution / Reason |
 |----|----------|------------|---------------------|
 | E1 | **empty** | Provider modal API-key field (no key saved) | Empty password `Input` with `EyeInvisibleOutlined`/`EyeOutlined` toggle (DESIGN_SYSTEM §8.7 + Phase 1 E1 partial row). No saved key → no placeholder bullets. Existing behavior, unchanged. |
-| E1 | **partial** | Provider modal API-key field (key saved — encrypted) | **THE Phase-2 field-state contract:** a provider with a stored (encrypted) `apiKey` renders the masked placeholder `••••••••••••••••` (fixed bullet run per §8.7 mockup line 366) — **the decrypted key value is NEVER rendered on reload** (§8.7 line 386). Typing a new key replaces the stored value; field untouched (empty) on `Save` preserves the stored key without re-encryption. Backed by the backstop row below. |
-| E1 | **loading** | Provider modal connection check | "Check" button → in-flight state → inline result (`colorSuccess` / `colorError`) per §8.7 line 388. Inherited from Phase 1 pattern (`handleCheckConnection`); no new affordance. |
+| E1 | **partial** | Provider modal API-key field (key saved — encrypted) | **THE Phase-2 field-state contract:** a provider with a stored (encrypted) `apiKey` renders the masked placeholder `••••••••••••••••` (fixed bullet run per §8.7 mockup line 366) — **the decrypted key value is NEVER rendered on reload** (§8.7 line 386). Typing a new key replaces the stored value; field untouched (empty) on `Save Provider` preserves the stored key without re-encryption. Backed by the backstop row below. |
+| E1 | **loading** | Provider modal connection check | "Check Connection" button → in-flight state → inline result (`colorSuccess` / `colorError`) per §8.7 line 388. Inherited from Phase 1 pattern (`handleCheckConnection`); no new affordance. |
 | E1 | **error** | Provider modal connection failure | Inline error in `colorError` (§8.7 line 388), verbatim Phase-1 treatment. The error string is built from the provider's response, never from interpolating the key value (T-01-10/T-01-22 inherited). |
 | E1 | **error** | Storage quota/rate-limit failure during provider-config save | `STORAGE_QUOTA` / `STORAGE_RATE_LIMIT` surface to `ErrorStore` (IDB, FIFO 100, debug only) + `debugLog` (D-39, spec §15.1). **Not user-facing** — no toast/copy; the modal does not claim false success (the adapter no longer swallows `lastError` into a silent `debugLog`). |
 
@@ -168,7 +168,7 @@ No planner assumptions needed. Every raised consideration is either covered, bac
 
 | Component | Status | Path | Notes |
 |-----------|--------|------|-------|
-| `OptionsPage` provider modal | **modified** | `src/components/options/OptionsPage.tsx` | Data-path: provider config reads/writes move to encrypted `np_providers` (D-28/D-30). **Visual change (exactly one):** API-key field renders the §8.7 masked placeholder for a saved key; remove the plaintext pre-fill `setModalApiKey(detail.apiKey || '')` (line 198). Save preserves the stored key when the field is untouched. `openAiKey`/`openAiBaseUrl` top-level writes (lines 232-233) follow the config to `np_providers`. |
+| `OptionsPage` provider modal | **modified** | `src/components/options/OptionsPage.tsx` | Data-path: provider config reads/writes move to encrypted `np_providers` (D-28/D-30). **Visual change (exactly one):** API-key field renders the §8.7 masked placeholder for a saved key; remove the plaintext pre-fill `setModalApiKey(detail.apiKey || '')` (line 198). **Copy change (exactly two labels):** primary CTA `Save` → `Save Provider`; connection-check button `Check` → `Check Connection`. `Save Provider` preserves the stored key when the field is untouched. `openAiKey`/`openAiBaseUrl` top-level writes (lines 232-233) follow the config to `np_providers`. |
 | `MirrorBanner` | **unchanged (visual)** | `src/components/common/MirrorBanner.tsx` | Frozen from Phase 1 (32 px, `colorPrimaryBg`, copy + "Refocus here" link). Wiring-only change at the planner's discretion: trigger broadens from `WORKSPACE_HANDOFF`-only to "Side Panel is secondary" (handoff OR election demotion, D-24/D-26); "Refocus here" triggers Side Panel CAS re-election on `np_workspace_primary`. Visual contract does NOT change. |
 | `OnboardingModal` | **unchanged** | `src/components/OnboardingModal.tsx` | Compliant by construction — it never pre-fills or echoes a stored key (T-01-22); its provider-config write path follows the shared store to `np_providers`. No visual change. |
 | `WorkspaceStore` / `WorkspaceSync` / `chromeStorageAdapter` | modified (no DOM) | `src/core/workspace/*.ts`, `src/core/theme/chromeStorageAdapter.ts` | `isPrimaryWriter()` becomes a real election read (D-24); heartbeat rides the `np_workspace` channel (D-26); adapter surfaces `STORAGE_QUOTA`/`STORAGE_RATE_LIMIT` → ErrorStore (D-39). No visual surface. |
@@ -184,10 +184,10 @@ One new anchor + one inherited (frozen):
 
 | Anchor | Metric | Visual hierarchy | Icon-only controls |
 |--------|--------|------------------|--------------------|
-| **Provider modal API-key field — saved state** | AntD `Input.Password` with eye toggle; saved-key state renders the masked placeholder `••••••••••••••••` (fixed bullet run, §8.7 mockup), **never the decrypted value**. Typing replaces; untouched field on `Save` preserves the stored key. | Masked bullets → eye toggle (reveal shows the *typed* key only; a saved key has no reveal-able plaintext in the DOM). | `EyeInvisibleOutlined`/`EyeOutlined` — "Show API key" / "Hide API key" (Phase 1 a11y inventory, bound). |
+| **Provider modal API-key field — saved state** | AntD `Input.Password` with eye toggle; saved-key state renders the masked placeholder `••••••••••••••••` (fixed bullet run, §8.7 mockup), **never the decrypted value**. Typing replaces; untouched field on `Save Provider` preserves the stored key. | Masked bullets → eye toggle (reveal shows the *typed* key only; a saved key has no reveal-able plaintext in the DOM). | `EyeInvisibleOutlined`/`EyeOutlined` — "Show API key" / "Hide API key" (Phase 1 a11y inventory, bound). |
 | **Mirror banner (election-secondary)** | Inherited from Phase 1 Visual Anchors verbatim: 32 px, full-width, `colorPrimaryBg`, hairline `colorBorder` top+bottom, left caption 12 px `colorTextBase`, right "Refocus here" 12 px `colorPrimary` underlined link. Slides down 150 ms on appear. | Copy → action link (unchanged). | None (text-labeled). |
 
-**Cross-surface hierarchy rule (inherited):** unchanged from Phase 1 — every surface names ONE primary visual anchor and ONE primary action. Phase 2's only new visual element (the masked key field) is a single form field; the modal's primary action remains `Save`.
+**Cross-surface hierarchy rule (inherited):** unchanged from Phase 1 — every surface names ONE primary visual anchor and ONE primary action. Phase 2's only new visual element (the masked key field) is a single form field; the modal's primary action remains `Save Provider`.
 
 ---
 
@@ -209,6 +209,7 @@ Phase 1 gates carry forward verbatim (spacing 4-multiple, typography `12/13/14/1
 |---------|-----------|--------|
 | **Decrypted stored API key rendered in a provider-config field on reload** | Pre-filling the API-key field with the decrypted stored value (`setModalApiKey(decryptedKey)`); rendering the stored key value in the input `value`, `placeholder`, `aria-label`, or any hint string; echoing the key into the save/error copy. The field renders the §8.7 masked placeholder only. | DESIGN_SYSTEM §8.7 line 386 + D-28 (encrypt-at-rest) + D-30 |
 | **User-facing copy for storage errors** | `STORAGE_QUOTA` / `STORAGE_RATE_LIMIT` (and `IDB_MIGRATION_FAILED`) surfacing as toasts, banners, or inline error text. They go to `ErrorStore` (debug only, FIFO 100) + `debugLog`. The adapter must not swallow them into a silent no-op either (D-39). | D-38/D-39 + spec §15.1 ("ErrorStore (debug only)") |
+| **Bare-verb CTA labels in the provider modal** | The provider modal primary CTA labeled `Save` (bare verb, Dimension 1 block list) or the connection-check button labeled `Check` (no noun). The primary is `Save Provider`; the check button is `Check Connection`. | Dimension 1 Copywriting contract (verb + noun CTA) |
 
 ---
 
@@ -226,4 +227,5 @@ Phase 1 gates carry forward verbatim (spacing 4-multiple, typography `12/13/14/1
 ---
 
 *Phase: 2 — Storage, Security, WriteJournal, Workspace Persistence*
-*UI-SPEC pre-populated from `02-CONTEXT.md` (D-24…D-43) + approved `01-UI-SPEC.md` (inherited tokens, verbatim) + `.planning/DESIGN_SYSTEM.md` §8.7 (provider dialog blueprint — masked saved-key field) + `.planning/PRODUCT_SPEC_v0_1.md` §15.1 (ErrorStore debug-only, np_providers encrypted) + §18 Phase 2 Create list. No design-contract questions were open — upstream artifacts answered every category; this contract inherits and adds exactly one field-state contract.*
+*UI-SPEC pre-populated from `02-CONTEXT.md` (D-24…D-43) + approved `01-UI-SPEC.md` (inherited tokens, verbatim) + `.planning/DESIGN_SYSTEM.md` §8.7 (provider dialog blueprint — masked saved-key field) + `.planning/PRODUCT_SPEC_v0_1.md` §15.1 (ErrorStore debug-only, np_providers encrypted) + §18 Phase 2 Create list. No design-contract questions were open — upstream artifacts answered every category; this contract inherits, adds exactly one field-state contract, and renames two CTA labels per the Dimension 1 verb+noun contract.*
+*Rev 2 (2026-08-23): ui-checker fix — Copywriting (primary CTA `Save` → `Save Provider`; connection-check button `Check` → `Check Connection`; both per Dimension 1 verb+noun contract), Color (accent reserved-for parenthetical now fully enumerates the Phase 1 list, adding "active segmented control").*
