@@ -21,15 +21,15 @@ created: 2026-08-23
 |----------|-------|
 | **Framework** | vitest (jsdom, globals) |
 | **Config file** | `vitest.config.ts` (setup `tests/setup.ts`) |
-| **Quick run command** | `pnpm lint && pnpm test -- tests/core/storage tests/core/security tests/core/utils tests/core/workspace/WorkspacePersistence.test.ts` |
-| **Full suite command** | `pnpm run verify:phase-2` (`tsc --noEmit && vitest run tests/core/storage tests/core/security tests/core/utils tests/core/workspace/WorkspacePersistence.test.ts`) |
+| **Quick run command** | `pnpm lint && pnpm test -- tests/core/storage tests/core/security tests/core/utils tests/core/workspace` |
+| **Full suite command** | `pnpm run verify:phase-2` (`tsc --noEmit && vitest run tests/core/storage tests/core/security tests/core/utils tests/core/workspace`) |
 | **Estimated runtime** | ~30 seconds |
 
 ---
 
 ## Sampling Rate
 
-- **After every task commit:** Run `pnpm lint && pnpm test -- tests/core/storage tests/core/security tests/core/utils tests/core/workspace/WorkspacePersistence.test.ts`
+- **After every task commit:** Run `pnpm lint && pnpm test -- tests/core/storage tests/core/security tests/core/utils tests/core/workspace`
 - **After every plan wave:** Run `pnpm run verify:phase-2`
 - **Before `/gsd-verify-work`:** Full suite must be green
 - **Max feedback latency:** 30 seconds
@@ -53,7 +53,7 @@ created: 2026-08-23
 | 02-05-01 | 05 | 3 | REQ-R03 | — | WriteJournal runJournaled/recoverJournal per O.11; simulated SW kill mid-write → replay restores state (criterion 1); idempotent replay; reverse rollback + WRITE_JOURNAL_FAILED; unsupported-op skip | unit | `vitest run tests/core/storage/WriteJournal.test.ts` | ❌ W0 | ⬜ pending |
 | 02-05-02 | 05 | 3 | REQ-R03 | — | journalingAdapter: primary path (immediate entry put → debounced write + WORKSPACE_UPDATED → completed); secondary mirror-skip (D-27); legacy np_workspace_store one-time lift; passthrough | unit | `vitest run tests/core/workspace/journalingAdapter.test.ts` | ❌ W0 | ⬜ pending |
 | 02-06-01 | 06 | 2 | REQ-R03 | — | WorkspaceElection: CAS on np_workspace_primary, 3s heartbeat, 2-miss re-election, Standalone tie-break, solo; isPrimaryWriter() pure read; single 3s timer owner; session-only records | unit | `vitest run tests/core/workspace/WorkspaceElection.test.ts` | ❌ W0 | ⬜ pending |
-| 02-06-02 | 06 | 2 | REQ-R07 | — | chromeStorageAdapter surfaces exactly STORAGE_QUOTA / STORAGE_RATE_LIMIT / fallback (STORAGE_DEBOUNCE_FLUSH_FAILED) via classifyStorageError + reporter hook — never swallowed; exactly one ErrorStore record per failure via registered reporter (D-39) | unit | `vitest run tests/core/storage/chromeStorageAdapter.test.ts` | ✅ | ⬜ pending |
+| 02-06-02 | 06 | 2 | REQ-R07 | — | chromeStorageAdapter surfaces exactly STORAGE_QUOTA / STORAGE_RATE_LIMIT / fallback (STORAGE_DEBOUNCE_FLUSH_FAILED) via classifyStorageError + reporter hook — never swallowed; exactly one ErrorStore record per failure via registered reporter (D-39) | unit | `vitest run tests/core/storage/chromeStorageAdapter.test.ts` (Task 2 also modifies package.json: verify:phase-2 workspace path → `tests/core/workspace`) | ✅ | ⬜ pending |
 | 02-07-01 | 07 | 4 | REQ-R03 | — | WorkspaceStore: isPrimaryWriter pure read (Phase-1 stub gone), journaled np_workspace persist; reload + cross-surface handoff with no message loss (criterion 5) | unit | `vitest run tests/core/workspace/WorkspacePersistence.test.ts` | ❌ W0 | ⬜ pending |
 | 02-07-02 | 07 | 4 | REQ-R03 | — | Boot wiring: recoverJournal → migrator bootstrap → election (sidepanel/standalone); migrateProviderSecrets + hydrateProviderSecrets decrypt-on-read (options); adapter reporter registration; MirrorBanner election-secondary trigger | source grep | `pnpm lint` + `grep -n "hydrateProviderSecrets" entrypoints/options/main.tsx` | ✅ | ⬜ pending |
 | 02-07-03 | 07 | 4 | REQ-R03 | — | WorkspacePersistence expansion: journal recovery on boot; write-rate budget ≤30/min (heartbeat 20/min + journal immediate + debounced coalesced); election-gated mirror skip | unit | `pnpm run verify:phase-2` | ❌ W0 | ⬜ pending |
