@@ -61,6 +61,15 @@
   4. IndexedDB migration from v1 → v2 fixture passes (idempotent; backward-compatible).
   5. Workspace state persists across page reload and cross-surface handoff (no message loss, no scroll jump).
 **Verification gate:** `pnpm run verify:phase-2` (§24).
+**Plans:** 7 plans (waves 1-3)
+Plans:
+- [ ] 02-01-PLAN.md — Wave-0 test infra: idb/fake-indexeddb installs + tests/setup.ts (IndexedDB + chrome.storage.session harness)
+- [ ] 02-02-PLAN.md — Crypto foundation: KeyVault + EncryptedStorage + redactSensitive + np_store→np_providers migration + Options modal masking
+- [ ] 02-03-PLAN.md — RateLimiter (token bucket) + Requester (UI fetch wrapper)
+- [ ] 02-04-PLAN.md — IndexedDBMigrator + 5 DBs at v1 + ErrorStore + unlimitedStorage permission
+- [ ] 02-05-PLAN.md — WriteJournal (O.11) + journalingAdapter (election-gated, journaled, debounced)
+- [ ] 02-06-PLAN.md — WorkspaceElection (CAS/heartbeat) + adapter STORAGE_QUOTA/STORAGE_RATE_LIMIT surfacing
+- [ ] 02-07-PLAN.md — WorkspaceStore integration + boot wiring + WorkspacePersistence test
 
 ### Phase 3: Cost-Effective AI Runtime (+ Persona seed)
 **Goal:** The bounded Planner → Executor → Renderer pipeline streams from user-configured OpenAI / Anthropic / Gemini / Ollama providers; tier-resolved routing (fast / balanced); persona runtime is wired into every AI call from day one.
@@ -295,7 +304,7 @@
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. MV3/WXT Runtime + AntD Shells + Workspace Handoff | 0/8 | Planned | — |
-| 2. Storage, Security, WriteJournal, Workspace Persistence | 0/3 | Not started | — |
+| 2. Storage, Security, WriteJournal, Workspace Persistence | 0/7 | Not started | — |
 | 3. Cost-Effective AI Runtime (+ Persona seed) | 0/3 | Not started | — |
 | 4. Agent Reliability and Evidence | 0/2 | Not started | — |
 | 5. Context-Adaptive Execution | 0/2 | Not started | — |
