@@ -173,44 +173,68 @@ describe('WorkspaceElection — D-24..D-27 primary-writer election', () => {
     instance.dispose();
   });
 
-  it('Test 5 (demotion): secondary surface receiving a foreign heartbeat marks primary alive and stays secondary', async () => {
-    // Spin up two surfaces; sidepanel wins tie-break on a standalone
-    // first-start. Wait — actually, start sidepanel first so it
-    // establishes ownership; then start standalone which becomes
-    // secondary; then manually inject a foreign heartbeat into the
-    // secondary's BroadcastBus and assert it stays secondary.
-    const sidepanelInstance = await startElection('sidepanel');
-    await vi.advanceTimersByTimeAsync(0);
+  it('Test 5 (two-surface demotion): Sidepanel primary → Standalone starts later → Standalone wins via the production tick', async () => {
+    // Model the two surfaces as TWO SEPARATE WorkspaceElection module
+    // instances (each `import()` after `vi.resetModules()` gets its own
+    // `activeInstance` AND its own BroadcastBus `instanceId`). This matches
+    // real MV3 multi-context delivery: sidepanel's instance is NOT disposed
+    // when standalone starts, and cross-surface production heartbeat ticks
+    // are deliverable via the shared BroadcastChannel mock.
+    let sidepanelMod: typeof import('../../../src/core/workspace/WorkspaceElection');
+    let standaloneMod: typeof import('../../../src/core/workspace/WorkspaceElection');
+    let sidepanel: { dispose(): void } | null = null;
+    let standalone: { dispose(): void } | null = null;
 
-    const standaloneInstance = await startElection('standalone');
-    await vi.advanceTimersByTimeAsync(0);
+    try {
+      // Module copy 1 — its own `activeInstance` + BroadcastBus `instanceId`.
+      sidepanelMod = await import('../../../src/core/workspace/WorkspaceElection');
+      sidepanel = await sidepanelMod.startElection('sidepanel', {
+        getWorkspaceId: () => 'ws-test',
+      });
+      expect(sidepanelMod.getState().state).toBe('primary');
 
-    // After startup, standalone should be secondary.
-    const stateAfterStartup = getState();
-    expect(['primary', 'secondary', 'solo', 'election-in-progress', 'error']).toContain(
-      stateAfterStartup.state,
-    );
+      // Clear the module cache so the NEXT import is a fresh copy. The
+      // already-running sidepanel instance keeps its own timer + subscription.
+      vi.resetModules();
 
-    // Inject a foreign WORKSPACE_HEARTBEAT to the sidepanel's instance —
-    // simulating another surface alive on the channel.
-    // BroadcastBus self-suppresses by `_sender`; we craft an envelope
-    // with a different _sender so it passes through.
-    const { publish } = await import('../../../src/core/runtime/BroadcastBus');
-    publish('np_workspace', {
-      type: 'WORKSPACE_HEARTBEAT',
-      surface: 'standalone',
-      workspaceId: 'ws-test',
-      _sender: 'foreign-instance-id',
-    });
-    await vi.advanceTimersByTimeAsync(0);
+      // Module copy 2 — fresh `activeInstance`, fresh BroadcastBus `instanceId`.
+      standaloneMod = await import('../../../src/core/workspace/WorkspaceElection');
+      standalone = await standaloneMod.startElection('standalone', {
+        getWorkspaceId: () => 'ws-test',
+      });
 
-    // The sidepanel still claims primary or has transitioned to
-    // secondary — but never leaves the election alive.
-    const stateAfterForeign = getState();
-    expect(stateAfterForeign.state).not.toBe('error');
+      // Standalone starts within the same 3 s CAS window (no time advanced
+      // since sidepanel started), so its higher priority wins the tie-break.
+      expect(standaloneMod.getState().state).toBe('primary');
 
-    sidepanelInstance.dispose();
-    standaloneInstance.dispose();
+      // Advance heartbeat ticks. On each tick standalone (primary) publishes
+      // its production heartbeat; the mock dispatches it to sidepanel's
+      // distinct BroadcastChannel instance (different instanceId → not
+      // self-suppressed) → sidepanel's inbound handler demotes to secondary.
+      // Without the CR-02 publish (Task 1), sidepanel would remain primary
+      // forever — so this demotion IS the CR-02-dependent assertion. The
+      // heartbeat must originate from runHeartbeatTick → notifyWorkspaceHeartbeat;
+      // no manual envelope `_sender` injection anywhere in this test.
+      for (let i = 0; i < 3; i++) {
+        await vi.advanceTimersByTimeAsync(HEARTBEAT_INTERVAL_MS);
+      }
+
+      // Final state: standalone primary, sidepanel demoted to secondary.
+      const sidepanelState = sidepanelMod.getState();
+      expect(sidepanelState.state).toBe('secondary');
+      if (sidepanelState.state === 'secondary') {
+        expect(sidepanelState.primarySurface).toBe('standalone');
+      }
+      const standaloneState = standaloneMod.getState();
+      expect(standaloneState.state).toBe('primary');
+      if (standaloneState.state === 'primary') {
+        expect(standaloneState.surface).toBe('standalone');
+      }
+      expect(standaloneMod.isPrimaryWriter()).toBe(true);
+    } finally {
+      sidepanel?.dispose();
+      standalone?.dispose();
+    }
   });
 
   it('Test 6 (dispose): dispose() clears the timer and unsubscribes — no further heartbeats or session writes', async () => {
