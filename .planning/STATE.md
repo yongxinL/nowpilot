@@ -27,7 +27,7 @@ progress:
 
 - **What this is:** Privacy-first Chrome MV3 AI assistant + personal knowledge platform for ServiceNow Support Engineers (Copilot + Obsidian + NotebookLM in one extension). See `.planning/PROJECT.md` §What This Is.
 - **Core value:** *AI chat and a personal knowledge base that work together, locally-first, so a support engineer can capture knowledge once and retrieve it with citations — without any data leaving their machine unless they opt in.*
-- **Current focus:** Phase 02 — storage-security-writejournal-workspace-persistence
+- **Current focus:** Phase 03 — Cost-Effective AI Runtime (+ Persona seed)
 - **Companion files:**
   - `.planning/PROJECT.md` — project context, Active/Out of Scope, Key Decisions
   - `.planning/REQUIREMENTS.md` — 220 v1 requirements (spec-native IDs + `REQ-F*` for §9 gaps)
@@ -45,7 +45,7 @@ progress:
 - **Phase:** 3 — Cost-Effective AI Runtime (+ Persona seed)
 - **Plan:** Not started
 - **Status:** Ready to plan
-- **Progress:** 0/19 phases complete · 0/19 plans written · 220/220 requirements mapped ([█████████░] 94% coverage).
+- **Progress:** 2/19 phases complete · 17/17 plans written · 220/220 requirements mapped ([████████████████████] 100% coverage).
 
 ---
 
@@ -97,6 +97,10 @@ All inherited decisions are **— Pending** (awaiting first implementation to va
 | 15 | Phase-1 wxt.config.ts permissions DEVIATE from Appendix G: authoritative Phase-1 set = ['sidePanel','storage','tabs']; cookies/scripting/contextMenus→Phase 17, alarms/notifications→when used, unlimitedStorage→Phase 2, declarativeNetRequest→never (v0.1) | `01-CONTEXT.md` D-19a (REQ-R21 / §16.4 / ADR-STACK-02) | Accepted 2026-08-19 |
 | 16 | Entrypoints KEPT at root `entrypoints/` (WXT default; no migration to src/entrypoints/); content-script path shape normalized to `entrypoints/content/core.content.ts` (directory form, ISOLATED); MAIN-world servicenow content script → Phase 17 | `01-CONTEXT.md` D-07a (§5.1 / §6.2 / Appendix G) | Accepted 2026-08-19 |
 | 17 | Phase-1 `strict:true` lands via `@ts-expect-error NP-STRICT` sweep; verify:phase-1 is `tsc --noEmit` (noEmitOnError is a no-op and NOT relied upon); NP-STRICT ceiling tracked → reduce to 0 in Phase 2-3 | `01-CONTEXT.md` D-21 (§7.8 / §24 / §0.5.1) | Accepted 2026-08-19 |
+| 18 | NP-STRICT ceiling reduced to 0 in Phase 2 (no `@ts-expect-error NP-STRICT` markers remain) | Phase 2 execution | Validated 2026-08-24 |
+| 19 | `isPrimaryWriter()` delegates to WorkspaceElection (Phase-1 stub removed); election-gated journaled persist is the production path (D-24/D-31) | 02-07/02-08/02-09 | Validated 2026-08-24 |
+| 20 | `recoverWorkspaceJournal` re-applies current `np_workspace` at boot (never empty reconstruction); `update-workspace` journal steps registered at boot | 02-08 (CR-01) | Validated 2026-08-24 |
+| 21 | Election heartbeat published for primary/solo surfaces via `notifyWorkspaceHeartbeat` (was zero call sites — tie-break dead); standalone-wins handoff verified by production-tick two-surface test | 02-09 (CR-02) | Validated 2026-08-24 |
 ---
 
 ## Accumulated Context — Open Questions / Blockers
@@ -116,13 +120,13 @@ All inherited decisions are **— Pending** (awaiting first implementation to va
 
 ## Session Continuity
 
-**Last session:** 2026-08-24T05:44:10.018Z
-**Stopped at:** Completed 02-05-PLAN.md
+**Last session:** 2026-08-24T22:40:00Z
+**Stopped at:** Phase 2 complete — 9/9 plans (incl. gap plans 02-08/02-09), verification passed, UAT 1/1 passed, security verified. Ready to plan Phase 3.
 **Resume file:** None
 
-- **Last action:** Phase-1 context review applied — 01-CONTEXT.md patched (B1 strict/noEmitOnError, B2 permissions + new D-19a, B3 entrypoint location + new D-07a, A1-A5 theme key/background/Cmd+K/endpoint/version). STATE.md decisions + watch items updated to match.
-- **Last updated:** 2026-08-19 after initialization.
-- **Resume with:** `/gsd-plan-phase 1` (Phase 1 plan generation).
+- **Last action:** Phase 2 completed end-to-end: gap closure (CR-01 crash recovery + CR-02 election heartbeat), re-verification passed (5/5 truths), code review (2 CRITICALs → 2 blockers → closed), security audit (42 threats closed, threats_open 0), UAT 1/1 pass. Also fixed a live runtime bug (`useApp()` outside `<AntdApp>` provider in sidepanel boot) found during UAT.
+- **Last updated:** 2026-08-24 after Phase 2 completion.
+- **Resume with:** `/gsd-plan-phase 3` (Phase 3 planning).
 
 ---
 

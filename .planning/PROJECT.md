@@ -21,13 +21,13 @@ AI chat and a personal knowledge base that work together, locally-first, so a su
 - ✓ AI provider service: SSE streaming, model discovery, simulated fallback — existing
 - ✓ Registries: commands, keymaps, addons, sidepanel/full-app pages — existing
 - ✓ Theme system: Ant Design light/dark tokens + ThemeSync broadcast — existing
+- ✓ Storage, security, WriteJournal, workspace persistence (Phase 2) — encrypt-at-rest (KeyVault + EncryptedStorage AES-GCM-256), IndexedDB foundation (5 DBs + migrator + unlimitedStorage), WriteJournal + journaled election-gated persist, WorkspaceElection single-writer with published heartbeats, crash-safe boot recovery, NP-STRICT ceiling reduced to 0
 
 ### Active
 
 All Active requirements are hypotheses until shipped and validated. Full atomic requirement set lives in `.planning/REQUIREMENTS.md` (anchored to spec-native IDs); this list is the summary view.
 
 - [ ] MV3/WXT runtime + AntD shells + workspace handoff (Phase 1)
-- [ ] Storage, security, WriteJournal, workspace persistence (Phase 2)
 - [ ] Cost-effective AI runtime with persona (Phase 3)
 - [ ] Agent reliability and evidence (Phase 4)
 - [ ] Context-adaptive execution (Phase 5)
@@ -88,6 +88,11 @@ All Active requirements are hypotheses until shipped and validated. Full atomic 
 | One v0.1 milestone for all 19 phases | Single release target; PROJECT.md evolves as phases validate | — Pending |
 | Product spec is the single source of truth; planning artifacts never invent scope/paths/types | Prevents drift between planning docs and implementation reference | — Pending |
 | Phase 1 builds on existing scaffold, not rebuild | UI shells, stores, runtime, registries already exist and are mapped | — Pending |
+| Secrets at rest: AES-GCM-256 via WebCrypto (KeyVault + EncryptedStorage); `np_providers` ciphertext-only, `np_store` partialized | Closes the scaffold's "API keys stored plaintext" concern | Validated Phase 2 (2026-08-24) |
+| Single-writer workspace: `isPrimaryWriter()` delegates to WorkspaceElection CAS/heartbeat; journaled election-gated persist | Prevents cross-surface write conflicts and SW-suspension data loss | Validated Phase 2 (2026-08-24) |
+| Crash-safe boot recovery: `recoverWorkspaceJournal` re-applies current `np_workspace`; journal steps registered at boot | Boot replay must never reconstruct an empty placeholder (CR-01) | Validated Phase 2 (2026-08-24) |
+| Election heartbeat published for primary/solo surfaces (D-24 closed) | Zero-call-site defect made standalone-wins tie-break dead (CR-02) | Validated Phase 2 (2026-08-24) |
+| NP-STRICT ceiling reduced to 0 in Phase 2 | Type safety debt eliminated at the planned point | Validated Phase 2 (2026-08-24) |
 
 ## Evolution
 
@@ -107,4 +112,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-08-19 after initialization*
+*Last updated: 2026-08-24 after Phase 2*
