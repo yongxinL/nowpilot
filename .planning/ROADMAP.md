@@ -67,12 +67,12 @@
   5. Workspace state persists across page reload and cross-surface handoff (no message loss, no scroll jump).
 
 **Verification gate:** `pnpm run verify:phase-2` (§24).
-**Plans:** 1/7 plans executed (waves 1-4)
+**Plans:** 2/7 plans executed (waves 1-4)
 Plans:
 **Wave 1**
 
 - [x] 02-01-PLAN.md — Wave-0 test infra: idb/fake-indexeddb installs + tests/setup.ts (IndexedDB + chrome.storage.session harness)
-- [ ] 02-02-PLAN.md — Crypto foundation: KeyVault + EncryptedStorage + redactSensitive + np_store→np_providers migration + Options modal masking
+- [x] 02-02-PLAN.md — Crypto foundation: KeyVault + EncryptedStorage + redactSensitive + np_store→np_providers migration + Options modal masking
 - [ ] 02-03-PLAN.md — RateLimiter (token bucket) + Requester (UI fetch wrapper)
 
 **Wave 2** *(blocked on Wave 1 completion)*
@@ -374,7 +374,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. MV3/WXT Runtime + AntD Shells + Workspace Handoff | 0/8 | Planned | — |
-| 2. Storage, Security, WriteJournal, Workspace Persistence | 1/7 | In Progress|  |
+| 2. Storage, Security, WriteJournal, Workspace Persistence | 2/7 | In Progress|  |
 | 3. Cost-Effective AI Runtime (+ Persona seed) | 0/3 | Not started | — |
 | 4. Agent Reliability and Evidence | 0/2 | Not started | — |
 | 5. Context-Adaptive Execution | 0/2 | Not started | — |

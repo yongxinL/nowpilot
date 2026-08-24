@@ -5,13 +5,13 @@ milestone_name: milestone
 current_phase: 2
 current_phase_name: storage-security-writejournal-workspace-persistence
 status: executing
-stopped_at: Completed 02-01-PLAN.md
-last_updated: "2026-08-24T02:55:07.752Z"
+stopped_at: Completed 02-02-PLAN.md
+last_updated: "2026-08-24T03:11:09.075Z"
 progress:
   total_phases: 2
   completed_phases: 0
   total_plans: 16
-  completed_plans: 9
+  completed_plans: 10
 ---
 
 # NowPilot — Project State
@@ -43,9 +43,9 @@ progress:
 ## Current Position
 
 - **Phase:** 2 (storage-security-writejournal-workspace-persistence) — EXECUTING
-- **Plan:** 2 of 7
+- **Plan:** 3 of 7
 - **Status:** Ready to execute
-- **Progress:** 0/19 phases complete · 0/19 plans written · 220/220 requirements mapped ([██████░░░░] 56% coverage).
+- **Progress:** 0/19 phases complete · 0/19 plans written · 220/220 requirements mapped ([██████░░░░] 63% coverage).
 
 ---
 
@@ -69,6 +69,7 @@ progress:
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
 | Phase 02 P01 | 3m | 2 tasks | 4 files |
+| Phase 2 P2 | 11 | 3 tasks | 7 files |
 
 ## Accumulated Context — Decisions (inherited from PROJECT.md Key Decisions)
 
@@ -112,8 +113,8 @@ All inherited decisions are **— Pending** (awaiting first implementation to va
 
 ## Session Continuity
 
-**Last session:** 2026-08-24T02:55:07.732Z
-**Stopped at:** Completed 02-01-PLAN.md
+**Last session:** 2026-08-24T03:11:09.065Z
+**Stopped at:** Completed 02-02-PLAN.md
 **Resume file:** None
 
 - **Last action:** Phase-1 context review applied — 01-CONTEXT.md patched (B1 strict/noEmitOnError, B2 permissions + new D-19a, B3 entrypoint location + new D-07a, A1-A5 theme key/background/Cmd+K/endpoint/version). STATE.md decisions + watch items updated to match.
@@ -135,3 +136,9 @@ This will produce `Phase-01-*.md` plans under `.planning/phases/01-mv3-wxt-runti
 ---
 
 *Last updated: 2026-08-19 after initialization*
+
+## Decisions
+
+- [Phase ?]: PBKDF2 material = base64(installSecret) + ':' + extensionId — deterministic encoding locked at planning time per 02-RESEARCH.md note on §15.2 concatenation input. Documented in code comment.
+- [Phase ?]: D-28 decrypt-on-read: in-memory config keeps plaintext (A6) for Phase-1 consumers; only persisted blobs are encrypted. hydrateProviderSecrets populates ONLY where the in-memory field is empty (user input wins).
+- [Phase ?]: No-false-success UI contract (UI-SPEC E1 error row): handleSaveProviderModal awaits persistProviderConfigEncrypted first; on throw, modal stays open, no success toast, error to console/ErrorStore only.
