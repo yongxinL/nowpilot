@@ -69,17 +69,40 @@ describe('WorkspaceStore', () => {
   });
 });
 
-describe('isPrimaryWriter() predicate (D-16, REQ-R05)', () => {
-  // Phase 1 contract: always returns true. Phase 2 will swap in real
-  // election semantics — see WorkspaceStore.ts swap-point comment.
+describe('isPrimaryWriter() predicate (D-16, D-24, REQ-R05)', () => {
+  // Phase-2 contract: isPrimaryWriter is a pure delegation to the
+  // WorkspaceElection module's instance-level predicate (D-24). Returns
+  // true iff the currently active election state is 'primary' or
+  // 'solo', false otherwise (including when no election instance has
+  // been started).
 
-  it('returns true when called with no arguments', () => {
+  beforeEach(async () => {
+    const { __test__ } = await import('../../../src/core/workspace/WorkspaceElection');
+    __test__.resetElectionState();
+    // Clear the session record so a prior test's election record
+    // (different tabId) is not read as a foreign "fresh" record on
+    // the next startElection call (would cause false demotion to
+    // secondary).
+    const sessionMap = (globalThis as any).__chromeSessionMap as Map<string, string>;
+    sessionMap?.clear();
+  });
+
+  it('returns false when no election instance is active', () => {
+    expect(isPrimaryWriter()).toBe(false);
+  });
+
+  it('returns true once an election instance has been started (solo state)', async () => {
+    const { startElection } = await import('../../../src/core/workspace/WorkspaceElection');
+    await startElection('sidepanel');
     expect(isPrimaryWriter()).toBe(true);
   });
 
-  it('returns true on a second call (proves the stub is not stateful)', () => {
+  it('returns false after the election instance is disposed', async () => {
+    const { startElection } = await import('../../../src/core/workspace/WorkspaceElection');
+    const instance = await startElection('sidepanel');
     expect(isPrimaryWriter()).toBe(true);
-    expect(isPrimaryWriter()).toBe(true);
+    instance.dispose();
+    expect(isPrimaryWriter()).toBe(false);
   });
 });
 

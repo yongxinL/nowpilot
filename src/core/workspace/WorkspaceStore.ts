@@ -2,21 +2,26 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import { chromeStorageAdapter } from '../theme/chromeStorageAdapter';
+import { isPrimaryWriter as electionIsPrimaryWriter } from './WorkspaceElection';
+import { createJournalingAdapter } from './journalingAdapter';
+import { openWriteJournalDB } from '../storage/WriteJournalDB';
+import { notifyWorkspaceUpdate } from './WorkspaceSync';
+import type { WriteJournalEntry } from '../../types/storage';
 
 export type ActiveSurface = 'sidepanel' | 'standalone';
 
 /**
- * Single-writer election predicate (D-16 / REQ-R05).
+ * Single-writer election predicate (D-16 / D-24 / REQ-R05).
  *
- * Phase 1: always `true` (interface frozen, no election yet).
- * Phase 2 implements real election semantics (background-SW
- * authoritative vs. tabs.query highest-id vs. BroadcastBus subscriber)
- * before MemoryEngine write paths gate on this — do NOT assume this
- * always returns true past Phase 2. SWAP POINT (Phase 2): replace with
- * leader-election over `np_workspace_primary` channel (CAS + heartbeat).
+ * Phase 2: a pure delegation to the WorkspaceElection module's
+ * instance-level predicate. The election is live — startElection() is
+ * called from the sidepanel/standalone boot wiring (plan 02-07) and the
+ * state machine owns the lifecycle. Returns true iff the currently
+ * active surface holds the primary slot (state 'primary' or 'solo'),
+ * false when 'secondary' or no instance has been started.
  */
 export function isPrimaryWriter(): boolean {
-  return true;
+  return electionIsPrimaryWriter();
 }
 
 export interface TabContext {
@@ -145,14 +150,36 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
         }),
     })),
     {
-      name: 'np_workspace_store',
+      name: 'np_workspace',
       // H1: WorkspaceStore previously had NO `storage:` key — zustand's
       // implicit default is a `localStorage`-backed adapter, which is
       // wrong for an extension: it (a) loses data when the service worker
       // is the only context writing, (b) bypasses the debounced
       // chromeStorageAdapter that useExtensionStore + ThemeStore now
       // share. This line puts WorkspaceStore on the same choke point.
-      storage: createJSONStorage(() => chromeStorageAdapter),
+      //
+      // Phase 2 (plan 02-07): the storage layer is now the
+      // createJournalingAdapter compose seam (D-31/D-34). The seam
+      // composes election-gating (D-27), WriteJournal journaling, and
+      // the D-22 debounce. Secondary surfaces no-op setItem on this
+      // key; primary surfaces run the journaled persist through the
+      // real production path. The legacy np_workspace_store key is
+      // lifted once by the adapter's getItem path.
+      storage: createJSONStorage(() =>
+        createJournalingAdapter({
+          inner: chromeStorageAdapter,
+          isPrimary: isPrimaryWriter,
+          putEntry: async (e: WriteJournalEntry) => {
+            const db = await openWriteJournalDB();
+            await db.put('entries', e);
+          },
+          persistEntry: async (e: WriteJournalEntry) => {
+            const db = await openWriteJournalDB();
+            await db.put('entries', e);
+          },
+          emitUpdate: notifyWorkspaceUpdate,
+        }),
+      ),
       partialize: (state) => ({
         workspaceId: state.workspaceId,
         conversationId: state.conversationId,
