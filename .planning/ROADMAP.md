@@ -67,7 +67,7 @@
   5. Workspace state persists across page reload and cross-surface handoff (no message loss, no scroll jump).
 
 **Verification gate:** `pnpm run verify:phase-2` (§24).
-**Plans:** 7/7 plans executed (waves 1-4)
+**Plans:** 9/9 plans executed (7 main + 2 gap closure, waves 1-4 + gap waves 1-2)
 Plans:
 **Wave 1**
 
@@ -87,6 +87,13 @@ Plans:
 **Wave 4** *(blocked on Wave 3 completion)*
 
 - [x] 02-07-PLAN.md — WorkspaceStore integration + boot wiring + WorkspacePersistence test
+
+**Gap closure** *(executed via `/gsd-execute-phase 02 --gaps-only`)*
+
+**Gap Wave 1**
+
+- [ ] 02-09-PLAN.md — GAP 2 (CR-02): publish WORKSPACE_HEARTBEAT from runHeartbeatTick + BroadcastBus surface seam + production-tick two-surface test
+- [ ] 02-08-PLAN.md — GAP 1 (CR-01): recoverWorkspaceJournal boot-recovery fix (re-apply current np_workspace) + corrected regression tests
 
 ### Phase 3: Cost-Effective AI Runtime (+ Persona seed)
 
