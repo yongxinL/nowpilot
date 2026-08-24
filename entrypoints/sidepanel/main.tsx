@@ -11,7 +11,105 @@ import { useWorkspaceStore } from '../../src/core/workspace/WorkspaceStore';
 import { registerSidepanelCommands } from '../../src/core/commands/registerWorkspaceCommands';
 import { applyThemeToSync } from '../../src/core/theme/ThemeSync';
 import { debugLog } from '../../src/core/log/debugLog';
+import { bootstrap as bootstrapIDB } from '../../src/core/storage/IndexedDBMigrator';
+import {
+  recoverJournal,
+  isSupportedOperation,
+  getJournalSteps,
+  createWorkspaceWriteSteps,
+} from '../../src/core/storage/WriteJournal';
+import { openWriteJournalDB } from '../../src/core/storage/WriteJournalDB';
+import { startElection } from '../../src/core/workspace/WorkspaceElection';
+import {
+  setStorageErrorReporter,
+  chromeStorageAdapter,
+} from '../../src/core/theme/chromeStorageAdapter';
+import { record as recordError } from '../../src/core/storage/ErrorStore';
+import {
+  migrateProviderSecrets,
+  hydrateProviderSecrets,
+} from '../../src/store/useExtensionStore';
 import '../../src/index.css';
+
+/**
+ * 02-07 Task 2 — Side Panel boot sequence (D-25, D-31, D-39, Open Q3):
+ *   1. IndexedDBMigrator.bootstrap() — open all 5 production DBs
+ *   2. recoverJournal — replay any pending/applying update-workspace
+ *      entries from a previous SW kill
+ *   3. Hydrate WorkspaceStore (zustand persist rehydrate)
+ *   4. startElection('sidepanel') — exactly one instance per surface
+ *   5. setStorageErrorReporter — ErrorStore.record + debugLog
+ *   6. Provider migration + hydration (decrypt-on-read)
+ */
+async function bootSidepanel(): Promise<void> {
+  try {
+    await bootstrapIDB();
+
+    const journalDb = await openWriteJournalDB();
+    await recoverJournal(
+      async () => await journalDb.getAll('entries'),
+      async (entry) => {
+        if (!isSupportedOperation(entry.operation)) {
+          debugLog('WRITE_JOURNAL_REPLAY_SKIP', `unsupported op ${entry.operation}`, {
+            id: entry.id,
+          });
+          return;
+        }
+        const stepFactory = createWorkspaceWriteSteps({
+          write: async (name, value) => {
+            await chromeStorageAdapter.setItem(name, value);
+          },
+          remove: async (name) => {
+            await chromeStorageAdapter.removeItem(name);
+          },
+          emit: (workspaceId, conversationId) => {
+            // Replay-time broadcast — re-emit to bring any active
+            // mirror up to date after SW restart.
+            import('../../src/core/workspace/WorkspaceSync').then(({ notifyWorkspaceUpdate }) =>
+              notifyWorkspaceUpdate(workspaceId, conversationId),
+            );
+          },
+        });
+        const steps = getJournalSteps(entry.operation);
+        if (!steps) return;
+        const builder = stepFactory('np_workspace', JSON.stringify({
+          workspaceId: (entry as { workspaceId?: string }).workspaceId ?? '',
+          conversationId: (entry as { conversationId?: string | null }).conversationId ?? null,
+        }));
+        const { runJournaled } = await import('../../src/core/storage/WriteJournal');
+        await runJournaled(
+          entry,
+          builder,
+          async (e) => {
+            await journalDb.put('entries', e);
+          },
+        );
+      },
+    );
+
+    await useWorkspaceStore.persist.rehydrate();
+    await startElection('sidepanel');
+
+    setStorageErrorReporter((entry) => {
+      void recordError({
+        code: entry.code,
+        message: entry.message,
+        context: entry.context,
+      });
+      debugLog(entry.code, entry.message, entry.context);
+    });
+
+    await migrateProviderSecrets();
+    await hydrateProviderSecrets();
+  } catch (err) {
+    debugLog(
+      'WORKSPACE_BOOT_FAILED',
+      err instanceof Error ? err.message : String(err),
+    );
+  }
+}
+
+void bootSidepanel();
 
 const handleOpenOptions = () => {
   openOptions();

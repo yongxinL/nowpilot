@@ -9,7 +9,102 @@ import { ThemeProvider } from '../../src/components/ThemeProvider';
 import { registerStandaloneCommands } from '../../src/core/commands/registerWorkspaceCommands';
 import { openOptions } from '../../src/core/workspace/WorkspaceRouter';
 import { applyThemeToSync } from '../../src/core/theme/ThemeSync';
+import { bootstrap as bootstrapIDB } from '../../src/core/storage/IndexedDBMigrator';
+import { debugLog } from '../../src/core/log/debugLog';
+import { useWorkspaceStore } from '../../src/core/workspace/WorkspaceStore';
+import {
+  recoverJournal,
+  isSupportedOperation,
+  getJournalSteps,
+  createWorkspaceWriteSteps,
+  runJournaled,
+} from '../../src/core/storage/WriteJournal';
+import { openWriteJournalDB } from '../../src/core/storage/WriteJournalDB';
+import { startElection } from '../../src/core/workspace/WorkspaceElection';
+import {
+  setStorageErrorReporter,
+  chromeStorageAdapter,
+} from '../../src/core/theme/chromeStorageAdapter';
+import { record as recordError } from '../../src/core/storage/ErrorStore';
+import {
+  migrateProviderSecrets,
+  hydrateProviderSecrets,
+} from '../../src/store/useExtensionStore';
 import '../../src/index.css';
+
+/**
+ * 02-07 Task 2 — Standalone boot sequence (D-25, D-31, D-39, Open Q3):
+ *   1. IndexedDBMigrator.bootstrap() — open all 5 production DBs
+ *   2. recoverJournal — replay any pending/applying update-workspace entries
+ *   3. Hydrate WorkspaceStore (zustand persist rehydrate)
+ *   4. startElection('standalone') — exactly one instance per surface
+ *   5. setStorageErrorReporter — ErrorStore.record + debugLog
+ *   6. Provider migration + hydration (decrypt-on-read) — Standalone
+ *      owns the canonical bootstrap (per plan 02-07's "established
+ *      Standalone bootstrap" path; Options is read-only)
+ */
+async function bootStandalone(): Promise<void> {
+  try {
+    await bootstrapIDB();
+
+    const journalDb = await openWriteJournalDB();
+    await recoverJournal(
+      async () => await journalDb.getAll('entries'),
+      async (entry) => {
+        if (!isSupportedOperation(entry.operation)) {
+          debugLog('WRITE_JOURNAL_REPLAY_SKIP', `unsupported op ${entry.operation}`, {
+            id: entry.id,
+          });
+          return;
+        }
+        const steps = getJournalSteps(entry.operation);
+        if (!steps) return;
+        const builder = createWorkspaceWriteSteps({
+          write: async (name, value) => {
+            await chromeStorageAdapter.setItem(name, value);
+          },
+          remove: async (name) => {
+            await chromeStorageAdapter.removeItem(name);
+          },
+          emit: (workspaceId, conversationId) => {
+            import('../../src/core/workspace/WorkspaceSync').then(
+              ({ notifyWorkspaceUpdate }) =>
+                notifyWorkspaceUpdate(workspaceId, conversationId),
+            );
+          },
+        })('np_workspace', JSON.stringify({
+          workspaceId: (entry as { workspaceId?: string }).workspaceId ?? '',
+          conversationId: (entry as { conversationId?: string | null }).conversationId ?? null,
+        }));
+        await runJournaled(entry, builder, async (e) => {
+          await journalDb.put('entries', e);
+        });
+      },
+    );
+
+    await useWorkspaceStore.persist.rehydrate();
+    await startElection('standalone');
+
+    setStorageErrorReporter((entry) => {
+      void recordError({
+        code: entry.code,
+        message: entry.message,
+        context: entry.context,
+      });
+      debugLog(entry.code, entry.message, entry.context);
+    });
+
+    await migrateProviderSecrets();
+    await hydrateProviderSecrets();
+  } catch (err) {
+    debugLog(
+      'WORKSPACE_BOOT_FAILED',
+      err instanceof Error ? err.message : String(err),
+    );
+  }
+}
+
+void bootStandalone();
 
 const handleOpenOptions = () => {
   openOptions();

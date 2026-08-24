@@ -16,6 +16,7 @@ import { MirrorBanner } from '../common/MirrorBanner';
 import { useExtensionStore } from '../../store/useExtensionStore';
 import { useWorkspaceStore } from '../../core/workspace/WorkspaceStore';
 import { onWorkspaceSync } from '../../core/workspace/WorkspaceSync';
+import { getState as getElectionState, isPrimaryWriter } from '../../core/workspace/WorkspaceElection';
 import { PromptItem } from '../../types';
 
 interface SidepanelChatProps {
@@ -200,11 +201,14 @@ export const SidepanelChat: React.FC<SidepanelChatProps> = ({
     // next Side Panel mount.
   };
 
-  // D-05 / REQ-F05: subscribe to WORKSPACE_HANDOFF so the Side Panel can
-  // demote to a read-only mirror when the Standalone view takes primary
-  // authorship. Only matches when the broadcast carries the same
-  // workspaceId — a stale handoff for a different workspace must NOT
-  // invoke mirror mode here.
+  // D-05 / REQ-F05 / D-24: mirror trigger broadened — the Side Panel
+  // shows the mirror banner whenever the election reports secondary
+  // (either via explicit WORKSPACE_HANDOFF broadcast OR via election
+  // demotion when a higher-priority foreign surface appears). The
+  // WORKSPACE_HANDOFF path stays for the legacy primary-was-here
+  // signal; the isPrimaryWriter() path catches election-only demotions
+  // (e.g. a Standalone surface taking priority without broadcasting
+  // WORKSPACE_HANDOFF).
   useEffect(() => {
     const unsubscribe = onWorkspaceSync((msg) => {
       if (msg.type !== 'WORKSPACE_HANDOFF') return;
@@ -214,6 +218,26 @@ export const SidepanelChat: React.FC<SidepanelChatProps> = ({
       }
     });
     return unsubscribe;
+  }, []);
+
+  // D-24 / D-27: subscribe to election state changes — flip mirrored to
+  // true the moment we lose primary status, false the moment we regain
+  // it (via CAS re-election triggered by the MirrorBanner refocus).
+  useEffect(() => {
+    const id = setInterval(() => {
+      const state = getElectionState();
+      if (state.state === 'secondary') {
+        setMirrored(true);
+      } else if (state.state === 'primary' || state.state === 'solo') {
+        // Clear only if we actually have primary status. Election errors
+        // do not flip us back to primary — keep the banner visible until
+        // the user explicitly refocuses.
+        if (isPrimaryWriter()) {
+          setMirrored(false);
+        }
+      }
+    }, 500);
+    return () => clearInterval(id);
   }, []);
 
   useEffect(() => {
@@ -335,9 +359,23 @@ export const SidepanelChat: React.FC<SidepanelChatProps> = ({
       {/* D-05: Mirror banner appears between header and message area when
           the Side Panel has been demoted to a read-only mirror after
           WORKSPACE_HANDOFF. The Standalone surface never renders this —
-          Standalone IS the primary surface. */}
+          Standalone IS the primary surface.
+          D-24: onRefocus triggers a CAS re-election (dispose current
+          instance + startElection) — if we win the CAS we transition back
+          to primary/solo and the banner unmounts. */}
       {!isStandalone && mirrored && (
-        <MirrorBanner onRefocus={() => setMirrored(false)} />
+        <MirrorBanner
+          onRefocus={async () => {
+            const election = await import(
+              '../../core/workspace/WorkspaceElection'
+            );
+            const { __test__: electionTest } = election;
+            const current = electionTest.getActiveInstance();
+            if (current) current.dispose();
+            await election.startElection('sidepanel');
+            setMirrored(false);
+          }}
+        />
       )}
 
       {/* Main Chat Flow Container */}
