@@ -67,7 +67,7 @@
   5. Workspace state persists across page reload and cross-surface handoff (no message loss, no scroll jump).
 
 **Verification gate:** `pnpm run verify:phase-2` (§24).
-**Plans:** 3/7 plans executed (waves 1-4)
+**Plans:** 4/7 plans executed (waves 1-4)
 Plans:
 **Wave 1**
 
@@ -77,7 +77,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 02-04-PLAN.md — IndexedDBMigrator + 5 DBs at v1 + ErrorStore + unlimitedStorage permission
+- [x] 02-04-PLAN.md — IndexedDBMigrator + 5 DBs at v1 + ErrorStore + unlimitedStorage permission
 - [ ] 02-06-PLAN.md — WorkspaceElection (CAS/heartbeat) + adapter STORAGE_QUOTA/STORAGE_RATE_LIMIT surfacing
 
 **Wave 3** *(blocked on Wave 2 completion)*
@@ -374,7 +374,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. MV3/WXT Runtime + AntD Shells + Workspace Handoff | 0/8 | Planned | — |
-| 2. Storage, Security, WriteJournal, Workspace Persistence | 3/7 | In Progress|  |
+| 2. Storage, Security, WriteJournal, Workspace Persistence | 4/7 | In Progress|  |
 | 3. Cost-Effective AI Runtime (+ Persona seed) | 0/3 | Not started | — |
 | 4. Agent Reliability and Evidence | 0/2 | Not started | — |
 | 5. Context-Adaptive Execution | 0/2 | Not started | — |
