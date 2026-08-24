@@ -12,12 +12,7 @@ import { registerSidepanelCommands } from '../../src/core/commands/registerWorks
 import { applyThemeToSync } from '../../src/core/theme/ThemeSync';
 import { debugLog } from '../../src/core/log/debugLog';
 import { bootstrap as bootstrapIDB } from '../../src/core/storage/IndexedDBMigrator';
-import {
-  recoverJournal,
-  isSupportedOperation,
-  getJournalSteps,
-  createWorkspaceWriteSteps,
-} from '../../src/core/storage/WriteJournal';
+import { recoverWorkspaceJournal } from '../../src/core/storage/WriteJournal';
 import { openWriteJournalDB } from '../../src/core/storage/WriteJournalDB';
 import { startElection } from '../../src/core/workspace/WorkspaceElection';
 import {
@@ -46,49 +41,31 @@ async function bootSidepanel(): Promise<void> {
     await bootstrapIDB();
 
     const journalDb = await openWriteJournalDB();
-    await recoverJournal(
-      async () => await journalDb.getAll('entries'),
-      async (entry) => {
-        if (!isSupportedOperation(entry.operation)) {
-          debugLog('WRITE_JOURNAL_REPLAY_SKIP', `unsupported op ${entry.operation}`, {
-            id: entry.id,
-          });
-          return;
-        }
-        const stepFactory = createWorkspaceWriteSteps({
-          write: async (name, value) => {
-            await chromeStorageAdapter.setItem(name, value);
-          },
-          remove: async (name) => {
-            await chromeStorageAdapter.removeItem(name);
-          },
-          emit: (workspaceId, conversationId) => {
-            // Replay-time broadcast — re-emit to bring any active
-            // mirror up to date after SW restart.
-            import('../../src/core/workspace/WorkspaceSync').then(({ notifyWorkspaceUpdate }) =>
-              notifyWorkspaceUpdate(workspaceId, conversationId),
-            );
-          },
-        });
-        const steps = getJournalSteps(entry.operation);
-        if (!steps) return;
-        const builder = stepFactory('np_workspace', JSON.stringify({
-          workspaceId: (entry as { workspaceId?: string }).workspaceId ?? '',
-          conversationId: (entry as { conversationId?: string | null }).conversationId ?? null,
-        }));
-        const { runJournaled } = await import('../../src/core/storage/WriteJournal');
-        await runJournaled(
-          entry,
-          builder,
-          async (e) => {
-            await journalDb.put('entries', e);
-          },
+    await recoverWorkspaceJournal({
+      loadEntries: async () => await journalDb.getAll('entries'),
+      readCurrentWorkspace: async () => await chromeStorageAdapter.getItem('np_workspace'),
+      write: async (name, value) => {
+        await chromeStorageAdapter.setItem(name, value);
+      },
+      remove: async (name) => {
+        await chromeStorageAdapter.removeItem(name);
+      },
+      emit: (workspaceId, conversationId) => {
+        // Replay-time broadcast — re-emit to bring any active
+        // mirror up to date after SW restart.
+        import('../../src/core/workspace/WorkspaceSync').then(({ notifyWorkspaceUpdate }) =>
+          notifyWorkspaceUpdate(workspaceId, conversationId),
         );
       },
-    );
+      persistEntry: async (e) => {
+        await journalDb.put('entries', e);
+      },
+    });
 
     await useWorkspaceStore.persist.rehydrate();
-    await startElection('sidepanel');
+    await startElection('sidepanel', {
+      getWorkspaceId: () => useWorkspaceStore.getState().workspaceId,
+    });
 
     setStorageErrorReporter((entry) => {
       void recordError({
