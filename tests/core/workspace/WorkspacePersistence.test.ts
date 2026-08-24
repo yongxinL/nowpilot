@@ -284,41 +284,36 @@ describe('WorkspacePersistence — integration (02-07)', () => {
   });
 
   // --- 02-07-05: Journal recovery — pending update-workspace entry replayed ---
-  it('Test 5: a pending update-workspace entry is replayed by recoverJournal on boot (D-31)', async () => {
-    const { recoverJournal, getJournalSteps, isSupportedOperation } = await import(
-      '../../../src/core/storage/WriteJournal'
-    );
+  it('Test 5: a metadata-only pending update-workspace entry is replayed by recoverWorkspaceJournal, retaining the original np_workspace value (CR-01)', async () => {
+    const { recoverWorkspaceJournal, isSupportedOperation, __test__: journalTest } =
+      await import('../../../src/core/storage/WriteJournal');
     const { openWriteJournalDB } = await import(
       '../../../src/core/storage/WriteJournalDB'
     );
-    const { __test__: journalTest } = await import(
-      '../../../src/core/storage/WriteJournal'
-    );
-    const { chromeStorageAdapter } = await import(
+    const { chromeStorageAdapter, __test__: chromeTest } = await import(
       '../../../src/core/theme/chromeStorageAdapter'
+    );
+    const { notifyWorkspaceUpdate } = await import(
+      '../../../src/core/workspace/WorkspaceSync'
     );
 
     journalTest.resetJournalRegistry();
+    chromeTest.resetPendingState();
 
-    // Register the update-workspace step factory for replay
-    const { createWorkspaceWriteSteps } = await import(
-      '../../../src/core/storage/WriteJournal'
+    // Pre-seed the canonical value — a real persisted workspace before the
+    // crash (zustand-wrapped production shape).
+    await chromeStorageAdapter.setItem(
+      'np_workspace',
+      JSON.stringify({
+        state: { workspaceId: 'persist-real-ws', conversationId: 'persist-real-conv' },
+      }),
     );
-    const stepFactory = createWorkspaceWriteSteps({
-      write: async (name, value) => {
-        await chromeStorageAdapter.setItem(name, value);
-      },
-      remove: async (name) => {
-        await chromeStorageAdapter.removeItem(name);
-      },
-      emit: () => {
-        // no-op for replay test
-      },
-    });
 
-    // Inject a synthetic pending entry directly into WriteJournalDB
+    // Seed a metadata-only pending entry in WriteJournalDB — NO
+    // workspaceId/conversationId fields (the CR-01 root cause: the entry
+    // cannot carry them — D-33).
     const journalDb = await openWriteJournalDB();
-    const pendingId = 'pending-' + Date.now();
+    const pendingId = 'recovery-real-' + Date.now();
     await journalDb.put('entries', {
       id: pendingId,
       operation: 'update-workspace',
@@ -328,59 +323,41 @@ describe('WorkspacePersistence — integration (02-07)', () => {
       createdAt: Date.now(),
     });
 
-    // Register the steps + replay
-    const { registerJournalSteps, runJournaled } = await import(
-      '../../../src/core/storage/WriteJournal'
-    );
-    registerJournalSteps('update-workspace', [
-      {
-        name: 'write-np-workspace',
-        apply: async () => {
-          await chromeStorageAdapter.setItem(
-            'np_workspace',
-            JSON.stringify({ workspaceId: 'recovered-ws', conversationId: null }),
-          );
-        },
-        rollback: async () => {
-          await chromeStorageAdapter.removeItem('np_workspace');
-        },
+    // Drive the REAL boot recovery path via recoverWorkspaceJournal with deps
+    // bound to chromeStorageAdapter + WriteJournalDB + notifyWorkspaceUpdate.
+    await recoverWorkspaceJournal({
+      loadEntries: async () => await journalDb.getAll('entries'),
+      readCurrentWorkspace: async () => await chromeStorageAdapter.getItem('np_workspace'),
+      write: async (name, value) => {
+        await chromeStorageAdapter.setItem(name, value);
       },
-      {
-        name: 'emit-workspace-updated',
-        apply: async () => undefined,
-        rollback: async () => undefined,
+      remove: async (name) => {
+        await chromeStorageAdapter.removeItem(name);
       },
-    ]);
-
-    // confirm the operation IS supported (factory may differ; we used
-    // the registered steps explicitly here)
-    expect(isSupportedOperation('update-workspace')).toBe(true);
-
-    await recoverJournal(
-      async () => await journalDb.getAll('entries'),
-      async (entry) => {
-        const steps = getJournalSteps(entry.operation);
-        if (!steps) return;
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const _factory = stepFactory;
-        await runJournaled(entry, steps, async (e) => {
-          await journalDb.put('entries', e);
-        });
+      emit: notifyWorkspaceUpdate,
+      persistEntry: async (e) => {
+        await journalDb.put('entries', e);
       },
-    );
+    });
 
-    // Wait for the debounced write to land
+    // Wait for the debounced write to land.
     await new Promise((r) => setTimeout(r, 400));
 
-    // np_workspace must now contain the recovered value
+    // np_workspace retains the ORIGINAL value (NOT overwritten with ''/null).
     const storageMap = (globalThis as any).__chromeStorageMap as Map<string, string>;
     const stored = storageMap.get('np_workspace');
     expect(stored).toBeDefined();
+    const parsed = JSON.parse(stored as string);
+    expect(parsed.state.workspaceId).toBe('persist-real-ws');
+    expect(parsed.state.conversationId).toBe('persist-real-conv');
 
-    // The pending entry must now be 'completed'
+    // The pending entry must now be 'completed'.
     const entries = await journalDb.getAll('entries');
     const recoveredEntry = entries.find((e) => e.id === pendingId);
     expect(recoveredEntry?.status).toBe('completed');
+
+    // update-workspace is now a supported operation (registration fixed).
+    expect(isSupportedOperation('update-workspace')).toBe(true);
   });
 
   // --- 02-07-06: Write-rate budget — heartbeats + journal + persists ≤ 30/min ---
