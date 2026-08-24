@@ -24,6 +24,7 @@ import {
 } from '@ant-design/icons';
 
 import { useExtensionStore } from '../../store/useExtensionStore';
+import { persistProviderConfigEncrypted } from '../../store/useExtensionStore';
 import { useThemeStore } from '../../core/theme/ThemeStore';
 import { COLOR_THEMES } from '../../core/theme/ThemeConfig';
 import { NowPilotAvatar } from '../common/NowPilotAvatar';
@@ -195,7 +196,13 @@ export const OptionsPage: React.FC = () => {
       models: [],
     };
 
-    setModalApiKey(detail.apiKey || '');
+    // D-28 / UI-SPEC E1 partial: never pre-fill the stored (decrypted)
+    // API key. The in-memory `detail.apiKey` is plaintext hydrated from
+    // np_providers at boot (Phase 2 §A6), but the modal's editable
+    // field MUST start as '' every time so the saved key never appears
+    // in the value/placeholder/aria-label of the input. Saved-key
+    // detection drives the masked placeholder instead.
+    setModalApiKey('');
     setModalUseCustomProxy(detail.useCustomProxy ?? (providerId === 'openai' || providerId === 'ollama'));
     setModalProxyUrl(detail.proxyUrl || PROVIDER_INFO[providerId].defaultProxy);
     setModalModels(detail.models || []);
@@ -207,34 +214,56 @@ export const OptionsPage: React.FC = () => {
     setProviderModalOpen(true);
   };
 
-  const handleSaveProviderModal = () => {
+  const handleSaveProviderModal = async () => {
     if (!activeModalProviderId) return;
 
     const currentDetail = config.providers?.[activeModalProviderId];
-    const isConfigured = modalApiKey.trim().length > 0 || modalModels.length > 0;
+    const trimmedApiKey = modalApiKey.trim();
+    const effectiveApiKey = trimmedApiKey.length > 0 ? modalApiKey : (currentDetail?.apiKey ?? '');
+    const isConfigured = effectiveApiKey.length > 0 || modalModels.length > 0;
 
-    const updatedProviders = {
-      ...config.providers,
-      [activeModalProviderId]: {
-        id: activeModalProviderId,
-        name: PROVIDER_INFO[activeModalProviderId].name,
-        isConfigured,
-        enabled: currentDetail ? currentDetail.enabled : isConfigured,
-        apiKey: modalApiKey,
-        useCustomProxy: modalUseCustomProxy,
-        proxyUrl: modalProxyUrl,
-        models: modalModels,
+    const updatedConfig = {
+      ...config,
+      providers: {
+        ...config.providers,
+        [activeModalProviderId]: {
+          id: activeModalProviderId,
+          name: PROVIDER_INFO[activeModalProviderId].name,
+          isConfigured,
+          enabled: currentDetail ? currentDetail.enabled : isConfigured,
+          apiKey: effectiveApiKey,
+          useCustomProxy: modalUseCustomProxy,
+          proxyUrl: modalProxyUrl,
+          models: modalModels,
+        },
       },
+      openAiKey: activeModalProviderId === 'openai' ? effectiveApiKey : config.openAiKey,
+      openAiBaseUrl: activeModalProviderId === 'openai' ? modalProxyUrl : config.openAiBaseUrl,
     };
 
-    updateConfig({
-      providers: updatedProviders,
-      openAiKey: activeModalProviderId === 'openai' ? modalApiKey : config.openAiKey,
-      openAiBaseUrl: activeModalProviderId === 'openai' ? modalProxyUrl : config.openAiBaseUrl,
-    });
+    try {
+      // D-28: persist the encrypted np_providers FIRST (write-first);
+      // updateConfig's partialize strip runs synchronously and writes a
+      // plaintext-stripped np_store. Throwing here prevents claiming
+      // false success (UI-SPEC E1 error row).
+      await persistProviderConfigEncrypted(updatedConfig);
+      updateConfig({
+        providers: updatedConfig.providers,
+        openAiKey: updatedConfig.openAiKey,
+        openAiBaseUrl: updatedConfig.openAiBaseUrl,
+      });
 
-    setProviderModalOpen(false);
-    antMessage.success(`${PROVIDER_INFO[activeModalProviderId].name} settings saved`);
+      setProviderModalOpen(false);
+      antMessage.success(`${PROVIDER_INFO[activeModalProviderId].name} settings saved`);
+    } catch (err) {
+      // STORAGE_QUOTA / STORAGE_RATE_LIMIT / etc. — surface to
+      // ErrorStore (via debugLog) but never to the user (UI-SPEC E1
+      // error row: "no false success"). The modal stays open so the
+      // user can retry; ErrorStore/debugLog keep the diagnostic.
+      // eslint-disable-next-line no-console
+      console.error('Provider save failed:', err instanceof Error ? err.message : String(err));
+      // No success toast.
+    }
   };
 
   const handleToggleProviderEnabled = (providerId: CustomProviderId, enabled: boolean) => {
@@ -257,14 +286,21 @@ export const OptionsPage: React.FC = () => {
     if (!activeModalProviderId) return;
     setModalCheckingConn(true);
     try {
-      // D-12 / D-03: real connection test. The previous 1s setTimeout
-      // unconditionally reported success and silently populated defaults
-      // — that masked broken credentials / wrong endpoint. testProviderConnection
-      // surfaces the real success / failure; on success we still seed the
-      // model list with defaults if the user hasn't customised it yet.
+      // D-12 / D-03: real connection test. When the modal field is empty
+      // (the user opened the modal for a provider with a saved key and
+      // did not re-type) we pass the stored in-memory key to the
+      // connection check transiently — it never lands in modalApiKey or
+      // any rendered attribute (UI-SPEC E1 partial + backstop). The
+      // stored value comes from the in-memory `config.providers.*.apiKey`
+      // populated by `hydrateProviderSecrets()` at boot (Phase 2 Task 2).
+      const currentDetail = config.providers?.[activeModalProviderId];
+      const keyToTest = modalApiKey.trim().length > 0
+        ? modalApiKey
+        : (currentDetail?.apiKey || undefined);
+
       const result = await testProviderConnection(
         activeModalProviderId,
-        modalApiKey || undefined,
+        keyToTest,
         modalUseCustomProxy && modalProxyUrl ? modalProxyUrl : undefined,
       );
       if (result.ok) {
@@ -1492,7 +1528,7 @@ export const OptionsPage: React.FC = () => {
         open={providerModalOpen}
         onCancel={() => setProviderModalOpen(false)}
         onOk={handleSaveProviderModal}
-        okText="Save"
+        okText="Save Provider"
         okButtonProps={{ style: { backgroundColor: '#7c3aed' } }}
         title={
           <span style={{
@@ -1524,7 +1560,17 @@ export const OptionsPage: React.FC = () => {
               API key
             </label>
             <Input.Password
-              placeholder="Enter your API key"
+              placeholder={(() => {
+                // UI-SPEC E1 partial: a provider with a stored (encrypted) key
+                // renders the masked placeholder •••••••••••••••• — the
+                // decrypted value is NEVER placed into the field's value,
+                // placeholder, aria-label, or hint. D-28 / §8.7 / mockup line 366.
+                const currentDetail = activeModalProviderId
+                  ? config.providers?.[activeModalProviderId]
+                  : null;
+                const hasSavedKey = !!currentDetail && typeof currentDetail.apiKey === 'string' && currentDetail.apiKey.length > 0;
+                return hasSavedKey ? '••••••••••••••••' : 'Enter your API key';
+              })()}
               value={modalApiKey}
               onChange={e => setModalApiKey(e.target.value)}
               iconRender={visible => (visible ? <EyeOutlined /> : <EyeInvisibleOutlined />)}
@@ -1594,7 +1640,7 @@ export const OptionsPage: React.FC = () => {
                 style={{ backgroundColor: '#7c3aed', borderRadius: 8 }}
                 size="small"
               >
-                Check
+Check Connection
               </Button>
             </div>
           </div>
