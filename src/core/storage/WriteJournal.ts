@@ -251,6 +251,91 @@ export function createWorkspaceWriteSteps(deps: WorkspaceWriteStepsDeps): Worksp
   };
 }
 
+/**
+ * Dependencies for `recoverWorkspaceJournal` — the boot crash-recovery path.
+ * Each field is injected so the helper stays decoupled from the specific
+ * chrome.storage adapter / WriteJournalDB handle / broadcast surface.
+ *
+ * CR-01 fix contract: recovery must re-apply the CURRENT stored np_workspace
+ * value (via `readCurrentWorkspace`), never reconstruct a value from the
+ * metadata-only `WriteJournalEntry` fields (those carry no workspaceId /
+ * conversationId — D-33).
+ */
+export interface RecoverWorkspaceDeps {
+  /** Read all journal entries (bound to WriteJournalDB.getAll('entries')). */
+  loadEntries: () => Promise<WriteJournalEntry[]>;
+  /** Read the CURRENT np_workspace blob (bound to chromeStorageAdapter.getItem). */
+  readCurrentWorkspace: () => Promise<string | null>;
+  /** Write np_workspace (bound to chromeStorageAdapter.setItem — debounced). */
+  write: (name: string, value: string) => Promise<void>;
+  /** Remove np_workspace (bound to chromeStorageAdapter.removeItem). */
+  remove: (name: string) => Promise<void>;
+  /** WORKSPACE_UPDATED broadcast publish (bound to notifyWorkspaceUpdate). */
+  emit: (workspaceId: string, conversationId: string | null) => void;
+  /** Persist a journal entry (bound to WriteJournalDB.put). */
+  persistEntry: (e: WriteJournalEntry) => Promise<void>;
+}
+
+/**
+ * O.11 boot crash-recovery — the REAL production path (CR-01 fix).
+ *
+ * Replays every pending/applying `update-workspace` entry by RE-APPLYING the
+ * CURRENT stored np_workspace blob verbatim, instead of reconstructing a
+ * value from `entry.workspaceId` / `entry.conversationId` (which never exist
+ * on the metadata-only WriteJournalEntry — D-33). The prior inline boot
+ * replay's `?? ''` / `?? null` fallbacks overwrote np_workspace with an empty
+ * placeholder on every crash recovery; this helper eliminates that data-loss
+ * vector.
+ *
+ * Two compounding defects are fixed here:
+ *   (a) value is re-applied from storage, not reconstructed from absent fields.
+ *   (b) the `update-workspace` journal steps are registered at boot (idempotent
+ *       registry set), so `isSupportedOperation('update-workspace')` returns
+ *       true and recovery actually replays (previously nothing registered them
+ *       in production, so the D-32 gate always skipped).
+ */
+export async function recoverWorkspaceJournal(deps: RecoverWorkspaceDeps): Promise<void> {
+  // 1. FIRST register the update-workspace steps so the D-32 gate passes in
+  //    production (CR-01 defect b). Idempotent — the registry Map replaces
+  //    the prior list on repeated calls. The initial '' value is irrelevant
+  //    for the registry; each replayed entry builds its own steps with the
+  //    current value below.
+  registerJournalSteps(
+    'update-workspace',
+    createWorkspaceWriteSteps({
+      write: deps.write,
+      remove: deps.remove,
+      emit: deps.emit,
+    })('np_workspace', ''),
+  );
+
+  // 2. Replay every pending/applying entry.
+  await recoverJournal(deps.loadEntries, async (entry) => {
+    // D-32 replay contract — skip unsupported ops with debugLog (keep the
+    // existing code path).
+    if (!isSupportedOperation(entry.operation)) {
+      debugLog('WRITE_JOURNAL_REPLAY_SKIP', `unsupported op ${entry.operation}`, {
+        id: entry.id,
+      });
+      return;
+    }
+
+    // Read the CURRENT value (CR-01 fix — never reconstruct from entry fields).
+    const current = await deps.readCurrentWorkspace();
+    const value =
+      current !== null ? current : JSON.stringify({ workspaceId: '', conversationId: null });
+
+    // Build per-entry steps with the CURRENT value.
+    const steps = createWorkspaceWriteSteps({
+      write: deps.write,
+      remove: deps.remove,
+      emit: deps.emit,
+    })('np_workspace', value);
+
+    await runJournaled(entry, steps, deps.persistEntry);
+  });
+}
+
 // --- Test seam --------------------------------------------------------------
 
 export const __test__ = {
