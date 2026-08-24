@@ -39,8 +39,24 @@ const { Text } = Typography;
 
 const MODE_CYCLE: ThemeMode[] = ['light', 'dark', 'auto'];
 
+const getViewFromUrl = (): 'workspace' | 'sidepanel' | 'options' => {
+  if (typeof window === 'undefined') return 'workspace';
+  const path = window.location.pathname.toLowerCase();
+  const search = window.location.search.toLowerCase();
+  if (path.includes('options') || search.includes('options') || search.includes('tab=options')) {
+    return 'options';
+  }
+  if (path.includes('sidepanel') || search.includes('sidepanel') || search.includes('tab=sidepanel')) {
+    return 'sidepanel';
+  }
+  if (path.includes('standalone') || path.includes('workspace') || search.includes('standalone') || search.includes('workspace')) {
+    return 'workspace';
+  }
+  return 'workspace';
+};
+
 const AppShell: React.FC = () => {
-  const [activeView, setActiveView] = useState<'workspace' | 'sidepanel' | 'options'>('workspace');
+  const [activeView, setActiveView] = useState<'workspace' | 'sidepanel' | 'options'>(getViewFromUrl);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const { token } = theme.useToken();
 

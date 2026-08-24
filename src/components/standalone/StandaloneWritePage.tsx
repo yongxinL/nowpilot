@@ -289,45 +289,47 @@ export const StandaloneWritePage: React.FC<StandaloneWritePageProps> = ({ onOpen
             fontFamily: 'var(--font-sans)',
           }}>
       {/* 1. Header Bar: Write / Reply Tabs & Write History Button */}
-      <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            paddingLeft: 32,
-            paddingRight: 32,
-            paddingTop: 20,
-            paddingBottom: 12,
-          }}>
-        <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 24,
-          }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingLeft: 32,
+          paddingRight: 32,
+          paddingTop: 24,
+          paddingBottom: 16,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
           <button
             type="button"
             onClick={() => setActiveTab('write')}
             style={{
               position: 'relative',
               paddingBottom: 4,
-              fontSize: 30,
+              fontSize: 32,
               fontWeight: 700,
               letterSpacing: '-0.01em',
               cursor: 'pointer',
-              transition: 'all 200ms ease',
-              color: activeTab === 'write' ? 'var(--foreground)' : 'var(--muted-foreground)',
+              transition: 'all 150ms ease',
+              border: 'none',
+              background: 'transparent',
+              color: activeTab === 'write' ? '#12171a' : '#8a99a4',
             }}
           >
             Write
             {activeTab === 'write' && (
-              <div style={{
-            position: 'absolute',
-            bottom: -4,
-            left: 0,
-            width: 32,
-            height: 3,
-            background: 'var(--card)',
-            borderRadius: 9999,
-          }} />
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: -6,
+                  left: 0,
+                  width: 34,
+                  height: 3.5,
+                  background: '#12171a',
+                  borderRadius: 2,
+                }}
+              />
             )}
           </button>
 
@@ -337,25 +339,29 @@ export const StandaloneWritePage: React.FC<StandaloneWritePageProps> = ({ onOpen
             style={{
               position: 'relative',
               paddingBottom: 4,
-              fontSize: 30,
+              fontSize: 32,
               fontWeight: 700,
               letterSpacing: '-0.01em',
               cursor: 'pointer',
-              transition: 'all 200ms ease',
-              color: activeTab === 'reply' ? 'var(--foreground)' : 'var(--muted-foreground)',
+              transition: 'all 150ms ease',
+              border: 'none',
+              background: 'transparent',
+              color: activeTab === 'reply' ? '#12171a' : '#8a99a4',
             }}
           >
             Reply
             {activeTab === 'reply' && (
-              <div style={{
-            position: 'absolute',
-            bottom: -4,
-            left: 0,
-            width: 32,
-            height: 3,
-            background: 'var(--card)',
-            borderRadius: 9999,
-          }} />
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: -6,
+                  left: 0,
+                  width: 34,
+                  height: 3.5,
+                  background: '#12171a',
+                  borderRadius: 2,
+                }}
+              />
             )}
           </button>
         </div>
@@ -365,36 +371,38 @@ export const StandaloneWritePage: React.FC<StandaloneWritePageProps> = ({ onOpen
             type="button"
             onClick={() => setHistoryDrawerOpen(true)}
             style={{
-            padding: 8,
-            color: 'var(--foreground)',
-            borderRadius: 8,
-            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
+              padding: 6,
+              color: '#12171a',
+              borderRadius: 8,
+              border: 'none',
+              background: 'transparent',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'color 150ms ease',
+            }}
           >
-            <ClockCircleOutlined style={{
-            fontSize: 20,
-          }} />
+            <ClockCircleOutlined style={{ fontSize: 22 }} />
           </button>
         </Tooltip>
       </div>
 
       {/* 2. Main 2-Column Content Area */}
-      <div style={{
-            flex: 1,
-            minHeight: 0,
-            overflowY: 'auto',
-            paddingLeft: 32,
-            paddingRight: 32,
-            paddingTop: 16,
-            paddingBottom: 16,
-            display: 'grid',
-            gridTemplateColumns: '1fr',
-            gap: 32,
-          }}>
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          overflowY: 'auto',
+          paddingLeft: 32,
+          paddingRight: 32,
+          paddingTop: 8,
+          paddingBottom: 24,
+          display: 'grid',
+          gridTemplateColumns: 'minmax(340px, 460px) minmax(360px, 1fr)',
+          gap: 48,
+        }}
+      >
         {/* Left Column: Prompt list, Model Selector + Format, Input Box */}
         <WriteInputPanel
           activeTab={activeTab}
@@ -408,8 +416,8 @@ export const StandaloneWritePage: React.FC<StandaloneWritePageProps> = ({ onOpen
           onSubmit={handleSubmit}
           isGenerating={isGenerating}
           prompts={activePromptNames}
-          selectedFormat={selectedFormat}
-          onSelectFormat={setSelectedFormat}
+          selectedPrompt={selectedFormat}
+          onSelectPrompt={setSelectedFormat}
           onOpenAddPrompt={() => setNewPromptModalOpen(true)}
           selectedModelId={config.selectedModel}
           onSelectModel={(m) => updateConfig({ selectedModel: m })}
@@ -444,56 +452,40 @@ export const StandaloneWritePage: React.FC<StandaloneWritePageProps> = ({ onOpen
       </div>
 
       {/* 3. Bottom Status Bar */}
-      <div style={{
-            paddingLeft: 32,
-            paddingRight: 32,
-            paddingTop: 12,
-            paddingBottom: 12,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            borderTopWidth: 1,
-            borderTopStyle: 'solid',
-            borderTopColor: 'var(--border)',
-            borderColor: 'var(--border)',
-            fontSize: 12,
-            color: 'var(--muted-foreground)',
-          }}>
-        <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-          }}>
+      <div
+        style={{
+          paddingLeft: 32,
+          paddingRight: 32,
+          paddingTop: 12,
+          paddingBottom: 12,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          borderTop: '1px solid #ebeff2',
+          fontSize: 12,
+          color: '#8a99a4',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span>{config.serviceProvider || 'Custom API Key'}</span>
-          <span style={{
-            width: 8,
-            height: 8,
-            borderRadius: 9999,
-            background: '#10b981',
-            display: 'inline-block',
-            boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
-          }} />
         </div>
 
-        <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            color: 'var(--muted-foreground)',
-          }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: '#8a99a4' }}>
           <Tooltip title="Help center">
             <button
               type="button"
               onClick={() => onOpenOptions?.()}
               style={{
-            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
-            padding: 4,
-            borderRadius: 6,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
+                padding: 4,
+                borderRadius: 6,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: 'none',
+                background: 'transparent',
+                color: '#8a99a4',
+              }}
             >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10"></circle>
@@ -507,14 +499,16 @@ export const StandaloneWritePage: React.FC<StandaloneWritePageProps> = ({ onOpen
               type="button"
               onClick={() => antMessage.info('Feedback support channel opened')}
               style={{
-            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
-            padding: 4,
-            borderRadius: 6,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
+                padding: 4,
+                borderRadius: 6,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: 'none',
+                background: 'transparent',
+                color: '#8a99a4',
+              }}
             >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <rect width="20" height="16" x="2" y="4" rx="2"></rect>

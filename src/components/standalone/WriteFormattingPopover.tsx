@@ -118,48 +118,31 @@ export const WriteFormattingPopover: React.FC<WriteFormattingPopoverProps> = ({
         id="write-formatting-trigger"
         onClick={() => setIsOpen(!isOpen)}
         style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            paddingLeft: 12,
-            paddingRight: 12,
-            paddingTop: 6,
-            paddingBottom: 6,
-            borderRadius: 12,
-            background: 'var(--muted)',
-            color: 'var(--foreground)',
-            fontSize: 12,
-            fontWeight: 400,
-            borderWidth: 1,
-            borderStyle: 'solid',
-            borderColor: 'var(--border)',
-            boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
-            cursor: 'pointer',
-            transition: 'all 200ms ease',
-            userSelect: 'none',
-          }}
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          paddingLeft: 14,
+          paddingRight: 14,
+          paddingTop: 6,
+          paddingBottom: 6,
+          borderRadius: 12,
+          background: '#eff2f5',
+          color: '#12171a',
+          fontSize: 13,
+          fontWeight: 500,
+          border: '1px solid transparent',
+          cursor: 'pointer',
+          transition: 'all 150ms ease',
+          userSelect: 'none',
+        }}
       >
         <span>{styleValue}</span>
-        <span style={{
-            color: 'var(--muted-foreground)',
-            fontWeight: 700,
-          }}>·</span>
+        <span style={{ color: '#8a99a4' }}>-</span>
         <span>{lengthValue}</span>
-        <span style={{
-            color: 'var(--muted-foreground)',
-            fontWeight: 700,
-          }}>·</span>
+        <span style={{ color: '#8a99a4' }}>-</span>
         <span>{languageValue}</span>
-        <span style={{
-            color: 'var(--muted-foreground)',
-            fontSize: '10px',
-            marginLeft: 2,
-          }}>
-          {isOpen ? <UpOutlined style={{
-            fontSize: '9px',
-          }} /> : <DownOutlined style={{
-            fontSize: '9px',
-          }} />}
+        <span style={{ color: '#8a99a4', fontSize: 10, marginLeft: 2 }}>
+          {isOpen ? <UpOutlined style={{ fontSize: 9 }} /> : <DownOutlined style={{ fontSize: 9 }} />}
         </span>
       </button>
 

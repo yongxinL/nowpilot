@@ -21,6 +21,12 @@ export default defineConfig({
   build: {
     chunkSizeWarningLimit: 1500,
     rollupOptions: {
+      input: {
+        main: fileURLToPath(new URL('./index.html', import.meta.url)),
+        options: fileURLToPath(new URL('./entrypoints/options/index.html', import.meta.url)),
+        sidepanel: fileURLToPath(new URL('./entrypoints/sidepanel/index.html', import.meta.url)),
+        standalone: fileURLToPath(new URL('./entrypoints/standalone/index.html', import.meta.url)),
+      },
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {

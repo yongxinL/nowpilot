@@ -275,31 +275,28 @@ html.dark .x-markdown td {
   background: rgba(150, 150, 150, 0.5);
 }
 
-/* Chat-history drawer — anchored to bottom 70% of side panel per
-   DESIGN_SYSTEM §8.4; the markup supplies its own bg + border tokens. */
-.chat-history-drawer {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  max-height: 70%;
-  display: flex;
-  flex-direction: column;
-  border-top-left-radius: 16px;
-  border-top-right-radius: 16px;
-  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.12);
-  z-index: 30;
+/* Chat-history drawer styling hooks */
+.chat-history-drawer-sidepanel {
+  /* Handled by AntD Drawer properties and tokens */
 }
 
-/* Reveal-on-parent-hover for inline-styled action groups (replaces Tailwind
-   `opacity-0 group-hover:opacity-100`). Apply by wrapping the action group
-   in any element that gets `.np-reveal-on-hover` while hovered. */
+.chat-history-drawer-standalone {
+  /* Handled by AntD Drawer properties and tokens */
+}
+
+/* Reveal-on-parent-hover for inline-styled action groups */
 .np-reveal-on-hover .np-prompt-actions {
-  opacity: 0;
+  opacity: 0 !important;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 150ms ease, visibility 150ms ease;
 }
 .np-reveal-on-hover:hover .np-prompt-actions,
-.np-reveal-on-hover:focus-within .np-prompt-actions {
-  opacity: 1;
+.np-reveal-on-hover:focus-within .np-prompt-actions,
+.np-reveal-on-hover.force-hover .np-prompt-actions {
+  opacity: 1 !important;
+  visibility: visible;
+  pointer-events: auto;
 }
 
 /* ============================================================================

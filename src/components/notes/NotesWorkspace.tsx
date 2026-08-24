@@ -301,7 +301,7 @@ export const NotesWorkspace: React.FC = () => {
             flexDirection: 'column',
             height: '100%',
             width: '100%',
-            background: '#f8f9fc',
+            background: 'var(--background)',
             color: 'var(--foreground)',
             fontFamily: 'var(--font-sans)',
             overflow: 'hidden',
@@ -395,12 +395,11 @@ export const NotesWorkspace: React.FC = () => {
                 background: showLeftCol ? 'var(--card)' : 'transparent',
                 color: showLeftCol ? token.colorInfo : token.colorTextTertiary,
                 boxShadow: showLeftCol ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                border: 'none',
               }}
             >
               <FolderOutlined />
-              <span style={{
-            display: 'none',
-          }}>Directory</span>
+              <span>Directory</span>
             </button>
           </Tooltip>
 
@@ -420,12 +419,11 @@ export const NotesWorkspace: React.FC = () => {
                 background: showListCol ? 'var(--card)' : 'transparent',
                 color: showListCol ? token.colorInfo : token.colorTextTertiary,
                 boxShadow: showListCol ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                border: 'none',
               }}
             >
               <BarsOutlined />
-              <span style={{
-            display: 'none',
-          }}>Notes</span>
+              <span>Notes</span>
             </button>
           </Tooltip>
 
@@ -445,12 +443,11 @@ export const NotesWorkspace: React.FC = () => {
                 background: showRightCol ? 'var(--card)' : 'transparent',
                 color: showRightCol ? token.colorInfo : token.colorTextTertiary,
                 boxShadow: showRightCol ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                border: 'none',
               }}
             >
               <InfoCircleOutlined />
-              <span style={{
-            display: 'none',
-          }}>Inspector</span>
+              <span>Inspector</span>
             </button>
           </Tooltip>
         </div>
@@ -467,20 +464,16 @@ export const NotesWorkspace: React.FC = () => {
             icon={<PlusOutlined />}
             onClick={handleCreateNewNote}
             style={{
-            background: '#2563eb',
             fontWeight: 500,
             fontSize: 12,
             borderRadius: 8,
             paddingLeft: 12,
             paddingRight: 12,
             height: 36,
-            borderStyle: 'none',
             boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
           }}
           >
-            <span style={{
-            display: 'none',
-          }}>New Note</span>
+            New Note
           </Button>
 
           <Button
@@ -491,9 +484,10 @@ export const NotesWorkspace: React.FC = () => {
             borderRadius: 8,
             borderColor: 'var(--border)',
             background: 'var(--card)',
-            color: 'var(--muted-foreground)',
+            color: 'var(--foreground)',
             height: 36,
-            display: 'none',
+            display: 'inline-flex',
+            alignItems: 'center',
           }}
           >
             Import
@@ -507,9 +501,10 @@ export const NotesWorkspace: React.FC = () => {
             borderRadius: 8,
             borderColor: 'var(--border)',
             background: 'var(--card)',
-            color: 'var(--muted-foreground)',
+            color: 'var(--foreground)',
             height: 36,
-            display: 'none',
+            display: 'inline-flex',
+            alignItems: 'center',
           }}
           >
             Backup
@@ -531,7 +526,7 @@ export const NotesWorkspace: React.FC = () => {
             borderRightStyle: 'solid',
             borderRightColor: 'var(--border)',
             borderColor: 'var(--border)',
-            background: '#f8f9fc',
+            background: 'var(--sidebar)',
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'space-between',
@@ -577,310 +572,293 @@ export const NotesWorkspace: React.FC = () => {
                 </Tooltip>
               </div>
 
-            {/* Main Category List */}
-            <div style={{
-            rowGap: 2,
-            display: 'flex',
-            flexDirection: 'column',
-            fontSize: 12,
-            color: 'var(--muted-foreground)',
-          }}>
-              <div
-                onClick={() => { setActiveCategory('all'); setSelectedTagFilter(null); }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '6px 10px',
-                  borderRadius: 8,
-                  cursor: 'pointer',
-                  transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
-                  background: activeCategory === 'all' && !selectedTagFilter ? token.colorInfoBg : 'transparent',
-                  color: activeCategory === 'all' && !selectedTagFilter ? token.colorInfo : 'inherit',
-                  fontWeight: activeCategory === 'all' && !selectedTagFilter ? 600 : 400,
-                }}
-              >
-                <span style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-          }}>
-                  <FileTextOutlined style={{
-            color: 'var(--muted-foreground)',
-          }} />
-                  <span>All Notes</span>
-                </span>
-                <span style={{
-            fontSize: '11px',
-            color: 'var(--muted-foreground)',
-          }}>128</span>
-              </div>
-
-              <div
-                onClick={() => { setActiveCategory('recent'); setSelectedTagFilter(null); }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '6px 10px',
-                  borderRadius: 8,
-                  cursor: 'pointer',
-                  transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
-                  background: activeCategory === 'recent' ? token.colorInfoBg : 'transparent',
-                  color: activeCategory === 'recent' ? token.colorInfo : 'inherit',
-                  fontWeight: activeCategory === 'recent' ? 600 : 400,
-                }}
-              >
-                <span style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-          }}>
-                  <ClockCircleOutlined style={{
-            color: 'var(--muted-foreground)',
-          }} />
-                  <span>Recently Updated</span>
-                </span>
-                <span style={{
-            fontSize: '11px',
-            color: 'var(--muted-foreground)',
-          }}>12</span>
-              </div>
-
-              <div
-                onClick={() => { setActiveCategory('favorites'); setSelectedTagFilter(null); }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '6px 10px',
-                  borderRadius: 8,
-                  cursor: 'pointer',
-                  transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
-                  background: activeCategory === 'favorites' ? token.colorInfoBg : 'transparent',
-                  color: activeCategory === 'favorites' ? token.colorInfo : 'inherit',
-                  fontWeight: activeCategory === 'favorites' ? 600 : 400,
-                }}
-              >
-                <span style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-          }}>
-                  <StarOutlined style={{
-            color: 'var(--muted-foreground)',
-          }} />
-                  <span>Favorites</span>
-                </span>
-                <span style={{
-            fontSize: '11px',
-            color: 'var(--muted-foreground)',
-          }}>8</span>
-              </div>
-
+              {/* Main Category List */}
               <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            paddingLeft: 10,
-            paddingRight: 10,
-            paddingTop: 6,
-            paddingBottom: 6,
-            borderRadius: 8,
-            cursor: 'pointer',
-            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
-          }}>
-                <span style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-          }}>
-                  <FolderOutlined style={{
-            color: 'var(--muted-foreground)',
-          }} />
-                  <span>Uncategorized</span>
-                </span>
-                <span style={{
-            fontSize: '11px',
-            color: 'var(--muted-foreground)',
-          }}>4</span>
-              </div>
-
-              {/* Expandable Work KB Tree */}
-              <div>
+                rowGap: 2,
+                display: 'flex',
+                flexDirection: 'column',
+                fontSize: 12,
+                color: 'var(--muted-foreground)',
+              }}>
                 <div
-                  onClick={() => setExpandedFolder(!expandedFolder)}
+                  onClick={() => { setActiveCategory('all'); setSelectedTagFilter(null); }}
                   style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            paddingLeft: 10,
-            paddingRight: 10,
-            paddingTop: 6,
-            paddingBottom: 6,
-            borderRadius: 8,
-            cursor: 'pointer',
-            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
-          }}
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '6px 10px',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    transition: 'all 150ms ease',
+                    background: activeCategory === 'all' && !selectedTagFilter ? '#eff6ff' : 'transparent',
+                    color: activeCategory === 'all' && !selectedTagFilter ? '#2563eb' : 'inherit',
+                    fontWeight: activeCategory === 'all' && !selectedTagFilter ? 600 : 400,
+                  }}
                 >
                   <span style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            fontWeight: 500,
-          }}>
-                    {expandedFolder ? <DownOutlined style={{
-            fontSize: '10px',
-            color: 'var(--muted-foreground)',
-          }} /> : <RightOutlined style={{
-            fontSize: '10px',
-            color: 'var(--muted-foreground)',
-          }} />}
-                    <span>Work Knowledge Base</span>
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                  }}>
+                    <FileTextOutlined style={{
+                      color: activeCategory === 'all' && !selectedTagFilter ? '#2563eb' : 'var(--muted-foreground)',
+                    }} />
+                    <span>All Notes</span>
                   </span>
                   <span style={{
-            fontSize: '11px',
-            color: 'var(--muted-foreground)',
-          }}>3</span>
+                    fontSize: '11px',
+                    color: activeCategory === 'all' && !selectedTagFilter ? '#2563eb' : 'var(--muted-foreground)',
+                  }}>128</span>
                 </div>
 
-                {expandedFolder && (
-                  <div style={{
-            marginLeft: 16,
-            paddingLeft: 8,
-            borderLeftWidth: 1,
-            borderLeftStyle: 'solid',
-            borderLeftColor: 'var(--border)',
-            borderColor: 'var(--border)',
-            rowGap: 2,
-            display: 'flex',
-            flexDirection: 'column',
-            marginTop: 2,
-          }}>
-                    <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            paddingLeft: 8,
-            paddingRight: 8,
-            paddingTop: 4,
-            paddingBottom: 4,
-            borderRadius: 6,
-            background: '#eff6ff',
-            color: '#2563eb',
-            fontWeight: 600,
-            cursor: 'pointer',
-          }}>
-                      <span style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-          }}>
-                        <FolderOpenOutlined style={{
-            color: '#3b82f6',
-          }} />
-                        <span>ServiceNow</span>
-                      </span>
-                      <span style={{
-            fontSize: '10px',
-          }}>24</span>
-                    </div>
+                <div
+                  onClick={() => { setActiveCategory('recent'); setSelectedTagFilter(null); }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '6px 10px',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    transition: 'all 150ms ease',
+                    background: activeCategory === 'recent' ? '#eff6ff' : 'transparent',
+                    color: activeCategory === 'recent' ? '#2563eb' : 'inherit',
+                    fontWeight: activeCategory === 'recent' ? 600 : 400,
+                  }}
+                >
+                  <span style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                  }}>
+                    <ClockCircleOutlined style={{
+                      color: activeCategory === 'recent' ? '#2563eb' : 'var(--muted-foreground)',
+                    }} />
+                    <span>Recently Updated</span>
+                  </span>
+                  <span style={{
+                    fontSize: '11px',
+                    color: activeCategory === 'recent' ? '#2563eb' : 'var(--muted-foreground)',
+                  }}>12</span>
+                </div>
 
-                    <div style={{
-            marginLeft: 12,
-            rowGap: 2,
-            display: 'flex',
-            flexDirection: 'column',
-            fontSize: '11px',
-          }}>
-                      <div
-                        onClick={() => setSelectedFolder('ServiceNow / Incident')}
-                        style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            paddingLeft: 8,
-            paddingRight: 8,
-            paddingTop: 4,
-            paddingBottom: 4,
-            borderRadius: 4,
-            cursor: 'pointer',
-            color: '#2563eb',
-            fontWeight: 500,
-          }}
-                      >
-                        <span style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-          }}>
-                          <FolderOutlined style={{
-            color: 'var(--muted-foreground)',
-          }} />
-                          <span>Incident</span>
-                        </span>
-                        <span style={{
-            color: 'var(--muted-foreground)',
-          }}>12</span>
-                      </div>
+                <div
+                  onClick={() => { setActiveCategory('favorites'); setSelectedTagFilter(null); }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '6px 10px',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    transition: 'all 150ms ease',
+                    background: activeCategory === 'favorites' ? '#eff6ff' : 'transparent',
+                    color: activeCategory === 'favorites' ? '#2563eb' : 'inherit',
+                    fontWeight: activeCategory === 'favorites' ? 600 : 400,
+                  }}
+                >
+                  <span style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                  }}>
+                    <StarOutlined style={{
+                      color: activeCategory === 'favorites' ? '#2563eb' : 'var(--muted-foreground)',
+                    }} />
+                    <span>Favorites</span>
+                  </span>
+                  <span style={{
+                    fontSize: '11px',
+                    color: activeCategory === 'favorites' ? '#2563eb' : 'var(--muted-foreground)',
+                  }}>8</span>
+                </div>
 
-                      <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            paddingLeft: 8,
-            paddingRight: 8,
-            paddingTop: 4,
-            paddingBottom: 4,
-            borderRadius: 4,
-            cursor: 'pointer',
-            color: 'var(--muted-foreground)',
-          }}>
-                        <span style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-          }}>
-                          <FolderOutlined style={{
-            color: 'var(--muted-foreground)',
-          }} />
-                          <span>Problem</span>
-                        </span>
-                        <span style={{
-            color: 'var(--muted-foreground)',
-          }}>6</span>
-                      </div>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  paddingLeft: 10,
+                  paddingRight: 10,
+                  paddingTop: 6,
+                  paddingBottom: 6,
+                  borderRadius: 8,
+                  cursor: 'pointer',
+                  transition: 'all 150ms ease',
+                }}>
+                  <span style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                  }}>
+                    <FolderOutlined style={{
+                      color: 'var(--muted-foreground)',
+                    }} />
+                    <span>Uncategorized</span>
+                  </span>
+                  <span style={{
+                    fontSize: '11px',
+                    color: 'var(--muted-foreground)',
+                  }}>4</span>
+                </div>
 
-                      <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            paddingLeft: 8,
-            paddingRight: 8,
-            paddingTop: 4,
-            paddingBottom: 4,
-            borderRadius: 4,
-            cursor: 'pointer',
-            color: 'var(--muted-foreground)',
-          }}>
-                        <span style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-          }}>
-                          <FolderOutlined style={{
-            color: 'var(--muted-foreground)',
-          }} />
-                          <span>Change</span>
-                        </span>
-                        <span style={{
-            color: 'var(--muted-foreground)',
-          }}>6</span>
-                      </div>
-                    </div>
+                {/* Expandable Work KB Tree */}
+                <div>
+                  <div
+                    onClick={() => setExpandedFolder(!expandedFolder)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      paddingLeft: 10,
+                      paddingRight: 10,
+                      paddingTop: 6,
+                      paddingBottom: 6,
+                      borderRadius: 8,
+                      cursor: 'pointer',
+                      transition: 'all 150ms ease',
+                    }}
+                  >
+                    <span style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      fontWeight: 500,
+                    }}>
+                      {expandedFolder ? (
+                        <DownOutlined style={{ fontSize: '10px', color: 'var(--muted-foreground)' }} />
+                      ) : (
+                        <RightOutlined style={{ fontSize: '10px', color: 'var(--muted-foreground)' }} />
+                      )}
+                      <FolderOutlined style={{ color: 'var(--muted-foreground)' }} />
+                      <span>Work Knowledge Base</span>
+                    </span>
+                    <span style={{
+                      fontSize: '11px',
+                      color: 'var(--muted-foreground)',
+                    }}>3</span>
                   </div>
-                )}
-              </div>
+
+                  {expandedFolder && (
+                    <div style={{
+                      marginLeft: 16,
+                      paddingLeft: 8,
+                      borderLeftWidth: 1,
+                      borderLeftStyle: 'solid',
+                      borderLeftColor: 'var(--border)',
+                      borderColor: 'var(--border)',
+                      rowGap: 2,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      marginTop: 2,
+                    }}>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        paddingLeft: 8,
+                        paddingRight: 8,
+                        paddingTop: 4,
+                        paddingBottom: 4,
+                        borderRadius: 6,
+                        color: '#2563eb',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}>
+                        <span style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                        }}>
+                          <FolderOpenOutlined style={{ color: '#3b82f6' }} />
+                          <span>ServiceNow</span>
+                        </span>
+                        <span style={{ fontSize: '10px' }}>24</span>
+                      </div>
+
+                      <div style={{
+                        marginLeft: 12,
+                        rowGap: 2,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        fontSize: '11px',
+                      }}>
+                        <div
+                          onClick={() => setSelectedFolder('ServiceNow / Incident')}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            paddingLeft: 8,
+                            paddingRight: 8,
+                            paddingTop: 4,
+                            paddingBottom: 4,
+                            borderRadius: 4,
+                            cursor: 'pointer',
+                            background: '#eff6ff',
+                            color: '#2563eb',
+                            fontWeight: 600,
+                          }}
+                        >
+                          <span style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6,
+                          }}>
+                            <FileTextOutlined style={{ color: '#3b82f6' }} />
+                            <span>Incident</span>
+                          </span>
+                          <span style={{ color: '#2563eb' }}>12</span>
+                        </div>
+
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          paddingLeft: 8,
+                          paddingRight: 8,
+                          paddingTop: 4,
+                          paddingBottom: 4,
+                          borderRadius: 4,
+                          cursor: 'pointer',
+                          color: 'var(--muted-foreground)',
+                        }}>
+                          <span style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6,
+                          }}>
+                            <FileTextOutlined style={{ color: 'var(--muted-foreground)' }} />
+                            <span>Problem</span>
+                          </span>
+                          <span style={{ color: 'var(--muted-foreground)' }}>6</span>
+                        </div>
+
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          paddingLeft: 8,
+                          paddingRight: 8,
+                          paddingTop: 4,
+                          paddingBottom: 4,
+                          borderRadius: 4,
+                          cursor: 'pointer',
+                          color: 'var(--muted-foreground)',
+                        }}>
+                          <span style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6,
+                          }}>
+                            <FileTextOutlined style={{ color: 'var(--muted-foreground)' }} />
+                            <span>Change</span>
+                          </span>
+                          <span style={{ color: 'var(--muted-foreground)' }}>6</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
 
               <div style={{
             display: 'flex',
@@ -1198,107 +1176,106 @@ export const NotesWorkspace: React.FC = () => {
                   key={note.id}
                   onClick={() => setSelectedNoteId(note.id)}
                   style={{
-                    padding: 14,
-                    borderRadius: 16,
-                    border: `1px solid ${isSelected ? token.colorInfo : token.colorBorderSecondary}`,
-                    transition: 'all 200ms ease',
+                    padding: '12px 14px',
+                    borderRadius: 12,
+                    border: isSelected ? '1.5px solid #2563eb' : '1px solid var(--border)',
+                    transition: 'all 150ms ease',
                     cursor: 'pointer',
                     position: 'relative',
-                    background: isSelected ? '#eff6ff' : token.colorBgContainer,
-                    boxShadow: isSelected ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                    background: isSelected ? '#ffffff' : 'var(--card)',
+                    boxShadow: isSelected ? '0 1px 3px rgba(37,99,235,0.08)' : 'none',
                   }}
                 >
                   <div style={{
-            display: 'flex',
-            alignItems: 'flex-start',
-            justifyContent: 'space-between',
-            gap: 8,
-            marginBottom: 6,
-          }}>
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    justifyContent: 'space-between',
+                    gap: 8,
+                    marginBottom: 4,
+                  }}>
                     <h4 style={{
-            fontWeight: 700,
-            fontSize: 12,
-            color: 'var(--foreground)',
-            display: '-webkit-box',
-            WebkitLineClamp: 1,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
-            flex: 1,
-            margin: 0,
-          }}>
+                      fontWeight: 700,
+                      fontSize: 13,
+                      color: 'var(--foreground)',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 1,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                      flex: 1,
+                      margin: 0,
+                    }}>
                       {note.title}
                     </h4>
                     <button
                       onClick={e => toggleFavorite(note.id, e)}
                       style={{
-            color: 'var(--muted-foreground)',
-            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
-            flexShrink: 0,
-          }}
+                        color: 'var(--muted-foreground)',
+                        transition: 'all 150ms ease',
+                        flexShrink: 0,
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: 0,
+                      }}
                     >
                       {note.isFavorite ? (
-                        <StarFilled style={{
-            color: '#fbbf24',
-            fontSize: 12,
-          }} />
+                        <StarFilled style={{ color: '#fbbf24', fontSize: 13 }} />
                       ) : (
-                        <StarOutlined style={{
-            fontSize: 12,
-          }} />
+                        <StarOutlined style={{ fontSize: 13, color: 'var(--muted-foreground)' }} />
                       )}
                     </button>
                   </div>
 
                   <p style={{
-            fontSize: '11px',
-            color: 'var(--muted-foreground)',
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
-            lineHeight: 1.625,
-            marginBottom: 10,
-            margin: 0,
-          }}>
+                    fontSize: '11px',
+                    color: 'var(--muted-foreground)',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
+                    lineHeight: 1.5,
+                    marginBottom: 8,
+                    margin: '0 0 8px 0',
+                  }}>
                     {note.excerpt}
                   </p>
 
                   <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 4,
-            fontSize: '10px',
-          }}>
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 4,
+                    fontSize: '10px',
+                  }}>
                     <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-            flexWrap: 'wrap',
-            maxWidth: 190,
-          }}>
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      flexWrap: 'wrap',
+                      maxWidth: 190,
+                    }}>
                       {note.tags.map(t => (
                         <span
                           key={t}
                           style={{
-            paddingLeft: 6,
-            paddingRight: 6,
-            paddingTop: 2,
-            paddingBottom: 2,
-            borderRadius: 4,
-            background: '#dbeafe',
-            color: '#2563eb',
-            fontWeight: 500,
-          }}
+                            paddingLeft: 6,
+                            paddingRight: 6,
+                            paddingTop: 2,
+                            paddingBottom: 2,
+                            borderRadius: 4,
+                            background: '#eff6ff',
+                            color: '#2563eb',
+                            fontWeight: 500,
+                          }}
                         >
                           {t}
                         </span>
                       ))}
                     </div>
                     <span style={{
-            color: 'var(--muted-foreground)',
-            flexShrink: 0,
-          }}>{note.updatedAt}</span>
+                      color: 'var(--muted-foreground)',
+                      flexShrink: 0,
+                    }}>{note.updatedAt}</span>
                   </div>
                 </div>
               );
@@ -1403,20 +1380,21 @@ export const NotesWorkspace: React.FC = () => {
           }}>
                   {selectedNote.title}
                 </Title>
-                <button onClick={e => toggleFavorite(selectedNote.id, e)}>
-                  {selectedNote.isFavorite ? (
-                    <StarFilled style={{
-            color: '#fbbf24',
-            fontSize: 16,
-          }} />
-                  ) : (
-                    <StarOutlined style={{
-            color: 'var(--muted-foreground)',
-            fontSize: 16,
-            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
-          }} />
-                  )}
-                </button>
+                <Tooltip title={selectedNote.isFavorite ? 'Remove from favorites' : 'Add to favorites'}>
+                  <Button
+                    type="text"
+                    shape="circle"
+                    size="small"
+                    onClick={e => toggleFavorite(selectedNote.id, e)}
+                    icon={
+                      selectedNote.isFavorite ? (
+                        <StarFilled style={{ color: '#fbbf24', fontSize: 16 }} />
+                      ) : (
+                        <StarOutlined style={{ color: 'var(--muted-foreground)', fontSize: 16 }} />
+                      )
+                    }
+                  />
+                </Tooltip>
               </div>
 
               <div style={{
@@ -1442,13 +1420,12 @@ export const NotesWorkspace: React.FC = () => {
                   </Tooltip>
                 )}
                 <Button
+                  type={isEditing ? 'primary' : 'default'}
                   icon={<EditOutlined />}
                   onClick={() => setIsEditing(!isEditing)}
                   style={{
                     fontSize: 12,
                     borderRadius: 8,
-                    background: isEditing ? token.colorInfo : undefined,
-                    color: isEditing ? '#ffffff' : undefined,
                   }}
                 >
                   {isEditing ? 'Save' : 'Edit'}
@@ -1504,40 +1481,36 @@ export const NotesWorkspace: React.FC = () => {
             gap: 6,
           }}>
                 {selectedNote.tags.map(t => (
-                  <span
+                  <Tag
                     key={t}
+                    color="blue"
                     style={{
-            paddingLeft: 8,
-            paddingRight: 8,
-            paddingTop: 2,
-            paddingBottom: 2,
-            borderRadius: 9999,
-            background: '#eff6ff',
-            color: '#2563eb',
-            borderWidth: 1,
-            borderStyle: 'solid',
-            borderColor: '#bfdbfe',
-            fontSize: '11px',
-            fontWeight: 500,
-          }}
+                      borderRadius: 12,
+                      fontSize: 11,
+                      margin: 0,
+                    }}
                   >
                     {t}
-                  </span>
+                  </Tag>
                 ))}
-                <button style={{
-            paddingLeft: 6,
-            paddingRight: 6,
-            paddingTop: 2,
-            paddingBottom: 2,
-            borderRadius: 9999,
-            borderWidth: 1,
-            borderStyle: 'dashed',
-            borderColor: 'var(--border)',
-            color: 'var(--muted-foreground)',
-            fontSize: '11px',
-          }}>
-                  +
-                </button>
+                <Tooltip title="Add tag">
+                  <Button
+                    type="dashed"
+                    size="small"
+                    shape="circle"
+                    icon={<PlusOutlined style={{ fontSize: 10 }} />}
+                    style={{
+                      width: 20,
+                      height: 20,
+                      minWidth: 20,
+                      fontSize: 10,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: 0,
+                    }}
+                  />
+                </Tooltip>
               </div>
             </div>
 
@@ -1545,138 +1518,90 @@ export const NotesWorkspace: React.FC = () => {
             <div style={{
             paddingLeft: 20,
             paddingRight: 20,
-            paddingTop: 8,
-            paddingBottom: 8,
+            paddingTop: 6,
+            paddingBottom: 6,
             borderBottomWidth: 1,
             borderBottomStyle: 'solid',
             borderBottomColor: 'var(--border)',
             borderColor: 'var(--border)',
             display: 'flex',
             alignItems: 'center',
-            gap: 4,
+            gap: 2,
             color: 'var(--muted-foreground)',
             overflowX: 'auto',
             fontSize: 14,
           }}>
-              <span style={{
-            fontSize: 12,
-            fontWeight: 600,
-            paddingLeft: 8,
-            paddingRight: 8,
-            paddingTop: 4,
-            paddingBottom: 4,
-            background: 'var(--muted)',
-            borderRadius: 4,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-            cursor: 'pointer',
-          }}>
-                Body <DownOutlined style={{
-            fontSize: '10px',
-          }} />
-              </span>
+              <Button
+                type="text"
+                size="small"
+                style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  padding: '0 8px',
+                  height: 28,
+                  borderRadius: 6,
+                  background: 'var(--muted)',
+                }}
+              >
+                Body <DownOutlined style={{ fontSize: 10 }} />
+              </Button>
               <div style={{
             height: 16,
             width: 1,
-            background: 'var(--muted)',
+            background: 'var(--border)',
             marginLeft: 4,
             marginRight: 4,
           }} />
-              <button style={{
-            padding: 6,
-            borderRadius: 4,
-            color: 'var(--muted-foreground)',
-          }}>
-                <UndoOutlined />
-              </button>
-              <button style={{
-            padding: 6,
-            borderRadius: 4,
-            color: 'var(--muted-foreground)',
-          }}>
-                <RedoOutlined />
-              </button>
+              <Tooltip title="Undo">
+                <Button type="text" size="small" icon={<UndoOutlined />} style={{ width: 28, height: 28, minWidth: 28, padding: 0 }} />
+              </Tooltip>
+              <Tooltip title="Redo">
+                <Button type="text" size="small" icon={<RedoOutlined />} style={{ width: 28, height: 28, minWidth: 28, padding: 0 }} />
+              </Tooltip>
               <div style={{
             height: 16,
             width: 1,
-            background: 'var(--muted)',
+            background: 'var(--border)',
             marginLeft: 4,
             marginRight: 4,
           }} />
-              <button style={{
-            padding: 6,
-            borderRadius: 4,
-            fontWeight: 700,
-            color: 'var(--muted-foreground)',
-          }}>
-                <BoldOutlined />
-              </button>
-              <button style={{
-            padding: 6,
-            borderRadius: 4,
-            fontStyle: 'italic',
-            color: 'var(--muted-foreground)',
-          }}>
-                <ItalicOutlined />
-              </button>
-
-              <button style={{
-            padding: 6,
-            borderRadius: 4,
-            color: 'var(--muted-foreground)',
-          }}>
-                <CodeOutlined />
-              </button>
+              <Tooltip title="Bold">
+                <Button type="text" size="small" icon={<BoldOutlined />} style={{ width: 28, height: 28, minWidth: 28, padding: 0 }} />
+              </Tooltip>
+              <Tooltip title="Italic">
+                <Button type="text" size="small" icon={<ItalicOutlined />} style={{ width: 28, height: 28, minWidth: 28, padding: 0 }} />
+              </Tooltip>
+              <Tooltip title="Code">
+                <Button type="text" size="small" icon={<CodeOutlined />} style={{ width: 28, height: 28, minWidth: 28, padding: 0 }} />
+              </Tooltip>
               <div style={{
             height: 16,
             width: 1,
-            background: 'var(--muted)',
+            background: 'var(--border)',
             marginLeft: 4,
             marginRight: 4,
           }} />
-              <button style={{
-            padding: 6,
-            borderRadius: 4,
-            color: 'var(--muted-foreground)',
-          }}>
-                <UnorderedListOutlined />
-              </button>
-              <button style={{
-            padding: 6,
-            borderRadius: 4,
-            color: 'var(--muted-foreground)',
-          }}>
-                <OrderedListOutlined />
-              </button>
-              <button style={{
-            padding: 6,
-            borderRadius: 4,
-            color: 'var(--muted-foreground)',
-          }}>
-                <TableOutlined />
-              </button>
-              <button style={{
-            padding: 6,
-            borderRadius: 4,
-            color: 'var(--muted-foreground)',
-          }}>
-                <CheckSquareOutlined />
-              </button>
-              <button style={{
-            padding: 6,
-            borderRadius: 4,
-            color: 'var(--muted-foreground)',
-          }}>
-                <LinkOutlined />
-              </button>
-              <button style={{
-            padding: 6,
-            borderRadius: 4,
-            color: 'var(--muted-foreground)',
-          }}>
-                <PictureOutlined />
-              </button>
+              <Tooltip title="Bullet List">
+                <Button type="text" size="small" icon={<UnorderedListOutlined />} style={{ width: 28, height: 28, minWidth: 28, padding: 0 }} />
+              </Tooltip>
+              <Tooltip title="Numbered List">
+                <Button type="text" size="small" icon={<OrderedListOutlined />} style={{ width: 28, height: 28, minWidth: 28, padding: 0 }} />
+              </Tooltip>
+              <Tooltip title="Table">
+                <Button type="text" size="small" icon={<TableOutlined />} style={{ width: 28, height: 28, minWidth: 28, padding: 0 }} />
+              </Tooltip>
+              <Tooltip title="Task Checkbox">
+                <Button type="text" size="small" icon={<CheckSquareOutlined />} style={{ width: 28, height: 28, minWidth: 28, padding: 0 }} />
+              </Tooltip>
+              <Tooltip title="Insert Link">
+                <Button type="text" size="small" icon={<LinkOutlined />} style={{ width: 28, height: 28, minWidth: 28, padding: 0 }} />
+              </Tooltip>
+              <Tooltip title="Insert Image">
+                <Button type="text" size="small" icon={<PictureOutlined />} style={{ width: 28, height: 28, minWidth: 28, padding: 0 }} />
+              </Tooltip>
             </div>
 
             {/* Note Document Render Area */}
@@ -2242,48 +2167,49 @@ export const NotesWorkspace: React.FC = () => {
               </div>
             {/* AI Summary Card */}
             <div style={{
-            padding: 16,
-            background: 'linear-gradient(135deg, var(--muted) 0%, var(--border) 100%)',
-            borderRadius: 16,
-            borderWidth: 1,
-            borderStyle: 'solid',
-            borderColor: '#dbeafe',
-            boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
-          }}>
+              padding: 16,
+              background: 'var(--card)',
+              borderRadius: 16,
+              borderWidth: 1,
+              borderStyle: 'solid',
+              borderColor: '#dbeafe',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+            }}>
               <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            fontWeight: 700,
-            fontSize: 12,
-            color: '#1d4ed8',
-            marginBottom: 8,
-          }}>
-                <span style={{
-            fontSize: 14,
-          }}>🪄</span>
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                fontWeight: 700,
+                fontSize: 13,
+                color: '#2563eb',
+                marginBottom: 8,
+              }}>
+                <span style={{ fontSize: 14 }}>✨</span>
                 <span>AI Summary</span>
               </div>
               <p style={{
-            fontSize: 12,
-            color: 'var(--muted-foreground)',
-            lineHeight: 1.625,
-            marginBottom: 12,
-            margin: 0,
-          }}>
+                fontSize: 12,
+                color: 'var(--muted-foreground)',
+                lineHeight: 1.6,
+                marginBottom: 12,
+                margin: '0 0 12px 0',
+              }}>
                 {selectedNote.content.summary}
               </p>
               <Button
                 size="small"
-                icon={<ReloadOutlined />}
+                icon={<ReloadOutlined style={{ fontSize: 11 }} />}
                 onClick={handleRegenerateSummary}
                 style={{
-            width: '100%',
-            fontSize: 12,
-            borderRadius: 8,
-            borderColor: '#bfdbfe',
-            color: '#2563eb',
-          }}
+                  width: '100%',
+                  fontSize: 12,
+                  borderRadius: 8,
+                  borderColor: '#bfdbfe',
+                  color: '#2563eb',
+                  background: '#ffffff',
+                  fontWeight: 500,
+                  height: 30,
+                }}
               >
                 Regenerate
               </Button>
@@ -2428,101 +2354,88 @@ export const NotesWorkspace: React.FC = () => {
               </div>
 
               <div style={{
-            rowGap: 4,
-            display: 'flex',
-            flexDirection: 'column',
-            fontSize: 12,
-          }}>
-                <button
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 4,
+              }}>
+                <Button
+                  type="text"
+                  block
+                  icon={<CopyOutlined style={{ color: 'var(--muted-foreground)' }} />}
                   onClick={() => {
                     navigator.clipboard.writeText(window.location.href);
                     antMessage.success('Note link copied');
                   }}
                   style={{
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            paddingLeft: 10,
-            paddingRight: 10,
-            paddingTop: 8,
-            paddingBottom: 8,
-            borderRadius: 12,
-            color: 'var(--muted-foreground)',
-            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
-          }}
+                    textAlign: 'left',
+                    justifyContent: 'flex-start',
+                    display: 'flex',
+                    alignItems: 'center',
+                    height: 34,
+                    borderRadius: 8,
+                    fontSize: 12,
+                    color: 'var(--foreground)',
+                  }}
                 >
-                  <CopyOutlined style={{
-            color: 'var(--muted-foreground)',
-          }} />
-                  <span>Copy Link</span>
-                </button>
+                  Copy Link
+                </Button>
 
-                <button
+                <Button
+                  type="text"
+                  block
+                  icon={<FileMarkdownOutlined style={{ color: 'var(--muted-foreground)' }} />}
                   onClick={() => antMessage.info('Exporting Markdown file...')}
                   style={{
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            paddingLeft: 10,
-            paddingRight: 10,
-            paddingTop: 8,
-            paddingBottom: 8,
-            borderRadius: 12,
-            color: 'var(--muted-foreground)',
-            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
-          }}
+                    textAlign: 'left',
+                    justifyContent: 'flex-start',
+                    display: 'flex',
+                    alignItems: 'center',
+                    height: 34,
+                    borderRadius: 8,
+                    fontSize: 12,
+                    color: 'var(--foreground)',
+                  }}
                 >
-                  <FileMarkdownOutlined style={{
-            color: 'var(--muted-foreground)',
-          }} />
-                  <span>Export as Markdown</span>
-                </button>
+                  Export as Markdown
+                </Button>
 
-                <button
+                <Button
+                  type="text"
+                  block
+                  icon={<FilePdfOutlined style={{ color: 'var(--muted-foreground)' }} />}
                   onClick={() => antMessage.info('Generating PDF file...')}
                   style={{
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            paddingLeft: 10,
-            paddingRight: 10,
-            paddingTop: 8,
-            paddingBottom: 8,
-            borderRadius: 12,
-            color: 'var(--muted-foreground)',
-            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
-          }}
+                    textAlign: 'left',
+                    justifyContent: 'flex-start',
+                    display: 'flex',
+                    alignItems: 'center',
+                    height: 34,
+                    borderRadius: 8,
+                    fontSize: 12,
+                    color: 'var(--foreground)',
+                  }}
                 >
-                  <FilePdfOutlined style={{
-            color: 'var(--muted-foreground)',
-          }} />
-                  <span>Export as PDF</span>
-                </button>
+                  Export as PDF
+                </Button>
 
-                <button
+                <Button
+                  type="text"
+                  block
+                  icon={<FolderAddOutlined style={{ color: 'var(--muted-foreground)' }} />}
                   onClick={() => antMessage.info('Select target folder to move')}
                   style={{
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            paddingLeft: 10,
-            paddingRight: 10,
-            paddingTop: 8,
-            paddingBottom: 8,
-            borderRadius: 12,
-            color: 'var(--muted-foreground)',
-            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
-          }}
+                    textAlign: 'left',
+                    justifyContent: 'flex-start',
+                    display: 'flex',
+                    alignItems: 'center',
+                    height: 34,
+                    borderRadius: 8,
+                    fontSize: 12,
+                    color: 'var(--foreground)',
+                  }}
                 >
-                  <FolderAddOutlined style={{
-            color: 'var(--muted-foreground)',
-          }} />
-                  <span>Move to...</span>
-                </button>
+                  Move to...
+                </Button>
               </div>
             </div>
           </div>

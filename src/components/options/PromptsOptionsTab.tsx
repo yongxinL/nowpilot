@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { App, Tooltip, theme } from 'antd';
+import { App, Tooltip, theme, Popconfirm } from 'antd';
 import {
   ReloadOutlined,
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
-  BookOutlined,
+  FileTextOutlined,
   InboxOutlined,
   HolderOutlined,
   ArrowUpOutlined,
@@ -35,11 +35,11 @@ const CATEGORIES: { key: PromptCategory; label: string; description: string }[] 
   },
 ];
 
-// SVG Icons matching screenshots
-const HideIcon: React.FC = () => (
+// Bookmark hide / show icons matching mockup
+const BookmarkHideIcon: React.FC<{ size?: number }> = ({ size = 15 }) => (
   <svg
-    width="15"
-    height="15"
+    width={size}
+    height={size}
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
@@ -48,14 +48,13 @@ const HideIcon: React.FC = () => (
     strokeLinejoin="round"
   >
     <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-    <line x1="8" y1="10" x2="16" y2="10" />
   </svg>
 );
 
-const ShowIcon: React.FC = () => (
+const BookmarkShowIcon: React.FC<{ size?: number }> = ({ size = 15 }) => (
   <svg
-    width="15"
-    height="15"
+    width={size}
+    height={size}
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
@@ -64,8 +63,8 @@ const ShowIcon: React.FC = () => (
     strokeLinejoin="round"
   >
     <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-    <line x1="12" y1="7" x2="12" y2="13" />
-    <line x1="9" y1="10" x2="15" y2="10" />
+    <line x1="12" y1="8" x2="12" y2="14" />
+    <line x1="9" y1="11" x2="15" y2="11" />
   </svg>
 );
 
@@ -77,6 +76,7 @@ export const PromptsOptionsTab: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState<PromptCategory>('Chat/Ask');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingPrompt, setEditingPrompt] = useState<PromptItem | null>(null);
+  const [hoveredPromptId, setHoveredPromptId] = useState<string | null>(null);
 
   // Drag and drop state
   const [draggedPromptId, setDraggedPromptId] = useState<string | null>(null);
@@ -98,26 +98,32 @@ export const PromptsOptionsTab: React.FC = () => {
     return p.showInList;
   };
 
-  // Filter and sort prompts for the active category
-  const activePrompts = prompts.filter((p) => isPromptInCategory(p, activeCategory));
+  // Build the list of prompts for current active category
+  const currentCategoryPrompts = prompts.filter((p) => isPromptInCategory(p, activeCategory));
 
-  const showList = activePrompts.filter((p) => isPromptShownInCategory(p, activeCategory));
-  const hideList = activePrompts.filter((p) => !isPromptShownInCategory(p, activeCategory));
+  const showList = currentCategoryPrompts.filter((p) => isPromptShownInCategory(p, activeCategory));
+  const hideList = currentCategoryPrompts.filter((p) => !isPromptShownInCategory(p, activeCategory));
 
-  const currentCategoryMeta = CATEGORIES.find((c) => c.key === activeCategory) || CATEGORIES[0];
-
-  const handleTogglePromptVisibility = (prompt: PromptItem, cat: PromptCategory) => {
-    const currentShown = isPromptShownInCategory(prompt, cat);
-    const newVisibility = {
-      ...(prompt.categoryVisibility || {}),
-      [cat]: !currentShown,
+  const handleTogglePromptVisibility = (prompt: PromptItem, category: PromptCategory) => {
+    const isCurrentlyShown = isPromptShownInCategory(prompt, category);
+    const newCatVis = {
+      ...(prompt.categoryVisibility || {
+        'Chat/Ask': prompt.showInList,
+        'Reading': prompt.showInList,
+        'Writing': prompt.showInList,
+      }),
+      [category]: !isCurrentlyShown,
     };
+
     updatePrompt(prompt.id, {
-      categoryVisibility: newVisibility,
-      showInList: cat === prompt.category ? !currentShown : prompt.showInList,
+      categoryVisibility: newCatVis,
+      showInList: !isCurrentlyShown,
     });
+
     antMessage.success(
-      currentShown ? `Moved to 'Hide from list'` : `Moved to 'Show in list'`
+      isCurrentlyShown
+        ? `Moved "${prompt.title}" to Hidden list`
+        : `Moved "${prompt.title}" to Active list`
     );
   };
 
@@ -138,10 +144,11 @@ export const PromptsOptionsTab: React.FC = () => {
     icon: string;
   }) => {
     if (editingPrompt) {
-      if (!editingPrompt.isCustom) {
-        // System prompt: update usedIn and sync categoryVisibility
+      const isDefault = !editingPrompt.isCustom;
+      if (isDefault) {
         const newCatVis = { ...(editingPrompt.categoryVisibility || {}) };
-        (['Chat/Ask', 'Reading', 'Writing'] as PromptCategory[]).forEach((cat) => {
+        ['Chat/Ask', 'Reading', 'Writing'].forEach((c) => {
+          const cat = c as PromptCategory;
           if (data.usedIn.includes(cat)) {
             if (newCatVis[cat] === undefined) newCatVis[cat] = true;
           } else {
@@ -149,6 +156,9 @@ export const PromptsOptionsTab: React.FC = () => {
           }
         });
         updatePrompt(editingPrompt.id, {
+          title: data.title,
+          content: data.content,
+          icon: data.icon,
           usedIn: data.usedIn,
           categoryVisibility: newCatVis,
         });
@@ -190,11 +200,10 @@ export const PromptsOptionsTab: React.FC = () => {
 
   const handleDeletePrompt = (prompt: PromptItem) => {
     deletePrompt(prompt.id);
-    antMessage.success('Prompt deleted');
+    antMessage.success(`"${prompt.title}" deleted`);
   };
 
   const handleResetPrompts = () => {
-    // Reset or ensure all default prompts are active
     useExtensionStore.setState({
       prompts: DEFAULT_PROMPTS_LIST,
     });
@@ -251,24 +260,25 @@ export const PromptsOptionsTab: React.FC = () => {
       const [removed] = updatedPrompts.splice(sourceIndex, 1);
       updatedPrompts.splice(targetIndex, 0, removed);
       useExtensionStore.setState({ prompts: updatedPrompts });
-      antMessage.success('Prompt reordered');
     }
 
     setDraggedPromptId(null);
     setDragOverPromptId(null);
   };
 
-  return (
-    <div style={{ width: '100%', maxWidth: 1024, margin: '0 auto', padding: '8px 0' }}>
-      {/* Header Row */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 700, color: token.colorText, margin: 0 }}>
-          Prompts
-        </h1>
+  const currentCategoryMeta = CATEGORIES.find((c) => c.key === activeCategory) || CATEGORIES[0];
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {/* Refresh / Reset Button */}
-          <Tooltip title="Reset prompts to default">
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', maxWidth: 1000 }}>
+      {/* Top Header Row */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <h2 style={{ fontSize: 24, fontWeight: 700, margin: 0, color: 'var(--foreground)' }}>
+          Prompts
+        </h2>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {/* Circular Reset Button */}
+          <Tooltip title="Reset to default prompts">
             <button
               type="button"
               onClick={handleResetPrompts}
@@ -276,15 +286,15 @@ export const PromptsOptionsTab: React.FC = () => {
                 width: 36,
                 height: 36,
                 borderRadius: '50%',
-                background: '#1677ff',
+                background: '#2563eb',
                 color: '#ffffff',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-                transition: 'all 150ms ease',
-                cursor: 'pointer',
                 border: 'none',
+                cursor: 'pointer',
+                transition: 'all 150ms ease',
+                boxShadow: '0 1px 3px rgba(37,99,235,0.2)',
               }}
             >
               <ReloadOutlined style={{ fontSize: 14 }} />
@@ -299,25 +309,25 @@ export const PromptsOptionsTab: React.FC = () => {
               display: 'flex',
               alignItems: 'center',
               gap: 6,
-              padding: '8px 16px',
-              background: '#1677ff',
+              padding: '8px 18px',
+              background: '#2563eb',
               color: '#ffffff',
               fontWeight: 600,
-              fontSize: 12,
+              fontSize: 13,
               borderRadius: 9999,
-              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+              boxShadow: '0 1px 3px rgba(37,99,235,0.2)',
               transition: 'all 150ms ease',
               cursor: 'pointer',
               border: 'none',
             }}
           >
-            <PlusOutlined style={{ fontSize: 12 }} />
+            <PlusOutlined style={{ fontSize: 13 }} />
             <span>New Prompt</span>
           </button>
         </div>
       </div>
 
-      {/* Category Tabs */}
+      {/* Category Pills */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
         {CATEGORIES.map((cat) => {
           const isActive = activeCategory === cat.key;
@@ -327,16 +337,15 @@ export const PromptsOptionsTab: React.FC = () => {
               type="button"
               onClick={() => setActiveCategory(cat.key)}
               style={{
-                padding: '6px 16px',
+                padding: '6px 18px',
                 borderRadius: 9999,
-                fontSize: 12,
+                fontSize: 13,
                 fontWeight: 600,
                 transition: 'all 150ms ease',
                 cursor: 'pointer',
                 userSelect: 'none',
-                background: isActive ? token.colorText : 'transparent',
-                color: isActive ? token.colorBgContainer : token.colorTextSecondary,
-                boxShadow: isActive ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                background: isActive ? '#0f172a' : 'transparent',
+                color: isActive ? '#ffffff' : 'var(--muted-foreground)',
                 border: 'none',
               }}
             >
@@ -347,7 +356,7 @@ export const PromptsOptionsTab: React.FC = () => {
       </div>
 
       {/* Category Subtitle Description */}
-      <p style={{ fontSize: 12, color: token.colorTextTertiary, marginBottom: 20, marginTop: 0 }}>
+      <p style={{ fontSize: 13, color: 'var(--muted-foreground)', marginBottom: 20, marginTop: 0 }}>
         {currentCategoryMeta.description}
       </p>
 
@@ -355,42 +364,41 @@ export const PromptsOptionsTab: React.FC = () => {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
         {/* LEFT COLUMN: Show in list */}
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 600, color: token.colorTextSecondary, marginBottom: 10, padding: '0 4px' }}>
-            <BookOutlined style={{ fontSize: 14, color: token.colorTextTertiary }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600, color: 'var(--foreground)', marginBottom: 12, padding: '0 4px' }}>
+            <FileTextOutlined style={{ fontSize: 14, color: 'var(--muted-foreground)' }} />
             <span>Show in list</span>
-            <span style={{ color: token.colorTextTertiary, fontWeight: 400, marginLeft: 'auto' }}>
+            <span style={{ color: 'var(--muted-foreground)', fontWeight: 400, marginLeft: 'auto', fontSize: 12 }}>
               ({showList.length})
             </span>
           </div>
 
           <div style={{
-            background: '#f4f5f7',
-            padding: 12,
-            borderRadius: 16,
-            border: `1px solid ${token.colorBorderSecondary}`,
             display: 'flex',
             flexDirection: 'column',
-            gap: 8,
-            minHeight: 500,
+            gap: 10,
+            minHeight: 480,
           }}>
             {showList.length === 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '64px 0', color: token.colorTextTertiary, fontSize: 12, textAlign: 'center' }}>
-                <InboxOutlined style={{ fontSize: 24, marginBottom: 8, opacity: 0.5 }} />
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '64px 0', color: 'var(--muted-foreground)', fontSize: 13, textAlign: 'center', background: 'var(--card)', borderRadius: 14, border: '1px solid var(--border)' }}>
+                <InboxOutlined style={{ fontSize: 28, marginBottom: 8, opacity: 0.5 }} />
                 <span>No active prompts for this category</span>
-                <span style={{ fontSize: 11, marginTop: 4, color: token.colorTextTertiary }}>
-                  Click 'Show' on any item in the right list to add it here
+                <span style={{ fontSize: 12, marginTop: 4, color: 'var(--muted-foreground)' }}>
+                  Click show button on any item in the right list to add it here
                 </span>
               </div>
             ) : (
               showList.map((prompt, index) => {
                 const isDragging = draggedPromptId === prompt.id;
                 const isDragOver = dragOverPromptId === prompt.id;
+                const isHovered = hoveredPromptId === prompt.id;
 
                 return (
                   <div
                     key={prompt.id}
-                    className="np-reveal-on-hover"
+                    className={`np-reveal-on-hover ${isHovered ? 'force-hover' : ''}`}
                     draggable
+                    onMouseEnter={() => setHoveredPromptId(prompt.id)}
+                    onMouseLeave={() => setHoveredPromptId(null)}
                     onDragStart={(e) => handleDragStart(e, prompt.id)}
                     onDragOver={(e) => handleDragOver(e, prompt.id)}
                     onDrop={(e) => handleDrop(e, prompt.id)}
@@ -399,72 +407,90 @@ export const PromptsOptionsTab: React.FC = () => {
                       setDragOverPromptId(null);
                     }}
                     style={{
-                      background: token.colorBgContainer,
-                      borderRadius: 12,
-                      padding: '12px 14px',
-                      border: `1px solid ${isDragging ? token.colorInfo : isDragOver ? '#1677ff' : token.colorBorderSecondary}`,
+                      background: 'var(--card)',
+                      borderRadius: 14,
+                      padding: '12px 16px',
+                      border: `1px solid ${isDragging ? '#2563eb' : isDragOver ? '#2563eb' : 'var(--border)'}`,
                       borderStyle: isDragging ? 'dashed' : 'solid',
                       transition: 'all 150ms ease',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       opacity: isDragging ? 0.4 : 1,
-                      boxShadow: isDragOver ? '0 0 0 2px rgba(22,119,255,0.2)' : '0 1px 2px rgba(0,0,0,0.06)',
+                      boxShadow: isDragOver ? '0 0 0 2px rgba(37,99,235,0.2)' : '0 1px 2px rgba(0,0,0,0.03)',
                       userSelect: 'none',
+                      height: 48,
                     }}
                   >
                     {/* Left: Drag handle, Icon, Title */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, paddingRight: 8 }}>
-                      <span style={{ color: token.colorTextTertiary, cursor: 'grab', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <HolderOutlined style={{ fontSize: 12 }} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, paddingRight: 8, flex: 1 }}>
+                      <span style={{ color: '#9ca3af', cursor: 'grab', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <HolderOutlined style={{ fontSize: 13 }} />
                       </span>
 
-                      <span style={{ color: token.colorTextSecondary, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <PromptIcon name={prompt.icon} size={15} />
+                      <span style={{ color: 'var(--foreground)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <PromptIcon name={prompt.icon} size={16} />
                       </span>
 
-                      <span style={{ fontSize: 14, fontWeight: 500, color: token.colorTextSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--foreground)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {prompt.title}
                       </span>
                     </div>
 
-                    {/* Right: Actions (Edit, Delete, Hide, Up/Down) */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, opacity: 0, transition: 'opacity 150ms ease' }} className="np-prompt-actions">
-                      {/* Reorder Up/Down Helpers */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 2, marginRight: 4, color: token.colorTextTertiary }}>
+                    {/* Right: Actions (Up, Down, Edit, Delete, Hide) */}
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        flexShrink: 0,
+                        opacity: isHovered ? 1 : 0,
+                        visibility: isHovered ? 'visible' : 'hidden',
+                        transition: 'opacity 150ms ease',
+                      }}
+                      className="np-prompt-actions"
+                    >
+                      {/* Move Up */}
+                      <Tooltip title="Move Up">
                         <button
                           type="button"
                           disabled={index === 0}
                           onClick={() => handleMovePrompt(showList, index, 'up')}
                           style={{
-                            padding: 4,
-                            cursor: 'pointer',
-                            opacity: index === 0 ? 0.2 : 1,
+                            padding: '4px 2px',
+                            cursor: index === 0 ? 'not-allowed' : 'pointer',
+                            opacity: index === 0 ? 0.25 : 1,
                             background: 'transparent',
                             border: 'none',
-                            color: 'inherit',
+                            color: '#6b7280',
+                            display: 'flex',
+                            alignItems: 'center',
                           }}
-                          title="Move Up"
                         >
-                          <ArrowUpOutlined style={{ fontSize: 10 }} />
+                          <ArrowUpOutlined style={{ fontSize: 11 }} />
                         </button>
+                      </Tooltip>
+
+                      {/* Move Down */}
+                      <Tooltip title="Move Down">
                         <button
                           type="button"
                           disabled={index === showList.length - 1}
                           onClick={() => handleMovePrompt(showList, index, 'down')}
                           style={{
-                            padding: 4,
-                            cursor: 'pointer',
-                            opacity: index === showList.length - 1 ? 0.2 : 1,
+                            padding: '4px 2px',
+                            cursor: index === showList.length - 1 ? 'not-allowed' : 'pointer',
+                            opacity: index === showList.length - 1 ? 0.25 : 1,
                             background: 'transparent',
                             border: 'none',
-                            color: 'inherit',
+                            color: '#6b7280',
+                            display: 'flex',
+                            alignItems: 'center',
                           }}
-                          title="Move Down"
                         >
-                          <ArrowDownOutlined style={{ fontSize: 10 }} />
+                          <ArrowDownOutlined style={{ fontSize: 11 }} />
                         </button>
-                      </div>
+                      </Tooltip>
 
                       {/* Edit Button */}
                       <Tooltip title="Edit">
@@ -472,56 +498,62 @@ export const PromptsOptionsTab: React.FC = () => {
                           type="button"
                           onClick={() => handleOpenEditPrompt(prompt)}
                           style={{
-                            padding: 6,
-                            color: token.colorTextTertiary,
-                            borderRadius: 6,
-                            transition: 'all 150ms ease',
+                            padding: 4,
+                            color: '#6b7280',
                             cursor: 'pointer',
                             background: 'transparent',
                             border: 'none',
+                            display: 'flex',
+                            alignItems: 'center',
                           }}
                         >
-                          <EditOutlined style={{ fontSize: 12 }} />
+                          <EditOutlined style={{ fontSize: 13 }} />
                         </button>
                       </Tooltip>
 
-                      {/* Delete Button (Only for custom user prompts) */}
-                      {prompt.isCustom && (
-                        <Tooltip title="Delete">
+                      {/* Delete Button */}
+                      <Tooltip title="Delete">
+                        <Popconfirm
+                          title="Delete prompt?"
+                          description="Are you sure you want to delete this prompt?"
+                          onConfirm={() => handleDeletePrompt(prompt)}
+                          okText="Delete"
+                          cancelText="Cancel"
+                          okButtonProps={{ danger: true }}
+                        >
                           <button
                             type="button"
-                            onClick={() => handleDeletePrompt(prompt)}
                             style={{
-                              padding: 6,
-                              color: token.colorTextTertiary,
-                              borderRadius: 6,
-                              transition: 'all 150ms ease',
+                              padding: 4,
+                              color: '#6b7280',
                               cursor: 'pointer',
                               background: 'transparent',
                               border: 'none',
+                              display: 'flex',
+                              alignItems: 'center',
                             }}
                           >
-                            <DeleteOutlined style={{ fontSize: 12 }} />
+                            <DeleteOutlined style={{ fontSize: 13 }} />
                           </button>
-                        </Tooltip>
-                      )}
+                        </Popconfirm>
+                      </Tooltip>
 
-                      {/* Hide Button */}
-                      <Tooltip title="Hide">
+                      {/* Hide from list Button */}
+                      <Tooltip title="Hide from list">
                         <button
                           type="button"
                           onClick={() => handleTogglePromptVisibility(prompt, activeCategory)}
                           style={{
-                            padding: 6,
-                            color: token.colorTextTertiary,
-                            borderRadius: 6,
-                            transition: 'all 150ms ease',
+                            padding: 4,
+                            color: '#6b7280',
                             cursor: 'pointer',
                             background: 'transparent',
                             border: 'none',
+                            display: 'flex',
+                            alignItems: 'center',
                           }}
                         >
-                          <HideIcon />
+                          <BookmarkHideIcon size={14} />
                         </button>
                       </Tooltip>
                     </div>
@@ -534,39 +566,38 @@ export const PromptsOptionsTab: React.FC = () => {
 
         {/* RIGHT COLUMN: Hide from list */}
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 600, color: token.colorTextSecondary, marginBottom: 10, padding: '0 4px' }}>
-            <InboxOutlined style={{ fontSize: 14, color: token.colorTextTertiary }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600, color: 'var(--foreground)', marginBottom: 12, padding: '0 4px' }}>
+            <InboxOutlined style={{ fontSize: 14, color: 'var(--muted-foreground)' }} />
             <span>Hide from list</span>
-            <span style={{ color: token.colorTextTertiary, fontWeight: 400, marginLeft: 'auto' }}>
+            <span style={{ color: 'var(--muted-foreground)', fontWeight: 400, marginLeft: 'auto', fontSize: 12 }}>
               ({hideList.length})
             </span>
           </div>
 
           <div style={{
-            background: '#f4f5f7',
-            padding: 12,
-            borderRadius: 16,
-            border: `1px solid ${token.colorBorderSecondary}`,
             display: 'flex',
             flexDirection: 'column',
-            gap: 8,
-            minHeight: 500,
+            gap: 10,
+            minHeight: 480,
           }}>
             {hideList.length === 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '64px 0', color: token.colorTextTertiary, fontSize: 12, textAlign: 'center' }}>
-                <InboxOutlined style={{ fontSize: 24, marginBottom: 8, opacity: 0.5 }} />
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '64px 0', color: 'var(--muted-foreground)', fontSize: 13, textAlign: 'center', background: 'var(--card)', borderRadius: 14, border: '1px solid var(--border)' }}>
+                <InboxOutlined style={{ fontSize: 28, marginBottom: 8, opacity: 0.5 }} />
                 <span>No hidden prompts for this category</span>
               </div>
             ) : (
               hideList.map((prompt, index) => {
                 const isDragging = draggedPromptId === prompt.id;
                 const isDragOver = dragOverPromptId === prompt.id;
+                const isHovered = hoveredPromptId === prompt.id;
 
                 return (
                   <div
                     key={prompt.id}
-                    className="np-reveal-on-hover"
+                    className={`np-reveal-on-hover ${isHovered ? 'force-hover' : ''}`}
                     draggable
+                    onMouseEnter={() => setHoveredPromptId(prompt.id)}
+                    onMouseLeave={() => setHoveredPromptId(null)}
                     onDragStart={(e) => handleDragStart(e, prompt.id)}
                     onDragOver={(e) => handleDragOver(e, prompt.id)}
                     onDrop={(e) => handleDrop(e, prompt.id)}
@@ -575,72 +606,90 @@ export const PromptsOptionsTab: React.FC = () => {
                       setDragOverPromptId(null);
                     }}
                     style={{
-                      background: token.colorBgContainer,
-                      borderRadius: 12,
-                      padding: '12px 14px',
-                      border: `1px solid ${isDragging ? token.colorInfo : isDragOver ? '#1677ff' : token.colorBorderSecondary}`,
+                      background: 'var(--card)',
+                      borderRadius: 14,
+                      padding: '12px 16px',
+                      border: `1px solid ${isDragging ? '#2563eb' : isDragOver ? '#2563eb' : 'var(--border)'}`,
                       borderStyle: isDragging ? 'dashed' : 'solid',
                       transition: 'all 150ms ease',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       opacity: isDragging ? 0.4 : 1,
-                      boxShadow: isDragOver ? '0 0 0 2px rgba(22,119,255,0.2)' : '0 1px 2px rgba(0,0,0,0.06)',
+                      boxShadow: isDragOver ? '0 0 0 2px rgba(37,99,235,0.2)' : '0 1px 2px rgba(0,0,0,0.03)',
                       userSelect: 'none',
+                      height: 48,
                     }}
                   >
                     {/* Left: Drag handle, Icon, Title */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, paddingRight: 8 }}>
-                      <span style={{ color: token.colorTextTertiary, cursor: 'grab', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <HolderOutlined style={{ fontSize: 12 }} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, paddingRight: 8, flex: 1 }}>
+                      <span style={{ color: '#9ca3af', cursor: 'grab', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <HolderOutlined style={{ fontSize: 13 }} />
                       </span>
 
-                      <span style={{ color: token.colorTextSecondary, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <PromptIcon name={prompt.icon} size={15} />
+                      <span style={{ color: 'var(--foreground)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <PromptIcon name={prompt.icon} size={16} />
                       </span>
 
-                      <span style={{ fontSize: 14, fontWeight: 500, color: token.colorTextSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--foreground)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {prompt.title}
                       </span>
                     </div>
 
-                    {/* Right: Actions (Edit, Delete, Show) */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, opacity: 0, transition: 'opacity 150ms ease' }} className="np-prompt-actions">
-                      {/* Reorder Up/Down Helpers */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 2, marginRight: 4, color: token.colorTextTertiary }}>
+                    {/* Right: Actions (Up, Down, Edit, Delete, Show) */}
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        flexShrink: 0,
+                        opacity: isHovered ? 1 : 0,
+                        visibility: isHovered ? 'visible' : 'hidden',
+                        transition: 'opacity 150ms ease',
+                      }}
+                      className="np-prompt-actions"
+                    >
+                      {/* Move Up */}
+                      <Tooltip title="Move Up">
                         <button
                           type="button"
                           disabled={index === 0}
                           onClick={() => handleMovePrompt(hideList, index, 'up')}
                           style={{
-                            padding: 4,
-                            cursor: 'pointer',
-                            opacity: index === 0 ? 0.2 : 1,
+                            padding: '4px 2px',
+                            cursor: index === 0 ? 'not-allowed' : 'pointer',
+                            opacity: index === 0 ? 0.25 : 1,
                             background: 'transparent',
                             border: 'none',
-                            color: 'inherit',
+                            color: '#6b7280',
+                            display: 'flex',
+                            alignItems: 'center',
                           }}
-                          title="Move Up"
                         >
-                          <ArrowUpOutlined style={{ fontSize: 10 }} />
+                          <ArrowUpOutlined style={{ fontSize: 11 }} />
                         </button>
+                      </Tooltip>
+
+                      {/* Move Down */}
+                      <Tooltip title="Move Down">
                         <button
                           type="button"
                           disabled={index === hideList.length - 1}
                           onClick={() => handleMovePrompt(hideList, index, 'down')}
                           style={{
-                            padding: 4,
-                            cursor: 'pointer',
-                            opacity: index === hideList.length - 1 ? 0.2 : 1,
+                            padding: '4px 2px',
+                            cursor: index === hideList.length - 1 ? 'not-allowed' : 'pointer',
+                            opacity: index === hideList.length - 1 ? 0.25 : 1,
                             background: 'transparent',
                             border: 'none',
-                            color: 'inherit',
+                            color: '#6b7280',
+                            display: 'flex',
+                            alignItems: 'center',
                           }}
-                          title="Move Down"
                         >
-                          <ArrowDownOutlined style={{ fontSize: 10 }} />
+                          <ArrowDownOutlined style={{ fontSize: 11 }} />
                         </button>
-                      </div>
+                      </Tooltip>
 
                       {/* Edit Button */}
                       <Tooltip title="Edit">
@@ -648,56 +697,62 @@ export const PromptsOptionsTab: React.FC = () => {
                           type="button"
                           onClick={() => handleOpenEditPrompt(prompt)}
                           style={{
-                            padding: 6,
-                            color: token.colorTextTertiary,
-                            borderRadius: 6,
-                            transition: 'all 150ms ease',
+                            padding: 4,
+                            color: '#6b7280',
                             cursor: 'pointer',
                             background: 'transparent',
                             border: 'none',
+                            display: 'flex',
+                            alignItems: 'center',
                           }}
                         >
-                          <EditOutlined style={{ fontSize: 12 }} />
+                          <EditOutlined style={{ fontSize: 13 }} />
                         </button>
                       </Tooltip>
 
-                      {/* Delete Button (Only for custom user prompts) */}
-                      {prompt.isCustom && (
-                        <Tooltip title="Delete">
+                      {/* Delete Button */}
+                      <Tooltip title="Delete">
+                        <Popconfirm
+                          title="Delete prompt?"
+                          description="Are you sure you want to delete this prompt?"
+                          onConfirm={() => handleDeletePrompt(prompt)}
+                          okText="Delete"
+                          cancelText="Cancel"
+                          okButtonProps={{ danger: true }}
+                        >
                           <button
                             type="button"
-                            onClick={() => handleDeletePrompt(prompt)}
                             style={{
-                              padding: 6,
-                              color: token.colorTextTertiary,
-                              borderRadius: 6,
-                              transition: 'all 150ms ease',
+                              padding: 4,
+                              color: '#6b7280',
                               cursor: 'pointer',
                               background: 'transparent',
                               border: 'none',
+                              display: 'flex',
+                              alignItems: 'center',
                             }}
                           >
-                            <DeleteOutlined style={{ fontSize: 12 }} />
+                            <DeleteOutlined style={{ fontSize: 13 }} />
                           </button>
-                        </Tooltip>
-                      )}
+                        </Popconfirm>
+                      </Tooltip>
 
-                      {/* Show Button */}
-                      <Tooltip title="Show">
+                      {/* Show in list Button */}
+                      <Tooltip title="Show in list">
                         <button
                           type="button"
                           onClick={() => handleTogglePromptVisibility(prompt, activeCategory)}
                           style={{
-                            padding: 6,
-                            color: token.colorTextTertiary,
-                            borderRadius: 6,
-                            transition: 'all 150ms ease',
+                            padding: 4,
+                            color: '#6b7280',
                             cursor: 'pointer',
                             background: 'transparent',
                             border: 'none',
+                            display: 'flex',
+                            alignItems: 'center',
                           }}
                         >
-                          <ShowIcon />
+                          <BookmarkShowIcon size={14} />
                         </button>
                       </Tooltip>
                     </div>

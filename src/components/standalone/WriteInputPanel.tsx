@@ -6,46 +6,34 @@ import { WriteFormattingPopover } from './WriteFormattingPopover';
 
 interface WriteInputPanelProps {
   activeTab: 'write' | 'reply';
-  writeInput: string;
-  onChangeWriteInput: (val: string) => void;
-  replyOriginalText: string;
-  onChangeReplyOriginalText: (val: string) => void;
-  replyIdeaText: string;
-  onChangeReplyIdeaText: (val: string) => void;
-  onClear: () => void;
-  onSubmit: () => void;
-  isGenerating: boolean;
-  // Prompt list
   prompts: string[];
-  selectedFormat: string;
-  onSelectFormat: (format: string) => void;
+  selectedPrompt: string;
+  onSelectPrompt: (prompt: string) => void;
   onOpenAddPrompt: () => void;
-  // Model selector
   selectedModelId?: string;
   onSelectModel: (modelId: string) => void;
-  // Formatting
   tone: string;
   onChangeTone: (val: string) => void;
   length: string;
   onChangeLength: (val: string) => void;
   language: string;
   onChangeLanguage: (val: string) => void;
+  writeInput: string;
+  onChangeWriteInput: (val: string) => void;
+  replyOriginalText: string;
+  onChangeReplyOriginalText: (val: string) => void;
+  replyIdeaText: string;
+  onChangeReplyIdeaText: (val: string) => void;
+  isGenerating: boolean;
+  onSubmit: () => void;
+  onClear: () => void;
 }
 
 export const WriteInputPanel: React.FC<WriteInputPanelProps> = ({
   activeTab,
-  writeInput,
-  onChangeWriteInput,
-  replyOriginalText,
-  onChangeReplyOriginalText,
-  replyIdeaText,
-  onChangeReplyIdeaText,
-  onClear,
-  onSubmit,
-  isGenerating,
   prompts,
-  selectedFormat,
-  onSelectFormat,
+  selectedPrompt,
+  onSelectPrompt,
   onOpenAddPrompt,
   selectedModelId,
   onSelectModel,
@@ -55,30 +43,47 @@ export const WriteInputPanel: React.FC<WriteInputPanelProps> = ({
   onChangeLength,
   language,
   onChangeLanguage,
+  writeInput,
+  onChangeWriteInput,
+  replyOriginalText,
+  onChangeReplyOriginalText,
+  replyIdeaText,
+  onChangeReplyIdeaText,
+  isGenerating,
+  onSubmit,
+  onClear,
 }) => {
+  const isWriteEmpty = !writeInput.trim();
+  const isReplyEmpty = !replyOriginalText.trim() && !replyIdeaText.trim();
+  const isSubmitDisabled = activeTab === 'write' ? (isWriteEmpty || isGenerating) : (isReplyEmpty || isGenerating);
+
   return (
-    <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 14,
-            width: '100%',
-          }}>
-      {/* 1. Prompt List in Left Column */}
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 14,
+        width: '100%',
+      }}
+    >
+      {/* 1. Prompt / Preset Selection Row */}
       <WritePromptList
         prompts={prompts}
-        selectedPrompt={selectedFormat}
-        onSelectPrompt={onSelectFormat}
+        selectedPrompt={selectedPrompt}
+        onSelectPrompt={onSelectPrompt}
         onOpenAddPrompt={onOpenAddPrompt}
       />
 
-      {/* 2. Control Row: Model Selector on Left, Formatting on Right */}
-      <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 12,
-            width: '100%',
-          }}>
+      {/* 2. Model & Formatting Selector Bar */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 10,
+          width: '100%',
+        }}
+      >
         <ModelSelector
           selectedModelId={selectedModelId ?? ''}
           onSelectModel={onSelectModel}
@@ -97,37 +102,37 @@ export const WriteInputPanel: React.FC<WriteInputPanelProps> = ({
 
       {/* 3. Input Box */}
       {activeTab === 'write' ? (
-        <div style={{
+        <div
+          style={{
             position: 'relative',
-            background: 'var(--card)',
+            background: '#ffffff',
             borderRadius: 16,
-            borderWidth: 1,
-            borderStyle: 'solid',
-            borderColor: 'var(--border)',
+            border: '1px solid #ebeff2',
             padding: 16,
-            minHeight: 300,
+            minHeight: 320,
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'space-between',
-            boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
-            transition: 'all 200ms ease',
-          }}>
+            transition: 'all 150ms ease',
+          }}
+        >
           <textarea
             value={writeInput}
             onChange={(e) => onChangeWriteInput(e.target.value)}
             placeholder="Enter the topic you want to write about..."
             style={{
-            width: '100%',
-            background: 'transparent',
-            borderStyle: 'none',
-            outline: 'none',
-            resize: 'none',
-            color: 'var(--foreground)',
-            fontSize: 14,
-            fontFamily: 'var(--font-sans)',
-            flex: 1,
-            minHeight: 200,
-          }}
+              width: '100%',
+              background: 'transparent',
+              border: 'none',
+              outline: 'none',
+              resize: 'none',
+              color: '#12171a',
+              fontSize: 14,
+              lineHeight: 1.6,
+              fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+              flex: 1,
+              minHeight: 220,
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
                 e.preventDefault();
@@ -136,125 +141,135 @@ export const WriteInputPanel: React.FC<WriteInputPanelProps> = ({
             }}
           />
 
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            paddingTop: 8,
-          }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingTop: 8,
+            }}
+          >
             <button
               type="button"
               onClick={onClear}
               style={{
-            color: 'var(--muted-foreground)',
-            padding: 6,
-            borderRadius: 8,
-            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
+                color: '#8a99a4',
+                padding: 6,
+                borderRadius: 8,
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'color 150ms ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = '#12171a';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = '#8a99a4';
+              }}
               title="Clear input"
             >
-              <DeleteOutlined style={{
-            fontSize: 16,
-          }} />
+              <DeleteOutlined style={{ fontSize: 16 }} />
             </button>
 
             <button
               type="button"
               onClick={onSubmit}
-              disabled={!writeInput.trim() || isGenerating}
+              disabled={isSubmitDisabled}
               style={{
-            paddingLeft: 24,
-            paddingRight: 24,
-            paddingTop: 8,
-            paddingBottom: 8,
-            borderRadius: 12,
-            background: '#5433ff',
-            color: '#ffffff',
-            fontSize: 12,
-            fontWeight: 600,
-            boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
-            cursor: 'pointer',
-            transition: 'all 200ms ease',
-          }}
+                height: 36,
+                paddingLeft: 20,
+                paddingRight: 20,
+                borderRadius: 8,
+                background: isSubmitDisabled ? '#f3f4f6' : '#5433ff',
+                color: isSubmitDisabled ? '#9ca3af' : '#ffffff',
+                border: 'none',
+                fontSize: 13,
+                fontWeight: 500,
+                cursor: isSubmitDisabled ? 'not-allowed' : 'pointer',
+                transition: 'all 150ms ease',
+                boxShadow: isSubmitDisabled ? 'none' : '0 1px 2px rgba(0,0,0,0.05)',
+              }}
             >
               {isGenerating ? 'Generating...' : 'Submit'}
             </button>
           </div>
         </div>
       ) : (
-        <div style={{
+        <div
+          style={{
             display: 'flex',
             flexDirection: 'column',
             gap: 14,
-          }}>
-          {/* Top Box: Original Text */}
-          <div style={{
-            background: 'var(--card)',
-            borderRadius: 16,
-            borderWidth: 1,
-            borderStyle: 'solid',
-            borderColor: '#a78bfa',
-            padding: 16,
-            minHeight: 140,
-            boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
-            display: 'flex',
-            flexDirection: 'column',
-            transition: 'all 200ms ease',
-          }}>
+          }}
+        >
+          {/* Top Box: Original Text (with lavender/purple border) */}
+          <div
+            style={{
+              background: '#ffffff',
+              borderRadius: 16,
+              border: '1.5px solid #8b5cf6',
+              padding: 16,
+              minHeight: 140,
+              display: 'flex',
+              flexDirection: 'column',
+              transition: 'all 150ms ease',
+            }}
+          >
             <textarea
               value={replyOriginalText}
               onChange={(e) => onChangeReplyOriginalText(e.target.value)}
               placeholder="Enter the original text you want to reply to"
               style={{
-            width: '100%',
-            background: 'transparent',
-            borderStyle: 'none',
-            outline: 'none',
-            resize: 'none',
-            color: 'var(--foreground)',
-            fontSize: 14,
-            fontFamily: 'var(--font-sans)',
-            flex: 1,
-            minHeight: 100,
-          }}
+                width: '100%',
+                background: 'transparent',
+                border: 'none',
+                outline: 'none',
+                resize: 'none',
+                color: '#12171a',
+                fontSize: 14,
+                lineHeight: 1.6,
+                fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                flex: 1,
+                minHeight: 100,
+              }}
             />
           </div>
 
           {/* Bottom Box: Response Idea & Submit */}
-          <div style={{
-            background: 'var(--card)',
-            borderRadius: 16,
-            borderWidth: 1,
-            borderStyle: 'solid',
-            borderColor: 'var(--border)',
-            padding: 16,
-            minHeight: 160,
-            boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-            transition: 'all 200ms ease',
-          }}>
+          <div
+            style={{
+              background: '#ffffff',
+              borderRadius: 16,
+              border: '1px solid #ebeff2',
+              padding: 16,
+              minHeight: 160,
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              transition: 'all 150ms ease',
+            }}
+          >
             <textarea
               value={replyIdeaText}
               onChange={(e) => onChangeReplyIdeaText(e.target.value)}
               placeholder="Describe the general idea of your response"
               style={{
-            width: '100%',
-            background: 'transparent',
-            borderStyle: 'none',
-            outline: 'none',
-            resize: 'none',
-            color: 'var(--foreground)',
-            fontSize: 14,
-            fontFamily: 'var(--font-sans)',
-            flex: 1,
-            minHeight: 90,
-          }}
+                width: '100%',
+                background: 'transparent',
+                border: 'none',
+                outline: 'none',
+                resize: 'none',
+                color: '#12171a',
+                fontSize: 14,
+                lineHeight: 1.6,
+                fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                flex: 1,
+                minHeight: 90,
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
                   e.preventDefault();
@@ -263,50 +278,58 @@ export const WriteInputPanel: React.FC<WriteInputPanelProps> = ({
               }}
             />
 
-            <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            paddingTop: 8,
-          }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                paddingTop: 8,
+              }}
+            >
               <button
                 type="button"
                 onClick={onClear}
                 style={{
-            color: 'var(--muted-foreground)',
-            padding: 6,
-            borderRadius: 8,
-            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
+                  color: '#8a99a4',
+                  padding: 6,
+                  borderRadius: 8,
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'color 150ms ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = '#12171a';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = '#8a99a4';
+                }}
                 title="Clear input"
               >
-                <DeleteOutlined style={{
-            fontSize: 16,
-          }} />
+                <DeleteOutlined style={{ fontSize: 16 }} />
               </button>
 
               <button
                 type="button"
                 onClick={onSubmit}
-                disabled={(!replyOriginalText.trim() && !replyIdeaText.trim()) || isGenerating}
+                disabled={isSubmitDisabled}
                 style={{
-            paddingLeft: 24,
-            paddingRight: 24,
-            paddingTop: 8,
-            paddingBottom: 8,
-            borderRadius: 12,
-            background: '#5433ff',
-            color: '#ffffff',
-            fontSize: 12,
-            fontWeight: 600,
-            boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
-            cursor: 'pointer',
-            transition: 'all 200ms ease',
-          }}
+                  height: 36,
+                  paddingLeft: 20,
+                  paddingRight: 20,
+                  borderRadius: 8,
+                  background: isSubmitDisabled ? '#f3f4f6' : '#5433ff',
+                  color: isSubmitDisabled ? '#9ca3af' : '#ffffff',
+                  border: 'none',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  cursor: isSubmitDisabled ? 'not-allowed' : 'pointer',
+                  transition: 'all 150ms ease',
+                  boxShadow: isSubmitDisabled ? 'none' : '0 1px 2px rgba(0,0,0,0.05)',
+                }}
               >
                 {isGenerating ? 'Generating...' : 'Submit'}
               </button>

@@ -184,6 +184,15 @@ export const ToolsGridPanel: React.FC = () => {
               type="primary"
               onClick={handleRunTool}
               disabled={!toolPromptInput.trim()}
+              style={{
+                height: 36,
+                borderRadius: 8,
+                fontWeight: 500,
+                fontSize: 12,
+                paddingLeft: 16,
+                paddingRight: 16,
+                boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+              }}
             >
               Run Tool
             </Button>

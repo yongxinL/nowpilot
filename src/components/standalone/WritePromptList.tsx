@@ -21,7 +21,6 @@ export const WritePromptList: React.FC<WritePromptListProps> = ({
     if (isExpanded) {
       return prompts;
     }
-    // Collapsed mode: Put selected prompt first, then rest in original order
     const isSelectedInList = prompts.includes(selectedPrompt);
     if (!isSelectedInList) {
       return [selectedPrompt, ...prompts];
@@ -32,24 +31,28 @@ export const WritePromptList: React.FC<WritePromptListProps> = ({
 
   if (!isExpanded) {
     return (
-      <div style={{
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 8,
-            overflow: 'hidden',
-            flexWrap: 'nowrap',
-          }}>
-        {/* Single-row prompt list that cuts off when container width is not enough */}
-        <div style={{
+      <div
+        style={{
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 8,
+          overflow: 'hidden',
+          flexWrap: 'nowrap',
+        }}
+      >
+        {/* Single-row prompt list that clips gracefully */}
+        <div
+          style={{
             display: 'flex',
             alignItems: 'center',
             gap: 8,
             overflow: 'hidden',
             flex: 1,
             flexWrap: 'nowrap',
-          }}>
+          }}
+        >
           {displayedPrompts.map((promptTitle) => {
             const isSelected = promptTitle === selectedPrompt;
             return (
@@ -61,15 +64,16 @@ export const WritePromptList: React.FC<WritePromptListProps> = ({
                   whiteSpace: 'nowrap',
                   padding: '6px 14px',
                   borderRadius: 12,
-                  fontSize: 12,
+                  fontSize: 13,
                   cursor: 'pointer',
-                  transition: 'all 200ms ease',
+                  transition: 'all 150ms ease',
                   flexShrink: 0,
                   userSelect: 'none',
-                  background: isSelected ? '#ece6f8' : 'var(--muted)',
-                  color: isSelected ? 'var(--foreground)' : 'var(--foreground)',
+                  border: isSelected ? '1px solid transparent' : '1px solid #ebeff2',
+                  background: isSelected ? '#ece6f8' : '#ffffff',
+                  color: isSelected ? '#12171a' : '#12171a',
                   fontWeight: isSelected ? 600 : 500,
-                  boxShadow: isSelected ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                  boxShadow: isSelected ? '0 1px 2px rgba(0,0,0,0.04)' : 'none',
                 }}
               >
                 {promptTitle}
@@ -83,40 +87,38 @@ export const WritePromptList: React.FC<WritePromptListProps> = ({
           type="button"
           onClick={() => setIsExpanded(true)}
           style={{
-            paddingLeft: 8,
-            paddingRight: 8,
-            paddingTop: 6,
-            paddingBottom: 6,
+            padding: '6px 10px',
             borderRadius: 12,
-            background: 'var(--muted)',
-            color: 'var(--muted-foreground)',
-            fontSize: 12,
+            background: '#ffffff',
+            border: '1px solid #ebeff2',
+            color: '#8a99a4',
+            fontSize: 11,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             flexShrink: 0,
             cursor: 'pointer',
-            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+            transition: 'all 150ms ease',
           }}
           title="Expand all prompts"
         >
-          <DownOutlined style={{
-            fontSize: '10px',
-          }} />
+          <DownOutlined style={{ fontSize: 10 }} />
         </button>
       </div>
     );
   }
 
-  // Expanded View: all prompts in original position, flex-wrap across multiple lines
+  // Expanded View: all prompts in multi-line flow with collapse button and add button
   return (
-    <div style={{
-            width: '100%',
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            gap: 8,
-          }}>
+    <div
+      style={{
+        width: '100%',
+        display: 'flex',
+        flexWrap: 'wrap',
+        alignItems: 'center',
+        gap: 8,
+      }}
+    >
       {displayedPrompts.map((promptTitle) => {
         const isSelected = promptTitle === selectedPrompt;
         return (
@@ -128,14 +130,15 @@ export const WritePromptList: React.FC<WritePromptListProps> = ({
               whiteSpace: 'nowrap',
               padding: '6px 14px',
               borderRadius: 12,
-              fontSize: 12,
+              fontSize: 13,
               cursor: 'pointer',
-              transition: 'all 200ms ease',
+              transition: 'all 150ms ease',
               userSelect: 'none',
-              background: isSelected ? '#ece6f8' : 'var(--muted)',
-              color: isSelected ? 'var(--foreground)' : 'var(--foreground)',
+              border: isSelected ? '1px solid transparent' : '1px solid #ebeff2',
+              background: isSelected ? '#ece6f8' : '#ffffff',
+              color: isSelected ? '#12171a' : '#12171a',
               fontWeight: isSelected ? 600 : 500,
-              boxShadow: isSelected ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+              boxShadow: isSelected ? '0 1px 2px rgba(0,0,0,0.04)' : 'none',
             }}
           >
             {promptTitle}
@@ -148,26 +151,22 @@ export const WritePromptList: React.FC<WritePromptListProps> = ({
         type="button"
         onClick={() => setIsExpanded(false)}
         style={{
-            paddingLeft: 8,
-            paddingRight: 8,
-            paddingTop: 6,
-            paddingBottom: 6,
-            borderRadius: 12,
-            background: 'var(--muted)',
-            color: 'var(--muted-foreground)',
-            fontSize: 12,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-            cursor: 'pointer',
-            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
-          }}
+          padding: '6px 10px',
+          borderRadius: 12,
+          background: '#ffffff',
+          border: '1px solid #ebeff2',
+          color: '#8a99a4',
+          fontSize: 11,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+          cursor: 'pointer',
+          transition: 'all 150ms ease',
+        }}
         title="Collapse prompts"
       >
-        <UpOutlined style={{
-            fontSize: '10px',
-          }} />
+        <UpOutlined style={{ fontSize: 10 }} />
       </button>
 
       {/* Add Custom Prompt Button */}
@@ -175,27 +174,23 @@ export const WritePromptList: React.FC<WritePromptListProps> = ({
         type="button"
         onClick={onOpenAddPrompt}
         style={{
-            paddingLeft: 10,
-            paddingRight: 10,
-            paddingTop: 6,
-            paddingBottom: 6,
-            borderRadius: 12,
-            background: 'var(--muted)',
-            color: 'var(--muted-foreground)',
-            fontSize: 12,
-            fontWeight: 700,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-            cursor: 'pointer',
-            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
-          }}
+          padding: '6px 12px',
+          borderRadius: 12,
+          background: '#ffffff',
+          border: '1px solid #ebeff2',
+          color: '#8a99a4',
+          fontSize: 12,
+          fontWeight: 700,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+          cursor: 'pointer',
+          transition: 'all 150ms ease',
+        }}
         title="Add custom prompt preset"
       >
-        <PlusOutlined style={{
-            fontSize: '11px',
-          }} />
+        <PlusOutlined style={{ fontSize: 11 }} />
       </button>
     </div>
   );

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Modal, Input, Select, Button, Switch, Typography, Form, App, Segmented } from 'antd';
+import { Modal, Input, Select, Button, Switch, Typography, Form, App, Segmented, Tooltip } from 'antd';
 import {
   PlusOutlined,
   ReloadOutlined,
@@ -386,132 +386,165 @@ export const OptionsPage: React.FC = () => {
           }}>
       {/* Options Sidebar Navigation */}
       <div style={{
-            width: 240,
-            background: '#f6f6f8',
-            borderRadius: 20,
-            borderWidth: 1,
-            borderStyle: 'solid',
-            borderColor: 'var(--border)',
-            padding: 16,
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-            flexShrink: 0,
-            userSelect: 'none',
-            boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
-          }}>
+        width: 240,
+        background: '#f8fafc',
+        borderRadius: 24,
+        borderWidth: 1,
+        borderStyle: 'solid',
+        borderColor: '#e2e8f0',
+        padding: '24px 16px',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        flexShrink: 0,
+        userSelect: 'none',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+      }}>
         <div>
+          {/* Brand Logo & Name */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 10,
+            gap: 12,
             paddingLeft: 8,
             paddingRight: 8,
-            marginBottom: 32,
+            marginBottom: 28,
           }}>
             <div style={{
-            width: 32,
-            height: 32,
-            borderRadius: 9999,
-            overflow: 'hidden',
-            flexShrink: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}>
+              width: 32,
+              height: 32,
+              borderRadius: 9999,
+              overflow: 'hidden',
+              flexShrink: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
               <NowPilotAvatar style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-          }} />
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+              }} />
             </div>
             <span style={{
-            fontWeight: 700,
-            fontSize: 16,
-            letterSpacing: '-0.01em',
-            color: 'var(--foreground)',
-          }}>NowPilot</span>
+              fontWeight: 700,
+              fontSize: 16,
+              letterSpacing: '-0.01em',
+              color: '#0f172a',
+            }}>NowPilot</span>
           </div>
 
+          {/* Navigation Items List */}
           <div style={{
-            rowGap: 4,
             display: 'flex',
             flexDirection: 'column',
+            gap: 6,
           }}>
             {[
               { key: 'General', label: 'General', icon: <ControlOutlined /> },
               { key: 'Translate', label: 'Translate', icon: <TranslationOutlined /> },
               { key: 'Prompts', label: 'Prompts', icon: <EditOutlined /> },
-            ].map(item => (
-              <button
-                key={item.key}
-                onClick={() => setActiveTab(item.key as any)}
-                style={{
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  padding: '10px 12px',
-                  borderRadius: 12,
-                  fontSize: 16,
-                  fontWeight: activeTab === item.key ? 600 : 500,
-                  cursor: 'pointer',
-                  transition: 'all 200ms ease',
-                  background: activeTab === item.key ? '#ede9fe' : 'transparent',
-                  color: activeTab === item.key ? '#6d28d9' : 'var(--muted-foreground)',
-                  boxShadow: activeTab === item.key ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
-                }}
-              >
-                <span style={{
-            fontSize: 18,
-          }}>{item.icon}</span>
-                <span>{item.label}</span>
-              </button>
-            ))}
+            ].map(item => {
+              const isActive = activeTab === item.key;
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => setActiveTab(item.key as any)}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    padding: '10px 14px',
+                    borderRadius: 12,
+                    fontSize: 15,
+                    fontWeight: isActive ? 700 : 500,
+                    cursor: 'pointer',
+                    transition: 'all 150ms ease',
+                    background: isActive ? '#f3e8ff' : 'transparent',
+                    color: isActive ? '#7c3aed' : '#4b5563',
+                    border: 'none',
+                    outline: 'none',
+                    textAlign: 'left',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.background = '#f1f5f9';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.background = 'transparent';
+                    }
+                  }}
+                >
+                  <span style={{
+                    fontSize: 18,
+                    color: isActive ? '#7c3aed' : '#6b7280',
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}>
+                    {item.icon}
+                  </span>
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
 
             <div style={{
-            marginTop: 8,
-            marginBottom: 8,
-            borderTopWidth: 1,
-            borderTopStyle: 'solid',
-            borderTopColor: 'var(--border)',
-            borderColor: 'var(--border)',
-          }} />
+              marginTop: 12,
+              marginBottom: 12,
+              borderTopWidth: 1,
+              borderTopStyle: 'solid',
+              borderTopColor: '#e2e8f0',
+            }} />
 
+            {/* Help Center */}
             <a
               href="#"
               onClick={e => { e.preventDefault(); antMessage.info('Help Center opened'); }}
               style={{
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            paddingLeft: 12,
-            paddingRight: 12,
-            paddingTop: 10,
-            paddingBottom: 10,
-            borderRadius: 12,
-            fontSize: 16,
-            fontWeight: 500,
-            color: 'var(--muted-foreground)',
-            transition: 'all 200ms ease',
-            cursor: 'pointer',
-          }}
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '10px 14px',
+                borderRadius: 12,
+                fontSize: 15,
+                fontWeight: 500,
+                color: '#2563eb',
+                textDecoration: 'none',
+                transition: 'all 150ms ease',
+                cursor: 'pointer',
+                border: 'none',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#f1f5f9';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
             >
               <span style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-          }}>
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+              }}>
                 <span style={{
-            fontSize: 18,
-          }}><QuestionCircleOutlined /></span>
-                <span>Help Center</span>
+                  fontSize: 18,
+                  color: '#2563eb',
+                  display: 'flex',
+                  alignItems: 'center',
+                }}>
+                  <QuestionCircleOutlined />
+                </span>
+                <span style={{ color: '#2563eb', fontWeight: 600 }}>Help Center</span>
               </span>
               <span style={{
-            color: 'var(--muted-foreground)',
-            fontSize: 14,
-          }}>↗</span>
+                color: '#9ca3af',
+                fontSize: 14,
+              }}>↗</span>
             </a>
           </div>
         </div>
@@ -1575,97 +1608,91 @@ export const OptionsPage: React.FC = () => {
             borderColor: 'var(--border)',
           }}>
             <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            fontSize: 12,
-            marginBottom: 8,
-          }}>
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              fontSize: 12,
+              marginBottom: 8,
+            }}>
               <div style={{
-            fontWeight: 600,
-            color: 'var(--foreground)',
-          }}>
+                fontWeight: 600,
+                color: 'var(--foreground)',
+              }}>
                 Model list <span style={{
-            color: 'var(--muted-foreground)',
-            fontWeight: 400,
-            marginLeft: 4,
-          }}>({modalModels.length} models available)</span>
+                  color: 'var(--muted-foreground)',
+                  fontWeight: 400,
+                  marginLeft: 4,
+                }}>({modalModels.length} models available)</span>
               </div>
               <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-          }}>
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+              }}>
                 {listUpdated ? (
-                  <button
+                  <Button
+                    type="link"
+                    size="small"
+                    icon={<CheckOutlined style={{ color: '#10b981' }} />}
                     onClick={handleUpdateList}
                     style={{
-            color: '#10b981',
-            fontWeight: 500,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-            cursor: 'pointer',
-            fontSize: 12,
-          }}
+                      color: '#10b981',
+                      fontWeight: 500,
+                      padding: '0 4px',
+                      height: 'auto',
+                    }}
                   >
-                    <CheckOutlined /> Updated
-                  </button>
+                    Updated
+                  </Button>
                 ) : (
-                  <button
+                  <Button
+                    type="link"
+                    size="small"
+                    icon={<ReloadOutlined />}
                     onClick={handleUpdateList}
                     style={{
-            color: '#7c3aed',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-            fontWeight: 400,
-            cursor: 'pointer',
-            fontSize: 12,
-          }}
+                      color: '#7c3aed',
+                      padding: '0 4px',
+                      height: 'auto',
+                    }}
                   >
-                    <ReloadOutlined /> Update list
-                  </button>
+                    Update list
+                  </Button>
                 )}
-                <button
-                  onClick={() => {
-                    setAddCustomModelOpen(true);
-                    setNewModelNameInput('');
-                  }}
-                  style={{
-            color: 'var(--muted-foreground)',
-            fontWeight: 700,
-            paddingLeft: 6,
-            paddingRight: 6,
-            paddingTop: 2,
-            paddingBottom: 2,
-            borderRadius: 6,
-            fontSize: 14,
-            cursor: 'pointer',
-          }}
-                >
-                  +
-                </button>
+                <Tooltip title="Add custom model">
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<PlusOutlined />}
+                    onClick={() => {
+                      setAddCustomModelOpen(true);
+                      setNewModelNameInput('');
+                    }}
+                    style={{
+                      color: 'var(--muted-foreground)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  />
+                </Tooltip>
               </div>
             </div>
 
             {/* Add Custom Model Inline Box matching screenshot */}
             {addCustomModelOpen && (
               <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: 8,
-            paddingLeft: 12,
-            paddingRight: 12,
-            marginBottom: 10,
-            borderRadius: 12,
-            borderWidth: 2,
-            borderStyle: 'solid',
-            borderColor: '#7c3aed',
-            background: 'var(--card)',
-            boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
-          }}>
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '6px 12px',
+                marginBottom: 10,
+                borderRadius: 12,
+                border: '2px solid #7c3aed',
+                background: 'var(--card)',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+                gap: 8,
+              }}>
                 <input
                   type="text"
                   placeholder="Enter model name (e.g. test1)"
@@ -1673,60 +1700,54 @@ export const OptionsPage: React.FC = () => {
                   onChange={e => setNewModelNameInput(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') handleAddCustomModel(); }}
                   style={{
-            width: '100%',
-            background: 'transparent',
-            outline: 'none',
-            fontSize: 12,
-            color: 'var(--foreground)',
-            fontFamily: 'var(--font-mono)',
-          }}
+                    width: '100%',
+                    background: 'transparent',
+                    border: 'none',
+                    outline: 'none',
+                    fontSize: 12,
+                    color: 'var(--foreground)',
+                    fontFamily: 'var(--font-mono)',
+                  }}
                   autoFocus
                 />
                 <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            marginLeft: 8,
-            flexShrink: 0,
-          }}>
-                  <button
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  flexShrink: 0,
+                }}>
+                  <Button
+                    type="primary"
+                    size="small"
+                    icon={<CheckOutlined />}
                     onClick={handleAddCustomModel}
                     style={{
-            width: 24,
-            height: 24,
-            borderRadius: 6,
-            background: '#7c3aed',
-            color: '#ffffff',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 12,
-            boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
-            cursor: 'pointer',
-            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
-          }}
-                    title="Confirm"
-                  >
-                    <CheckOutlined />
-                  </button>
-                  <button
+                      background: '#7c3aed',
+                      borderColor: '#7c3aed',
+                      width: 24,
+                      height: 24,
+                      minWidth: 24,
+                      padding: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  />
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<CloseOutlined />}
                     onClick={() => { setAddCustomModelOpen(false); setNewModelNameInput(''); }}
                     style={{
-            width: 24,
-            height: 24,
-            borderRadius: 6,
-            color: 'var(--muted-foreground)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 12,
-            cursor: 'pointer',
-            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
-          }}
-                    title="Cancel"
-                  >
-                    <CloseOutlined />
-                  </button>
+                      width: 24,
+                      height: 24,
+                      minWidth: 24,
+                      padding: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  />
                 </div>
               </div>
             )}
@@ -1734,47 +1755,41 @@ export const OptionsPage: React.FC = () => {
             {/* Model List Rendering */}
             {modalModels.length === 0 && !addCustomModelOpen ? (
               <div style={{
-            textAlign: 'center',
-            paddingTop: 24,
-            paddingBottom: 24,
-            fontSize: 12,
-            color: 'var(--muted-foreground)',
-            background: 'var(--muted)',
-            borderRadius: 12,
-            borderWidth: 1,
-            borderStyle: 'dashed',
-            borderColor: 'var(--border)',
-          }}>
+                textAlign: 'center',
+                padding: '24px 12px',
+                fontSize: 12,
+                color: 'var(--muted-foreground)',
+                background: 'var(--muted)',
+                borderRadius: 12,
+                border: '1px dashed var(--border)',
+              }}>
                 No models available. Click 'Update list' or 'Check' to load models, or click '+' to add.
               </div>
             ) : (
               <div style={{
-            rowGap: 8,
-            display: 'flex',
-            flexDirection: 'column',
-            maxHeight: 192,
-            overflowY: 'auto',
-            paddingRight: 4,
-          }}>
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 8,
+                maxHeight: 192,
+                overflowY: 'auto',
+                paddingRight: 4,
+              }}>
                 {modalModels.map(m => {
                   if (editingCustomModelId === m.id) {
                     return (
                       <div
                         key={m.id}
                         style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: 8,
-            paddingLeft: 12,
-            paddingRight: 12,
-            borderRadius: 12,
-            borderWidth: 2,
-            borderStyle: 'solid',
-            borderColor: '#7c3aed',
-            background: 'var(--card)',
-            boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
-          }}
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '6px 12px',
+                          borderRadius: 12,
+                          border: '2px solid #7c3aed',
+                          background: 'var(--card)',
+                          boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+                          gap: 8,
+                        }}
                       >
                         <input
                           type="text"
@@ -1782,60 +1797,54 @@ export const OptionsPage: React.FC = () => {
                           onChange={e => setEditingModelNameInput(e.target.value)}
                           onKeyDown={e => { if (e.key === 'Enter') handleSaveEditingCustomModel(); }}
                           style={{
-            width: '100%',
-            background: 'transparent',
-            outline: 'none',
-            fontSize: 12,
-            color: 'var(--foreground)',
-            fontFamily: 'var(--font-mono)',
-          }}
+                            width: '100%',
+                            background: 'transparent',
+                            border: 'none',
+                            outline: 'none',
+                            fontSize: 12,
+                            color: 'var(--foreground)',
+                            fontFamily: 'var(--font-mono)',
+                          }}
                           autoFocus
                         />
                         <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            marginLeft: 8,
-            flexShrink: 0,
-          }}>
-                          <button
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          flexShrink: 0,
+                        }}>
+                          <Button
+                            type="primary"
+                            size="small"
+                            icon={<CheckOutlined />}
                             onClick={handleSaveEditingCustomModel}
                             style={{
-            width: 24,
-            height: 24,
-            borderRadius: 6,
-            background: '#7c3aed',
-            color: '#ffffff',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 12,
-            boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
-            cursor: 'pointer',
-            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
-          }}
-                            title="Save"
-                          >
-                            <CheckOutlined />
-                          </button>
-                          <button
+                              background: '#7c3aed',
+                              borderColor: '#7c3aed',
+                              width: 24,
+                              height: 24,
+                              minWidth: 24,
+                              padding: 0,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          />
+                          <Button
+                            type="text"
+                            size="small"
+                            icon={<CloseOutlined />}
                             onClick={() => { setEditingCustomModelId(null); setEditingModelNameInput(''); }}
                             style={{
-            width: 24,
-            height: 24,
-            borderRadius: 6,
-            color: 'var(--muted-foreground)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 12,
-            cursor: 'pointer',
-            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
-          }}
-                            title="Cancel"
-                          >
-                            <CloseOutlined />
-                          </button>
+                              width: 24,
+                              height: 24,
+                              minWidth: 24,
+                              padding: 0,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          />
                         </div>
                       </div>
                     );
@@ -1845,70 +1854,66 @@ export const OptionsPage: React.FC = () => {
                     <div
                       key={m.id}
                       style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: 10,
-            borderRadius: 12,
-            background: 'var(--muted)',
-            fontSize: 12,
-            borderWidth: 1,
-            borderStyle: 'solid',
-            borderColor: 'var(--border)',
-          }}
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '8px 12px',
+                        borderRadius: 12,
+                        background: 'var(--muted)',
+                        fontSize: 12,
+                        border: '1px solid var(--border)',
+                      }}
                     >
                       <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            minWidth: 0,
-            paddingRight: 8,
-          }}>
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        minWidth: 0,
+                        paddingRight: 8,
+                      }}>
                         <span style={{
-            fontFamily: 'var(--font-mono)',
-            color: 'var(--foreground)',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}>{m.name}</span>
+                          fontFamily: 'var(--font-mono)',
+                          color: 'var(--foreground)',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}>{m.name}</span>
                         {m.isCustom && (
                           <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 2,
-            marginLeft: 4,
-          }}>
-                            <button
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 2,
+                            marginLeft: 4,
+                          }}>
+                            <Button
+                              type="text"
+                              size="small"
+                              icon={<EditOutlined style={{ fontSize: 11 }} />}
                               onClick={() => {
                                 setEditingCustomModelId(m.id);
-                                setEditingModelNameInput(m.name);
+                                setNewModelNameInput(m.name);
                               }}
                               style={{
-            color: 'var(--muted-foreground)',
-            cursor: 'pointer',
-            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
-            padding: 2,
-          }}
-                              title="Edit model name"
-                            >
-                              <EditOutlined style={{
-            fontSize: 12,
-          }} />
-                            </button>
-                            <button
+                                width: 20,
+                                height: 20,
+                                minWidth: 20,
+                                padding: 0,
+                                color: 'var(--muted-foreground)',
+                              }}
+                            />
+                            <Button
+                              type="text"
+                              danger
+                              size="small"
+                              icon={<DeleteOutlined style={{ fontSize: 11 }} />}
                               onClick={() => handleDeleteCustomModel(m.id)}
                               style={{
-            color: 'var(--muted-foreground)',
-            cursor: 'pointer',
-            transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
-            padding: 2,
-          }}
-                              title="Remove custom model"
-                            >
-                              <DeleteOutlined style={{
-            fontSize: 12,
-          }} />
-                            </button>
+                                width: 20,
+                                height: 20,
+                                minWidth: 20,
+                                padding: 0,
+                              }}
+                            />
                           </div>
                         )}
                       </div>

@@ -91,52 +91,63 @@ export const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
         open={open}
         onClose={onClose}
         placement={isStandalone ? 'right' : 'bottom'}
-        size={isStandalone ? 380 : '70%'}
+        size={isStandalone ? 380 : '72%'}
         getContainer={false}
         closeIcon={null}
         styles={{
           wrapper: {
-            borderTopLeftRadius: '24px',
-            borderBottomLeftRadius: isStandalone ? '24px' : '0px',
-            borderTopRightRadius: isStandalone ? '0px' : '24px',
+            borderTopLeftRadius: isStandalone ? '0px' : '20px',
+            borderTopRightRadius: isStandalone ? '0px' : '20px',
+            borderBottomLeftRadius: isStandalone ? '16px' : '0px',
             borderBottomRightRadius: '0px',
             overflow: 'hidden',
             boxShadow: isStandalone
-              ? '-10px 0 25px -5px rgba(0, 0, 0, 0.1), -8px 0 10px -6px rgba(0, 0, 0, 0.1)'
-              : '0 -10px 25px -5px rgba(0, 0, 0, 0.1), 0 -8px 10px -6px rgba(0, 0, 0, 0.1)',
+              ? '-4px 0 20px rgba(0, 0, 0, 0.08)'
+              : '0 -4px 20px rgba(0, 0, 0, 0.08)',
+            borderTop: isStandalone ? 'none' : '1px solid var(--border)',
+            borderLeft: isStandalone ? '1px solid var(--border)' : 'none',
+            background: token.colorBgContainer,
+            height: isStandalone ? '100%' : '72%',
+            maxHeight: isStandalone ? '100%' : '72%',
+            top: isStandalone ? 0 : undefined,
+            bottom: 0,
+            right: 0,
           },
           section: {
-            borderTopLeftRadius: '24px',
-            borderBottomLeftRadius: isStandalone ? '24px' : '0px',
-            borderTopRightRadius: isStandalone ? '0px' : '24px',
+            borderTopLeftRadius: isStandalone ? '0px' : '20px',
+            borderTopRightRadius: isStandalone ? '0px' : '20px',
+            borderBottomLeftRadius: isStandalone ? '16px' : '0px',
             borderBottomRightRadius: '0px',
+            background: token.colorBgContainer,
             overflow: 'hidden',
+            height: '100%',
           },
           body: {
-            padding: '12px 18px 20px',
+            padding: isStandalone ? '20px 20px 24px' : '10px 18px 20px',
             display: 'flex',
             flexDirection: 'column',
             height: '100%',
             overflow: 'hidden',
+            background: token.colorBgContainer,
           },
           mask: {
-            backgroundColor: 'rgba(0, 0, 0, 0.45)',
-            backdropFilter: 'blur(2px)',
+            backgroundColor: isStandalone ? 'rgba(0, 0, 0, 0.12)' : 'rgba(0, 0, 0, 0.25)',
           },
         }}
-        className="chat-history-drawer"
+        className={isStandalone ? 'chat-history-drawer-standalone' : 'chat-history-drawer-sidepanel'}
       >
-        {/* Top Handle Bar for Bottom Sheet */}
+        {/* Top Handle Bar for Bottom Sheet (Side Panel only) */}
         {!isStandalone && (
           <div
             style={{
-              width: 40,
+              width: 36,
               height: 4,
               background: 'var(--border)',
               borderRadius: 9999,
               marginLeft: 'auto',
               marginRight: 'auto',
-              marginBottom: 8,
+              marginTop: 0,
+              marginBottom: 10,
               flexShrink: 0,
               cursor: 'pointer',
             }}
@@ -556,17 +567,17 @@ export const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
                 onClick={() => setDeletingSessionId(null)}
                 style={{
                   flex: 1,
-                  paddingTop: 10,
-                  paddingBottom: 10,
+                  height: 36,
                   paddingLeft: 12,
                   paddingRight: 12,
-                  background: 'var(--muted)',
+                  background: 'var(--card)',
                   color: token.colorTextSecondary,
-                  borderRadius: 12,
+                  borderRadius: 8,
                   fontSize: 12,
-                  fontWeight: 600,
+                  fontWeight: 500,
                   cursor: 'pointer',
-                  border: 'none',
+                  border: '1px solid var(--border)',
+                  transition: 'all 150ms ease',
                 }}
               >
                 Cancel
@@ -579,18 +590,18 @@ export const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
                 }}
                 style={{
                   flex: 1,
-                  paddingTop: 10,
-                  paddingBottom: 10,
+                  height: 36,
                   paddingLeft: 12,
                   paddingRight: 12,
                   background: token.colorError,
                   color: '#ffffff',
-                  borderRadius: 12,
+                  borderRadius: 8,
                   fontSize: 12,
-                  fontWeight: 600,
+                  fontWeight: 500,
                   cursor: 'pointer',
                   border: 'none',
                   boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                  transition: 'all 150ms ease',
                 }}
               >
                 Delete
@@ -710,17 +721,17 @@ export const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
                 onClick={() => setShowDeleteAllModal(false)}
                 style={{
                   flex: 1,
-                  paddingTop: 10,
-                  paddingBottom: 10,
+                  height: 36,
                   paddingLeft: 12,
                   paddingRight: 12,
-                  background: 'var(--muted)',
+                  background: 'var(--card)',
                   color: token.colorTextSecondary,
-                  borderRadius: 12,
+                  borderRadius: 8,
                   fontSize: 12,
-                  fontWeight: 600,
+                  fontWeight: 500,
                   cursor: 'pointer',
-                  border: 'none',
+                  border: '1px solid var(--border)',
+                  transition: 'all 150ms ease',
                 }}
               >
                 Cancel
@@ -733,18 +744,18 @@ export const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
                 }}
                 style={{
                   flex: 1,
-                  paddingTop: 10,
-                  paddingBottom: 10,
+                  height: 36,
                   paddingLeft: 12,
                   paddingRight: 12,
                   background: token.colorError,
                   color: '#ffffff',
-                  borderRadius: 12,
+                  borderRadius: 8,
                   fontSize: 12,
-                  fontWeight: 600,
+                  fontWeight: 500,
                   cursor: 'pointer',
                   border: 'none',
                   boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                  transition: 'all 150ms ease',
                 }}
               >
                 Delete all
@@ -860,17 +871,17 @@ export const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
                 onClick={() => setEditingSession(null)}
                 style={{
                   flex: 1,
-                  paddingTop: 10,
-                  paddingBottom: 10,
+                  height: 36,
                   paddingLeft: 12,
                   paddingRight: 12,
-                  background: 'var(--muted)',
+                  background: 'var(--card)',
                   color: token.colorTextSecondary,
-                  borderRadius: 12,
+                  borderRadius: 8,
                   fontSize: 12,
-                  fontWeight: 600,
+                  fontWeight: 500,
                   cursor: 'pointer',
-                  border: 'none',
+                  border: '1px solid var(--border)',
+                  transition: 'all 150ms ease',
                 }}
               >
                 Cancel
@@ -879,24 +890,24 @@ export const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
                 type="button"
                 onClick={() => {
                   if (editingTitle.trim()) {
-                    onUpdateTitle(editingSession.id, editingTitle.trim());
+                     onUpdateTitle(editingSession.id, editingTitle.trim());
                   }
                   setEditingSession(null);
                 }}
                 style={{
                   flex: 1,
-                  paddingTop: 10,
-                  paddingBottom: 10,
+                  height: 36,
                   paddingLeft: 12,
                   paddingRight: 12,
                   background: '#7c3aed',
                   color: '#ffffff',
-                  borderRadius: 12,
+                  borderRadius: 8,
                   fontSize: 12,
-                  fontWeight: 600,
+                  fontWeight: 500,
                   cursor: 'pointer',
                   border: 'none',
                   boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                  transition: 'all 150ms ease',
                 }}
               >
                 Save
