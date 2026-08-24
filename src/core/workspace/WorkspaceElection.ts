@@ -47,7 +47,7 @@
  *   per spec §21.6 / Appendix C.2. Never invented.
  */
 
-import { onWorkspaceSync } from './WorkspaceSync';
+import { onWorkspaceSync, notifyWorkspaceHeartbeat } from './WorkspaceSync';
 import type { ActiveSurface } from './WorkspaceStore';
 import { debugLog } from '../log/debugLog';
 
@@ -249,6 +249,7 @@ async function runHeartbeatTick(
   getState: () => WorkspaceCoordinationState,
   setState: (s: WorkspaceCoordinationState) => void,
   foreignSeen: () => boolean,
+  getWorkspaceId: () => string,
 ): Promise<void> {
   const now = Date.now();
 
@@ -271,6 +272,17 @@ async function runHeartbeatTick(
   ) {
     const record: ElectionRecord = { tabId: selfTabId, surface, electedAt: now };
     await writeRecord(record);
+
+    // Publish the election heartbeat for primary/solo surfaces (CR-02).
+    // This is what keeps other surfaces' demotion rules and the
+    // lone-surface 'solo' detection alive in production. We do NOT
+    // publish while election-in-progress (that branch still refreshes
+    // the session record but emits no heartbeat, matching D-26 intent).
+    // Self-suppression by BroadcastBus instance id prevents a surface
+    // from observing its own heartbeat as foreign.
+    if (cur.state === 'primary' || cur.state === 'solo') {
+      notifyWorkspaceHeartbeat(surface, getWorkspaceId());
+    }
 
     // Lone-surface trap (Pitfall 4): if we've been primary for one
     // full interval with no foreign heartbeat, transition to 'solo'.
@@ -295,7 +307,11 @@ async function runHeartbeatTick(
  * instances (matters for tests; in production each surface has its own
  * JS context).
  */
-export async function startElection(surface: ActiveSurface): Promise<ElectionInstance> {
+export async function startElection(
+  surface: ActiveSurface,
+  opts?: { getWorkspaceId?: () => string },
+): Promise<ElectionInstance> {
+  const getWorkspaceId = opts?.getWorkspaceId ?? (() => '');
   if (activeInstance && activeInstance.surface === surface && !activeInstance.disposed) {
     throw new Error(
       `WorkspaceElection instance already active for surface '${surface}' — call dispose() before starting a new one`,
@@ -371,6 +387,7 @@ export async function startElection(surface: ActiveSurface): Promise<ElectionIns
       () => instanceState,
       setInstanceState,
       () => foreignSurfacesEverSeen,
+      getWorkspaceId,
     );
   }, HEARTBEAT_INTERVAL_MS);
 

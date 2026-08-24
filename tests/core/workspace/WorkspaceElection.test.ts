@@ -69,13 +69,19 @@ describe('WorkspaceElection — D-24..D-27 primary-writer election', () => {
   });
 
   it('Test 2 (heartbeat): advancing fake timers by 3000 ms publishes WORKSPACE_HEARTBEAT + refreshes electedAt', async () => {
-    // Capture inbound heartbeats via onWorkspaceSync.
-    const received: Array<unknown> = [];
-    const unsub = onWorkspaceSync((msg) => {
-      if (msg.type === 'WORKSPACE_HEARTBEAT') received.push(msg);
+    // Observe the publish through a DISTINCT-identity BroadcastBus module
+    // copy. A single surface's own heartbeat is self-suppressed in its own
+    // BroadcastBus (same INSTANCE_ID), so to prove the publish (CR-02) we
+    // subscribe via a fresh module copy that shares the global
+    // BroadcastChannel mock but has its own INSTANCE_ID.
+    vi.resetModules();
+    const { subscribe } = await import('../../../src/core/runtime/BroadcastBus');
+    const received: Array<{ type: string; surface: string; workspaceId: string }> = [];
+    const unsub = subscribe('np_workspace', (msg: any) => {
+      if (msg && msg.type === 'WORKSPACE_HEARTBEAT') received.push(msg);
     });
 
-    const instance = await startElection('sidepanel');
+    const instance = await startElection('sidepanel', { getWorkspaceId: () => 'ws-1' });
     await vi.advanceTimersByTimeAsync(0); // settle startup CAS
 
     // Capture the baseline electedAt.
@@ -90,12 +96,19 @@ describe('WorkspaceElection — D-24..D-27 primary-writer election', () => {
     vi.setSystemTime(baselineElectedAt + 3_500);
     await vi.advanceTimersByTimeAsync(3_500);
 
+    // The heartbeat was ACTUALLY published (CR-02): the distinct-identity
+    // observer received it, carrying the surface + workspaceId. Without the
+    // runHeartbeatTick publish, `received` would stay empty.
+    expect(received.length).toBeGreaterThan(0);
+    const hb = received[0];
+    expect(hb.surface).toBe('sidepanel');
+    expect(hb.workspaceId).toBe('ws-1');
+
+    // Secondary check: the session record's electedAt advanced (record
+    // refresh happens in the same branch as the publish).
     const after = JSON.parse(sessionMap.get('np_workspace_primary'));
     expect(after.electedAt).toBeGreaterThan(baselineElectedAt);
 
-    // The heartbeat message may or may not have reached our own
-    // subscriber (BroadcastBus suppresses self-messages), but at minimum
-    // the timer fired and the session record's electedAt advanced.
     instance.dispose();
     unsub();
   });
