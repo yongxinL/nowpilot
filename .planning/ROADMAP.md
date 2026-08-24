@@ -67,7 +67,7 @@
   5. Workspace state persists across page reload and cross-surface handoff (no message loss, no scroll jump).
 
 **Verification gate:** `pnpm run verify:phase-2` (§24).
-**Plans:** 8/9 plans executed (7 main + 2 gap closure, waves 1-4 + gap waves 1-2)
+**Plans:** 9/9 plans executed (7 main + 2 gap closure, waves 1-4 + gap waves 1-2)
 Plans:
 **Wave 1**
 
@@ -93,7 +93,7 @@ Plans:
 **Gap Wave 1**
 
 - [x] 02-09-PLAN.md — GAP 2 (CR-02): publish WORKSPACE_HEARTBEAT from runHeartbeatTick + BroadcastBus surface seam + production-tick two-surface test
-- [ ] 02-08-PLAN.md — GAP 1 (CR-01): recoverWorkspaceJournal boot-recovery fix (re-apply current np_workspace) + corrected regression tests
+- [x] 02-08-PLAN.md — GAP 1 (CR-01): recoverWorkspaceJournal boot-recovery fix (re-apply current np_workspace) + corrected regression tests
 
 ### Phase 3: Cost-Effective AI Runtime (+ Persona seed)
 
@@ -381,7 +381,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. MV3/WXT Runtime + AntD Shells + Workspace Handoff | 0/8 | Planned | — |
-| 2. Storage, Security, WriteJournal, Workspace Persistence | 8/9 | In Progress|  |
+| 2. Storage, Security, WriteJournal, Workspace Persistence | 9/9 | In Progress|  |
 | 3. Cost-Effective AI Runtime (+ Persona seed) | 0/3 | Not started | — |
 | 4. Agent Reliability and Evidence | 0/2 | Not started | — |
 | 5. Context-Adaptive Execution | 0/2 | Not started | — |
