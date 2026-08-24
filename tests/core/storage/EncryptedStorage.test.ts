@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { chromeStorageAdapter, __test__ } from '../../../src/core/theme/chromeStorageAdapter';
+import { chromeStorageAdapter, flushPendingWrites, __test__ } from '../../../src/core/theme/chromeStorageAdapter';
 import {
   encrypt,
   decrypt,
@@ -10,12 +10,11 @@ import {
 import { ensureInstallSecret, deriveKey, getExtensionId } from '../../../src/core/security/KeyVault';
 import type { ProviderConfig } from '../../../src/types';
 
-// Helper: wait for chromeStorageAdapter's trailing debounce to flush.
+// Helper: drive chromeStorageAdapter's trailing debounce to completion so
+// the in-memory pending writes land in the underlying chrome.storage.local
+// mock before assertions inspect the map.
 async function flush() {
-  await chromeStorageAdapter.setItem('__flush_marker__', '"x"');
-  await __test__.resetPendingState();
-  // Allow microtasks to run (debounce callback)
-  await new Promise((r) => setImmediate(r));
+  await flushPendingWrites();
 }
 
 // Base64 helpers for comparing EncryptedBlob fields in assertions.
