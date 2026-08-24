@@ -26,16 +26,25 @@ import { debugLog } from '../log/debugLog';
 import type { WriteJournalEntry } from '../../types/storage';
 
 /**
- * Structural type accepted by the upgrade/migration callback. We use
- * this (instead of `IDBPDatabase<unknown>`) so the parameter is
- * structurally compatible with `IDBPDatabase<T>` from `idb.openDB<T>`.
+ * Structural type accepted by the upgrade/migration callback.
  *
- * The cast at the call site (`database as IDBPDatabase<AnyDBSchema>`)
- * is safe because migrations only use schema-invariant operations
- * (objectStoreNames, createObjectStore, transaction().objectStore()).
+ * Migrations operate on the un-typed (`unknown` schema) shape — by
+ * definition, a migration defines the schema, so it cannot constrain
+ * itself to a known set of store names. `idb`'s `StoreNames<unknown>`
+ * resolves to `string`, allowing arbitrary `createObjectStore('foo')`
+ * and `createIndex('bar', 'baz')` calls. The runtime invariants are
+ * upheld by `idb` itself (ConstraintError on duplicate names).
+ *
+ * Inline per-DB `open*DB()` callers use the typed schema
+ * (`openVersionedDB<ChatHistoryDBV1>`) so the rest of the codebase
+ * stays schema-aware.
  */
-export type AnyDBSchema = DBSchema & Record<string, never>;
-export type UpgradeDatabase = IDBPDatabase<AnyDBSchema>;
+export type UpgradeDatabase = IDBPDatabase<unknown>;
+/**
+ * @deprecated Use `UpgradeDatabase` directly. Kept for backward
+ * compatibility with the planned Module pattern (per-DB open path).
+ */
+export type AnyDBSchema = unknown;
 
 /**
  * One migration step — spec §20.4 verbatim.
@@ -98,31 +107,33 @@ export async function openVersionedDB<T extends DBSchema>(
     onMigrationFailed?: (err: unknown) => void;
     /**
      * Inline v1 bootstrap upgrade — runs at the start of the upgrade
-     * callback (before registered migrations). Use this for the initial
-     * schema bootstrap; registered migrations handle subsequent bumps.
+     * callback (before registered migrations). Receives the typed
+     * `IDBPDatabase<T>` so callers can use schema-aware helpers
+     * (createObjectStore etc.) without casts.
      */
-    upgrade?: (db: IDBPDatabase<unknown>, oldVersion: number) => Promise<void> | void;
+    upgrade?: (db: IDBPDatabase<T>, oldVersion: number) => Promise<void> | void;
   },
 ): Promise<IDBPDatabase<T>> {
   const migrations = getMigrations(dbName);
 
   return openDB<T>(dbName, targetVersion, {
     async upgrade(database, oldVersion) {
-      // Cast `database` to `UpgradeDatabase` so we can hand it to the
-      // generic migrate / bootstrap callbacks. Migrations only use
-      // schema-invariant operations (objectStoreNames, createObjectStore,
-      // transaction().objectStore()), so the cast is safe.
-      const db = database as unknown as UpgradeDatabase;
+      // `database` is `IDBPDatabase<T>` — typed schema preserved so
+      // inline opts.upgrade can use createObjectStore('sessions', ...)
+      // etc. without runtime casts. Cast to `UpgradeDatabase` only for
+      // the generic registered-migration path (which is intentionally
+      // schema-agnostic by design).
       try {
         // Step 1: inline bootstrap (v1 schema, conditional blocks per
         // spec §20.4 / Pitfall 8).
         if (opts?.upgrade) {
-          await opts.upgrade(db, oldVersion);
+          await opts.upgrade(database, oldVersion);
         }
         // Step 2: registered migrations (v1→v2, v2→v3, etc.).
+        const migrationDb = database as unknown as UpgradeDatabase;
         for (const m of migrations) {
           if (m.toVersion > oldVersion && m.fromVersion <= oldVersion + 1) {
-            await m.migrate(db, oldVersion);
+            await m.migrate(migrationDb, oldVersion);
           }
         }
       } catch (err) {

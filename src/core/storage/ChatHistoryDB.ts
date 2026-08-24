@@ -43,6 +43,7 @@ export interface ChatHistoryDBV1 extends DBSchema {
   sessions: {
     key: string;
     value: ChatHistorySession;
+    indexes: { byUpdated: number };
   };
   messages: {
     key: string;
