@@ -135,16 +135,18 @@ describe('WriteJournal — runJournaled / recoverJournal (Appendix O.11)', () =>
     const steps = getJournalSteps('update-workspace');
     expect(steps).toBeDefined();
 
-    const entry: WriteJournalEntry = {
+    // Two independent entries (deep-cloned `steps` array) so the second
+    // replay doesn't accumulate records onto the first.
+    const makeEntry = (): WriteJournalEntry => ({
       id: 'idem-1',
       operation: 'update-workspace',
       status: 'pending',
       attempts: 0,
       steps: [],
       createdAt: Date.now(),
-    };
+    });
 
-    // Replay twice — apply runs both times, but the entry ends in the
+    // Replay twice — apply runs both times, but each entry ends in the
     // same completed state with both step names recorded.
     const persist = async (e: WriteJournalEntry) => {
       const pdb = await openWriteJournalDB();
@@ -152,20 +154,20 @@ describe('WriteJournal — runJournaled / recoverJournal (Appendix O.11)', () =>
       pdb.close();
     };
 
-    const entryClone1: WriteJournalEntry = { ...entry };
-    const entryClone2: WriteJournalEntry = { ...entry };
+    const entryA = makeEntry();
+    const entryB = makeEntry();
 
-    await runJournaled(entryClone1, steps!, persist);
-    await runJournaled(entryClone2, steps!, persist);
+    await runJournaled(entryA, steps!, persist);
+    await runJournaled(entryB, steps!, persist);
 
     expect(applyCount).toBe(2);
-    expect(entryClone1.status).toBe('completed');
-    expect(entryClone2.status).toBe('completed');
-    expect(entryClone1.steps.map((s) => s.name)).toEqual([
+    expect(entryA.status).toBe('completed');
+    expect(entryB.status).toBe('completed');
+    expect(entryA.steps.map((s) => s.name)).toEqual([
       'write-np-workspace',
       'emit-workspace-updated',
     ]);
-    expect(entryClone2.steps.map((s) => s.name)).toEqual([
+    expect(entryB.steps.map((s) => s.name)).toEqual([
       'write-np-workspace',
       'emit-workspace-updated',
     ]);
