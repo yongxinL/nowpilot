@@ -16,7 +16,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "verify:phase-1": "tsc --noEmit && vitest run tests/core tests/background tests/components tests/isolation && bash scripts/verify-no-tailwind.sh",
-    "verify:phase-2": "tsc --noEmit && vitest run tests/core/storage tests/core/security tests/core/utils tests/core/workspace/WorkspacePersistence.test.ts",
+    "verify:phase-2": "tsc --noEmit && vitest run tests/core/storage tests/core/security tests/core/utils tests/core/workspace",
     "verify:phase-3": "tsc --noEmit && vitest run tests/core/ai tests/core/ai/persona",
     "verify:phase-4": "tsc --noEmit && vitest run tests/core/context",
     "verify:phase-4a": "tsc --noEmit && vitest run tests/core/extraction tests/core/content tests/isolation/no-content-script-ui.test.ts",
