@@ -1,5 +1,4 @@
 import type { StateStorage } from 'zustand/middleware';
-import { debugLog } from '../log/debugLog';
 
 const hasChromeStorageLocal = typeof chrome !== 'undefined' && Boolean(chrome?.storage?.local);
 const hasChromeStorageSync = typeof chrome !== 'undefined' && Boolean(chrome?.storage?.sync);
@@ -12,6 +11,61 @@ const hasChromeStorageSync = typeof chrome !== 'undefined' && Boolean(chrome?.st
  * without hard-coding 300 elsewhere.
  */
 export const STORAGE_DEBOUNCE_MS = 300;
+
+/**
+ * REQ-R07 / D-38/D-39: classify a chrome.storage write failure into one
+ * of the two new canonical codes (`STORAGE_QUOTA`, `STORAGE_RATE_LIMIT`)
+ * or the debugLog-only fallback (`STORAGE_DEBOUNCE_FLUSH_FAILED`).
+ *
+ * chrome.storage rejects with `runtime.lastError` message text — there
+ * is no typed error object (RESEARCH Pitfall 6). The classifier is
+ * pure (no side effects) so it can be unit-tested in isolation and
+ * reused by callers that want to log/map the same errors.
+ *
+ * Boundary contract (REQ-R07 probe row, verbatim):
+ *   - `/QUOTA|QUOTA_BYTES/i` → `STORAGE_QUOTA`
+ *     (covers both `QUOTA_BYTES` and `QUOTA_BYTES_PER_ITEM`).
+ *   - `/MAX_WRITE_OPERATIONS/i` → `STORAGE_RATE_LIMIT`
+ *     (covers both `MAX_WRITE_OPERATIONS_PER_MINUTE` and `_PER_HOUR`).
+ *   - else → `STORAGE_DEBOUNCE_FLUSH_FAILED` (fallback never dropped).
+ *   - Case-insensitive; QUOTA checked before MAX_WRITE_OPERATIONS
+ *     (precedence rule).
+ */
+export function classifyStorageError(err: unknown): string {
+  const message = err instanceof Error ? err.message : String(err);
+  if (/QUOTA|QUOTA_BYTES/i.test(message)) return 'STORAGE_QUOTA';
+  if (/MAX_WRITE_OPERATIONS/i.test(message)) return 'STORAGE_RATE_LIMIT';
+  return 'STORAGE_DEBOUNCE_FLUSH_FAILED';
+}
+
+/**
+ * REQ-R07 / D-39 ownership rule: the adapter emits typed errors
+ * through a single reporter hook — exactly one ErrorStore entry is
+ * recorded by the registered reporter per failed flush. The adapter
+ * does NOT import ErrorStore (the boot wiring in plan 02-07 registers
+ * the reporter = `ErrorStore.record` + debugLog; tests register spies).
+ *
+ * Default is no-op (null) so the adapter remains import-safe and the
+ * zustand persist path never throws on missing reporter wiring.
+ */
+export interface StorageErrorEntry {
+  code: string;
+  message: string;
+  context?: Record<string, unknown>;
+}
+
+let errorReporter: ((entry: StorageErrorEntry) => void) | null = null;
+
+/**
+ * Register the reporter hook. Pass `null` to disable reporting
+ * (the adapter still swallows failures via the no-op default — no
+ * rethrow into the calling persist path).
+ */
+export function setStorageErrorReporter(
+  fn: ((entry: StorageErrorEntry) => void) | null,
+): void {
+  errorReporter = fn;
+}
 
 type StorageTarget = 'local' | 'sync';
 
@@ -52,6 +106,13 @@ let timerClear: (handle: ReturnType<typeof setTimeout>) => void =
  * function (before the await) so a parallel `setItem` call mid-flush is
  * not lost — the new entry lands in a fresh `pendingWrites` map for the
  * next debounce window.
+ *
+ * REQ-R07 / D-38/D-39: on flush failure, the catch handler classifies
+ * the error via `classifyStorageError` and invokes the registered
+ * `errorReporter` exactly once per failed flush (no duplicate
+ * persistence). The adapter does NOT import ErrorStore — the boot
+ * wiring in plan 02-07 registers the reporter = `ErrorStore.record` +
+ * debugLog; tests register spies.
  */
 function performFlush(): Promise<void> {
   if (pendingTimer) {
@@ -73,6 +134,11 @@ function performFlush(): Promise<void> {
     else localBatch[key] = pw.value;
   }
 
+  // Capture the keys being flushed for error context (D-39: the
+  // reporter receives the batch keys so ErrorStore entries are
+  // actionable — "which keys failed?").
+  const allFlushedKeys = Array.from(snapshot).map(([k]) => k);
+
   const writes: Promise<void>[] = [];
 
   if (hasChromeStorageLocal && Object.keys(localBatch).length > 0) {
@@ -88,7 +154,25 @@ function performFlush(): Promise<void> {
   }
 
   if (writes.length === 0) return Promise.resolve();
-  return Promise.all(writes).then(() => undefined);
+
+  const flushPromise = Promise.all(writes).then(() => undefined);
+
+  // REQ-R07 / D-39: classify the failure and surface via the
+  // registered reporter exactly once. No `debugLog` swallowing, no
+  // rethrow — failures are best-effort and the calling zustand persist
+  // path never sees a rejection (test 6 contract).
+  flushPromise.catch((err: unknown) => {
+    const code = classifyStorageError(err);
+    const message = err instanceof Error ? err.message : String(err);
+    if (errorReporter) {
+      errorReporter({ code, message, context: { keys: allFlushedKeys } });
+    }
+  });
+
+  // Return a promise that resolves regardless of flush outcome — the
+  // reporter is the canonical surface (D-39 ownership rule), the
+  // caller never sees the rejection.
+  return flushPromise.catch(() => undefined);
 }
 
 /**
@@ -148,12 +232,12 @@ export const chromeStorageAdapter: StateStorage = {
     if (pendingTimer) timerClear(pendingTimer);
     pendingTimer = timerFactory(() => {
       pendingTimer = null;
-      // Best-effort: a throw from `performFlush` is logged via
-      // `debugLog` (not console.error) — TraceRedactor-friendly and not
-      // fatal to the calling zustand persist path.
-      performFlush().catch((err) => {
-        debugLog('STORAGE_DEBOUNCE_FLUSH_FAILED', err?.message ?? String(err));
-      });
+      // REQ-R07 / D-39: performFlush's internal catch classifies the
+      // error and invokes the registered reporter exactly once — no
+      // swallowing. The adapter does NOT import ErrorStore (the boot
+      // wiring in plan 02-07 registers the reporter = ErrorStore.record
+      // + debugLog; tests register spies).
+      void performFlush();
     }, STORAGE_DEBOUNCE_MS);
   },
 
@@ -207,9 +291,8 @@ export const syncStorageAdapter: StateStorage = {
     if (pendingTimer) timerClear(pendingTimer);
     pendingTimer = timerFactory(() => {
       pendingTimer = null;
-      performFlush().catch((err) => {
-        debugLog('STORAGE_DEBOUNCE_FLUSH_FAILED', err?.message ?? String(err));
-      });
+      // REQ-R07 / D-39: see chromeStorageAdapter.setItem comment.
+      void performFlush();
     }, STORAGE_DEBOUNCE_MS);
   },
 

@@ -154,7 +154,7 @@ describe('chromeStorageAdapter — REQ-R07 error classification (D-38/D-39)', ()
     expect(reporterSpy).toHaveBeenCalledTimes(1);
     expect(reporterCalls[0].code).toBe('STORAGE_QUOTA');
     expect(reporterCalls[0].message).toContain('QUOTA_BYTES');
-    expect(reporterCalls[0].context?.key).toContain('key_quota');
+    expect(reporterCalls[0].context?.keys).toContain('key_quota');
   });
 
   it('Test 2 (MAX_WRITE_OPERATIONS): chrome.storage.local.set rejection → reporter receives code STORAGE_RATE_LIMIT', async () => {
