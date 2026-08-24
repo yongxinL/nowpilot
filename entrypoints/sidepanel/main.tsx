@@ -94,7 +94,9 @@ const handleOpenOptions = () => {
 
 const MODE_CYCLE: ThemeMode[] = ['auto', 'light', 'dark'];
 
-const SidepanelApp = () => {
+const SidepanelAppContent = () => {
+  // Must be a DESCENDANT of <AntdApp> for useApp() to resolve the provider
+  // context — calling it here (rendered inside <AntdApp> below) is correct.
   const { message: antMessage } = AntdApp.useApp();
   const [paletteOpen, setPaletteOpen] = useState(false);
 
@@ -179,17 +181,25 @@ const SidepanelApp = () => {
   }, []);
 
   return (
+    <>
+      <SidepanelChat
+        onOpenStandalone={openStandaloneWithToasts}
+        onOpenOptions={handleOpenOptions}
+      />
+      <CommandPalette
+        commands={CommandRegistry.getAll()}
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+      />
+    </>
+  );
+};
+
+const SidepanelApp = () => {
+  return (
     <ThemeProvider>
       <AntdApp style={{ height: '100vh', width: '100vw', overflow: 'hidden' }}>
-        <SidepanelChat
-          onOpenStandalone={openStandaloneWithToasts}
-          onOpenOptions={handleOpenOptions}
-        />
-        <CommandPalette
-          commands={CommandRegistry.getAll()}
-          open={paletteOpen}
-          onClose={() => setPaletteOpen(false)}
-        />
+        <SidepanelAppContent />
       </AntdApp>
     </ThemeProvider>
   );
