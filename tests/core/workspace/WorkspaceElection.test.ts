@@ -4,8 +4,9 @@ import {
   isPrimaryWriter,
   getState,
   __test__,
-  type ActiveSurface,
+  HEARTBEAT_INTERVAL_MS,
 } from '../../../src/core/workspace/WorkspaceElection';
+import type { ActiveSurface } from '../../../src/core/workspace/WorkspaceStore';
 import { notifyWorkspaceHeartbeat, onWorkspaceSync } from '../../../src/core/workspace/WorkspaceSync';
 
 /**
@@ -136,9 +137,18 @@ describe('WorkspaceElection — D-24..D-27 primary-writer election', () => {
   it('Test 4 (solo): a lone surface resolves to state "solo" with isPrimaryWriter() === true', async () => {
     // Single surface, no inbound heartbeats ever (BroadcastBus
     // self-suppression makes "no heartbeats" the steady state for one
-    // surface; Pitfall 4). Election must resolve to 'solo' not 'primary'.
+    // surface; Pitfall 4). After one full heartbeat interval with no
+    // foreign surface seen, the lone-surface trap transitions us to
+    // 'solo'.
     const instance = await startElection('sidepanel');
-    await vi.advanceTimersByTimeAsync(0);
+    // Startup CAS resolves → state = 'primary' (will become 'solo' once
+    // the heartbeat confirms no foreign surface).
+    expect(getState().state).toBe('primary');
+    expect(isPrimaryWriter()).toBe(true);
+
+    // Advance one heartbeat interval. No foreign surface has been seen,
+    // so the lone-surface trap transitions primary → solo.
+    await vi.advanceTimersByTimeAsync(HEARTBEAT_INTERVAL_MS);
 
     const state = getState();
     expect(state.state).toBe('solo');
