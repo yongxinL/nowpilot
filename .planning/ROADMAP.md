@@ -78,7 +78,7 @@ Plans:
 **Wave 2** *(blocked on Wave 1 completion)*
 
 - [x] 02-04-PLAN.md — IndexedDBMigrator + 5 DBs at v1 + ErrorStore + unlimitedStorage permission
-- [ ] 02-06-PLAN.md — WorkspaceElection (CAS/heartbeat) + adapter STORAGE_QUOTA/STORAGE_RATE_LIMIT surfacing
+- [x] 02-06-PLAN.md — WorkspaceElection (CAS/heartbeat) + adapter STORAGE_QUOTA/STORAGE_RATE_LIMIT surfacing
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
