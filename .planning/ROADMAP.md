@@ -14,7 +14,7 @@
 ## Phases
 
 - [x] **Phase 1: MV3/WXT Runtime + AntD Shells + Workspace Handoff** — AntD shells, RuntimeEnvelope, WorkspaceStore, Cmd+K palette shell, onboarding *(8/8 plans complete; verify:phase-1 green at 166 tests; see `.planning/VERIFICATION.md`)*
-- [ ] **Phase 2: Storage, Security, WriteJournal, Workspace Persistence** — EncryptedStorage, IndexedDB, KeyVault, WriteJournal, AES-GCM secrets
+- [x] **Phase 2: Storage, Security, WriteJournal, Workspace Persistence** — EncryptedStorage, IndexedDB, KeyVault, WriteJournal, AES-GCM secrets (completed 2026-08-24)
 - [ ] **Phase 3: Cost-Effective AI Runtime (+ Persona seed)** — ProviderRouter, AgentOrchestrator, structured output, persona runtime foundation
 - [ ] **Phase 4: Agent Reliability and Evidence** — Trajectory states, CompletionEvidence, AgentTurnOutcome, deterministic replan/terminal policy
 - [ ] **Phase 5: Context-Adaptive Execution** — TokenBudget, ContextOptimizer, ContextCompressor, ContextProvenanceManifest
@@ -67,7 +67,7 @@
   5. Workspace state persists across page reload and cross-surface handoff (no message loss, no scroll jump).
 
 **Verification gate:** `pnpm run verify:phase-2` (§24).
-**Plans:** 9/9 plans executed (7 main + 2 gap closure, waves 1-4 + gap waves 1-2)
+**Plans:** 9/9 plans complete
 Plans:
 **Wave 1**
 
@@ -381,7 +381,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. MV3/WXT Runtime + AntD Shells + Workspace Handoff | 0/8 | Planned | — |
-| 2. Storage, Security, WriteJournal, Workspace Persistence | 9/9 | In Progress|  |
+| 2. Storage, Security, WriteJournal, Workspace Persistence | 9/9 | Complete    | 2026-08-24 |
 | 3. Cost-Effective AI Runtime (+ Persona seed) | 0/3 | Not started | — |
 | 4. Agent Reliability and Evidence | 0/2 | Not started | — |
 | 5. Context-Adaptive Execution | 0/2 | Not started | — |

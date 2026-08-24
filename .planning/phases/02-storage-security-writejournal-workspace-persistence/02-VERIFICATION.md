@@ -1,7 +1,7 @@
 ---
 phase: 02-storage-security-writejournal-workspace-persistence
 verified: 2026-08-24T22:21:00Z
-status: human_needed
+status: passed
 score: 5/5 truths verified
 behavior_unverified: 0
 overrides_applied: 0
@@ -9,12 +9,14 @@ re_verification:
   previous_status: gaps_found
   previous_score: 3/5
   gaps_closed:
+
     - "WriteJournal recovery test passes (simulated SW kill mid-write → replay restores state without loss)"  # CR-01
     - "Workspace state persists across page reload and cross-surface handoff (no message loss, no scroll jump)"  # CR-02
   gaps_remaining: []
   regressions: []
 gaps: []
 human_verification:
+
   - test: "Manually verify the WorkspaceStore persist-on-reload path in a running extension: set workspace state, reload the surface, and confirm workspaceId/conversationId restore with no message loss and no scroll jump"
     expected: "State persists across reload; scroll position preserved"
     why_human: "The happy-path reload-hydrate is covered by automated tests, but the 'no scroll jump' UX and live extension runtime behavior cannot be verified by grep or vitest"
@@ -32,11 +34,13 @@ human_verification:
 This re-verification confirms that **both prior BLOCKERs (CR-01 and CR-02) are now closed in the ACTUAL code** — not merely in the SUMMARY claims. Independent code inspection and the passing `verify:phase-2` gate confirm both fixes:
 
 ### CR-01 (boot recovery data loss) — CLOSED
+
 - **`recoverWorkspaceJournal`** (src/core/storage/WriteJournal.ts:297-337) now re-applies the **CURRENT stored `np_workspace` blob verbatim** via `deps.readCurrentWorkspace()` — it never reconstructs a value from `entry.workspaceId`/`conversationId` (which never exist on the metadata-only `WriteJournalEntry`, D-33). The prior `?? ''` / `?? null` empty-reconstruction fallbacks are gone from production (grep for `workspaceId ??` in entrypoints/WriteJournal.ts/tests → zero matches).
 - **Both entrypoints** call it with real deps: `entrypoints/sidepanel/main.tsx:44-63` and `entrypoints/standalone/main.tsx:45-63` bind `readCurrentWorkspace` to `chromeStorageAdapter.getItem('np_workspace')`, and both pass the real `getWorkspaceId: () => useWorkspaceStore.getState().workspaceId` into `startElection` (sidepanel:66-68, standalone:66-68).
 - **Corrected tests drive the real boot path**: `WriteJournal.test.ts` Test 1 and `WorkspacePersistence.test.ts` Test 5 both seed a real persisted zustand-wrapped `np_workspace` (`ws-1/conv-1`, `persist-real-ws/persist-real-conv`), seed a metadata-only `pending` `update-workspace` entry, run `recoverWorkspaceJournal`, and assert the stored value retains its original `workspaceId`/`conversationId` (NOT overwritten with `''`/null). Both pass in the gate.
 
 ### CR-02 (election heartbeat never published) — CLOSED
+
 - **`runHeartbeatTick`** (src/core/workspace/WorkspaceElection.ts:246-296) now calls `notifyWorkspaceHeartbeat(surface, getWorkspaceId())` for `primary`/`solo` states (line 284), after the session-record refresh. Election-in-progress still refreshes the record but emits no heartbeat (D-26 intent preserved).
 - **`startElection(surface, opts?: { getWorkspaceId })`** threads the optional getter into the tick (default `() => ''`, additive — `startElection('sidepanel')` unchanged).
 - **Production-tick two-surface test** (WorkspaceElection.test.ts Test 5, lines 176-238) models two separate module instances (`vi.resetModules()` + dynamic imports, each with its own `activeInstance` + BroadcastBus `instanceId`) — Sidepanel starts primary, Standalone starts later and wins the tie-break, then Sidepanel demotes to secondary via the **real production heartbeat tick**. **Zero** occurrences of `foreign-instance-id` and **zero** manual `_sender` injection in the test file (grep count = 0; the only `_sender` mention is a comment explicitly stating none is used).
@@ -137,6 +141,7 @@ No `TBD`/`FIXME`/`XXX` debt markers found in phase-2 files.
 ## Gaps Summary
 
 No gaps remain. Both prior BLOCKERs are closed and confirmed in code + passing tests:
+
 - **CR-01** (boot recovery data loss) — `recoverWorkspaceJournal` re-applies the current stored value; both entrypoints wired; tests drive the real boot path and assert retention.
 - **CR-02** (election heartbeat never published) — `runHeartbeatTick` publishes WORKSPACE_HEARTBEAT; two-surface production-tick test proves demotion with zero manual `_sender` injection.
 
