@@ -1,4 +1,14 @@
 import { vi } from 'vitest';
+import 'fake-indexeddb/auto';
+import { IDBFactory } from 'fake-indexeddb';
+
+// --- Per-test IndexedDB reset helper ---
+// fake-indexeddb/auto installs a global `indexedDB` factory, but tests need a
+// fresh factory each run (DBs persist across cases otherwise). Call from
+// beforeEach: `(globalThis as any).__resetIndexedDB()`.
+(globalThis as any).__resetIndexedDB = (): void => {
+  (globalThis as any).indexedDB = new IDBFactory();
+};
 
 const storage = new Map<string, string>();
 
@@ -136,12 +146,61 @@ const chromeStorageSync = {
 
 (globalThis as any).__chromeStorageSync = chromeStorageSync;
 
+// --- Chrome storage.session mock (Map-backed; independent from local/sync) ---
+// Session area is transient in production (cleared on tab close + browser
+// restart) and has its own ~10 MB quota. Mirrors the chromeStorageLocal mock
+// shape so the same adapter code paths exercise it.
+const sessionMap = new Map<string, string>();
+
+const chromeStorageSession = {
+  get: vi.fn(
+    (keys?: string | string[] | Record<string, unknown> | null): Promise<Record<string, unknown>> => {
+      if (keys === undefined || keys === null) {
+        return Promise.resolve(Object.fromEntries(sessionMap));
+      }
+      if (typeof keys === 'string') {
+        const val = sessionMap.get(keys) ?? null;
+        return Promise.resolve({ [keys]: val });
+      }
+      if (Array.isArray(keys)) {
+        const result: Record<string, unknown> = {};
+        for (const k of keys) {
+          result[k] = sessionMap.get(k) ?? null;
+        }
+        return Promise.resolve(result);
+      }
+      return Promise.resolve({ ...(keys as Record<string, unknown>) });
+    },
+  ),
+  set: vi.fn((items: Record<string, unknown>): Promise<void> => {
+    for (const [key, value] of Object.entries(items)) {
+      sessionMap.set(key, value as string);
+    }
+    return Promise.resolve();
+  }),
+  remove: vi.fn((keys: string | string[]): Promise<void> => {
+    const keyList = Array.isArray(keys) ? keys : [keys];
+    for (const k of keyList) {
+      sessionMap.delete(k);
+    }
+    return Promise.resolve();
+  }),
+  clear: vi.fn((): Promise<void> => {
+    sessionMap.clear();
+    return Promise.resolve();
+  }),
+};
+
+(globalThis as any).__chromeStorageSession = chromeStorageSession;
+(globalThis as any).__chromeSessionMap = sessionMap;
+
 if (!(globalThis as any).chrome) {
   (globalThis as any).chrome = {} as typeof chrome;
 }
 (globalThis as any).chrome.storage = {
   local: chromeStorageLocal as any,
   sync: chromeStorageSync as any,
+  session: chromeStorageSession as any,
 };
 
 // --- BroadcastChannel mock ---
