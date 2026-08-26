@@ -109,6 +109,15 @@ Plans:
   5. **UserPreferences.personaOverrides (name/tone/brevity) apply without a code change.**
 
 **Verification gate:** `pnpm run verify:phase-3` (§24).
+**Plans:** 7 plans (wave-ordered; execute via `/gsd-execute-phase 3`)
+Plans:
+- [ ] 03-01-PLAN.md — TRACER: planner decision from fixture OpenAI wire bytes (SSE rebuild + Appendix L repair + Appendix A prompts + Wave-0 install)
+- [ ] 03-02-PLAN.md — Persona foundation: PersonaProfile (Appendix N.1) + PersonaInjector (N.2) + UserPreferences/np_preferences
+- [ ] 03-03-PLAN.md — Provider adapters (OpenAI/Anthropic/Gemini/Ollama/OpenAICompat) + StreamAdapter wire-family expansion + conformance fixtures
+- [ ] 03-04-PLAN.md — PromptCacheManager (D-59 choke-point) + PromptCacheAdapter (Appendix K) + ChunkBuffer + toolSchemas + Executor/Renderer stages + ActiveStreamState
+- [ ] 03-05-PLAN.md — Provider routing: ProviderRegistry (D-49/50/51/52) + TierResolver (D-53/54/54a) + ProviderRouter (§1.5/§20.10 circuit breaker)
+- [ ] 03-06-PLAN.md — AgentOrchestrator (Appendix I loop, tier caps, per-stage tiers, persist seam, persona consistency)
+- [ ] 03-07-PLAN.md — Chat integration (D-44 re-point) + append-chat-turn journaled persist (D-45) + Options D-50/D-54 fields + human smoke checkpoint
 
 ### Phase 4: Agent Reliability and Evidence
 
@@ -382,7 +391,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. MV3/WXT Runtime + AntD Shells + Workspace Handoff | 0/8 | Planned | — |
 | 2. Storage, Security, WriteJournal, Workspace Persistence | 9/9 | Complete    | 2026-08-24 |
-| 3. Cost-Effective AI Runtime (+ Persona seed) | 0/3 | Not started | — |
+| 3. Cost-Effective AI Runtime (+ Persona seed) | 0/7 | Planned | — |
 | 4. Agent Reliability and Evidence | 0/2 | Not started | — |
 | 5. Context-Adaptive Execution | 0/2 | Not started | — |
 | 6. PageContentService (Knowledge Acquisition) | 0/3 | Not started | — |
