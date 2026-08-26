@@ -40,16 +40,27 @@ created: 2026-08-26
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 03-01-01 | 01 | 1 | RICH-R-01 | T-3-01 / — | PersonaProfile schema + DEFAULT_PERSONA verbatim fields | unit | `vitest run tests/core/ai/persona/PersonaProfile.test.ts` | ❌ W0 | ⬜ pending |
-| 03-01-02 | 01 | 1 | RICH-R-02, RICH-R-10 | T-3-02 / — | PersonaInjector data-merge + persona-first prepend + byte-stability | unit | `vitest run tests/core/ai/persona/PersonaInjector.test.ts` | ❌ W0 | ⬜ pending |
-| 03-02-01 | 02 | 2 | (DONE-when) | T-3-03 / — | Planner closed toolName enum | unit | `vitest run tests/core/ai/PlannerService.test.ts` | ❌ W0 | ⬜ pending |
-| 03-02-02 | 02 | 2 | (DONE-when) | T-3-03 / — | Executor TOOL_REJECTED | unit | `vitest run tests/core/ai/ExecutorService.test.ts` | ❌ W0 | ⬜ pending |
-| 03-02-03 | 02 | 2 | (DONE-when) | T-3-04 / — | Structured-output one-shot repair | unit | `vitest run tests/core/ai/StructuredOutput.test.ts` | ❌ W0 | ⬜ pending |
-| 03-02-04 | 02 | 2 | (DONE-when) | T-3-05 / — | Renderer 512-cap | unit | `vitest run tests/core/ai/RendererService.test.ts` | ❌ W0 | ⬜ pending |
-| 03-03-01 | 03 | 3 | (DONE-when) | T-3-06 / — | Provider fallback + circuit breaker | unit | `vitest run tests/core/ai/ProviderRouter.test.ts` | ❌ W0 | ⬜ pending |
-| 03-03-02 | 03 | 3 | REQ-R09 | T-3-07 / — | Per-provider SSE conformance (OpenAI [DONE] / Anthropic events / Gemini inline / Ollama) | unit (fixtures) | `vitest run tests/core/ai` | ❌ W0 | ⬜ pending |
-| 03-04-01 | 04 | 4 | RICH-R-09 | T-3-08 / — | AgentOrchestrator tier caps + abort + ask_clarification; chat share persona | unit | `vitest run tests/core/ai/AgentOrchestrator.test.ts` | ❌ W0 | ⬜ pending |
-| 03-04-02 | 04 | 4 | (DONE-when) | T-3-08 / — | Chat switches to pipeline (D-44); turn-end persist (D-45) | unit | `vitest run tests/core/ai` | ❌ W0 | ⬜ pending |
+| 03-01-01 | 01 | 1 | RICH-R-10 | T-3-SC / — | node_modules + zod-to-json-schema installed; baseline verify:phase-3 green with existing testProviderConnection.test.ts | setup | `pnpm run verify:phase-3` | — | ⬜ pending |
+| 03-01-02 | 01 | 1 | RICH-R-10 | T-3-02 / — | Spine types + Planner closed toolName enum + end-to-end wire→decision slice | unit | `vitest run tests/core/ai/PlannerService.test.ts` | ❌ W0 | ⬜ pending |
+| 03-01-03 | 01 | 1 | (DONE-when) | T-3-01 / — | Structured-output one-shot repair (Appendix L) | unit | `vitest run tests/core/ai/StructuredOutput.test.ts` | ❌ W0 | ⬜ pending |
+| 03-02-01 | 02 | 1 | RICH-R-01 | T-3-04 / — | PersonaProfile schema + DEFAULT_PERSONA verbatim fields | unit | `vitest run tests/core/ai/persona/PersonaProfile.test.ts` | ❌ W0 | ⬜ pending |
+| 03-02-02 | 02 | 1 | RICH-R-02 | T-3-04 / T-3-05 | UserPreferences minimal shape + np_preferences persistence | unit | `pnpm run verify:phase-3` | ❌ W0 | ⬜ pending |
+| 03-02-03 | 02 | 1 | RICH-R-02, RICH-R-10 | T-3-04 / — | PersonaInjector data-merge + persona-first prepend + byte-stability | unit | `vitest run tests/core/ai/persona/PersonaInjector.test.ts` | ❌ W0 | ⬜ pending |
+| 03-03-01 | 03 | 2 | RICH-R-10 | T-3-06 / T-3-09 | OpenAI-wire family providers (OpenAI/OpenAICompat/Ollama) | unit | `pnpm run verify:phase-3` | ❌ W0 | ⬜ pending |
+| 03-03-02 | 03 | 2 | RICH-R-10 | T-3-06 / T-3-08 | Anthropic + Gemini native-wire providers | unit | `pnpm run verify:phase-3` | ❌ W0 | ⬜ pending |
+| 03-03-03 | 03 | 2 | REQ-R09 | T-3-07 / — | Per-provider SSE conformance (OpenAI [DONE] / Anthropic events / Gemini inline / Ollama) | unit (fixtures) | `vitest run tests/core/ai` | ❌ W0 | ⬜ pending |
+| 03-04-01 | 04 | 2 | RICH-R-10 | T-3-13 / — | ChunkBuffer (Appendix J) + PromptCacheAdapter (Appendix K) + ActiveStreamState (§20.6) | unit | `pnpm run verify:phase-3` | ❌ W0 | ⬜ pending |
+| 03-04-02 | 04 | 2 | RICH-R-02, RICH-R-10 | T-3-10 / T-3-12 | PromptCacheManager D-59 choke-point + toolSchemas + Executor TOOL_REJECTED | unit | `vitest run tests/core/ai/ExecutorService.test.ts` | ❌ W0 | ⬜ pending |
+| 03-04-03 | 04 | 2 | (DONE-when) | T-3-11 / — | Renderer 512-cap | unit | `vitest run tests/core/ai/RendererService.test.ts` | ❌ W0 | ⬜ pending |
+| 03-05-01 | 05 | 3 | RICH-R-09 | T-3-16 / — | ProviderRegistry D-49 normalize + D-50 endpoint overrides + boot hydration | unit | `pnpm run verify:phase-3` | ❌ W0 | ⬜ pending |
+| 03-05-02 | 05 | 3 | RICH-R-09 | T-3-15 / — | TierResolver null contract (D-54a) + capability tiers (D-53) | unit | `pnpm run verify:phase-3` | ❌ W0 | ⬜ pending |
+| 03-05-03 | 05 | 3 | (DONE-when) | T-3-14 / T-3-17 | Provider fallback + circuit breaker (§20.10) | unit | `vitest run tests/core/ai/ProviderRouter.test.ts` | ❌ W0 | ⬜ pending |
+| 03-06-01 | 06 | 4 | RICH-R-09 | T-3-18 / T-3-19 | AgentOrchestrator Appendix I loop + tier caps + configuration-required outcome + persist seam | unit | `vitest run tests/core/ai/AgentOrchestrator.test.ts` | ❌ W0 | ⬜ pending |
+| 03-06-02 | 06 | 4 | RICH-R-09 | T-3-20 / T-3-21 | AgentOrchestrator tier caps + abort + ask_clarification; chat share persona | unit | `vitest run tests/core/ai/AgentOrchestrator.test.ts` | ❌ W0 | ⬜ pending |
+| 03-07-01 | 07 | 5 | (DONE-when) | T-3-23 / — | append-chat-turn additive union + zod schema + JournalStep registration | unit | `pnpm run verify:phase-3` | ❌ W0 | ⬜ pending |
+| 03-07-02 | 07 | 5 | RICH-R-09 | T-3-22 / T-3-25 | Chat switches to pipeline (D-44); turn-end persist (D-45) | unit | `vitest run tests/core/ai/chat-integration.test.ts` | ❌ W0 | ⬜ pending |
+| 03-07-03 | 07 | 5 | (DONE-when) | T-3-24 / — | Options endpoint overrides + tier assignment; selectors only, no auto-classification | unit | `pnpm run verify:phase-3` | ❌ W0 | ⬜ pending |
+| 03-07-04 | 07 | 5 | REQ-R09 / DONE-when | — | Live SSE streaming against a real provider + Options fields + persist across reload (human checkpoint) | manual | (human — 03-07 Task 4) | — | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 

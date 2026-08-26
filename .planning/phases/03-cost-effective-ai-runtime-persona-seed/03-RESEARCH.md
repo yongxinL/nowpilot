@@ -62,7 +62,7 @@
 | RICH-R-01 | Persona profile in `src/core/ai/persona/PersonaProfile.ts`: Identity (name, tagline, domain); Personality core (privacy-first, helpful, precise, humble); behavioral drivers (prefers clarifying questions over guessing, cites sources); Language style (professional-warm, technical-accessible, concise-by-default); Emotional repertoire (empathy, encouragement, curiosity). | Appendix N.1 verbatim (`PersonaProfileSchema` + `DEFAULT_PERSONA`, spec 6064-6099) — canonical, "Do not paraphrase". D-57 locks spec-verbatim seed. §21.6 `PersonaProfile` interface (spec 3412-3419) matches. |
 | RICH-R-02 | `PersonaInjector` injects persona into system prompts across all AI calls. Depends on R-01. | Appendix N.2 verbatim (`resolvePersona` data-merge, `buildPersonaBlock` byte-stable, `PersonaInjector.inject` persona-first prepend, spec 6105-6141). D-58/D-59 lock merge semantics + single choke-point at PromptCacheManager's system-prompt builder. |
 | RICH-R-09 | Chat and Agent share the same persona. Depends on R-02. | D-44 re-points `useChatStreaming` at `AgentOrchestrator` — chat runs the same pipeline, so D-59's single injector choke-point gives chat and agent the identical persona automatically. |
-| RICH-R-10 | Persona-consistent system prompt per pipeline stage (Planner/Executor/Renderer). Depends on R-02. | D-59: persona prepended FIRST inside the cached `[SYSTEM]` section by the one system-prompt builder; Appendix A stage constants stay persona-free and byte-stable (spec 4153 note). Stage `tier` fields (planner `fast`, renderer `balanced` per Appendix A) feed D-55 stage-tier mapping. |
+| RICH-R-10 | Persona-consistent system prompt per pipeline stage (Planner/Executor/Renderer). Depends on R-02. | D-59: persona prepended FIRST inside the cached `[SYSTEM]` section by the one system-prompt builder; Appendix A stage constants stay persona-free and byte-stable (spec 4153 note). Stage `tier` fields (planner `fast`, renderer `balanced` per Appendix A) feed D-55 stage-tier mapping. (SUPERSEDED BY REVIEWED CONTEXT D-55: Phase 3 Renderer uses `fast`.) |
 
 **Research support caveats:** `PersonaInjector` imports `UserPreferences` from `@/core/memory/types` in the Appendix N.2 reference — that module does not exist; Phase 3 must supply the minimal `UserPreferences` shape (see Assumptions/Open Questions). The D-57 CONTEXT summary phrases tagline/behavioralDrivers slightly differently from Appendix N.1's verbatim constants — **the spec Appendix N.1 block is authoritative** (it carries "Do not paraphrase").
 </phase_requirements>
@@ -198,7 +198,7 @@ src/core/ai/
 ├── PromptCacheAdapter.ts        # Appendix K verbatim: applyCacheHints + hashStableSections
 ├── PlannerService.ts            # §1.2: returns PlannerDecision (answer|run_tool|ask_clarification); fast tier; 3s timeout; Appendix L repair
 ├── ExecutorService.ts           # §1.2: closed z.enum from registered tools; validate input; TOOL_REJECTED (D-46, §21.6)
-├── RendererService.ts           # §1.2/§1.3: balanced tier; 512-token cap default; no invented facts
+├── RendererService.ts           # §1.2/§1.3: balanced tier; 512-token cap default; no invented facts (SUPERSEDED BY REVIEWED CONTEXT D-55: Phase 3 Renderer uses `fast`.)
 ├── AgentOrchestrator.ts         # Appendix I verbatim: runAgentTurn; ONLY module enforcing §1.4 caps
 ├── StructuredOutput.ts          # Appendix L verbatim: requestJson — zodToJsonSchema + 1 repair + STRUCTURED_OUTPUT_FAILED
 ├── toolSchemas.ts               # D-46: ToolDefinition, ToolCapabilityManifest, closed-enum contract; ZERO tools registered
@@ -502,26 +502,26 @@ export const DEFAULT_PERSONA: PersonaProfile = {
 | A7 | `ActiveSurface` type (referenced by §20.6) exists somewhere importable — grep found `ActiveSurface` in RuntimeEnvelope.ts:50-75 context but the definition was not opened this session | Code Examples | If `ActiveSurface` is not exported, workerState.ts addition must define/import it — verify at implementation |
 | A8 | Prompt cache section order uses `PromptSection` with `kind`/`text`/`stable`/`tokens` fields as Appendix K imports from `../context/ContextOptimizer` — that module is Phase 5 and does NOT exist; Phase 3 must declare its own minimal PromptSection shape in `src/core/ai/types.ts` | Standard Stack / Pattern 2 | If the prompt-section type is invented with different field names, Appendix K verbatim code breaks; keep the exact `{kind, text, stable, tokens}` field contract so Phase 5's ContextOptimizer can adopt it |
 
-## Open Questions
+## Resolved Questions
 
-1. **D-45 "via the WriteJournal" — which operation?**
+1. **D-45 "via the WriteJournal" — which operation?** (RESOLVED — D-45/D-45a, plan 03-07)
    - What we know: `WriteJournalOperation` (src/types/storage.ts:46-57) is the closed §20.3 11-member union; there is **no** chat/transcript append op. `ChatHistoryDB` v1 schema (src/core/storage/ChatHistoryDB.ts:24-53) already fits the turn-end pair write (role `'user'|'assistant'|'system'`, metadata `Record<string, unknown>` — no schema change needed, so D-45a's stop-condition does NOT trigger).
    - What's unclear: whether "via the WriteJournal" means (a) an additive union extension (`'append-chat-turn'`) + registered JournalStep so the turn-end persist is journaled/replayable, or (b) a direct single-transaction IDB put (atomic by IndexedDB semantics) loosely described as "the journaled persist path".
    - Recommendation: **Option (a)** — additively extend the union with `'append-chat-turn'` and register the step list at boot (mirroring the Phase-2 `update-workspace` wiring, WriteJournal.ts:212-263). It honors D-45's letter, is backward-compatible (literal-union extension), and keeps abort-drops semantics in the pipeline's completion handler. If the planner prefers zero storage-module touch, document the deviation from D-45's letter explicitly.
 
-2. **Where does the minimal `UserPreferences` shape live?**
+2. **Where does the minimal `UserPreferences` shape live?** (RESOLVED — D-54/D-58, plan 03-02)
    - What we know: Appendix N.2 imports `UserPreferences` from `@/core/memory/types` (does not exist); D-54/D-58 name `fastModel`/`balancedModel`/`personaOverrides`; `np_preferences` key appears nowhere yet.
    - Recommendation: Declare the Phase-3 minimal `UserPreferences` zod schema + type in `src/core/ai/types.ts` (or a small `src/core/ai/UserPreferences.ts`), persisted under `np_preferences` (chrome.storage.local) via the existing chromeStorageAdapter pattern. Add a code comment marking it as the Phase-8/10 supersession point. This is required to satisfy DONE-when item 5 (overrides apply without a code change) and D-54's write-through contract.
 
-3. **Which hook consumes the pipeline?**
+3. **Which hook consumes the pipeline?** (RESOLVED — D-44, plan 03-07)
    - What we know: D-44 re-points `useChatStreaming.ts` at AgentOrchestrator; Appendix J.2 defines a new `useStreamingLLM` hook (src/hooks/useStreamingLLM.ts) that writes `np_active_stream` to chrome.storage.session and consumes ChunkBuffer.
    - Recommendation: Adapt the existing `useChatStreaming.ts` (modify in place per D-44) using the Appendix J.2 pattern (ChunkBuffer + `np_active_stream` session lifecycle + ActiveStreamState) rather than creating a second hook, so both chat surfaces keep one wiring path. The planner decides whether a separate `useStreamingLLM` module is warranted.
 
-4. **Renderer 512-token cap declaration mechanism**
+4. **Renderer 512-token cap declaration mechanism** (RESOLVED — §1.3, plan 03-04)
    - What we know: "Max normal output: 512 tokens unless the feature overrides" (§1.3) — planner's discretion on the mechanism.
    - Recommendation: A per-stage `maxOutputTokens` in the prompt-config entry (Appendix A stage constants carry `tier`; add a parallel `maxOutputTokens: 512` default), with an override parameter on `RendererService.render`. Keep it data, not hard-coded in the loop.
 
-5. **Prompt-cache invalidation on persona override change**
+5. **Prompt-cache invalidation on persona override change** (RESOLVED — D-59, plan 03-04)
    - What we know: byte-stability of `[SYSTEM]` must be re-derived when overrides change (CONTEXT discretion); Appendix K already hashes stable sections.
    - Recommendation: key the PromptCacheManager's cached system prompt on a profile-version hash = `hashStableSections([personaBlock])` — when `resolvePersona` output changes, the hash changes and the next build emits a new byte-stable block. No explicit invalidation API needed.
 
