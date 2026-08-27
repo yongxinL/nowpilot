@@ -21,6 +21,7 @@ import {
   GEMINI_ANSWER_STREAM_SPLIT,
   GEMINI_MISSING_TERMINATOR_STREAM,
   GEMINI_EMPTY_STREAM,
+  GEMINI_TEXT_WITH_TERMINATOR_STREAM,
 } from './fixtures/gemini-stream';
 import {
   OLLAMA_COMPAT_STREAM,
@@ -132,6 +133,19 @@ describe('StreamAdapter — Gemini wire (parseGeminiStream)', () => {
   it('multi-part chunks accumulate across lines', () => {
     const events = parseGeminiStream('op-gemini-split', GEMINI_ANSWER_STREAM_SPLIT);
     expectHappy(events, 'Hello friend');
+  });
+
+  it('CR-04: text co-located with finishReason in ONE chunk is not dropped', () => {
+    const events = parseGeminiStream('op-gemini-colocated', GEMINI_TEXT_WITH_TERMINATOR_STREAM);
+    expectHappy(events, 'Yes');
+  });
+
+  it('WR-05/CR-03: an error-first stream emits STREAM_ERROR with NO preceding STREAM_START', () => {
+    // A bare Anthropic `error` event as the first payload must not emit
+    // STREAM_START (the router's lock point) before the error.
+    const events = parseAnthropicStream('op-anthropic-error-first', ANTHROPIC_ERROR_STREAM);
+    expect(events[0]).toMatchObject({ type: 'STREAM_ERROR' });
+    expect(events.some((e) => e.type === 'STREAM_START')).toBe(false);
   });
 
   it('missing terminator (no finishReason chunk) → STREAM_ERROR (REQ-R09)', () => {

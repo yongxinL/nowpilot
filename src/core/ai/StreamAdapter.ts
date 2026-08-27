@@ -98,15 +98,34 @@ function parseOpenAIDataLine(line: string, state: AdapterState, operationId: str
  *   event: message_stop
  *   data: {"type":"message_stop"}
  *
- * Dispatch keys on the payload's authoritative `type` field (the event header
- * is tracked in `pendingEventType` for completeness but not required for
- * parsing). `error` events surface STREAM_ERROR; `message_stop` is the
- * terminator.
+ * Dispatch keys on the payload's authoritative `type` field. WR-05: the
+ * `event:` header (expectedEventType) is validated against that field — a
+ * mismatch is a malformed wire and surfaces STREAM_ERROR instead of being
+ * silently accepted. `error` events surface STREAM_ERROR; `message_stop` is
+ * the terminator.
  */
-function parseAnthropicDataLine(state: AdapterState, payload: string, operationId: string): StreamEvent[] {
+function parseAnthropicDataLine(
+  state: AdapterState,
+  expectedEventType: string | null,
+  payload: string,
+  operationId: string,
+): StreamEvent[] {
   const parsed = safeJsonParse(payload);
   if (typeof parsed !== 'object' || parsed === null) return [];
-  switch (jsonField(parsed, 'type')) {
+  const payloadType = asString(jsonField(parsed, 'type'));
+  if (expectedEventType !== null && payloadType !== undefined && expectedEventType !== payloadType) {
+    // WR-05: `event:` and `data.type` disagree — malformed wire, never silent.
+    state.sawError = true;
+    return [
+      {
+        type: 'STREAM_ERROR',
+        operationId,
+        code: DEFAULT_ERROR_CODE,
+        message: `Anthropic wire mismatch: event: ${expectedEventType} vs data.type: ${payloadType}`,
+      },
+    ];
+  }
+  switch (payloadType) {
     case 'error': {
       state.sawError = true;
       const message = asString(jsonField(jsonField(parsed, 'error'), 'message'));
@@ -144,19 +163,24 @@ function parseGeminiDataLine(state: AdapterState, payload: string, operationId: 
   const candidates = jsonField(parsed, 'candidates');
   if (!Array.isArray(candidates) || candidates.length === 0) return [];
   const candidate = candidates[0];
+  // CR-04: parse parts FIRST — Gemini commonly delivers short completions as
+  // a single chunk carrying BOTH the text parts and finishReason. Returning
+  // STREAM_COMPLETE before reading parts would drop the co-located text and
+  // render an empty answer.
+  const parts = jsonField(jsonField(candidate, 'content'), 'parts');
+  const events: StreamEvent[] = [];
+  if (Array.isArray(parts)) {
+    for (const part of parts) {
+      const text = asString(jsonField(part, 'text'));
+      if (text !== undefined && text.length > 0) {
+        events.push({ type: 'STREAM_DELTA', operationId, delta: text });
+      }
+    }
+  }
   const finishReason = asString(jsonField(candidate, 'finishReason'));
   if (finishReason !== undefined && finishReason.length > 0) {
     state.sawTerminator = true;
-    return [{ type: 'STREAM_COMPLETE', operationId, fullText: '' }];
-  }
-  const parts = jsonField(jsonField(candidate, 'content'), 'parts');
-  if (!Array.isArray(parts)) return [];
-  const events: StreamEvent[] = [];
-  for (const part of parts) {
-    const text = asString(jsonField(part, 'text'));
-    if (text !== undefined && text.length > 0) {
-      events.push({ type: 'STREAM_DELTA', operationId, delta: text });
-    }
+    events.push({ type: 'STREAM_COMPLETE', operationId, fullText: '' });
   }
   return events;
 }
@@ -226,13 +250,21 @@ export function createStreamAdapter(operationId: string, wire: WireFormat = 'ope
   let started = false;
 
   const emitDelta = (events: StreamEvent[]): StreamEvent[] => {
-    // STREAM_START precedes the first delta (D-47).
+    // WR-05/CR-03: STREAM_START is emitted only when a STREAM_DELTA is
+    // actually parsed — the contract "STREAM_START precedes the first delta"
+    // must not fire on a chunk that produced zero deltas (Anthropic
+    // message_start/ping, Gemini no-text chunks, role-only deltas). An
+    // empty/truncated/error-first stream therefore yields STREAM_ERROR
+    // WITHOUT a preceding STREAM_START, so the router never locks a provider
+    // that produced zero tokens.
     const out: StreamEvent[] = [];
-    if (!started) {
-      out.push({ type: 'STREAM_START', operationId });
-      started = true;
+    for (const event of events) {
+      if (!started && event.type === 'STREAM_DELTA') {
+        out.push({ type: 'STREAM_START', operationId });
+        started = true;
+      }
+      out.push(event);
     }
-    out.push(...events);
     return out;
   };
 
@@ -245,7 +277,12 @@ export function createStreamAdapter(operationId: string, wire: WireFormat = 'ope
         return [];
       }
       if (line.startsWith('data:')) {
-        return parseAnthropicDataLine(state, line.slice(5).trim(), operationId);
+        // WR-05: the event header is consumed by exactly one data payload —
+        // read + clear it so a data-only line is never validated against a
+        // stale event.
+        const expectedEventType = state.pendingEventType;
+        state.pendingEventType = null;
+        return parseAnthropicDataLine(state, expectedEventType, line.slice(5).trim(), operationId);
       }
       return [];
     }

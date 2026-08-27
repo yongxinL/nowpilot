@@ -26,6 +26,11 @@ export const GEMINI_ANSWER_STREAM_SPLIT = [
   'data: {"candidates":[{"content":{},"finishReason":"STOP"}]}',
 ];
 
+/** CR-04: text and finishReason co-located in ONE chunk — the text must survive. */
+export const GEMINI_TEXT_WITH_TERMINATOR_STREAM = [
+  'data: {"candidates":[{"content":{"parts":[{"text":"Yes"}]},"finishReason":"STOP"}]}',
+];
+
 /** Missing terminator — REQ-R09: no finishReason chunk before EOF ⇒ STREAM_ERROR. */
 export const GEMINI_MISSING_TERMINATOR_STREAM = [
   'data: {"candidates":[{"content":{"parts":[{"text":"cut off"}]}}]}',
