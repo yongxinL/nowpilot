@@ -31,7 +31,7 @@ import { NowPilotAvatar } from '../common/NowPilotAvatar';
 import { UserAvatar } from '../common/UserAvatar';
 import { PromptsOptionsTab } from './PromptsOptionsTab';
 import { PromptCategory, CustomProviderId, CustomModelItem, CustomProviderDetail } from '../../types';
-import { testProviderConnection, fetchProviderModels } from '../../services/aiProvider';
+import { testProviderConnection } from '../../services/aiProvider';
 import { useUserPreferencesStore } from '../../core/ai/UserPreferences';
 import { ProviderRegistry } from '../../core/ai/ProviderRegistry';
 import {
@@ -89,7 +89,9 @@ const PROVIDER_INFO: Record<CustomProviderId, { name: string; icon: React.ReactN
   openai: {
     name: 'OpenAI',
     icon: <OpenAiIcon />,
-    defaultProxy: 'http://localhost:12380/v1',
+    // WR-06: the §10.6 canonical endpoint — the legacy dev-proxy default
+    // (http://localhost:12380/v1, D-12) must never be pre-filled or persisted.
+    defaultProxy: 'https://api.openai.com/v1',
     defaultModels: ['Qwen3.5-9B-OptiQ-4bit', 'Qwythos-9B-Claude-Mythos-5-1M-mxfp4-mlx', 'gemma-4-e2b-it-4bit'],
   },
   gemini: {
@@ -310,14 +312,22 @@ export const OptionsPage: React.FC = () => {
       // value must never reach the fetch layer); the provider config save
       // still succeeds, the override just falls back to the default.
       const wantsOverride = modalUseCustomProxy && modalProxyUrl.trim().length > 0;
-      if (wantsOverride && !/^https?:\/\//i.test(modalProxyUrl.trim())) {
+      // WR-06: an untouched pre-filled proxy (equal to the provider's
+      // defaultProxy) is NOT an operator intent — persisting it would turn a
+      // UI default into a runtime endpoint override. Only an operator-edited
+      // URL writes np_endpoint_overrides.
+      const effectiveOverrideUrl =
+        wantsOverride && modalProxyUrl.trim() !== PROVIDER_INFO[activeModalProviderId].defaultProxy
+          ? modalProxyUrl.trim()
+          : undefined;
+      if (wantsOverride && effectiveOverrideUrl === undefined && modalProxyUrl.trim().length > 0) {
+        // The field holds the default — treat as "no override"; nothing to validate.
+        await writeEndpointOverride(activeModalProviderId, undefined);
+      } else if (effectiveOverrideUrl !== undefined && !/^https?:\/\//i.test(effectiveOverrideUrl)) {
         antMessage.error('Custom proxy URL must start with http(s):// — endpoint override not saved');
       } else {
         try {
-          await writeEndpointOverride(
-            activeModalProviderId,
-            wantsOverride ? modalProxyUrl.trim() : undefined,
-          );
+          await writeEndpointOverride(activeModalProviderId, effectiveOverrideUrl);
         } catch (writeErr) {
           // Best-effort override persist — storage failure must not fail the
           // provider save; the registry keeps the §10.6 default.
@@ -479,9 +489,11 @@ export const OptionsPage: React.FC = () => {
   };
 
   // D-52 (03-07): live model discovery for the tier selectors — merged across
-  // ENABLED providers using fetchProviderModels semantics with the D-50-merged
-  // endpoint (registry overrides apply). Discovery POPULATES the selectors but
-  // does NOT classify, preselect, or persist either value (D-54/D-54a).
+  // ENABLED providers via ProviderRegistry.refreshModels (D-50-merged endpoint;
+  // WR-04/CR-02: the fetched lists WRITE the registry's D-52 session cache that
+  // TierResolver validates against — discovery is never thrown away). Discovery
+  // POPULATES the selectors but does NOT classify, preselect, or persist either
+  // value (D-54/D-54a).
   const handleDiscoverTierModels = async () => {
     if (tierModelsLoading) return;
     setTierModelsLoading(true);
@@ -490,12 +502,10 @@ export const OptionsPage: React.FC = () => {
       for (const provider of ProviderRegistry.getEnabled()) {
         const diskId = provider.providerId === 'anthropic' ? 'claude' : provider.providerId;
         if (diskId === 'openai-compat') continue; // operator-assigned list only (D-56)
-        const endpoint = ProviderRegistry.getEndpointFor(provider.providerId);
-        if (endpoint === undefined) continue;
         const apiKey = config.providers?.[diskId as CustomProviderId]?.apiKey;
-        const models = await fetchProviderModels(diskId as CustomProviderId, apiKey, endpoint);
-        for (const m of models) {
-          if (!merged.some((x) => x.value === m.id)) merged.push({ value: m.id, label: m.id });
+        const ids = await ProviderRegistry.refreshModels(provider.providerId, apiKey);
+        for (const id of ids) {
+          if (!merged.some((x) => x.value === id)) merged.push({ value: id, label: id });
         }
       }
       setTierModels(merged);

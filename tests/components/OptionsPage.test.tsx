@@ -93,7 +93,9 @@ describe('OptionsPage — D-50 endpoint overrides + D-54 tier assignment (03-07)
     // label also carries its Set up / Edit button.
     const openaiCell = screen.getByText('OpenAI').closest('div')?.parentElement as HTMLElement;
     fireEvent.click(within(openaiCell).getByText('Set up'));
-    const proxyInput = await screen.findByPlaceholderText('http://localhost:12380/v1');
+    // WR-06: the modal pre-fills the §10.6 canonical endpoint — the legacy
+    // dev-proxy default (http://localhost:12380/v1) is never pre-filled.
+    const proxyInput = await screen.findByPlaceholderText('https://api.openai.com/v1');
     fireEvent.change(proxyInput, { target: { value: 'https://my-proxy.example.com/v1' } });
 
     fireEvent.click(screen.getByRole('button', { name: 'Save Provider' }));
@@ -104,6 +106,29 @@ describe('OptionsPage — D-50 endpoint overrides + D-54 tier assignment (03-07)
       expect(raw).toBeTruthy();
       const parsed = JSON.parse(raw as string) as Record<string, string>;
       expect(parsed.openai).toBe('https://my-proxy.example.com/v1');
+    });
+  });
+
+  it('WR-06: saving with the untouched default proxy persists NO endpoint override', async () => {
+    mockModelDiscovery();
+    renderOptions();
+
+    const openaiCell = screen.getByText('OpenAI').closest('div')?.parentElement as HTMLElement;
+    // "Set up" (unconfigured) or the icon-only "edit" (previously saved) —
+    // both open the modal.
+    fireEvent.click(within(openaiCell).getByRole('button', { name: /Set up|edit/i }));
+    // Leave the pre-filled default (https://api.openai.com/v1) untouched and save.
+    fireEvent.click(screen.getByRole('button', { name: 'Save Provider' }));
+
+    // No override written — the runtime keeps the §10.6 default.
+    await waitFor(() => {
+      const raw = storageMap.get('np_endpoint_overrides');
+      if (raw) {
+        const parsed = JSON.parse(raw as string) as Record<string, string>;
+        expect(parsed.openai).toBeUndefined();
+      } else {
+        expect(raw).toBeUndefined();
+      }
     });
   });
 
