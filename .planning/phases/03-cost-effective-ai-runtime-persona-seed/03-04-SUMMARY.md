@@ -284,3 +284,11 @@ None - no external service configuration required.
 
 *Phase: 03-cost-effective-ai-runtime-persona-seed*
 *Completed: 2026-08-27*
+## Self-Check: PASSED
+
+- All 9 source/test files + SUMMARY.md exist on disk (verified via `[ -f ]` checks)
+- All 6 commits found in git log: 2fac38e (Task 1), 8eb98ab (Task 2), f374b14 (Task 3), 051b494 (PromptCacheAdapter+ChunkBuffer tests), 117d23b (PromptCacheManager tests), 323d1ee (docs)
+- `pnpm run verify:phase-3` green: tsc strict-clean + 93 tests across 12 files
+- D-59 invariant: `grep -rn "PersonaInjector.inject" src/ | wc -l` == 1 (sole call site in PromptCacheManager)
+- Comment-filtered negative gate: zero chrome.storage code access in ChunkBuffer.ts
+- No `@ts-expect-error NP-STRICT` markers in new code (NP-STRICT ceiling 0 held)
