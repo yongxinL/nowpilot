@@ -40,8 +40,11 @@ export function estimateTokens(text: string): number {
  * planner/renderer/memoryExtractor but no executor entry — §1.2's
  * ExecutorService is deterministic ("The LLM never executes tools directly")
  * and Phase 3 registers zero tools, so this reserved string is never sent to
- * a model in Phase 3. It stays persona-free and byte-stable (RICH-R-10);
- * a tool-owning phase may replace it with its own canonical Appendix A entry.
+ * a model in Phase 3. It stays persona-free and byte-stable (RICH-R-10).
+ *
+ * TODO(Phase 18 — Tool Governance): the tool-owning phase replaces this
+ * local constant with its own canonical Appendix A executor entry before the
+ * executor stage ever reaches a model (IN-03 tracked reference).
  */
 const EXECUTOR_SYSTEM =
   'You are executing a tool call. Return JSON only: {"toolName": "...", "input": {...}}. Never fabricate tool output.';

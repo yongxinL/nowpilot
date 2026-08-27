@@ -12,6 +12,10 @@ export type BackgroundWorkerState =
  * STREAM_START → preparing/streaming, STREAM_COMPLETE → completed,
  * STREAM_ERROR → failed (+ canonical §21.6 code), STREAM_ABORTED → aborting.
  * `ActiveSurface` comes from WorkspaceStore (line 11) — 'sidepanel' | 'standalone'.
+ *
+ * IN-01: reserved-for-later — no module consumes this type in Phase 3 (the
+ * orchestrator/renderer emit canonical events; the event→state mapping that
+ * would drive it is not yet wired). It type-checks as the §20.6 deliverable.
  */
 import type { ActiveSurface } from '../workspace/WorkspaceStore';
 

@@ -16,7 +16,9 @@ export const PROMPTS = {
   renderer: {
     system: 'Answer using only the provided context and tool result. Be concise. If data is missing, say what is missing. Do not invent facts.',
     cacheable: true,
-    tier: 'balanced',
+    // IN-02: 'fast' — D-55 maps the renderer stage to the fast tier
+    // (AgentOrchestrator hardcodes the renderer to 'fast').
+    tier: 'fast',
   },
   memoryExtractor: {
     system: 'Extract durable user memory. Store only stable facts, preferences, or repeated patterns. Do not store secrets or raw customer data. Return JSON only.',
