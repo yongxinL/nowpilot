@@ -38,6 +38,8 @@ import type {
   WriteJournalEntry,
   WriteJournalOperation,
 } from '../../types/storage';
+import { openChatHistoryDB } from './ChatHistoryDB';
+import type { ChatHistoryMessage } from './ChatHistoryDB';
 
 // Re-export the union so downstream consumers can import from the
 // journal home (D-32 declare-now). The canonical declaration lives in
@@ -252,6 +254,110 @@ export function createWorkspaceWriteSteps(deps: WorkspaceWriteStepsDeps): Worksp
 }
 
 /**
+ * Factory — JournalStep[] builder for the `append-chat-turn` operation
+ * (Phase 3 03-07, D-45). Mirrors the `createWorkspaceWriteSteps` curried
+ * pattern: injected deps capture the unstable ChatHistoryDB I/O seam while
+ * the curried payload carries the per-turn pair.
+ *
+ * D-45 contract: the completed user/assistant pair is persisted at TURN END
+ * via runJournaled — never per chunk (P2 write-rate, T-3-22). Mid-stream
+ * chunks live in memory + ChunkBuffer only; an abort drops the partial and
+ * this op never runs.
+ *
+ * Idempotency (replay-safe): message ids are DETERMINISTIC —
+ * `turn:${sessionId}:${timestamp}:user|assistant` — so a crash-replay re-put
+ * OVERWRITES the same rows instead of duplicating the pair (T-3-23).
+ *
+ * D-33 discipline: the journal entry itself stays metadata-only; message
+ * bodies live in ChatHistoryDB. Rollback deletes the two rows so a
+ * rolled-back entry leaves no partial transcript.
+ *
+ * @param deps
+ *   - `putMessage(message)`: idb put into ChatHistoryDB 'messages' store
+ *     (v1 schema — role 'user'|'assistant'|'system', metadata
+ *     Record<string, unknown>; NO schema change, D-45a stop-condition does
+ *     not trigger).
+ *   - `deleteMessage(id)`: idb delete by keyPath id — rollback.
+ */
+export interface ChatTurnStepsDeps {
+  putMessage: (message: ChatHistoryMessage) => Promise<void>;
+  deleteMessage: (id: string) => Promise<void>;
+}
+
+/** Per-turn payload for the append-chat-turn steps. */
+export interface ChatTurnPayload {
+  sessionId: string;
+  userMessage: string;
+  assistantMessage: string;
+  timestamp: number;
+}
+
+export type ChatTurnStepsBuilder = (payload: ChatTurnPayload) => JournalStep[];
+
+export function createChatTurnSteps(deps: ChatTurnStepsDeps): ChatTurnStepsBuilder {
+  return (payload: ChatTurnPayload): JournalStep[] => {
+    const userMsgId = `turn:${payload.sessionId}:${payload.timestamp}:user`;
+    const assistantMsgId = `turn:${payload.sessionId}:${payload.timestamp}:assistant`;
+    return [
+      {
+        name: 'append-chat-turn',
+        apply: async () => {
+          await deps.putMessage({
+            id: userMsgId,
+            sessionId: payload.sessionId,
+            role: 'user',
+            content: payload.userMessage,
+            timestamp: payload.timestamp,
+            metadata: { source: 'agent-pipeline' },
+          });
+          await deps.putMessage({
+            id: assistantMsgId,
+            sessionId: payload.sessionId,
+            role: 'assistant',
+            content: payload.assistantMessage,
+            timestamp: payload.timestamp,
+            metadata: { source: 'agent-pipeline' },
+          });
+        },
+        rollback: async () => {
+          await deps.deleteMessage(userMsgId);
+          await deps.deleteMessage(assistantMsgId);
+        },
+      },
+    ];
+  };
+}
+
+/**
+ * Production deps for `createChatTurnSteps` — bound to the REAL ChatHistoryDB
+ * via `openChatHistoryDB()` (idb put/delete into the 'messages' store, v1
+ * schema). Each call opens a fresh handle and closes it in `finally` (the
+ * idb v8 pattern used across Phase 2 storage modules). Used by the boot
+ * registration in `recoverWorkspaceJournal`; the chat hook (03-07 Task 2)
+ * builds the same deps when wiring its persistTurn callback.
+ */
+export function chatTurnStepsDepsFromChatHistoryDB(): ChatTurnStepsDeps {
+  return {
+    putMessage: async (message: ChatHistoryMessage) => {
+      const db = await openChatHistoryDB();
+      try {
+        await db.put('messages', message);
+      } finally {
+        db.close();
+      }
+    },
+    deleteMessage: async (id: string) => {
+      const db = await openChatHistoryDB();
+      try {
+        await db.delete('messages', id);
+      } finally {
+        db.close();
+      }
+    },
+  };
+}
+
+/**
  * Dependencies for `recoverWorkspaceJournal` — the boot crash-recovery path.
  * Each field is injected so the helper stays decoupled from the specific
  * chrome.storage adapter / WriteJournalDB handle / broadcast surface.
@@ -309,12 +415,32 @@ export async function recoverWorkspaceJournal(deps: RecoverWorkspaceDeps): Promi
     })('np_workspace', ''),
   );
 
-  // 2. Replay every pending/applying entry.
+  // 2. Register the append-chat-turn steps alongside (03-07 Task 1, mirror
+  //    of the CR-01 pattern) so `isSupportedOperation('append-chat-turn')`
+  //    returns true for the D-32 replay gate. The registered list is bound
+  //    to the real ChatHistoryDB; a boot replay of a pending append-chat-turn
+  //    entry does NOT re-apply (the metadata-only entry carries no message
+  //    bodies — D-33 — so the pair cannot be rebuilt; the idempotent
+  //    deterministic-id write makes re-application unnecessary, see the
+  //    replay branch below).
+  registerJournalSteps('append-chat-turn', createChatTurnSteps(chatTurnStepsDepsFromChatHistoryDB())({
+    sessionId: '',
+    userMessage: '',
+    assistantMessage: '',
+    timestamp: 0,
+  }));
+
+  // 3. Replay every pending/applying entry.
   await recoverJournal(deps.loadEntries, async (entry) => {
-    // D-32 replay contract — skip unsupported ops with debugLog (keep the
-    // existing code path).
-    if (!isSupportedOperation(entry.operation)) {
-      debugLog('WRITE_JOURNAL_REPLAY_SKIP', `unsupported op ${entry.operation}`, {
+    // D-32 replay contract — the boot path re-applies ONLY update-workspace.
+    // Unsupported ops are skipped with debugLog (existing behavior); a
+    // registered-but-non-workspace op like 'append-chat-turn' is ALSO skipped
+    // here: its journal entry is metadata-only (D-33) so the pair cannot be
+    // rebuilt, and the deterministic-id write means the rows either already
+    // exist (crash after apply) or the turn is dropped (crash before) — both
+    // consistent with the D-45 best-effort journaled-append contract.
+    if (entry.operation !== 'update-workspace') {
+      debugLog('WRITE_JOURNAL_REPLAY_SKIP', `op ${entry.operation} not replayed at boot`, {
         id: entry.id,
       });
       return;

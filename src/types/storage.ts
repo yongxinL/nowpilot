@@ -54,7 +54,11 @@ export type WriteJournalOperation =
   | 'update-workspace'
   | 'sync-note-file'
   | 'delete-note-file'
-  | 'restore-notes-batch';
+  | 'restore-notes-batch'
+  // Phase 3 (03-07, D-45): additive literal-union extension — the turn-end
+  // chat pair append. RESEARCH Open Q1 resolved to option (a): extend the
+  // §20.3 union rather than invent a second transcript store (D-45a).
+  | 'append-chat-turn';
 
 /**
  * Persisted shape of a WriteJournal entry — Appendix O.11 verbatim.
@@ -98,6 +102,7 @@ export const WriteJournalOperationSchema = z.union([
   z.literal('sync-note-file'),
   z.literal('delete-note-file'),
   z.literal('restore-notes-batch'),
+  z.literal('append-chat-turn'),
 ]);
 
 export const WriteJournalEntrySchema = z.object({
