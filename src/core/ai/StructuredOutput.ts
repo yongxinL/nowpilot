@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import type { ProviderId } from './types';
 import { PROMPTS } from '../prompts';
+import { ProviderError } from './providers/base';
 
 /**
  * Structured output repair loop — Appendix L verbatim
@@ -53,11 +54,24 @@ export async function requestJson<T>(
   const jsonSchema = zodToJsonSchema(schema as unknown as Parameters<typeof zodToJsonSchema>[0]);
   const attempt = async (p: string): Promise<string> => {
     const ac = new AbortController();
+    let timedOut = false;
     const onAbort = () => ac.abort();
     ctx.abortSignal.addEventListener('abort', onAbort);
-    const to = setTimeout(() => ac.abort(), ctx.timeoutMs);
+    const to = setTimeout(() => {
+      timedOut = true;
+      ac.abort();
+    }, ctx.timeoutMs);
     try {
       return await ctx.callProviderJsonMode(p, jsonSchema, ac.signal);
+    } catch (err) {
+      // WR-02: the internal §1.2 timeout is NOT a caller abort. The provider
+      // converts the internal ac.abort() into an AbortError; rethrow it as a
+      // TIMEOUT-coded ProviderError so the caller surfaces a timeout instead
+      // of silently treating the dropped turn as a user stop.
+      if (timedOut) {
+        throw new ProviderError('TIMEOUT', `planner timed out after ${ctx.timeoutMs}ms`);
+      }
+      throw err;
     } finally {
       clearTimeout(to);
       ctx.abortSignal.removeEventListener('abort', onAbort);

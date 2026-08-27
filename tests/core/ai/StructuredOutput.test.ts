@@ -6,6 +6,7 @@ import {
   STRUCTURED_OUTPUT_FAILED,
   type StructuredOutputContext,
 } from '../../../src/core/ai/StructuredOutput';
+import { ProviderError } from '../../../src/core/ai/providers/base';
 import { PROMPTS } from '../../../src/core/prompts';
 import { PlannerDecisionSchema } from '../../../src/core/ai/types';
 import { FixtureProvider } from './fixtures/FixtureProvider';
@@ -111,5 +112,28 @@ describe('StructuredOutput.requestJson (Appendix L)', () => {
     expect(error).toBeInstanceOf(DOMException);
     expect(error.name).toBe('AbortError');
     expect(providerCalls).toBe(1);
+  });
+
+  it('(e) WR-02: the internal §1.2 timeout surfaces as a TIMEOUT ProviderError — not a silent AbortError', async () => {
+    // The provider rejects with AbortError whenever ITS signal aborts — the
+    // internal timeout fires that abort. StructuredOutput must reclassify it
+    // as TIMEOUT so the caller surfaces a timeout instead of a user stop.
+    const ctx: StructuredOutputContext = {
+      operationId: 'op-timeout',
+      providerId: 'openai',
+      model: 'gpt-4o-mini',
+      timeoutMs: 20,
+      callProviderJsonMode: (_p: string, _s: unknown, signal?: AbortSignal) =>
+        new Promise<string>((_resolve, reject) => {
+          signal?.addEventListener('abort', () => {
+            reject(new DOMException('The operation was aborted', 'AbortError'));
+          });
+        }),
+      abortSignal: new AbortController().signal,
+    };
+
+    const error = await requestJson(TestSchema, 'Do the thing', ctx).catch((e) => e);
+    expect(error).toBeInstanceOf(ProviderError);
+    expect((error as ProviderError).code).toBe('TIMEOUT');
   });
 });
