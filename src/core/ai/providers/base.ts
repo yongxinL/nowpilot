@@ -219,8 +219,19 @@ export abstract class OpenAIWireProvider implements ILLMProvider {
       yield { type: 'STREAM_ABORTED', operationId };
       return;
     }
+    const model = request.model ?? this.model;
+    if (model === undefined) {
+      // D-54a: a provider request never starts without a resolved model.
+      yield {
+        type: 'STREAM_ERROR',
+        operationId,
+        code: 'PROVIDER_MODEL_UNKNOWN',
+        message: `${this.providerId}: no model resolved for stream (TierResolver must supply it)`,
+      };
+      return;
+    }
     const body = {
-      model: request.model ?? this.model,
+      model,
       messages: request.messages.map((m) => ({ role: m.role, content: m.content })),
       stream: true,
       ...request.options,

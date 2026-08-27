@@ -95,6 +95,16 @@ export class GeminiProvider implements ILLMProvider {
       return;
     }
     const model = request.model ?? this.model;
+    if (model === undefined) {
+      // D-54a: a provider request never starts without a resolved model.
+      yield {
+        type: 'STREAM_ERROR',
+        operationId,
+        code: 'PROVIDER_MODEL_UNKNOWN',
+        message: 'gemini: no model resolved for stream (TierResolver must supply it)',
+      };
+      return;
+    }
     const { contents, systemInstruction } = buildContents(request.messages);
     const body = {
       contents,
