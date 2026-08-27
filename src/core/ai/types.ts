@@ -124,5 +124,11 @@ export interface ToolExecutionResult<T = unknown> {
   ok: boolean;
   data: T | null;
   error: string | null;
+  /**
+   * Canonical §21.6 code when `ok` is false (e.g. 'TOOL_REJECTED'); absent on
+   * success. Added by plan 03-04 so ExecutorService rejections are typed —
+   * no invented codes (D-38).
+   */
+  code?: string;
   durationMs: number;
 }
