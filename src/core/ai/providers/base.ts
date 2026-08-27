@@ -1,5 +1,5 @@
 import { request as httpRequest, RequesterError } from '../../http/Requester';
-import { createStreamAdapter, type StreamAdapter } from '../StreamAdapter';
+import { createStreamAdapter, type StreamAdapter, type WireFormat } from '../StreamAdapter';
 import type { ILLMProvider, LLMStreamRequest } from '../ILLMProvider';
 import type { ProviderId, StreamErrorCode, StreamEvent } from '../types';
 import { debugLog } from '../../log/debugLog';
@@ -131,6 +131,46 @@ export function stripTrailingSlash(url: string): string {
   return url.replace(/\/+$/, '');
 }
 
+/**
+ * Stream raw response-body bytes through the canonical wire adapter, emitting
+ * canonical events. Shared by all five providers (D-47): caller aborts surface
+ * as STREAM_ABORTED, mid-stream failures as STREAM_ERROR.
+ */
+export async function* streamBodyEvents(
+  operationId: string,
+  body: ReadableStream<Uint8Array>,
+  wire: WireFormat,
+  signal?: AbortSignal,
+): AsyncIterable<StreamEvent> {
+  const adapter: StreamAdapter = createStreamAdapter(operationId, wire);
+  const reader = body.getReader();
+  try {
+    for (;;) {
+      if (signal?.aborted) {
+        yield { type: 'STREAM_ABORTED', operationId };
+        return;
+      }
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value && value.byteLength > 0) {
+        for (const event of adapter.push(value)) yield event;
+      }
+    }
+    for (const event of adapter.end()) yield event;
+  } catch (err) {
+    if (signal?.aborted) {
+      yield { type: 'STREAM_ABORTED', operationId };
+    } else {
+      yield {
+        type: 'STREAM_ERROR',
+        operationId,
+        code: toStreamErrorCode(err),
+        message: err instanceof Error ? err.message : String(err),
+      };
+    }
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Shared OpenAI-wire provider base
 // ---------------------------------------------------------------------------
@@ -232,7 +272,7 @@ export abstract class OpenAIWireProvider implements ILLMProvider {
       yield { type: 'STREAM_ERROR', operationId, code: 'NETWORK', message: `${this.providerId} response has no body` };
       return;
     }
-    yield* this.readStream(operationId, response.body, signal);
+    yield* streamBodyEvents(operationId, response.body, 'openai', signal);
   }
 
   async requestJson(prompt: string, jsonSchema: unknown, signal?: AbortSignal): Promise<string> {
@@ -278,41 +318,6 @@ export abstract class OpenAIWireProvider implements ILLMProvider {
       throw new ProviderError('NETWORK', `${this.providerId}: response had no choices[0].message.content`);
     }
     return content;
-  }
-
-  /** Stream raw bytes from the response body through the canonical adapter. */
-  private async *readStream(
-    operationId: string,
-    body: ReadableStream<Uint8Array>,
-    signal?: AbortSignal,
-  ): AsyncIterable<StreamEvent> {
-    const adapter: StreamAdapter = createStreamAdapter(operationId);
-    const reader = body.getReader();
-    try {
-      for (;;) {
-        if (signal?.aborted) {
-          yield { type: 'STREAM_ABORTED', operationId };
-          return;
-        }
-        const { done, value } = await reader.read();
-        if (done) break;
-        if (value && value.byteLength > 0) {
-          for (const event of adapter.push(value)) yield event;
-        }
-      }
-      for (const event of adapter.end()) yield event;
-    } catch (err) {
-      if (signal?.aborted) {
-        yield { type: 'STREAM_ABORTED', operationId };
-      } else {
-        yield {
-          type: 'STREAM_ERROR',
-          operationId,
-          code: toStreamErrorCode(err),
-          message: err instanceof Error ? err.message : String(err),
-        };
-      }
-    }
   }
 
   private chatCompletionsUrl(): string {
