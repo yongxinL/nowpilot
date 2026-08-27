@@ -395,7 +395,17 @@ async function runAttempt(
       return { kind: 'failed', code: event.code, message: event.message };
     }
 
-    if (event.type === 'STREAM_START' || event.type === 'STREAM_DELTA') {
+    if (event.type === 'STREAM_START') {
+      // CR-03: a bare STREAM_START is NOT the first-token lock point — the
+      // adapter emits it before any parsed delta, so an empty/truncated/
+      // error-first stream would lock a provider that produced zero tokens
+      // and silently defeat the §1.5 fallback for exactly the wire failures
+      // REQ-R09 targets. The event stays buffered; the lock fires only on
+      // the first STREAM_DELTA below.
+      continue;
+    }
+
+    if (event.type === 'STREAM_DELTA') {
       // First token — the result is LOCKED to this provider (§1.5: never
       // switch after hasStreamedFirstToken === true). Buffered events are
       // replayed through the passthrough so the caller sees them in order.

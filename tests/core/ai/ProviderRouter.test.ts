@@ -10,6 +10,7 @@ import {
   type ProviderRouteInput,
 } from '../../../src/core/ai/ProviderRouter';
 import type { StreamEvent } from '../../../src/core/ai/types';
+import type { ILLMProvider, LLMStreamRequest } from '../../../src/core/ai/ILLMProvider';
 import { FixtureProvider } from './fixtures/FixtureProvider';
 
 /**
@@ -291,6 +292,68 @@ describe('(f) §20.10 locked table verbatim', () => {
       await route(baseInput({ providerCandidates: [fivxx, stable] }));
     }
     expect(routerTest.isOpen('openai')).toBe(true);
+  });
+});
+
+describe('(h) CR-03 — a bare STREAM_START never locks the provider', () => {
+  it('an error-first stream (STREAM_START then STREAM_ERROR, zero tokens) falls back to the next candidate', async () => {
+    // Mirrors the adapter's pre-fix empty/truncated stream shape: STREAM_START
+    // fires on the first chunk that parses ANY line, then STREAM_ERROR. Zero
+    // tokens were produced — the router must NOT lock and must fall back.
+    class StartThenErrorProvider implements ILLMProvider {
+      readonly providerId = 'openai' as const;
+      streamCalls = 0;
+      stream(request: LLMStreamRequest, signal?: AbortSignal): AsyncIterable<StreamEvent> {
+        const { operationId } = request;
+        this.streamCalls += 1;
+        return (async function* () {
+          yield { type: 'STREAM_START', operationId };
+          yield {
+            type: 'STREAM_ERROR',
+            operationId,
+            code: 'NETWORK',
+            message: 'stream ended without terminator',
+          };
+        })();
+      }
+      async requestJson(): Promise<string> {
+        throw new Error('StartThenErrorProvider.requestJson not used');
+      }
+    }
+    const truncated = new StartThenErrorProvider();
+    const up = new FixtureProvider([], {
+      streamScript: [
+        { kind: 'delta', delta: 'ok' },
+        { kind: 'complete', fullText: 'ok' },
+      ],
+      providerId: 'anthropic',
+    });
+
+    const result = await route(baseInput({ providerCandidates: [truncated, up] }));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    // The empty/truncated candidate did NOT lock — the fallback answered.
+    expect(result.providerId).toBe('anthropic');
+    expect(truncated.streamCalls).toBe(1);
+    expect(up.streamCalls).toBe(1);
+    const events = await collect(result.events);
+    expect(events.some((e) => e.type === 'STREAM_DELTA' && e.delta === 'ok')).toBe(true);
+  });
+
+  it('a stream that ends with an empty completed terminator still commits (defensive branch unchanged)', async () => {
+    const empty = new FixtureProvider([], {
+      streamScript: [{ kind: 'complete', fullText: '' }],
+      providerId: 'openai',
+    });
+    const neverCalled = new FixtureProvider([], {
+      streamScript: [{ kind: 'delta', delta: 'should not stream' }],
+      providerId: 'anthropic',
+    });
+    const result = await route(baseInput({ providerCandidates: [empty, neverCalled] }));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.providerId).toBe('openai');
+    expect(neverCalled.streamCalls).toBe(0);
   });
 });
 
