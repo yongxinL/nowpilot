@@ -20,7 +20,7 @@
 // an abort mid-stream drops the partial assistant message and the seam is NOT
 // invoked.
 import type { ILLMProvider } from './ILLMProvider';
-import type { ModelTier, PlannerDecision, ToolExecutionResult } from './types';
+import type { ModelTier, PlannerDecision, ProviderId, ToolExecutionResult } from './types';
 import type { UserPreferences } from './UserPreferences';
 import { PlannerService } from './PlannerService';
 import { ExecutorService } from './ExecutorService';
@@ -29,6 +29,7 @@ import { buildSystemPrompt } from './PromptCacheManager';
 import { resolveTier } from './TierResolver';
 import { route } from './ProviderRouter';
 import { ProviderRegistry } from './ProviderRegistry';
+import { ProviderError } from './providers/base';
 import { ToolRegistry } from './toolSchemas';
 import type { PipelineStage } from './persona/PersonaInjector';
 import { debugLog } from '../log/debugLog';
@@ -68,6 +69,13 @@ export interface AgentTurnInput {
   tier: AgentTier;
   /** Persona overrides + tier prefs (np_preferences) — feeds the D-59 choke-point. */
   prefs?: UserPreferences;
+  /**
+   * CR-01: decrypted operator keys per provider, supplied by the chat hook
+   * (useExtensionStore hydrates them at boot). The registry keeps
+   * EncryptedBlobs opaque (V6) — per-route provider instances are built from
+   * these keys + the merged endpoint + the resolved model.
+   */
+  providerSecrets?: Readonly<Partial<Record<ProviderId, string>>>;
   /** Caller abort — the first check in the loop (Appendix I). */
   abortSignal: AbortSignal;
   /**
@@ -121,6 +129,14 @@ export async function runAgentTurn(input: AgentTurnInput): Promise<AgentTurnOutp
    * no separate slot in PlannerInput); the renderer receives userInput via
    * its own message slot; the executor prompt is reserved (deterministic
    * stage, never sent to a model in Phase 3).
+   *
+   * WR-03 (documented deferral): sections are flattened to the single string
+   * the provider request body requires. `applyCacheHints(providerId,
+   * sections)` (Anthropic cache_control / Gemini cachedContent) and
+   * `recordCacheResult` therefore have no production call site in Phase 3 —
+   * per-provider prompt-cache wiring is deferred to the phase that restructures
+   * provider request bodies around the section metadata (the flattened string
+   * loses the section boundaries the hints require).
    */
   function stagePrompt(stage: PipelineStage, opts?: { withUserInput?: boolean }): string {
     return buildSystemPrompt(stage, {
@@ -129,6 +145,18 @@ export async function runAgentTurn(input: AgentTurnInput): Promise<AgentTurnOutp
     })
       .sections.map((s) => s.text)
       .join('\n\n');
+  }
+
+  /**
+   * CR-01: the decrypted key for one provider — caller-supplied plaintext
+   * first (V6: the registry keeps EncryptedBlobs opaque), legacy plaintext
+   * from the normalized map as the fallback.
+   */
+  function routeApiKey(providerId: ProviderId): string | undefined {
+    const supplied = input.providerSecrets?.[providerId];
+    if (supplied !== undefined && supplied.length > 0) return supplied;
+    const stored = ProviderRegistry.getById(providerId)?.apiKey;
+    return typeof stored === 'string' && stored.length > 0 ? stored : undefined;
   }
 
   /**
@@ -150,7 +178,27 @@ export async function runAgentTurn(input: AgentTurnInput): Promise<AgentTurnOutp
       return null;
     }
 
-    const candidates = ProviderRegistry.getEnabled();
+    // CR-01: the module-load singletons carry no apiKey/model — every runtime
+    // request flows through a per-route instance built from the merged
+    // endpoint (D-50) + decrypted key + resolved model.
+    const candidates: ILLMProvider[] = [];
+    for (const entry of ProviderRegistry.getAll()) {
+      if (!entry.enabled || entry.provider === undefined) continue;
+      const instance = ProviderRegistry.buildForRoute(entry.id, {
+        model: resolution.model,
+        apiKey: routeApiKey(entry.id),
+      });
+      if (instance !== undefined) candidates.push(instance);
+    }
+    if (candidates.length === 0) {
+      debugLog('TIER_UNRESOLVED', `configuration-required — no enabled provider for ${stageTier} tier`, {
+        operationId: input.operationId,
+        sessionId: input.sessionId,
+        tier: stageTier,
+      });
+      return null;
+    }
+
     const routed = await route({
       operationId: input.operationId,
       tier: stageTier,
@@ -206,6 +254,15 @@ export async function runAgentTurn(input: AgentTurnInput): Promise<AgentTurnOutp
       // D-45: abort mid-stream → the partial assistant message is dropped —
       // persistTurn is NOT invoked.
       throw new DOMException('aborted', 'AbortError');
+    }
+    if (rendered.terminatedBy === 'error') {
+      // CR-06: a mid-stream STREAM_ERROR (partial answer, no terminator)
+      // must NOT be persisted as a completed turn. Surface a typed error so
+      // the caller reports the failure; the partial is dropped (D-45).
+      throw new ProviderError(
+        rendered.error?.code ?? 'NETWORK',
+        rendered.error?.message ?? 'renderer stream failed before completion',
+      );
     }
 
     const output: AgentTurnOutput = {

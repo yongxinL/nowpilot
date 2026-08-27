@@ -6,10 +6,10 @@ import { chromeStorageAdapter } from '../theme/chromeStorageAdapter';
 import { debugLog } from '../log/debugLog';
 import { fetchModelsOrError } from '../../services/aiProvider';
 import type { EncryptedBlob } from '../storage/EncryptedStorage';
-import { openaiProvider } from './providers/OpenAIProvider';
-import { anthropicProvider } from './providers/AnthropicProvider';
-import { geminiProvider } from './providers/GeminiProvider';
-import { ollamaProvider } from './providers/OllamaProvider';
+import { openaiProvider, OpenAIProvider } from './providers/OpenAIProvider';
+import { anthropicProvider, AnthropicProvider } from './providers/AnthropicProvider';
+import { geminiProvider, GeminiProvider } from './providers/GeminiProvider';
+import { ollamaProvider, OllamaProvider } from './providers/OllamaProvider';
 import { OpenAICompatProvider } from './providers/OpenAICompatProvider';
 
 /**
@@ -230,6 +230,11 @@ async function hydrate(): Promise<void> {
             models: (detail.models ?? []).map((m) => m.id),
             provider: registered.get(runtimeId),
           });
+          // CR-02: seed the D-52 session cache from the disk model list —
+          // stale-but-present beats never-populated, so resolveTier can
+          // validate persisted assignments before the first live discovery
+          // completes (Options discovery refreshes the cache via refreshModels).
+          modelCache.set(runtimeId, (detail.models ?? []).map((m) => m.id));
         }
       } else {
         debugLog('PROVIDERS_INVALID', 'np_providers failed zod validation');
@@ -282,6 +287,62 @@ function getEndpointFor(providerId: ProviderId): string | undefined {
 // ---------------------------------------------------------------------------
 // D-52: live model discovery + session cache
 // ---------------------------------------------------------------------------
+
+/** CR-01: per-route construction config — a fresh instance per routed call. */
+export interface RouteProviderConfig {
+  /**
+   * Resolved model (D-54) — the instance carries it because the D-47
+   * `requestJson(prompt, jsonSchema, signal)` interface has no model slot.
+   */
+  model: string;
+  /**
+   * Decrypted operator key. V6: the registry never decrypts — the caller
+   * (chat hook) supplies the plaintext hydrated by useExtensionStore.
+   */
+  apiKey?: string;
+}
+
+/** The four module-load singletons are config-empty by design (CR-01). */
+function isModuleSingleton(provider: ILLMProvider): boolean {
+  return (
+    provider === openaiProvider ||
+    provider === anthropicProvider ||
+    provider === geminiProvider ||
+    provider === ollamaProvider
+  );
+}
+
+/**
+ * Construct the per-route provider instance (CR-01): merged endpoint (D-50)
+ * + decrypted key + resolved model. The module-load singletons carry no
+ * apiKey/model, so every runtime request flows through a built-for-route
+ * instance — auth headers and requestJson's model are present. A
+ * caller-registered instance (test fixture, D-48) owns its wire behavior and
+ * is routed through as-is. OpenAICompat is always rebuilt with the assigned
+ * endpoint + key + model (its hydrate-time instance has no key/model).
+ */
+function buildForRoute(providerId: ProviderId, config: RouteProviderConfig): ILLMProvider | undefined {
+  if (providerId !== 'openai-compat') {
+    const existing = registered.get(providerId);
+    if (existing !== undefined && !isModuleSingleton(existing)) return existing;
+  }
+  const endpoint = getEndpointFor(providerId);
+  if (endpoint === undefined) return undefined; // openai-compat without assignment (D-56)
+  switch (providerId) {
+    case 'openai':
+      return new OpenAIProvider({ baseUrl: endpoint, model: config.model, apiKey: config.apiKey });
+    case 'anthropic':
+      return new AnthropicProvider({ baseUrl: endpoint, model: config.model, apiKey: config.apiKey });
+    case 'gemini':
+      return new GeminiProvider({ baseUrl: endpoint, model: config.model, apiKey: config.apiKey });
+    case 'ollama':
+      return new OllamaProvider({ baseUrl: endpoint, model: config.model });
+    case 'openai-compat':
+      return new OpenAICompatProvider({ baseUrl: endpoint, model: config.model, apiKey: config.apiKey });
+    default:
+      return undefined;
+  }
+}
 
 /**
  * Live model discovery for Options refresh + connection test. Reuses the
@@ -356,9 +417,20 @@ export const ProviderRegistry = {
   getById,
   getAll,
   getEndpointFor,
+  buildForRoute,
   refreshModels,
   getCachedModels,
   isHydrated: (): boolean => hydrated,
 };
 
-export { hydrate, registerProvider, getEnabled, getById, getAll, getEndpointFor, refreshModels, getCachedModels };
+export {
+  hydrate,
+  registerProvider,
+  getEnabled,
+  getById,
+  getAll,
+  getEndpointFor,
+  buildForRoute,
+  refreshModels,
+  getCachedModels,
+};

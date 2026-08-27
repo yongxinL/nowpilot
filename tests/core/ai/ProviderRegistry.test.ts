@@ -187,10 +187,46 @@ describe('ProviderRegistry D-52 live-model session cache', () => {
     );
   });
 
+  it('CR-02: hydrate seeds the D-52 cache from the disk model list — stale-but-present beats never-populated', async () => {
+    seedStorage('np_providers', diskShape);
+    await ProviderRegistry.hydrate();
+    expect(ProviderRegistry.getCachedModels('openai')).toEqual(['gpt-4o-mini']);
+    expect(ProviderRegistry.getCachedModels('anthropic')).toEqual(['claude-3-5-haiku-20241022']);
+    expect(ProviderRegistry.getCachedModels('ollama')).toEqual([]);
+  });
+
   it('openai-compat has no discovery (D-56) and unknown providers return the stale cache on failure', async () => {
     expect(await ProviderRegistry.refreshModels('openai-compat')).toEqual([]);
     registryTest.seedCachedModels('openai', ['stale-model']);
     expect(ProviderRegistry.getCachedModels('openai')).toEqual(['stale-model']);
+  });
+});
+
+describe('ProviderRegistry.buildForRoute — CR-01 per-route instance construction', () => {
+  it('builds a fresh configured instance from the merged endpoint + key + model', async () => {
+    seedStorage('np_providers', diskShape);
+    seedStorage('np_endpoint_overrides', { openai: 'http://localhost:12345/v1' });
+    await ProviderRegistry.hydrate();
+
+    const built = ProviderRegistry.buildForRoute('openai', {
+      model: 'gpt-4o-mini',
+      apiKey: 'sk-decrypted',
+    });
+    expect(built).toBeDefined();
+    expect(built!.providerId).toBe('openai');
+    // NOT the config-empty module-load singleton — a fresh per-route instance.
+    expect(built).not.toBe(ProviderRegistry.getById('openai')?.provider);
+  });
+
+  it('routes a caller-registered instance (test fixture, D-48) through as-is', async () => {
+    const fixture = new FixtureProvider([], { providerId: 'openai' });
+    ProviderRegistry.registerProvider(fixture);
+    const built = ProviderRegistry.buildForRoute('openai', { model: 'gpt-4o-mini' });
+    expect(built).toBe(fixture);
+  });
+
+  it('returns undefined for openai-compat without an assigned endpoint (D-56)', () => {
+    expect(ProviderRegistry.buildForRoute('openai-compat', { model: 'm' })).toBeUndefined();
   });
 });
 

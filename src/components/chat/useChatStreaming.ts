@@ -19,6 +19,7 @@ import type { WriteJournalEntry } from '../../types/storage';
 import { useWorkspaceStore } from '../../core/workspace/WorkspaceStore';
 import { debugLog } from '../../core/log/debugLog';
 import type { Message, Attachment } from '../../types';
+import type { ProviderId } from '../../core/ai/types';
 
 /**
  * useChatStreaming — D-44 (Phase 3 03-07): production chat runs the
@@ -155,10 +156,9 @@ export function useChatStreaming() {
       isThinking: true,
       versions: [''],
       currentVersionIndex: 0,
-      followups: [
-        'What are the core components of critical thinking?',
-        'Can you provide a practical workplace example?',
-      ],
+      // WR-07: no hardcoded demo follow-ups — RICH-C suggestion chips are
+      // wired by a later phase; until then the list stays empty.
+      followups: [],
     };
 
     addMessageToActiveSession(userMessage);
@@ -192,12 +192,27 @@ export function useChatStreaming() {
       // D-44: the pipeline is the production chat path. runAgentTurn owns
       // the Appendix I loop (planner → executor → renderer), the §1.4 caps,
       // the D-54a configuration-required outcome, and the persist seam.
+      // CR-01: the decrypted operator keys ride in providerSecrets — the
+      // registry keeps EncryptedBlobs opaque (V6) and builds per-route
+      // provider instances from these keys + the merged endpoint + the
+      // resolved model.
+      const providerSecrets: Partial<Record<ProviderId, string>> = {};
+      const providerConfig = useExtensionStore.getState().config.providers;
+      if (providerConfig) {
+        for (const diskId of ['openai', 'claude', 'gemini'] as const) {
+          const apiKey = providerConfig[diskId]?.apiKey;
+          if (typeof apiKey === 'string' && apiKey.length > 0) {
+            providerSecrets[diskId === 'claude' ? 'anthropic' : diskId] = apiKey;
+          }
+        }
+      }
       const output = await runAgentTurn({
         userInput: textToSend,
         sessionId,
         operationId,
         tier: CHAT_TIER,
         prefs: useUserPreferencesStore.getState(),
+        providerSecrets,
         abortSignal: abortControllerRef.current.signal,
         // D-45: invoked exactly once at turn end by the orchestrator's
         // finish path with the completed pair (never per delta, not on
@@ -246,7 +261,11 @@ export function useChatStreaming() {
       }
       const message = err instanceof Error ? err.message : String(err);
       debugLog('CHAT_TURN_FAILED', message);
-      updateLastAssistantMessage(`\n\n*Error generating response: ${message}*`, '', true);
+      // WR-07: errors surface via a dedicated toast — never interpolated into
+      // the assistant message content as if the model had said it. The
+      // placeholder is finalized (isThinking false) without an error note.
+      updateLastAssistantMessage('', '', true);
+      antMessage.error(`Generation failed: ${message}`);
     } finally {
       setIsGenerating(false);
       // Appendix J.2: clear the active-stream key.

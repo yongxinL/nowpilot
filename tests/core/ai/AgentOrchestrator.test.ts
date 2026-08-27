@@ -345,6 +345,31 @@ describe('(g) PERSONA CONSISTENCY (RICH-R-09 / DONE-when 4) — all three stage 
   });
 });
 
+describe('(i) CR-06 — renderer mid-stream error surfaces; the seam does NOT fire', () => {
+  it('a stream-then-STREAM_ERROR turn rejects with the provider error and persistTurn is never invoked', async () => {
+    // The fixture streams one delta then STREAM_ERROR mid-stream — the exact
+    // "stream dies after the first token" case the router deliberately does
+    // not re-route. finish() must surface the error and skip persistTurn.
+    const fixture = new FixtureProvider([], {
+      streamScript: [
+        { kind: 'delta', delta: 'partial answer' },
+        { kind: 'error', code: 'NETWORK', message: 'mid-stream death' },
+      ],
+    });
+    await seedEnv({ provider: fixture });
+    vi.spyOn(PlannerService, 'plan').mockResolvedValue({
+      action: 'answer',
+      reasonCode: 'direct_answer',
+    });
+    const persistTurn = vi.fn();
+
+    await expect(
+      runAgentTurn(baseInput({ persistTurn })),
+    ).rejects.toThrow('mid-stream death');
+    expect(persistTurn).not.toHaveBeenCalled();
+  });
+});
+
 describe('(h) configuration-required (D-54a) — unresolved tier → typed outcome, zero provider calls', () => {
   it('fast tier unresolved → runAgentTurn returns the configuration-required outcome; no provider fixture was called', async () => {
     const fixture = answerFixture();
