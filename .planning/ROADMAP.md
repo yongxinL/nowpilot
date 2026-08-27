@@ -109,12 +109,12 @@ Plans:
   5. **UserPreferences.personaOverrides (name/tone/brevity) apply without a code change.**
 
 **Verification gate:** `pnpm run verify:phase-3` (§24).
-**Plans:** 7 plans (wave-ordered; execute via `/gsd-execute-phase 3`)
+**Plans:** 2/7 plans executed (wave-ordered; execute via `/gsd-execute-phase 3`)
 Plans:
 **Wave 1**
 
-- [ ] 03-01-PLAN.md — TRACER: planner decision from fixture OpenAI wire bytes (SSE rebuild + Appendix L repair + Appendix A prompts + Wave-0 install)
-- [ ] 03-02-PLAN.md — Persona foundation: PersonaProfile (Appendix N.1) + PersonaInjector (N.2) + UserPreferences/np_preferences
+- [x] 03-01-PLAN.md — TRACER: planner decision from fixture OpenAI wire bytes (SSE rebuild + Appendix L repair + Appendix A prompts + Wave-0 install)
+- [x] 03-02-PLAN.md — Persona foundation: PersonaProfile (Appendix N.1) + PersonaInjector (N.2) + UserPreferences/np_preferences
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -405,7 +405,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. MV3/WXT Runtime + AntD Shells + Workspace Handoff | 0/8 | Planned | — |
 | 2. Storage, Security, WriteJournal, Workspace Persistence | 9/9 | Complete    | 2026-08-24 |
-| 3. Cost-Effective AI Runtime (+ Persona seed) | 0/7 | Planned | — |
+| 3. Cost-Effective AI Runtime (+ Persona seed) | 2/7 | In Progress|  |
 | 4. Agent Reliability and Evidence | 0/2 | Not started | — |
 | 5. Context-Adaptive Execution | 0/2 | Not started | — |
 | 6. PageContentService (Knowledge Acquisition) | 0/3 | Not started | — |
