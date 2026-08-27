@@ -109,7 +109,7 @@ Plans:
   5. **UserPreferences.personaOverrides (name/tone/brevity) apply without a code change.**
 
 **Verification gate:** `pnpm run verify:phase-3` (§24).
-**Plans:** 6/7 plans executed (wave-ordered; execute via `/gsd-execute-phase 3`)
+**Plans:** 7/7 plans executed (wave-ordered; execute via `/gsd-execute-phase 3`)
 Plans:
 **Wave 1**
 
@@ -131,7 +131,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 03-07-PLAN.md — Chat integration (D-44 re-point) + append-chat-turn journaled persist (D-45) + Options D-50/D-54 fields + human smoke checkpoint
+- [x] 03-07-PLAN.md — Chat integration (D-44 re-point) + append-chat-turn journaled persist (D-45) + Options D-50/D-54 fields + human smoke checkpoint
 
 ### Phase 4: Agent Reliability and Evidence
 
@@ -405,7 +405,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. MV3/WXT Runtime + AntD Shells + Workspace Handoff | 0/8 | Planned | — |
 | 2. Storage, Security, WriteJournal, Workspace Persistence | 9/9 | Complete    | 2026-08-24 |
-| 3. Cost-Effective AI Runtime (+ Persona seed) | 6/7 | In Progress|  |
+| 3. Cost-Effective AI Runtime (+ Persona seed) | 7/7 | In Progress|  |
 | 4. Agent Reliability and Evidence | 0/2 | Not started | — |
 | 5. Context-Adaptive Execution | 0/2 | Not started | — |
 | 6. PageContentService (Knowledge Acquisition) | 0/3 | Not started | — |
