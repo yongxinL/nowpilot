@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Modal, Input, Select, Button, Switch, Typography, Form, App, Segmented, Tooltip } from 'antd';
 import {
   PlusOutlined,
@@ -31,7 +31,14 @@ import { NowPilotAvatar } from '../common/NowPilotAvatar';
 import { UserAvatar } from '../common/UserAvatar';
 import { PromptsOptionsTab } from './PromptsOptionsTab';
 import { PromptCategory, CustomProviderId, CustomModelItem, CustomProviderDetail } from '../../types';
-import { testProviderConnection } from '../../services/aiProvider';
+import { testProviderConnection, fetchProviderModels } from '../../services/aiProvider';
+import { useUserPreferencesStore } from '../../core/ai/UserPreferences';
+import { ProviderRegistry } from '../../core/ai/ProviderRegistry';
+import {
+  chromeStorageAdapter,
+  flushPendingWrites,
+} from '../../core/theme/chromeStorageAdapter';
+import { debugLog } from '../../core/log/debugLog';
 
 const { Title } = Typography;
 
@@ -105,6 +112,37 @@ const PROVIDER_INFO: Record<CustomProviderId, { name: string; icon: React.ReactN
   },
 };
 
+/**
+ * D-50 (03-07): write one provider's endpoint override into
+ * `np_endpoint_overrides` (chrome.storage.local). ProviderRegistry merges
+ * this over the §10.6 ENDPOINTS defaults at hydrate (03-05) — the runtime
+ * endpoint = np_endpoint_overrides[providerId] ?? §10.6 default. A missing
+ * entry falls back to the default. Disk 'claude' maps to runtime 'anthropic'
+ * at this boundary ONLY (D-49). `localhost:12380` is never a canonical
+ * default (D-12). Values are zod-validated http(s) at the write AND at
+ * registry hydrate (T-3-24) — a malformed URL never reaches the fetch layer.
+ */
+async function writeEndpointOverride(
+  providerId: CustomProviderId,
+  url: string | undefined,
+): Promise<void> {
+  const runtimeId = providerId === 'claude' ? 'anthropic' : providerId;
+  let overrides: Record<string, string> = {};
+  try {
+    const raw = await chromeStorageAdapter.getItem('np_endpoint_overrides');
+    if (raw) overrides = JSON.parse(raw) as Record<string, string>;
+  } catch {
+    overrides = {};
+  }
+  if (url !== undefined && url.length > 0) {
+    overrides[runtimeId] = url;
+  } else {
+    delete overrides[runtimeId];
+  }
+  await chromeStorageAdapter.setItem('np_endpoint_overrides', JSON.stringify(overrides));
+  await flushPendingWrites();
+}
+
 export const OptionsPage: React.FC = () => {
   const { message: antMessage } = App.useApp();
   const { config, updateConfig, prompts, addPrompt, updatePrompt, deletePrompt } = useExtensionStore();
@@ -174,6 +212,17 @@ export const OptionsPage: React.FC = () => {
   const [listUpdated, setListUpdated] = useState(false);
   const [editingCustomModelId, setEditingCustomModelId] = useState<string | null>(null);
   const [editingModelNameInput, setEditingModelNameInput] = useState('');
+
+  // D-54 (03-07): fast/balanced tier assignment. Local UI state initialized
+  // from the persisted np_preferences store — values stay UNSET until the
+  // operator explicitly selects and confirms Save (D-54a). The store actions
+  // (setFastModel/setBalancedModel) fire ONLY in handleSaveTierAssignment —
+  // the discovery/pre-fill path never persists (grep gate).
+  const prefs = useUserPreferencesStore();
+  const [fastTierModel, setFastTierModel] = useState<string | undefined>(prefs.fastModel);
+  const [balancedTierModel, setBalancedTierModel] = useState<string | undefined>(prefs.balancedModel);
+  const [tierModels, setTierModels] = useState<{ value: string; label: string }[]>([]);
+  const [tierModelsLoading, setTierModelsLoading] = useState(false);
 
   // Prompts state
   const [promptCategory, setPromptCategory] = useState<PromptCategory>('Writing');
@@ -252,6 +301,29 @@ export const OptionsPage: React.FC = () => {
         openAiKey: updatedConfig.openAiKey,
         openAiBaseUrl: updatedConfig.openAiBaseUrl,
       });
+
+      // D-50 (03-07): persist the per-provider endpoint override so the
+      // runtime endpoint = np_endpoint_overrides[providerId] ?? §10.6 default
+      // (merged at ProviderRegistry hydrate, 03-05). Disabling the custom
+      // proxy removes the override (fall back to the §10.6 default). A
+      // non-http(s) URL is rejected BEFORE the write (T-3-24 — a malformed
+      // value must never reach the fetch layer); the provider config save
+      // still succeeds, the override just falls back to the default.
+      const wantsOverride = modalUseCustomProxy && modalProxyUrl.trim().length > 0;
+      if (wantsOverride && !/^https?:\/\//i.test(modalProxyUrl.trim())) {
+        antMessage.error('Custom proxy URL must start with http(s):// — endpoint override not saved');
+      } else {
+        try {
+          await writeEndpointOverride(
+            activeModalProviderId,
+            wantsOverride ? modalProxyUrl.trim() : undefined,
+          );
+        } catch (writeErr) {
+          // Best-effort override persist — storage failure must not fail the
+          // provider save; the registry keeps the §10.6 default.
+          debugLog('ENDPOINT_OVERRIDE_WRITE_FAILED', writeErr instanceof Error ? writeErr.message : String(writeErr));
+        }
+      }
 
       setProviderModalOpen(false);
       antMessage.success(`${PROVIDER_INFO[activeModalProviderId].name} settings saved`);
@@ -405,6 +477,70 @@ export const OptionsPage: React.FC = () => {
       // validation error
     }
   };
+
+  // D-52 (03-07): live model discovery for the tier selectors — merged across
+  // ENABLED providers using fetchProviderModels semantics with the D-50-merged
+  // endpoint (registry overrides apply). Discovery POPULATES the selectors but
+  // does NOT classify, preselect, or persist either value (D-54/D-54a).
+  const handleDiscoverTierModels = async () => {
+    if (tierModelsLoading) return;
+    setTierModelsLoading(true);
+    const merged: { value: string; label: string }[] = [];
+    try {
+      for (const provider of ProviderRegistry.getEnabled()) {
+        const diskId = provider.providerId === 'anthropic' ? 'claude' : provider.providerId;
+        if (diskId === 'openai-compat') continue; // operator-assigned list only (D-56)
+        const endpoint = ProviderRegistry.getEndpointFor(provider.providerId);
+        if (endpoint === undefined) continue;
+        const apiKey = config.providers?.[diskId as CustomProviderId]?.apiKey;
+        const models = await fetchProviderModels(diskId as CustomProviderId, apiKey, endpoint);
+        for (const m of models) {
+          if (!merged.some((x) => x.value === m.id)) merged.push({ value: m.id, label: m.id });
+        }
+      }
+      setTierModels(merged);
+      if (merged.length > 0) {
+        antMessage.success(`Discovered ${merged.length} model(s) for tier assignment`);
+      } else {
+        antMessage.info('No enabled providers with discoverable models — configure and enable a provider first');
+      }
+    } catch (err) {
+      debugLog('TIER_MODEL_DISCOVERY_FAILED', err instanceof Error ? err.message : String(err));
+      antMessage.error('Model discovery failed — check provider connectivity');
+    } finally {
+      setTierModelsLoading(false);
+    }
+  };
+
+  // D-54 (03-07): write-through to np_preferences. THE ONLY call site of the
+  // store actions in this file (grep gate — the discovery/pre-fill path
+  // contains no setFastModel/setBalancedModel call; D-54a).
+  const handleSaveTierAssignment = () => {
+    if (fastTierModel) useUserPreferencesStore.getState().setFastModel(fastTierModel);
+    if (balancedTierModel) useUserPreferencesStore.getState().setBalancedModel(balancedTierModel);
+    antMessage.success('Tier assignment saved — applies to the next chat turn');
+  };
+
+  // D-54 first-setup pre-fill: on first Options open, populate the tier
+  // selectors with live-discovered models. UI-ONLY — nothing is selected or
+  // persisted here (D-54a); a suggestion appears under the selectors until the
+  // operator confirms an explicit choice.
+  useEffect(() => {
+    void handleDiscoverTierModels();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- first-setup intent
+  }, []);
+
+  // Selector options = discovered models + any already-persisted assignment
+  // (so a saved value always renders even before a re-discovery).
+  const tierOptions = useMemo(() => {
+    const opts = [...tierModels];
+    const add = (v?: string) => {
+      if (v && !opts.some((o) => o.value === v)) opts.push({ value: v, label: v });
+    };
+    add(prefs.fastModel);
+    add(prefs.balancedModel);
+    return opts;
+  }, [tierModels, prefs.fastModel, prefs.balancedModel]);
 
   const providerListKeys: CustomProviderId[] = ['openai', 'gemini', 'ollama', 'claude'];
 
@@ -949,6 +1085,91 @@ export const OptionsPage: React.FC = () => {
                     </div>
                   </>
                 )}
+              </div>
+            </div>
+
+            {/* AI tier assignment (D-54, 03-07) — additive to the General
+                section; the full Options redesign is Phase 15. */}
+            <div>
+              <Title level={3} style={{ marginBottom: 16, fontWeight: 700, color: 'var(--foreground)' }}>AI tier assignment</Title>
+              <div style={{
+                padding: 20,
+                background: 'var(--card)',
+                borderRadius: 16,
+                borderWidth: 1,
+                borderStyle: 'solid',
+                borderColor: 'var(--border)',
+                rowGap: 16,
+                display: 'flex',
+                flexDirection: 'column',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+              }}>
+                <div style={{ fontSize: 12, color: 'var(--muted-foreground)', lineHeight: 1.625 }}>
+                  Assign the models used for the fast and balanced capability tiers (Appendix D).
+                  Until both are assigned, chat surfaces a configuration prompt instead of calling a
+                  provider (D-54a).
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--foreground)' }}>Tier models</span>
+                  <Button
+                    size="small"
+                    onClick={handleDiscoverTierModels}
+                    loading={tierModelsLoading}
+                    icon={<ReloadOutlined />}
+                    style={{ borderRadius: 8 }}
+                  >
+                    Discover models
+                  </Button>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                    <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--foreground)', width: 80, flexShrink: 0 }}>Fast tier</span>
+                    <Select
+                      style={{ flex: 1 }}
+                      placeholder="Assign a fast-tier model"
+                      value={fastTierModel}
+                      onChange={setFastTierModel}
+                      options={tierOptions}
+                      allowClear
+                    />
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                    <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--foreground)', width: 80, flexShrink: 0 }}>Balanced tier</span>
+                    <Select
+                      style={{ flex: 1 }}
+                      placeholder="Assign a balanced-tier model"
+                      value={balancedTierModel}
+                      onChange={setBalancedTierModel}
+                      options={tierOptions}
+                      allowClear
+                    />
+                  </div>
+                </div>
+
+                {/* D-54 first-setup pre-fill suggestion — UI-ONLY text; the
+                    operator must explicitly select a value and confirm Save
+                    before it persists (D-54a). This path contains NO
+                    setFastModel/setBalancedModel call (grep gate). */}
+                {(!fastTierModel || !balancedTierModel) && tierModels.length > 0 && (
+                  <div style={{ fontSize: 12, color: 'var(--muted-foreground)', lineHeight: 1.625 }}>
+                    Suggestion:{' '}
+                    <code style={{ color: 'var(--foreground)' }}>{tierModels[0].value}</code>{' '}
+                    — select a value above and confirm Save to assign it. Suggestions are never saved
+                    automatically.
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <Button
+                    type="primary"
+                    onClick={handleSaveTierAssignment}
+                    style={{ backgroundColor: '#7c3aed', borderRadius: 8 }}
+                  >
+                    Save tier assignment
+                  </Button>
+                </div>
               </div>
             </div>
 
