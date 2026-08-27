@@ -92,7 +92,12 @@ export async function render(input: RenderInput): Promise<RenderResult> {
       { role: 'system', content: input.systemPrompt },
       { role: 'user', content: input.userInput ?? '' },
     ],
-    options: { maxTokens: maxOutputTokens, tier: input.tier },
+    // CR-05: renderer-internal options ({maxTokens, tier}) are NOT forwarded
+    // into the provider request body — Anthropic validates strictly (unknown
+    // top-level fields → 400) and Gemini validates generationConfig strictly
+    // (maxTokens/tier are invalid; the key is maxOutputTokens). The §1.3 cap
+    // is enforced by the client-side char counter below, which is
+    // authoritative; the provider body stays provider-native.
   };
 
   try {

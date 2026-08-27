@@ -98,6 +98,31 @@ describe('RendererService — 512-token default cap (Open Q4)', () => {
   });
 });
 
+describe('RendererService — CR-05: no renderer-internal options in the provider request', () => {
+  it('the LLMStreamRequest carries no options — {maxTokens, tier} never reach the provider body', async () => {
+    let captured: LLMStreamRequest | undefined;
+    const stream = (async function* (): AsyncGenerator<StreamEvent, void, unknown> {
+      yield { type: 'STREAM_START', operationId: OP };
+      yield { type: 'STREAM_DELTA', operationId: OP, delta: 'ok' };
+      yield { type: 'STREAM_COMPLETE', operationId: OP, fullText: 'ok' };
+    })();
+    const provider = new ScriptedStreamProvider(stream);
+    // Capture the request the renderer hands the provider.
+    const origStream = provider.stream.bind(provider);
+    provider.stream = (request: LLMStreamRequest, signal?: AbortSignal) => {
+      captured = request;
+      return origStream(request, signal);
+    };
+
+    await render(renderInput({ provider }));
+
+    // Anthropic/Gemini validate strictly — the renderer-internal tier/maxTokens
+    // options must NOT be forwarded into the provider request body.
+    expect(captured).toBeDefined();
+    expect(captured!.options).toBeUndefined();
+  });
+});
+
 describe('RendererService — verbatim relay (no invented facts)', () => {
   it('(c) the streamed text equals the model output verbatim', async () => {
     const expected = 'Hello world — relayed exactly as the model produced it.';
