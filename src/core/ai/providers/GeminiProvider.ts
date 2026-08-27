@@ -158,7 +158,8 @@ export class GeminiProvider implements ILLMProvider {
   async requestJson(prompt: string, jsonSchema: unknown, signal?: AbortSignal): Promise<string> {
     if (this.model === undefined) {
       // D-54a: a provider request never starts without a resolved model.
-      throw new ProviderError('NETWORK', 'gemini: no model resolved for requestJson (TierResolver must supply it)');
+      // WR-01: PROVIDER_MODEL_UNKNOWN (non-retryable) — same as stream().
+      throw new ProviderError('PROVIDER_MODEL_UNKNOWN', 'gemini: no model resolved for requestJson (TierResolver must supply it)');
     }
     // Appendix L rule: native JSON-mode flag — responseMimeType application/json.
     const body = {

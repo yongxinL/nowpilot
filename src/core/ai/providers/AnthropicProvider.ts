@@ -152,8 +152,9 @@ export class AnthropicProvider implements ILLMProvider {
   async requestJson(prompt: string, jsonSchema: unknown, signal?: AbortSignal): Promise<string> {
     if (this.model === undefined) {
       // D-54a: a provider request never starts without a resolved model.
+      // WR-01: PROVIDER_MODEL_UNKNOWN (non-retryable) — same as stream().
       throw new ProviderError(
-        'NETWORK',
+        'PROVIDER_MODEL_UNKNOWN',
         'anthropic: no model resolved for requestJson (TierResolver must supply it)',
       );
     }

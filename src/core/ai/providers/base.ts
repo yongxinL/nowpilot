@@ -289,8 +289,11 @@ export abstract class OpenAIWireProvider implements ILLMProvider {
   async requestJson(prompt: string, jsonSchema: unknown, signal?: AbortSignal): Promise<string> {
     if (this.model === undefined) {
       // D-54a: a provider request never starts without a resolved model.
+      // WR-01: PROVIDER_MODEL_UNKNOWN (non-retryable, CB vote 0) — the same
+      // code stream() uses — NOT NETWORK, which would cast breaker votes for
+      // what is a configuration error.
       throw new ProviderError(
-        'NETWORK',
+        'PROVIDER_MODEL_UNKNOWN',
         `${this.providerId}: no model resolved for requestJson (TierResolver must supply it)`,
       );
     }
