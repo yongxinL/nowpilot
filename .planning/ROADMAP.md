@@ -109,7 +109,7 @@ Plans:
   5. **UserPreferences.personaOverrides (name/tone/brevity) apply without a code change.**
 
 **Verification gate:** `pnpm run verify:phase-3` (§24).
-**Plans:** 4/7 plans executed (wave-ordered; execute via `/gsd-execute-phase 3`)
+**Plans:** 5/7 plans executed (wave-ordered; execute via `/gsd-execute-phase 3`)
 Plans:
 **Wave 1**
 
@@ -123,7 +123,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 03-05-PLAN.md — Provider routing: ProviderRegistry (D-49/50/51/52) + TierResolver (D-53/54/54a) + ProviderRouter (§1.5/§20.10 circuit breaker)
+- [x] 03-05-PLAN.md — Provider routing: ProviderRegistry (D-49/50/51/52) + TierResolver (D-53/54/54a) + ProviderRouter (§1.5/§20.10 circuit breaker)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -405,7 +405,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. MV3/WXT Runtime + AntD Shells + Workspace Handoff | 0/8 | Planned | — |
 | 2. Storage, Security, WriteJournal, Workspace Persistence | 9/9 | Complete    | 2026-08-24 |
-| 3. Cost-Effective AI Runtime (+ Persona seed) | 4/7 | In Progress|  |
+| 3. Cost-Effective AI Runtime (+ Persona seed) | 5/7 | In Progress|  |
 | 4. Agent Reliability and Evidence | 0/2 | Not started | — |
 | 5. Context-Adaptive Execution | 0/2 | Not started | — |
 | 6. PageContentService (Knowledge Acquisition) | 0/3 | Not started | — |
