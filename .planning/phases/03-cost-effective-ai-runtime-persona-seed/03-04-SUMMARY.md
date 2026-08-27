@@ -32,7 +32,7 @@ actuals:
 # Tech tracking
 tech-stack:
   added: []          # no new dependencies
-  patterns: [spec-Appendix verbatim implementation ("do not paraphrase"), D-59 single-choke-point prompt assembly, closed-enum zero-tool specialization (never z.enum([])), cap-as-data override param, module-level cache-disable state with injectable time]
+  patterns: [spec-Appendix verbatim implementation ("do not paraphrase"), D-59 single-choke-point prompt assembly, 'closed-enum zero-tool specialization (never z.enum([]))', cap-as-data override param, 'module-level cache-disable state with injectable time']
 
 key-files:
   created:
