@@ -109,7 +109,7 @@ Plans:
   5. **UserPreferences.personaOverrides (name/tone/brevity) apply without a code change.**
 
 **Verification gate:** `pnpm run verify:phase-3` (§24).
-**Plans:** 2/7 plans executed (wave-ordered; execute via `/gsd-execute-phase 3`)
+**Plans:** 4/7 plans executed (wave-ordered; execute via `/gsd-execute-phase 3`)
 Plans:
 **Wave 1**
 
@@ -118,8 +118,8 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 03-03-PLAN.md — Provider adapters (OpenAI/Anthropic/Gemini/Ollama/OpenAICompat) + StreamAdapter wire-family expansion + conformance fixtures
-- [ ] 03-04-PLAN.md — PromptCacheManager (D-59 choke-point) + PromptCacheAdapter (Appendix K) + ChunkBuffer + toolSchemas + Executor/Renderer stages + ActiveStreamState
+- [x] 03-03-PLAN.md — Provider adapters (OpenAI/Anthropic/Gemini/Ollama/OpenAICompat) + StreamAdapter wire-family expansion + conformance fixtures
+- [x] 03-04-PLAN.md — PromptCacheManager (D-59 choke-point) + PromptCacheAdapter (Appendix K) + ChunkBuffer + toolSchemas + Executor/Renderer stages + ActiveStreamState
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -405,7 +405,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. MV3/WXT Runtime + AntD Shells + Workspace Handoff | 0/8 | Planned | — |
 | 2. Storage, Security, WriteJournal, Workspace Persistence | 9/9 | Complete    | 2026-08-24 |
-| 3. Cost-Effective AI Runtime (+ Persona seed) | 2/7 | In Progress|  |
+| 3. Cost-Effective AI Runtime (+ Persona seed) | 4/7 | In Progress|  |
 | 4. Agent Reliability and Evidence | 0/2 | Not started | — |
 | 5. Context-Adaptive Execution | 0/2 | Not started | — |
 | 6. PageContentService (Knowledge Acquisition) | 0/3 | Not started | — |
