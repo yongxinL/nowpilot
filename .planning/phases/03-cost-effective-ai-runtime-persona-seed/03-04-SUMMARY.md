@@ -27,7 +27,7 @@ affects: [03-05 ProviderRegistry/TierResolver/ProviderRouter (tool registry + ca
 actuals:
   tokens: 13718     # chars/4 over the 13 files changed (54,871 chars)
   tasks: 3          # tasks completed
-  commits: 7        # commits made (3 task + 3 additive test + 1 docs)
+  commits: 8        # commits made (3 task + 2 additive test + 3 docs)
 
 # Tech tracking
 tech-stack:
