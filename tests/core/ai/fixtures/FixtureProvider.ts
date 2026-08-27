@@ -1,5 +1,5 @@
 import type { ILLMProvider, LLMStreamRequest } from '../../../../src/core/ai/ILLMProvider';
-import type { ProviderId, StreamEvent } from '../../../../src/core/ai/types';
+import type { ProviderId, StreamErrorCode, StreamEvent } from '../../../../src/core/ai/types';
 import { createStreamAdapter } from '../../../../src/core/ai/StreamAdapter';
 
 /**
@@ -10,17 +10,39 @@ import { createStreamAdapter } from '../../../../src/core/ai/StreamAdapter';
  *
  * Implements `requestJson` by feeding the fixture's OpenAI SSE bytes through
  * the real StreamAdapter, so tests exercise the actual wire → adapter → text
- * path. `stream` is not used by this slice's tests (PlannerService drives
- * `requestJson` via StructuredOutput).
+ * path.
+ *
+ * Since plan 03-05, `stream` is scriptable too: a `streamScript` of canonical
+ * events (delta / complete / error / abort) drives ProviderRouter fallback +
+ * circuit-breaker tests, and `providerId` lets router tests model local vs
+ * cloud providers. `streamCalls` counts invocations so tests can assert
+ * "provider B was never called" (no-switch / skip-open-provider rules).
  */
+export type FixtureStreamStep =
+  | { kind: 'delta'; delta: string }
+  | { kind: 'complete'; fullText: string }
+  | { kind: 'error'; code: StreamErrorCode; message: string }
+  | { kind: 'abort' };
+
+export interface FixtureProviderOptions {
+  /** Scripted stream() behavior (03-05 router tests). Empty → stream yields nothing. */
+  streamScript?: FixtureStreamStep[];
+  /** Runtime provider id (default 'openai') — lets router tests model ollama/openai etc. */
+  providerId?: ProviderId;
+}
+
 export class FixtureProvider implements ILLMProvider {
-  readonly providerId: ProviderId = 'openai';
+  readonly providerId: ProviderId;
   private readonly responseScript: string[][];
+  private readonly streamScript: FixtureStreamStep[];
   private callIndex = 0;
   private readonly promptsSeen: string[] = [];
+  private _streamCalls = 0;
 
-  constructor(responseScript: string[][]) {
+  constructor(responseScript: string[][] = [], opts: FixtureProviderOptions = {}) {
     this.responseScript = responseScript;
+    this.streamScript = opts.streamScript ?? [];
+    this.providerId = opts.providerId ?? 'openai';
   }
 
   /** All prompts received across calls — lets tests assert the repair prompt. */
@@ -28,9 +50,48 @@ export class FixtureProvider implements ILLMProvider {
     return [...this.promptsSeen];
   }
 
-  async *stream(_request: LLMStreamRequest, _signal?: AbortSignal): AsyncIterable<StreamEvent> {
-    // Not exercised by the planner tracer slice (03-01); providers land in 03-03.
-    throw new Error('FixtureProvider.stream not implemented — requestJson is the scripted path');
+  /** Number of stream() invocations — router tests assert fallback/skip behavior. */
+  get streamCalls(): number {
+    return this._streamCalls;
+  }
+
+  async *stream(request: LLMStreamRequest, signal?: AbortSignal): AsyncIterable<StreamEvent> {
+    const { operationId } = request;
+    this._streamCalls += 1;
+    if (signal?.aborted) {
+      yield { type: 'STREAM_ABORTED', operationId };
+      return;
+    }
+    let started = false;
+    for (const step of this.streamScript) {
+      if (signal?.aborted) {
+        yield { type: 'STREAM_ABORTED', operationId };
+        return;
+      }
+      switch (step.kind) {
+        case 'delta':
+          // STREAM_START precedes the first delta — mirrors StreamAdapter.
+          if (!started) {
+            yield { type: 'STREAM_START', operationId };
+            started = true;
+          }
+          yield { type: 'STREAM_DELTA', operationId, delta: step.delta };
+          break;
+        case 'complete':
+          if (!started) {
+            yield { type: 'STREAM_START', operationId };
+            started = true;
+          }
+          yield { type: 'STREAM_COMPLETE', operationId, fullText: step.fullText };
+          return;
+        case 'error':
+          yield { type: 'STREAM_ERROR', operationId, code: step.code, message: step.message };
+          return;
+        case 'abort':
+          yield { type: 'STREAM_ABORTED', operationId };
+          return;
+      }
+    }
   }
 
   async requestJson(prompt: string, _jsonSchema: unknown, _signal?: AbortSignal): Promise<string> {

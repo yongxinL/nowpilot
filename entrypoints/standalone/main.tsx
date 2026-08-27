@@ -24,6 +24,7 @@ import {
   migrateProviderSecrets,
   hydrateProviderSecrets,
 } from '../../src/store/useExtensionStore';
+import { ProviderRegistry } from '../../src/core/ai/ProviderRegistry';
 import '../../src/index.css';
 
 /**
@@ -78,6 +79,12 @@ async function bootStandalone(): Promise<void> {
 
     await migrateProviderSecrets();
     await hydrateProviderSecrets();
+
+    // D-51 (03-05 Task 1): registry hydration once at boot, before UI
+    // renders — reads np_providers + np_endpoint_overrides into the
+    // normalized in-memory registry consumed by TierResolver/ProviderRouter.
+    // Sync reads (getEnabled/getById/getAll) are only valid after this.
+    await ProviderRegistry.hydrate();
   } catch (err) {
     debugLog(
       'WORKSPACE_BOOT_FAILED',

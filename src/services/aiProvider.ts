@@ -35,7 +35,13 @@ export type ProviderConnectionResult =
  *     the endpoint returned an empty list. `error` is built from the
  *     provider's own status / error body; the apiKey is never logged.
  */
-async function fetchModelsOrError(
+/**
+ * Exported for ProviderRegistry (03-05 D-52): live model discovery reuses
+ * these exact fetch semantics, passing the registry's merged endpoint
+ * (D-50 np_endpoint_overrides over §10.6 defaults) as `proxyUrl`.
+ * One-line additive export — no behavior change.
+ */
+export async function fetchModelsOrError(
   providerId: CustomProviderId,
   apiKey?: string,
   proxyUrl?: string
