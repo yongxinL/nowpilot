@@ -149,9 +149,20 @@ Plans:
 **Verification gate:** `pnpm run verify:phase-4` (§24).
 **Plans:** 4 plans
 Plans:
+**Wave 1**
+
 - [ ] 04-01-PLAN.md — TRACER: canonical C.1 types + evidence seam + TrajectoryTracker + OutcomeVerifier framework + AgentTurnOutcome return contract + verify:phase-4 re-point (D-68)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 04-02-PLAN.md — Renderer completion guard wiring (D-65/AGT-02) + false-completion test
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 04-03-PLAN.md — AGT-04 deterministic replan/terminal policy + re-scripted cap test + replan cases
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 04-04-PLAN.md — Abort → returned `aborted` outcome (Q1) + useChatStreaming branch + case (e) rework
 
 ### Phase 5: Context-Adaptive Execution
