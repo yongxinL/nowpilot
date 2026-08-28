@@ -27,7 +27,7 @@ progress:
 
 - **What this is:** Privacy-first Chrome MV3 AI assistant + personal knowledge platform for ServiceNow Support Engineers (Copilot + Obsidian + NotebookLM in one extension). See `.planning/PROJECT.md` §What This Is.
 - **Core value:** *AI chat and a personal knowledge base that work together, locally-first, so a support engineer can capture knowledge once and retrieve it with citations — without any data leaving their machine unless they opt in.*
-- **Current focus:** Phase 03 — cost-effective-ai-runtime-persona-seed
+- **Current focus:** Phase 04 — agent-reliability-and-evidence
 - **Companion files:**
   - `.planning/PROJECT.md` — project context, Active/Out of Scope, Key Decisions
   - `.planning/REQUIREMENTS.md` — 220 v1 requirements (spec-native IDs + `REQ-F*` for §9 gaps)
@@ -45,7 +45,7 @@ progress:
 - **Phase:** 4 — Agent Reliability and Evidence
 - **Plan:** Not started
 - **Status:** Ready to plan
-- **Progress:** 2/19 phases complete · 17/17 plans written · 220/220 requirements mapped ([█████████░] 89% coverage).
+- **Progress:** 3/19 phases complete · 24/24 plans written · 220/220 requirements mapped ([██████████] 92% coverage).
 
 ---
 
@@ -120,29 +120,27 @@ All inherited decisions are **— Pending** (awaiting first implementation to va
 
 ## Session Continuity
 
-**Last session:** 2026-08-26T11:13:50.538Z
-**Stopped at:** Phase 3 context gathered
-**Resume file:** .planning/phases/03-cost-effective-ai-runtime-persona-seed/03-CONTEXT.md
+**Last session:** 2026-08-28T23:10:00Z
+**Stopped at:** Phase 3 complete, ready to plan Phase 4
+**Resume file:** None
 
-- **Last action:** Phase 2 completed end-to-end: gap closure (CR-01 crash recovery + CR-02 election heartbeat), re-verification passed (5/5 truths), code review (2 CRITICALs → 2 blockers → closed), security audit (42 threats closed, threats_open 0), UAT 1/1 pass. Also fixed a live runtime bug (`useApp()` outside `<AntdApp>` provider in sidepanel boot) found during UAT.
-- **Last updated:** 2026-08-24 after Phase 2 completion.
-- **Resume with:** `/gsd-plan-phase 3` (Phase 3 planning).
+- **Last action:** Phase 3 completed end-to-end: AI runtime + persona seed (Planner/Executor/Renderer pipeline, StreamAdapter 4-wire conformance, ProviderRegistry/TierResolver/ProviderRouter, AgentOrchestrator, chat integration). UAT 29/29 pass (4 live-provider + state-machine checkpoints), security audit 25 threats closed (threats_open 0), verification canonicalized to passed. Also fixed the COVERAGE.md matrix format that blocked the verify:pre gate.
+- **Last updated:** 2026-08-28 after Phase 3 completion.
+- **Resume with:** `/gsd-discuss-phase 4` (Phase 4 planning).
 
 ---
 
 ## Next-up
 
-The workflow expects Phase 1 planning next. Run:
+The workflow expects Phase 4 planning next. Run:
 
 ```text
-/gsd-plan-phase 1
+/gsd-discuss-phase 4
 ```
-
-This will produce `Phase-01-*.md` plans under `.planning/phases/01-mv3-wxt-runtime/` based on the spec §18 Phase 1 block + REQUIREMENTS.md §Traceability (Phase 1 row) + ROADMAP.md Phase 1 entry + RESEARCH-RECONCILIATION.md §D research-driven implications (REQ-R01/R02/R04/R05/R19/R21) + SUMMARY.md Phase 1 row + DESIGN_SYSTEM §8.1 (Side Panel 400 px) + `.planning/codebase/` (scaffold map).
 
 ---
 
-*Last updated: 2026-08-19 after initialization*
+*Last updated: 2026-08-28 after Phase 3 completion*
 
 ## Decisions
 

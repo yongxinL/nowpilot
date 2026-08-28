@@ -21,14 +21,14 @@ AI chat and a personal knowledge base that work together, locally-first, so a su
 - ✓ AI provider service: SSE streaming, model discovery, simulated fallback — existing
 - ✓ Registries: commands, keymaps, addons, sidepanel/full-app pages — existing
 - ✓ Theme system: Ant Design light/dark tokens + ThemeSync broadcast — existing
+- ✓ MV3/WXT runtime + AntD shells + workspace handoff (Phase 1) — verified 2026-08-22 (incl. Phase 1b Tailwind-className restoration, 2026-08-23)
 - ✓ Storage, security, WriteJournal, workspace persistence (Phase 2) — encrypt-at-rest (KeyVault + EncryptedStorage AES-GCM-256), IndexedDB foundation (5 DBs + migrator + unlimitedStorage), WriteJournal + journaled election-gated persist, WorkspaceElection single-writer with published heartbeats, crash-safe boot recovery, NP-STRICT ceiling reduced to 0
+- ✓ Cost-effective AI runtime with persona (Phase 3) — Appendix I Planner → Executor → Renderer pipeline (AgentOrchestrator), StreamAdapter 4-wire conformance (OpenAI/Anthropic/Gemini/Ollama), StructuredOutput one-shot repair, persona seed + injector (Appendix N), ProviderRegistry/TierResolver/ProviderRouter (D-50/D-52/D-54/D-56), PromptCacheAdapter/Manager, ChunkBuffer, renderer 512-token cap, zero-tool ExecutorService (TOOL_REJECTED), journaled append-chat-turn persist, useChatStreaming re-pointed, Options endpoint-override + tier fields — verified 2026-08-28 (UAT 29/29, security 25 threats closed)
 
 ### Active
 
 All Active requirements are hypotheses until shipped and validated. Full atomic requirement set lives in `.planning/REQUIREMENTS.md` (anchored to spec-native IDs); this list is the summary view.
 
-- [ ] MV3/WXT runtime + AntD shells + workspace handoff (Phase 1)
-- [ ] Cost-effective AI runtime with persona (Phase 3)
 - [ ] Agent reliability and evidence (Phase 4)
 - [ ] Context-adaptive execution (Phase 5)
 - [ ] PageContentService layered extraction (Phase 6)
@@ -93,6 +93,9 @@ All Active requirements are hypotheses until shipped and validated. Full atomic 
 | Crash-safe boot recovery: `recoverWorkspaceJournal` re-applies current `np_workspace`; journal steps registered at boot | Boot replay must never reconstruct an empty placeholder (CR-01) | Validated Phase 2 (2026-08-24) |
 | Election heartbeat published for primary/solo surfaces (D-24 closed) | Zero-call-site defect made standalone-wins tie-break dead (CR-02) | Validated Phase 2 (2026-08-24) |
 | NP-STRICT ceiling reduced to 0 in Phase 2 | Type safety debt eliminated at the planned point | Validated Phase 2 (2026-08-24) |
+| Phase 3 cost-effective AI runtime shipped on client-side fetch, no provider SDKs; D-54a no-model-guessing enforced in-code (TierResolver null → configuration_required, zero provider requests) | INTEGRATIONS.md lock + MV3 bundle constraint + cost discipline | Validated Phase 3 (2026-08-28) |
+| §1.4 tier caps are the ONLY cap-enforcement point; single PlannerService call site in src/ (grep == 1) | Appendix I bounded-loop rule | Validated Phase 3 (2026-08-28) |
+| Turn-end persist seam (D-45): persistTurn once per completed turn via journaled append-chat-turn; abort drops partial with nothing persisted | Write-rate boundary + crash-safety | Validated Phase 3 (2026-08-28) |
 
 ## Evolution
 
@@ -112,4 +115,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-08-24 after Phase 2*
+*Last updated: 2026-08-28 after Phase 3 (moved validated Phase 3 entry to Validated)*
