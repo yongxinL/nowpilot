@@ -15,7 +15,7 @@
 
 - [x] **Phase 1: MV3/WXT Runtime + AntD Shells + Workspace Handoff** — AntD shells, RuntimeEnvelope, WorkspaceStore, Cmd+K palette shell, onboarding *(8/8 plans complete; verify:phase-1 green at 166 tests; see `.planning/VERIFICATION.md`)*
 - [x] **Phase 2: Storage, Security, WriteJournal, Workspace Persistence** — EncryptedStorage, IndexedDB, KeyVault, WriteJournal, AES-GCM secrets (completed 2026-08-24)
-- [ ] **Phase 3: Cost-Effective AI Runtime (+ Persona seed)** — ProviderRouter, AgentOrchestrator, structured output, persona runtime foundation
+- [x] **Phase 3: Cost-Effective AI Runtime (+ Persona seed)** — ProviderRouter, AgentOrchestrator, structured output, persona runtime foundation (completed 2026-08-29)
 - [ ] **Phase 4: Agent Reliability and Evidence** — Trajectory states, CompletionEvidence, AgentTurnOutcome, deterministic replan/terminal policy
 - [ ] **Phase 5: Context-Adaptive Execution** — TokenBudget, ContextOptimizer, ContextCompressor, ContextProvenanceManifest
 - [ ] **Phase 6: PageContentService (Knowledge Acquisition)** — Layered Defuddle→Readability fallback, APC-lite structural walk, panel-side extraction
@@ -109,7 +109,7 @@ Plans:
   5. **UserPreferences.personaOverrides (name/tone/brevity) apply without a code change.**
 
 **Verification gate:** `pnpm run verify:phase-3` (§24).
-**Plans:** 7/7 plans executed (wave-ordered; execute via `/gsd-execute-phase 3`)
+**Plans:** 7/7 plans complete
 Plans:
 **Wave 1**
 
@@ -405,7 +405,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. MV3/WXT Runtime + AntD Shells + Workspace Handoff | 0/8 | Planned | — |
 | 2. Storage, Security, WriteJournal, Workspace Persistence | 9/9 | Complete    | 2026-08-24 |
-| 3. Cost-Effective AI Runtime (+ Persona seed) | 7/7 | In Progress|  |
+| 3. Cost-Effective AI Runtime (+ Persona seed) | 7/7 | Complete    | 2026-08-29 |
 | 4. Agent Reliability and Evidence | 0/2 | Not started | — |
 | 5. Context-Adaptive Execution | 0/2 | Not started | — |
 | 6. PageContentService (Knowledge Acquisition) | 0/3 | Not started | — |

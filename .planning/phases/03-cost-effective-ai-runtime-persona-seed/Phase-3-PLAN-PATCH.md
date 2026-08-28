@@ -1,3 +1,8 @@
+---
+status: superseded
+type: review-artifact
+superseded_by: "03-01-PLAN.md … 03-07-PLAN.md (patch edits applied during planning review)"
+---
 # Phase 3 Plan Patch
 
 Apply only the edits below. Preserve all other content verbatim.
