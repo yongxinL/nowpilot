@@ -174,7 +174,7 @@ tests/
 
 ### Pattern 2: Closed trajectory state machine (D-62, AGT-01)
 **What:** A `TrajectoryTracker` per turn that (a) asserts every `enter(phase)` against a transition table and (b) emits the final `AgentTrajectoryState` snapshot (operationId, phase, plannerCalls, toolCalls, updatedAt — D-63). **Recommended mechanism: transition-table validator** (data-driven `Record<AgentTrajectoryPhase, AgentTrajectoryPhase[]>` + runtime throw on illegal transition). The C.1 `AgentTrajectoryState` is a flat snapshot interface (single `phase` field, not a per-state discriminated union), so the type-level/type-state encoding would require restructuring the locked canonical type — the transition table fits the verbatim shape and is directly testable ([CITED: oneuptime.com/blog/post/2026-01-30…, dev.to/gabrielanhaia… — the table-data pattern is standard; type-level needs per-state union shapes]). The phase's discretion allows either; the table is the pragmatic fit.
-**When to use:** In `runAgentTurn` — enter `planning` before each planner call, `executing` before `execute`, `replanning` on non-terminal tool failure, `verifying` at finish before buildOutcome, `rendering` during render, terminal on outcome. `assembling-context` is entered at turn start (no context assembly exists until Phase 5 — the state is recorded, not acted on). `waiting-for-permission` has no trigger in Phase 4 (permission gate is Phase 17) but must exist in the table (closed set).
+**When to use:** In `runAgentTurn` — enter `planning` before each planner call, `executing` before `execute`, `replanning` on non-terminal tool failure, `verifying` at finish before buildOutcome, `rendering` during render, terminal on outcome. `assembling-context` is entered at turn start (no context assembly exists until Phase 5 — the state is recorded, not acted on). An abort before any planning (a pre-aborted signal, plan 04-04's boundary catch) exits `assembling-context → aborted` — the recommended table row above is amended from `['planning']` to `['planning', 'aborted']` (A2 framed the edge set as assumed/correctable; AGT-01 tests pin the rest). `waiting-for-permission` has no trigger in Phase 4 (permission gate is Phase 17) but must exist in the table (closed set).
 **Example:** transition table in Code Examples.
 
 ### Pattern 3: OutcomeVerifier — Appendix O.2 verbatim (D-64)
@@ -374,7 +374,7 @@ export async function buildOutcome(
 import type { AgentTrajectoryPhase, AgentTrajectoryState } from '@/types/harness';
 
 export const TRAJECTORY_TRANSITIONS: Record<AgentTrajectoryPhase, readonly AgentTrajectoryPhase[]> = {
-  'assembling-context': ['planning'],
+  'assembling-context': ['planning', 'aborted'], // amended from ['planning']: pre-aborted-signal exit — 04-04 boundary catch (A2: edge set assumed, correctable)
   'planning': ['executing', 'waiting-for-permission', 'rendering', 'replanning', 'failed', 'aborted'],
   'waiting-for-permission': ['executing', 'replanning', 'failed', 'aborted'],
   'executing': ['verifying', 'replanning', 'failed', 'aborted'],

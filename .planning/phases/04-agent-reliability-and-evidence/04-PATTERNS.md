@@ -87,7 +87,7 @@ import type { AgentTrajectoryPhase, AgentTrajectoryState } from '@/types/harness
 **Core pattern — transition-table validator (D-62 recommendation, RESEARCH A1):** The C.1 `AgentTrajectoryState` is a flat snapshot interface (single `phase` field, not a per-state discriminated union), so type-level encoding would restructure the locked canonical type. Use a data-driven table + runtime throw (AGT-01):
 ```typescript
 export const TRAJECTORY_TRANSITIONS: Record<AgentTrajectoryPhase, readonly AgentTrajectoryPhase[]> = {
-  'assembling-context': ['planning'],
+  'assembling-context': ['planning', 'aborted'], // amended from ['planning']: pre-aborted-signal exit (04-04 boundary catch)
   'planning': ['executing', 'waiting-for-permission', 'rendering', 'replanning', 'failed', 'aborted'],
   'waiting-for-permission': ['executing', 'replanning', 'failed', 'aborted'],
   'executing': ['verifying', 'replanning', 'failed', 'aborted'],
@@ -117,7 +117,7 @@ export class TrajectoryTracker {
 ```
 **Notes:**
 - `waiting-for-permission` has **no Phase-4 trigger** (permission gate is Phase 17) but must exist in the table — the closed machine requires all 10 C.1 states (AGT-01).
-- `assembling-context` is entered at turn start; no context assembly exists until Phase 5 — the state is recorded, not acted on.
+- `assembling-context` is entered at turn start; no context assembly exists until Phase 5 — the state is recorded, not acted on. A pre-aborted signal (no planning ever ran) exits via `assembling-context → aborted` (04-04 boundary catch) — the row above is amended from `['planning']` to `['planning', 'aborted']`.
 - D-62 discretion: single file `src/core/ai/trajectory.ts` (RESEARCH A7 recommends this; test dir `tests/core/ai/trajectory/**` is mandatory either way). A `trajectory/` directory is allowed if the planner prefers parity with the test dir.
 - The tracker records, never persists (D-63 — in-memory per turn; AITransactionLog is Phase 11).
 
@@ -194,7 +194,7 @@ export interface AgentTurnOutput {
 ```
 The C.1 `AgentTurnOutcome` (operationId, status, evidence, plannerCalls, toolCalls) supersedes it **additively** — consumers keep reading `streamedText`/`reasonCode` (D-61: field addition vs composed wrapper is the planner's discretion; `useChatStreaming` must not break). Note the Phase-3 shape **dropped `operationId`** vs the spec's Appendix I (spec 5561-5566) — D-61 re-adds it from `input.operationId` (Pitfall 8).
 
-**D-62/63 — trajectory hooks.** The tracker instantiates at loop top with `input.operationId`; enter `planning` before each `PlannerService.plan` call (line 309), `executing` before `ExecutorService.execute` (line 340), `replanning` on non-terminal failure, `verifying`+`rendering` inside `finish()` (line 231), terminal on outcome return. `snapshot(plannerCalls, toolCalls)` — the counters already exist at lines 123-124.
+**D-62/63 — trajectory hooks.** The tracker instantiates at the top of `runAgentTurn` (before the loop) with `input.operationId`; enter `planning` before each `PlannerService.plan` call (line 309), `executing` before `ExecutorService.execute` (line 340), `replanning` on non-terminal failure, `verifying`+`rendering` inside `finish()` (line 231), terminal on outcome return. `snapshot(plannerCalls, toolCalls)` — the counters already exist at lines 123-124.
 
 **D-66 — replan/terminal policy (AGT-04).** Slots into the loop after `toolResults.push(result)` (line 348):
 ```typescript
