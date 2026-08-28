@@ -480,22 +480,25 @@ Status values are the closed C.1 union [VERIFIED: .planning/PRODUCT_SPEC_v0_1.md
 | A7 | Trajectory module as `src/core/ai/trajectory.ts` single file | Project Structure | CONTEXT discretion allows a directory; test dir is `tests/core/ai/trajectory/**` either way |
 | A8 | `cap_exhausted` replaces `planner_cap_reached`/`tool_cap_reached` as reasonCode | Code Examples | O.2 verbatim uses `cap_exhausted`; existing test (b) matches the old literals — tests updated either way (Pitfall 2) |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Abort: returned `aborted` outcome vs keep-throw?**
    - What we know: DONE-when says "abort produces `aborted`" (AGT-04); C.1 status set includes `aborted`; the current loop throws `DOMException('aborted','AbortError')` (AgentOrchestrator.ts:300, 215, 256); `useChatStreaming.ts:258` catches it and drops the partial; tests (e) assert the throw.
    - What's unclear: whether to convert abort to a returned outcome (central catch at the `runAgentTurn` boundary, `streamedText: ''`, no persistTurn, consumer branches on `output.status === 'aborted'`) or keep the throw (then `aborted` never surfaces as an outcome, contradicting the DONE-when).
    - Recommendation: convert to the returned `aborted` outcome (DONE-when-consistent), update `useChatStreaming` + tests (e); the partial is still dropped and persistTurn never fires. Planner must scope the consumer edit (D-61's "costly" reversibility).
+   - **RESOLVED (D-66 + plan 04-04, A4):** convert to the returned `aborted` outcome — 04-04 Task 1 implements the boundary conversion (status 'aborted', reasonCode 'aborted', streamedText '', no persistTurn); 04-04 Task 2 branches `useChatStreaming` on `output.status === 'aborted'` and reworks case (e) from throw-assertion to resolve-assertion.
 
 2. **How does the completion guard interact with O.2's verifier-generated evidence?**
    - What we know: buildOutcome generates evidence for any result with a registered verifier; the guard (D-65) needs evidence-ABSENT detection on ok side-effecting results.
    - What's unclear: exact ordering (guard first, or guard overrides buildOutcome's status) and whether `VerifierRegistry` or `input.verifiers` is the orchestrator's source.
    - Recommendation: guard evaluates first (or overrides after) so "never a clean success" is unconditional; support both registry (empty in prod) and an `input.verifiers` test override. Confirm in planning.
+   - **RESOLVED (D-65 + plan 04-02, A5/A6):** guard OVERRIDES buildOutcome's status unconditionally in finish() — ok + verifier-present + evidence-absent → status 'partial' + reasonCode 'missing_evidence'; effective set = `{ ...VerifierRegistry.getAll(), ...input.verifiers }` (registry empty in prod, input override for the false-completion test).
 
 3. **`configuration_required` / `ask_clarification` status mapping**
    - What we know: both are legitimate Phase-3 terminal outcomes (D-54a); status set is closed to 4 values; consumers branch on reasonCode.
    - What's unclear: whether `configuration_required` maps to `failed` (recommended — no output produced) and `ask_clarification` to `completed` (recommended — question is the output) or to `partial`.
    - Recommendation: adopt the recommended mapping (A3); user confirmation via discuss if the planner prefers otherwise.
+   - **RESOLVED (A3, adopted in plan 04-01 Task 1):** `configuration_required` → status 'failed' (no output produced), `ask_clarification` → status 'completed' (the question IS the output); consumers keep branching on reasonCode.
 
 ## Environment Availability
 
