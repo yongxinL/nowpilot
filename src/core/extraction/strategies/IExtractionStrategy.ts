@@ -1,8 +1,11 @@
 // IExtractionStrategy contract — verbatim from PRODUCT_SPEC_v0_1.md Appendix
-// extraction contract (spec 4667-4699) with ONE documented additive field:
-// StrategyInput.baseUrl?. The §26.4 canonical call (spec 3726-3740) passes
-// payload.baseUrl to Defuddle so the panel injects the payload's effective
-// base URL into the detached doc; baseUrl falls back to `url` when absent.
+// extraction contract (spec 4667-4699) with TWO documented additive fields:
+// StrategyInput.baseUrl? and StrategyInput.truncated?. The §26.4 canonical
+// call (spec 3726-3740) passes payload.baseUrl to Defuddle so the panel
+// injects the payload's effective base URL into the detached doc; baseUrl
+// falls back to `url` when absent. The payload's truncated flag
+// (PageHtmlPayload.truncated, RuntimeEnvelope.ts:40-46) is propagated so the
+// result records whether the content-script serializer hit the 2 MB cap.
 //
 // No barrel index.ts here — direct path imports only (mirror src/core/ai).
 import type { APCLiteNode, RawNode } from '../apcLite.types';
@@ -15,6 +18,10 @@ export interface StrategyInput {
    * effective base URL — spec 3726-3740 passes payload.baseUrl to Defuddle;
    * the strategy falls back to `url` when absent. */
   baseUrl?: string;
+  /** ADDITIVE (deviation from spec 4670-4674, documented above): the payload's
+   * truncation flag (PageHtmlPayload.truncated) — propagated onto the result
+   * so downstream consumers know the serializer hit the 2 MB cap. */
+  truncated?: boolean;
 }
 export interface StrategyResult {
   source: 'defuddle' | 'readability' | 'apc-lite' | 'servicenow-api';
