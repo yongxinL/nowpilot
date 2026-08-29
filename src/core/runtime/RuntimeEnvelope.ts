@@ -45,6 +45,18 @@ export interface PageHtmlPayload {
   strategyId?: string;
 }
 
+/**
+ * D-89: lightweight live context sent on navigation (PAGE_LIVE_CONTEXT) —
+ * title/url/meta only, never the full extraction. Live context updates
+ * ALWAYS on navigation (§26.4a); full extraction runs only when a surface
+ * requests it (EXTRACT_PAGE_CONTENT / PAGE_EXTRACTION_REQUESTED).
+ */
+export interface PageLiveContextPayload {
+  url: string;
+  title: string;
+  meta: Record<string, string>;
+}
+
 export interface RuntimeEnvelope<T = unknown> {
   type: MessageType;
   operationId: string;
