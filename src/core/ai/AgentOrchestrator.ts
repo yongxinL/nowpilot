@@ -258,8 +258,9 @@ export async function runAgentTurn(input: AgentTurnInput): Promise<AgentTurnOutc
    * turn's tier-cap state, renders the final answer on the fast tier, and
    * (D-45) invokes the persist seam exactly once for the completed turn. An
    * abort mid-stream throws AbortError — the partial is dropped and persistTurn
-   * is NOT invoked (abort contract unchanged this plan; the returned 'aborted'
-   * outcome lands in 04-04).
+   * is NOT invoked. The boundary catch (04-04) converts that caller-signal
+   * AbortError into the returned 'aborted' outcome at the runAgentTurn edge;
+   * the throw here is the mechanism the catch consumes, never a leak past it.
    *
    * Trajectory (D-63): turns that just executed a tool enter 'verifying'
    * (executing → verifying is the closed table's only edge into it); the
@@ -447,120 +448,166 @@ export async function runAgentTurn(input: AgentTurnInput): Promise<AgentTurnOutc
   const failureIdentities = new Map<string, string>();
   const replannedTools = new Set<string>();
 
-  while (true) {
-    if (input.abortSignal.aborted) throw new DOMException('aborted', 'AbortError');
-    if (plannerCalls >= input.tier.plannerCap) return await finish('planner_cap_reached');
-    // D-63: after a tool execution the machine cycles through 'replanning' —
-    // executing → replanning is the ONLY forward edge out of 'executing' in
-    // the closed table, and the next planner call re-plans with the tool
-    // result in context. AGT-04 (04-03): the policy enters 'replanning'
-    // itself on a first failure (and continues), so this loop-top hook only
-    // fires for successful tool results — never a double entry
-    // ('replanning' → 'replanning' is illegal, AGT-01).
-    if (toolResults.length > 0 && trajectory.phase !== 'replanning') trajectory.enter('replanning');
-    plannerCalls += 1;
-
-    // D-63: the planning phase precedes the planner stage (the planner is
-    // resolved and called here — the ONLY planner call site in the codebase).
-    trajectory.enter('planning');
-    const plannerPrompt = stagePrompt('planner', { withUserInput: true });
-    const plannerStage = await resolveStageProvider('fast', plannerPrompt);
-    if (plannerStage === null) return configurationRequiredOutcome();
-    const decision = await PlannerService.plan({
-      operationId: input.operationId,
-      providerId: plannerStage.provider.providerId,
-      model: plannerStage.model,
-      prompt: plannerPrompt,
-      toolNames: ToolRegistry.getAll().map((t) => t.name),
-      callProviderJsonMode: (prompt, jsonSchema, signal) =>
-        plannerStage.provider.requestJson(prompt, jsonSchema, signal),
-      abortSignal: input.abortSignal,
-    });
-    debugLog('ORCHESTRATOR_PLAN', `planner decided ${decision.action}`, {
-      operationId: input.operationId,
-      sessionId: input.sessionId,
-      plannerCall: plannerCalls,
-      trajectoryPhase: trajectory.phase,
-    });
-
-    if (decision.action === 'answer' || decision.action === 'ask_clarification') {
-      return await finish(
-        decision.action === 'answer' ? decision.reasonCode : 'ask_clarification',
-        decision.action === 'ask_clarification' ? decision : undefined,
-      );
-    }
-    if (toolCalls >= input.tier.toolCap) return await finish('tool_cap_reached');
-    toolCalls += 1;
-
-    // D-63: the executing phase precedes the executor stage — tool calls
-    // default to the turn's modelTier (D-55). Phase 3 registers zero tools →
-    // every run_tool surfaces a typed TOOL_REJECTED result and the loop
-    // continues (D-46).
-    trajectory.enter('executing');
-    const executorPrompt = stagePrompt('executor');
-    const executorStage = await resolveStageProvider(input.tier.modelTier, executorPrompt);
-    if (executorStage === null) return configurationRequiredOutcome();
-    const result = await ExecutorService.execute({
-      operationId: input.operationId,
-      toolName: decision.toolName,
-      inputData: decision.input,
-      systemPrompt: executorPrompt,
-      provider: executorStage.provider.providerId,
-      abortSignal: input.abortSignal,
-    });
-    toolResults.push(result);
-    // AGT-04 (04-03): deterministic replan/terminal policy — at most one
-    // replan per failed tool. Stable failure identity = §21.6 code when
-    // present (e.g. TOOL_REJECTED), the error string ONLY as fallback
-    // (Pitfall 7 — never key on the raw message alone when a code exists;
-    // T-4-08: a provider rewording the message cannot reset the identity).
-    const identity = result.code ?? (result.error ?? 'ERROR');
-    if (!result.ok) {
-      if (failureIdentities.get(result.toolName) === identity) {
-        // REPEATED IDENTICAL FAILURE → terminal 'failed' (AGT-04; T-4-09 —
-        // never a silent retry loop).
-        debugLog('ORCHESTRATOR_TERMINAL_REPEATED_FAILURE', `repeated identical failure for ${result.toolName} — terminal failed`, {
-          operationId: input.operationId,
-          toolName: result.toolName,
-          identity,
-          plannerCalls,
-          toolCalls,
-        });
-        return await finish('repeated_failure');
-      }
-      if (replannedTools.has(result.toolName)) {
-        // REPLAN BUDGET CONSUMED (≤1 per tool) → terminal 'failed' (AGT-04).
-        debugLog('ORCHESTRATOR_TERMINAL_REPLAN_EXHAUSTED', `replan budget consumed for ${result.toolName} — terminal failed`, {
-          operationId: input.operationId,
-          toolName: result.toolName,
-          identity,
-          plannerCalls,
-          toolCalls,
-        });
-        return await finish('replan_exhausted');
-      }
-      // FIRST failure for this tool: record the stable identity, consume the
-      // tool's single replan budget, enter the 'replanning' trajectory phase
-      // (validated against the closed table, AGT-01) — the NEXT planner call
-      // IS the single replan (§1.6.1 layer 2 of 3; the loop-top plannerCap
-      // check stays authoritative).
-      failureIdentities.set(result.toolName, identity);
-      replannedTools.add(result.toolName);
-      trajectory.enter('replanning');
-      debugLog('ORCHESTRATOR_REPLAN', `tool ${result.toolName} failed — one replan scheduled`, {
+  // Q1/A4 (04-04): the boundary AbortError conversion — the caller-signal
+  // abort (Stop button) is caught HERE, at the runAgentTurn edge, and returned
+  // as the 'aborted' AgentTurnOutcome instead of being thrown past the
+  // boundary (AGT-03/AGT-04 DONE-when: "abort produces aborted"). D-45: the
+  // partial is dropped — persistTurn is NEVER invoked on this path (the persist
+  // seam lives inside finish(), which an aborted turn never reaches). Only
+  // DOMException('aborted','AbortError') converts (T-4-11); ProviderError
+  // (CR-06) and routed errors rethrow unchanged.
+  try {
+    while (true) {
+      if (input.abortSignal.aborted) throw new DOMException('aborted', 'AbortError');
+      if (plannerCalls >= input.tier.plannerCap) return await finish('planner_cap_reached');
+      // D-63: after a tool execution the machine cycles through 'replanning' —
+      // executing → replanning is the ONLY forward edge out of 'executing' in
+      // the closed table, and the next planner call re-plans with the tool
+      // result in context. AGT-04 (04-03): the policy enters 'replanning'
+      // itself on a first failure (and continues), so this loop-top hook only
+      // fires for successful tool results — never a double entry
+      // ('replanning' → 'replanning' is illegal, AGT-01).
+      if (toolResults.length > 0 && trajectory.phase !== 'replanning') trajectory.enter('replanning');
+      plannerCalls += 1;
+  
+      // D-63: the planning phase precedes the planner stage (the planner is
+      // resolved and called here — the ONLY planner call site in the codebase).
+      trajectory.enter('planning');
+      const plannerPrompt = stagePrompt('planner', { withUserInput: true });
+      const plannerStage = await resolveStageProvider('fast', plannerPrompt);
+      if (plannerStage === null) return configurationRequiredOutcome();
+      const decision = await PlannerService.plan({
         operationId: input.operationId,
-        toolName: result.toolName,
-        identity,
+        providerId: plannerStage.provider.providerId,
+        model: plannerStage.model,
+        prompt: plannerPrompt,
+        toolNames: ToolRegistry.getAll().map((t) => t.name),
+        callProviderJsonMode: (prompt, jsonSchema, signal) =>
+          plannerStage.provider.requestJson(prompt, jsonSchema, signal),
+        abortSignal: input.abortSignal,
+      });
+      debugLog('ORCHESTRATOR_PLAN', `planner decided ${decision.action}`, {
+        operationId: input.operationId,
+        sessionId: input.sessionId,
+        plannerCall: plannerCalls,
+        trajectoryPhase: trajectory.phase,
+      });
+  
+      if (decision.action === 'answer' || decision.action === 'ask_clarification') {
+        return await finish(
+          decision.action === 'answer' ? decision.reasonCode : 'ask_clarification',
+          decision.action === 'ask_clarification' ? decision : undefined,
+        );
+      }
+      if (toolCalls >= input.tier.toolCap) return await finish('tool_cap_reached');
+      toolCalls += 1;
+  
+      // D-63: the executing phase precedes the executor stage — tool calls
+      // default to the turn's modelTier (D-55). Phase 3 registers zero tools →
+      // every run_tool surfaces a typed TOOL_REJECTED result and the loop
+      // continues (D-46).
+      trajectory.enter('executing');
+      const executorPrompt = stagePrompt('executor');
+      const executorStage = await resolveStageProvider(input.tier.modelTier, executorPrompt);
+      if (executorStage === null) return configurationRequiredOutcome();
+      const result = await ExecutorService.execute({
+        operationId: input.operationId,
+        toolName: decision.toolName,
+        inputData: decision.input,
+        systemPrompt: executorPrompt,
+        provider: executorStage.provider.providerId,
+        abortSignal: input.abortSignal,
+      });
+      toolResults.push(result);
+      // AGT-04 (04-03): deterministic replan/terminal policy — at most one
+      // replan per failed tool. Stable failure identity = §21.6 code when
+      // present (e.g. TOOL_REJECTED), the error string ONLY as fallback
+      // (Pitfall 7 — never key on the raw message alone when a code exists;
+      // T-4-08: a provider rewording the message cannot reset the identity).
+      const identity = result.code ?? (result.error ?? 'ERROR');
+      if (!result.ok) {
+        if (failureIdentities.get(result.toolName) === identity) {
+          // REPEATED IDENTICAL FAILURE → terminal 'failed' (AGT-04; T-4-09 —
+          // never a silent retry loop).
+          debugLog('ORCHESTRATOR_TERMINAL_REPEATED_FAILURE', `repeated identical failure for ${result.toolName} — terminal failed`, {
+            operationId: input.operationId,
+            toolName: result.toolName,
+            identity,
+            plannerCalls,
+            toolCalls,
+          });
+          return await finish('repeated_failure');
+        }
+        if (replannedTools.has(result.toolName)) {
+          // REPLAN BUDGET CONSUMED (≤1 per tool) → terminal 'failed' (AGT-04).
+          debugLog('ORCHESTRATOR_TERMINAL_REPLAN_EXHAUSTED', `replan budget consumed for ${result.toolName} — terminal failed`, {
+            operationId: input.operationId,
+            toolName: result.toolName,
+            identity,
+            plannerCalls,
+            toolCalls,
+          });
+          return await finish('replan_exhausted');
+        }
+        // FIRST failure for this tool: record the stable identity, consume the
+        // tool's single replan budget, enter the 'replanning' trajectory phase
+        // (validated against the closed table, AGT-01) — the NEXT planner call
+        // IS the single replan (§1.6.1 layer 2 of 3; the loop-top plannerCap
+        // check stays authoritative).
+        failureIdentities.set(result.toolName, identity);
+        replannedTools.add(result.toolName);
+        trajectory.enter('replanning');
+        debugLog('ORCHESTRATOR_REPLAN', `tool ${result.toolName} failed — one replan scheduled`, {
+          operationId: input.operationId,
+          toolName: result.toolName,
+          identity,
+          plannerCalls,
+          toolCalls,
+        });
+        continue;
+      }
+      debugLog('ORCHESTRATOR_TOOL', `tool ${decision.toolName} → ${result.ok ? 'ok' : (result.code ?? 'failed')}`, {
+        operationId: input.operationId,
+        sessionId: input.sessionId,
+        toolCall: toolCalls,
+        trajectoryPhase: trajectory.phase,
+      });
+    }
+  } catch (err) {
+    // Q1/A4 (04-04): the single conversion point — only the caller-signal
+    // abort converts to the returned outcome. Every other error (ProviderError
+    // from the CR-06 renderer path, routed provider errors, internal failures)
+    // rethrows unchanged — an internal failure can never masquerade as a user
+    // abort (T-4-11).
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      debugLog('ORCHESTRATOR_ABORTED', 'caller abort — returning aborted outcome; partial dropped (D-45)', {
+        operationId: input.operationId,
         plannerCalls,
         toolCalls,
       });
-      continue;
+      // D-63: the terminal 'aborted' phase — legal from every non-terminal row
+      // of the closed table (AGT-01): a pre-aborted signal exits
+      // 'assembling-context' (the amended [planning, aborted] row), a
+      // renderer abort exits 'rendering' ([completed, failed, aborted]), and
+      // the mid-loop aborts exit 'planning'/'executing'/'replanning'/'verifying'.
+      trajectory.enter('aborted');
+      return {
+        operationId: input.operationId,
+        // C.1 status 'aborted' — the status value doubles as the descriptive
+        // reasonCode (D-38: no invented §21.6 code; 'aborted' is the C.1
+        // status, not an error code).
+        status: 'aborted',
+        reasonCode: 'aborted',
+        evidence: [],
+        plannerCalls,
+        toolCalls,
+        // D-45: the partial assistant message is dropped — streamedText is
+        // never carried out of an aborted turn.
+        streamedText: '',
+        toolResults,
+        trajectory: trajectory.snapshot(plannerCalls, toolCalls),
+      };
     }
-    debugLog('ORCHESTRATOR_TOOL', `tool ${decision.toolName} → ${result.ok ? 'ok' : (result.code ?? 'failed')}`, {
-      operationId: input.operationId,
-      sessionId: input.sessionId,
-      toolCall: toolCalls,
-      trajectoryPhase: trajectory.phase,
-    });
+    throw err;
   }
 }
