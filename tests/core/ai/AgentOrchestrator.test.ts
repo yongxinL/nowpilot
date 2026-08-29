@@ -7,6 +7,8 @@ import {
   type AgentTier,
 } from '../../../src/core/ai/AgentOrchestrator';
 import { PlannerService } from '../../../src/core/ai/PlannerService';
+import { ExecutorService } from '../../../src/core/ai/ExecutorService';
+import type { Verifier } from '../../../src/core/ai/OutcomeVerifier';
 import { ProviderRegistry, __test__ as registryTest } from '../../../src/core/ai/ProviderRegistry';
 import { __test__ as routerTest } from '../../../src/core/ai/ProviderRouter';
 import { useUserPreferencesStore } from '../../../src/core/ai/UserPreferences';
@@ -404,5 +406,91 @@ describe('(h) configuration-required (D-54a) — unresolved tier → typed outco
     // A3 mapping (04-01 Task 2): no provider request started → status
     // 'failed' is the honest terminal (never 'completed').
     expect(output.status).toBe('failed');
+  });
+});
+
+describe('(j) completion guard (D-65/AGT-02) — ok side-effecting result without evidence is never \'completed\'', () => {
+  it('ok side-effecting result without evidence → status \'partial\' / \'missing_evidence\', never \'completed\' (R-8 hole closed)', async () => {
+    const fixture = answerFixture();
+    await seedEnv({ provider: fixture });
+    // D-67: inject the side-effecting result via the ExecutorService mock —
+    // NO fake tool registration. NOTE: no `evidence` field on the result —
+    // that is the R-8 hole the guard must close.
+    const executeSpy = vi
+      .spyOn(ExecutorService, 'execute')
+      .mockResolvedValue({ toolName: 'side_effect_tool', ok: true, data: null, error: null, durationMs: 5 });
+    // A fake verifier for 'side_effect_tool' via the input.verifiers seam —
+    // the verifier itself PASSES, proving the guard fires independent of the
+    // verifier outcome (D-65: the override wins over buildOutcome's status).
+    const fakeVerifier: Verifier = {
+      postconditionId: 'fake-postcondition',
+      verify: async () => ({ ok: true }),
+    };
+    // The zero-tool schema cannot emit run_tool, so the planner is scripted
+    // (D-46 pattern): run_tool 'side_effect_tool' then answer.
+    vi.spyOn(PlannerService, 'plan')
+      .mockResolvedValueOnce({ action: 'run_tool', toolName: 'side_effect_tool', input: {} })
+      .mockResolvedValueOnce({ action: 'answer', reasonCode: 'direct_answer' });
+
+    const output = await runAgentTurn(
+      baseInput({ verifiers: { side_effect_tool: fakeVerifier } }),
+    );
+
+    // AGT-02 proof: never 'completed' while a side-effecting result lacks
+    // evidence — the guard forces 'partial' with a descriptive reasonCode.
+    expect(output.status).toBe('partial');
+    expect(output.reasonCode).toBe('missing_evidence');
+    // buildOutcome still ran the registered verifier and produced evidence —
+    // the guard OVERRODE the resulting status (D-65 ordering).
+    expect(output.evidence).toHaveLength(1);
+    expect(output.evidence[0]?.postconditionId).toBe('fake-postcondition');
+    expect(output.evidence[0]?.ok).toBe(true);
+    // The rest of the outcome is untouched by the downgrade.
+    expect(output.operationId).toBe('op-orchestrator');
+    expect(output.toolResults).toHaveLength(1);
+    expect(output.toolResults[0]?.toolName).toBe('side_effect_tool');
+    // The render still ran — only the status is downgraded, not the text.
+    expect(output.streamedText).toBe(ANSWER_TEXT);
+    expect(executeSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('ok side-effecting result WITH evidence → status \'completed\' (guard vacuous when evidence is present)', async () => {
+    const fixture = answerFixture();
+    await seedEnv({ provider: fixture });
+    const executeSpy = vi
+      .spyOn(ExecutorService, 'execute')
+      .mockResolvedValue({
+        toolName: 'side_effect_tool',
+        ok: true,
+        data: null,
+        error: null,
+        durationMs: 5,
+        evidence: {
+          toolName: 'side_effect_tool',
+          operationId: 'op-orchestrator',
+          postconditionId: 'fake-postcondition',
+          ok: true,
+          verifiedAt: Date.now(),
+        },
+      });
+    const fakeVerifier: Verifier = {
+      postconditionId: 'fake-postcondition',
+      verify: async () => ({ ok: true }),
+    };
+    vi.spyOn(PlannerService, 'plan')
+      .mockResolvedValueOnce({ action: 'run_tool', toolName: 'side_effect_tool', input: {} })
+      .mockResolvedValueOnce({ action: 'answer', reasonCode: 'direct_answer' });
+
+    const output = await runAgentTurn(
+      baseInput({ verifiers: { side_effect_tool: fakeVerifier } }),
+    );
+
+    // Control: with the evidence seam filled, the guard is vacuous (D-65) —
+    // the outcome is the honest 'completed'.
+    expect(output.status).toBe('completed');
+    expect(output.reasonCode).toBe('direct_answer');
+    expect(output.evidence).toHaveLength(1);
+    expect(output.streamedText).toBe(ANSWER_TEXT);
+    expect(executeSpy).toHaveBeenCalledTimes(1);
   });
 });
