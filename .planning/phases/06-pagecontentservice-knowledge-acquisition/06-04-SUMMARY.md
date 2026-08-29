@@ -145,7 +145,7 @@ Each task was committed atomically with TDD discipline (RED test commit → GREE
 2. **Task 2: ContentScriptHost serializer + SPANavigationWatcher (corrected WXT event) + PageLiveContextPayload**
    - `10e3034` (feat): content serializer shell + SPA navigation watcher + live context payload
 3. **Task 3: PageContextBridge + core.content.ts delegation + the three content tests**
-   - `56d9f2b` (test): add failing content-shell tests — serializer, watcher, bridge
+   - `90061b9` (test): add failing content-shell tests — serializer, watcher, bridge
    - `dd38f3a` (feat): PageContextBridge envelope producer/consumer + entry shell delegation
 
 **Plan metadata:** pending (docs commit after SUMMARY)
@@ -239,7 +239,7 @@ None - no external service configuration required.
 ## Self-Check: PASSED
 
 - [x] All 8 plan source/test files exist (PageIndexBuilder.ts, ContentScriptHost.ts, SPANavigationWatcher.ts, PageContextBridge.ts + 4 test files; RuntimeEnvelope.ts + core.content.ts modified)
-- [x] All 6 plan commits present in git history: 22f1301 (test), 788c33c (feat), 10e3034 (feat), 56d9f2b (test), dd38f3a (feat)
+- [x] All 6 plan commits present in git history: 22f1301 (test), 788c33c (feat), 10e3034 (feat), 90061b9 (test), dd38f3a (feat), 2936ce1 (docs)
 - [x] `npx vitest run tests/core/extraction/PageIndexBuilder.test.ts tests/core/content/*.test.ts` → 21/21 pass
 - [x] `pnpm run lint` (tsc --noEmit) strict-clean
 - [x] Grep guards: zero NP-STRICT in src/core/content + entrypoints/content; dead `document.addEventListener('wxt:locationchange'` removed from core.content.ts; zero storage imports in PageIndexBuilder; `compressionApplied: 'topk'` present; content modules import only envelope + siblings
