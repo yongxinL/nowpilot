@@ -30,9 +30,13 @@ import { OPENAI_ANSWER_STREAM, OPENAI_REPAIR_SUCCESS_STREAM } from './fixtures/o
  * vi.spyOn ONLY for the run_tool case groups (b)/(d)/(g) — the production
  * zero-tool schema (D-46) makes a real planner unable to emit run_tool.
  *
- * Case groups: (a) happy path · (b) planner_cap_reached · (c) ask_clarification
- * · (d) TOOL_REJECTED · (e) abort · (f) persist seam (D-45) · (g) persona
- * consistency (RICH-R-09) · (h) configuration-required (D-54a).
+ * Case groups: (a) happy path · (b) planner_cap_reached (04-03 re-script:
+ * distinct tools per iteration — Pitfall 2) · (c) ask_clarification · (d)
+ * TOOL_REJECTED · (e) abort · (f) persist seam (D-45) · (g) persona
+ * consistency (RICH-R-09) · (h) configuration-required (D-54a) · (j)
+ * completion guard (D-65/AGT-02) · (k) repeated-identity terminal (AGT-04)
+ * · (l) one-replan-then-completed (AGT-04) · (m) replan-budget-consumed
+ * terminal (AGT-04).
  */
 
 const storageMap = (globalThis as any).__chromeStorageMap as Map<string, string>;
@@ -176,26 +180,31 @@ describe('(a) happy path — answer decision → AgentTurnOutput from the render
   });
 });
 
-describe('(b) planner_cap_reached — §1.4 cap enforcement (T-3-18)', () => {
-  it('a run_tool loop exhausts plannerCap → reasonCode planner_cap_reached', async () => {
+describe('(b) planner_cap_reached — §1.4 cap enforcement (T-3-18 / AGT-03)', () => {
+  it('distinct failed tools legitimately exhaust plannerCap → status partial, reasonCode cap_exhausted', async () => {
     const fixture = answerFixture();
     await seedEnv({ provider: fixture });
-    // "Fixture planner" — the production zero-tool schema cannot emit run_tool
-    // (D-46), so the run_tool loop is scripted on the real PlannerService module.
+    // 04-03 re-script (Pitfall 2): under AGT-04 a repeated same-tool failure
+    // terminates 'failed' BEFORE the planner cap — so the cap test uses
+    // DISTINCT tool names per iteration. Each fresh tool has its own replan
+    // budget, and the loop legitimately exhausts plannerCap.
     const planSpy = vi
       .spyOn(PlannerService, 'plan')
-      .mockResolvedValue({ action: 'run_tool', toolName: 'any_tool', input: {} });
+      .mockResolvedValueOnce({ action: 'run_tool', toolName: 'search_kb', input: {} })
+      .mockResolvedValueOnce({ action: 'run_tool', toolName: 'write_note', input: {} })
+      .mockResolvedValueOnce({ action: 'run_tool', toolName: 'create_incident', input: {} });
 
     const output = await runAgentTurn(
       baseInput({ tier: { plannerCap: 2, toolCap: 3, modelTier: 'fast' } }),
     );
 
-    expect(output.reasonCode).toBe('planner_cap_reached');
-    // AGT-03 (04-01 Task 2): cap exhaustion → status 'partial', never a
-    // successful status. The Phase-3 reasonCode literal above is PRESERVED
-    // this plan (the O.2 'cap_exhausted' re-script of case (b) is plan 04-03).
+    // AGT-03 (04-03 unification): cap exhaustion reports the O.2 reasonCode
+    // 'cap_exhausted' — the Phase-3 literal is gone.
+    expect(output.reasonCode).toBe('cap_exhausted');
+    // Cap exhaustion → status 'partial', never a successful status (AGT-03).
     expect(output.status).toBe('partial');
-    // Both planner calls produced a rejected tool call before the cap hit.
+    // Each planner call produced a rejected tool call before the cap hit —
+    // toolResults length equals the plannerCap value.
     expect(output.toolResults).toHaveLength(2);
     for (const result of output.toolResults) {
       expect(result.code).toBe('TOOL_REJECTED');
@@ -492,5 +501,119 @@ describe('(j) completion guard (D-65/AGT-02) — ok side-effecting result withou
     expect(output.evidence).toHaveLength(1);
     expect(output.streamedText).toBe(ANSWER_TEXT);
     expect(executeSpy).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('(k) REPEATED IDENTICAL FAILURE → terminal failed (AGT-04)', () => {
+  it('the same tool fails with the same stable identity twice → status failed / repeated_failure, never a retry loop', async () => {
+    const fixture = answerFixture();
+    await seedEnv({ provider: fixture });
+    // D-67: inject the failing result via the ExecutorService mock — NO fake
+    // tool registration. Same identity both times (TOOL_REJECTED code + same
+    // toolName) → the second failure is the repeated identical failure.
+    const executeSpy = vi
+      .spyOn(ExecutorService, 'execute')
+      .mockResolvedValue({
+        toolName: 'same_tool',
+        ok: false,
+        data: null,
+        error: 'boom',
+        code: 'TOOL_REJECTED',
+        durationMs: 5,
+      });
+    vi.spyOn(PlannerService, 'plan').mockResolvedValue({
+      action: 'run_tool',
+      toolName: 'same_tool',
+      input: {},
+    });
+
+    const output = await runAgentTurn(baseInput());
+
+    expect(output.status).toBe('failed');
+    expect(output.reasonCode).toBe('repeated_failure');
+    // One replan was the budget; the second identical failure terminates
+    // BEFORE the planner cap (3) is reached.
+    expect(output.plannerCalls).toBe(2);
+    expect(output.toolCalls).toBe(2);
+    expect(output.toolResults).toHaveLength(2);
+    expect(output.trajectory.phase).toBe('failed');
+    expect(executeSpy).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('(l) ONE REPLAN THEN COMPLETED (AGT-04)', () => {
+  it('a tool fails once, the single replan answers → status completed, counters prove the replan', async () => {
+    const fixture = answerFixture();
+    await seedEnv({ provider: fixture });
+    // D-67 injection: reject 'fail_tool' once, then the second planner call
+    // answers (the single replan). NO fake tool registration.
+    const executeSpy = vi
+      .spyOn(ExecutorService, 'execute')
+      .mockResolvedValue({
+        toolName: 'fail_tool',
+        ok: false,
+        data: null,
+        error: 'boom',
+        code: 'TOOL_REJECTED',
+        durationMs: 5,
+      });
+    vi.spyOn(PlannerService, 'plan')
+      .mockResolvedValueOnce({ action: 'run_tool', toolName: 'fail_tool', input: {} })
+      .mockResolvedValueOnce({ action: 'answer', reasonCode: 'direct_answer' });
+
+    const output = await runAgentTurn(baseInput());
+
+    expect(output.status).toBe('completed');
+    expect(output.reasonCode).toBe('direct_answer');
+    // The replan IS the second planner call (AGT-04: ≤1 replan per tool); the
+    // single failed execution is never retried by the executor.
+    expect(output.plannerCalls).toBe(2);
+    expect(output.toolCalls).toBe(1);
+    expect(output.toolResults).toHaveLength(1);
+    expect(output.toolResults[0]?.code).toBe('TOOL_REJECTED');
+    // The outcome's trajectory snapshot confirms the completed terminal.
+    expect(output.trajectory.phase).toBe('completed');
+    expect(executeSpy).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('(m) REPLAN BUDGET CONSUMED → terminal failed (AGT-04)', () => {
+  it('a second failure with a DIFFERENT identity for the same tool → status failed / replan_exhausted', async () => {
+    const fixture = answerFixture();
+    await seedEnv({ provider: fixture });
+    // D-67 injection: DIFFERENT stable signals for the same tool — the
+    // second failure is NOT repeated-identical (identity differs), but the
+    // single replan budget IS already consumed → replan_exhausted terminal.
+    const executeSpy = vi
+      .spyOn(ExecutorService, 'execute')
+      .mockResolvedValueOnce({
+        toolName: 'same_tool',
+        ok: false,
+        data: null,
+        error: 'boom',
+        code: 'TOOL_REJECTED',
+        durationMs: 5,
+      })
+      .mockResolvedValueOnce({
+        toolName: 'same_tool',
+        ok: false,
+        data: null,
+        error: 'rate limited',
+        code: 'RATE_LIMITED',
+        durationMs: 5,
+      });
+    vi.spyOn(PlannerService, 'plan')
+      .mockResolvedValueOnce({ action: 'run_tool', toolName: 'same_tool', input: {} })
+      .mockResolvedValueOnce({ action: 'run_tool', toolName: 'same_tool', input: {} })
+      .mockResolvedValueOnce({ action: 'answer', reasonCode: 'direct_answer' });
+
+    const output = await runAgentTurn(baseInput());
+
+    expect(output.status).toBe('failed');
+    expect(output.reasonCode).toBe('replan_exhausted');
+    expect(output.toolCalls).toBe(2);
+    expect(output.toolResults).toHaveLength(2);
+    expect(output.trajectory.phase).toBe('failed');
+    expect(executeSpy).toHaveBeenCalledTimes(2);
   });
 });
