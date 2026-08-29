@@ -282,13 +282,19 @@ export async function runAgentTurn(input: AgentTurnInput): Promise<AgentTurnOutc
       trajectory.enter('planning');
     }
 
-    // AGT-02/03: the honest status/evidence are computed by buildOutcome over
-    // the turn's tool results + the effective verifier set. The loop's
-    // Phase-3 reasonCode literal is PRESERVED on the outcome (AGT-03; the O.2
-    // 'cap_exhausted' reasonCode unification is deferred to 04-03's re-script
-    // of case (b)), while the computed status ('partial' on capHit) and the
-    // evidence array are taken from buildOutcome verbatim.
+    // AGT-02/03/04: the honest status/evidence are computed by buildOutcome
+    // over the turn's tool results + the effective verifier set. The loop's
+    // Phase-3 cap literals ('planner_cap_reached'/'tool_cap_reached') are
+    // unified to the O.2 reasonCode 'cap_exhausted' here (AGT-03; the
+    // 04-01/04-02 preservation comment is now moot — case (b) re-scripts to
+    // 'cap_exhausted' in 04-03), while the computed status ('partial' on
+    // capHit) and the evidence array are taken from buildOutcome verbatim.
+    // AGT-04 policy terminals ('repeated_failure'/'replan_exhausted') are
+    // FORCED to 'failed' below — never a silent success even though
+    // buildOutcome (zero registered verifiers, D-64) would compute
+    // 'completed'; capHit stays the ONLY path to 'partial'.
     const capHit = reasonCode === 'planner_cap_reached' || reasonCode === 'tool_cap_reached';
+    const policyTerminal = reasonCode === 'repeated_failure' || reasonCode === 'replan_exhausted';
     const built = await buildOutcome(input.operationId, toolResults, effectiveVerifiers, {
       plannerCalls,
       toolCalls,
@@ -356,18 +362,30 @@ export async function runAgentTurn(input: AgentTurnInput): Promise<AgentTurnOutc
       );
     }
 
+    // AGT-04 (04-03): the effective outcome status — the policy terminals
+    // ('repeated_failure'/'replan_exhausted') are FORCED 'failed' (never a
+    // silent success, T-4-09); capHit stays the ONLY path to 'partial'
+    // (AGT-03); otherwise buildOutcome's honest status stands. The D-65
+    // guard downgrade remains the unconditional final word (04-02 ordering).
+    const effectiveStatus: AgentTurnOutcome['status'] = guardMissing
+      ? 'partial'
+      : policyTerminal
+        ? 'failed'
+        : built.status;
+    // The cap literals unify to the O.2 reasonCode 'cap_exhausted' (AGT-03).
+    const effectiveReasonCode = guardMissing ? 'missing_evidence' : capHit ? 'cap_exhausted' : reasonCode;
+
     // D-61: the terminal trajectory phase matches the outcome status — the
     // legal edges out of 'rendering' are exactly completed/failed/aborted.
-    trajectory.enter(built.status === 'failed' ? 'failed' : 'completed');
+    trajectory.enter(effectiveStatus === 'failed' ? 'failed' : 'completed');
 
     const output: AgentTurnOutcome = {
       operationId: input.operationId,
-      // D-65: the guard's downgrade is the final word — a side-effecting
-      // result without evidence forces 'partial'/'missing_evidence', never a
-      // clean 'completed' (AGT-02 / risk R-8). Unconditional override of
-      // buildOutcome's status (research A5 ordering).
-      status: guardMissing ? 'partial' : built.status,
-      reasonCode: guardMissing ? 'missing_evidence' : reasonCode,
+      // AGT-04/03: the effective status above IS the final word — the policy
+      // terminals force 'failed', the cap forces 'partial'/'cap_exhausted',
+      // the guard downgrade wins when it fires (D-65 ordering).
+      status: effectiveStatus,
+      reasonCode: effectiveReasonCode,
       evidence: built.evidence,
       plannerCalls,
       toolCalls,
@@ -412,14 +430,25 @@ export async function runAgentTurn(input: AgentTurnInput): Promise<AgentTurnOutc
     };
   }
 
+  // AGT-04 (04-03): per-turn replan policy state — failureIdentities keys
+  // toolName → the stable failure identity already seen for that tool;
+  // replannedTools tracks which tools already consumed their single replan
+  // budget (≤1 replan per failed tool, T-4-07). Loop-scoped: one turn's
+  // replan budget never leaks into the next turn.
+  const failureIdentities = new Map<string, string>();
+  const replannedTools = new Set<string>();
+
   while (true) {
     if (input.abortSignal.aborted) throw new DOMException('aborted', 'AbortError');
     if (plannerCalls >= input.tier.plannerCap) return await finish('planner_cap_reached');
     // D-63: after a tool execution the machine cycles through 'replanning' —
     // executing → replanning is the ONLY forward edge out of 'executing' in
     // the closed table, and the next planner call re-plans with the tool
-    // result in context (AGT-04's repeated-identity refinement is plan 04-03).
-    if (toolResults.length > 0) trajectory.enter('replanning');
+    // result in context. AGT-04 (04-03): the policy enters 'replanning'
+    // itself on a first failure (and continues), so this loop-top hook only
+    // fires for successful tool results — never a double entry
+    // ('replanning' → 'replanning' is illegal, AGT-01).
+    if (toolResults.length > 0 && trajectory.phase !== 'replanning') trajectory.enter('replanning');
     plannerCalls += 1;
 
     // D-63: the planning phase precedes the planner stage (the planner is
@@ -471,6 +500,53 @@ export async function runAgentTurn(input: AgentTurnInput): Promise<AgentTurnOutc
       abortSignal: input.abortSignal,
     });
     toolResults.push(result);
+    // AGT-04 (04-03): deterministic replan/terminal policy — at most one
+    // replan per failed tool. Stable failure identity = §21.6 code when
+    // present (e.g. TOOL_REJECTED), the error string ONLY as fallback
+    // (Pitfall 7 — never key on the raw message alone when a code exists;
+    // T-4-08: a provider rewording the message cannot reset the identity).
+    const identity = result.code ?? (result.error ?? 'ERROR');
+    if (!result.ok) {
+      if (failureIdentities.get(result.toolName) === identity) {
+        // REPEATED IDENTICAL FAILURE → terminal 'failed' (AGT-04; T-4-09 —
+        // never a silent retry loop).
+        debugLog('ORCHESTRATOR_TERMINAL_REPEATED_FAILURE', `repeated identical failure for ${result.toolName} — terminal failed`, {
+          operationId: input.operationId,
+          toolName: result.toolName,
+          identity,
+          plannerCalls,
+          toolCalls,
+        });
+        return await finish('repeated_failure');
+      }
+      if (replannedTools.has(result.toolName)) {
+        // REPLAN BUDGET CONSUMED (≤1 per tool) → terminal 'failed' (AGT-04).
+        debugLog('ORCHESTRATOR_TERMINAL_REPLAN_EXHAUSTED', `replan budget consumed for ${result.toolName} — terminal failed`, {
+          operationId: input.operationId,
+          toolName: result.toolName,
+          identity,
+          plannerCalls,
+          toolCalls,
+        });
+        return await finish('replan_exhausted');
+      }
+      // FIRST failure for this tool: record the stable identity, consume the
+      // tool's single replan budget, enter the 'replanning' trajectory phase
+      // (validated against the closed table, AGT-01) — the NEXT planner call
+      // IS the single replan (§1.6.1 layer 2 of 3; the loop-top plannerCap
+      // check stays authoritative).
+      failureIdentities.set(result.toolName, identity);
+      replannedTools.add(result.toolName);
+      trajectory.enter('replanning');
+      debugLog('ORCHESTRATOR_REPLAN', `tool ${result.toolName} failed — one replan scheduled`, {
+        operationId: input.operationId,
+        toolName: result.toolName,
+        identity,
+        plannerCalls,
+        toolCalls,
+      });
+      continue;
+    }
     debugLog('ORCHESTRATOR_TOOL', `tool ${decision.toolName} → ${result.ok ? 'ok' : (result.code ?? 'failed')}`, {
       operationId: input.operationId,
       sessionId: input.sessionId,
