@@ -4,9 +4,9 @@ milestone: v0.1
 current_phase: 6
 current_phase_name: PageContentService (Knowledge Acquisition)
 status: planning
-stopped_at: Phase 6 context gathered
-last_updated: "2026-08-29T12:06:39.418Z"
-state_head: afc4ce1e00d20a9fdc55f0dff67b797592efab1c
+stopped_at: Phase 6 UI-SPEC approved
+last_updated: "2026-08-29T12:14:56.419Z"
+state_head: 7c6c0a60eaf39443da08c31b63011ac5f5e7fd0b
 progress:
   total_phases: 19
   completed_phases: 4
@@ -121,9 +121,9 @@ All inherited decisions are **— Pending** (awaiting first implementation to va
 
 ## Session Continuity
 
-**Last session:** 2026-08-29T12:06:39.110Z
-**Stopped at:** Phase 6 context gathered
-**Resume file:** .planning/phases/06-pagecontentservice-knowledge-acquisition/06-CONTEXT.md
+**Last session:** 2026-08-29T12:14:56.033Z
+**Stopped at:** Phase 6 UI-SPEC approved
+**Resume file:** .planning/phases/06-pagecontentservice-knowledge-acquisition/06-UI-SPEC.md
 
 - **Last action:** Phase 3 completed end-to-end: AI runtime + persona seed (Planner/Executor/Renderer pipeline, StreamAdapter 4-wire conformance, ProviderRegistry/TierResolver/ProviderRouter, AgentOrchestrator, chat integration). UAT 29/29 pass (4 live-provider + state-machine checkpoints), security audit 25 threats closed (threats_open 0), verification canonicalized to passed. Also fixed the COVERAGE.md matrix format that blocked the verify:pre gate.
 - **Last updated:** 2026-08-28 after Phase 3 completion.
