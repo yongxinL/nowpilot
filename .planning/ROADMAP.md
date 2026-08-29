@@ -203,6 +203,24 @@ Plans:
 
 **Verification gate:** `pnpm run verify:phase-6` (§24).
 **Notes:** SPIKE-P6-01 (panel-side Detached-doc viability) → ADR-P6-01 (`.planning/adr/`).
+**Plans:** 5 plans
+Plans:
+**Wave 1**
+
+- [ ] 06-01-PLAN.md — TRACER: extraction spine — deps install (defuddle human-verify gate) + canonical types (PageContext supersession, apcLite, strategy contract) + DefuddleStrategy/PageContentSerializer/PageContentService proven by the §18 tests (D-79..D-84/D-90/D-91; SPIKE-P6-01 evidence)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 06-02-PLAN.md — Actionable path: AxDomWalker + ApcLiteStrategy + tests (D-80/D-86, password omission)
+- [ ] 06-03-PLAN.md — PageContentCache §26.4a lifecycle + cache lifecycle tests (D-87/D-88/D-89)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 06-04-PLAN.md — PageIndexBuilder (ephemeral MiniSearch) + content-script shells (ContentScriptHost/SPANavigationWatcher/PageContextBridge) + core.content.ts delegation (D-84/D-85/D-87; RESEARCH correction 2)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 06-05-PLAN.md — Isolation gate (no-content-script-ui) + verify:phase-6 re-point/phase-4a reconcile + ADR-P6-01 flip to Accepted (D-79/D-92)
 
 ### Phase 7: Trust-Aware Context and Receipts
 
@@ -434,7 +452,7 @@ Plans:
 | 3. Cost-Effective AI Runtime (+ Persona seed) | 7/7 | Complete    | 2026-08-29 |
 | 4. Agent Reliability and Evidence | 4/4 | Complete    | 2026-08-29 |
 | 5. Context-Adaptive Execution | 2/2 | Complete    | 2026-08-29 |
-| 6. PageContentService (Knowledge Acquisition) | 0/3 | Not started | — |
+| 6. PageContentService (Knowledge Acquisition) | 0/5 | Not started | — |
 | 7. Trust-Aware Context and Receipts | 0/2 | Not started | — |
 | 8. Knowledge Base (Memory + MiniSearch + Notes) | 0/3 | Not started | — |
 | 9. LLM-Wiki & Filesystem Sync | 0/4 | Not started | — |
