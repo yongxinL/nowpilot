@@ -280,6 +280,15 @@ export async function runAgentTurn(input: AgentTurnInput): Promise<AgentTurnOutc
       trajectory.enter('verifying');
     } else if (trajectory.phase === 'assembling-context') {
       trajectory.enter('planning');
+    } else if (trajectory.phase === 'replanning') {
+      // AGT-04 (04-03): the loop-top cap check can fire while the machine is
+      // parked in 'replanning' — a first failure just scheduled the replan
+      // (policy continue), and the replan's planner call never happened
+      // because the §1.4 plannerCap check fires first. 'replanning' →
+      // 'planning' is the only legal forward edge into the render (closed
+      // table, AGT-01); the cap outcome (partial/cap_exhausted) is still
+      // built below.
+      trajectory.enter('planning');
     }
 
     // AGT-02/03/04: the honest status/evidence are computed by buildOutcome
