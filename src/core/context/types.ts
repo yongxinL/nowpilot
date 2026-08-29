@@ -1,32 +1,26 @@
 // Minimal input shapes for the Phase 5 context layer (plan 05-01, Task 1) +
 // the shared strategy types ContextOptimizer/ContextCompressor depend on.
 //
-// These are SUPERSESSION POINTS — minimal local declarations whose canonical
+// D-83 supersession (Phase 6): PageContext/TabContext/SNowCaseData/FileContext/
+// NoteContext now live canonically at src/core/content/PageContext.ts (spec
+// 4345) and are re-exported from here — ContextOptimizer's `import type {
+// PageContext } from './types'` keeps resolving (D-72 re-export precedent; no
+// parallel copy).
+//
+// Remaining SUPERSESSION POINTS — minimal local declarations whose canonical
 // homes live in later owning phases (the Phase-3 UserPreferences precedent at
 // src/core/ai/UserPreferences.ts:1-6):
-//   - PageContext     → Phase 6 replaces in place at src/core/content/PageContext.ts (spec 4345)
 //   - RetrievedMemory → Phase 8 replaces at src/core/memory/types.ts (spec 4571)
 //   - ToolSchemaRef   → Phase 18 owns the real registry type at src/core/ai/toolSchemas.ts (spec 4600)
 //
 // The shapes are declared verbatim from PRODUCT_SPEC_v0_1.md Appendix C
-// (spec 4346-4357, 4572-4578, 4601-4607). They are plain TS interfaces — the
-// owning phases ship the zod versions. Phase 5 is create-only (D-69): it must
-// not edit those owning files.
+// (spec 4572-4578, 4601-4607). They are plain TS interfaces — the owning
+// phases ship the zod versions. Phase 5 is create-only (D-69): it must not
+// edit those owning files.
 import type { PromptSection } from '../ai/types';
 
-/** PageContext supersession point — Phase 6 owns src/core/content/PageContext.ts (spec 4346-4357). */
-export interface PageContext {
-  url: string;
-  origin: string;
-  hostname: string;
-  title: string;
-  html?: string;
-  markdown?: string;
-  meta: Record<string, string>;
-  extractedAt: number;
-  addonId?: string;
-  addonFields?: Record<string, unknown>;
-}
+/** D-83: PageContext family re-exported from the canonical Phase-6 home (spec 4345-4391). */
+export type { PageContext, TabContext, SNowCaseData, FileContext, NoteContext } from '../content/PageContext';
 
 /** RetrievedMemory supersession point — Phase 8 owns src/core/memory/types.ts (spec 4572-4578). */
 export interface RetrievedMemory {
