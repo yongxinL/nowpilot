@@ -4,14 +4,14 @@ milestone: v0.1
 current_phase: 6
 current_phase_name: PageContentService (Knowledge Acquisition)
 status: executing
-stopped_at: Phase 6 UI-SPEC approved
-last_updated: "2026-08-29T13:22:15.830Z"
-state_head: 66cead81d9aafb7c5bfc26be680773f34c094901
+stopped_at: Completed 06-01-PLAN.md (extraction spine tracer)
+last_updated: "2026-08-29T21:40:12.980Z"
+state_head: 42e16f1a21643ad9850bb1ca06766b94f12b9c8e
 progress:
   total_phases: 19
   completed_phases: 4
   total_plans: 36
-  completed_plans: 30
+  completed_plans: 31
 milestone_name: milestone
 ---
 
@@ -28,7 +28,7 @@ milestone_name: milestone
 
 - **What this is:** Privacy-first Chrome MV3 AI assistant + personal knowledge platform for ServiceNow Support Engineers (Copilot + Obsidian + NotebookLM in one extension). See `.planning/PROJECT.md` §What This Is.
 - **Core value:** *AI chat and a personal knowledge base that work together, locally-first, so a support engineer can capture knowledge once and retrieve it with citations — without any data leaving their machine unless they opt in.*
-- **Current focus:** Phase 05 — Context-Adaptive Execution
+- **Current focus:** Phase 6 — PageContentService (Knowledge Acquisition)
 - **Companion files:**
   - `.planning/PROJECT.md` — project context, Active/Out of Scope, Key Decisions
   - `.planning/REQUIREMENTS.md` — 220 v1 requirements (spec-native IDs + `REQ-F*` for §9 gaps)
@@ -43,8 +43,8 @@ milestone_name: milestone
 
 ## Current Position
 
-- **Phase:** 6 (PageContentService (Knowledge Acquisition)) — READY TO EXECUTE
-- **Plan:** Not started
+- **Phase:** 6 (PageContentService (Knowledge Acquisition)) — EXECUTING
+- **Plan:** 2 of 5
 - **Status:** Ready to execute
 - **Progress:** 3/19 phases complete · 24/24 plans written · 220/220 requirements mapped ([██████████] 92% coverage).
 
@@ -74,6 +74,7 @@ milestone_name: milestone
 | Phase 02-storage-security-writejournal-workspace-persistence P03 | 3min | 2 tasks | 4 files |
 | Phase 02-storage-security-writejournal-workspace-persistence P06 | 6min | 2 tasks | 6 files |
 | Phase 2 P5 | 6 min | 2 tasks | 4 files |
+| Phase 06 P01 | 23m | 4 tasks | 13 files |
 
 ## Accumulated Context — Decisions (inherited from PROJECT.md Key Decisions)
 
@@ -121,9 +122,9 @@ All inherited decisions are **— Pending** (awaiting first implementation to va
 
 ## Session Continuity
 
-**Last session:** 2026-08-29T12:14:56.033Z
-**Stopped at:** Phase 6 UI-SPEC approved
-**Resume file:** .planning/phases/06-pagecontentservice-knowledge-acquisition/06-UI-SPEC.md
+**Last session:** 2026-08-29T21:40:12.572Z
+**Stopped at:** Completed 06-01-PLAN.md (extraction spine tracer)
+**Resume file:** None
 
 - **Last action:** Phase 3 completed end-to-end: AI runtime + persona seed (Planner/Executor/Renderer pipeline, StreamAdapter 4-wire conformance, ProviderRegistry/TierResolver/ProviderRouter, AgentOrchestrator, chat integration). UAT 29/29 pass (4 live-provider + state-machine checkpoints), security audit 25 threats closed (threats_open 0), verification canonicalized to passed. Also fixed the COVERAGE.md matrix format that blocked the verify:pre gate.
 - **Last updated:** 2026-08-28 after Phase 3 completion.
@@ -157,3 +158,8 @@ The workflow expects Phase 4 planning next. Run:
 - [Phase ?]: Adapter inlines the two update-workspace steps rather than calling the factory at setItem time — the factory exists for plan 02-07's boot recovery wiring
 - [Phase ?]: recoverJournal is operation-agnostic — caller owns isSupportedOperation gating + WRITE_JOURNAL_UNSUPPORTED_OP instrumentation; journal itself never throws on unsupported ops
 - [Phase ?]: Legacy-key lift via read → write → verify → delete inside getItem is one-time + idempotent (guarded by canonical-key read)
+- [Phase 6]: Phase 6 P01: Defuddle runs panel-side on detached DOMParser docs (default import from defuddle/full — spec 3721's named import fails TS2305; explicit useAsync:false since the option defaults TRUE in 0.19.x and would allow third-party API fetches — T-P6-05)
+- [Phase 6]: Phase 6 P01: D-83 supersession executed — PageContext/TabContext/SNowCaseData/FileContext/NoteContext are canonical at src/core/content/PageContext.ts (verbatim spec 4345-4391); src/core/context/types.ts re-exports them (D-72 precedent); zero NP-STRICT markers in all new Phase-6 modules
+- [Phase 6]: Phase 6 P01: Readability is provenance-only inside DefuddleStrategy (DEFUDDLE_LOW_CONFIDENCE_WORD_COUNT=50, below defuddle's internal 200-word auto-retry); no ReadabilityStrategy file; servicenow-api reserved-unregistered (D-80); StrategyInput gains two documented additive fields baseUrl? (spec 3726-3740) and truncated? (PageHtmlPayload flag propagation)
+- [Phase 6]: Phase 6 P01: PageContentService.extract uses a single AbortController (PAGE_EXTRACTION_TIMEOUT_MS=5_000 merged with caller signal — both abort paths classify as the typed CONTENT_EXTRACT_FAILED, D-91, Requester precedent); redaction seam lives inside extract() before the output leaves the service (D-90, RESEARCH Open Q4)
+- [Phase 6]: Phase 6 P01: SPIKE-P6-01 evidence produced — defuddle 0.19.3 runs the full UMD bundle under jsdom (A2) and does not throw on detached DOMParser docs with base-href (A1); defuddle logs internal DOMException for jsdom's nwsapi :has() selector but degrades gracefully (T-P6-08 disposition proven); ADR-P6-01 flip to Accepted recorded in 06-05
