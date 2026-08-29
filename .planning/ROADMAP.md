@@ -16,7 +16,7 @@
 - [x] **Phase 1: MV3/WXT Runtime + AntD Shells + Workspace Handoff** — AntD shells, RuntimeEnvelope, WorkspaceStore, Cmd+K palette shell, onboarding *(8/8 plans complete; verify:phase-1 green at 166 tests; see `.planning/VERIFICATION.md`)*
 - [x] **Phase 2: Storage, Security, WriteJournal, Workspace Persistence** — EncryptedStorage, IndexedDB, KeyVault, WriteJournal, AES-GCM secrets (completed 2026-08-24)
 - [x] **Phase 3: Cost-Effective AI Runtime (+ Persona seed)** — ProviderRouter, AgentOrchestrator, structured output, persona runtime foundation (completed 2026-08-29)
-- [ ] **Phase 4: Agent Reliability and Evidence** — Trajectory states, CompletionEvidence, AgentTurnOutcome, deterministic replan/terminal policy
+- [x] **Phase 4: Agent Reliability and Evidence** — Trajectory states, CompletionEvidence, AgentTurnOutcome, deterministic replan/terminal policy (completed 2026-08-29)
 - [ ] **Phase 5: Context-Adaptive Execution** — TokenBudget, ContextOptimizer, ContextCompressor, ContextProvenanceManifest
 - [ ] **Phase 6: PageContentService (Knowledge Acquisition)** — Layered Defuddle→Readability fallback, APC-lite structural walk, panel-side extraction
 - [ ] **Phase 7: Trust-Aware Context and Receipts** — ContextItem trust metadata, context receipt, six-layer injection defense, progressive skill disclosure
@@ -147,7 +147,7 @@ Plans:
   4. Repeated identical tool failure → terminal `partial`/`failed`; abort produces `aborted` (AGT-04).
 
 **Verification gate:** `pnpm run verify:phase-4` (§24).
-**Plans:** 4/4 plans executed
+**Plans:** 4/4 plans complete
 Plans:
 **Wave 1**
 
@@ -423,7 +423,7 @@ Plans:
 | 1. MV3/WXT Runtime + AntD Shells + Workspace Handoff | 0/8 | Planned | — |
 | 2. Storage, Security, WriteJournal, Workspace Persistence | 9/9 | Complete    | 2026-08-24 |
 | 3. Cost-Effective AI Runtime (+ Persona seed) | 7/7 | Complete    | 2026-08-29 |
-| 4. Agent Reliability and Evidence | 4/4 | In Progress|  |
+| 4. Agent Reliability and Evidence | 4/4 | Complete    | 2026-08-29 |
 | 5. Context-Adaptive Execution | 0/2 | Not started | — |
 | 6. PageContentService (Knowledge Acquisition) | 0/3 | Not started | — |
 | 7. Trust-Aware Context and Receipts | 0/2 | Not started | — |
