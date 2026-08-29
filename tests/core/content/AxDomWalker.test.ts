@@ -10,6 +10,7 @@
 // against document.baseURI) the ISOLATED-world walker depends on.
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 import { walkDom, isPasswordControl } from '@/core/content/AxDomWalker';
 import type { RawNode } from '@/core/content/AxDomWalker';
@@ -151,7 +152,9 @@ describe('AxDomWalker', () => {
   });
 
   it('imports nothing but type-only envelope/sibling modules — no zod, no panel-side extraction (Pitfall 8)', () => {
-    const source = readFileSync(new URL('../../../src/core/content/AxDomWalker.ts', import.meta.url), 'utf8');
+    // import.meta.url is not file:// under the jsdom transform — resolve
+    // against the vitest cwd (project root) instead.
+    const source = readFileSync(resolve(process.cwd(), 'src/core/content/AxDomWalker.ts'), 'utf8');
 
     expect(source).not.toMatch(/from\s+['"]zod['"]/);
     expect(source).not.toMatch(/from\s+['"]@\/core\/extraction/);
