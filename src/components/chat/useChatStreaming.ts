@@ -220,6 +220,18 @@ export function useChatStreaming() {
         persistTurn: (turn) => persistChatTurn(sessionId, operationId, turn),
       });
 
+      // Q1 (04-04): the caller-signal abort now RESOLVES with the returned
+      // 'aborted' outcome (the orchestrator's boundary catch converted it —
+      // AGT-04 DONE-when). The partial is dropped and nothing persisted (the
+      // orchestrator never invoked persistTurn on the aborted path, D-45); the
+      // stopped note was already appended synchronously by handleStopGenerating.
+      // This branch sits INSIDE the try, so the finally still clears
+      // np_active_stream and isGenerating. NOT a failure — no error toast.
+      if (output.status === 'aborted') {
+        setIsGenerating(false);
+        return;
+      }
+
       if (output.reasonCode === 'configuration_required') {
         // D-54a: no fast/balanced tier persisted → no provider request
         // started. Surface the configuration prompt.
@@ -251,10 +263,13 @@ export function useChatStreaming() {
       // question / configuration-required surfaces as its own state above).
       updateLastAssistantMessage('', '', true);
     } catch (err) {
-      // Abort (Stop button): the partial assistant message is DROPPED —
-      // nothing persisted (the orchestrator never invoked persistTurn on the
-      // aborted path). The stopped note is appended by handleStopGenerating
-      // synchronously; here we only make sure the generating state clears.
+      // Q1 (04-04): the PRIMARY abort path is the returned 'aborted' outcome
+      // branched above. This catch remains as a DEFENSIVE fallback for
+      // non-caller aborts that never reach the orchestrator's boundary catch
+      // (e.g. renderer-internal 'aborted' terminations) — the partial is
+      // DROPPED, nothing persisted. The stopped note is appended by
+      // handleStopGenerating synchronously; here we only make sure the
+      // generating state clears.
       if (err instanceof DOMException && err.name === 'AbortError') {
         setIsGenerating(false);
         return;

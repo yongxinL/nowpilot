@@ -32,11 +32,12 @@ import { OPENAI_ANSWER_STREAM, OPENAI_REPAIR_SUCCESS_STREAM } from './fixtures/o
  *
  * Case groups: (a) happy path · (b) planner_cap_reached (04-03 re-script:
  * distinct tools per iteration — Pitfall 2) · (c) ask_clarification · (d)
- * TOOL_REJECTED · (e) abort · (f) persist seam (D-45) · (g) persona
- * consistency (RICH-R-09) · (h) configuration-required (D-54a) · (j)
- * completion guard (D-65/AGT-02) · (k) repeated-identity terminal (AGT-04)
- * · (l) one-replan-then-completed (AGT-04) · (m) replan-budget-consumed
- * terminal (AGT-04).
+ * TOOL_REJECTED · (e) abort (04-04 rework: the caller-signal abort RESOLVES
+ * with status 'aborted' — Q1 returned-outcome contract, not a throw) · (f)
+ * persist seam (D-45) · (g) persona consistency (RICH-R-09) · (h)
+ * configuration-required (D-54a) · (j) completion guard (D-65/AGT-02) · (k)
+ * repeated-identity terminal (AGT-04) · (l) one-replan-then-completed
+ * (AGT-04) · (m) replan-budget-consumed terminal (AGT-04).
  */
 
 const storageMap = (globalThis as any).__chromeStorageMap as Map<string, string>;
@@ -264,21 +265,34 @@ describe('(d) TOOL_REJECTED — the typed rejection surfaces and the loop contin
   });
 });
 
-describe('(e) abort — AbortError propagates; persistTurn NOT invoked (D-45)', () => {
-  it('a pre-aborted signal throws AbortError at the loop-top check; nothing persisted', async () => {
+describe('(e) abort — the caller-signal abort RESOLVES with status \'aborted\'; persistTurn NOT invoked (D-45)', () => {
+  it('a pre-aborted signal → runAgentTurn resolves the aborted outcome; nothing persisted', async () => {
     const fixture = answerFixture();
     await seedEnv({ provider: fixture });
     const controller = new AbortController();
     controller.abort();
     const persistTurn = vi.fn();
 
-    await expect(
-      runAgentTurn(baseInput({ abortSignal: controller.signal, persistTurn })),
-    ).rejects.toThrow(DOMException);
+    // Q1 (04-04): the throw contract is replaced by the returned outcome — the
+    // boundary catch converts the caller-signal AbortError into the 'aborted'
+    // AgentTurnOutcome (AGT-04 DONE-when: "abort produces aborted").
+    const output = await runAgentTurn(baseInput({ abortSignal: controller.signal, persistTurn }));
+
+    expect(output.status).toBe('aborted');
+    expect(output.reasonCode).toBe('aborted'); // the C.1 status value doubles as the reason (D-38)
+    expect(output.streamedText).toBe(''); // D-45: the partial is dropped
+    expect(output.operationId).toBe('op-orchestrator'); // Pitfall 8 correlation
+    expect(output.evidence).toEqual([]);
+    // The trajectory exits the pre-planning 'assembling-context' via the
+    // amended [planning, aborted] row (AGT-01 closed table).
+    expect(output.trajectory.phase).toBe('aborted');
+    expect(output.plannerCalls).toBe(0);
+    expect(output.toolCalls).toBe(0);
+    // D-45: the aborted turn never reaches the persist seam.
     expect(persistTurn).not.toHaveBeenCalled();
   });
 
-  it('abort mid-stream during the renderer → AbortError propagates; the partial is dropped; nothing persisted', async () => {
+  it('abort mid-stream during the renderer → resolves the aborted outcome; the partial is dropped; nothing persisted', async () => {
     const provider = new SlowAbortStreamProvider();
     await seedEnv({ provider });
     vi.spyOn(PlannerService, 'plan').mockResolvedValueOnce({
@@ -292,7 +306,13 @@ describe('(e) abort — AbortError propagates; persistTurn NOT invoked (D-45)', 
     await new Promise((r) => setTimeout(r, 30)); // planner stage + first delta flow
     controller.abort();
 
-    await expect(turnPromise).rejects.toThrow(DOMException);
+    const output = await turnPromise;
+    expect(output.status).toBe('aborted');
+    expect(output.reasonCode).toBe('aborted');
+    // The 'partial answer ' delta streamed before the abort is DROPPED.
+    expect(output.streamedText).toBe('');
+    expect(output.trajectory.phase).toBe('aborted');
+    expect(output.plannerCalls).toBe(1); // the planner call did run
     expect(persistTurn).not.toHaveBeenCalled();
   });
 });
