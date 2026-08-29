@@ -163,6 +163,14 @@ describe('(a) happy path — answer decision → AgentTurnOutput from the render
     expect(output.reasonCode).toBe('direct_answer');
     expect(output.streamedText).toBe(ANSWER_TEXT);
     expect(output.toolResults).toEqual([]);
+    // D-61 outcome contract (04-01 Task 2): status/operationId/evidence/
+    // counters/trajectory on the happy path.
+    expect(output.status).toBe('completed');
+    expect(output.operationId).toBe('op-orchestrator'); // Pitfall 8 correlation
+    expect(output.evidence).toEqual([]);
+    expect(output.plannerCalls).toBe(1);
+    expect(output.toolCalls).toBe(0);
+    expect(output.trajectory.phase).toBe('completed');
   });
 });
 
@@ -181,6 +189,10 @@ describe('(b) planner_cap_reached — §1.4 cap enforcement (T-3-18)', () => {
     );
 
     expect(output.reasonCode).toBe('planner_cap_reached');
+    // AGT-03 (04-01 Task 2): cap exhaustion → status 'partial', never a
+    // successful status. The Phase-3 reasonCode literal above is PRESERVED
+    // this plan (the O.2 'cap_exhausted' re-script of case (b) is plan 04-03).
+    expect(output.status).toBe('partial');
     // Both planner calls produced a rejected tool call before the cap hit.
     expect(output.toolResults).toHaveLength(2);
     for (const result of output.toolResults) {
@@ -208,6 +220,9 @@ describe('(c) ask_clarification — finishes with that reasonCode; question/opti
     expect(output.reasonCode).toBe('ask_clarification');
     expect(output.streamedText).toBe('Which KB article should I use?');
     expect(output.toolResults).toEqual([]);
+    // A3 mapping (04-01 Task 2): the clarification question IS the renderer
+    // output → status 'completed', never a failure.
+    expect(output.status).toBe('completed');
     // RICH-C-01 substrate: the focused question + options surface as the
     // user-side content of the renderer's stream request.
     const renderRequest = provider.streamRequests.at(-1);
@@ -386,5 +401,8 @@ describe('(h) configuration-required (D-54a) — unresolved tier → typed outco
     expect(fixture.prompts).toHaveLength(0);
     // Not a completed turn — the persist seam does not fire.
     expect(persistTurn).not.toHaveBeenCalled();
+    // A3 mapping (04-01 Task 2): no provider request started → status
+    // 'failed' is the honest terminal (never 'completed').
+    expect(output.status).toBe('failed');
   });
 });
