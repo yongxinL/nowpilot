@@ -35,7 +35,7 @@ import type { PipelineStage } from './persona/PersonaInjector';
 import { debugLog } from '../log/debugLog';
 import type { AgentTurnOutcome as C1AgentTurnOutcome, AgentTrajectoryState } from '@/types/harness';
 import { TrajectoryTracker } from './trajectory';
-import { buildOutcome, VerifierRegistry, type Verifier } from './OutcomeVerifier';
+import { buildOutcome, guardMissingEvidence, VerifierRegistry, type Verifier } from './OutcomeVerifier';
 
 /**
  * §1.4 Agent Step Limits — the tier-caps payload carried into the loop.
@@ -295,6 +295,33 @@ export async function runAgentTurn(input: AgentTurnInput): Promise<AgentTurnOutc
       capHit,
     });
 
+    // D-65 (AGT-02 / risk R-8): the renderer completion guard — a
+    // side-effecting tool result (ok === true with a registered verifier)
+    // carrying NO CompletionEvidence must never produce a clean 'completed'
+    // outcome ("never silently claims success", golden rule 8). The override
+    // is UNCONDITIONAL after buildOutcome (research A5 ordering): it wins over
+    // buildOutcome's 'completed'/'failed' status even when the registered
+    // verifier itself passed (D-65) — the executor skipped the postcondition
+    // verification the verifier implies. With zero verifiers registered
+    // (D-64) the guard is vacuous in production; it fires only for injected
+    // fixtures (D-67).
+    const guardMissing = guardMissingEvidence(toolResults, effectiveVerifiers);
+    if (guardMissing) {
+      debugLog(
+        'ORCHESTRATOR_GUARD_MISSING_EVIDENCE',
+        'side-effecting tool result without CompletionEvidence — outcome downgraded to partial',
+        {
+          operationId: input.operationId,
+          toolNames: toolResults
+            .filter(
+              (r) => r.ok === true && effectiveVerifiers[r.toolName] !== undefined && r.evidence === undefined,
+            )
+            .map((r) => r.toolName),
+          reasonCode: 'missing_evidence',
+        },
+      );
+    }
+
     const rendererPrompt = stagePrompt('renderer');
     const stage = await resolveStageProvider('fast', rendererPrompt);
     if (stage === null) return configurationRequiredOutcome();
@@ -335,8 +362,12 @@ export async function runAgentTurn(input: AgentTurnInput): Promise<AgentTurnOutc
 
     const output: AgentTurnOutcome = {
       operationId: input.operationId,
-      status: built.status,
-      reasonCode,
+      // D-65: the guard's downgrade is the final word — a side-effecting
+      // result without evidence forces 'partial'/'missing_evidence', never a
+      // clean 'completed' (AGT-02 / risk R-8). Unconditional override of
+      // buildOutcome's status (research A5 ordering).
+      status: guardMissing ? 'partial' : built.status,
+      reasonCode: guardMissing ? 'missing_evidence' : reasonCode,
       evidence: built.evidence,
       plannerCalls,
       toolCalls,
