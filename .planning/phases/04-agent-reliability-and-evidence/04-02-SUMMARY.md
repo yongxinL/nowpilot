@@ -135,3 +135,11 @@ None - no external service configuration required.
 ---
 *Phase: 04-agent-reliability-and-evidence*
 *Completed: 2026-08-29*
+
+## Self-Check: PASSED
+
+- Created/modified files verified on disk: `src/core/ai/AgentOrchestrator.ts`, `tests/core/ai/AgentOrchestrator.test.ts`, `04-02-SUMMARY.md` — all FOUND.
+- Commits verified in git log: `3eacc9e` (Task 1), `d0b1242` (Task 2), `b592089` (SUMMARY) — all FOUND.
+- Final gate re-run at close-out: `pnpm run lint` strict-clean; `pnpm run verify:phase-4` GREEN (19 files / 180 tests).
+- No deletions introduced by either task commit.
+- Post-commit check: both task commits touch exactly their plan file (AgentOrchestrator.ts / AgentOrchestrator.test.ts) — the pre-existing dirty files in the working tree were left uncommitted (out of scope for this plan).
