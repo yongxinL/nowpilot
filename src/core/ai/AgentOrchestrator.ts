@@ -33,6 +33,9 @@ import { ProviderError } from './providers/base';
 import { ToolRegistry } from './toolSchemas';
 import type { PipelineStage } from './persona/PersonaInjector';
 import { debugLog } from '../log/debugLog';
+import type { AgentTurnOutcome as C1AgentTurnOutcome, AgentTrajectoryState } from '@/types/harness';
+import { TrajectoryTracker } from './trajectory';
+import { buildOutcome, VerifierRegistry, type Verifier } from './OutcomeVerifier';
 
 /**
  * §1.4 Agent Step Limits — the tier-caps payload carried into the loop.
@@ -84,20 +87,32 @@ export interface AgentTurnInput {
    * abort mid-stream drops the partial and this is NOT invoked.
    */
   persistTurn?: (turn: PersistTurnInput) => void | Promise<void>;
+  /**
+   * D-64/D-67 test-injection seam (mirrors providerSecrets): the effective
+   * verifier set fed to buildOutcome is `{ ...VerifierRegistry.getAll(),
+   * ...input.verifiers }`. Production registers ZERO verifiers in Phase 4
+   * (D-64) — the override exists so the AGT-02 guard / postcondition paths
+   * are exercised by injected fixtures, never fake tool registrations.
+   */
+  verifiers?: Record<string, Verifier>;
 }
 
-/** runAgentTurn output contract. */
-export interface AgentTurnOutput {
+/**
+ * runAgentTurn output contract — D-61 additive evolution of the Phase-3
+ * AgentTurnOutput: the C.1 AgentTurnOutcome (harness.ts) extended with the
+ * Phase-3 consumer fields (streamedText/toolResults) plus the D-63 trajectory
+ * snapshot. Consumers keep reading streamedText/reasonCode unchanged
+ * (useChatStreaming); status / evidence / counters are the new reliability
+ * surface (AGT-03); operationId is re-threaded from input.operationId
+ * (Pitfall 8 — the Phase-3 shape dropped it).
+ */
+export interface AgentTurnOutcome extends C1AgentTurnOutcome {
   /** The renderer's streamed answer ('' for the configuration-required outcome). */
   streamedText: string;
   /** Tool executions accumulated this turn (TOOL_REJECTED rejections included, D-46). */
   toolResults: ToolExecutionResult<unknown>[];
-  /**
-   * Terminal reason: the planner's answer reasonCode, 'ask_clarification',
-   * 'planner_cap_reached', 'tool_cap_reached', or — when a stage tier is
-   * unresolved (D-54a) — 'configuration_required'.
-   */
-  reasonCode: string;
+  /** D-63 per-turn trajectory snapshot (in-memory; AITransactionLog is Phase 11). */
+  trajectory: AgentTrajectoryState;
 }
 
 /**
@@ -112,16 +127,31 @@ export interface AgentTurnOutput {
  *     result = ExecutorService.execute(...)        // zero tools → TOOL_REJECTED (D-46)
  *     toolResults.push(result)
  *   }
- *   finish(reasonCode) → RendererService.render(...) → AgentTurnOutput (+ persist seam)
+ *   finish(reasonCode) → buildOutcome (status/evidence) + RendererService.render(...)
+ *     → AgentTurnOutcome (+ persist seam)
  *
  * Every stage resolves its tier via TierResolver first (D-55 mapping: planner
  * fast, renderer fast, executor → turn tier). An unresolved tier returns the
  * configuration-required outcome and starts NO provider request (D-54a).
+ *
+ * D-62/63: a per-turn TrajectoryTracker is instantiated here (before the loop)
+ * and snapshotted in finish() — the trajectory spans the whole turn, is
+ * asserted against the closed TRAJECTORY_TRANSITIONS table (AGT-01), and is
+ * never persisted (AITransactionLog is Phase 11).
  */
-export async function runAgentTurn(input: AgentTurnInput): Promise<AgentTurnOutput> {
+export async function runAgentTurn(input: AgentTurnInput): Promise<AgentTurnOutcome> {
   const toolResults: ToolExecutionResult<unknown>[] = [];
   let plannerCalls = 0;
   let toolCalls = 0;
+  // D-63: the per-turn trajectory tracker — spans the whole turn, snapshotted
+  // in finish(), never constructed there. In-memory only (D-63).
+  const trajectory = new TrajectoryTracker(input.operationId);
+  // D-64: effective verifier set = registry (empty in Phase 4) + the input
+  // override — the D-67 test-injection seam (mirrors providerSecrets).
+  const effectiveVerifiers: Record<string, Verifier> = {
+    ...VerifierRegistry.getAll(),
+    ...(input.verifiers ?? {}),
+  };
 
   /**
    * D-59: assemble one stage's system prompt through the single choke-point.
@@ -223,19 +253,53 @@ export async function runAgentTurn(input: AgentTurnInput): Promise<AgentTurnOutp
   }
 
   /**
-   * finish — the Appendix I render + persist seam. Renders the final answer on
-   * the fast tier, assembles the AgentTurnOutput, and (D-45) invokes the
-   * persist seam exactly once for the completed turn. An abort mid-stream
-   * throws AbortError — the partial is dropped and persistTurn is NOT invoked.
+   * finish — the Appendix I render + persist seam, now producing the honest
+   * AgentTurnOutcome. Computes status/evidence via buildOutcome (O.2) with the
+   * turn's tier-cap state, renders the final answer on the fast tier, and
+   * (D-45) invokes the persist seam exactly once for the completed turn. An
+   * abort mid-stream throws AbortError — the partial is dropped and persistTurn
+   * is NOT invoked (abort contract unchanged this plan; the returned 'aborted'
+   * outcome lands in 04-04).
+   *
+   * Trajectory (D-63): turns that just executed a tool enter 'verifying'
+   * (executing → verifying is the closed table's only edge into it); the
+   * cap-0-at-turn-start edge (plannerCap 0) is normalized through 'planning'
+   * (the only legal forward edge out of 'assembling-context'); direct-answer /
+   * clarification / tool-cap paths enter 'rendering' directly from 'planning'.
+   * The terminal phase matches the outcome status ('completed' for completed
+   * AND partial turns — the loop completed its rendering; the 'partial'
+   * honesty lives on the outcome status — 'failed' for terminal failures).
    */
   async function finish(
     reasonCode: string,
     clarification?: Extract<PlannerDecision, { action: 'ask_clarification' }>,
-  ): Promise<AgentTurnOutput> {
+  ): Promise<AgentTurnOutcome> {
+    // D-63: normalize the machine onto a legal forward edge before the
+    // outcome is built.
+    if (trajectory.phase === 'executing') {
+      trajectory.enter('verifying');
+    } else if (trajectory.phase === 'assembling-context') {
+      trajectory.enter('planning');
+    }
+
+    // AGT-02/03: the honest status/evidence are computed by buildOutcome over
+    // the turn's tool results + the effective verifier set. The loop's
+    // Phase-3 reasonCode literal is PRESERVED on the outcome (AGT-03; the O.2
+    // 'cap_exhausted' reasonCode unification is deferred to 04-03's re-script
+    // of case (b)), while the computed status ('partial' on capHit) and the
+    // evidence array are taken from buildOutcome verbatim.
+    const capHit = reasonCode === 'planner_cap_reached' || reasonCode === 'tool_cap_reached';
+    const built = await buildOutcome(input.operationId, toolResults, effectiveVerifiers, {
+      plannerCalls,
+      toolCalls,
+      capHit,
+    });
+
     const rendererPrompt = stagePrompt('renderer');
     const stage = await resolveStageProvider('fast', rendererPrompt);
     if (stage === null) return configurationRequiredOutcome();
 
+    trajectory.enter('rendering');
     const rendered = await RendererService.render({
       operationId: input.operationId,
       provider: stage.provider,
@@ -265,10 +329,20 @@ export async function runAgentTurn(input: AgentTurnInput): Promise<AgentTurnOutp
       );
     }
 
-    const output: AgentTurnOutput = {
+    // D-61: the terminal trajectory phase matches the outcome status — the
+    // legal edges out of 'rendering' are exactly completed/failed/aborted.
+    trajectory.enter(built.status === 'failed' ? 'failed' : 'completed');
+
+    const output: AgentTurnOutcome = {
+      operationId: input.operationId,
+      status: built.status,
+      reasonCode,
+      evidence: built.evidence,
+      plannerCalls,
+      toolCalls,
       streamedText: rendered.streamedText,
       toolResults,
-      reasonCode,
+      trajectory: trajectory.snapshot(plannerCalls, toolCalls),
     };
     if (input.persistTurn) {
       await input.persistTurn({
@@ -280,29 +354,46 @@ export async function runAgentTurn(input: AgentTurnInput): Promise<AgentTurnOutp
   }
 
   /**
-   * D-54a outcome: a typed non-error AgentTurnOutput — no provider request
+   * D-54a outcome: a typed non-error AgentTurnOutcome — no provider request
    * started. Identifier discovery rule: "configuration-required" is an
    * orchestrator OUTCOME, not an approved §21.6 error code — the spec and
    * repository expose no configuration-required identifier to reuse, so the
    * condition is represented with only the already-approved output fields and
    * this documented literal reasonCode. NO invented error-code constant is
    * exported (D-38); 03-07 matches the literal 'configuration_required'.
+   *
+   * A3 mapping: no output was produced → status 'failed' is the honest
+   * terminal; the trajectory enters the matching terminal phase (legal from
+   * every phase this helper is reached at — planning / executing / verifying).
    */
-  function configurationRequiredOutcome(): AgentTurnOutput {
+  function configurationRequiredOutcome(): AgentTurnOutcome {
+    trajectory.enter('failed');
     return {
+      operationId: input.operationId,
+      status: 'failed',
+      reasonCode: 'configuration_required',
+      evidence: [],
+      plannerCalls,
+      toolCalls,
       streamedText: '',
       toolResults,
-      reasonCode: 'configuration_required',
+      trajectory: trajectory.snapshot(plannerCalls, toolCalls),
     };
   }
 
   while (true) {
     if (input.abortSignal.aborted) throw new DOMException('aborted', 'AbortError');
     if (plannerCalls >= input.tier.plannerCap) return await finish('planner_cap_reached');
+    // D-63: after a tool execution the machine cycles through 'replanning' —
+    // executing → replanning is the ONLY forward edge out of 'executing' in
+    // the closed table, and the next planner call re-plans with the tool
+    // result in context (AGT-04's repeated-identity refinement is plan 04-03).
+    if (toolResults.length > 0) trajectory.enter('replanning');
     plannerCalls += 1;
 
-    // Planner stage — fast tier (D-55, §1.2). The ONLY planner call site in
-    // the codebase (Appendix I rule; grep-asserted).
+    // D-63: the planning phase precedes the planner stage (the planner is
+    // resolved and called here — the ONLY planner call site in the codebase).
+    trajectory.enter('planning');
     const plannerPrompt = stagePrompt('planner', { withUserInput: true });
     const plannerStage = await resolveStageProvider('fast', plannerPrompt);
     if (plannerStage === null) return configurationRequiredOutcome();
@@ -320,6 +411,7 @@ export async function runAgentTurn(input: AgentTurnInput): Promise<AgentTurnOutp
       operationId: input.operationId,
       sessionId: input.sessionId,
       plannerCall: plannerCalls,
+      trajectoryPhase: trajectory.phase,
     });
 
     if (decision.action === 'answer' || decision.action === 'ask_clarification') {
@@ -331,9 +423,11 @@ export async function runAgentTurn(input: AgentTurnInput): Promise<AgentTurnOutp
     if (toolCalls >= input.tier.toolCap) return await finish('tool_cap_reached');
     toolCalls += 1;
 
-    // Executor stage — tool calls default to the turn's modelTier (D-55).
-    // Phase 3 registers zero tools → every run_tool surfaces a typed
-    // TOOL_REJECTED result and the loop continues (D-46).
+    // D-63: the executing phase precedes the executor stage — tool calls
+    // default to the turn's modelTier (D-55). Phase 3 registers zero tools →
+    // every run_tool surfaces a typed TOOL_REJECTED result and the loop
+    // continues (D-46).
+    trajectory.enter('executing');
     const executorPrompt = stagePrompt('executor');
     const executorStage = await resolveStageProvider(input.tier.modelTier, executorPrompt);
     if (executorStage === null) return configurationRequiredOutcome();
@@ -350,6 +444,7 @@ export async function runAgentTurn(input: AgentTurnInput): Promise<AgentTurnOutp
       operationId: input.operationId,
       sessionId: input.sessionId,
       toolCall: toolCalls,
+      trajectoryPhase: trajectory.phase,
     });
   }
 }

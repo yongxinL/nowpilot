@@ -130,5 +130,11 @@ export interface ToolExecutionResult<T = unknown> {
    * no invented codes (D-38).
    */
   code?: string;
+  /**
+   * §28.2 AGT-02 — set for side-effecting tools (spec 4339): the postcondition
+   * evidence proving the side effect happened. Canonical home: @/types/harness
+   * (D-60); `guardMissingEvidence` (OutcomeVerifier) reads this seam.
+   */
+  evidence?: import('@/types/harness').CompletionEvidence;
   durationMs: number;
 }
