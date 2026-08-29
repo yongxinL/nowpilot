@@ -489,4 +489,61 @@ describe('PageContentCache (06-03 §26.4a lifecycle)', () => {
     PageContentCache.evict(21);
     expect(hook).toHaveBeenCalledWith(21);
   });
+
+  it('get() on an unknown tab returns undefined without creating an entry', async () => {
+    expect(await PageContentCache.get(999)).toBeUndefined();
+    expect(cacheTest.has(999)).toBe(false);
+  });
+
+  it('markStale drops content, never serves it, and never auto re-extracts (D-89)', async () => {
+    const spy = vi.spyOn(PageContentService, 'extract');
+    const hook = vi.fn();
+    PageContentCache.onIndexEvicted(hook);
+    cacheTest.seedEntry(15, {
+      context: makeContext('s15'),
+      metrics: makeMetrics(),
+      lastInput: makeInput(15),
+      lastAccessed: 1,
+    });
+    PageContentCache.markStale(15);
+    expect(cacheTest.peek(15)?.stale).toBe(true);
+    expect(cacheTest.peek(15)?.context).toBeUndefined();
+    expect(await PageContentCache.get(15)).toBeUndefined();
+    expect(spy).not.toHaveBeenCalled();
+    expect(hook).toHaveBeenCalledWith(15); // index evicted together
+  });
+
+  it('evict() fully removes the entry (tabs.onRemoved path), unlike invalidate()', () => {
+    cacheTest.seedEntry(16, { context: makeContext('s16'), metrics: makeMetrics(), lastAccessed: 1 });
+    PageContentCache.evict(16);
+    expect(cacheTest.has(16)).toBe(false);
+    expect(cacheTest.peek(16)).toBeUndefined();
+  });
+
+  it('subscribe() on a never-seen tab creates a protected shell entry that survives LRU pressure', () => {
+    for (let i = 1; i <= PAGE_CACHE_MAX_TABS; i++) {
+      cacheTest.seedEntry(i, {
+        context: makeContext(`tab-${i}`),
+        metrics: makeMetrics(),
+        lastAccessed: i,
+      });
+    }
+    PageContentCache.subscribe(77);
+    cacheTest.seedEntry(78, { context: makeContext('tab-78'), metrics: makeMetrics(), lastAccessed: 9999 });
+    expect(cacheTest.has(77)).toBe(true); // subscribed — never LRU-evicted
+    expect(cacheTest.has(1)).toBe(false); // unpinned LRU evicted instead
+  });
+
+  it('a failed extraction leaves the entry stale — never a silent stale serve (D-91)', async () => {
+    const spy = vi.spyOn(PageContentService, 'extract').mockResolvedValue({
+      ok: false,
+      code: 'CONTENT_EXTRACT_FAILED',
+      message: 'strategy produced no content',
+    });
+    const result = await PageContentCache.getOrExtract(18, makeInput(18));
+    expect(result.ok).toBe(false);
+    expect(cacheTest.peek(18)?.stale).toBe(true);
+    expect(await PageContentCache.get(18)).toBeUndefined();
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
 });
