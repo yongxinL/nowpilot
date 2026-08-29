@@ -497,7 +497,7 @@ export default defineContentScript({
 | A6 | Content-script modules can depend only on `RuntimeEnvelope` (types + `createEnvelope`) and each other, keeping the bundle dependency-free | Pitfall 8 | If the envelope module pulls heavier deps, the content bundle grows — verify with the isolation grep on the built bundle |
 | A7 | `pageContext` re-export from `src/core/content/PageContext.ts` into `src/core/context/types.ts` type-checks cleanly (D-72 precedent) | Pattern 5 | The D-72 PromptSection re-export precedent (Phase 5) proves the pattern; low risk |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Spike fixture corpus for SPIKE-P6-01**
    - What we know: the evidence (guarded computed-style access + Readability inline-only visibility) makes detached-doc extraction viable; the D-79 spike wants a fidelity comparison on ServiceNow-portal + KB-article HTML.
