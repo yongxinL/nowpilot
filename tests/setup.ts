@@ -203,6 +203,47 @@ if (!(globalThis as any).chrome) {
   session: chromeStorageSession as any,
 };
 
+// --- Chrome tabs mock (listener-capture style, Phase 6 Wave-0 infra) ---
+// PageContentCache (06-03) invalidates on tabs.onUpdated and evicts on
+// tabs.onRemoved; content-shell tests (06-04) fire these events via the
+// __fireTabEvent helper. Handlers are captured into module-level arrays so
+// tests can invoke them in isolation.
+type TabEventListener = (...args: any[]) => void;
+
+const onUpdatedHandlers = new Set<TabEventListener>();
+const onRemovedHandlers = new Set<TabEventListener>();
+
+const chromeTabs = {
+  onUpdated: {
+    addListener: vi.fn((handler: TabEventListener) => {
+      onUpdatedHandlers.add(handler);
+    }),
+    removeListener: vi.fn((handler: TabEventListener) => {
+      onUpdatedHandlers.delete(handler);
+    }),
+  },
+  onRemoved: {
+    addListener: vi.fn((handler: TabEventListener) => {
+      onRemovedHandlers.add(handler);
+    }),
+    removeListener: vi.fn((handler: TabEventListener) => {
+      onRemovedHandlers.delete(handler);
+    }),
+  },
+};
+
+(globalThis as any).chrome.tabs = chromeTabs;
+
+// Helper: fire a captured tabs event with the given args
+// (e.g. __fireTabEvent('onUpdated', tabId, changeInfo, tab) and
+//  __fireTabEvent('onRemoved', tabId, removeInfo)).
+(globalThis as any).__fireTabEvent = (type: 'onUpdated' | 'onRemoved', ...args: any[]): void => {
+  const handlers = type === 'onUpdated' ? onUpdatedHandlers : onRemovedHandlers;
+  for (const handler of handlers) {
+    handler(...args);
+  }
+};
+
 // --- BroadcastChannel mock ---
 const broadcastChannels = new Map<string, any[]>();
 
