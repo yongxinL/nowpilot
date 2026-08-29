@@ -147,23 +147,23 @@ Plans:
   4. Repeated identical tool failure → terminal `partial`/`failed`; abort produces `aborted` (AGT-04).
 
 **Verification gate:** `pnpm run verify:phase-4` (§24).
-**Plans:** 4 plans
+**Plans:** 4/4 plans executed
 Plans:
 **Wave 1**
 
-- [ ] 04-01-PLAN.md — TRACER: canonical C.1 types + evidence seam + TrajectoryTracker + OutcomeVerifier framework + AgentTurnOutcome return contract + verify:phase-4 re-point (D-68)
+- [x] 04-01-PLAN.md — TRACER: canonical C.1 types + evidence seam + TrajectoryTracker + OutcomeVerifier framework + AgentTurnOutcome return contract + verify:phase-4 re-point (D-68)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 04-02-PLAN.md — Renderer completion guard wiring (D-65/AGT-02) + false-completion test
+- [x] 04-02-PLAN.md — Renderer completion guard wiring (D-65/AGT-02) + false-completion test
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 04-03-PLAN.md — AGT-04 deterministic replan/terminal policy + re-scripted cap test + replan cases
+- [x] 04-03-PLAN.md — AGT-04 deterministic replan/terminal policy + re-scripted cap test + replan cases
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 04-04-PLAN.md — Abort → returned `aborted` outcome (Q1) + useChatStreaming branch + case (e) rework
+- [x] 04-04-PLAN.md — Abort → returned `aborted` outcome (Q1) + useChatStreaming branch + case (e) rework
 
 ### Phase 5: Context-Adaptive Execution
 
@@ -423,7 +423,7 @@ Plans:
 | 1. MV3/WXT Runtime + AntD Shells + Workspace Handoff | 0/8 | Planned | — |
 | 2. Storage, Security, WriteJournal, Workspace Persistence | 9/9 | Complete    | 2026-08-24 |
 | 3. Cost-Effective AI Runtime (+ Persona seed) | 7/7 | Complete    | 2026-08-29 |
-| 4. Agent Reliability and Evidence | 0/4 | Planned | — |
+| 4. Agent Reliability and Evidence | 4/4 | In Progress|  |
 | 5. Context-Adaptive Execution | 0/2 | Not started | — |
 | 6. PageContentService (Knowledge Acquisition) | 0/3 | Not started | — |
 | 7. Trust-Aware Context and Receipts | 0/2 | Not started | — |
