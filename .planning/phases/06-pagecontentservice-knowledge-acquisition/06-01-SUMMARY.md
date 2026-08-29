@@ -143,7 +143,7 @@ Each task was committed atomically:
 3. **Task 3: Type spine — canonical PageContext supersession + apcLite types + strategy contract** — `f026a0c` (feat)
 4. **Task 4: TRACER — panel-side extraction spine: DefuddleStrategy + PageContentSerializer + PageContentService, proven by the two §18 test files** — `9d6329f` (feat) + `42e16f1` (feat — truncated? additive on StrategyInput, landed after the Task 3 commit as part of the tracer contract)
 
-**Plan metadata:** (pending — final docs commit hash recorded after `gsd-tools query commit`)
+**Plan metadata:** `ed8c516` (docs: complete plan — includes SUMMARY.md, deferred-items.md, STATE.md, ROADMAP.md)
 
 ## Files Created/Modified
 
