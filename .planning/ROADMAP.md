@@ -178,6 +178,15 @@ Plans:
   4. `ContextProvenanceManifest` is attached to every `OptimizedContext` (inclusion / omission / tokens / compression / cache eligibility).
 
 **Verification gate:** `pnpm run verify:phase-5` (§24).
+**Plans:** 2 plans
+Plans:
+**Wave 1**
+
+- [ ] 05-01-PLAN.md — TRACER: context spine — the seven §18 modules (types.ts/ModelContextTier/TokenBudget/ContextCompressor/ContextPack/ContextProvenanceManifest/ContextOptimizer) wired end-to-end through one assemble() happy path (D-69..D-77; six research open questions locked)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 05-02-PLAN.md — §18 test files (TokenBudget/ContextCompressor/ContextOptimizer) + verify:phase-5 re-point to tests/core/context GREEN (D-78)
 
 ### Phase 6: PageContentService (Knowledge Acquisition)
 
@@ -424,7 +433,7 @@ Plans:
 | 2. Storage, Security, WriteJournal, Workspace Persistence | 9/9 | Complete    | 2026-08-24 |
 | 3. Cost-Effective AI Runtime (+ Persona seed) | 7/7 | Complete    | 2026-08-29 |
 | 4. Agent Reliability and Evidence | 4/4 | Complete    | 2026-08-29 |
-| 5. Context-Adaptive Execution | 0/2 | Not started | — |
+| 5. Context-Adaptive Execution | 0/2 | Planned | — |
 | 6. PageContentService (Knowledge Acquisition) | 0/3 | Not started | — |
 | 7. Trust-Aware Context and Receipts | 0/2 | Not started | — |
 | 8. Knowledge Base (Memory + MiniSearch + Notes) | 0/3 | Not started | — |
