@@ -4,14 +4,14 @@ milestone: v0.1
 current_phase: 6
 current_phase_name: PageContentService (Knowledge Acquisition)
 status: executing
-stopped_at: Completed 06-01-PLAN.md (extraction spine tracer)
-last_updated: "2026-08-29T21:40:12.980Z"
-state_head: 42e16f1a21643ad9850bb1ca06766b94f12b9c8e
+stopped_at: Completed 06-02-PLAN.md (actionable path — AxDomWalker + ApcLiteStrategy)
+last_updated: "2026-08-29T21:54:31.385Z"
+state_head: f6f4631a0c5786a8c8942f2f7b9e825de3ab969a
 progress:
   total_phases: 19
   completed_phases: 4
   total_plans: 36
-  completed_plans: 31
+  completed_plans: 32
 milestone_name: milestone
 ---
 
@@ -44,7 +44,7 @@ milestone_name: milestone
 ## Current Position
 
 - **Phase:** 6 (PageContentService (Knowledge Acquisition)) — EXECUTING
-- **Plan:** 2 of 5
+- **Plan:** 3 of 5
 - **Status:** Ready to execute
 - **Progress:** 3/19 phases complete · 24/24 plans written · 220/220 requirements mapped ([██████████] 92% coverage).
 
@@ -75,6 +75,7 @@ milestone_name: milestone
 | Phase 02-storage-security-writejournal-workspace-persistence P06 | 6min | 2 tasks | 6 files |
 | Phase 2 P5 | 6 min | 2 tasks | 4 files |
 | Phase 06 P01 | 23m | 4 tasks | 13 files |
+| Phase 6 P02 | 6min | 2 tasks | 4 files |
 
 ## Accumulated Context — Decisions (inherited from PROJECT.md Key Decisions)
 
@@ -122,8 +123,8 @@ All inherited decisions are **— Pending** (awaiting first implementation to va
 
 ## Session Continuity
 
-**Last session:** 2026-08-29T21:40:12.572Z
-**Stopped at:** Completed 06-01-PLAN.md (extraction spine tracer)
+**Last session:** 2026-08-29T21:54:31.066Z
+**Stopped at:** Completed 06-02-PLAN.md (actionable path — AxDomWalker + ApcLiteStrategy)
 **Resume file:** None
 
 - **Last action:** Phase 3 completed end-to-end: AI runtime + persona seed (Planner/Executor/Renderer pipeline, StreamAdapter 4-wire conformance, ProviderRegistry/TierResolver/ProviderRouter, AgentOrchestrator, chat integration). UAT 29/29 pass (4 live-provider + state-machine checkpoints), security audit 25 threats closed (threats_open 0), verification canonicalized to passed. Also fixed the COVERAGE.md matrix format that blocked the verify:pre gate.
@@ -163,3 +164,6 @@ The workflow expects Phase 4 planning next. Run:
 - [Phase 6]: Phase 6 P01: Readability is provenance-only inside DefuddleStrategy (DEFUDDLE_LOW_CONFIDENCE_WORD_COUNT=50, below defuddle's internal 200-word auto-retry); no ReadabilityStrategy file; servicenow-api reserved-unregistered (D-80); StrategyInput gains two documented additive fields baseUrl? (spec 3726-3740) and truncated? (PageHtmlPayload flag propagation)
 - [Phase 6]: Phase 6 P01: PageContentService.extract uses a single AbortController (PAGE_EXTRACTION_TIMEOUT_MS=5_000 merged with caller signal — both abort paths classify as the typed CONTENT_EXTRACT_FAILED, D-91, Requester precedent); redaction seam lives inside extract() before the output leaves the service (D-90, RESEARCH Open Q4)
 - [Phase 6]: Phase 6 P01: SPIKE-P6-01 evidence produced — defuddle 0.19.3 runs the full UMD bundle under jsdom (A2) and does not throw on detached DOMParser docs with base-href (A1); defuddle logs internal DOMException for jsdom's nwsapi :has() selector but degrades gracefully (T-P6-08 disposition proven); ADR-P6-01 flip to Accepted recorded in 06-05
+- [Phase Phase 6]: Phase 6 P02: AxDomWalker is a zero-import module — RawNode declared locally (plain serializable interface, structurally identical to apcLite.types.ts), the strongest Pitfall 8 content-bundle boundary; the 06-04 bridge wires the envelope round-trip
+- [Phase Phase 6]: Phase 6 P02: form.control.isPassword emitted deterministically for every control (boolean, not only when true) so the panel-side normalizer never guesses; form.control.value emitted only when non-empty for non-password controls
+- [Phase Phase 6]: Phase 6 P02: ApcLiteStrategy propagates input.truncated into stats.truncated (fallback false) — matches DefuddleStrategy's additive truncated? semantics so the bridge's walker-truncation flag reaches the StrategyResult
