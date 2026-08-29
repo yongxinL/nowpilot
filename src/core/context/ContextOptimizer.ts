@@ -329,13 +329,34 @@ function buildSourcedSections(input: ContextOptimizerInput): WorkingSection[] {
       section,
       record: {
         kind: manifestKind,
-        sourceId: manifestKind,
+        sourceId: sourceIdFor(kind, input),
         tokens: section.tokens,
         truncated: false,
       },
     });
   }
   return working;
+}
+
+/**
+ * §2.6 record sourceId — the section's SOURCE identity (plan 05-01 step 8,
+ * LOCKED): CONTEXT → pageContext.url (else 'context'); MEMORY → the hint ids
+ * joined ','; TOOL SCHEMAS → the name-sorted tool names joined ','; the
+ * remaining kinds use their manifest kind. This is what truncatedSources
+ * derives from, so the §19.3 trace carries real source identifiers (page URL /
+ * memory ids / tool names), never section bodies (T-05-03).
+ */
+function sourceIdFor(kind: string, input: ContextOptimizerInput): string {
+  switch (kind) {
+    case 'CONTEXT':
+      return input.pageContext ? input.pageContext.url : 'context';
+    case 'MEMORY':
+      return input.memoryHints.map((hint) => hint.id).join(',');
+    case 'TOOL SCHEMAS':
+      return toolNamesSorted(input.selectedToolSchemas).join(',');
+    default:
+      return MANIFEST_KIND_MAP[kind];
+  }
 }
 
 /** [TOOL SCHEMAS] text: one '<name>\t<description>' line per tool, name-sorted. */
