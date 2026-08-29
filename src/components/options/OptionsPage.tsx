@@ -31,7 +31,7 @@ import { NowPilotAvatar } from '../common/NowPilotAvatar';
 import { UserAvatar } from '../common/UserAvatar';
 import { PromptsOptionsTab } from './PromptsOptionsTab';
 import { PromptCategory, CustomProviderId, CustomModelItem, CustomProviderDetail } from '../../types';
-import { testProviderConnection } from '../../services/aiProvider';
+import { testProviderConnection, fetchProviderModels } from '../../services/aiProvider';
 import { useUserPreferencesStore } from '../../core/ai/UserPreferences';
 import { ProviderRegistry } from '../../core/ai/ProviderRegistry';
 import {
@@ -85,32 +85,28 @@ const ClaudeIcon: React.FC = () => (
   </svg>
 );
 
-const PROVIDER_INFO: Record<CustomProviderId, { name: string; icon: React.ReactNode; defaultProxy: string; defaultModels: string[] }> = {
+const PROVIDER_INFO: Record<CustomProviderId, { name: string; icon: React.ReactNode; defaultProxy: string }> = {
   openai: {
     name: 'OpenAI',
     icon: <OpenAiIcon />,
     // WR-06: the §10.6 canonical endpoint — the legacy dev-proxy default
     // (http://localhost:12380/v1, D-12) must never be pre-filled or persisted.
     defaultProxy: 'https://api.openai.com/v1',
-    defaultModels: ['Qwen3.5-9B-OptiQ-4bit', 'Qwythos-9B-Claude-Mythos-5-1M-mxfp4-mlx', 'gemma-4-e2b-it-4bit'],
   },
   gemini: {
     name: 'Google (Gemini)',
     icon: <GoogleGeminiIcon />,
     defaultProxy: 'https://generativelanguage.googleapis.com',
-    defaultModels: ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-2.0-flash-exp'],
   },
   ollama: {
     name: 'Ollama',
     icon: <OllamaIcon />,
     defaultProxy: 'http://localhost:11434',
-    defaultModels: ['llama3.2', 'deepseek-r1:8b', 'qwen2.5-coder:7b'],
   },
   claude: {
     name: 'Anthropic (Claude)',
     icon: <ClaudeIcon />,
     defaultProxy: 'https://api.anthropic.com',
-    defaultModels: ['claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022', 'claude-3-opus-20240229'],
   },
 };
 
@@ -164,22 +160,8 @@ export const OptionsPage: React.FC = () => {
         });
       });
     }
-
-    const defaults = [
-      'MiniCPM5-1B-OptiQ-4bit',
-      'Qwen3.5-9B-OptiQ-4bit',
-      'Qwythos-9B-Claude-Mythos-5-1M-mxfp4-mlx',
-      'gemma-4-e2b-it-4bit',
-      'claude-3-5-sonnet',
-      'gemini-1.5-pro',
-    ];
-
-    defaults.forEach(d => {
-      if (!models.some(x => x.value === d)) {
-        models.push({ value: d, label: d });
-      }
-    });
-
+    // D-11: no static fallback list — the selector renders only models
+    // enabled in the provider modal (fetched live from the AI provider).
     return models;
   }, [config.providers]);
 
@@ -336,6 +318,13 @@ export const OptionsPage: React.FC = () => {
       }
 
       setProviderModalOpen(false);
+      // Sync the in-memory ProviderRegistry entry. The modal may implicitly
+      // flip `enabled` to true on first save (`currentDetail` undefined →
+      // `isConfigured`), so mirror the post-save value into the registry.
+      // Without this, getEnabled() returns stale `false` and the AI tier
+      // assignment's "Discover models" finds nothing.
+      const runtimeId = activeModalProviderId === 'claude' ? 'anthropic' : activeModalProviderId;
+      ProviderRegistry.setEnabled(runtimeId as any, updatedConfig.providers[activeModalProviderId].enabled);
       antMessage.success(`${PROVIDER_INFO[activeModalProviderId].name} settings saved`);
     } catch (err) {
       // STORAGE_QUOTA / STORAGE_RATE_LIMIT / etc. — surface to
@@ -361,6 +350,12 @@ export const OptionsPage: React.FC = () => {
     };
 
     updateConfig({ providers: updatedProviders });
+    // Sync the in-memory ProviderRegistry entry so `getEnabled()` reflects the
+    // toggle on the same tick. The Zustand persist path writes `np_store`, NOT
+    // `np_providers`, so a re-hydration would still see the pre-toggle value.
+    // DISK_TO_RUNTIME mapping: 'claude' → 'anthropic' (ProviderRegistry key).
+    const runtimeId = providerId === 'claude' ? 'anthropic' : providerId;
+    ProviderRegistry.setEnabled(runtimeId as any, enabled);
     antMessage.info(`${PROVIDER_INFO[providerId].name} ${enabled ? 'enabled' : 'disabled'}`);
   };
 
@@ -387,14 +382,18 @@ export const OptionsPage: React.FC = () => {
       );
       if (result.ok) {
         antMessage.success('Connection verified successfully!');
-        if (modalModels.length === 0 && activeModalProviderId) {
-          const defaults = PROVIDER_INFO[activeModalProviderId].defaultModels.map((m, idx) => ({
-            id: m,
-            name: m,
-            enabled: idx === 1 || idx === 0,
+        if (result.models.length > 0) {
+          const fetched = result.models.map((m) => ({
+            id: m.id,
+            name: m.name,
+            enabled: true,
           }));
-          setModalModels(defaults);
+          const existingCustoms = modalModels.filter((m) => m.isCustom);
+          setModalModels([...fetched, ...existingCustoms]);
         }
+        // No fallback seeding: the empty state ("No models available. Click
+        // 'Update list' or 'Check' to load models, or click '+' to add.")
+        // guides the user to fetch from their provider or add models manually.
       } else {
         antMessage.error(result.error);
       }
@@ -409,14 +408,30 @@ export const OptionsPage: React.FC = () => {
     }
   };
 
-  const handleUpdateList = () => {
+  const handleUpdateList = async () => {
     if (!activeModalProviderId) return;
-    const defaults = PROVIDER_INFO[activeModalProviderId].defaultModels;
+    const providerId = activeModalProviderId;
+    const currentDetail = config.providers?.[providerId];
+    const keyToFetch = modalApiKey.trim().length > 0
+      ? modalApiKey
+      : (currentDetail?.apiKey || undefined);
+    const proxyToFetch = modalUseCustomProxy && modalProxyUrl.trim().length > 0
+      ? modalProxyUrl.trim()
+      : undefined;
 
-    const existingCustoms = modalModels.filter(m => m.isCustom);
-    const newStandards = defaults.map((m, idx) => {
-      const existing = modalModels.find(x => x.id === m);
-      return existing || { id: m, name: m, enabled: idx === 1 };
+    let fetched: CustomModelItem[] = [];
+    try {
+      fetched = await fetchProviderModels(providerId, keyToFetch, proxyToFetch);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      antMessage.error(`Failed to fetch model list: ${message}`);
+      return;
+    }
+
+    const existingCustoms = modalModels.filter((m) => m.isCustom);
+    const newStandards = fetched.map((m) => {
+      const existing = modalModels.find((x) => x.id === m.id);
+      return existing ? { ...existing, name: m.name } : { ...m, enabled: true };
     });
 
     const merged = [...newStandards, ...existingCustoms];
@@ -494,19 +509,65 @@ export const OptionsPage: React.FC = () => {
   // TierResolver validates against — discovery is never thrown away). Discovery
   // POPULATES the selectors but does NOT classify, preselect, or persist either
   // value (D-54/D-54a).
+  //
+  // D-11 first-setup auto-population (additive): for each ENABLED provider
+  // whose disk-side models list is empty (the operator never did Check
+  // Connection), merge the live-discovered IDs into
+  // `config.providers[diskId].models` so the Translate dropdown and the
+  // provider modal surface real fetched models on first Options open —
+  // without forcing the operator to manually open the modal and click
+  // "Check Connection" before the rest of the page is usable. Existing
+  // non-empty lists are NEVER overwritten — the operator's prior
+  // configuration stays authoritative. Overlap with existing entries
+  // preserves their `enabled` and `isCustom` flags.
   const handleDiscoverTierModels = async () => {
     if (tierModelsLoading) return;
     setTierModelsLoading(true);
     const merged: { value: string; label: string }[] = [];
+    const providersToMerge: { diskId: CustomProviderId; ids: string[] }[] = [];
     try {
       for (const provider of ProviderRegistry.getEnabled()) {
         const diskId = provider.providerId === 'anthropic' ? 'claude' : provider.providerId;
         if (diskId === 'openai-compat') continue; // operator-assigned list only (D-56)
         const apiKey = config.providers?.[diskId as CustomProviderId]?.apiKey;
         const ids = await ProviderRegistry.refreshModels(provider.providerId, apiKey);
-        for (const id of ids) {
+        // Auto-merge only when the operator has not yet populated the
+        // disk-side list. A missing key / unreachable endpoint yields `ids`
+        // empty (cache miss), so no merge happens — operator sees empty and
+        // can fix the key/endpoint.
+        const existing = config.providers?.[diskId as CustomProviderId]?.models;
+        if (ids.length > 0 && existing && existing.length === 0) {
+          providersToMerge.push({ diskId: diskId as CustomProviderId, ids });
+        }
+        // The tier selector offers ONLY the operator's ENABLED models (the
+        // same enable filter the chat model selector uses). On first setup —
+        // nothing enabled yet (disk list empty) — fall back to the discovered
+        // list so the D-11 pre-fill suggestion still renders; once the
+        // operator enables specific models in the provider modal, discovery
+        // still refreshes the D-52 cache (WR-04/CR-02) but the selector
+        // respects the enable filter. When discovery fails, the enabled set
+        // stays visible (the operator's intent outranks a failed refresh).
+        const enabledIds = (existing ?? []).filter((m) => m.enabled).map((m) => m.id);
+        const eligible =
+          enabledIds.length > 0 ? (ids.length > 0 ? ids.filter((id) => enabledIds.includes(id)) : enabledIds) : ids;
+        for (const id of eligible) {
           if (!merged.some((x) => x.value === id)) merged.push({ value: id, label: id });
         }
+      }
+      // Single updateConfig call → one persist + one BroadcastChannel write.
+      // The persist partialize still strips apiKey (D-28); the merge is a
+      // pure models-list update.
+      if (providersToMerge.length > 0) {
+        const updatedProviders = { ...config.providers };
+        for (const { diskId, ids } of providersToMerge) {
+          const detail = updatedProviders[diskId];
+          if (!detail) continue;
+          updatedProviders[diskId] = {
+            ...detail,
+            models: ids.map((id) => ({ id, name: id, enabled: true })),
+          };
+        }
+        updateConfig({ providers: updatedProviders });
       }
       setTierModels(merged);
       if (merged.length > 0) {
@@ -1626,7 +1687,9 @@ export const OptionsPage: React.FC = () => {
             color: 'var(--foreground)',
           }}>Translation service</span>
                 <Select
-                  value={config.translateService || 'MiniCPM5-1B-OptiQ-4bit'}
+                  value={config.translateService || undefined}
+                  placeholder="Select a configured model"
+                  allowClear
                   onChange={(val) => updateConfig({ translateService: val })}
                   options={availableTranslationModels.map(m => ({
                     value: m.value,
@@ -1834,7 +1897,7 @@ export const OptionsPage: React.FC = () => {
             </div>
             {modalUseCustomProxy && (
               <Input
-                placeholder={activeModalProviderId ? PROVIDER_INFO[activeModalProviderId].defaultProxy : 'http://localhost:12380/v1'}
+                placeholder={activeModalProviderId ? PROVIDER_INFO[activeModalProviderId].defaultProxy : ''}
                 value={modalProxyUrl}
                 onChange={e => setModalProxyUrl(e.target.value)}
                 style={{

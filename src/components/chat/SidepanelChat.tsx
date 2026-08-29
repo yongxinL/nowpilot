@@ -16,7 +16,12 @@ import { MirrorBanner } from '../common/MirrorBanner';
 import { useExtensionStore } from '../../store/useExtensionStore';
 import { useWorkspaceStore } from '../../core/workspace/WorkspaceStore';
 import { onWorkspaceSync } from '../../core/workspace/WorkspaceSync';
-import { getState as getElectionState, isPrimaryWriter } from '../../core/workspace/WorkspaceElection';
+import {
+  getState as getElectionState,
+  isPrimaryWriter,
+  startElection,
+  __test__ as electionTest,
+} from '../../core/workspace/WorkspaceElection';
 import { PromptItem } from '../../types';
 
 interface SidepanelChatProps {
@@ -366,13 +371,9 @@ export const SidepanelChat: React.FC<SidepanelChatProps> = ({
       {!isStandalone && mirrored && (
         <MirrorBanner
           onRefocus={async () => {
-            const election = await import(
-              '../../core/workspace/WorkspaceElection'
-            );
-            const { __test__: electionTest } = election;
             const current = electionTest.getActiveInstance();
             if (current) current.dispose();
-            await election.startElection('sidepanel');
+            await startElection('sidepanel');
             setMirrored(false);
           }}
         />

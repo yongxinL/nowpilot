@@ -398,3 +398,47 @@ describe('(g) D-54a — the router never invents a model', () => {
     expect(up.streamCalls).toBe(0);
   });
 });
+
+describe('first-token deadline — a silently-open provider cannot hang the router', () => {
+  /** A provider that yields STREAM_START then stalls until the signal aborts. */
+  function stallProvider(): ILLMProvider {
+    return {
+      providerId: 'openai',
+      async *stream(request: LLMStreamRequest, signal?: AbortSignal): AsyncIterable<StreamEvent> {
+        yield { type: 'STREAM_START', operationId: request.operationId };
+        await new Promise<void>((resolve) => {
+          if (signal?.aborted) resolve();
+          else signal?.addEventListener('abort', () => resolve(), { once: true });
+        });
+        // Production providers (streamBodyEvents) surface the abort as
+        // STREAM_ABORTED — mirror that so the router classifies it correctly.
+        yield { type: 'STREAM_ABORTED', operationId: request.operationId };
+      },
+      async requestJson(): Promise<string> {
+        throw new Error('not used by router timeout test');
+      },
+    };
+  }
+
+  it('fails with TIMEOUT after the first-token deadline instead of hanging forever', async () => {
+    const result = await route(
+      baseInput({ providerCandidates: [stallProvider()], firstTokenTimeoutMs: 10 }),
+    );
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe('TIMEOUT');
+  });
+
+  it('a caller abort during the probe is a caller abort, not a TIMEOUT', async () => {
+    const controller = new AbortController();
+    const resultP = route(
+      baseInput({ providerCandidates: [stallProvider()], abortSignal: controller.signal, firstTokenTimeoutMs: 10_000 }),
+    );
+    setTimeout(() => controller.abort(), 5);
+    const result = await resultP;
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    // Caller abort must NOT be mislabelled as a retryable TIMEOUT (WR-02).
+    expect(result.error.code).toBe('NETWORK'); // router reports 'routing aborted by caller'
+  });
+});

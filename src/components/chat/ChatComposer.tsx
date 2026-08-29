@@ -11,8 +11,7 @@ import { TabContextSelector } from './TabContextSelector';
 import { PinnedTabsBar } from './PinnedTabsBar';
 import { AttachmentBar } from './AttachmentBar';
 import { SlashCommandModal } from './SlashCommandModal';
-import { AVAILABLE_MODELS } from '../../services/aiProvider';
-import { ProviderConfig, Attachment, TabItem, PromptItem } from '../../types';
+import { ProviderConfig, Attachment, TabItem, PromptItem, CustomProviderId } from '../../types';
 
 interface ChatComposerProps {
   config: ProviderConfig;
@@ -443,13 +442,21 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
         >
           <span>
             {(() => {
-              const selectedModelObj = AVAILABLE_MODELS.find((m) => m.id === config.selectedModel) || AVAILABLE_MODELS[0];
-              if (selectedModelObj) {
-                if (selectedModelObj.group === 'Google Gemini' || selectedModelObj.provider === 'gemini') return 'Google (Gemini)';
-                if (selectedModelObj.group === 'Anthropic' || selectedModelObj.provider === 'claude') return 'Anthropic (Claude)';
-                if (selectedModelObj.group) return selectedModelObj.group;
+              // D-11: derive the provider label from the operator-configured
+              // provider that owns the selected model — never from a
+              // hardcoded static catalog. Look up the model across all
+              // configured providers; if found, use that provider's name.
+              // Fall back to the activeProvider when the model is not in any
+              // configured list (e.g. tier assignment without modal save).
+              const providerKeys = Object.keys(config.providers ?? {}) as CustomProviderId[];
+              const owner = providerKeys.find((pId) =>
+                config.providers?.[pId]?.models?.some((m) => m.id === config.selectedModel)
+              );
+              if (owner && config.providers?.[owner]?.name) {
+                return config.providers[owner].name;
               }
-              return 'OpenAI';
+              return config.providers?.[config.activeProvider as CustomProviderId]?.name
+                ?? config.activeProvider;
             })()}
           </span>
           <span

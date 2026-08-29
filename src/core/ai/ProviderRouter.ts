@@ -47,6 +47,16 @@ export const CIRCUIT_BREAKER_WINDOW_MS = 60_000;
 export const CIRCUIT_OPEN_MS = 300_000;
 
 /**
+ * First-token deadline for one provider attempt (runAttempt). A probe stream
+ * must reach its first token within this window, else the attempt fails with
+ * TIMEOUT. Bounds the §20.10 pre-first-token phase: Requester's 25 s timeout
+ * covers only the response HEADERS, so a connection that delivers headers but
+ * never a body token would otherwise hang the router forever (chat stuck on
+ * "Thinking…" with no response).
+ */
+export const FIRST_TOKEN_TIMEOUT_MS = 15_000;
+
+/**
  * Router-level error codes — the §20.10 locked table over the canonical
  * §21.6 set (D-38: no invented codes). HOST_NOT_PERMITTED is a canonical
  * §21.6 code (CORSProxy, Phase 17); no provider emits it today.
@@ -142,6 +152,8 @@ export interface ProviderRouteInput {
   allowCloudFallbackFromLocal: boolean;
   /** Per-operation attempt state (optional — a fresh one is created). */
   state?: RouterAttemptState;
+  /** Per-attempt first-token deadline override (default FIRST_TOKEN_TIMEOUT_MS). */
+  firstTokenTimeoutMs?: number;
 }
 
 export type ProviderRouteResult =
@@ -322,9 +334,35 @@ async function runAttempt(
     messages: [{ role: 'system', content: input.systemPrompt }],
   };
 
+  // First-token deadline (FIRST_TOKEN_TIMEOUT_MS): compose the caller's signal
+  // with an attempt-scoped deadline so a user stop still aborts immediately,
+  // while a silently-open connection (headers delivered, body silent) fails
+  // with TIMEOUT instead of hanging the router forever. Mirrors StructuredOutput's
+  // WR-02 pattern: the internal abort is NOT a caller abort — it is surfaced
+  // as a TIMEOUT attempt failure (§20.10: retryable pre-first-token).
+  const attemptAc = new AbortController();
+  let attemptTimedOut = false;
+  const onCallerAbort = () => attemptAc.abort();
+  input.abortSignal?.addEventListener('abort', onCallerAbort);
+  const tokenDeadline = setTimeout(() => {
+    attemptTimedOut = true;
+    attemptAc.abort();
+  }, input.firstTokenTimeoutMs ?? FIRST_TOKEN_TIMEOUT_MS);
+
+  const settle = (outcome: AttemptOutcome): AttemptOutcome => {
+    clearTimeout(tokenDeadline);
+    input.abortSignal?.removeEventListener('abort', onCallerAbort);
+    return outcome;
+  };
+  const timedOut = (): AttemptOutcome => ({
+    kind: 'failed',
+    code: 'TIMEOUT',
+    message: `${provider.providerId}: no first token within ${input.firstTokenTimeoutMs ?? FIRST_TOKEN_TIMEOUT_MS}ms`,
+  });
+
   let iter: AsyncIterator<StreamEvent>;
   try {
-    iter = provider.stream(request, input.abortSignal)[Symbol.asyncIterator]();
+    iter = provider.stream(request, attemptAc.signal)[Symbol.asyncIterator]();
   } catch (err) {
     attempt.code = 'NETWORK';
     attempt.durationMs = Date.now() - startedAt;
@@ -334,7 +372,7 @@ async function runAttempt(
       providerId: provider.providerId,
       code: 'NETWORK',
     });
-    return { kind: 'failed', code: 'NETWORK', message: err instanceof Error ? err.message : String(err) };
+    return settle({ kind: 'failed', code: 'NETWORK', message: err instanceof Error ? err.message : String(err) });
   }
 
   const buffered: StreamEvent[] = [];
@@ -343,7 +381,8 @@ async function runAttempt(
     try {
       next = await iter.next();
     } catch (err) {
-      if (input.abortSignal?.aborted) return { kind: 'aborted' };
+      if (attemptTimedOut) return settle(timedOut());
+      if (input.abortSignal?.aborted) return settle({ kind: 'aborted' });
       attempt.code = 'NETWORK';
       attempt.durationMs = Date.now() - startedAt;
       state.attempts.push(attempt);
@@ -352,13 +391,14 @@ async function runAttempt(
         providerId: provider.providerId,
         code: 'NETWORK',
       });
-      return { kind: 'failed', code: 'NETWORK', message: err instanceof Error ? err.message : String(err) };
+      return settle({ kind: 'failed', code: 'NETWORK', message: err instanceof Error ? err.message : String(err) });
     }
 
     if (next.done) {
       // Stream ended without a first token and without a terminal event —
       // a truncated stream (REQ-R09 discipline: never a silent success).
       await iter.return?.();
+      if (attemptTimedOut) return settle(timedOut());
       attempt.code = 'NETWORK';
       attempt.durationMs = Date.now() - startedAt;
       state.attempts.push(attempt);
@@ -367,20 +407,22 @@ async function runAttempt(
         providerId: provider.providerId,
         code: 'NETWORK',
       });
-      return {
+      return settle({
         kind: 'failed',
         code: 'NETWORK',
         message: `${provider.providerId}: stream ended before the first token`,
-      };
+      });
     }
 
     const event = next.value;
     buffered.push(event);
 
     if (event.type === 'STREAM_ABORTED') {
-      // Caller abort — propagate, never fall back.
+      // Caller abort OR the internal first-token deadline fired. The internal
+      // deadline is a TIMEOUT attempt failure (WR-02), not a caller abort.
       await iter.return?.();
-      return { kind: 'aborted' };
+      if (attemptTimedOut) return settle(timedOut());
+      return settle({ kind: 'aborted' });
     }
 
     if (event.type === 'STREAM_ERROR') {
@@ -392,7 +434,7 @@ async function runAttempt(
         providerId: provider.providerId,
         code: event.code,
       });
-      return { kind: 'failed', code: event.code, message: event.message };
+      return settle({ kind: 'failed', code: event.code, message: event.message });
     }
 
     if (event.type === 'STREAM_START') {
@@ -417,7 +459,7 @@ async function runAttempt(
         operationId: input.operationId,
         providerId: provider.providerId,
       });
-      return { kind: 'ok', events: passthrough(iter, buffered) };
+      return settle({ kind: 'ok', events: passthrough(iter, buffered) });
     }
 
     if (event.type === 'STREAM_COMPLETE') {
@@ -427,7 +469,7 @@ async function runAttempt(
       attempt.streamedFirstToken = true;
       attempt.durationMs = Date.now() - startedAt;
       state.attempts.push(attempt);
-      return { kind: 'ok', events: passthrough(iter, buffered) };
+      return settle({ kind: 'ok', events: passthrough(iter, buffered) });
     }
   }
 }

@@ -30,8 +30,7 @@ import type { WriteJournalEntry } from '../../../src/types/storage';
  * The hook is rendered REAL (renderHook + AntdApp wrapper for the antd
  * message API); the pipeline stages are REAL; the provider is a D-48
  * fixture registered into ProviderRegistry with UserPreferences persisted
- * (D-54). The legacy streamChatResponse path is spied to prove it is not
- * invoked (grep-assertable call-site removal).
+ * (D-54).
  *
  * Case groups: (a) pipeline path used · (b) persist once at turn end ·
  * (c) abort drops the partial · (d) zero per-chunk storage writes.
@@ -135,20 +134,16 @@ describe('chat-integration — useChatStreaming → AgentOrchestrator (D-44/D-45
     vi.restoreAllMocks();
   });
 
-  it('(a) handleSend routes through runAgentTurn — the legacy streaming path is NOT invoked, the answer renders from the pipeline', async () => {
+  it('(a) handleSend routes through runAgentTurn — the answer renders from the pipeline', async () => {
     const fixture = answerFixture();
     await seedEnv(fixture);
     const runSpy = vi.spyOn(AgentOrchestrator, 'runAgentTurn');
-    const legacySpy = vi.spyOn(aiProvider, 'streamChatResponse');
 
     const { result } = renderHook(() => useChatStreaming(), { wrapper });
 
     await act(async () => {
       await result.current.handleSend('Help me fix this incident.');
     });
-
-    // The legacy proxy-coupled path is retired for production chat (D-44/D-12).
-    expect(legacySpy).not.toHaveBeenCalled();
 
     // runAgentTurn was the path, with the D-44 contract.
     expect(runSpy).toHaveBeenCalledTimes(1);

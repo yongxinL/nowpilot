@@ -132,6 +132,157 @@ describe('OptionsPage — D-50 endpoint overrides + D-54 tier assignment (03-07)
     });
   });
 
+  it('toggling a provider to enabled in Options lets "Discover models" find it (regression)', async () => {
+    // Seed disk with the provider DISABLED — the registry hydrates with
+    // enabled:false. This mirrors the user-reported flow where the operator
+    // configures a key, toggles the Switch, then clicks Discover.
+    storageMap.set(
+      'np_providers',
+      JSON.stringify({
+        providers: {
+          openai: {
+            id: 'openai',
+            name: 'OpenAI',
+            isConfigured: true,
+            enabled: false,
+            apiKey: 'sk-test',
+            proxyUrl: '',
+            models: [],
+          },
+        },
+      }),
+    );
+    // The Zustand store was reset to DEFAULT_CONFIG in beforeEach — DEFAULT_CONFIG
+    // has openai.isConfigured=false so the Switch would NOT render. Seed the
+    // in-memory config to match the disk shape so the Switch shows up.
+    useExtensionStore.setState((s) => ({
+      ...s,
+      config: {
+        ...s.config,
+        providers: {
+          ...s.config.providers,
+          openai: {
+            id: 'openai',
+            name: 'OpenAI',
+            isConfigured: true,
+            enabled: false,
+            apiKey: 'sk-test',
+            useCustomProxy: false,
+            proxyUrl: '',
+            models: [],
+          },
+        },
+      },
+    }));
+    registryTest.reset();
+    await ProviderRegistry.hydrate();
+    // Confirm the bug's preconditions: the registry reports the provider as
+    // NOT enabled before the toggle.
+    expect(ProviderRegistry.getEnabled()).toEqual([]);
+
+    const fetchMock = mockModelDiscovery();
+    renderOptions();
+
+    // Find the OpenAI Switch (antd Switch renders a <button role="switch">)
+    // inside the OpenAI provider row. The Switch's onChange drives
+    // handleToggleProviderEnabled, which must now also patch the registry.
+    // The row container has BOTH the "OpenAI" label (left half) AND the
+    // Switch (right half) as descendants — walk up from the label until the
+    // container that also holds a role="switch" element.
+    const openaiLabel = screen.getByText('OpenAI');
+    let openaiRow: HTMLElement | null = openaiLabel as unknown as HTMLElement;
+    while (openaiRow && openaiRow.querySelector('[role="switch"]') === null) {
+      openaiRow = openaiRow.parentElement;
+    }
+    expect(openaiRow).not.toBeNull();
+    const openaiSwitch = within(openaiRow as HTMLElement).getByRole('switch');
+    fireEvent.click(openaiSwitch);
+
+    // Post-toggle: the registry reflects enabled=true even though np_providers
+    // was NOT re-written (the Switch handler writes np_store, not np_providers).
+    expect(ProviderRegistry.getEnabled().map((p) => p.providerId)).toEqual(['openai']);
+
+    // Click "Discover models" — the auto-discovery effect on mount already
+    // ran (with no providers), so click again to exercise the explicit
+    // refreshModels path.
+    fireEvent.click(screen.getByRole('button', { name: /Discover models/i }));
+
+    // Discovery reaches the network for the enabled provider and a success
+    // toast surfaces — NOT the "No enabled providers" info toast.
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        'https://api.openai.com/v1/models',
+        expect.anything(),
+      );
+    });
+  });
+
+  it('tier discovery offers only ENABLED models — a disabled provider model never appears in the tier selectors', async () => {
+    // Seed disk: openai enabled with three models, the third DISABLED.
+    storageMap.set(
+      'np_providers',
+      JSON.stringify({
+        providers: {
+          openai: {
+            id: 'openai',
+            name: 'OpenAI',
+            isConfigured: true,
+            enabled: true,
+            apiKey: 'sk-test',
+            useCustomProxy: false,
+            proxyUrl: '',
+            models: [
+              { id: 'gpt-4o-mini', name: 'gpt-4o-mini', enabled: true },
+              { id: 'gpt-4o', name: 'gpt-4o', enabled: true },
+              { id: 'gpt-3.5-turbo', name: 'gpt-3.5-turbo', enabled: false },
+            ],
+          },
+        },
+      }),
+    );
+    useExtensionStore.setState((s) => ({
+      ...s,
+      config: {
+        ...s.config,
+        providers: {
+          ...s.config.providers,
+          openai: {
+            ...s.config.providers.openai,
+            id: 'openai',
+            name: 'OpenAI',
+            isConfigured: true,
+            enabled: true,
+            apiKey: 'sk-test',
+            useCustomProxy: false,
+            proxyUrl: '',
+            models: [
+              { id: 'gpt-4o-mini', name: 'gpt-4o-mini', enabled: true },
+              { id: 'gpt-4o', name: 'gpt-4o', enabled: true },
+              { id: 'gpt-3.5-turbo', name: 'gpt-3.5-turbo', enabled: false },
+            ],
+          },
+        },
+      },
+    }));
+    // Discovery returns ALL three — the DISABLED one must still be filtered out.
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [{ id: 'gpt-4o-mini' }, { id: 'gpt-4o' }, { id: 'gpt-3.5-turbo' }],
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    registryTest.reset();
+    await ProviderRegistry.hydrate();
+
+    renderOptions();
+
+    // The D-52 pre-fill suggestion shows the first ENABLED model.
+    await waitFor(() => expect(screen.getByText(/gpt-4o-mini/)).toBeTruthy());
+    // The disabled model never surfaces as a tier suggestion.
+    expect(screen.queryByText(/gpt-3.5-turbo/)).toBeNull();
+  });
+
   it('saving tier assignments writes fastModel/balancedModel through to np_preferences', async () => {
     mockModelDiscovery();
     const { container } = renderOptions();

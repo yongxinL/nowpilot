@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { ProviderId, PlannerDecision } from './types';
 import { requestJson, type StructuredOutputContext } from './StructuredOutput';
+import { debugLog } from '../log/debugLog';
 
 /**
  * PlannerService — §1.2 planner (spec 268-297).
@@ -8,6 +9,13 @@ import { requestJson, type StructuredOutputContext } from './StructuredOutput';
  * Returns exactly one PlannerDecision via StructuredOutput.requestJson:
  * fast tier where available, 3s timeout, one malformed-JSON repair retry
  * (Appendix L), and a closed toolName enum supplied by the caller.
+ *
+ * §1.2 failure rule (spec 294): "If planner fails twice: fallback to
+ * { action: 'answer', reasonCode: 'planner_failed' }." The planner is an
+ * advisory routing stage — a timeout, transport error, or double JSON-repair
+ * failure must degrade to a direct answer, never kill the turn. A CALLER
+ * abort is NOT a planner failure and always propagates (the orchestrator
+ * drops the partial per D-45).
  *
  * Zero-tool runtime specialization (plan 03-01 header): when the registered
  * tool list is empty the production planner schema contains only `answer`
@@ -93,7 +101,24 @@ export async function plan(input: PlannerInput): Promise<PlannerDecision> {
     callProviderJsonMode: input.callProviderJsonMode,
     abortSignal: input.abortSignal ?? new AbortController().signal,
   };
-  return requestJson(schema, input.prompt, ctx);
+  try {
+    return await requestJson(schema, input.prompt, ctx);
+  } catch (err) {
+    // §1.2 (spec 294): planner failure → fallback to a direct answer. The
+    // planner is an advisory routing step; it must never block the turn.
+    // A caller abort propagates untouched (D-45: partial dropped, no
+    // persist) — it is not a planner failure.
+    if (ctx.abortSignal.aborted || (err instanceof DOMException && err.name === 'AbortError')) {
+      throw err;
+    }
+    debugLog('PLANNER_FAILED', err instanceof Error ? err.message : String(err), {
+      operationId: input.operationId,
+      providerId: input.providerId,
+      model: input.model,
+      reasonCode: 'planner_failed',
+    });
+    return { action: 'answer', reasonCode: 'planner_failed' };
+  }
 }
 
 export const PlannerService: PlannerService = { plan };

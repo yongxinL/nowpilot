@@ -387,7 +387,9 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
   const versions = msg.versions && msg.versions.length > 0 ? msg.versions : [msg.content];
   const currentVersionIdx = msg.currentVersionIndex ?? versions.length - 1;
   const currentContent = versions[currentVersionIdx] || msg.content;
-  const displayModel = msg.model || 'gemma-4-E2B-it-MLX-4bit';
+  // D-11: no demo-model fallback — when no model is recorded, the message
+  // renders an empty label rather than a fake MLX model name.
+  const displayModel = msg.model;
 
   return (
     <div

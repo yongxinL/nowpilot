@@ -194,7 +194,10 @@ export const StandaloneWritePage: React.FC<StandaloneWritePageProps> = ({ onOpen
       output: generatedResponse,
       versions: [generatedResponse],
       currentVersionIndex: 0,
-      model: config.selectedModel || 'gemma-4-e2b-it-4bit',
+      // D-11: no demo-model fallback. If `config.selectedModel` is empty the
+      // history entry records `model: ''` — the operator is expected to
+      // assign a model in Options > General before generating output.
+      model: config.selectedModel,
       tone,
       length,
       language,
@@ -275,7 +278,9 @@ export const StandaloneWritePage: React.FC<StandaloneWritePageProps> = ({ onOpen
     antMessage.success('Prompt created and selected');
   };
 
-  const selectedModelName = config.selectedModel || 'gemma-4-e2b-it-4bit';
+  // D-11: no demo-model fallback — when no model is assigned, the UI shows
+  // an empty label and the operator is guided to Options > General.
+  const selectedModelName = config.selectedModel;
 
   return (
     <div style={{

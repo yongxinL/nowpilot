@@ -21,6 +21,9 @@ import { createChunkBuffer } from './ChunkBuffer';
 /** §1.3: "Max normal output: 512 tokens unless the feature overrides." */
 export const DEFAULT_MAX_OUTPUT_TOKENS = 512;
 
+/** §1.2: "Timeout: 5 seconds for normal answers." */
+export const RENDER_TIMEOUT_MS = 5_000;
+
 /** Standard chars→tokens heuristic (roughly 4 chars/token) for the cap check. */
 export function estimateTokens(text: string): number {
   return Math.ceil(text.length / 4);
@@ -46,8 +49,12 @@ export interface RenderInput {
   /** Current user turn. */
   userInput?: string;
   abortSignal?: AbortSignal;
-  /** Open Q4: per-feature output cap override (default DEFAULT_MAX_OUTPUT_TOKENS). */
+  /**
+   * Open Q4: per-feature output cap override (default DEFAULT_MAX_OUTPUT_TOKENS).
+   */
   maxOutputTokens?: number;
+  /** §1.2 renderer timeout override (default RENDER_TIMEOUT_MS). */
+  timeoutMs?: number;
   /** UI subscription — receives the buffered text on each ChunkBuffer flush. */
   onFlush?: (text: string) => void;
   /** Canonical-event subscription (drives ActiveStreamState §20.6). */
@@ -83,7 +90,23 @@ export async function render(input: RenderInput): Promise<RenderResult> {
     input.onFlush?.(text);
   });
 
-  const signal = input.abortSignal ?? new AbortController().signal;
+  // §1.2 renderer timeout: "5 seconds for normal answers." The caller's
+  // AbortSignal is composed with an internal deadline (mirrors the planner's
+  // WR-02 pattern in StructuredOutput) so a provider stream that stalls —
+  // connection open but no [DONE]/terminator — surfaces as a TIMEOUT error
+  // instead of leaving the UI stuck in "Thinking…" forever. A caller abort
+  // still terminates as 'aborted'; only the internal deadline is TIMEOUT.
+  const callerSignal = input.abortSignal ?? new AbortController().signal;
+  const timeoutAc = new AbortController();
+  let timedOut = false;
+  const onCallerAbort = () => timeoutAc.abort();
+  callerSignal.addEventListener('abort', onCallerAbort);
+  const deadline = setTimeout(() => {
+    timedOut = true;
+    timeoutAc.abort();
+  }, input.timeoutMs ?? RENDER_TIMEOUT_MS);
+  const signal = timeoutAc.signal;
+
   const request: LLMStreamRequest = {
     operationId: input.operationId,
     providerId: input.provider.providerId,
@@ -100,15 +123,27 @@ export async function render(input: RenderInput): Promise<RenderResult> {
     // authoritative; the provider body stays provider-native.
   };
 
+  const terminateAsError = (code: StreamErrorCode, message: string): RenderResult => {
+    terminatedBy = 'error';
+    error = { code, message };
+    buffer.flushNow();
+    return result();
+  };
+  const terminateAsAborted = (): RenderResult => {
+    terminatedBy = 'aborted';
+    buffer.flushNow();
+    return result();
+  };
+  const timeoutMessage = (): string =>
+    `renderer timed out after ${input.timeoutMs ?? RENDER_TIMEOUT_MS}ms`;
+
   try {
     for await (const event of input.provider.stream(request, signal)) {
       if (signal.aborted) {
+        if (timedOut) return terminateAsError('TIMEOUT', timeoutMessage());
         // Caller abort — surface STREAM_ABORTED and stop (D-47).
-        const aborted: StreamEvent = { type: 'STREAM_ABORTED', operationId: input.operationId };
-        input.onEvent?.(aborted);
-        terminatedBy = 'aborted';
-        buffer.flushNow();
-        return result();
+        input.onEvent?.({ type: 'STREAM_ABORTED', operationId: input.operationId });
+        return terminateAsAborted();
       }
       switch (event.type) {
         case 'STREAM_START':
@@ -142,27 +177,29 @@ export async function render(input: RenderInput): Promise<RenderResult> {
           return result();
         case 'STREAM_ABORTED':
           input.onEvent?.(event);
-          terminatedBy = 'aborted';
-          buffer.flushNow();
-          return result();
+          if (timedOut) return terminateAsError('TIMEOUT', timeoutMessage());
+          return terminateAsAborted();
       }
     }
     // Stream ended without a terminal event (e.g. provider dropped after an
     // external abort). Surface STREAM_ABORTED when the signal fired.
     if (signal.aborted) {
+      if (timedOut) return terminateAsError('TIMEOUT', timeoutMessage());
       input.onEvent?.({ type: 'STREAM_ABORTED', operationId: input.operationId });
-      terminatedBy = 'aborted';
+      return terminateAsAborted();
     }
     buffer.flushNow();
     return result();
   } catch (err) {
+    if (timedOut) return terminateAsError('TIMEOUT', timeoutMessage());
     if (signal.aborted || (err instanceof DOMException && err.name === 'AbortError')) {
       input.onEvent?.({ type: 'STREAM_ABORTED', operationId: input.operationId });
-      terminatedBy = 'aborted';
-      buffer.flushNow();
-      return result();
+      return terminateAsAborted();
     }
     throw err;
+  } finally {
+    clearTimeout(deadline);
+    callerSignal.removeEventListener('abort', onCallerAbort);
   }
 
   function result(): RenderResult {

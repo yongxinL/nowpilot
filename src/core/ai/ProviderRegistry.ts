@@ -108,11 +108,15 @@ const DiskProviderDetailSchema = z.object({
     .optional(),
 });
 
-/** Phase-2 disk shape (src/types/index.ts:114-137) — D-49 keeps it on disk. */
+/** Phase-2 disk shape (src/types/index.ts:114-137) — D-49 keeps it on disk.
+ * `openAiKey`/`geminiKey` are EncryptedBlob objects after a real
+ * `persistProviderConfigEncrypted` save (they pass through
+ * `encryptProviderConfig` unchanged); accepting both forms keeps the whole
+ * schema from failing when an operator has configured a provider. */
 const DiskProviderConfigSchema = z.object({
   providers: z.record(z.string(), DiskProviderDetailSchema).optional(),
-  openAiKey: z.string().optional(),
-  geminiKey: z.string().optional(),
+  openAiKey: z.union([z.string(), apiKeyBlobSchema]).optional(),
+  geminiKey: z.union([z.string(), apiKeyBlobSchema]).optional(),
 });
 
 /** D-49: disk CustomProviderId → runtime ProviderId. 'claude' → 'anthropic' ONLY here. */
@@ -265,6 +269,23 @@ function getEnabled(): ILLMProvider[] {
   return Array.from(normalized.values())
     .filter((n) => n.enabled && n.provider !== undefined)
     .map((n) => n.provider as ILLMProvider);
+}
+
+/**
+ * In-memory mirror of the operator's enable toggle (Options > General). The
+ * registry's `normalized.enabled` flag is hydrated from `np_providers` at boot,
+ * but the Options Switch handler writes to the Zustand store (`np_store`),
+ * not `np_providers` — so a re-hydration after a toggle would still return the
+ * pre-toggle value. `setEnabled` patches the in-memory entry directly so the
+ * discovery loop and any other sync `getEnabled` reader see the operator's
+ * intent on the same tick. No-op when the provider has not been registered yet
+ * (the four module-load singletons are always registered, so this only fails
+ * for an OpenAICompat assignment with no prior hydrate).
+ */
+function setEnabled(providerId: ProviderId, enabled: boolean): void {
+  const entry = normalized.get(providerId);
+  if (entry === undefined) return;
+  entry.enabled = enabled;
 }
 
 function getById(id: ProviderId): NormalizedProvider | undefined {
@@ -420,6 +441,7 @@ export const ProviderRegistry = {
   buildForRoute,
   refreshModels,
   getCachedModels,
+  setEnabled,
   isHydrated: (): boolean => hydrated,
 };
 
@@ -433,4 +455,5 @@ export {
   buildForRoute,
   refreshModels,
   getCachedModels,
+  setEnabled,
 };

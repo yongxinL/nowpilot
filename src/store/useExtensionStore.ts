@@ -1,10 +1,12 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import { chromeStorageAdapter } from '../core/theme/chromeStorageAdapter';
+import { chromeStorageAdapter, flushPendingWrites } from '../core/theme/chromeStorageAdapter';
 import { useThemeStore, type ThemeMode } from '../core/theme/ThemeStore';
 import { DEFAULT_PROMPTS_LIST } from '../components/options/defaultPromptsData';
 import {
+  encrypt,
+  decrypt,
   encryptProviderConfig,
   decryptProviderConfig,
   type EncryptedBlob,
@@ -37,12 +39,15 @@ const DEFAULT_CONFIG: ProviderConfig = {
       enabled: false,
       apiKey: '',
       useCustomProxy: true,
-      proxyUrl: 'http://localhost:12380/v1',
-      models: [
-        { id: 'Qwen3.5-9B-OptiQ-4bit', name: 'Qwen3.5-9B-OptiQ-4bit', enabled: false },
-        { id: 'Qwythos-9B-Claude-Mythos-5-1M-mxfp4-mlx', name: 'Qwythos-9B-Claude-Mythos-5-1M-mxfp4-mlx', enabled: true },
-        { id: 'gemma-4-e2b-it-4bit', name: 'gemma-4-e2b-it-4bit', enabled: false },
-      ],
+      // WR-06 / D-12: never pre-fill the legacy dev-proxy default
+      // (http://localhost:12380/v1). The modal placeholder uses
+      // PROVIDER_INFO.openai.defaultProxy ('https://api.openai.com/v1') when
+      // this is empty.
+      proxyUrl: '',
+      // D-11: empty seed models — a fresh install renders an empty list and
+      // routes the user through "Check Connection" to populate it. No demo
+      // model names are pre-baked.
+      models: [],
     },
     gemini: {
       id: 'gemini',
@@ -76,22 +81,33 @@ const DEFAULT_CONFIG: ProviderConfig = {
     },
   },
   openAiKey: '',
-  openAiBaseUrl: 'http://localhost:12380/v1',
+  // WR-06 / D-12: never pre-fill the legacy dev-proxy default
+  // (http://localhost:12380/v1). The runtime endpoint is the §10.6 canonical
+  // (https://api.openai.com/v1) merged over np_endpoint_overrides at registry
+  // hydrate.
+  openAiBaseUrl: '',
   geminiKey: '',
-  selectedModel: 'Qwythos-9B-Claude-Mythos-5-1M-mxfp4-mlx',
+  // D-11: empty default — `selectedModel` is set when the operator chooses a
+  // model in the Options > General provider modal (Check Connection →
+  // result.models populates the list) or via the tier-assignment selectors.
+  selectedModel: '',
   fontSize: 'Auto',
   themeMode: 'Auto',
   language: 'English',
   sidepanelPosition: 'Right',
   chatGptWebappEnabled: true,
-  translateService: 'MiniCPM5-1B-OptiQ-4bit',
+  // D-11: empty default — `translateService` is set when the operator picks
+  // a model from the Translate > Translation service dropdown (which renders
+  // only models enabled in the provider modal).
+  translateService: '',
   translateTargetLang: 'English',
   translateDisplayMode: 'Bilingual',
   translateDisplayStyle: 'Underline',
-  // D-12: explicit flag controlling whether `simulateStreamResponse` (the
-  // canned critical-thinking / "Good morning" response) is reachable.
-  // DEMO_MODE is gated by `import.meta.env.DEV` at the simulator call sites —
-  // neither flag alone is sufficient. Default: off (no demo).
+  // D-12: explicit flag for any future dev/demo simulator surfaces. The
+  // legacy `simulateStreamResponse` in aiProvider.ts was retired in Phase 3
+  // (replaced by AgentOrchestrator + StreamAdapter); `demoMode` is preserved
+  // as a no-op flag for downstream callers that gate simulator paths.
+  // Default: off (no demo).
   demoMode: false,
 };
 
@@ -591,9 +607,6 @@ export function stripProviderSecrets(config: ProviderConfig): ProviderConfig {
 
 /** Force any pending chrome.storage writes to land synchronously. */
 async function flushPendingWritesImmediate(): Promise<void> {
-  // Use the import-bound flush to keep dependency direction clean
-  // (chromeStorageAdapter -> adapters -> chrome.storage, no cycles).
-  const { flushPendingWrites } = await import('../core/theme/chromeStorageAdapter');
   await flushPendingWrites();
 }
 
@@ -609,7 +622,6 @@ function base64ToBytes(b64: string): Uint8Array {
 }
 
 async function decryptBlobWithKey(blob: EncryptedBlob, key: CryptoKey): Promise<string> {
-  const { decrypt } = await import('../core/storage/EncryptedStorage');
   return decrypt(blob, key);
 }
 
@@ -710,8 +722,6 @@ export async function persistProviderConfigEncrypted(config: ProviderConfig): Pr
   const extensionId = getExtensionId();
   const saltBytes = crypto.getRandomValues(new Uint8Array(16));
   const key = await deriveKey(installSecret, extensionId, saltBytes);
-
-  const { encrypt } = await import('../core/storage/EncryptedStorage');
 
   // providers.*.apiKey fields: re-encrypt plaintext, preserve Existing Blob.
   const nextProviders = { ...config.providers };

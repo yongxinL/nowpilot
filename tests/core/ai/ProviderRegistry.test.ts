@@ -7,6 +7,13 @@ import {
 } from '../../../src/core/ai/ProviderRegistry';
 import { FixtureProvider } from './fixtures/FixtureProvider';
 import { chromeStorageAdapter, __test__ as adapterTest } from '../../../src/core/theme/chromeStorageAdapter';
+import {
+  persistProviderConfigEncrypted,
+  hydrateProviderSecrets,
+  migrateProviderSecrets,
+  useExtensionStore,
+} from '../../../src/store/useExtensionStore';
+import type { ProviderConfig } from '../../../src/types';
 
 /**
  * ProviderRegistry tests (plan 03-05, Task 1 — additive test file proving the
@@ -96,6 +103,44 @@ describe('ProviderRegistry.hydrate — D-49 normalize-in-memory', () => {
     expect(ProviderRegistry.isHydrated()).toBe(false);
     await ProviderRegistry.hydrate();
     expect(ProviderRegistry.isHydrated()).toBe(true);
+  });
+
+  it('hydrates a real encrypted np_providers save — openAiKey/geminiKey as EncryptedBlob objects must not fail the whole parse', async () => {
+    // persistProviderConfigEncrypted writes the full ProviderConfig with
+    // top-level openAiKey/geminiKey encrypted to EncryptedBlob objects (not
+    // strings) whenever the operator has configured a key. DiskProviderConfig
+    // Schema must accept both forms or the entire np_providers parse fails
+    // → every provider stays enabled:false → "Discover models" finds nothing
+    // and resolveTier always returns configuration_required.
+    seedStorage('np_providers', {
+      serviceProvider: 'Custom API Key',
+      providers: {
+        openai: {
+          id: 'openai',
+          name: 'OpenAI',
+          isConfigured: true,
+          enabled: true,
+          apiKey: { salt: 's1', iv: 'i1', ciphertext: 'c1' },
+          useCustomProxy: true,
+          proxyUrl: 'https://my-proxy.example.com/v1',
+          models: [{ id: 'gpt-4o-mini', name: 'gpt-4o-mini', enabled: true }],
+        },
+      },
+      openAiKey: { salt: 's2', iv: 'i2', ciphertext: 'c2' },
+      geminiKey: '',
+      openAiBaseUrl: '',
+      fontSize: 'Auto',
+      themeMode: 'Auto',
+    });
+    await ProviderRegistry.hydrate();
+
+    // The configured provider normalizes as enabled (not the module-load
+    // enabled:false default) with its models seeded into the D-52 cache.
+    const openai = ProviderRegistry.getById('openai');
+    expect(openai).toBeDefined();
+    expect(openai!.enabled).toBe(true);
+    expect(ProviderRegistry.getEnabled().map((p) => p.providerId)).toEqual(['openai']);
+    expect(ProviderRegistry.getCachedModels('openai')).toEqual(['gpt-4o-mini']);
   });
 });
 
@@ -231,12 +276,107 @@ describe('ProviderRegistry.buildForRoute — CR-01 per-route instance constructi
 });
 
 describe('ProviderRegistry boot wiring — D-51 hydration before UI renders', () => {
-  it('both surface boots call await ProviderRegistry.hydrate()', () => {
-    for (const path of ['entrypoints/sidepanel/main.tsx', 'entrypoints/standalone/main.tsx']) {
+  it('all surface boots call await ProviderRegistry.hydrate()', () => {
+    for (const path of [
+      'entrypoints/sidepanel/main.tsx',
+      'entrypoints/standalone/main.tsx',
+      'entrypoints/options/main.tsx',
+    ]) {
       const body = readFileSync(path, 'utf8');
       expect(body).toMatch(/await ProviderRegistry\.hydrate\(\)/);
       // Boot import present.
       expect(body).toMatch(/import \{ ProviderRegistry \} from '\.\.\/\.\.\/src\/core\/ai\/ProviderRegistry'/);
     }
+  });
+
+  it('Options boot sequence decrypts the saved key and hydrates the registry — "Check connection" + "Discover models" work after a reopen', async () => {
+    // Step 1 — the Options save path (persistProviderConfigEncrypted): a
+    // provider config carrying a plaintext key becomes np_providers with
+    // EncryptedBlob fields (openai.apiKey + top-level openAiKey).
+    const KEY = 'sk-options-boot-test';
+    const saveConfig: ProviderConfig = {
+      ...useExtensionStore.getState().config,
+      providers: {
+        ...useExtensionStore.getState().config.providers,
+        openai: {
+          ...useExtensionStore.getState().config.providers.openai,
+          id: 'openai',
+          name: 'OpenAI',
+          isConfigured: true,
+          enabled: true,
+          apiKey: KEY,
+          useCustomProxy: true,
+          proxyUrl: 'https://my-proxy.example.com/v1',
+          models: [{ id: 'gpt-4o-mini', name: 'gpt-4o-mini', enabled: true }],
+        },
+      },
+      openAiKey: KEY,
+    };
+    useExtensionStore.setState({ config: saveConfig });
+    await persistProviderConfigEncrypted(saveConfig);
+
+    // Step 2 — simulate a fresh Options page load: the zustand store
+    // rehydrates the STRIPPED np_store (no plaintext in memory), the
+    // registry sits at module-load defaults (enabled: false).
+    useExtensionStore.setState({
+      config: {
+        ...saveConfig,
+        providers: {
+          ...saveConfig.providers,
+          openai: { ...saveConfig.providers.openai, apiKey: '' },
+        },
+        openAiKey: '',
+      },
+    });
+    registryTest.reset();
+
+    // Step 3 — the exact Options boot (entrypoints/options/main.tsx):
+    // migrateProviderSecrets → hydrateProviderSecrets → ProviderRegistry.hydrate.
+    await migrateProviderSecrets();
+    await hydrateProviderSecrets();
+    await ProviderRegistry.hydrate();
+
+    // "Check connection" receives a decrypted in-memory key.
+    expect(useExtensionStore.getState().config.providers.openai.apiKey).toBe(KEY);
+    // "Discover models" sees the enabled provider with a seeded model cache.
+    expect(ProviderRegistry.getEnabled().map((p) => p.providerId)).toEqual(['openai']);
+    expect(ProviderRegistry.getCachedModels('openai')).toEqual(['gpt-4o-mini']);
+  });
+});
+
+describe('ProviderRegistry.setEnabled — Options enable-toggle sync', () => {
+  it('flips the in-memory enabled flag so getEnabled reflects the toggle on the same tick', async () => {
+    seedStorage('np_providers', diskShape); // openai + claude enabled, gemini/ollama disabled
+    await ProviderRegistry.hydrate();
+
+    // Sanity: gemini is disabled on disk.
+    expect(ProviderRegistry.getEnabled().map((p) => p.providerId).sort()).toEqual([
+      'anthropic',
+      'openai',
+    ]);
+
+    // Operator toggles Gemini on in Options — the Zustand store writes
+    // np_store, NOT np_providers, so the registry must be patched in place.
+    ProviderRegistry.setEnabled('gemini', true);
+    expect(ProviderRegistry.getEnabled().map((p) => p.providerId).sort()).toEqual([
+      'anthropic',
+      'gemini',
+      'openai',
+    ]);
+
+    // Toggling back off removes it again.
+    ProviderRegistry.setEnabled('gemini', false);
+    expect(ProviderRegistry.getEnabled().map((p) => p.providerId).sort()).toEqual([
+      'anthropic',
+      'openai',
+    ]);
+  });
+
+  it('is a no-op for an unregistered provider (no entry to mutate)', async () => {
+    await ProviderRegistry.hydrate();
+    // OpenAICompat has no §10.6 default; with no endpoint override it's not
+    // registered, so setEnabled must not throw.
+    expect(() => ProviderRegistry.setEnabled('openai-compat', true)).not.toThrow();
+    expect(ProviderRegistry.getEnabled()).toEqual([]);
   });
 });

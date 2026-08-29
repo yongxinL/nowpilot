@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { plan, buildPlannerDecisionSchema, PLANNER_TIMEOUT_MS } from '../../../src/core/ai/PlannerService';
 import { PROMPTS } from '../../../src/core/prompts';
 import { FixtureProvider } from './fixtures/FixtureProvider';
+import type { ILLMProvider, LLMStreamRequest } from '../../../src/core/ai/ILLMProvider';
+import type { StreamEvent } from '../../../src/core/ai/types';
 import {
   OPENAI_ANSWER_STREAM,
   OPENAI_ANSWER_STREAM_CRLF,
@@ -36,6 +38,28 @@ function plannerInput(responseScript: string[][], toolNames: readonly string[] =
     },
     provider,
   };
+}
+
+/**
+ * A provider whose requestJson hangs until its signal aborts — lets the
+ * §1.2 planner timeout (StructuredOutput's internal deadline) fire while the
+ * caller's abortSignal stays silent, and vice-versa.
+ */
+class HangUntilAbortProvider implements ILLMProvider {
+  readonly providerId = 'openai' as const;
+  async *stream(): AsyncIterable<StreamEvent> {
+    return;
+  }
+  async requestJson(_prompt: string, _jsonSchema: unknown, signal?: AbortSignal): Promise<string> {
+    if (signal?.aborted) throw new DOMException('aborted', 'AbortError');
+    return new Promise<string>((_, reject) => {
+      signal?.addEventListener(
+        'abort',
+        () => reject(new DOMException('aborted', 'AbortError')),
+        { once: true },
+      );
+    });
+  }
 }
 
 describe('PlannerService (03-01 tracer slice)', () => {
@@ -85,9 +109,57 @@ describe('PlannerService (03-01 tracer slice)', () => {
     expect(provider.prompts[1]).toContain('Broken:');
   });
 
-  it('missing terminator → STREAM_ERROR surfaces (REQ-R09)', async () => {
+  it('missing terminator → §1.2 planner-failed fallback (REQ-R09 held at the adapter layer)', async () => {
+    // The adapter still emits STREAM_ERROR for a missing terminator
+    // (StreamAdapter.test.ts REQ-R09) — but per §1.2 the planner degrades to
+    // a direct answer instead of surfacing the transport failure as a turn
+    // error.
     const { input } = plannerInput([OPENAI_MISSING_TERMINATOR_STREAM]);
-    await expect(plan(input)).rejects.toThrow(/STREAM_ERROR/);
+    const decision = await plan(input);
+    expect(decision).toEqual({ action: 'answer', reasonCode: 'planner_failed' });
+  });
+
+  it('planner timeout → §1.2 fallback to a direct answer (planner_failed)', async () => {
+    const provider = new HangUntilAbortProvider();
+    const decision = await plan({
+      operationId: 'op-planner-timeout',
+      providerId: 'openai',
+      model: 'gpt-4o-mini',
+      prompt: 'Help me fix this incident.',
+      toolNames: [],
+      callProviderJsonMode: (p: string, s: unknown, sig?: AbortSignal) =>
+        provider.requestJson(p, s, sig),
+      // Tight deadline so StructuredOutput's internal timeout fires — the
+      // production default is PLANNER_TIMEOUT_MS (3s, §1.2).
+      timeoutMs: 30,
+    });
+    expect(decision).toEqual({ action: 'answer', reasonCode: 'planner_failed' });
+  });
+
+  it('both JSON attempts fail → §1.2 fallback to a direct answer (planner_failed)', async () => {
+    const { input } = plannerInput([OPENAI_MALFORMED_STREAM, OPENAI_MALFORMED_STREAM]);
+    const decision = await plan(input);
+    expect(decision).toEqual({ action: 'answer', reasonCode: 'planner_failed' });
+  });
+
+  it('caller abort propagates — never degraded to a fallback answer', async () => {
+    const provider = new HangUntilAbortProvider();
+    const ac = new AbortController();
+    const pending = plan({
+      operationId: 'op-planner-abort',
+      providerId: 'openai',
+      model: 'gpt-4o-mini',
+      prompt: 'Help me fix this incident.',
+      toolNames: [],
+      callProviderJsonMode: (p: string, s: unknown, sig?: AbortSignal) =>
+        provider.requestJson(p, s, sig),
+      abortSignal: ac.signal,
+      timeoutMs: 10_000,
+    });
+    ac.abort();
+    // The DOMException name is the abort signal the caller checks
+    // (useChatStreaming: `err.name === 'AbortError'`); the message is 'aborted'.
+    await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
   });
 
   it('zero-tool runtime: production schema has NO run_tool variant', () => {

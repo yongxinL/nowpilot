@@ -174,3 +174,42 @@ describe('RendererService — abort mid-stream', () => {
     expect(result.streamedText).not.toContain('unreachable');
   });
 });
+
+describe('RendererService — §1.2 five-second timeout', () => {
+  /** A stream that yields a token then stalls forever until the signal aborts. */
+  function stalledStream(): (signal?: AbortSignal) => AsyncIterable<StreamEvent> {
+    return async function* (signal?: AbortSignal) {
+      yield { type: 'STREAM_START', operationId: OP };
+      yield { type: 'STREAM_DELTA', operationId: OP, delta: 'partial ' };
+      await new Promise<void>((resolve) => {
+        if (signal?.aborted) resolve();
+        else signal?.addEventListener('abort', () => resolve(), { once: true });
+      });
+    };
+  }
+
+  it('(e) a stalled stream surfaces a TIMEOUT error instead of hanging forever', async () => {
+    const result = await render(
+      renderInput({ provider: new ScriptedStreamProvider(stalledStream()), timeoutMs: 10 }),
+    );
+    expect(result.terminatedBy).toBe('error');
+    expect(result.error?.code).toBe('TIMEOUT');
+    // The partial prefix is relayed; the render never hangs.
+    expect(result.streamedText).toBe('partial ');
+  });
+
+  it('(f) a caller abort still terminates as aborted — the internal deadline is not conflated with a user stop', async () => {
+    const controller = new AbortController();
+    const renderPromise = render(
+      renderInput({
+        provider: new ScriptedStreamProvider(stalledStream()),
+        abortSignal: controller.signal,
+        timeoutMs: 10_000, // generous — the caller aborts first
+      }),
+    );
+    setTimeout(() => controller.abort(), 5);
+    const result = await renderPromise;
+    expect(result.terminatedBy).toBe('aborted');
+    expect(result.error).toBeUndefined();
+  });
+});
