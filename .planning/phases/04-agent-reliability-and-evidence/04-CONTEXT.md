@@ -38,7 +38,7 @@ Phase 4 makes the agent's execution **reliable and honest**: every turn produces
 - **D-67 (Replan exercises the framework, not real tools):** With zero registered tools (D-46), the replan path is exercised via injected `ToolExecutionResult`s in tests (a failing injected tool triggers one replan then terminal), exactly as the ExecutorService zero-tool contract is tested today. No fake tools are registered. — **Reversibility:** `reversible` — rationale: test-only exercise path; real replans arrive with real tools.
 
 ### Verification gate
-- **D-68 (Re-point `verify:phase-4` at the phase's own tests):** The package.json `verify:phase-4` script currently targets `tests/core/context` (Phase 5 territory, dir does not exist yet). Phase 4 re-points it to the §18 required tests — `tests/core/ai/trajectory tests/core/ai/OutcomeVerifier.test.ts` (plus existing `tests/core/ai` if the AgentOrchestrator changes need the whole AI suite; keep the trajectory/OutcomeVerifier dirs mandatory). — **Reversibility:** `reversible` — rationale: package.json script edit.
+- **D-68 (Re-point the phase-4 verification gate):** The package.json `verify:phase-4` script currently targets `tests/core/context` (Phase 5 territory, dir does not exist yet). Phase 4 re-points it to the §18 required tests — `tests/core/ai/trajectory tests/core/ai/OutcomeVerifier.test.ts` (plus existing `tests/core/ai` if the AgentOrchestrator changes need the whole AI suite; keep the trajectory/OutcomeVerifier dirs mandatory). — **Reversibility:** `reversible` — rationale: package.json script edit.
 
 ### the agent's Discretion
 - Exact `AgentTrajectoryState` tracking mechanism (transition-table validator vs type-level encoding) — either is fine as long as AGT-01 is asserted.
