@@ -36,6 +36,7 @@ import type { CompressionType, PageContext, RetrievedMemory, ToolSchemaRef } fro
 import { applyTrustPolicy } from './trust/TrustPolicy';
 import { buildContextItems } from './trust/contextItems';
 import { deriveContextReceipt, type ContextReceiptSurface } from './trust/ContextReceipt';
+import { deriveContextQualityMetrics, type ContextQualityMetrics } from './trust/ContextQualityMetrics';
 import type { ContextItem } from '@/types/harness';
 
 /** §2.3 input contract verbatim (spec 466-478). workspaceId/activeSurface are
@@ -82,6 +83,12 @@ export interface OptimizedContext {
   // Derived from the verbatim manifest + D-96 original token counts + A8
   // stable flags + item trust; Phase 11 Prompt Inspector lifts it additively.
   receipt: ContextReceiptSurface;
+  // --- D-102 metrics surface (CTX-06; additive — the D-77 precedent) ---
+  // Derived aggregate metrics (section count, trust mix, truncation/omission/
+  // compression counts, token utilization ratio, minimalMode) — aggregates
+  // ONLY, no raw section text (UI-SPEC Contract B); Phase 11 lifts it
+  // additively into PromptTrace/DiagnosticsSection.
+  metrics: ContextQualityMetrics;
 }
 
 /** §2.5 blocked set verbatim (spec 519-524) — kebab-case literals (D-74). */
@@ -196,6 +203,11 @@ export function assemble(input: ContextOptimizerInput): AssembleResult {
     items,
   );
 
+  // D-102: derive the CTX-06 aggregate metrics from the verbatim manifest + the
+  // derived receipt + the item trust mix (aggregates ONLY — no section bodies,
+  // UI-SPEC Contract B). Never throws; additive like the receipt (D-77).
+  const metrics = deriveContextQualityMetrics(manifest, receipt, items);
+
   const context: OptimizedContext = {
     tier,
     inputBudget: budgets.inputBudget,
@@ -207,6 +219,7 @@ export function assemble(input: ContextOptimizerInput): AssembleResult {
     truncated: truncatedSources.length > 0,
     truncatedSources,
     receipt,
+    metrics,
   };
   return { ok: true, context };
 }
