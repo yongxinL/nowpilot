@@ -18,7 +18,7 @@
 - [x] **Phase 3: Cost-Effective AI Runtime (+ Persona seed)** — ProviderRouter, AgentOrchestrator, structured output, persona runtime foundation (completed 2026-08-29)
 - [x] **Phase 4: Agent Reliability and Evidence** — Trajectory states, CompletionEvidence, AgentTurnOutcome, deterministic replan/terminal policy (completed 2026-08-29)
 - [x] **Phase 5: Context-Adaptive Execution** — TokenBudget, ContextOptimizer, ContextCompressor, ContextProvenanceManifest (completed 2026-08-29)
-- [ ] **Phase 6: PageContentService (Knowledge Acquisition)** — Layered Defuddle→Readability fallback, APC-lite structural walk, panel-side extraction
+- [x] **Phase 6: PageContentService (Knowledge Acquisition)** — Layered Defuddle→Readability fallback, APC-lite structural walk, panel-side extraction (completed 2026-08-30)
 - [ ] **Phase 7: Trust-Aware Context and Receipts** — ContextItem trust metadata, context receipt, six-layer injection defense, progressive skill disclosure
 - [ ] **Phase 8: Knowledge Base (Memory + MiniSearch + Notes)** — MemoryEngine, MiniSearch, NoteGraph, atomic notes + wikilinks, PreferenceMemoryStore np_persona
 - [ ] **Phase 9: LLM-Wiki & Filesystem Sync** — NoteTagger/QA/ChatConverter/FileSync/Maintenance, OKF-aligned YAML frontmatter, write→restore round-trip, categoryPath, Memories↔Notes
@@ -203,7 +203,7 @@ Plans:
 
 **Verification gate:** `pnpm run verify:phase-6` (§24).
 **Notes:** SPIKE-P6-01 (panel-side Detached-doc viability) → ADR-P6-01 (`.planning/adr/`).
-**Plans:** 5/5 plans executed
+**Plans:** 5/5 plans complete
 Plans:
 **Wave 1**
 
@@ -452,7 +452,7 @@ Plans:
 | 3. Cost-Effective AI Runtime (+ Persona seed) | 7/7 | Complete    | 2026-08-29 |
 | 4. Agent Reliability and Evidence | 4/4 | Complete    | 2026-08-29 |
 | 5. Context-Adaptive Execution | 2/2 | Complete    | 2026-08-29 |
-| 6. PageContentService (Knowledge Acquisition) | 5/5 | In Progress|  |
+| 6. PageContentService (Knowledge Acquisition) | 5/5 | Complete    | 2026-08-30 |
 | 7. Trust-Aware Context and Receipts | 0/2 | Not started | — |
 | 8. Knowledge Base (Memory + MiniSearch + Notes) | 0/3 | Not started | — |
 | 9. LLM-Wiki & Filesystem Sync | 0/4 | Not started | — |

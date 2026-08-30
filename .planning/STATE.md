@@ -1,15 +1,15 @@
 ---
 gsd_state_version: 1.0
 milestone: v0.1
-current_phase: 6
-current_phase_name: PageContentService (Knowledge Acquisition)
-status: executing
-stopped_at: "Completed 06-05-PLAN.md (verification closeout: isolation gate + D-92 re-point + D-79 ADR flip — pnpm verify:phase-6 GREEN)"
-last_updated: "2026-08-30T00:35:51.461Z"
-state_head: eab8f360f66a7219ef97b49f85e4c99554383a96
+current_phase: 7
+current_phase_name: Trust-Aware Context and Receipts
+status: planning
+stopped_at: Phase 6 complete, ready to plan Phase 7
+last_updated: "2026-08-30T01:12:44.252Z"
+state_head: 647a73a1a1e7bca9ef5b1e69488ddf0a47740f6f
 progress:
   total_phases: 19
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 36
   completed_plans: 35
 milestone_name: milestone
@@ -43,9 +43,9 @@ milestone_name: milestone
 
 ## Current Position
 
-- **Phase:** 6 (PageContentService (Knowledge Acquisition)) — EXECUTING
-- **Plan:** 2 of 5
-- **Status:** Ready to execute
+- **Phase:** 7 — Trust-Aware Context and Receipts
+- **Plan:** Not started
+- **Status:** Ready to plan
 - **Progress:** 4/19 phases complete · 33/36 plans done · 220/220 requirements mapped ([██████████] 92% coverage).
 
 ---
@@ -125,7 +125,7 @@ All inherited decisions are **— Pending** (awaiting first implementation to va
 ## Session Continuity
 
 **Last session:** 2026-08-30T00:35:51.006Z
-**Stopped at:** Completed 06-05-PLAN.md (verification closeout: isolation gate + D-92 re-point + D-79 ADR flip — pnpm verify:phase-6 GREEN)
+**Stopped at:** Phase 6 complete, ready to plan Phase 7
 **Resume file:** None
 
 - **Last action:** 06-03 completed end-to-end: PageContentCache implements §26.4a verbatim (per-tab LRU cap 20, SPA-nav + tabs.onUpdated invalidation, tabs.onRemoved eviction, in-flight coalescing, await-not-stale, pinned eviction-last, index-evicted-together hook, declared subscribe/unsubscribe/markStale API), ephemeral (zero storage imports); ten §26.4a behavior groups green in tests/core/extraction/PageContentService.test.ts (26/26 total).
