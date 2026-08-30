@@ -1,3 +1,5 @@
+import type { PromptSection } from '../core/ai/types';
+
 /**
  * Canonical Phase-4 agent-reliability type home — Appendix C.1
  * (PRODUCT_SPEC_v0_1.md:4849-4876), verbatim.
@@ -57,4 +59,44 @@ export interface AgentTurnOutcome {
   evidence: CompletionEvidence[];
   plannerCalls: number;
   toolCalls: number;
+}
+
+// ---------------------------------------------------------------------------
+// Canonical Phase-7 trust-type home — Appendix C.1 (PRODUCT_SPEC_v0_1.md:
+// 4878-4900), verbatim. Spec 4838 'Trust context' row mandates this file; O.3
+// (spec 6369) imports from @/types/harness. The only import this file needs is
+// the type-only PromptSection (ContextItem.kind references PromptSection['kind'])
+// — ai/types.ts:138 `import('@/types/harness')` seam shows the cross-file
+// direction works both ways.
+// ---------------------------------------------------------------------------
+
+/** C.1 — closed 5-value trust-level union (spec 4879). */
+export type TrustLevel = 'system' | 'user' | 'tool' | 'retrieved' | 'untrusted';
+
+/** C.1 — item-level trust metadata (spec 4880-4891, verbatim; CTX-01). */
+export interface ContextItem {
+  id: string;
+  kind: PromptSection['kind'];
+  text: string;
+  tokens: number;
+  trust: TrustLevel;
+  /** MUST be false for retrieved/untrusted data (D-94/CTX-02). */
+  instructionAuthority: boolean;
+  /** 0..1 */
+  relevance: number;
+  /** 0..1 */
+  freshness: number;
+  sensitivity: 'none' | 'low' | 'high';
+  sourceId: string;
+}
+
+/** C.1 — per-source context receipt entry (spec 4892-4900, verbatim; CTX-03). */
+export interface ContextReceiptEntry {
+  sourceId: string;
+  included: boolean;
+  originalTokens: number;
+  finalTokens: number;
+  compression?: 'summarise' | 'structural' | 'topk';
+  cacheEligible: boolean;
+  omitReason?: string;
 }
