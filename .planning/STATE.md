@@ -4,14 +4,14 @@ milestone: v0.1
 current_phase: 6
 current_phase_name: PageContentService (Knowledge Acquisition)
 status: executing
-stopped_at: Completed 06-03-PLAN.md (PageContentCache §26.4a lifecycle — impl + tests committed, SUMMARY written)
-last_updated: "2026-08-30T09:05:00.000Z"
-state_head: ccf3edc
+stopped_at: "Completed 06-05-PLAN.md (verification closeout: isolation gate + D-92 re-point + D-79 ADR flip — pnpm verify:phase-6 GREEN)"
+last_updated: "2026-08-30T00:35:51.461Z"
+state_head: eab8f360f66a7219ef97b49f85e4c99554383a96
 progress:
   total_phases: 19
   completed_phases: 4
   total_plans: 36
-  completed_plans: 33
+  completed_plans: 35
 milestone_name: milestone
 ---
 
@@ -44,7 +44,7 @@ milestone_name: milestone
 ## Current Position
 
 - **Phase:** 6 (PageContentService (Knowledge Acquisition)) — EXECUTING
-- **Plan:** 4 of 5
+- **Plan:** 2 of 5
 - **Status:** Ready to execute
 - **Progress:** 4/19 phases complete · 33/36 plans done · 220/220 requirements mapped ([██████████] 92% coverage).
 
@@ -76,6 +76,7 @@ milestone_name: milestone
 | Phase 2 P5 | 6 min | 2 tasks | 4 files |
 | Phase 06 P01 | 23m | 4 tasks | 13 files |
 | Phase 6 P02 | 6min | 2 tasks | 4 files |
+| Phase 06-pagecontentservice-knowledge-acquisition P05 | 16min | 3 tasks | 4 files |
 
 ## Accumulated Context — Decisions (inherited from PROJECT.md Key Decisions)
 
@@ -123,8 +124,8 @@ All inherited decisions are **— Pending** (awaiting first implementation to va
 
 ## Session Continuity
 
-**Last session:** 2026-08-30T09:05:00.000Z
-**Stopped at:** Completed 06-03 (PageContentCache §26.4a lifecycle — 26/26 tests green, lint clean, SUMMARY written). Resume at 06-04 (content shells + PageContextBridge).
+**Last session:** 2026-08-30T00:35:51.006Z
+**Stopped at:** Completed 06-05-PLAN.md (verification closeout: isolation gate + D-92 re-point + D-79 ADR flip — pnpm verify:phase-6 GREEN)
 **Resume file:** None
 
 - **Last action:** 06-03 completed end-to-end: PageContentCache implements §26.4a verbatim (per-tab LRU cap 20, SPA-nav + tabs.onUpdated invalidation, tabs.onRemoved eviction, in-flight coalescing, await-not-stale, pinned eviction-last, index-evicted-together hook, declared subscribe/unsubscribe/markStale API), ephemeral (zero storage imports); ten §26.4a behavior groups green in tests/core/extraction/PageContentService.test.ts (26/26 total).
@@ -167,3 +168,6 @@ The workflow expects Phase 6 plan 06-04 (content shells + PageContextBridge) exe
 - [Phase Phase 6]: Phase 6 P02: AxDomWalker is a zero-import module — RawNode declared locally (plain serializable interface, structurally identical to apcLite.types.ts), the strongest Pitfall 8 content-bundle boundary; the 06-04 bridge wires the envelope round-trip
 - [Phase Phase 6]: Phase 6 P02: form.control.isPassword emitted deterministically for every control (boolean, not only when true) so the panel-side normalizer never guesses; form.control.value emitted only when non-empty for non-password controls
 - [Phase Phase 6]: Phase 6 P02: ApcLiteStrategy propagates input.truncated into stats.truncated (fallback false) — matches DefuddleStrategy's additive truncated? semantics so the bridge's walker-truncation flag reaches the StrategyResult
+- [Phase 6]: D-92 executed: verify:phase-6 re-pointed to §18 test dirs (tests/core/extraction tests/core/content tests/isolation/no-content-script-ui.test.ts); stale verify:phase-4a deleted; verify:phase-7 mis-pointing left for Phase-7 (RESEARCH Open Question 3)
+- [Phase 6]: D-79 executed: ADR-P6-01 flips to Accepted (2026-08-29) with SPIKE-P6-01 outcome recorded — defuddle guarded defaultView?.getComputedStyle + Readability inline-only _isProbablyVisible make detached-doc fidelity acceptable; no measurement pass (evidence = DefuddleStrategy.test.ts)
+- [Phase 6]: 06-05: built-bundle isolation check reads manifest.json content_scripts[].js as authoritative artifact list; describe.skipIf when no build artifact — gate never depends on a build (Open Question 2)
