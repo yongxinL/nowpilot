@@ -197,3 +197,7 @@ None - no external service configuration required (zero new packages, pure TypeS
 ---
 *Phase: 07-trust-aware-context-and-receipts*
 *Completed: 2026-08-30*
+
+## Self-Check: PASSED
+
+All 10 created/modified files exist on disk (`[ -f ]` verified); all 4 commits (13568e1, 0ef5cf5, 1748804, 3e8f01d) verified in `git log`. Full suite: 65 files / 599 passed / 2 skipped (pre-existing Phase-6 built-bundle skips). Zero NP-STRICT markers; verbatim contracts untouched; throwing guard absent from ContextOptimizer.ts.
