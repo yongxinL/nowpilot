@@ -1,6 +1,6 @@
 # ADR-P6-01 — Defuddle runs panel-side on a detached document
 
-- **Status:** Proposed (decision fixed; spike pending at Phase 6 start)
+- **Status:** Accepted (2026-08-29 — SPIKE-P6-01 resolved by the Phase-6 tracer tests; no measurement pass)
 - **Date:** 2026-08-19
 - **Deciders:** George Li (product owner / architect)
 - **Decides:** RESEARCH-RECONCILIATION.md §B / SPIKE-P6-01
@@ -36,3 +36,13 @@ Record the spike outcome in this ADR (flip Status → Accepted with the chosen p
 - Isolation grep (§24): no `defuddle` import in `content/` entrypoints; content bundle <50 KB; also rejects `mathml-to-latex`, `temml`, `turndown`, `yaml`.
 - Spike report attached: fidelity delta (detached vs live-DOM) on the ServiceNow sample corpus; decision (no-op vs measurement-pass) recorded here.
 - Extraction produces clean Markdown with correct relative-link resolution (base-href stamp working).
+
+## Spike Outcome (SPIKE-P6-01)
+
+**Resolution: detached-doc fidelity is ACCEPTABLE → no content-script measurement pass. Placement stays panel-side per this ADR and §26.4.**
+
+- **Defuddle's computed-style access is guarded.** `defuddle` 0.19.x reads layout via `element.ownerDocument.defaultView?.getComputedStyle(...)` — the optional chaining means a detached `DOMParser` document (`defaultView === null`) **degrades rather than throws**. Independently confirmed for 0.19.2 by the nexus project (issue #329, 2026-08-14).
+- **Readability 0.6.0's visibility check is inline-only.** `_isProbablyVisible` (verified in the published `Readability.js:2694-2707`) uses only inline style/attribute checks — no `getComputedStyle` / `defaultView` — so the internal Readability fallback also runs on a detached doc.
+- **Evidence (Phase-6 tracer, plan 06-01):** the real-engine detached-doc tests in `tests/core/extraction/DefuddleStrategy.test.ts` run `defuddle/full` on synthesized KB/portal fixtures with base-href injection under jsdom — (a) does not throw on a detached `DOMParser` doc with base-href (A1/A2), (b) extracts non-empty markdown + title for the KB fixture, (c) extracts the portal-record-shaped fixture. No measurement pass needed (D-79).
+- **Known fidelity delta (accepted):** stylesheet-driven `display:none` removal is inert on a detached doc (no computed style to read); inline `display:none` / `hidden` attributes are still detected. This degrades gracefully and is partially mitigated by the content-script pre-strip (06-04).
+- **Conclusion:** the ADR flips to **Accepted**; no content-script measurement pass ships in v0.1 (D-79).
