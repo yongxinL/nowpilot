@@ -447,7 +447,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. MV3/WXT Runtime + AntD Shells + Workspace Handoff | 0/8 | Planned | — |
+| 1. MV3/WXT Runtime + AntD Shells + Workspace Handoff | 8/8 | Complete    | 2026-08-22 |
 | 2. Storage, Security, WriteJournal, Workspace Persistence | 9/9 | Complete    | 2026-08-24 |
 | 3. Cost-Effective AI Runtime (+ Persona seed) | 7/7 | Complete    | 2026-08-29 |
 | 4. Agent Reliability and Evidence | 4/4 | Complete    | 2026-08-29 |

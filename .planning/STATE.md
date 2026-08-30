@@ -5,12 +5,12 @@ current_phase: 7
 current_phase_name: Trust-Aware Context and Receipts
 status: planning
 stopped_at: Phase 6 complete, ready to plan Phase 7
-last_updated: "2026-08-30T01:12:44.252Z"
-state_head: 647a73a1a1e7bca9ef5b1e69488ddf0a47740f6f
+last_updated: "2026-08-30T01:23:00.000Z"
+state_head: 9b50aca
 progress:
   total_phases: 19
-  completed_phases: 5
-  total_plans: 36
+  completed_phases: 6
+  total_plans: 74
   completed_plans: 35
 milestone_name: milestone
 ---
@@ -46,7 +46,7 @@ milestone_name: milestone
 - **Phase:** 7 — Trust-Aware Context and Receipts
 - **Plan:** Not started
 - **Status:** Ready to plan
-- **Progress:** 5/19 phases complete · 35/36 plans done · 220/220 requirements mapped ([██████████] 92% coverage).
+- **Progress:** 6/19 phases complete · 35/74 plans done · 220/220 requirements mapped (100% coverage).
 
 ---
 
@@ -76,8 +76,8 @@ milestone_name: milestone
 | Phase 2 P5 | 6 min | 2 tasks | 4 files |
 | Phase 06 P01 | 23m | 4 tasks | 13 files |
 | Phase 6 P02 | 6min | 2 tasks | 4 files |
-| Phase 06 P03 | 6min | 2 tasks | 2 files |
-| Phase 06 P04 | 8min | 3 tasks | 10 files |
+| Phase 06 P03 | 15min | 2 tasks | 2 files |
+| Phase 06 P04 | 17min | 3 tasks | 10 files |
 | Phase 06-pagecontentservice-knowledge-acquisition P05 | 16min | 3 tasks | 4 files |
 
 ## Accumulated Context — Decisions (inherited from PROJECT.md Key Decisions)
@@ -101,7 +101,7 @@ All inherited decisions are **— Pending** (awaiting first implementation to va
 | 13 | Selection → Ask AI promoted P1 → P0 | RESEARCH-RECONCILIATION §F (REQ-R24) | Accepted 2026-08-19; spec §9.1 updated |
 | 14 | G-1 similar-cases result card = §9.7 acceptance criterion (v0.1) | RESEARCH-RECONCILIATION §F (REQ-R22) | Accepted 2026-08-19 |
 | 15 | Phase-1 wxt.config.ts permissions DEVIATE from Appendix G: authoritative Phase-1 set = ['sidePanel','storage','tabs']; cookies/scripting/contextMenus→Phase 17, alarms/notifications→when used, unlimitedStorage→Phase 2, declarativeNetRequest→never (v0.1) | `01-CONTEXT.md` D-19a (REQ-R21 / §16.4 / ADR-STACK-02) | Accepted 2026-08-19 |
-| 16 | Entrypoints KEPT at root `entrypoints/` (WXT default; no migration to src/entrypoints/); content-script path shape normalized to `entrypoints/content/core.content.ts` (directory form, ISOLATED); MAIN-world servicenow content script → Phase 17 | `01-CONTEXT.md` D-07a (§5.1 / §6.2 / Appendix G) | Accepted 2026-08-19 |
+| 16 | Entrypoints KEPT at root `entrypoints/` (WXT default; no migration to src/entrypoints/); content-script path shape normalized to `entrypoints/content/core.content.ts` (directory form, ISOLATED); MAIN-world servicenow content script → Phase 17 | `01-CONTEXT.md` D-07a (§5.1 / §6.2 / Appendix G) | Accepted 2026-08-19; **shape corrected 2026-08-30** — `content/core.content.ts` matched no WXT 0.20.27 glob, fixed via `entrypoints/content/index.ts` re-export (commit 45250b5) |
 | 17 | Phase-1 `strict:true` lands via `@ts-expect-error NP-STRICT` sweep; verify:phase-1 is `tsc --noEmit` (noEmitOnError is a no-op and NOT relied upon); NP-STRICT ceiling tracked → reduce to 0 in Phase 2-3 | `01-CONTEXT.md` D-21 (§7.8 / §24 / §0.5.1) | Accepted 2026-08-19 |
 | 18 | NP-STRICT ceiling reduced to 0 in Phase 2 (no `@ts-expect-error NP-STRICT` markers remain) | Phase 2 execution | Validated 2026-08-24 |
 | 19 | `isPrimaryWriter()` delegates to WorkspaceElection (Phase-1 stub removed); election-gated journaled persist is the production path (D-24/D-31) | 02-07/02-08/02-09 | Validated 2026-08-24 |
@@ -114,8 +114,8 @@ All inherited decisions are **— Pending** (awaiting first implementation to va
 - **Open questions:** 0.
 - **Blockers:** 0.
 - **Watch items (verify at phase, do not hard-code as fact):**
-  - VAI-01: `CVE-2026-30830` (Defuddle XSS fix in 0.19.x) — confirm at Phase 6 install.
-  - VAI-04: version numbers (TS 7.0.2, Vitest 4.1.11, Vite 8.2.1, antd 6.6.1, minisearch 7.2.0, defuddle 0.19.2, idb 8.0.3) — re-query npm at each phase install.
+  - VAI-01: `CVE-2026-30830` (Defuddle XSS fix in 0.19.x) — RESOLVED at Phase 6 install: defuddle `^0.19.3` installed, runs panel-side on detached docs with `useAsync:false`; ADR-P6-01 Accepted (2026-08-29).
+  - VAI-04: version numbers (TS 7.0.2, Vitest 4.1.11, Vite 8.2.1, antd 6.6.1, minisearch 7.2.0, idb 8.0.3) — re-query npm at each phase install. (defuddle confirmed 0.19.3 at Phase 6.)
   - VAI-05: CWS v1 publish API shutdown 2026-10-15 — confirm `wxt submit init` v2 flow at Phase 19.
   - VAI-08: `CONCERNS.md`-referenced scaffold defects (simulated-AI `localhost:12380`, per-chunk full-store persistence, dual messaging, 5 unused permissions, vacuous isolation tests) — verify each against `src/` in Phase 1 before treating as fact (per RECONCILIATION §F).
   - Phase-1 theme key: authoritative is chrome.storage.sync.np\_theme (§15.1 / §17.1a APPR-03) — NOT np\_theme\_mode (does not exist in spec) and NOT the scaffold's chrome.storage.local np\_theme\_store. ThemeStore declares mode + pack now; pack SELECTOR UI is Phase 15 (D-10 / A1).
