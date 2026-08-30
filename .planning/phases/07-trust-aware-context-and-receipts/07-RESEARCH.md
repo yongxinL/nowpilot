@@ -234,7 +234,7 @@ interface WorkingSection {           // EXISTING: lines 115-118 [VERIFIED]
 - **Adding receipt fields to the manifest schema or A8 `PromptSection`:** forbidden (D-72/D-77/D-95) — the receipt is derived; an executor who "just adds a field" breaks the verbatim contracts and Phase 11's additive lift.
 - **Content regexes / "looks like an instruction" heuristics:** D-99/P7 — the defense is the authority map + wrapping + typed guard; spotting is fragile and was subverted in real incidents.
 - **Making `assemble` throw:** the AssembleResult never-throw contract (ContextOptimizer.ts:100-112) is a Phase-5 lock; the guard's throwing variant stays outside assemble.
-- **New §1.3 section kinds or edited `CANONICAL_SECTION_ORDER`:** `pack()` throws on non-canonical kinds (ContextPack.ts:39-42) — debug/notes must ride existing kinds (see Open Questions).
+- **New §1.3 section kinds or edited `CANONICAL_SECTION_ORDER`:** `pack()` throws on non-canonical kinds (ContextPack.ts:39-42) — debug/notes must ride existing kinds (see Open Questions (RESOLVED)).
 - **New error codes:** `CONTEXT_INSTRUCTION_INJECTION_BLOCKED` is the ONLY code Phase 7 raises and it already exists in the closed set (spec 5093); the `CONTEXT_TOO_LARGE` literal precedent (ContextOptimizer.ts:465) is how closed-set literals are used — no registry edit.
 - **Re-implementing layers 1/2/4:** extraction hygiene (Phase 6), Executor screening (Phase 4), output screening (Phase 18/12) — Phase 7 ships only the L5 containment seam + L6 signal (D-98).
 
@@ -248,7 +248,7 @@ interface WorkingSection {           // EXISTING: lines 115-118 [VERIFIED]
 | Skill-manifest catalog | Building real `ISkill` implementations / slash commands / RICH registry | Disclosure mechanism only (`renderSkillDisclosure` + fixtures) | Phase 15 owns the real catalog; Phase 7 ships the contract + zero-token proof (D-101). |
 | Tokenizer | A new token-counting library | Existing `heuristicTokenCounter` (D-71) + recount-on-wrap | No tokenizer dependency exists by design (STACK.md); heuristic counting is the shipped accounting unit. |
 
-**Key insight:** every "hard" part of this phase already has a shipped seam — the phase is *wiring* trust through existing contracts, not inventing new infrastructure. The two genuine design decisions (receipt placement, rungs 1-2 mechanics) are both additive and reversible, and are flagged in Open Questions.
+**Key insight:** every "hard" part of this phase already has a shipped seam — the phase is *wiring* trust through existing contracts, not inventing new infrastructure. The genuine design decisions (receipt placement, rungs 1-2 mechanics) are both additive and reversible, and are flagged in Open Questions (RESOLVED).
 
 ## Common Pitfalls
 
@@ -460,29 +460,33 @@ it('stable-section FNV-1a hash matches the golden (cross-check, spec 5747+)', ()
 
 ## Assumptions Log
 
-> All claims in this research were verified against the spec, the shipped code (read this session), or the approved 07-UI-SPEC. There are **no `[ASSUMED]`-tagged claims** that lock behavior. The two genuine design tensions are recorded as Open Questions (below) rather than assumptions.
+> All claims in this research were verified against the spec, the shipped code (read this session), or the approved 07-UI-SPEC. There are **no `[ASSUMED]`-tagged claims** that lock behavior. The genuine design tensions are recorded as Open Questions (RESOLVED, below) rather than assumptions.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Receipt placement on `OptimizedContext` (additive field) vs standalone derivation function**
    - What we know: D-96 forbids a public-signature change to `assemble(ContextOptimizerInput) → AssembleResult`; D-77 already added additive fields (`contextTier`/`truncated`/`truncatedSources`) to `OptimizedContext` as the accepted pattern; Phase-11 Prompt Inspector must reconstruct packing decisions from a transaction id, and the manifest alone lacks `originalTokens`/`stable`.
    - What's unclear: whether "no public-signature change" permits an additive `receipt` field on the output (D-77 precedent) or demands the receipt stay a standalone function Phase 11 calls with separately-retained bookkeeping.
    - Recommendation: **additive `receipt` (+ `untrustedDataPresent`) on `OptimizedContext`**, computed by the trust layer's `deriveContextReceipt` — the D-77 precedent 1:1; existing tests keep passing; Phase 11 lifts it additively. Planner should confirm before locking.
+   - **RESOLVED:** additive `receipt` (+ `untrustedDataPresent`) on `OptimizedContext` confirmed — 07-01 Task 2 wires `deriveContextReceipt` into `assemble` per the D-77 precedent; Phase 11 lifts it additively.
 
 2. **Rungs 1-2 mechanics for debug/notes (D-97): how do the optional inputs enter the working set without new section kinds?**
    - What we know: `ContextPack.pack` throws on non-canonical kinds (ContextPack.ts:39-42); `MANIFEST_KIND_MAP`/§1.3 are closed; `buildSourcedSections` uses a `byKind` Map (one section per kind); the decision requires "a manifest `truncated` record" when dropped.
    - What's unclear: the A8 kind + manifest kind the optional debug/notes sections ride (extra `CONTEXT`-kind sections with distinct sourceIds vs a `task`-kind carrier), and whether rungs 1-2 fire only over budget (ladder scope) or always when inputs are present.
    - Recommendation: model them as **additional `CONTEXT`-kind sections with `sourceId` prefixes `debug:`/`notes:`** — `findSection(working,'CONTEXT')` returns the first (main page context), rungs 1-2 drop them over budget with `truncated` records, and the receipt maps their sourceId to `omitReason: 'debug-only' | 'secondary-notes'`. Rungs stay inside the existing over-budget ladder scope. Planner must verify the `byKind` Map → ordered-array refactor is acceptable (it is local to `buildSourcedSections`).
+   - **RESOLVED:** debug/notes ride additional `CONTEXT`-kind sections with sourceId `'debug'`/`'notes'` (the `byKind` Map → ordered-array refactor is accepted — local to `buildSourcedSections`); rungs 1-2 drop them over budget with truncated manifest records and the receipt maps `omitReason: 'debug-only' | 'secondary-notes'` — 07-01 Task 2 (D-97).
 
 3. **USER PREFERENCES in the CTX-04 snapshot vs its `stable:false` flag**
    - What we know: D-100 names "SYSTEM + TOOL SCHEMAS + USER PREFERENCES"; the shipped code emits no SYSTEM and marks USER PREFERENCES `stable:false` (ContextOptimizer.ts:287-292).
    - What's unclear: whether Phase 7 should flip `USER PREFERENCES` to `stable:true` (a cache-semantics change to Phase-5/PromptCacheManager behavior) to match D-100's naming.
    - Recommendation: **do NOT flip the flag**; snapshot the deterministic packed output (USER PREFERENCES text is byte-identical for a fixed input regardless of the flag) + the `hashStableSections` FNV-1a golden. A future phase (persona/Phase 15) reconciles the flag.
+   - **RESOLVED:** USER PREFERENCES stays `stable:false` (no cache-semantics change); the CTX-04 snapshot pins the deterministic packed output + `hashStableSections` FNV-1a golden — 07-02 Task 2.
 
 4. **`tests/security/` vs `tests/core/security/`**
    - What we know: §18 required tests are `tests/security/prompt-injection/**` (spec 2650) and the gate string (spec 3611) names `tests/security/prompt-injection`; only `tests/core/security/` exists today.
    - What's unclear: whether to create the new top-level `tests/security/` dir (spec-verbatim path) or place fixtures under the existing `tests/core/security/`.
    - Recommendation: **create `tests/security/prompt-injection/` exactly as spec-named** — the gate string is verbatim and must match; renaming would mis-point the gate.
+   - **RESOLVED:** create `tests/security/prompt-injection/` exactly as spec-named — 07-01 Task 3 ships `policy-redefinition.test.ts` there (the spec-3611 gate string matches verbatim).
 
 ## Environment Availability
 
@@ -589,7 +593,7 @@ it('stable-section FNV-1a hash matches the golden (cross-check, spec 5747+)', ()
 - Standard stack: HIGH — zero new dependencies; all existing versions verified via `package.json` + `pnpm list` this session.
 - Architecture: HIGH — every integration point (assemble, manifest, pack, PromptCacheAdapter, harness.ts) read in full this session; derivation rules locked by D-95 + 07-UI-SPEC Contract C.
 - Pitfalls: HIGH — grounded in the shipped code's invariants (never-throw assemble, closed canonical order, verbatim schemas, zero NP-STRICT) and the locked decisions.
-- Open design tensions: the three Open Questions are additive/reversible and flagged for the planner; none blocks planning.
+- Open design tensions: the four Open Questions are additive/reversible, flagged for the planner, and all four are now RESOLVED (inline markers) — the plans adopt each recommendation; none blocks planning.
 
 **Research date:** 2026-08-30
 **Valid until:** 2026-09-30 (stable in-repo contracts; re-verify package versions at any future install — VAI-04 watch item)
