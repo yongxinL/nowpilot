@@ -154,3 +154,7 @@ None - no external service configuration required (zero new packages, pure TypeS
 ---
 *Phase: 07-trust-aware-context-and-receipts*
 *Completed: 2026-08-30*
+
+## Self-Check: PASSED
+
+All 6 created/modified files exist on disk (`[ -f ]` verified); all 3 commits (f85a904, e7ecf2d, a9e2042) verified in `git log`. Full suite: 67 files / 612 passed / 2 skipped (pre-existing Phase-6 built-bundle skips). Zero NP-STRICT markers in `src/core/context/trust/` and `tests/core/context/trust/`; verbatim contracts (manifest/A8/section-order) untouched; `assemble` never-throw preserved; Task 2 snapshot suite made zero source edits (git status assertion). `.planning/STATE.md` + `.planning/config.json` remain modified in the working tree — orchestrator-owned writes, intentionally excluded from all plan commits.
