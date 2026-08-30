@@ -24,16 +24,19 @@ import type { PromptSection } from '../ai/types';
 import type { UserPreferences } from '../ai/UserPreferences';
 import type { ContextProvenanceManifest, ManifestKind, ManifestSectionRecord } from './ContextProvenanceManifest';
 import { buildManifest, MANIFEST_KIND_MAP } from './ContextProvenanceManifest';
-import { CANONICAL_SECTION_ORDER } from './ContextPack';
 import {
   compressStructural,
   reduceTopK,
   summarizeHistory,
   trimToolSchemas,
 } from './ContextCompressor';
-import { computeBudgets, heuristicTokenCounter } from './TokenBudget';
+import { computeBudgets, countTokensHeuristic } from './TokenBudget';
 import { classifyModelContext, type ModelContextTier } from './ModelContextTier';
 import type { CompressionType, PageContext, RetrievedMemory, ToolSchemaRef } from './types';
+import { applyTrustPolicy } from './trust/TrustPolicy';
+import { buildContextItems } from './trust/contextItems';
+import { deriveContextReceipt, type ContextReceiptSurface } from './trust/ContextReceipt';
+import type { ContextItem } from '@/types/harness';
 
 /** §2.3 input contract verbatim (spec 466-478). workspaceId/activeSurface are
  * REQUIRED with no defaults (Q6 LOCKED — empty-string defaults would poison the
@@ -50,6 +53,13 @@ export interface ContextOptimizerInput {
   selectedToolSchemas: ToolSchemaRef[];
   memoryHints: RetrievedMemory[];
   preferences: UserPreferences;
+  // --- D-97 additive inputs (§2.4 rungs 1-2 caller seams, spec 495-496) ---
+  // When supplied, additional CONTEXT-kind sections (sourceId 'debug'/'notes')
+  // are assembled and dropped by the ladder when over budget. Absent → the
+  // rungs stay no-ops (spec 495-496 preserved). Additive — existing callers
+  // compile unchanged.
+  debugSections?: string[];
+  secondaryNotes?: string[];
 }
 
 /** §2.3 output contract verbatim (spec 479-486) PLUS the additive D-77 trace
@@ -68,6 +78,10 @@ export interface OptimizedContext {
   contextTier: ModelContextTier;
   truncated: boolean;
   truncatedSources: string[];
+  // --- D-95 receipt surface (CTX-03; additive — the D-77 precedent) ---
+  // Derived from the verbatim manifest + D-96 original token counts + A8
+  // stable flags + item trust; Phase 11 Prompt Inspector lifts it additively.
+  receipt: ContextReceiptSurface;
 }
 
 /** §2.5 blocked set verbatim (spec 519-524) — kebab-case literals (D-74). */
@@ -115,6 +129,11 @@ export type AssembleResult =
 interface WorkingSection {
   section: PromptSection;
   record: ManifestSectionRecord;
+  // NEW (D-96): pre-degradation token count, captured in buildSourcedSections.
+  originalTokens: number;
+  // NEW (D-97): rungs 1-2 drop debug/notes — the record stays in the manifest
+  // (truncated:true) but the section is excluded from the output.
+  dropped?: boolean;
 }
 
 /**
@@ -133,7 +152,13 @@ export function assemble(input: ContextOptimizerInput): AssembleResult {
   const budgets = computeBudgets(input.modelContextWindow);
   let minimalMode = tier === 'tiny';
 
-  const working = buildSourcedSections(input);
+  // D-93: buildSourcedSections runs the item pipeline — sources → ContextItem[]
+  // (D-94 tags) → non-throwing applyTrustPolicy → (possibly wrapped) section
+  // text — and retains the D-96 original per-section token counts.
+  const built = buildSourcedSections(input);
+  let working = built.working;
+  const originalTokensBySourceId = built.originalTokensBySourceId;
+  const items = built.items;
   let totalTokens = tally(working);
 
   if (totalTokens > budgets.inputBudget) {
@@ -161,16 +186,27 @@ export function assemble(input: ContextOptimizerInput): AssembleResult {
   });
   const truncatedSources = manifestTruncatedSources(manifest);
 
+  // D-95: derive the receipt from the verbatim manifest + retained original
+  // token counts + the shipped sections + the item trust mix (CTX-03; the L6
+  // untrustedDataPresent signal, UI-SPEC Contract A). Never throws.
+  const receipt = deriveContextReceipt(
+    manifest,
+    originalTokensBySourceId,
+    working.filter((w) => !w.dropped).map((w) => w.section),
+    items,
+  );
+
   const context: OptimizedContext = {
     tier,
     inputBudget: budgets.inputBudget,
     outputBudget: budgets.outputBudget,
-    sections: working.map((w) => w.section),
+    sections: working.filter((w) => !w.dropped).map((w) => w.section),
     provenance: manifest,
     minimalMode,
     contextTier: tier,
     truncated: truncatedSources.length > 0,
     truncatedSources,
+    receipt,
   };
   return { ok: true, context };
 }
@@ -192,12 +228,27 @@ function applyDegradationLadder(
   let totalTokens = tally(working);
   let minimalMode = initialMinimalMode;
 
-  // Rung 1 — 'drop debug-only context' (spec 495). RESERVED no-op: the §2.3
-  // verbatim input has no debug source; the Phase-7 caller supplies debug
-  // sections and this rung drops them here.
-  // Rung 2 — 'drop secondary notes and optional metadata' (spec 496). RESERVED
-  // no-op: no notes source in the §2.3 input; Phase-7 caller.
-  // Both rungs exist so the §2.4 order is walkable verbatim.
+  // Rung 1 — 'drop debug-only context' (spec 495). Phase-7 activation (D-97):
+  // when the caller supplied debugSections (a sourceId-'debug' CONTEXT section
+  // is present), drop it with a truncated manifest record. When absent, the
+  // rung stays a no-op (spec 495-496 preserved).
+  if (totalTokens > inputBudget) {
+    const debug = working.find((w) => w.record.sourceId === 'debug');
+    if (debug) {
+      dropSection(working, debug);
+      totalTokens = tally(working);
+    }
+  }
+
+  // Rung 2 — 'drop secondary notes and optional metadata' (spec 496). Same
+  // activation for sourceId-'notes'.
+  if (totalTokens > inputBudget) {
+    const notes = working.find((w) => w.record.sourceId === 'notes');
+    if (notes) {
+      dropSection(working, notes);
+      totalTokens = tally(working);
+    }
+  }
 
   // Rung 3 — 'summarise older history' (spec 497). Phase 5's [CONTEXT] has no
   // history turns ('TURN ' lines) — the §2.3 input has no history source — so
@@ -264,136 +315,96 @@ function applyDegradationLadder(
   return { totalTokens, minimalMode };
 }
 
-/** Builds the five sourced sections, emitted in §1.3 canonical order
- * (CANONICAL_SECTION_ORDER drives the emit — ContextPack traversal; never
- * alphabetical, Pitfall 4). [SYSTEM]/[TASK] have no input source in the §2.3
- * verbatim contract and are recorded as omitted in the manifest (Q3 LOCKED). */
-function buildSourcedSections(input: ContextOptimizerInput): WorkingSection[] {
-  const byKind = new Map<string, PromptSection>();
-
-  // [TOOL SCHEMAS] — cache-eligible (§1.3): one '<name>\t<description>' line
-  // per tool, name-sorted (stable tool-name sort, §1.3).
-  const toolSchemasText = buildToolSchemasText(input.selectedToolSchemas);
-  byKind.set('TOOL SCHEMAS', {
-    kind: 'TOOL SCHEMAS',
-    text: toolSchemasText,
-    stable: true,
-    tokens: heuristicTokenCounter.count(toolSchemasText),
-  });
-
-  // [USER PREFERENCES] — compact rendering mirroring PromptCacheManager's
-  // prefsCompact style (§1.3 [USER PREFERENCES: compact]).
-  const prefsText = prefsCompact(input.preferences);
-  byKind.set('USER PREFERENCES', {
-    kind: 'USER PREFERENCES',
-    text: prefsText,
-    stable: false,
-    tokens: heuristicTokenCounter.count(prefsText),
-  });
-
-  // [MEMORY] — one '<id>\t<content>' line per hint (all hints initially).
-  const memoryText = input.memoryHints.map((hint) => `${hint.id}\t${hint.content}`).join('\n');
-  byKind.set('MEMORY', {
-    kind: 'MEMORY',
-    text: memoryText,
-    stable: false,
-    tokens: heuristicTokenCounter.count(memoryText),
-  });
-
-  // [CONTEXT] — page/case content when present (stable:false).
-  if (input.pageContext) {
-    const contextText = buildContextText(input.pageContext);
-    byKind.set('CONTEXT', {
-      kind: 'CONTEXT',
-      text: contextText,
-      stable: false,
-      tokens: heuristicTokenCounter.count(contextText),
-    });
-  }
-
-  // [USER INPUT] — current turn, never cached (§1.3).
-  const userText = input.userInput;
-  byKind.set('USER INPUT', {
-    kind: 'USER INPUT',
-    text: userText,
-    stable: false,
-    tokens: heuristicTokenCounter.count(userText),
-  });
-
-  const working: WorkingSection[] = [];
-  for (const kind of CANONICAL_SECTION_ORDER) {
-    const section = byKind.get(kind);
-    if (!section) continue;
-    const manifestKind = MANIFEST_KIND_MAP[kind];
-    working.push({
-      section,
-      record: {
-        kind: manifestKind,
-        sourceId: sourceIdFor(kind, input),
-        tokens: section.tokens,
-        truncated: false,
-      },
-    });
-  }
-  return working;
+/** buildSourcedSections result — the working set + the D-93 item array + the
+ * D-96 original per-section token counts keyed by sourceId (receipt input). */
+interface BuiltSections {
+  working: WorkingSection[];
+  items: ContextItem[];
+  originalTokensBySourceId: Record<string, number>;
 }
 
 /**
- * §2.6 record sourceId — the section's SOURCE identity (plan 05-01 step 8,
- * LOCKED): CONTEXT → pageContext.url (else 'context'); MEMORY → the hint ids
- * joined ','; TOOL SCHEMAS → the name-sorted tool names joined ','; the
- * remaining kinds use their manifest kind. This is what truncatedSources
- * derives from, so the §19.3 trace carries real source identifiers (page URL /
- * memory ids / tool names), never section bodies (T-05-03).
+ * Builds the sourced sections, emitted in §1.3 canonical order
+ * (CANONICAL_SECTION_ORDER drives the emit — ContextPack traversal; never
+ * alphabetical, Pitfall 4). [SYSTEM]/[TASK] have no input source in the §2.3
+ * verbatim contract and are recorded as omitted in the manifest (Q3 LOCKED).
+ *
+ * D-93: every section runs through the item pipeline — buildContextItems
+ * (D-94 tags) → applyTrustPolicy (NON-throwing) — and the (possibly wrapped)
+ * item text seeds the section text. D-96: originalTokens captured per section
+ * before any degradation. D-97: optional debugSections/secondaryNotes ride
+ * additional CONTEXT-kind sections (sourceId 'debug'/'notes').
  */
-function sourceIdFor(kind: string, input: ContextOptimizerInput): string {
-  switch (kind) {
-    case 'CONTEXT':
-      return input.pageContext ? input.pageContext.url : 'context';
-    case 'MEMORY':
-      return input.memoryHints.map((hint) => hint.id).join(',');
-    case 'TOOL SCHEMAS':
-      return toolNamesSorted(input.selectedToolSchemas).join(',');
-    default:
-      return MANIFEST_KIND_MAP[kind];
+function buildSourcedSections(input: ContextOptimizerInput): BuiltSections {
+  // D-93 item pipeline: the five sourced items, D-94-tagged.
+  const items: ContextItem[] = [...buildContextItems(input)];
+
+  // D-97 rungs 1-2 caller seams: optional debug/notes ride additional
+  // CONTEXT-kind sections (sourceId 'debug'/'notes' — RESEARCH Open Q2; pack()
+  // still sees only canonical kinds).
+  const debugText = input.debugSections?.join('\n\n');
+  if (debugText) {
+    items.push(extraContextItem('debug', debugText));
   }
+  const notesText = input.secondaryNotes?.join('\n\n');
+  if (notesText) {
+    items.push(extraContextItem('notes', notesText));
+  }
+
+  // Non-throwing policy (RESEARCH Pitfall 2 — assemble never throws).
+  const policyItems = applyTrustPolicy(items);
+
+  // The CONTEXT section ships only when a real pageContext exists (Phase-5
+  // gate); the sourceId-fallback 'context' phantom item is dropped here.
+  const shippedItems = policyItems.filter(
+    (it) => !(it.sourceId === 'context' && input.pageContext === undefined),
+  );
+
+  const working: WorkingSection[] = [];
+  const originalTokensBySourceId: Record<string, number> = {};
+  for (const it of shippedItems) {
+    // Stable flag mirrors the §1.3 cache contract: only [TOOL SCHEMAS] is
+    // cache-eligible in the Phase-5 emission (USER PREFERENCES stays
+    // stable:false — RESEARCH reconciliation 3).
+    const section: PromptSection = {
+      kind: it.kind,
+      text: it.text,
+      stable: it.kind === 'TOOL SCHEMAS',
+      tokens: it.tokens,
+    };
+    originalTokensBySourceId[it.sourceId] = it.tokens;
+    working.push({
+      section,
+      record: {
+        kind: MANIFEST_KIND_MAP[it.kind],
+        sourceId: it.sourceId,
+        tokens: it.tokens,
+        truncated: false,
+      },
+      originalTokens: it.tokens,
+    });
+  }
+  return { working, items: shippedItems, originalTokensBySourceId };
 }
 
-/** [TOOL SCHEMAS] text: one '<name>\t<description>' line per tool, name-sorted. */
-function buildToolSchemasText(tools: ToolSchemaRef[]): string {
-  if (tools.length === 0) return 'No tools are registered for this session.';
-  return [...tools]
-    .sort((a, b) => a.name.localeCompare(b.name))
-    .map((tool) => `${tool.name}\t${tool.description}`)
-    .join('\n');
+/** D-97 extra CONTEXT-kind item for debug/notes inputs — untrusted, authority
+ * false (page-derived content, D-94 semantics), sensitivity 'high'. */
+function extraContextItem(sourceId: string, text: string): ContextItem {
+  return {
+    id: `CONTEXT:${sourceId}`,
+    kind: 'CONTEXT',
+    text,
+    tokens: countTokensHeuristic(text),
+    trust: 'untrusted',
+    instructionAuthority: false,
+    relevance: 1,
+    freshness: 1,
+    sensitivity: 'high',
+    sourceId,
+  };
 }
 
-/** [USER PREFERENCES] compact rendering — mirrors PromptCacheManager.prefsCompact. */
-function prefsCompact(prefs: UserPreferences): string {
-  const parts: string[] = [];
-  if (prefs.fastModel) parts.push(`fastModel: ${prefs.fastModel}`);
-  if (prefs.balancedModel) parts.push(`balancedModel: ${prefs.balancedModel}`);
-  const overrides = prefs.personaOverrides;
-  if (overrides?.name) parts.push(`persona name: ${overrides.name}`);
-  if (overrides?.tone) parts.push(`tone: ${overrides.tone}`);
-  if (overrides?.brevity) parts.push(`brevity: ${overrides.brevity}`);
-  return parts.length === 0 ? 'Default persona; no user preferences set.' : parts.join('\n');
-}
-
-/** [CONTEXT] text: 'URL: <url>\nTITLE: <title>\n<body>' — body from markdown ??
- * html-stripped ?? title (Phase 6 owns the real extraction). */
-function buildContextText(page: PageContext): string {
-  const body = page.markdown ?? stripHtml(page.html) ?? page.title;
-  return `URL: ${page.url}\nTITLE: ${page.title}\n${body}`;
-}
-
-/** Minimal HTML stripping — enough for a readable token estimate. */
-function stripHtml(html: string | undefined): string | undefined {
-  if (html === undefined) return undefined;
-  const stripped = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-  return stripped === '' ? undefined : stripped;
-}
-
+/** Name-sorted tool names (the §2.6 sourceId join + rung 5's in-scope list). */
 function toolNamesSorted(tools: ToolSchemaRef[]): string[] {
   return tools.map((tool) => tool.name).sort((a, b) => a.localeCompare(b));
 }
@@ -420,6 +431,15 @@ function replaceSection(working: WorkingSection[], section: PromptSection): void
   if (!w) return;
   w.section = section;
   w.record.tokens = section.tokens;
+}
+
+/** Rungs 1-2 (D-97): drop a debug/notes section — the manifest record stays
+ * (truncated:true, tokens:0, the truncated manifest record the receipt maps to
+ * omitReason) but the section is excluded from the output. */
+function dropSection(working: WorkingSection[], target: WorkingSection): void {
+  target.dropped = true;
+  target.section = { ...target.section, text: '', tokens: 0 };
+  target.record = { ...target.record, tokens: 0, truncated: true };
 }
 
 /** Marks the provenance record of a degraded section: truncated, plus the
