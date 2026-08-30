@@ -19,7 +19,7 @@
 - [x] **Phase 4: Agent Reliability and Evidence** — Trajectory states, CompletionEvidence, AgentTurnOutcome, deterministic replan/terminal policy (completed 2026-08-29)
 - [x] **Phase 5: Context-Adaptive Execution** — TokenBudget, ContextOptimizer, ContextCompressor, ContextProvenanceManifest (completed 2026-08-29)
 - [x] **Phase 6: PageContentService (Knowledge Acquisition)** — Layered Defuddle→Readability fallback, APC-lite structural walk, panel-side extraction (completed 2026-08-30)
-- [ ] **Phase 7: Trust-Aware Context and Receipts** — ContextItem trust metadata, context receipt, six-layer injection defense, progressive skill disclosure
+- [x] **Phase 7: Trust-Aware Context and Receipts** — ContextItem trust metadata, context receipt, six-layer injection defense, progressive skill disclosure (completed 2026-08-30)
 - [ ] **Phase 8: Knowledge Base (Memory + MiniSearch + Notes)** — MemoryEngine, MiniSearch, NoteGraph, atomic notes + wikilinks, PreferenceMemoryStore np_persona
 - [ ] **Phase 9: LLM-Wiki & Filesystem Sync** — NoteTagger/QA/ChatConverter/FileSync/Maintenance, OKF-aligned YAML frontmatter, write→restore round-trip, categoryPath, Memories↔Notes
 - [ ] **Phase 10: Memory Governance and Experience Candidates** — MemoryRecord taxonomy, conflict precedence, lifecycle controls, procedural experience gating, edge provenance
@@ -236,7 +236,7 @@ Plans:
   4. Irrelevant full skill instructions consume zero prompt tokens (CTX-05 progressive disclosure).
 
 **Verification gate:** `pnpm run verify:phase-7` (§24).
-**Plans:** 3/3 plans executed
+**Plans:** 3/3 plans complete
 Plans:
 **Wave 1**
 
@@ -466,7 +466,7 @@ Plans:
 | 4. Agent Reliability and Evidence | 4/4 | Complete    | 2026-08-29 |
 | 5. Context-Adaptive Execution | 2/2 | Complete    | 2026-08-29 |
 | 6. PageContentService (Knowledge Acquisition) | 5/5 | Complete    | 2026-08-30 |
-| 7. Trust-Aware Context and Receipts | 3/3 | In Progress|  |
+| 7. Trust-Aware Context and Receipts | 3/3 | Complete    | 2026-08-30 |
 | 8. Knowledge Base (Memory + MiniSearch + Notes) | 0/3 | Not started | — |
 | 9. LLM-Wiki & Filesystem Sync | 0/4 | Not started | — |
 | 10. Memory Governance and Experience Candidates | 0/2 | Not started | — |
