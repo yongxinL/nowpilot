@@ -1,0 +1,18 @@
+getIncident	Fetch an incident by number
+postNote	Append a work note to an incident
+searchKnowledge	Search the knowledge base
+
+fastModel: fast-fixture
+balancedModel: balanced-fixture
+persona name: NowPilot
+tone: professional-warm
+brevity: balanced
+
+mem-1	user prefers concise replies
+mem-2	Sev-2 escalation path is the on-call DB team
+
+URL: https://support.servicenow.com/incident/INC0012345
+TITLE: INC0012345 — Sev-2 Database Outage
+Database cluster is unresponsive after the 03:00 UTC maintenance window.
+
+Summarize the current incident
