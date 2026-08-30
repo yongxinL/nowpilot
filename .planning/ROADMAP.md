@@ -236,6 +236,19 @@ Plans:
   4. Irrelevant full skill instructions consume zero prompt tokens (CTX-05 progressive disclosure).
 
 **Verification gate:** `pnpm run verify:phase-7` (§24).
+**Plans:** 3 plans
+Plans:
+**Wave 1**
+
+- [ ] 07-01-PLAN.md — TRACER: trust spine — C.1 trust types (harness.ts) + O.3 TrustPolicy (authority map + wrap + structural guard) + D-93 item pipeline in assemble + ContextReceipt derivation + prompt-injection adversarial fixtures (CTX-01/02/03, D-93..D-99)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 07-02-PLAN.md — CTX-04 stable-prefix golden snapshots + FNV-1a hash cross-check + CTX-06 ContextQualityMetrics aggregates (D-100/D-102)
+
+**Wave 3** *(blocked on Wave 1-2 completion)*
+
+- [ ] 07-03-PLAN.md — CTX-05 SkillDisclosure zero-token proof + verify:phase-7 re-point to spec 3611 gate (D-101/D-103)
 
 ### Phase 8: Knowledge Base (Memory + MiniSearch + Notes)
 
@@ -453,7 +466,7 @@ Plans:
 | 4. Agent Reliability and Evidence | 4/4 | Complete    | 2026-08-29 |
 | 5. Context-Adaptive Execution | 2/2 | Complete    | 2026-08-29 |
 | 6. PageContentService (Knowledge Acquisition) | 5/5 | Complete    | 2026-08-30 |
-| 7. Trust-Aware Context and Receipts | 0/2 | Not started | — |
+| 7. Trust-Aware Context and Receipts | 0/3 | Not started | — |
 | 8. Knowledge Base (Memory + MiniSearch + Notes) | 0/3 | Not started | — |
 | 9. LLM-Wiki & Filesystem Sync | 0/4 | Not started | — |
 | 10. Memory Governance and Experience Candidates | 0/2 | Not started | — |
