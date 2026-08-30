@@ -284,7 +284,8 @@ describe('journalingAdapter — election-gated + journaled + debounced compose s
     const fs = await import('node:fs');
     const path = await import('node:path');
     const filePath = path.resolve(
-      '/Users/george.li/Documents/workspaces/nowpilot/src/core/workspace/journalingAdapter.ts',
+      process.cwd(),
+      'src/core/workspace/journalingAdapter.ts',
     );
     const src = fs.readFileSync(filePath, 'utf-8');
     // Strip comments to avoid false positives from doc-block mentions.
