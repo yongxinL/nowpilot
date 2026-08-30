@@ -25,13 +25,14 @@ AI chat and a personal knowledge base that work together, locally-first, so a su
 - ✓ Storage, security, WriteJournal, workspace persistence (Phase 2) — encrypt-at-rest (KeyVault + EncryptedStorage AES-GCM-256), IndexedDB foundation (5 DBs + migrator + unlimitedStorage), WriteJournal + journaled election-gated persist, WorkspaceElection single-writer with published heartbeats, crash-safe boot recovery, NP-STRICT ceiling reduced to 0
 - ✓ Cost-effective AI runtime with persona (Phase 3) — Appendix I Planner → Executor → Renderer pipeline (AgentOrchestrator), StreamAdapter 4-wire conformance (OpenAI/Anthropic/Gemini/Ollama), StructuredOutput one-shot repair, persona seed + injector (Appendix N), ProviderRegistry/TierResolver/ProviderRouter (D-50/D-52/D-54/D-56), PromptCacheAdapter/Manager, ChunkBuffer, renderer 512-token cap, zero-tool ExecutorService (TOOL_REJECTED), journaled append-chat-turn persist, useChatStreaming re-pointed, Options endpoint-override + tier fields — verified 2026-08-28 (UAT 29/29, security 25 threats closed)
 - ✓ Agent reliability and evidence (Phase 4) — Appendix C.1 canonical types in `@/types/harness` (AgentTrajectoryState/CompletionEvidence/AgentTurnOutcome), TrajectoryTracker closed state machine (AGT-01), O.2 OutcomeVerifier + CompletionEvidence framework (AGT-02, zero registered verifiers), AgentTurnOutcome return contract (AGT-03, cap→partial), AGT-04 deterministic replan/terminal policy (≤1 replan per failed tool, repeated→failed, abort→aborted), renderer completion guard (no "Done" without evidence), `verify:phase-4` re-pointed — verified 2026-08-29 (4/4 truths, 183 tests green)
+- ✓ PageContentService layered extraction (Phase 6) — DefuddleStrategy (panel-side, useAsync:false, Readability provenance-only) + ApcLiteStrategy/AxDomWalker actionable path (password omission, zero-import boundary), PageContentSerializer, PageContentService (typed CONTENT_EXTRACT_FAILED union, 5 s AbortController, D-90 redaction), §26.4a PageContentCache lifecycle, PageIndexBuilder (ephemeral MiniSearch heading-chunked, selectRelevant topk), content-script producer shells (ContentScriptHost/SPANavigationWatcher/PageContextBridge) + valid WXT entrypoint, non-vacuous §24 isolation gate + D-92 gate re-point + ADR-P6-01 Accepted — verified 2026-08-30 (14/14 truths, verify:phase-6 94/94, full suite 559/559)
 
 ### Active
 
 All Active requirements are hypotheses until shipped and validated. Full atomic requirement set lives in `.planning/REQUIREMENTS.md` (anchored to spec-native IDs); this list is the summary view.
 
 - [ ] Context-adaptive execution (Phase 5)
-- [ ] PageContentService layered extraction (Phase 6)
+- [x] PageContentService layered extraction (Phase 6)
 - [ ] Trust-aware context and receipts (Phase 7)
 - [ ] Knowledge base: memory + MiniSearch + notes (Phase 8)
 - [ ] LLM-Wiki & filesystem sync (Phase 9)
@@ -97,6 +98,8 @@ All Active requirements are hypotheses until shipped and validated. Full atomic 
 | §1.4 tier caps are the ONLY cap-enforcement point; single PlannerService call site in src/ (grep == 1) | Appendix I bounded-loop rule | Validated Phase 3 (2026-08-28) |
 | Turn-end persist seam (D-45): persistTurn once per completed turn via journaled append-chat-turn; abort drops partial with nothing persisted | Write-rate boundary + crash-safety | Validated Phase 3 (2026-08-28) |
 | Phase 4 reliability framing: canonical Appendix C.1 types in `@/types/harness`; closed trajectory state machine; OutcomeVerifier framework (zero registered verifiers); AGT-04 replan/terminal policy; abort → returned `aborted` outcome | §28.2 AGT-01..04 "never silently claims success" + D-46 zero-tools parity | Validated Phase 4 (2026-08-29) |
+| Phase 6 D-79/D-92/D-83/D-84: Defuddle panel-side on detached doc, ADR-P6-01 Accepted; verify:phase-6 re-pointed to §18 dirs; PageContext canonical at src/core/content/PageContext.ts with types.ts re-export; content-script producer shells keep a zero-import bundle (no zod/panel deps) | Appendix D/§26.4a/§18 scope fences + Pitfall-8 import boundary | Validated Phase 6 (2026-08-30) |
+| WXT content-script entrypoint must use a recognized shape (`content/index.ts` or `content.core.content.ts`) — the D-07a directory-form `content/core.content.ts` matches no WXT 0.20.27 glob, so the content script was never built; fixed via `entrypoints/content/index.ts` re-export (9.51 kB) | `pnpm build:ext` manifest had no content_scripts; picomatch check against WXT find-entrypoints PATH_GLOB_TO_TYPE_MAP | Validated Phase 6 (2026-08-30) |
 
 ## Evolution
 
@@ -116,4 +119,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-08-29 after Phase 4 (moved validated Phase 4 entry to Validated)*
+*Last updated: 2026-08-30 after Phase 6 (moved validated Phase 6 entry to Validated)*

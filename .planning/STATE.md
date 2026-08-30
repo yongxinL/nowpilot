@@ -28,7 +28,7 @@ milestone_name: milestone
 
 - **What this is:** Privacy-first Chrome MV3 AI assistant + personal knowledge platform for ServiceNow Support Engineers (Copilot + Obsidian + NotebookLM in one extension). See `.planning/PROJECT.md` §What This Is.
 - **Core value:** *AI chat and a personal knowledge base that work together, locally-first, so a support engineer can capture knowledge once and retrieve it with citations — without any data leaving their machine unless they opt in.*
-- **Current focus:** Phase 6 — PageContentService (Knowledge Acquisition)
+- **Current focus:** Phase 7 — Trust-Aware Context and Receipts
 - **Companion files:**
   - `.planning/PROJECT.md` — project context, Active/Out of Scope, Key Decisions
   - `.planning/REQUIREMENTS.md` — 220 v1 requirements (spec-native IDs + `REQ-F*` for §9 gaps)
@@ -36,7 +36,7 @@ milestone_name: milestone
   - `.planning/PRODUCT_SPEC_v0_1.md` — spec, §18 canonical phase ordering
   - `.planning/RESEARCH-RECONCILIATION.md` — authority for stack/version/research-derived decisions
   - `.planning/SUMMARY.md` — recommended per-phase research pack for cost-effective models (path must match the precedence banners in the research docs; pick ONE canonical location and use it everywhere)
-  - `.planning/adr/` — ADR-STACK-01 (WXT hold), ADR-STACK-02 (`unlimitedStorage`), ADR-P6-01 (Defuddle panel-side, proposed), ADR-SEC-01 (dual-LLM quarantine v0.2), ADR-NOTE-01 (WIKI-ID UUID identity)
+  - `.planning/adr/` — ADR-STACK-01 (WXT hold), ADR-STACK-02 (`unlimitedStorage`), ADR-P6-01 (Defuddle panel-side, Accepted 2026-08-29), ADR-SEC-01 (dual-LLM quarantine v0.2), ADR-NOTE-01 (WIKI-ID UUID identity)
   - `.planning/DESIGN_SYSTEM.md` + `.planning/mockup/` — visual reference for Phase 15
 
 ---
@@ -46,7 +46,7 @@ milestone_name: milestone
 - **Phase:** 7 — Trust-Aware Context and Receipts
 - **Plan:** Not started
 - **Status:** Ready to plan
-- **Progress:** 4/19 phases complete · 33/36 plans done · 220/220 requirements mapped ([██████████] 92% coverage).
+- **Progress:** 5/19 phases complete · 35/36 plans done · 220/220 requirements mapped ([██████████] 92% coverage).
 
 ---
 
@@ -76,6 +76,8 @@ milestone_name: milestone
 | Phase 2 P5 | 6 min | 2 tasks | 4 files |
 | Phase 06 P01 | 23m | 4 tasks | 13 files |
 | Phase 6 P02 | 6min | 2 tasks | 4 files |
+| Phase 06 P03 | 6min | 2 tasks | 2 files |
+| Phase 06 P04 | 8min | 3 tasks | 10 files |
 | Phase 06-pagecontentservice-knowledge-acquisition P05 | 16min | 3 tasks | 4 files |
 
 ## Accumulated Context — Decisions (inherited from PROJECT.md Key Decisions)
@@ -95,7 +97,7 @@ All inherited decisions are **— Pending** (awaiting first implementation to va
 | 9 | `unlimitedStorage` permission added at Phase 2 (IndexedDB ships) | `.planning/adr/ADR-STACK-02` (RESEARCH-RECONCILIATION §F) | Accepted 2026-08-19 |
 | 10 | Dual-LLM quarantine deferred to v0.2 (six-layer injection defense ships in v0.1) | `.planning/adr/ADR-SEC-01` (RESEARCH-RECONCILIATION §F) | Accepted 2026-08-19 |
 | 11 | WIKI-ID UUID is sole note identity; no parallel alias store | `.planning/adr/ADR-NOTE-01` (RESEARCH-RECONCILIATION §F) | Accepted 2026-08-19 |
-| 12 | Defuddle panel-side extraction on detached doc | `.planning/adr/ADR-P6-01` (RESEARCH-RECONCILIATION §F) | Proposed (spike pending Phase 6) |
+| 12 | Defuddle panel-side extraction on detached doc | `.planning/adr/ADR-P6-01` (RESEARCH-RECONCILIATION §F) | Accepted 2026-08-29 (SPIKE-P6-01 outcome; ADR flipped during 06-05) |
 | 13 | Selection → Ask AI promoted P1 → P0 | RESEARCH-RECONCILIATION §F (REQ-R24) | Accepted 2026-08-19; spec §9.1 updated |
 | 14 | G-1 similar-cases result card = §9.7 acceptance criterion (v0.1) | RESEARCH-RECONCILIATION §F (REQ-R22) | Accepted 2026-08-19 |
 | 15 | Phase-1 wxt.config.ts permissions DEVIATE from Appendix G: authoritative Phase-1 set = ['sidePanel','storage','tabs']; cookies/scripting/contextMenus→Phase 17, alarms/notifications→when used, unlimitedStorage→Phase 2, declarativeNetRequest→never (v0.1) | `01-CONTEXT.md` D-19a (REQ-R21 / §16.4 / ADR-STACK-02) | Accepted 2026-08-19 |
@@ -124,27 +126,27 @@ All inherited decisions are **— Pending** (awaiting first implementation to va
 
 ## Session Continuity
 
-**Last session:** 2026-08-30T00:35:51.006Z
+**Last session:** 2026-08-30T11:12:00.000Z
 **Stopped at:** Phase 6 complete, ready to plan Phase 7
 **Resume file:** None
 
-- **Last action:** 06-03 completed end-to-end: PageContentCache implements §26.4a verbatim (per-tab LRU cap 20, SPA-nav + tabs.onUpdated invalidation, tabs.onRemoved eviction, in-flight coalescing, await-not-stale, pinned eviction-last, index-evicted-together hook, declared subscribe/unsubscribe/markStale API), ephemeral (zero storage imports); ten §26.4a behavior groups green in tests/core/extraction/PageContentService.test.ts (26/26 total).
-- **Last updated:** 2026-08-30 after 06-03 completion.
-- **Resume with:** `/gsd-execute-phase 6` (plan 06-04).
+- **Last action:** Phase 6 completed end-to-end — all 5 plans (Defuddle + APC-lite extraction spine, §26.4a cache, PageIndexBuilder, content-shell trio, §24 isolation gate + D-92 re-point + ADR-P6-01 flip) executed, verified 14/14 truths, gate green. Post-verification fixes: entrypoint defect resolved (`entrypoints/content/index.ts`, manifest registers content.js 9.51 kB), journalingAdapter path fixed, `/tmp` ENOSPC cleared. verify:phase-6 94/94, full suite 559/559. Code review 11 findings (3 CR/5 WR/3 IN) advisory — surfaced for Phase 7 fix consideration.
+- **Last updated:** 2026-08-30 after Phase 6 completion.
+- **Resume with:** Phase 7 planning (no CONTEXT.md yet — discuss first).
 
 ---
 
 ## Next-up
 
-The workflow expects Phase 6 plan 06-04 (content shells + PageContextBridge) execution next. Run:
+Phase 6 is complete. Phase 7 (Trust-Aware Context and Receipts) has no CONTEXT.md. Run:
 
 ```text
-/gsd-execute-phase 6
+/gsd-discuss-phase 7
 ```
 
 ---
 
-*Last updated: 2026-08-30 after 06-03 completion*
+*Last updated: 2026-08-30 after Phase 6 completion*
 
 ## Decisions
 
@@ -171,3 +173,4 @@ The workflow expects Phase 6 plan 06-04 (content shells + PageContextBridge) exe
 - [Phase 6]: D-92 executed: verify:phase-6 re-pointed to §18 test dirs (tests/core/extraction tests/core/content tests/isolation/no-content-script-ui.test.ts); stale verify:phase-4a deleted; verify:phase-7 mis-pointing left for Phase-7 (RESEARCH Open Question 3)
 - [Phase 6]: D-79 executed: ADR-P6-01 flips to Accepted (2026-08-29) with SPIKE-P6-01 outcome recorded — defuddle guarded defaultView?.getComputedStyle + Readability inline-only _isProbablyVisible make detached-doc fidelity acceptable; no measurement pass (evidence = DefuddleStrategy.test.ts)
 - [Phase 6]: 06-05: built-bundle isolation check reads manifest.json content_scripts[].js as authoritative artifact list; describe.skipIf when no build artifact — gate never depends on a build (Open Question 2)
+- [Phase 6]: Entrypoint shape corrected (2026-08-30): `entrypoints/content/core.content.ts` matched no WXT 0.20.27 content-script glob — added `entrypoints/content/index.ts` re-export; manifest now registers `content-scripts/content.js` (9.51 kB, ISOLATED); built-bundle checks green (verify:phase-6 94/94)
