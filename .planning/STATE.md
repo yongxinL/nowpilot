@@ -4,14 +4,14 @@ milestone: v0.1
 milestone_name: milestone
 current_phase: 8
 current_phase_name: Knowledge Base (Memory + MiniSearch + Notes)
-status: executing
-stopped_at: Completed 08-04-PLAN.md
-last_updated: "2026-09-01T05:51:25.479Z"
+status: verifying
+stopped_at: Completed 08-05-PLAN.md
+last_updated: "2026-09-01T06:14:02.264Z"
 progress:
   total_phases: 8
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 44
-  completed_plans: 42
+  completed_plans: 43
 state_head: 9b50aca
 ---
 
@@ -45,8 +45,8 @@ state_head: 9b50aca
 
 - **Phase:** 8 (Knowledge Base (Memory + MiniSearch + Notes)) — EXECUTING
 - **Plan:** 5 of 5
-- **Status:** Ready to execute
-- **Progress:** 6/19 phases complete · 35/74 plans done · 220/220 requirements mapped ([██████████] 95% coverage).
+- **Status:** Phase complete — ready for verification
+- **Progress:** 6/19 phases complete · 35/74 plans done · 220/220 requirements mapped ([██████████] 98% coverage).
 
 ---
 
@@ -83,6 +83,7 @@ state_head: 9b50aca
 | Phase 08 P02 | 24min | 3 tasks | 13 files |
 | Phase 08 P03 | 16min | 2 tasks | 5 files |
 | Phase 08 P04 | 19min | 3 tasks | 8 files |
+| Phase 08 P05 | 9min | 2 tasks | 2 files |
 
 ## Accumulated Context — Decisions (inherited from PROJECT.md Key Decisions)
 
@@ -130,8 +131,8 @@ All inherited decisions are **— Pending** (awaiting first implementation to va
 
 ## Session Continuity
 
-**Last session:** 2026-09-01T05:51:25.464Z
-**Stopped at:** Completed 08-04-PLAN.md
+**Last session:** 2026-09-01T06:13:50.171Z
+**Stopped at:** Completed 08-05-PLAN.md
 **Resume file:** None
 
 - **Last action:** Phase 7 completed end-to-end — all 3 plans (TrustPolicy + ContextReceipt spine, ContextQualityMetrics + stable-prefix snapshots, SkillDisclosure + verify:phase-7 re-point) executed, verified 18/18 truths, verify:phase-7 64/64 green, full suite 621/621, code review 0 critical. PROJECT.md evolved (commit 17e5dc0).
@@ -184,3 +185,5 @@ Phase 7 is complete. Phase 8 (Knowledge Base) has no CONTEXT.md. Run:
 - [Phase ?]: MiniSearch 7.2.0 lacks upsert — using add+replace
 - [Phase ?]: demoteDangling takes idToTitle map for raw title recovery
 - [Phase ?]: NoteGraph.topKSimilar returns ALL notes up to k (including score-0 ties); ref-mirror pattern for activeIndex in WikilinkAutocomplete
+- [Phase ?]: E2E proven via service-level test (D-105): zero component imports, chrome mocks suffice
+- [Phase ?]: verify:phase-8 re-pointed to spec 3612 verbatim (D-114) via exact-string node -e assert
