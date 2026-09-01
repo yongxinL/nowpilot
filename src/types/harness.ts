@@ -100,3 +100,26 @@ export interface ContextReceiptEntry {
   cacheEligible: boolean;
   omitReason?: string;
 }
+
+// ---------------------------------------------------------------------------
+// Canonical Phase-8 working-memory type home — Appendix C.1 / §3.6
+// (PRODUCT_SPEC_v0_1.md:4839, Appendix O.10), verbatim. Spec 4838 'Working
+// memory' row mandates this file. D-104: WorkingMemory + WORKING_MEMORY_TEMPLATE
+// live canonically at @/types/harness.
+// ---------------------------------------------------------------------------
+
+/** C.1 — budget-capped working memory block (spec 4839, Appendix O.10). */
+export interface WorkingMemory {
+  resourceId: string;
+  markdown: string;
+  tokens: number;
+  updatedAt: number;
+}
+
+/** §3.6 / Appendix O.10 — working memory template (spec 678-684, verbatim). */
+export const WORKING_MEMORY_TEMPLATE = `# User Profile
+- **Name**:
+- **Role / Team**:
+- **Environment**:
+- **Preferences**:
+- **Long-term Goals**:`;

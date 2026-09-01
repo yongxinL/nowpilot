@@ -34,15 +34,10 @@ export interface MemoryMessage {
   metadata?: Record<string, unknown>;
 }
 
-export interface UserMemoryFact {
-  id: string;
-  userId: string;
-  fact: string;
-  category: string;
-  confidence: number;
-  createdAt: number;
-  updatedAt: number;
-}
+/** D-104: UserMemoryFact imported from + re-exported to the canonical Phase-8 home (spec 601-612). */
+import type { UserMemoryFact } from '../memory/types';
+/** D-104: UserMemoryFact re-exported from the canonical Phase-8 home (spec 601-612). */
+export type { UserMemoryFact };
 
 export interface ConversationSummary {
   conversationId: string;

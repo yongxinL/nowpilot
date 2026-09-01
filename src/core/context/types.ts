@@ -22,14 +22,8 @@ import type { PromptSection } from '../ai/types';
 /** D-83: PageContext family re-exported from the canonical Phase-6 home (spec 4345-4391). */
 export type { PageContext, TabContext, SNowCaseData, FileContext, NoteContext } from '../content/PageContext';
 
-/** RetrievedMemory supersession point — Phase 8 owns src/core/memory/types.ts (spec 4572-4578). */
-export interface RetrievedMemory {
-  id: string;
-  content: string;
-  type: 'fact' | 'preference' | 'pattern';
-  tags: string[];
-  score: number;
-}
+/** D-112: RetrievedMemory re-exported from the canonical Phase-8 home (spec 4571-4578). */
+export type { RetrievedMemory } from '../memory/types';
 
 /** ToolSchemaRef supersession point — Phase 18 owns the registry type (spec 4601-4607). */
 export interface ToolSchemaRef {
