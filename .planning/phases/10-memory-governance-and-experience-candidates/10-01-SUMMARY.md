@@ -200,6 +200,12 @@ None - no external service configuration required.
 - Ready for Plan 02 (NoteGraph edge provenance — KNW-01)
 - All 858 tests pass, zero NP-STRICT markers
 
+## Self-Check: PASSED
+
+- All 10 created/modified files exist on disk
+- All 4 commits verified in git log: 8d88c6c, f89eceb, 76d37dc, c79a6be
+- 858 tests pass (48 new), pnpm lint clean, zero NP-STRICT markers
+
 ---
 *Phase: 10-memory-governance-and-experience-candidates*
 *Completed: 2026-09-02*
