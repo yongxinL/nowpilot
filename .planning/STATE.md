@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v0.1
 milestone_name: milestone
-current_phase: 9
-current_phase_name: llm-wiki-filesystem-sync
-status: executing
-stopped_at: Phase 9 plans created and verified
-last_updated: "2026-09-01T10:27:59.849Z"
+current_phase: 10
+current_phase_name: memory-governance-and-experience-candidates
+status: pending
+stopped_at: Phase 9 complete — all 4 plans executed, verified 101/101, full suite 810/810
+last_updated: "2026-09-01T21:44:00.000Z"
 progress:
-  total_phases: 9
-  completed_phases: 7
-  total_plans: 48
-  completed_plans: 43
-state_head: 9b50aca
+  total_phases: 19
+  completed_phases: 9
+  total_plans: 74
+  completed_plans: 47
+state_head: cefa22d
 ---
 
 # NowPilot — Project State
@@ -43,10 +43,10 @@ state_head: 9b50aca
 
 ## Current Position
 
-- **Phase:** 9 (llm-wiki-filesystem-sync) — EXECUTING
-- **Plan:** 1 of 4
-- **Status:** Executing Phase 9
-- **Progress:** 7/19 phases complete · 43/74 plans done · 220/220 requirements mapped ([████████████████████] 100% coverage).
+- **Phase:** 10 (memory-governance-and-experience-candidates) — PENDING
+- **Plan:** —
+- **Status:** Phase 9 complete, ready for Phase 10
+- **Progress:** 9/19 phases complete · 47/74 plans done · 220/220 requirements mapped ([████████████████████] 100% coverage).
 
 ---
 
@@ -131,27 +131,27 @@ All inherited decisions are **— Pending** (awaiting first implementation to va
 
 ## Session Continuity
 
-**Last session:** 2026-09-01T10:26:52.403Z
-**Stopped at:** Phase 9 plans created and verified
-**Resume file:** .planning/phases/09-llm-wiki-filesystem-sync/09-01-PLAN.md
+**Last session:** 2026-09-01T21:44:00.000Z
+**Stopped at:** Phase 9 complete, transitioned to Phase 10
+**Resume file:** —
 
-- **Last action:** Phase 8 completed end-to-end — all 5 plans (canonical type spine + RICH-R-05 persona, memory subsystem, MiniSearch + LinkParser + save seam, NoteGraph + components, E2E proof + verify:phase-8 re-point) executed, verified 5/5 must-haves, verify:phase-8 72/72 green, full suite 747/747, code review 10 findings (1 critical, advisory). PROJECT.md evolved (commit 7261d3d).
-- **Last updated:** 2026-09-01 after Phase 8 completion.
-- **Resume with:** Phase 9 (LLM-Wiki & Filesystem Sync) planning — no phase dir / CONTEXT.md yet, discuss first.
+- **Last action:** Phase 9 (LLM-Wiki & Filesystem Sync) closed out — all 4 plans executed (NoteTagger + schemas + v4 migration, NoteQA RAG + NoteChatConverter, NoteFileSync OKF .md sync + restore, NoteMaintenance + verify:phase-9 re-point). Safe-resume recovery: executors committed code but didn't write SUMMARYs — wrote 3 missing SUMMARYs, fixed queryPermission TS2339 via wicg-file-system-access types. verify:phase-9 101/101, full suite 810/810.
+- **Last updated:** 2026-09-01 after Phase 9 completion.
+- **Resume with:** Phase 10 (Memory Governance and Experience Candidates) — no CONTEXT.md yet, discuss first.
 
 ---
 
 ## Next-up
 
-Phase 8 is complete. Phase 9 (LLM-Wiki & Filesystem Sync) has no CONTEXT.md. Run:
+Phase 9 is complete. Phase 10 (Memory Governance and Experience Candidates) has no CONTEXT.md. Run:
 
 ```text
-/gsd-discuss-phase 9
+/gsd-discuss-phase 10
 ```
 
 ---
 
-*Last updated: 2026-09-01 after Phase 8 completion (transition to Phase 9)*
+*Last updated: 2026-09-01 after Phase 9 completion (transition to Phase 10)*
 
 ## Decisions
 

@@ -21,7 +21,7 @@
 - [x] **Phase 6: PageContentService (Knowledge Acquisition)** — Layered Defuddle→Readability fallback, APC-lite structural walk, panel-side extraction (completed 2026-08-30)
 - [x] **Phase 7: Trust-Aware Context and Receipts** — ContextItem trust metadata, context receipt, six-layer injection defense, progressive skill disclosure (completed 2026-08-30)
 - [x] **Phase 8: Knowledge Base (Memory + MiniSearch + Notes)** — MemoryEngine, MiniSearch, NoteGraph, atomic notes + wikilinks, PreferenceMemoryStore np_persona (completed 2026-09-01)
-- [ ] **Phase 9: LLM-Wiki & Filesystem Sync** — NoteTagger/QA/ChatConverter/FileSync/Maintenance, OKF-aligned YAML frontmatter, write→restore round-trip, categoryPath, Memories↔Notes
+- [x] **Phase 9: LLM-Wiki & Filesystem Sync** — NoteTagger/QA/ChatConverter/FileSync/Maintenance, OKF-aligned YAML frontmatter, write→restore round-trip, categoryPath, Memories↔Notes (completed 2026-09-01)
 - [ ] **Phase 10: Memory Governance and Experience Candidates** — MemoryRecord taxonomy, conflict precedence, lifecycle controls, procedural experience gating, edge provenance
 - [ ] **Phase 11: Transaction Logging and Diagnostics** — AITransactionLog, TraceRedactor, PromptInspector, TokenLedger, DiagnosticsSection
 - [ ] **Phase 12: Agent Evaluation** — Versioned golden suites, multi-dimension rubric, deterministic validators, first-failing-layer diagnostics, release-block regressions
@@ -495,8 +495,8 @@ Plans:
 | 6. PageContentService (Knowledge Acquisition) | 5/5 | Complete    | 2026-08-30 |
 | 7. Trust-Aware Context and Receipts | 3/3 | Complete    | 2026-08-30 |
 | 8. Knowledge Base (Memory + MiniSearch + Notes) | 5/5 | Complete    | 2026-09-01 |
-| 9. LLM-Wiki & Filesystem Sync | 0/4 | Planning complete | — |
-| 10. Memory Governance and Experience Candidates | 0/2 | Not started | — |
+| 9. LLM-Wiki & Filesystem Sync | 4/4 | Complete    | 2026-09-01 |
+| 10. Memory Governance and Experience Candidates | 0/2 | Ready to plan | — |
 | 11. Transaction Logging and Diagnostics | 0/2 | Not started | — |
 | 12. Agent Evaluation | 0/3 | Not started | — |
 | 13. Verified Continual Evolution | 0/3 | Not started | — |
