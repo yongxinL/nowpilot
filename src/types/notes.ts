@@ -63,19 +63,36 @@ export interface Note {
 export const OKF_NOTE_DEFAULT_TYPE = 'Note';
 
 /**
- * OKF note frontmatter (spec 4743-4762). Declared for Phase 9 — the
+ * OKF note frontmatter (spec 4743-4762, SYNC-04). Declared for Phase 9 — the
  * serialization shape for .md sync (OKF-WIKI-04).
+ *
+ * Canonical field set per spec §27.3 SYNC-04 (spec 3830-3863):
+ * type/title/description?/id/created/updated/tags?/categoryPath?/generated/status.
  */
 export interface OkfNoteFrontmatter {
   type: string;
+  title: string;
   description?: string;
   id: string;
-  generated: { by: string; at: number };
+  created: number;
+  updated: number;
+  tags?: string[];
+  categoryPath?: string;
+  generated: { by: string; at: string };
   status: 'draft' | 'stable';
 }
 
+/** Canonical alias (SYNC-04 / OKF-WIKI-03). */
+export type OkfFrontmatter = OkfNoteFrontmatter;
+
 /**
- * LLM-WIKI-11 suggestion-gating threshold — suggested links below this
- * confidence are not surfaced to the user.
+ * LLM-WIKI-11 suggestion-gating threshold — suggested items below this
+ * confidence are silently discarded (gateSuggestions).
  */
 export const NOTE_SUGGESTION_DISPLAY_THRESHOLD = 0.60;
+
+/** LLM-WIKI-11: maximum tags surfaced per save (descending confidence). */
+export const NOTE_SUGGESTION_MAX_TAGS_PER_SAVE = 5;
+
+/** LLM-WIKI-11: maximum memory facts surfaced per save (descending confidence). */
+export const NOTE_SUGGESTION_MAX_FACTS_PER_SAVE = 3;
