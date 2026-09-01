@@ -11,10 +11,12 @@
 //   retrieveUserMemory(query, opts) → RetrievedMemory[] (top-5 / top-3 tiny / ≤1000 tokens)
 //   buildPreferenceProfile()       → compact JSON incl. persona overrides (RICH-R-05 DONE-when)
 //   retrieveMemoryHints(query)     → RetrievedMemory[] (Phase-7 [MEMORY] seam)
+//   assemble(query?)               → compact memory context string (NMEM-03, D-118)
+//   upsert(facts)                  → persist extracted memory facts (NMEM-02, D-123)
 import type { ModelContextTier } from '../context/ModelContextTier';
-import type { RetrievedMemory } from './types';
+import type { RetrievedMemory, UserMemoryFact } from './types';
 import type { MemoryMessage } from '../storage/MemoryDB';
-import { getScoredFacts } from './UserMemoryStore';
+import { getScoredFacts, upsertFact } from './UserMemoryStore';
 import { getSummary, getRecentTurns } from './ConversationMemoryStore';
 import { usePreferenceMemoryStore } from './PreferenceMemoryStore';
 import { countTokensHeuristic } from '../context/TokenBudget';
@@ -112,5 +114,50 @@ export const MemoryEngine = {
     opts?: { tier?: ModelContextTier; now?: number },
   ): Promise<RetrievedMemory[]> {
     return this.retrieveUserMemory(query, opts);
+  },
+
+  /**
+   * Assemble compact memory context for note drafting (NMEM-03, D-118).
+   *
+   * Formats retrieved memory hints as a bullet-point context string for
+   * NoteChatConverter. Returns empty string when no memories found.
+   *
+   * @param query — optional query to scope the memory retrieval.
+   * @returns Compact multi-line context string (bullet points).
+   */
+  async assemble(query?: string): Promise<string> {
+    const hints = await this.retrieveMemoryHints(query ?? '');
+    if (hints.length === 0) return '';
+    return hints.map((h) => `- [${h.type}] ${h.content}`).join('\n');
+  },
+
+  /**
+   * Upsert memory facts extracted by NoteTagger (NMEM-02, D-123).
+   *
+   * Transforms NoteTagger memoryFacts ({ content, confidence }[]) into the
+   * canonical UserMemoryFact shape and persists each via UserMemoryStore.
+   * The isPrimaryWriter() gate is enforced by the caller (NoteTagger) before
+   * invoking this method — this method does NOT re-check.
+   *
+   * @param facts — extracted memory facts from NoteTagger.analyze().
+   */
+  async upsert(
+    facts: Array<{ content: string; confidence: number }>,
+  ): Promise<void> {
+    const now = Date.now();
+    for (const f of facts) {
+      const fact: UserMemoryFact = {
+        id: `nf-${now}-${Math.random().toString(36).slice(2, 10)}`,
+        content: f.content,
+        type: 'fact',
+        tags: [],
+        confidence: f.confidence,
+        source: 'inferred',
+        createdAt: now,
+        updatedAt: now,
+        useCount: 0,
+      };
+      await upsertFact(fact);
+    }
   },
 };
