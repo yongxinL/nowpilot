@@ -50,6 +50,7 @@ export type WriteJournalOperation =
   | 'compact-conversation'
   | 'save-note-with-links'
   | 'update-user-memory'
+  | 'update-memory-record'
   | 'export-data'
   | 'update-workspace'
   | 'sync-note-file'
@@ -97,6 +98,7 @@ export const WriteJournalOperationSchema = z.union([
   z.literal('compact-conversation'),
   z.literal('save-note-with-links'),
   z.literal('update-user-memory'),
+  z.literal('update-memory-record'),
   z.literal('export-data'),
   z.literal('update-workspace'),
   z.literal('sync-note-file'),
