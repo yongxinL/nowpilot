@@ -265,6 +265,21 @@ Plans:
   5. Wikilinks resolve with tie-break rule; end-to-end `Page → PageContentService → Note → MiniSearch` path works.
 
 **Verification gate:** `pnpm run verify:phase-8` (§24).
+**Plans:** 5 plans
+Plans:
+**Wave 1**
+
+- [ ] 08-01-PLAN.md — Canonical type homes + persona persistence (RICH-R-05): notes.ts canonical Note (D-107/D-108), memory/types.ts + harness WorkingMemory supersessions (D-104/D-112/D-113), PreferenceMemoryStore np_persona (RICH-R-05)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 08-02-PLAN.md — Memory subsystem: UserMemoryStore + MemoryScorer (D-104/D-113), ConversationMemoryStore compactor seam + WriteJournal evict steps + WorkingMemory O.10 (D-104/D-106), MemoryEngine create-only producers + MemoryExtractor schema seam (D-105/D-113, RICH-R-05 DONE-when)
+- [ ] 08-03-PLAN.md — Notes core: LinkParser + save seam Flow-3-minus-LLM (D-110), MiniSearchIndex persistent notes index + perf gate (D-109)
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 08-04-PLAN.md — NoteGraph §22.3 cosine + BacklinksPanel/WikilinkAutocomplete/NoteGraphView core logic (D-111, UI-SPEC)
+- [ ] 08-05-PLAN.md — §18 DONE-when E2E Page→Note→MiniSearch + verify:phase-8 re-point to spec 3612 (D-105/D-114)
 
 ### Phase 9: LLM-Wiki & Filesystem Sync
 
