@@ -23,7 +23,7 @@
     "verify:phase-5a": "tsc --noEmit && vitest run tests/core/notes tests/core/storage/migrations",
     "verify:phase-6": "tsc --noEmit && vitest run tests/core/extraction tests/core/content tests/isolation/no-content-script-ui.test.ts",
     "verify:phase-7": "tsc --noEmit && vitest run tests/core/context/trust tests/security/prompt-injection",
-    "verify:phase-8": "tsc --noEmit && vitest run tests/core/content tests/addons tests/isolation",
+    "verify:phase-8": "tsc --noEmit && vitest run tests/core/memory tests/core/search tests/core/notes/LinkParser.test.ts",
     "verify:phase-9": "tsc --noEmit && vitest run && pnpm run lint",
     "verify:all": "tsc --noEmit && vitest run && pnpm run lint",
     "test:perf": "vitest run tests/perf",
