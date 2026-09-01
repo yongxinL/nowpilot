@@ -13,6 +13,8 @@
 import type { IDBPDatabase } from 'idb';
 
 import type { NotesDBV1 } from '../storage/NotesDB';
+import type { KnowledgeEdgeSource } from '../../types/harness';
+import type { Note } from '../../types/notes';
 
 /** [[Title]] syntax (WIKI-ID-02). Captures the bracketed target. */
 export const WIKILINK_RE = /\[\[([^\]]+)\]\]/g;
@@ -34,9 +36,9 @@ export function parseLinks(content: string): string[] {
   return out;
 }
 
-/** Resolved (IDs) + unresolved (raw title strings) targets (WIKI-ID-03). */
+/** Resolved (IDs with provenance) + unresolved (raw title strings) targets (WIKI-ID-03, KNW-01). */
 export interface LinkResolution {
-  links: string[];
+  links: Array<{ noteId: string; source: KnowledgeEdgeSource }>;
   unresolvedLinks: string[];
 }
 
@@ -54,7 +56,7 @@ export async function resolveLinks(
   db: IDBPDatabase<NotesDBV1>,
   targets: string[],
 ): Promise<LinkResolution> {
-  const links: string[] = [];
+  const links: Array<{ noteId: string; source: KnowledgeEdgeSource }> = [];
   const unresolvedLinks: string[] = [];
   for (const target of targets) {
     const hits = await db.getAllFromIndex('notes', 'byTitle', target);
@@ -62,7 +64,8 @@ export async function resolveLinks(
       .filter((n) => n.title === target)
       .sort((a, b) => b.updated - a.updated || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
     if (exact.length > 0) {
-      links.push(exact[0].id);
+      // KNW-01: user-created wikilinks get 'explicit' provenance.
+      links.push({ noteId: exact[0].id, source: 'explicit' });
     } else {
       unresolvedLinks.push(target);
     }
@@ -73,26 +76,29 @@ export async function resolveLinks(
 /**
  * WIKI-ID-04 demotion — recompute links[] membership against the live note
  * set. A save/rebuild moves dangling IDs (no longer in `liveIds`) back to
-// `unresolvedLinks` (raw title string), WITHOUT rewriting any source body.
+ * `unresolvedLinks` (raw title string), WITHOUT rewriting any source body.
  *
  * `idToTitle` is the ID → raw title mapping captured at resolve time so a
-// demoted edge recovers its original title string.
+ * demoted edge recovers its original title string.
+ *
+ * KNW-01: handles the new {noteId, source} shape — uses link.noteId for
+ * membership check, preserves source on kept links.
  *
  * Pure function — no db.put call. Returns { links, unresolvedLinks }.
  */
 export function demoteDangling(
-  links: string[],
+  links: Note['links'],
   liveIds: Set<string>,
   unresolvedLinks: string[],
   idToTitle: Map<string, string>,
-): { links: string[]; unresolvedLinks: string[] } {
-  const kept: string[] = [];
+): { links: Note['links']; unresolvedLinks: string[] } {
+  const kept: Note['links'] = [];
   const demoted = [...unresolvedLinks];
-  for (const id of links) {
-    if (liveIds.has(id)) {
-      kept.push(id);
+  for (const link of links) {
+    if (liveIds.has(link.noteId)) {
+      kept.push(link);
     } else {
-      const title = idToTitle.get(id);
+      const title = idToTitle.get(link.noteId);
       if (title !== undefined && !demoted.includes(title)) demoted.push(title);
     }
   }

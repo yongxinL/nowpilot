@@ -77,7 +77,7 @@ describe('LinkParser', () => {
       await db.put('notes', older);
       await db.put('notes', newer);
       const { links, unresolvedLinks } = await resolveLinks(db, ['Same']);
-      expect(links).toEqual(['new']);
+      expect(links).toEqual([{ noteId: 'new', source: 'explicit' }]);
       expect(unresolvedLinks).toEqual([]);
     });
 
@@ -87,7 +87,7 @@ describe('LinkParser', () => {
       await db.put('notes', a);
       await db.put('notes', b);
       const { links } = await resolveLinks(db, ['Same']);
-      expect(links).toEqual(['a-id']);
+      expect(links).toEqual([{ noteId: 'a-id', source: 'explicit' }]);
     });
 
     it('(3) exact-title only — does not match case/space variants', async () => {
@@ -124,12 +124,15 @@ describe('LinkParser', () => {
         ['deleted-id', 'Deleted Title'],
       ]);
       const { links, unresolvedLinks } = demoteDangling(
-        ['kept-id', 'deleted-id'],
+        [
+          { noteId: 'kept-id', source: 'explicit' },
+          { noteId: 'deleted-id', source: 'explicit' },
+        ],
         liveIds,
         [],
         idToTitle,
       );
-      expect(links).toEqual(['kept-id']);
+      expect(links).toEqual([{ noteId: 'kept-id', source: 'explicit' }]);
       expect(unresolvedLinks).toEqual(['Deleted Title']);
     });
 
@@ -137,7 +140,7 @@ describe('LinkParser', () => {
       const liveIds = new Set<string>([]);
       const idToTitle = new Map<string, string>([['gone', 'Gone']]);
       const { links, unresolvedLinks } = demoteDangling(
-        ['gone'],
+        [{ noteId: 'gone', source: 'explicit' }],
         liveIds,
         ['Already Unresolved'],
         idToTitle,
@@ -154,7 +157,7 @@ describe('LinkParser', () => {
       db = await openNotesDB();
     });
 
-    it('(1) resolves [[Alpha]] → links=[alphaId], emits note:saved', async () => {
+    it('(1) resolves [[Alpha]] → links=[{noteId: alphaId, source: explicit}], emits note:saved', async () => {
       await db.put('notes', makeNote({ id: 'alpha', title: 'Alpha' }));
       const note = makeNote({ id: 'n1', content: 'See [[Alpha]]' });
       let received = false;
@@ -163,7 +166,7 @@ describe('LinkParser', () => {
       });
       const { note: saved } = await saveNote(db, note);
       unsub();
-      expect(saved.links).toEqual(['alpha']);
+      expect(saved.links).toEqual([{ noteId: 'alpha', source: 'explicit' }]);
       expect(saved.unresolvedLinks).toEqual([]);
       expect(received).toBe(true);
     });

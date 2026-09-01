@@ -16,13 +16,17 @@
  *   - categoryPath? — populated Phase 9
  */
 
+import type { KnowledgeEdgeSource } from './harness';
+
 /**
  * Canonical Note — §21.2 verbatim (spec 4721-4741).
  *
  * Timestamps (`created`, `updated`) are numbers (epoch ms). `links` holds
- * resolved note IDs (WIKI-ID-02); `unresolvedLinks` holds raw `[[Title]]`
- * targets with no matching note (WIKI-ID-03).
+ * resolved note IDs with provenance source (WIKI-ID-02, KNW-01);
+ * `unresolvedLinks` holds raw `[[Title]]` targets with no matching note
+ * (WIKI-ID-03).
  */
+
 export interface Note {
   id: string;
   title: string;
@@ -30,8 +34,8 @@ export interface Note {
   created: number;
   updated: number;
   tags: string[];
-  /** Resolved note IDs (WIKI-ID-02). */
-  links: string[];
+  /** Resolved note IDs with provenance source (WIKI-ID-02, KNW-01). */
+  links: Array<{ noteId: string; source: KnowledgeEdgeSource }>;
   /** Raw [[Title]] targets with no match (WIKI-ID-03). */
   unresolvedLinks: string[];
   source: {

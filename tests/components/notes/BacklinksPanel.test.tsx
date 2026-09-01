@@ -27,9 +27,9 @@ function makeNote(overrides: Partial<Note> = {}): Note {
 describe('BacklinksPanel — UI-SPEC Contract 1 (D-111)', () => {
   it('renders the BACKLINKS header + count Tag for 2 backlinks', () => {
     const notes = [
-      makeNote({ id: 'A', title: 'Note A', links: ['B'], updated: 3000 }),
+      makeNote({ id: 'A', title: 'Note A', links: [{ noteId: 'B', source: 'explicit' }], updated: 3000 }),
       makeNote({ id: 'B', title: 'Note B', links: [], updated: 2000 }),
-      makeNote({ id: 'C', title: 'Note C', links: ['B'], updated: 1000 }),
+      makeNote({ id: 'C', title: 'Note C', links: [{ noteId: 'B', source: 'explicit' }], updated: 1000 }),
     ];
     render(<BacklinksPanel notes={notes} noteId="B" onSelect={() => {}} />);
     expect(screen.getByText('BACKLINKS')).toBeTruthy();
@@ -38,9 +38,9 @@ describe('BacklinksPanel — UI-SPEC Contract 1 (D-111)', () => {
 
   it('rows sorted updated desc (newest first)', () => {
     const notes = [
-      makeNote({ id: 'A', title: 'Older Backlink', links: ['B'], updated: 1000 }),
+      makeNote({ id: 'A', title: 'Older Backlink', links: [{ noteId: 'B', source: 'explicit' }], updated: 1000 }),
       makeNote({ id: 'B', title: 'Note B', links: [], updated: 2000 }),
-      makeNote({ id: 'C', title: 'Newer Backlink', links: ['B'], updated: 3000 }),
+      makeNote({ id: 'C', title: 'Newer Backlink', links: [{ noteId: 'B', source: 'explicit' }], updated: 3000 }),
     ];
     render(<BacklinksPanel notes={notes} noteId="B" onSelect={() => {}} />);
     const buttons = screen.getAllByRole('button');
@@ -50,7 +50,7 @@ describe('BacklinksPanel — UI-SPEC Contract 1 (D-111)', () => {
 
   it('dangling-id exclusion: a note whose links reference an absent id → no row', () => {
     const notes = [
-      makeNote({ id: 'A', title: 'Note A', links: ['GONE'], updated: 1000 }),
+      makeNote({ id: 'A', title: 'Note A', links: [{ noteId: 'GONE', source: 'explicit' }], updated: 1000 }),
     ];
     // A links to GONE which is not in the live set → no backlink entries
     render(<BacklinksPanel notes={notes} noteId="GONE" onSelect={() => {}} />);
@@ -70,7 +70,7 @@ describe('BacklinksPanel — UI-SPEC Contract 1 (D-111)', () => {
   it('click row → onSelect called with the noteId', () => {
     const onSelect = vi.fn();
     const notes = [
-      makeNote({ id: 'A', title: 'Note A', links: ['B'], updated: 1000 }),
+      makeNote({ id: 'A', title: 'Note A', links: [{ noteId: 'B', source: 'explicit' }], updated: 1000 }),
       makeNote({ id: 'B', title: 'Note B', links: [], updated: 2000 }),
     ];
     render(<BacklinksPanel notes={notes} noteId="B" onSelect={onSelect} />);
@@ -82,7 +82,7 @@ describe('BacklinksPanel — UI-SPEC Contract 1 (D-111)', () => {
   it('STRUCTURAL XSS gate: HTML-ish title renders as plain text, no element injected', () => {
     const xssTitle = '<img src=x onerror=alert(1)>';
     const notes = [
-      makeNote({ id: 'A', title: xssTitle, links: ['B'], updated: 1000 }),
+      makeNote({ id: 'A', title: xssTitle, links: [{ noteId: 'B', source: 'explicit' }], updated: 1000 }),
       makeNote({ id: 'B', title: 'Note B', links: [], updated: 2000 }),
     ];
     render(<BacklinksPanel notes={notes} noteId="B" onSelect={() => {}} />);
@@ -95,9 +95,9 @@ describe('BacklinksPanel — UI-SPEC Contract 1 (D-111)', () => {
 
   it('computeBacklinkEntries: sorts updated desc', () => {
     const notes = [
-      makeNote({ id: 'A', title: 'Older', links: ['B'], updated: 1000 }),
+      makeNote({ id: 'A', title: 'Older', links: [{ noteId: 'B', source: 'explicit' }], updated: 1000 }),
       makeNote({ id: 'B', title: 'Target', links: [], updated: 2000 }),
-      makeNote({ id: 'C', title: 'Newer', links: ['B'], updated: 3000 }),
+      makeNote({ id: 'C', title: 'Newer', links: [{ noteId: 'B', source: 'explicit' }], updated: 3000 }),
     ];
     const entries = computeBacklinkEntries(notes, 'B');
     expect(entries).toHaveLength(2);
@@ -107,10 +107,10 @@ describe('BacklinksPanel — UI-SPEC Contract 1 (D-111)', () => {
 
   it('maxItems caps the displayed rows', () => {
     const notes = [
-      makeNote({ id: 'A', title: 'A', links: ['B'], updated: 5000 }),
+      makeNote({ id: 'A', title: 'A', links: [{ noteId: 'B', source: 'explicit' }], updated: 5000 }),
       makeNote({ id: 'B', title: 'B', links: [], updated: 2000 }),
-      makeNote({ id: 'C', title: 'C', links: ['B'], updated: 4000 }),
-      makeNote({ id: 'D', title: 'D', links: ['B'], updated: 3000 }),
+      makeNote({ id: 'C', title: 'C', links: [{ noteId: 'B', source: 'explicit' }], updated: 4000 }),
+      makeNote({ id: 'D', title: 'D', links: [{ noteId: 'B', source: 'explicit' }], updated: 3000 }),
     ];
     render(<BacklinksPanel notes={notes} noteId="B" onSelect={() => {}} maxItems={2} />);
     const buttons = screen.getAllByRole('button');

@@ -15,6 +15,7 @@
 // executor discretion bounded by a length-50 test. No lemma/POS filtering.
 
 import type { Note } from '../../types/notes';
+import type { KnowledgeEdgeSource } from '../../types/harness';
 
 /**
  * Fixed 50-word English stop-word list (spec 3511 — count + inline location;
@@ -85,12 +86,28 @@ export interface SimilarNote {
  * Top-k most similar notes to `note` among `allNotes` (§22.3 verbatim).
  * Cosine over TF maps; ties broken by updated desc then id asc (spec 3508-3514).
  * The target note itself is excluded. k defaults to 5.
+ *
+ * KNW-01: optionally filter results to only include notes that have an edge
+ * from the target with the given source (e.g. 'explicit' for user-created links).
  */
-export function topKSimilar(note: Note, allNotes: Note[], k = 5): SimilarNote[] {
+export function topKSimilar(
+  note: Note,
+  allNotes: Note[],
+  k = 5,
+  edgeSource?: KnowledgeEdgeSource,
+): SimilarNote[] {
   const targetTf = buildTf(tokenise(note.content));
+
+  // KNW-01: when edgeSource is provided, restrict candidates to notes that
+  // the target links to with that source.
+  const candidateIds = edgeSource
+    ? new Set(note.links.filter((l) => l.source === edgeSource).map((l) => l.noteId))
+    : undefined;
+
   const results: SimilarNote[] = [];
   for (const other of allNotes) {
     if (other.id === note.id) continue;
+    if (candidateIds && !candidateIds.has(other.id)) continue;
     const otherTf = buildTf(tokenise(other.content));
     const score = cosine(targetTf, otherTf);
     results.push({ note: other, score });
@@ -104,18 +121,21 @@ export function topKSimilar(note: Note, allNotes: Note[], k = 5): SimilarNote[] 
 }
 
 /**
- * Reverse index over links[] (D-111): for each note, for each id in note.links,
- * map id → referencing note ids (deduplicated).
+ * Reverse index over links[] (D-111): for each note, for each link in note.links,
+ * map link.noteId → referencing note ids (deduplicated).
  *
  * WIKI-ID-04 semantics: membership is computed against the LIVE note set
  * passed in — notes not in the set contribute nothing (their dangling links
  * are not re-added; demotion lives in LinkParser.demoteDangling).
+ *
+ * KNW-01: handles the new {noteId, source} shape — uses link.noteId as target.
  */
 export function computeBacklinks(notes: Note[]): Map<string, string[]> {
   const backlinks = new Map<string, string[]>();
   const liveIds = new Set(notes.map((n) => n.id));
   for (const note of notes) {
-    for (const targetId of note.links) {
+    for (const link of note.links) {
+      const targetId = link.noteId;
       // WIKI-ID-04: only live targets get backlink entries — a link to a
       // note not in the set contributes nothing (demotion lives in
       // LinkParser.demoteDangling; here we just don't re-add the edge).
@@ -125,6 +145,31 @@ export function computeBacklinks(notes: Note[]): Map<string, string[]> {
         if (!existing.includes(note.id)) existing.push(note.id);
       } else {
         backlinks.set(targetId, [note.id]);
+      }
+    }
+  }
+  return backlinks;
+}
+
+/**
+ * KNW-01: reverse index over links[] that preserves provenance source metadata.
+ * For each note, for each link in note.links, map link.noteId → array of
+ * {noteId, source} objects indicating which notes link to it and with what
+ * provenance.
+ */
+export function computeBacklinksWithProvenance(
+  notes: Note[],
+): Map<string, Array<{ noteId: string; source: KnowledgeEdgeSource }>> {
+  const backlinks = new Map<string, Array<{ noteId: string; source: KnowledgeEdgeSource }>>();
+  const liveIds = new Set(notes.map((n) => n.id));
+  for (const note of notes) {
+    for (const link of note.links) {
+      if (!liveIds.has(link.noteId)) continue;
+      const existing = backlinks.get(link.noteId);
+      if (existing) {
+        existing.push({ noteId: note.id, source: link.source });
+      } else {
+        backlinks.set(link.noteId, [{ noteId: note.id, source: link.source }]);
       }
     }
   }

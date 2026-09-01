@@ -51,7 +51,7 @@ describe('NoteGraphView — UI-SPEC Contract 3 (D-111)', () => {
   it('backlink nodes + backlink edges', () => {
     const notes = [
       makeNote({ id: 'A', title: 'Target Note', content: 'sql database' }),
-      makeNote({ id: 'B', title: 'Linking Note', content: 'cooking recipes', links: ['A'] }),
+      makeNote({ id: 'B', title: 'Linking Note', content: 'cooking recipes', links: [{ noteId: 'A', source: 'explicit' }] }),
     ];
     render(<NoteGraphView notes={notes} noteId="A" onSelect={() => {}} />);
     expect(screen.getByText(/Linking Note/)).toBeTruthy();
@@ -83,7 +83,7 @@ describe('NoteGraphView — UI-SPEC Contract 3 (D-111)', () => {
     const notes = [
       makeNote({ id: 'A', title: 'SQL Guide', content: 'sql database indexing', updated: 1000 }),
       makeNote({ id: 'B', title: 'SQL Tuning', content: 'sql database performance', updated: 2000 }),
-      makeNote({ id: 'C', title: 'Cooking', content: 'recipes pasta italian', links: ['A'], updated: 3000 }),
+      makeNote({ id: 'C', title: 'Cooking', content: 'recipes pasta italian', links: [{ noteId: 'A', source: 'explicit' }], updated: 3000 }),
     ];
     const adjacency = buildGraphAdjacency(notes, 'A');
     // Current node

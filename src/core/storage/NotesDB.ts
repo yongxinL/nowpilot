@@ -27,6 +27,7 @@
 
 import type { DBSchema, IDBPDatabase } from 'idb';
 import { openVersionedDB, registerMigration } from './IndexedDBMigrator';
+import type { KnowledgeEdgeSource } from '../../types/harness';
 
 export const NOTES_DB = 'NotesDB';
 export const NOTES_DB_VERSION = 4;
@@ -118,6 +119,38 @@ export async function populateNoteTypeDefaults(db: IDBPDatabase<NotesDBV1>): Pro
   await tx.done;
 }
 
+/**
+ * KNW-01: Populate Note.links[] with provenance metadata where missing.
+ *
+ * Idempotent: only updates notes where links contain strings (old shape).
+ * Already-migrated links (objects with noteId/source) are untouched.
+ *
+ * Transforms: `links.map((l) => typeof l === 'string' ? { noteId: l, source: 'explicit' as const } : l)`
+ *
+ * This runs AFTER the DB is opened (not inside the versionchange
+ * transaction) because IndexedDB forbids opening a new transaction on
+ * existing stores during upgrade.
+ *
+ * @param db — an opened NotesDB instance.
+ */
+export async function populateLinkProvenanceDefaults(db: IDBPDatabase<NotesDBV1>): Promise<void> {
+  const tx = db.transaction('notes', 'readwrite');
+  const store = tx.objectStore('notes');
+  let cursor = await store.openCursor();
+  while (cursor) {
+    const note = cursor.value;
+    const needsMigration = note.links.some((l) => typeof l === 'string');
+    if (needsMigration) {
+      const migratedLinks = note.links.map((l) =>
+        typeof l === 'string' ? { noteId: l, source: 'explicit' as KnowledgeEdgeSource } : l,
+      );
+      await cursor.update({ ...note, links: migratedLinks });
+    }
+    cursor = await cursor.continue();
+  }
+  await tx.done;
+}
+
 export async function openNotesDB(): Promise<IDBPDatabase<NotesDBV1>> {
   const db = await openVersionedDB<NotesDBV1>(NOTES_DB, NOTES_DB_VERSION, {
     upgrade(database, oldVersion) {
@@ -145,6 +178,10 @@ export async function openNotesDB(): Promise<IDBPDatabase<NotesDBV1>> {
   // Post-open: populate Note.type defaults (D-125). Idempotent — safe to
   // run every open; only touches notes where type is missing.
   await populateNoteTypeDefaults(db);
+
+  // KNW-01: populate Note.links[] provenance metadata. Idempotent — safe to
+  // run every open; only touches notes where links contain strings (old shape).
+  await populateLinkProvenanceDefaults(db);
 
   return db;
 }

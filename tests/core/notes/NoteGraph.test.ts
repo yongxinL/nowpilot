@@ -151,9 +151,9 @@ describe('NoteGraph — §22.3 verbatim cosine core (D-111)', () => {
   });
 
   it('backlinks: notes A(l→B), C(l→B), D(l→none) → B:[A,C], D:[]', () => {
-    const a = makeNote({ id: 'A', links: ['B'] });
+    const a = makeNote({ id: 'A', links: [{ noteId: 'B', source: 'explicit' }] });
     const b = makeNote({ id: 'B', links: [] });
-    const c = makeNote({ id: 'C', links: ['B'] });
+    const c = makeNote({ id: 'C', links: [{ noteId: 'B', source: 'explicit' }] });
     const d = makeNote({ id: 'D', links: [] });
     const backlinks = computeBacklinks([a, b, c, d]);
     expect(backlinks.get('B')).toEqual(['A', 'C']);
@@ -161,14 +161,14 @@ describe('NoteGraph — §22.3 verbatim cosine core (D-111)', () => {
   });
 
   it('backlinks: deduplicates multiple links to the same target', () => {
-    const a = makeNote({ id: 'A', links: ['B', 'B'] });
+    const a = makeNote({ id: 'A', links: [{ noteId: 'B', source: 'explicit' }, { noteId: 'B', source: 'explicit' }] });
     const b = makeNote({ id: 'B', links: [] });
     const backlinks = computeBacklinks([a, b]);
     expect(backlinks.get('B')).toEqual(['A']);
   });
 
   it('LIVE-SET: a note whose links reference an absent id → edge not in backlinks', () => {
-    const a = makeNote({ id: 'A', links: ['GONE'] });
+    const a = makeNote({ id: 'A', links: [{ noteId: 'GONE', source: 'explicit' }] });
     const backlinks = computeBacklinks([a]);
     // GONE is not in the live set → no backlink entry for it
     expect(backlinks.get('GONE')).toBeUndefined();

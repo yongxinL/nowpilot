@@ -106,8 +106,8 @@ describe('notes-search-e2e: PageContext -> Note -> saveNote -> MiniSearchIndex -
     // (d) saveNote -> parse -> resolve -> NotesDB.put -> emit note:saved.
     const { note: savedNote } = await saveNote(db, note);
 
-    // The saved note.links contains the MySQL Guide id (WIKI-ID-02 resolution).
-    expect(savedNote.links).toContain(mysqlGuide.id);
+    // The saved note.links contains the MySQL Guide id (WIKI-ID-02 resolution, KNW-01).
+    expect(savedNote.links).toEqual([{ noteId: mysqlGuide.id, source: 'explicit' }]);
     // unresolvedLinks carries 'Runbook' (no such note — WIKI-ID-03).
     expect(savedNote.unresolvedLinks).toContain('Runbook');
 
