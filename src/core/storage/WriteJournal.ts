@@ -462,6 +462,59 @@ export async function recoverWorkspaceJournal(deps: RecoverWorkspaceDeps): Promi
   });
 }
 
+// --- Evict-conversation steps (D-106 §15.3) --------------------------------
+//
+// The `evict-conversation` operation is declared in the WriteJournalOperation
+// union (src/types/storage.ts:48) but ships its step implementation here in
+// Phase 8. Eviction spans IDB (MemoryDB.messages rows + conversationSummaries
+// row) and chrome.storage.local (the np_conversation_meta LRU entry) — the
+// journal makes it atomic-on-recovery (O.11).
+//
+// The curried-factory precedent mirrors createChatTurnSteps (lines 297-329):
+// injected deps capture the unstable I/O seam while the curried payload
+// carries the per-eviction conversationId.
+
+/** Dependencies for the evict-conversation steps. */
+export interface EvictConversationDeps {
+  /** Delete all MemoryDB.messages rows for a conversation. */
+  deleteMessages: (conversationId: string) => Promise<void>;
+  /** Delete the MemoryDB.conversationSummaries row for a conversation. */
+  deleteSummary: (conversationId: string) => Promise<void>;
+  /** Drop the np_conversation_meta LRU entry for a conversation. */
+  dropMeta: (conversationId: string) => Promise<void>;
+}
+
+/** Per-eviction payload. */
+export interface EvictConversationPayload {
+  conversationId: string;
+}
+
+/** Builder: payload → JournalStep[]. */
+export type EvictConversationStepsBuilder = (
+  payload: EvictConversationPayload,
+) => JournalStep[];
+
+/**
+ * Factory — JournalStep[] builder for the `evict-conversation` operation
+ * (D-106 §15.3, O.11). apply() deletes MemoryDB.messages rows for the
+ * conversation + the conversationSummaries row + drops the np_conversation_meta
+ * LRU entry. rollback() is a no-op (eviction is idempotent — deleting
+ * already-deleted rows is safe, replay-safe per O.11).
+ */
+export function createEvictConversationSteps(deps: EvictConversationDeps): EvictConversationStepsBuilder {
+  return (payload: EvictConversationPayload): JournalStep[] => [
+    {
+      name: 'evict-conversation',
+      apply: async () => {
+        await deps.deleteMessages(payload.conversationId);
+        await deps.deleteSummary(payload.conversationId);
+        await deps.dropMeta(payload.conversationId);
+      },
+      rollback: async () => undefined,
+    },
+  ];
+}
+
 // --- Test seam --------------------------------------------------------------
 
 export const __test__ = {
