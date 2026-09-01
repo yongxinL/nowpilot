@@ -18,7 +18,7 @@
     "experimentalDecorators": true,
     "useDefineForClassFields": false,
     "allowImportingTsExtensions": true,
-    "types": ["chrome", "node", "vite/client"],
+    "types": ["chrome", "node", "vite/client", "wicg-file-system-access"],
     "paths": {
       "@/*": ["./src/*"],
       "~/*": ["./*"]
