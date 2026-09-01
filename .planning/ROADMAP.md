@@ -265,7 +265,7 @@ Plans:
   5. Wikilinks resolve with tie-break rule; end-to-end `Page → PageContentService → Note → MiniSearch` path works.
 
 **Verification gate:** `pnpm run verify:phase-8` (§24).
-**Plans:** 2/5 plans executed
+**Plans:** 3/5 plans executed
 Plans:
 **Wave 1**
 
@@ -274,7 +274,7 @@ Plans:
 **Wave 2** *(blocked on Wave 1)*
 
 - [x] 08-02-PLAN.md — Memory subsystem: UserMemoryStore + MemoryScorer (D-104/D-113), ConversationMemoryStore compactor seam + WriteJournal evict steps + WorkingMemory O.10 (D-104/D-106), MemoryEngine create-only producers + MemoryExtractor schema seam (D-105/D-113, RICH-R-05 DONE-when)
-- [ ] 08-03-PLAN.md — Notes core: LinkParser + save seam Flow-3-minus-LLM (D-110), MiniSearchIndex persistent notes index + perf gate (D-109)
+- [x] 08-03-PLAN.md — Notes core: LinkParser + save seam Flow-3-minus-LLM (D-110), MiniSearchIndex persistent notes index + perf gate (D-109)
 
 **Wave 3** *(blocked on Wave 2)*
 
@@ -482,7 +482,7 @@ Plans:
 | 5. Context-Adaptive Execution | 2/2 | Complete    | 2026-08-29 |
 | 6. PageContentService (Knowledge Acquisition) | 5/5 | Complete    | 2026-08-30 |
 | 7. Trust-Aware Context and Receipts | 3/3 | Complete    | 2026-08-30 |
-| 8. Knowledge Base (Memory + MiniSearch + Notes) | 2/5 | In Progress|  |
+| 8. Knowledge Base (Memory + MiniSearch + Notes) | 3/5 | In Progress|  |
 | 9. LLM-Wiki & Filesystem Sync | 0/4 | Not started | — |
 | 10. Memory Governance and Experience Candidates | 0/2 | Not started | — |
 | 11. Transaction Logging and Diagnostics | 0/2 | Not started | — |

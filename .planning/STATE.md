@@ -5,13 +5,13 @@ milestone_name: milestone
 current_phase: 8
 current_phase_name: Knowledge Base (Memory + MiniSearch + Notes)
 status: executing
-stopped_at: Completed 08-02-PLAN.md
-last_updated: "2026-09-01T04:37:45.710Z"
+stopped_at: Completed 08-03-PLAN.md
+last_updated: "2026-09-01T04:59:09.812Z"
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 44
-  completed_plans: 40
+  completed_plans: 41
 state_head: 9b50aca
 ---
 
@@ -44,9 +44,9 @@ state_head: 9b50aca
 ## Current Position
 
 - **Phase:** 8 (Knowledge Base (Memory + MiniSearch + Notes)) — EXECUTING
-- **Plan:** 3 of 5
+- **Plan:** 4 of 5
 - **Status:** Ready to execute
-- **Progress:** 6/19 phases complete · 35/74 plans done · 220/220 requirements mapped ([█████████░] 91% coverage).
+- **Progress:** 6/19 phases complete · 35/74 plans done · 220/220 requirements mapped ([█████████░] 93% coverage).
 
 ---
 
@@ -81,6 +81,7 @@ state_head: 9b50aca
 | Phase 06-pagecontentservice-knowledge-acquisition P05 | 16min | 3 tasks | 4 files |
 | Phase 08 P01 | 16min | 3 tasks | 14 files |
 | Phase 08 P02 | 24min | 3 tasks | 13 files |
+| Phase 08 P03 | 16min | 2 tasks | 5 files |
 
 ## Accumulated Context — Decisions (inherited from PROJECT.md Key Decisions)
 
@@ -128,8 +129,8 @@ All inherited decisions are **— Pending** (awaiting first implementation to va
 
 ## Session Continuity
 
-**Last session:** 2026-09-01T04:37:45.681Z
-**Stopped at:** Completed 08-02-PLAN.md
+**Last session:** 2026-09-01T04:59:09.800Z
+**Stopped at:** Completed 08-03-PLAN.md
 **Resume file:** None
 
 - **Last action:** Phase 7 completed end-to-end — all 3 plans (TrustPolicy + ContextReceipt spine, ContextQualityMetrics + stable-prefix snapshots, SkillDisclosure + verify:phase-7 re-point) executed, verified 18/18 truths, verify:phase-7 64/64 green, full suite 621/621, code review 0 critical. PROJECT.md evolved (commit 17e5dc0).
@@ -179,3 +180,5 @@ Phase 7 is complete. Phase 8 (Knowledge Base) has no CONTEXT.md. Run:
 - [Phase ?]: [Phase 8]: 08-01: Note.type?: string declaration-only (D-108) — zero consumers in Phase 8; identity stays immutable UUID id (WIKI-ID-01/ADR-NOTE-01)
 - [Phase ?]: MemoryScorer keyword scoring matches query terms against tags; sub-scores independently normalized to [0,1]
 - [Phase ?]: MemoryEngine.buildPreferenceProfile reads np_persona (PreferenceMemoryStore) — never the fact store (RICH-R-05 DONE-when)
+- [Phase ?]: MiniSearch 7.2.0 lacks upsert — using add+replace
+- [Phase ?]: demoteDangling takes idToTitle map for raw title recovery
