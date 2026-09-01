@@ -2,6 +2,7 @@
 
 **Gathered:** 2026-09-01
 **Status:** Ready for planning
+**Auto-review:** 2026-09-01 — all prior decisions (D-115…D-125) confirmed valid, no gray areas require user input.
 
 <domain>
 ## Phase Boundary
@@ -100,7 +101,6 @@ Plus: populate `Note.type` + `categoryPath` (declared Phase 8), v4 migration (id
 - `src/core/storage/MemoryDB.ts` — userFacts/conversationSummaries/messages (NMEM-02 write target).
 - `src/core/memory/MemoryEngine.ts` — retrieveMemoryHints() (NMEM-01 RAG), assemble() (NMEM-03), fact upsert (NMEM-02).
 - `src/core/memory/MemoryExtractor.ts` — memoryFacts schema (NMEM-02 extraction).
-- `src/core/memory/PreferenceMemoryStore.ts` — np_persona (RICH-R-05, persona context for drafts).
 - `src/core/search/MiniSearchIndex.ts` — persistent notes index (NoteQA retrieval + AI rerank LLM-WIKI-05).
 - `src/core/notes/LinkParser.ts` — parseLinks/resolveLinks (WIKI-ID-02/03; NoteChatConverter suggests wikilinks).
 - `src/core/ai/ProviderRouter.ts` / `src/core/ai/AgentOrchestrator.ts` — Phase-3 AI runtime NoteTagger/NoteQA invoke.
@@ -170,5 +170,6 @@ None of these belong in Phase 9 — discussion stayed within phase scope.
 </deferred>
 
 ---
+
 *Phase: 9-LLM-Wiki & Filesystem Sync*
 *Context gathered: 2026-09-01*

@@ -4,77 +4,40 @@
 > Decisions are captured in CONTEXT.md — this log preserves the alternatives considered.
 
 **Date:** 2026-09-01
-**Phase:** 9-LLM-Wiki & Filesystem Sync
-**Areas discussed:** NoteTagger LLM wiring, NoteQA RAG architecture, NoteChatConverter, NoteFileSync handle/frontmatter, NoteMaintenance scope, Memory↔Notes routing, categoryPath + Note.type handoff, v4 migration
+**Phase:** 9-llm-wiki-filesystem-sync
+**Areas discussed:** None — all decisions already locked in existing CONTEXT.md (D-115…D-125)
 
 ---
 
-## NoteTagger LLM Wiring
+## Auto-Review Summary
 
-| Option | Description | Selected |
-|--------|-------------|----------|
-| Reuse Phase-3 AI runtime (ProviderRouter fast tier, temp-0, single structured JSON call) | Leverages existing ProviderRouter/ILLMProvider; single call returns tags+category+summary+memoryFacts | ✓ |
-| Build a new standalone LLM pipeline | New provider seam just for notes | |
-| Use AgentOrchestrator wrapper | Heavier; adds observability but more coupling | |
+**Mode:** `--auto` (autonomous)
+**Finding:** Existing CONTEXT.md (created 2026-09-01) is comprehensive — 11 locked decisions, complete canonical references, code context, specifics, and deferred ideas. No gray areas require user input.
 
-**[auto] Selected: Reuse Phase-3 AI runtime** (recommended default — D-01/D-07, additive, reversible).
+**Gray area assessment:**
+- NoteTagger invoke path (direct vs AgentOrchestrator) — planner discretion, not user decision
+- NoteQA streaming vs one-shot — planner discretion, not user decision
+- NoteFileSync debounce scope — planner discretion, not user decision
+- NoteMaintenance file split — planner discretion, not user decision
+- OKF field casing — spec is authoritative, not a decision
 
----
-
-## NoteQA RAG Architecture
-
-| Option | Description | Selected |
-|--------|-------------|----------|
-| Balanced-tier synthesis + per-statement citations, tiny mode falls back to plain MiniSearch | LLM-WIKI-06 + §524; ephemeral Bubble with citation Tags | ✓ |
-| Fast-tier synthesis everywhere | Lower quality, not recommended for synthesis per D-07 | |
-| Embeddings/vector store | Out of scope per §3.2 | |
-
-**[auto] Selected: Balanced-tier synthesis + citations** (recommended — D-07, spec-verbatim).
-
----
-
-## NoteFileSync Handle + Frontmatter
-
-| Option | Description | Selected |
-|--------|-------------|----------|
-| showDirectoryPicker() Standalone-only; handle in notes_backup_config IDB store; OKF v0.2 YAML frontmatter (yaml ^2) | SYNC-01/04 verbatim; non-serializable handle → IDB | ✓ |
-| chrome.storage.local for handle | Impossible — handles non-serializable | |
-| Custom frontmatter format | Breaks OKF compatibility (D-02a) | |
-
-**[auto] Selected: IDB handle store + OKF v0.2 YAML frontmatter** (recommended — SYNC-01/04 verbatim).
-
----
-
-## Memory↔Notes (NMEM-02)
-
-| Option | Description | Selected |
-|--------|-------------|----------|
-| Same LLM call extracts facts → routed through MemoryEngine, primary surface only | D-05 Notes→Memory only; §13 single-writer gate | ✓ |
-| Separate extraction call | Redundant; D-01 single-call spine | |
-| Bidirectional sync | Out of scope (D-05) | |
-
-**[auto] Selected: Same-call extraction → MemoryEngine, primary surface** (recommended — D-05/§13).
-
----
-
-## categoryPath + Note.type Handoff
-
-| Option | Description | Selected |
-|--------|-------------|----------|
-| Populate + serialize in Phase 9 (declared Phase 8) | D-108 handoff; categoryPath from LLM + user edit; type default 'Note' | ✓ |
-| Defer population | Breaks SYNC-04 frontmatter requirement | |
-
-**[auto] Selected: Populate + serialize in Phase 9** (recommended — D-108 handoff).
+**Outcome:** All decisions confirmed valid. CONTEXT.md updated with auto-review timestamp. No changes to locked decisions.
 
 ---
 
 ## the agent's Discretion
 
-- Exact NoteTagger→ProviderRouter invoke path (direct invoke() vs AgentOrchestrator wrapper).
-- Whether NoteQA synthesis streams or returns one-shot.
-- Whether NoteFileSync debounce is module-level or hook-scoped.
-- Whether NoteMaintenance is one file or split.
+- Exact NoteTagger→ProviderRouter invoke path
+- Whether NoteQA synthesis streams or returns one-shot
+- Whether NoteFileSync debounce is module-level or hook-scoped
+- Whether NoteMaintenance lives in one file or splits
+- Whether OKF fields use exact SYNC-04 casing
 
 ## Deferred Ideas
 
-- Memory governance (Phase 10), bidirectional sync (v0.2+), embeddings (deferred), LLM wikilink autocomplete (D-04), full NotesWorkspace UI (Phase 15), tool registration (Phase 18) — all noted in CONTEXT.md deferred section.
+- Memory governance (MEM-01…05, KNW-01) — Phase 10
+- Bidirectional filesystem sync — v0.2+
+- Embedding/vector search — deferred per §3.2
+- LLM wikilink autocomplete — not in v0.1 (D-04)
+- Full NotesWorkspace UI — Phase 15.1
+- search-notes / create-note tool registration — Phase 18
