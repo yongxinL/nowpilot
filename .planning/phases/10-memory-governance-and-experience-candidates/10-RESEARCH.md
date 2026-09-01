@@ -343,22 +343,25 @@ registerMigration('MemoryDB', {
 
 **If this table is empty:** All claims in this research were verified or cited — no user confirmation needed.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **MemoryRecord ↔ UserMemoryFact relationship**
    - What we know: D-126 says "MemoryRecord extends UserMemoryFact" — the governance fields are additive
    - What's unclear: Whether MemoryRecord is a strict superset type or a wrapper with `fact: UserMemoryFact` + governance metadata
    - Recommendation: Use superset type (all UserMemoryFact fields + governance fields) — simpler, satisfies MEM-02
+   - — RESOLVED: Superset type. Plan 10-01 Task 1 implements MemoryRecord as UserMemoryFact + governance fields.
 
 2. **Conflict detection matching function**
    - What we know: D-127 says "matched by content hash + tags overlap"
    - What's unclear: Exact hash function and overlap threshold
    - Recommendation: Use normalized content (lowercase, trimmed) + sorted tags as the match key; overlap = shared tags / total tags > 0.5
+   - — RESOLVED: Normalized content + sorted tags as match key; overlap threshold > 0.5. Plan 10-01 Task 1 implements.
 
 3. **Note.links[] migration strategy**
    - What we know: D-130 says "stored on the Note type's links[] as Array<{noteId, source}>"
    - What's unclear: Whether existing `string[]` links are migrated in-place or coexist via union type
    - Recommendation: v5 migration reads all notes, transforms `string[]` → `Array<{noteId, source: 'explicit'}>`, writes back. Follows `populateNoteTypeDefaults` precedent.
+   - — RESOLVED: In-place transform via v5 migration. Plan 10-02 Task 1 implements.
 
 ## Environment Availability
 
