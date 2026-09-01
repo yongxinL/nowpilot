@@ -167,7 +167,7 @@ describe('NoteFileSync.serializeNoteToMarkdown (SYNC-04, OKF-WIKI-01/02/03)', ()
 
 describe('NoteFileSync.syncNoteToFilesystem (SYNC-05/06/07/11, CAT-04, OKF-WIKI-04)', () => {
   it('title collision → numeric suffix (My Note.md, My Note (1).md)', async () => {
-    const { syncNoteToFilesystem, serializeNoteToMarkdown } = await import(
+    const { syncNoteToFilesystem } = await import(
       '../../../src/core/notes/NoteFileSync'
     );
     const adapter = createMockAdapter();
@@ -184,7 +184,6 @@ describe('NoteFileSync.syncNoteToFilesystem (SYNC-05/06/07/11, CAT-04, OKF-WIKI-
       adapter as any,
       note,
       'fast',
-      serializeNoteToMarkdown,
     );
 
     expect(result.status).toBe('written');
@@ -198,7 +197,7 @@ describe('NoteFileSync.syncNoteToFilesystem (SYNC-05/06/07/11, CAT-04, OKF-WIKI-
   });
 
   it('external-change guard: file modified outside 2s tolerance → conflict detected', async () => {
-    const { syncNoteToFilesystem, serializeNoteToMarkdown } = await import(
+    const { syncNoteToFilesystem } = await import(
       '../../../src/core/notes/NoteFileSync'
     );
     const adapter = createMockAdapter();
@@ -214,7 +213,6 @@ describe('NoteFileSync.syncNoteToFilesystem (SYNC-05/06/07/11, CAT-04, OKF-WIKI-
       adapter as any,
       note,
       'fast',
-      serializeNoteToMarkdown,
       Date.now(),
     );
 
@@ -222,7 +220,7 @@ describe('NoteFileSync.syncNoteToFilesystem (SYNC-05/06/07/11, CAT-04, OKF-WIKI-
   });
 
   it('external-change guard: file modified within 2s tolerance → no conflict', async () => {
-    const { syncNoteToFilesystem, serializeNoteToMarkdown } = await import(
+    const { syncNoteToFilesystem } = await import(
       '../../../src/core/notes/NoteFileSync'
     );
     const adapter = createMockAdapter();
@@ -238,7 +236,6 @@ describe('NoteFileSync.syncNoteToFilesystem (SYNC-05/06/07/11, CAT-04, OKF-WIKI-
       adapter as any,
       note,
       'fast',
-      serializeNoteToMarkdown,
       Date.now(),
     );
 
@@ -246,7 +243,7 @@ describe('NoteFileSync.syncNoteToFilesystem (SYNC-05/06/07/11, CAT-04, OKF-WIKI-
   });
 
   it('no backup handle → sync is no-op (no throw)', async () => {
-    const { syncNoteToFilesystem, serializeNoteToMarkdown } = await import(
+    const { syncNoteToFilesystem } = await import(
       '../../../src/core/notes/NoteFileSync'
     );
     const adapter = createMockAdapter();
@@ -266,7 +263,6 @@ describe('NoteFileSync.syncNoteToFilesystem (SYNC-05/06/07/11, CAT-04, OKF-WIKI-
       nullAdapter as any,
       note,
       'fast',
-      serializeNoteToMarkdown,
     );
 
     expect(result.status).toBe('no-folder');
@@ -309,7 +305,7 @@ describe('NoteFileSync.syncNoteToFilesystem (SYNC-05/06/07/11, CAT-04, OKF-WIKI-
   });
 
   it('note at InfoTech/Database/MySQL saves as InfoTech/Database/MySQL/Note Title.md (CAT-04)', async () => {
-    const { syncNoteToFilesystem, serializeNoteToMarkdown } = await import(
+    const { syncNoteToFilesystem } = await import(
       '../../../src/core/notes/NoteFileSync'
     );
     const adapter = createMockAdapter();
@@ -324,7 +320,6 @@ describe('NoteFileSync.syncNoteToFilesystem (SYNC-05/06/07/11, CAT-04, OKF-WIKI-
       adapter as any,
       note,
       'fast',
-      serializeNoteToMarkdown,
     );
 
     expect(result.status).toBe('written');

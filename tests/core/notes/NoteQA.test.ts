@@ -162,13 +162,16 @@ describe('NoteQA', () => {
     ]); // only 2 results (< 3)
     mockRetrieveMemoryHints.mockResolvedValue([]);
     mockResolveTier.mockReturnValue({ providerId: 'gemini', model: 'gemini-1.5-pro' });
-    // First call: synthesis.
+    // First: synthesis returns 2 citations (one per note).
     mockRequestJson.mockResolvedValueOnce({
       answer: 'Answer.',
-      citations: [{ noteId: 'n1', title: 'Note One', snippet: 'content' }],
+      citations: [
+        { noteId: 'n1', title: 'Note One', snippet: 'content one' },
+        { noteId: 'n2', title: 'Note Two', snippet: 'content two' },
+      ],
       confidence: 0.85,
     });
-    // Second call: fast-tier rerank.
+    // Second: fast-tier rerank reorders.
     mockRequestJson.mockResolvedValueOnce({
       order: ['n2', 'n1'],
     });

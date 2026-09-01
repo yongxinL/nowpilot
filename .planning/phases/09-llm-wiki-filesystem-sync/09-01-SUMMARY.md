@@ -196,6 +196,13 @@ None — all threat mitigations from the plan's threat model are implemented:
 - v4 migration provides notes_backup_config store for NoteFileSync (Plan 03+)
 - Schemas shared across all downstream LLM services
 
+## Self-Check: PASSED
+
+- All 8 created/modified source files exist on disk
+- All 3 test files exist and pass (779/779)
+- All 4 commits present in git log (9ff3eb0, d72b96d, 7b7e4bd, 2d8c2fb)
+- SUMMARY.md exists at expected path
+
 ---
 *Phase: 09-llm-wiki-filesystem-sync*
 *Completed: 2026-09-01*
