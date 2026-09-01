@@ -25,6 +25,7 @@
     "verify:phase-7": "tsc --noEmit && vitest run tests/core/context/trust tests/security/prompt-injection",
     "verify:phase-8": "tsc --noEmit && vitest run tests/core/memory tests/core/search tests/core/notes/LinkParser.test.ts",
     "verify:phase-9": "tsc --noEmit && vitest run tests/core/notes tests/core/storage/migrations",
+    "verify:phase-10": "tsc --noEmit && vitest run tests/core/memory/governance tests/core/knowledge/provenance tests/core/storage/migrations",
     "verify:all": "tsc --noEmit && vitest run && pnpm run lint",
     "test:perf": "vitest run tests/perf",
     "test:isolation": "vitest run tests/isolation"

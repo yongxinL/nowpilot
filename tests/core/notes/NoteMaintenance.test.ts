@@ -125,7 +125,7 @@ describe('detectOrphans (LLM-WIKI-09)', () => {
   it('detects orphan = 0 links + 0 backlinks (algorithmic, no LLM)', () => {
     const notes = [
       makeNote({ id: 'n1', links: [] }),
-      makeNote({ id: 'n2', links: ['n1'] }),
+      makeNote({ id: 'n2', links: [{ noteId: 'n1', source: 'explicit' as const }] }),
     ];
     // n1 has backlinks from n2; n2 has no backlinks and has links.
     mockComputeBacklinks.mockReturnValue(

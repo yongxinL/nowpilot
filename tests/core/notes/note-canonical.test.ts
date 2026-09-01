@@ -23,7 +23,7 @@ describe('Note canonical — NotesDB put/get round-trip (D-107/D-108)', () => {
       created: 1700000000000,
       updated: 1700000000001,
       tags: ['tracer', 'wikilink'],
-      links: ['note-1'],
+      links: [{ noteId: 'note-1', source: 'explicit' as const }],
       unresolvedLinks: ['[[No Such Note]]'],
       source: { kind: 'manual' as const },
       aiMeta: {
@@ -39,7 +39,7 @@ describe('Note canonical — NotesDB put/get round-trip (D-107/D-108)', () => {
     expect(fetched).toBeDefined();
     expect(fetched!.id).toBe('note-tracer-001');
     expect(fetched!.title).toBe('Tracer Note');
-    expect(fetched!.links).toEqual(['note-1']);
+    expect(fetched!.links).toEqual([{ noteId: 'note-1', source: 'explicit' }]);
     expect(fetched!.unresolvedLinks).toEqual(['[[No Such Note]]']);
     expect(fetched!.source).toEqual({ kind: 'manual' });
     expect(fetched!.aiMeta.suggestedLinks).toEqual([
