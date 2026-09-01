@@ -1,4 +1,5 @@
 import type { PromptSection } from '../core/ai/types';
+import type { UserMemoryFact } from '../core/memory/types';
 
 /**
  * Canonical Phase-4 agent-reliability type home — Appendix C.1
@@ -123,3 +124,54 @@ export const WORKING_MEMORY_TEMPLATE = `# User Profile
 - **Environment**:
 - **Preferences**:
 - **Long-term Goals**:`;
+
+// ---------------------------------------------------------------------------
+// Canonical Phase-10 memory-governance type home — Appendix C.1 / §28.4
+// (PRODUCT_SPEC_v0_1.md:4900-4915), verbatim. Spec 4838 'Memory governance'
+// row mandates this file (D-126). MemoryRecord, MemoryKind, ProceduralExperience,
+// KnowledgeEdgeSource live canonically at @/types/harness. Phase-8's types.ts
+// scope fence ("do NOT declare memory-kind or memory-record types here") is
+// lifted for Phase 10 — these are governance records, not retrieval types.
+// ---------------------------------------------------------------------------
+
+/** MEM-01: closed 5-value memory-kind taxonomy (spec 4901). */
+export type MemoryKind = 'working' | 'episodic' | 'semantic' | 'preference' | 'procedural';
+
+/** MEM-02: governance-enriched memory record (spec 4903-4910, verbatim). */
+export interface MemoryRecord extends Omit<UserMemoryFact, 'source'> {
+  kind: MemoryKind;
+  /** D-126: rich source metadata (replaces UserMemoryFact.source). */
+  source: {
+    kind: 'extracted' | 'manual' | 'imported';
+    noteId?: string;
+    conversationId?: string;
+  };
+  lifecycle: {
+    status: 'active' | 'pinned' | 'forgotten';
+    verifiedAt?: number;
+    expiresAt?: number;
+  };
+  sensitivity: 'normal' | 'personal' | 'secret';
+  /** D-127: audit trail — prior record ids absorbed by conflict resolution. */
+  revisionChain?: Array<{ id: string; replacedAt: number }>;
+  /** MEM-04: flag to exclude this record from any cloud sync. */
+  cloudExclude?: boolean;
+}
+
+/** MEM-05: procedural experience record (spec 4911-4913, verbatim). */
+export interface ProceduralExperience {
+  id: string;
+  title: string;
+  description: string;
+  steps: string[];
+  source: MemoryRecord['source'];
+  confidence: number;
+  status: 'proposed' | 'verified' | 'approved' | 'rejected';
+  verifiedAt?: number;
+  approvedAt?: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/** KNW-01: knowledge-edge provenance (spec 4914-4915, verbatim). */
+export type KnowledgeEdgeSource = 'explicit' | 'imported' | 'suggested' | 'accepted';

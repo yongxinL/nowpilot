@@ -20,10 +20,11 @@
  */
 
 import type { DBSchema } from 'idb';
-import { openVersionedDB } from './IndexedDBMigrator';
+import { openVersionedDB, registerMigration } from './IndexedDBMigrator';
+import type { MemoryRecord, ProceduralExperience } from '../../types/harness';
 
 export const MEMORY_DB = 'MemoryDB';
-export const MEMORY_DB_VERSION = 1;
+export const MEMORY_DB_VERSION = 5;
 
 export interface MemoryMessage {
   conversationId: string;
@@ -46,7 +47,7 @@ export interface ConversationSummary {
   updatedAt: number;
 }
 
-export interface MemoryDBV1 extends DBSchema {
+export interface MemoryDBV5 extends DBSchema {
   messages: {
     key: [string, number];
     value: MemoryMessage;
@@ -61,10 +62,44 @@ export interface MemoryDBV1 extends DBSchema {
     key: string;
     value: ConversationSummary;
   };
+  memory_records: {
+    key: string;
+    value: MemoryRecord;
+    indexes: { byKind: string; byStatus: string; byConfidence: number };
+  };
+  procedural_experiences: {
+    key: string;
+    value: ProceduralExperience;
+  };
 }
 
+/**
+ * v1→v5 migration (D-131, spec §20.4).
+ *
+ * Creates the `memory_records` and `procedural_experiences` stores.
+ * Idempotent: opening the migrated DB twice does not throw or duplicate
+ * stores. The `objectStoreNames.contains` guard ensures stores are only
+ * created once.
+ */
+registerMigration('MemoryDB', {
+  fromVersion: 1,
+  toVersion: 5,
+  description: 'Add memory_records + procedural_experiences stores (Phase 10 governance)',
+  migrate: (db) => {
+    if (!db.objectStoreNames.contains('memory_records')) {
+      const store = db.createObjectStore('memory_records', { keyPath: 'id' });
+      store.createIndex('byKind', 'kind');
+      store.createIndex('byStatus', 'lifecycle.status');
+      store.createIndex('byConfidence', 'confidence');
+    }
+    if (!db.objectStoreNames.contains('procedural_experiences')) {
+      db.createObjectStore('procedural_experiences', { keyPath: 'id' });
+    }
+  },
+});
+
 export async function openMemoryDB() {
-  return openVersionedDB<MemoryDBV1>(MEMORY_DB, MEMORY_DB_VERSION, {
+  return openVersionedDB<MemoryDBV5>(MEMORY_DB, MEMORY_DB_VERSION, {
     upgrade(database, oldVersion) {
       // Conditional block per spec §20.4 / Pitfall 8 — fresh DB
       // (oldVersion === 0) creates the stores; existing v1 DB is
