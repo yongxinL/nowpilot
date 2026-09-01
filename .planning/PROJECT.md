@@ -27,6 +27,7 @@ AI chat and a personal knowledge base that work together, locally-first, so a su
 - ✓ Agent reliability and evidence (Phase 4) — Appendix C.1 canonical types in `@/types/harness` (AgentTrajectoryState/CompletionEvidence/AgentTurnOutcome), TrajectoryTracker closed state machine (AGT-01), O.2 OutcomeVerifier + CompletionEvidence framework (AGT-02, zero registered verifiers), AgentTurnOutcome return contract (AGT-03, cap→partial), AGT-04 deterministic replan/terminal policy (≤1 replan per failed tool, repeated→failed, abort→aborted), renderer completion guard (no "Done" without evidence), `verify:phase-4` re-pointed — verified 2026-08-29 (4/4 truths, 183 tests green)
 - ✓ PageContentService layered extraction (Phase 6) — DefuddleStrategy (panel-side, useAsync:false, Readability provenance-only) + ApcLiteStrategy/AxDomWalker actionable path (password omission, zero-import boundary), PageContentSerializer, PageContentService (typed CONTENT_EXTRACT_FAILED union, 5 s AbortController, D-90 redaction), §26.4a PageContentCache lifecycle, PageIndexBuilder (ephemeral MiniSearch heading-chunked, selectRelevant topk), content-script producer shells (ContentScriptHost/SPANavigationWatcher/PageContextBridge) + valid WXT entrypoint, non-vacuous §24 isolation gate + D-92 gate re-point + ADR-P6-01 Accepted — verified 2026-08-30 (14/14 truths, verify:phase-6 94/94, full suite 559/559)
 - ✓ Trust-aware context and receipts (Phase 7) — C.1 trust types (TrustLevel/ContextItem/ContextReceiptEntry) verbatim in `src/types/harness.ts`, O.3-verbatim `TrustPolicy` (AUTHORITY_BY_TRUST, `<untrusted_data>` wrap + force-strip + post-wrap recount, structural guard raising `CONTEXT_INSTRUCTION_INJECTION_BLOCKED`), D-93 item pipeline in `assemble` (D-94 tags, D-96 originalTokens, D-97 rungs 1-2), D-95 derived `ContextReceipt` + `untrustedDataPresent` L6 signal, CTX-04 golden stable-prefix snapshots + FNV-1a cross-check, CTX-06 `ContextQualityMetrics` aggregates (no raw text), CTX-05 `SkillDisclosure` zero-token progressive disclosure, `verify:phase-7` re-pointed to §18 dirs — verified 2026-08-30 (18/18 truths, verify:phase-7 64/64, full suite 621/621, code review 0 critical)
+- ✓ Knowledge base: memory + MiniSearch + notes (Phase 8) — canonical Note spine (notes.ts + NotesDB), memory type homes (memory/types.ts + harness WorkingMemory), PreferenceMemoryStore np_persona (RICH-R-05), memory subsystem (UserMemoryStore LRU≤500, MemoryScorer §3.4 scores∈[0,1], ConversationMemoryStore §15.3 compactor, WorkingMemory O.10, MemoryExtractor schema seam, MemoryEngine create-only producers + buildPreferenceProfile), MiniSearchIndex (lazy/memoized, <50ms/1k notes), LinkParser (WIKI-ID-02 tie-break, never getNoteByTitle), save.ts seam, NoteGraph (§22.3 verbatim cosine, STOP_WORDS=50), BacklinksPanel + WikilinkAutocomplete (no LLM, D-04) + NoteGraphView, E2E notes-search proof, `verify:phase-8` re-pointed to §18 canonical string (D-114) — verified 2026-09-01 (5/5 must-haves, verify:phase-8 72/72, full suite 747/747)
 
 ### Active
 
@@ -35,7 +36,7 @@ All Active requirements are hypotheses until shipped and validated. Full atomic 
 - [ ] Context-adaptive execution (Phase 5)
 - [x] PageContentService layered extraction (Phase 6)
 - [x] Trust-aware context and receipts (Phase 7)
-- [ ] Knowledge base: memory + MiniSearch + notes (Phase 8)
+- [x] Knowledge base: memory + MiniSearch + notes (Phase 8)
 - [ ] LLM-Wiki & filesystem sync (Phase 9)
 - [ ] Memory governance and experience candidates (Phase 10)
 - [ ] Transaction logging and diagnostics (Phase 11)
@@ -120,4 +121,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-08-30 after Phase 7 (moved validated Phase 7 entry to Validated)*
+*Last updated: 2026-09-01 after Phase 8 (moved validated Phase 8 entry to Validated)*
