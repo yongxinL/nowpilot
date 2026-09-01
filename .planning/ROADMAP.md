@@ -265,7 +265,7 @@ Plans:
   5. Wikilinks resolve with tie-break rule; end-to-end `Page → PageContentService → Note → MiniSearch` path works.
 
 **Verification gate:** `pnpm run verify:phase-8` (§24).
-**Plans:** 3/5 plans executed
+**Plans:** 4/5 plans executed
 Plans:
 **Wave 1**
 
@@ -278,7 +278,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 08-04-PLAN.md — NoteGraph §22.3 cosine + BacklinksPanel/WikilinkAutocomplete/NoteGraphView core logic (D-111, UI-SPEC)
+- [x] 08-04-PLAN.md — NoteGraph §22.3 cosine + BacklinksPanel/WikilinkAutocomplete/NoteGraphView core logic (D-111, UI-SPEC)
 - [ ] 08-05-PLAN.md — §18 DONE-when E2E Page→Note→MiniSearch + verify:phase-8 re-point to spec 3612 (D-105/D-114)
 
 ### Phase 9: LLM-Wiki & Filesystem Sync
@@ -482,7 +482,7 @@ Plans:
 | 5. Context-Adaptive Execution | 2/2 | Complete    | 2026-08-29 |
 | 6. PageContentService (Knowledge Acquisition) | 5/5 | Complete    | 2026-08-30 |
 | 7. Trust-Aware Context and Receipts | 3/3 | Complete    | 2026-08-30 |
-| 8. Knowledge Base (Memory + MiniSearch + Notes) | 3/5 | In Progress|  |
+| 8. Knowledge Base (Memory + MiniSearch + Notes) | 4/5 | In Progress|  |
 | 9. LLM-Wiki & Filesystem Sync | 0/4 | Not started | — |
 | 10. Memory Governance and Experience Candidates | 0/2 | Not started | — |
 | 11. Transaction Logging and Diagnostics | 0/2 | Not started | — |
