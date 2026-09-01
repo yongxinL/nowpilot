@@ -15,6 +15,9 @@
  * Idb @jakearchibald/idb v8 — `DBSchema` typing + conditional migration
  * blocks (Pitfall 8). The store schema is a forward-compatible contract
  * (D-41 forward-migration contract).
+ *
+ * D-107: canonical Note re-exported from the Phase-8 home (spec 4721-4741).
+ * NotesDB's put/get value shape is now the canonical Note.
  */
 
 import type { DBSchema, IDBPDatabase } from 'idb';
@@ -23,18 +26,10 @@ import { openVersionedDB } from './IndexedDBMigrator';
 export const NOTES_DB = 'NotesDB';
 export const NOTES_DB_VERSION = 1;
 
-export interface Note {
-  id: string;
-  title: string;
-  content: string;
-  created: number;
-  updated: number;
-  tags: string[];
-  links: string[];
-  source: string;
-  aiMeta?: Record<string, unknown>;
-  version: number;
-}
+/** D-107: canonical Note imported from + re-exported to the Phase-8 home (spec 4721-4741). */
+import type { Note } from '../../types/notes';
+/** D-107: canonical Note re-exported from the Phase-8 home (spec 4721-4741). */
+export type { Note };
 
 export interface Concept {
   slug: string;
