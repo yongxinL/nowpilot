@@ -4,13 +4,13 @@ milestone: v0.1
 milestone_name: milestone
 current_phase: 8
 current_phase_name: Knowledge Base (Memory + MiniSearch + Notes)
-status: planning
-stopped_at: Phase 8 context gathered
-last_updated: "2026-09-01T02:22:19.904Z"
+status: executing
+stopped_at: Phase 8 UI-SPEC approved
+last_updated: "2026-09-01T03:31:37.281Z"
 progress:
   total_phases: 8
   completed_phases: 6
-  total_plans: 39
+  total_plans: 44
   completed_plans: 38
 state_head: 9b50aca
 ---
@@ -45,7 +45,7 @@ state_head: 9b50aca
 
 - **Phase:** 8 — Knowledge Base (Memory + MiniSearch + Notes)
 - **Plan:** Not started
-- **Status:** Ready to plan
+- **Status:** Ready to execute
 - **Progress:** 6/19 phases complete · 35/74 plans done · 220/220 requirements mapped (100% coverage).
 
 ---
@@ -126,9 +126,9 @@ All inherited decisions are **— Pending** (awaiting first implementation to va
 
 ## Session Continuity
 
-**Last session:** 2026-09-01T02:22:19.886Z
-**Stopped at:** Phase 8 context gathered
-**Resume file:** .planning/phases/08-knowledge-base-memory-minisearch-notes/08-CONTEXT.md
+**Last session:** 2026-09-01T02:38:13.702Z
+**Stopped at:** Phase 8 UI-SPEC approved
+**Resume file:** .planning/phases/08-knowledge-base-memory-minisearch-notes/08-UI-SPEC.md
 
 - **Last action:** Phase 7 completed end-to-end — all 3 plans (TrustPolicy + ContextReceipt spine, ContextQualityMetrics + stable-prefix snapshots, SkillDisclosure + verify:phase-7 re-point) executed, verified 18/18 truths, verify:phase-7 64/64 green, full suite 621/621, code review 0 critical. PROJECT.md evolved (commit 17e5dc0).
 - **Last updated:** 2026-08-30 after Phase 7 completion.
