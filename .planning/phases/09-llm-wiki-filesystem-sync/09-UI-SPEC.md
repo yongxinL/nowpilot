@@ -240,24 +240,42 @@ interface ReanalyzeProgress {
 
 Phase 9 is service-layer only. The following state considerations are **owned by Phase-9 services** and **consumed by Phase-15 UI**. They are documented here to ensure the service layer emits sufficient state for the UI to render all six visual states (empty / loading / populated / partial / error / zero-one-many).
 
-Applicable state considerations resolved: 12 covered, 3 backstop, 0 unresolved.
+Probe-detected: 26 applicable considerations across 12 elements. All resolved (explicit where the service contract provides a defensible criterion; backstop where Phase 15 verifies the rendered output).
 
-| Category | Element(s) | Status | Resolution / Reason |
-|----------|------------|--------|---------------------|
-| empty | Ask-notes zero results | ✅ covered | Service returns `mode: 'keyword-only'` with empty `citations` array → UI renders "No matching notes found. Try different keywords." |
-| empty | Restore folder empty | ✅ covered | Service returns `RestorePreview.total === 0` → UI renders "No .md notes found in this folder." |
-| empty | Backup not configured | ✅ covered | Service emits `{ state: 'off', reason: 'no-folder' }` → UI renders gray "Backup: Off [Configure]" |
-| populated | Ask-notes with citations | ✅ covered | Service returns `NoteQAResult` with `citations.length > 0` → UI renders Bubble with clickable citation Tags |
-| populated | Backup active | ✅ covered | Service emits `{ state: 'on', folderName, lastSyncAt }` → UI renders green "Backup: On" with tooltip |
-| error | Backup sync failure | ✅ covered | Service emits `{ state: 'error', message, recoverable }` → UI renders red "Backup: Error" with tooltip |
-| error | Category validation | ✅ covered | Service rejects invalid segments → UI renders AntD red border + "Category path contains invalid segments" |
-| partial | Stale suggestions | ✅ covered | Service sets `staleness.isStale: true` → UI renders "Content has changed — [Regenerate tags/summary]" |
-| partial | Tiny-mode fallback | ✅ covered | Service returns `mode: 'keyword-only'` → UI renders "Showing keyword results only" |
-| zero-one-many | Re-analyze progress | ✅ covered | Service emits `ReanalyzeProgress` with `current/total` → UI renders "Analyzing 3 of 24 notes…" |
-| zero-one-many | Restore preview counts | ✅ covered | Service returns `RestorePreview` with `new/updated/unchanged` → UI renders "Found 24 notes (12 new, 3 updated, 9 unchanged)" |
-| long-text | Ask-notes answer rendering | 🧪 backstop | Answer length unbounded — Phase 15 implements expand/collapse (TL;DR) for >500 chars; service emits raw markdown |
-| long-text | Summary display | 🧪 backstop | Summary clamped to 2-line snippet in NoteList; full summary shown in Inspector "AI Summary" card |
-| overflow | Suggestion tag list | 🧪 backstop | Max 5 tags enforced by service (NOTE_SUGGESTION_MAX_TAGS_PER_SAVE); UI never overflows tag container |
+| Category | Element(s) | Resolution | Verification |
+|----------|------------|------------|--------------|
+| empty | Ask-notes zero results (E1) | Service returns `mode: 'keyword-only'` with empty `citations[]` → UI renders "No matching notes found. Try different keywords." | explicit |
+| empty | Restore folder empty (E1) | Service returns `RestorePreview.total === 0` → UI renders "No .md notes found in this folder." | explicit |
+| empty | Backup not configured (E1) | Service emits `{ state: 'off', reason: 'no-folder' }` → UI renders gray "Backup: Off [Configure]" | explicit |
+| empty | Backup status off (E2) | `SyncStatus.state === 'off'` → gray Tag + Configure link | explicit |
+| empty | AI features disabled (E12) | All `np_notes_llm_features` false → "AI features are off. Enable in [Settings → Notes]." | explicit |
+| loading | Ask-notes synthesis (E1) | Balanced-tier LLM call in progress → Phase 15 shows X Bubble streaming caret in `colorPrimary` @60% | backstop |
+| loading | Restore preview scan (E3) | Directory walk + parse in progress → Phase 15 shows skeleton/spinner before Modal | backstop |
+| loading | Category validation (E7) | Synchronous (no loading state) — N/A | explicit |
+| loading | Re-analyze (E6) | `ReanalyzeProgress.phase === 'analyzing'` → "Analyzing {current} of {total} notes…" | explicit |
+| loading | LLM toggles (E9) | Toggle state persisted synchronously to chrome.storage.local — no loading state | explicit |
+| loading | Picker open (E11) | `showDirectoryPicker()` is browser-native modal; service not invoked until user selects | explicit |
+| error | Ask-notes failure (E1) | LLM call fails → service returns error → Phase 15 renders "Couldn't reach AI search. Showing keyword results only." with retry | backstop |
+| error | Restore parse failure (E3) | Malformed `.md` → service skips file, reports in `RestorePreview.conflicts` → Phase 15 shows error toast | backstop |
+| error | Backup sync failure (E2) | `SyncStatus.state === 'error'` → red Tag "Backup: Error" + tooltip with message | explicit |
+| error | Category validation (E7) | Service rejects invalid segments → AntD red border + "Category path contains invalid segments" | explicit |
+| error | LLM toggle persistence (E9) | chrome.storage.local write fails → service logs via debugLog; toggle reverts optimistically | backstop |
+| populated | Ask-notes with citations (E1) | `NoteQAResult.citations.length > 0` → Bubble with clickable citation Tags (`colorPrimary`) | explicit |
+| populated | Backup active (E2) | `SyncStatus.state === 'on'` → green Tag "Backup: On" + tooltip `{folderName}, last sync {time}` | explicit |
+| populated | AI-enhanced indicator (E10) | `RerankResult.reranked === true` → "AI-enhanced" pill renders | explicit |
+| partial | Stale suggestions (E1) | `staleness.isStale === true` → "Content has changed — [Regenerate tags/summary]" | explicit |
+| partial | Tiny-mode fallback (E1) | `mode: 'keyword-only'` → "Showing keyword results only (AI search requires a balanced-tier model)" | explicit |
+| partial | Suggestion chips (E4) | `NoteSuggestionsEvent` with ≤5 tags → accept/reject chips; rejected discarded | explicit |
+| partial | External-change conflict (E8) | File lastModified newer than lastSync (2s tol.) → "Overwrite with app version? [Overwrite] [Skip]" | explicit |
+| long-text | Restore preview counts (E3) | `RestorePreview` with new/updated/unchanged → "Found {N} notes ({new} new, {updated} updated, {unchanged} unchanged)" | explicit |
+| long-text | Category path display (E7) | Deep categoryPath → truncated with ellipsis + full path in tooltip | backstop |
+| long-text | Toggle labels (E9) | Fixed short labels ("Auto-tag on save" etc.) — no overflow risk | explicit |
+| overflow | Ask-notes answer (E1) | Answer unbounded → Phase 15 implements expand/collapse (TL;DR) for >500 chars; service emits raw markdown | backstop |
+| overflow | Suggestion tag list (E4) | Max 5 tags enforced by service (`NOTE_SUGGESTION_MAX_TAGS_PER_SAVE`) → UI never overflows | explicit |
+| zero-one-many | Ask-notes citations (E1) | 0 citations → empty state; 1 → single Tag; many → Tag array wraps | backstop |
+| zero-one-many | Re-analyze progress (E6) | `ReanalyzeProgress.current/total` → "Analyzing 3 of 24 notes…"; complete → "Re-analysis complete. {N} notes updated." | explicit |
+| zero-one-many | Orphan badge (E5) | `OrphanResult.isOrphan === true` → muted "Orphan" badge + "Find context" action | explicit |
+| zero-one-many | Restore preview (E3) | `RestorePreview` counts → singular/plural copy handled by Phase 15 ("1 new" vs "12 new") | backstop |
 
 ---
 
