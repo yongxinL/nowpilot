@@ -59,7 +59,9 @@ export type WriteJournalOperation =
   // Phase 3 (03-07, D-45): additive literal-union extension — the turn-end
   // chat pair append. RESEARCH Open Q1 resolved to option (a): extend the
   // §20.3 union rather than invent a second transcript store (D-45a).
-  | 'append-chat-turn';
+  | 'append-chat-turn'
+  // Phase 10 (10-02, MEM-05): procedural experience lifecycle mutation.
+  | 'update-procedural-experience';
 
 /**
  * Persisted shape of a WriteJournal entry — Appendix O.11 verbatim.
@@ -105,6 +107,7 @@ export const WriteJournalOperationSchema = z.union([
   z.literal('delete-note-file'),
   z.literal('restore-notes-batch'),
   z.literal('append-chat-turn'),
+  z.literal('update-procedural-experience'),
 ]);
 
 export const WriteJournalEntrySchema = z.object({
