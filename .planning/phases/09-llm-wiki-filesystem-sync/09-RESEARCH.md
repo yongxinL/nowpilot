@@ -1,441 +1,414 @@
 # Phase 9: LLM-Wiki & Filesystem Sync - Research
 
 **Researched:** 2026-09-01
-**Domain:** LLM enrichment, RAG Q&A, filesystem sync, Memory-Notes integration
+**Domain:** LLM enrichment (auto-tag/categorize/summarize), RAG Q&A, filesystem backup sync, memory-notes integration
 **Confidence:** HIGH
 
 ## Summary
 
-Phase 9 extends the Phase 8 atomic-note-with-wikilinks core with five new service modules: **NoteTagger** (single fast-tier LLM call producing tags + category + summary + memory facts), **NoteQA** (RAG "Ask notes" with MiniSearch + memory + balanced-tier synthesis + citations), **NoteChatConverter** (chat/page-to-note draft generation with memory context), **NoteFileSync** (one-way app→filesystem `.md` backup with OKF v0.2 YAML frontmatter and restore), and **NoteMaintenance** (staleness/orphan detection + bulk analysis). It also adds Memory↔Notes integration (NMEM-01…03) and a v4 IndexedDB migration.
+Phase 9 extends the atomic-note-with-wikilinks core (Phase 8) with five new services: NoteTagger (LLM enrichment), NoteQA (RAG Q&A), NoteChatConverter (chat-to-note), NoteFileSync (one-way app→filesystem backup), and NoteMaintenance (staleness/orphan detection). The phase delivers 37 requirements across 6 requirement families.
 
-The phase's efficiency spine is **D-01: one structured-JLM call** for tags+category+summary+facts — cheaper and faster than multiple calls. The on-disk format is **OKF v0.2-compatible but not OKF-constrained** (D-02a): UUID identity stays authoritative, wikilinks stay body edges, and the frontmatter carries OKF's `type`/`description`/`generated`/`status` families as an additive layer. All five new modules run in UI contexts only (never the background SW), and the filesystem sync is Standalone-only via `showDirectoryPicker()`.
+The AI runtime is fully reusable — ProviderRouter, StructuredOutput, and TierResolver from Phase 3 provide the invoke path. NoteTagger uses StructuredOutput.requestJson() with a Zod schema at the fast tier, temperature-0, for one structured call returning tags+category+summary+memoryFacts. NoteQA combines MiniSearchIndex retrieval with MemoryEngine hints for balanced-tier synthesis.
 
-**Primary recommendation:** Implement the five service modules as pure-logic units with caller-supplied dependencies (db handle, provider seam, event bus) so they're testable without mocks beyond fake-indexeddb. The v4 migration folds into the existing `IndexedDBMigrator` framework with a conditional `if (oldVersion < 4)` block.
+The filesystem sync is Standalone-only using the File System Access API (showDirectoryPicker), with FileSystemDirectoryHandle persisted in a new `notes_backup_config` IndexedDB store (non-serializable, cannot use chrome.storage.local). The on-disk format is OKF v0.2-compatible YAML frontmatter with UUID identity preserved.
 
-<user_constraints>
-## User Constraints (from CONTEXT.md)
-
-### Locked Decisions
-- D-115: NoteTagger uses existing AI runtime (ProviderRouter fast tier, temperature-0, single structured-JSON call)
-- D-116: Suggestion confidence gating — threshold 0.60, max 3 facts / 5 tags
-- D-117: NoteQA = MiniSearch top-5 + memory facts → balanced-tier synthesis + citations
-- D-118: NoteChatConverter uses conversation messages + MemoryEngine.assemble() facts
-- D-119: showDirectoryPicker() Standalone-only; handle persisted in notes_backup_config IDB store
-- D-120: OKF v0.2 YAML frontmatter per SYNC-04 — yaml ^2 library
-- D-121: Restore parser tolerates OKF keys, preserves UUID identity + wikilinks
-- D-122: NoteMaintenance is user-initiated + passive timestamp comparison — no background jobs
-- D-123: NMEM-02: on-save LLM call extracts memory facts → routed through MemoryEngine, primary surface only
-- D-124: categoryPath + Note.type declared in Phase 8, populated + serialized in Phase 9
-- D-125: v4 migration is idempotent — adds tags/summary to notes index + Note.type population + notes_backup_config store
-
-### the agent's Discretion
-- Exact NoteTagger→ProviderRouter invoke path (direct invoke() vs AgentOrchestrator wrapper)
-- Whether NoteQA synthesis streams (balanced-tier Bubble) or returns one-shot
-- Whether NoteFileSync debounce is a module-level timer or hook-scoped
-- Whether NoteMaintenance lives in one file or splits staleness/orphan/bulk
-- Whether the OKF `generated`/`status` fields use the exact SYNC-04 casing
-
-### Deferred Ideas (OUT OF SCOPE)
-- Memory governance (MEM-01…05, KNW-01) — Phase 10
-- Bidirectional filesystem sync — Phase v0.2+
-- Embedding/vector search — deferred per §3.2
-- LLM wikilink autocomplete — not in v0.1 (D-04)
-- Full NotesWorkspace UI — Phase 15.1
-- search-notes / create-note tool registration — Phase 18
-- Real-time collaborative editing, image/file attachments, auto-create notes from chat — §27.9 out of scope
-</user_constraints>
-
-<phase_requirements>
-## Phase Requirements
-
-| ID | Description | Research Support |
-|----|-------------|------------------|
-| CAT-01 | Path-based categoryPath, `/` separator, normalized segments | NoteTagger LLM suggestion + CAT-05 normalize-on-save |
-| CAT-02 | NoteList tree view grouped by "Uncategorized" | Phase 15 UI — service layer provides categoryPath |
-| CAT-03 | LLM suggests category during auto-tagging | NoteTagger.analyze() returns categoryPath |
-| CAT-04 | Backup saves as `{categoryPath}/{title}.md` | NoteFileSync path construction |
-| CAT-05 | Normalize on save, flag invalid segments | NoteTagger/NoteFileSync shared normalize function |
-| LLM-WIKI-01 | Fast-tier temp-0 call: ≤5 tags + category + summary + memoryFacts | NoteTagger.analyze() single structured JSON call |
-| LLM-WIKI-02 | Independent toggles in Options → Notes | `np_notes_llm_features` config (autoTag, autoCategorize, autoSummary, aiSearch) |
-| LLM-WIKI-03 | Optional summary field in NoteList | Note.summary populated by NoteTagger |
-| LLM-WIKI-04 | "Regenerate tags/summary" toolbar button | NoteTagger.analyze() re-invocation |
-| LLM-WIKI-05 | AI-enhanced search rerank over MiniSearch top-10 | NoteQA.rerank() fast-tier call |
-| LLM-WIKI-06 | "Ask notes" RAG: MiniSearch top-5 + memory → balanced synthesis + citations | NoteQA.ask() |
-| LLM-WIKI-07 | "Save to note" → NoteChatConverter draft → pre-filled NoteEditor | NoteChatConverter.convert() |
-| LLM-WIKI-08 | Staleness detection: summaryGeneratedAt/tagsGeneratedAt vs updated | NoteMaintenance.isStale() |
-| LLM-WIKI-09 | Orphan detection: 0 wikilinks + 0 backlinks → badge | NoteMaintenance.isOrphan() |
-| LLM-WIKI-10 | "Re-analyze all notes" user-initiated, sequential | NoteMaintenance.reanalyzeAll() |
-| LLM-WIKI-11 | Suggestion confidence gating (threshold 0.60, max 3 facts / 5 tags) | gateSuggestions() pure function |
-| SYNC-01 | showDirectoryPicker() Standalone-only; handle in notes_backup_config IDB | NoteFileSync.init() |
-| SYNC-02 | NotesPage mount verifies handle.queryPermission() | NoteFileSync.checkPermission() |
-| SYNC-03 | Per-save .md write/update/delete, 50ms debounce, fire-and-forget | NoteFileSync.syncNote() |
-| SYNC-04 | OKF v0.2 YAML frontmatter with nested folders, sanitized filenames | NoteFileSync.serializeNote() |
-| SYNC-05 | Title collision → numeric suffix | NoteFileSync.resolveCollision() |
-| SYNC-06 | External-change detection (2s tolerance) → confirm overwrite | NoteFileSync.detectExternalChange() |
-| SYNC-07 | No backup folder → no-ops + "Backup: off" indicator | NoteFileSync state machine |
-| SYNC-08 | Status Tag: green On / gray Off / red Error | NoteFileSync state → UI |
-| SYNC-09 | Restore: walk tree → parse frontmatter → upsert (additive) | NoteFileSync.restoreFromFolder() |
-| SYNC-10 | Restore preview modal with counts | NoteFileSync.previewRestore() |
-| SYNC-11 | Delete-on-sync + empty folder cleanup | NoteFileSync.deleteNote() |
-| NMEM-01 | Memory-aware RAG: retrieveMemoryHints() in "Ask notes" | NoteQA includes memory facts |
-| NMEM-02 | On-save LLM extracts memoryFacts → MemoryEngine, primary surface only | NoteTagger → MemoryEngine.upsertFact() |
-| NMEM-03 | "Save from chat" uses MemoryEngine.assemble() for richer drafts | NoteChatConverter uses assemble() |
-| WIKI-ID-01 | crypto.randomUUID() immutable identity | Preserved in OKF frontmatter `id` field |
-| WIKI-ID-02 | [[Title]] → resolveLinks() → links[] (IDs) | Unchanged from Phase 8 |
-| WIKI-ID-03 | Unresolved links recorded in unresolvedLinks[] | Unchanged from Phase 8 |
-| WIKI-ID-04 | Deletion demotes edges; restore preserves via YAML frontmatter | NoteFileSync round-trip preserves IDs |
-| OKF-WIKI-01 | Emit OKF-required type (default Note) + description | NoteFileSync.serializeNote() |
-| OKF-WIKI-02 | Emit OKF generated {by, at} + status (draft|stable) | NoteFileSync.serializeNote() |
-| OKF-WIKI-03 | UUID id as OKF extension key; round-trip preserves edges | NoteFileSync restore parser |
-| OKF-WIKI-04 | v0.1 boundary: NO OKF markdown-link edges, NO path-as-identity | Verified by test assertion |
-</phase_requirements>
+**Primary recommendation:** Install `yaml@^2.9.0` and `@types/wicg-file-system-access@^2023.10.5` (both missing from package.json despite CONTEXT D-120 claiming yaml is "already in STACK"), create the v4 IDB migration for the `notes_backup_config` store, and gate-re-point verify:phase-9 to spec §24 scope.
 
 ## Architectural Responsibility Map
 
 | Capability | Primary Tier | Secondary Tier | Rationale |
 |------------|-------------|----------------|-----------|
-| LLM tag/category/summary extraction | API/Backend | — | NoteTagger orchestrates ProviderRouter, pure logic |
-| RAG Q&A synthesis | API/Backend | — | NoteQA combines MiniSearch + memory + LLM |
-| Chat-to-note conversion | API/Backend | — | NoteChatConverter drafts from conversation context |
-| Filesystem backup/restore | API/Backend | — | NoteFileSync manages FileSystemDirectoryHandle I/O |
-| Memory fact extraction + routing | API/Backend | — | NMEM-02 routes through MemoryEngine |
-| Staleness/orphan detection | API/Backend | — | NoteMaintenance pure algorithmic logic |
-| UI rendering (accept/reject, status tags) | Browser/Client | — | Phase 15 NotesWorkspace consumes service layer |
-| Options toggles (LLM features) | Browser/Client | — | Options page writes np_notes_llm_features |
+| LLM auto-tagging (NoteTagger) | API/Backend (UI context) | — | Runs in side panel/standalone UI only (MV3 boundary §0.2); uses fast-tier provider call |
+| RAG Q&A (NoteQA) | API/Backend (UI context) | — | MiniSearch + MemoryEngine + balanced-tier LLM synthesis; ephemeral, never persisted |
+| Chat-to-note (NoteChatConverter) | API/Backend (UI context) | — | Consumes conversation messages + MemoryEngine.assemble(); drafts for user review |
+| Filesystem backup (NoteFileSync) | Browser/Client | — | File System Access API is browser-only; Standalone-only per SYNC-01 |
+| Memory↔Notes routing (NMEM-02) | API/Backend (UI context) | — | Primary-surface-only fact upsert via MemoryEngine |
+| Maintenance (NoteMaintenance) | API/Backend (UI context) | — | Algorithmic timestamp comparison; user-initiated bulk analysis |
+
+## User Constraints (from CONTEXT.md)
+
+### Locked Decisions
+- **D-115:** NoteTagger uses existing AI runtime — ProviderRouter fast tier, temperature-0, single structured-JSON call
+- **D-116:** LLM-WIKI-11 confidence gating — threshold 0.60, max 3 facts / 5 tags per save
+- **D-117:** NoteQA "Ask notes" = MiniSearch top-5 + memory facts → balanced-tier synthesis + per-statement citations
+- **D-118:** NoteChatConverter uses conversation messages + MemoryEngine.assemble() facts for richer drafts
+- **D-119:** showDirectoryPicker() Standalone-only; handle persisted in notes_backup_config IDB store
+- **D-120:** OKF v0.2 YAML frontmatter per SYNC-04 — yaml ^2 library
+- **D-121:** Restore parser tolerates OKF keys, preserves UUID identity + wikilinks
+- **D-122:** NoteMaintenance is user-initiated + passive timestamp comparison — no background jobs
+- **D-123:** NMEM-02: on-save LLM call extracts memory facts → routed through MemoryEngine, primary surface only
+- **D-124:** categoryPath + Note.type declared in Phase 8, populated + serialized in Phase 9
+- **D-125:** v4 migration is idempotent — adds tags/summary to notes index + Note.type population + notes_backup_config store
+
+### the agent's Discretion
+- Exact NoteTagger→ProviderRouter invoke path (direct invoke() vs AgentOrchestrator wrapper — both satisfy D-115; prefer the lighter direct path)
+- Whether NoteQA synthesis streams or returns one-shot
+- Whether NoteFileSync debounce is module-level timer or hook-scoped
+- Whether NoteMaintenance lives in one file or splits staleness/orphan/bulk
+- Whether the OKF `generated`/`status` fields use the exact SYNC-04 casing
+
+### Deferred Ideas (OUT OF SCOPE)
+- Memory governance (MEM-01…05, KNW-01) = Phase 10
+- Bidirectional filesystem sync = Phase v0.2+
+- Embedding/vector search = deferred per §3.2
+- LLM wikilink autocomplete = not in v0.1 (D-04)
+- Full NotesWorkspace UI = Phase 15.1
+- search-notes / create-note tool registration = Phase 18
 
 ## Standard Stack
 
 ### Core
 | Library | Version | Purpose | Why Standard |
 |---------|---------|---------|--------------|
-| `yaml` | ^2.9.0 | OKF v0.2 YAML frontmatter serialization/parsing | [VERIFIED: npm registry] Industry-standard YAML library; spec D-120 mandates yaml ^2 |
-| `@types/wicg-file-system-access` | ^2023.10.7 | Type definitions for File System Access API | [VERIFIED: npm registry] Provides types for `showDirectoryPicker()`, `FileSystemDirectoryHandle`, `queryPermission()` |
-| `zod-to-json-schema` | 3.25.2 | Convert Zod schemas to JSON Schema for structured output | [VERIFIED: npm registry] Already in package.json; used by StructuredOutput for NoteTagger |
-| `zod` | ^3.24.0 | Runtime validation (NoteTagResultSchema, etc.) | [VERIFIED: npm registry] Already in package.json; canonical validation library |
-| `minisearch` | ^7.2.0 | Fuzzy search for NoteQA retrieval | [VERIFIED: npm registry] Already in package.json; Phase 8 search index |
-| `idb` | ^8.0.3 | IndexedDB wrapper (notes_backup_config store) | [VERIFIED: npm registry] Already in package.json; canonical IDB library |
+| yaml | ^2.9.0 | OKF v0.2 YAML frontmatter serialization/parsing for .md sync (SYNC-04) | Industry-standard YAML library; D-120 mandates yaml ^2 |
+| minisearch | ^7.2.0 | Note retrieval for NoteQA RAG (top-5) + AI rerank (LLM-WIKI-05) | Already in STACK; D-109 persistent notes index |
+| idb | ^8.0.3 | IndexedDB wrapper for notes_backup_config store + v4 migration | Already in STACK; D-08 handle persistence |
+| zod | ^4.4.3 | Runtime validation for NoteTagResultSchema, NoteQAResultSchema, NoteDraftSchema | Already in STACK; all cross-boundary data uses Zod |
 
 ### Supporting
 | Library | Version | Purpose | When to Use |
 |---------|---------|---------|-------------|
-| `crypto` (Web Crypto API) | built-in | UUID generation for note identity | Already used; WIKI-ID-01 |
+| @types/wicg-file-system-access | ^2023.10.5 | TypeScript types for File System Access API (showDirectoryPicker, FileSystemDirectoryHandle, queryPermission) | NoteFileSync module (SYNC-01/02/09) |
+
+### New Packages Required
+
+| Package | npm Version | Status | Action |
+|---------|-------------|--------|--------|
+| yaml | 2.9.0 | **NOT IN package.json** — must be installed | `pnpm add yaml@^2.9.0` |
+| @types/wicg-file-system-access | 2023.10.7 | **NOT IN package.json** — must be installed | `pnpm add -D @types/wicg-file-system-access@^2023.10.5` |
+
+**Note:** CONTEXT.md D-120 states "yaml ^2 (already in STACK)" but `npm view yaml version` confirms 2.9.0 exists while package.json has no yaml entry. This is a critical gap — the package must be installed before NoteFileSync can serialize OKF frontmatter.
 
 ### Alternatives Considered
 | Instead of | Could Use | Tradeoff |
 |------------|-----------|----------|
-| `yaml` ^2 | `js-yaml` | js-yaml is also valid but spec D-120 mandates yaml ^2; yaml ^2 is more modern and has better ESM support |
-| `showDirectoryPicker()` | Chrome extension fileSystem API | Extension API deprecated; File System Access API is the web standard |
-| Direct ProviderRouter.invoke() | AgentOrchestrator wrapper | AgentOrchestrator enforces tier caps but adds complexity; direct path is lighter for single structured calls |
+| yaml ^2 | js-yaml ^4 | js-yaml is equally valid but D-120 explicitly mandates yaml ^2 |
+| StructuredOutput.requestJson | Raw provider.stream() + manual parse | StructuredOutput provides repair loop + JSON mode; matches Appendix L pattern already used by PlannerService |
+| AgentOrchestrator wrapper | Direct ProviderRouter + TierResolver | AgentOrchestrator is heavier (trajectory, caps); NoteTagger needs a single structured call, not the full loop |
 
 **Installation:**
 ```bash
-pnpm add yaml@^2
-pnpm add -D @types/wicg-file-system-access
+pnpm add yaml@^2.9.0
+pnpm add -D @types/wicg-file-system-access@^2023.10.5
 ```
 
 **Version verification:**
-```bash
-npm view yaml version          # 2.9.0
-npm view @types/wicg-file-system-access version  # 2023.10.7
-```
+- `npm view yaml version` → 2.9.0 (published 2026-05-11)
+- `npm view @types/wicg-file-system-access version` → 2023.10.7 (published 2023-10)
 
 ## Package Legitimacy Audit
 
 | Package | Registry | Age | Downloads | Source Repo | Verdict | Disposition |
 |---------|----------|-----|-----------|-------------|---------|-------------|
-| `yaml` | npm | ~8 yrs | ~200M/wk | github.com/eemeli/yaml | OK | Approved |
-| `@types/wicg-file-system-access` | npm | ~4 yrs | ~3M/wk | github.com/DefinitelyTyped/DefinitelyTyped | OK | Approved |
+| yaml | npm | ~15 yrs (2011) | ~200M/wk | github.com/eemeli/yaml | [ASSUMED] | Planner must add checkpoint:human-verify before install |
+| @types/wicg-file-system-access | npm | ~3 yrs (2023) | ~3M/wk | DefinitelyTyped | [ASSUMED] | Planner must add checkpoint:human-verify before install |
 
 **Packages removed due to [SLOP] verdict:** none
 **Packages flagged as suspicious [SUS]:** none
+
+*Packages discovered via CONTEXT.md decisions and spec §27.3 that have not been verified against an authoritative source are tagged `[ASSUMED]` and the planner must gate each install behind a `checkpoint:human-verify` task.*
 
 ## Architecture Patterns
 
 ### System Architecture Diagram
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        UI Context (Standalone / Side Panel)         │
-│                                                                     │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────────────┐  │
-│  │  NoteEditor   │    │  NotesPage   │    │  Options→Notes       │  │
-│  │  (accept/     │    │  (Ask notes, │    │  (LLM toggles,       │  │
-│  │   reject)     │    │   tree view) │    │   backup config)     │  │
-│  └──────┬───────┘    └──────┬───────┘    └──────────┬───────────┘  │
-│         │                   │                       │               │
-│         ▼                   ▼                       ▼               │
-│  ┌──────────────────────────────────────────────────────────────┐   │
-│  │                    Service Layer (src/core/notes/)            │   │
-│  │                                                              │   │
-│  │  ┌────────────┐  ┌──────────┐  ┌────────────┐  ┌─────────┐ │   │
-│  │  │ NoteTagger │  │  NoteQA  │  │NoteChat    │  │NoteFile │ │   │
-│  │  │ .analyze() │  │  .ask()  │  │Converter   │  │Sync     │ │   │
-│  │  │            │  │  .rerank│  │.convert()  │  │.syncNote│ │   │
-│  │  └─────┬──────┘  └────┬─────┘  └─────┬──────┘  └────┬────┘ │   │
-│  │        │              │              │              │       │   │
-│  │  ┌─────┴──────────────┴──────────────┴──────────────┴─────┐ │   │
-│  │  │              NoteMaintenance                           │ │   │
-│  │  │  .isStale() .isOrphan() .reanalyzeAll()                │ │   │
-│  │  └───────────────────────────────────────────────────────┘ │   │
-│  └──────────────────────────────────────────────────────────────┘   │
-│         │              │              │               │              │
-│         ▼              ▼              ▼               ▼              │
-│  ┌──────────────────────────────────────────────────────────────┐   │
-│  │              Infrastructure Layer                             │   │
-│  │                                                              │   │
-│  │  ┌────────────┐  ┌──────────┐  ┌────────────┐  ┌─────────┐ │   │
-│  │  │Provider    │  │MiniSearch│  │Memory      │  │NotesDB  │ │   │
-│  │  │Router      │  │Index     │  │Engine      │  │(IDB)    │ │   │
-│  │  │(fast/      │  │(notes)   │  │(hints,     │  │         │ │   │
-│  │  │ balanced)  │  │          │  │ assemble)  │  │         │ │   │
-│  │  └────────────┘  └──────────┘  └────────────┘  └─────────┘ │   │
-│  │                                                              │   │
-│  │  ┌─────────────────────────────────────────────────────────┐ │   │
-│  │  │ EventBus (note:saved) ── triggers NoteTagger non-blocking│ │   │
-│  │  └─────────────────────────────────────────────────────────┘ │   │
-│  └──────────────────────────────────────────────────────────────┘   │
-│         │                              │                            │
-│         ▼                              ▼                            │
-│  ┌────────────┐                 ┌──────────────┐                   │
-│  │ AI Provider│                 │ FileSystem   │                   │
-│  │ (OpenAI,   │                 │ Access API   │                   │
-│  │  Anthropic,│                 │ (showDirectory │                  │
-│  │  Gemini,   │                 │  Picker)     │                   │
-│  │  Ollama)   │                 │              │                   │
-│  └────────────┘                 └──────────────┘                   │
-└─────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│ UI Context (Side Panel / Standalone)                            │
+│                                                                 │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────────┐  │
+│  │ NoteEditor   │    │ AskNotes UI  │    │ ChatMessage      │  │
+│  │ (save flow)  │    │ (RAG query)  │    │ ("Save to note") │  │
+│  └──────┬───────┘    └──────┬───────┘    └────────┬─────────┘  │
+│         │                   │                      │            │
+│  ┌──────▼───────────────────▼──────────────────────▼─────────┐  │
+│  │                   saveNote() [save.ts]                    │  │
+│  │  parseLinks → resolveLinks → NotesDB.put → emit('note:   │  │
+│  │  saved')                                                 │  │
+│  └──────┬──────────────────────────────────────────────────┘  │
+│         │ EventBus.emit('note:saved')                           │
+│  ┌──────▼──────────────────────────────────────────────────┐  │
+│  │                    NoteTagger.analyze()                   │  │
+│  │  ProviderRouter (fast, temp-0) → StructuredOutput →      │  │
+│  │  {tags, categoryPath, summary, memoryFacts}              │  │
+│  │  gateSuggestions() → UI accept/reject                    │  │
+│  └──────┬────────────────────────────┬─────────────────────┘  │
+│         │                            │                         │
+│  ┌──────▼────────────┐    ┌─────────▼────────────┐           │
+│  │ MemoryEngine      │    │ NoteFileSync         │           │
+│  │ (NMEM-02 upsert)  │    │ (OKF .md write)      │           │
+│  │ primary surface   │    │ 50ms debounce        │           │
+│  └───────────────────┘    └──────────────────────┘           │
+│                                                                 │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │                    NoteQA.ask()                          │  │
+│  │  MiniSearch top-5 + MemoryEngine.retrieveMemoryHints()   │  │
+│  │  → balanced-tier synthesis → citations                   │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                                                                 │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │               NoteChatConverter.draft()                  │  │
+│  │  conversation messages + MemoryEngine.assemble()         │  │
+│  │  → NoteDraftSchema → NoteEditor pre-fill                │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                                                                 │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │               NoteMaintenance (user-initiated)           │  │
+│  │  staleness: summaryGeneratedAt/updated comparison       │  │
+│  │  orphan: NoteGraph.computeBacklinks() → 0 links badge   │  │
+│  │  bulk: sequential re-analyze with real-time stats       │  │
+│  └──────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                    ┌─────────▼─────────┐
+                    │   IndexedDB       │
+                    │  ├─ notes         │
+                    │  ├─ concepts      │
+                    │  └─ notes_backup_ │
+                    │     config        │
+                    └───────────────────┘
+                              │
+                    ┌─────────▼─────────┐
+                    │  File System      │
+                    │  (showDirectory-  │
+                    │   Picker handle)  │
+                    │  {categoryPath}/  │
+                    │  {title}.md      │
+                    └───────────────────┘
 ```
 
 ### Recommended Project Structure
 ```
 src/core/notes/
-├── NoteTagger.ts           # LLM: tags + category + summary + memory facts
-├── NoteQA.ts               # RAG Q&A: MiniSearch + memory + LLM synthesis + citations
-├── NoteChatConverter.ts    # Chat/page (+memory) → structured note draft
-├── NoteFileSync.ts         # One-way app→filesystem .md sync + restore
-├── NoteMaintenance.ts      # Staleness/orphan detection, bulk analysis
-├── LinkParser.ts           # (existing) parseLinks/resolveLinks
-├── NoteGraph.ts            # (existing) cosine similarity + backlinks
-└── save.ts                 # (existing) Flow-3-minus-LLM save seam
+├── LinkParser.ts          # [existing] WIKI-ID-02/03/04 wikilink parse/resolve
+├── NoteGraph.ts           # [existing] cosine similarity + backlinks
+├── save.ts                # [existing] note:saved emit seam
+├── NoteTagger.ts          # [NEW] LLM enrichment: tags+category+summary+facts
+├── NoteQA.ts              # [NEW] RAG Q&A: MiniSearch+memory+synthesis+citations
+├── NoteChatConverter.ts   # [NEW] chat/page → structured note draft
+├── NoteFileSync.ts        # [NEW] one-way .md sync + restore
+├── NoteMaintenance.ts     # [NEW] staleness/orphan/bulk analysis
+└── schemas.ts             # [NEW] NoteTagResultSchema, NoteQAResultSchema, NoteDraftSchema, gateSuggestions
 
-src/core/storage/migrations/
-└── v4_notes_backup_config.ts  # v4 migration: notes_backup_config store + Note.type
+src/core/storage/
+├── NotesDB.ts             # [existing + v4 migration] notes_backup_config store
+└── IndexedDBMigrator.ts   # [existing] migration framework
 
 src/types/
-└── notes.ts                # (modify) add MAX_FACTS/MAX_TAGS constants
+└── notes.ts               # [existing] Note interface + OKF frontmatter + constants
 
 tests/core/notes/
-├── NoteTagger.test.ts
-├── NoteQA.test.ts
-├── NoteChatConverter.test.ts
-├── NoteFileSync.test.ts
-├── NoteFileSync.okf-frontmatter.test.ts
-└── NoteMaintenance.test.ts
+├── LinkParser.test.ts     # [existing]
+├── note-canonical.test.ts # [existing]
+├── NoteGraph.test.ts      # [existing]
+├── NoteTagger.test.ts     # [NEW]
+├── NoteQA.test.ts         # [NEW]
+├── NoteChatConverter.test.ts # [NEW]
+├── NoteFileSync.test.ts   # [NEW]
+└── NoteMaintenance.test.ts # [NEW]
 
-tests/core/storage/migrations/
-└── v4.test.ts              # Extended: v4 adds Note.type idempotently
+tests/core/storage/
+└── migrations/
+    └── v4-notes-backup-config.test.ts  # [NEW] v4 migration idempotency
 ```
 
-### Pattern 1: Non-blocking Post-save LLM Pipeline
-**What:** Fire NoteTagger.analyze() after NotesDB.put + EventBus.emit('note:saved'), with stale-suggestion discard on version mismatch.
-**When to use:** Every note save triggers async LLM enrichment without blocking the UI.
+### Pattern 1: Structured LLM Call via StructuredOutput
+**What:** Single fast-tier, temperature-0 structured JSON call returning tags+category+summary+memoryFacts
+**When to use:** NoteTagger.analyze() — the phase's efficiency spine (D-01)
 **Example:**
 ```typescript
-// Source: spec §27.2 LLM-WIKI-01 + D-115
-// After save.ts emits 'note:saved', NoteTagger subscribes:
-on<NoteSavedPayload>(NOTE_SAVED_EVENT, (payload) => {
-  void (async () => {
-    try {
-      const db = await openNotesDB();
-      const note = await db.get('notes', payload.noteId);
-      if (!note) return;
-      const result = await NoteTagger.analyze(note, { tier: 'fast' });
-      // Gate suggestions (LLM-WIKI-11)
-      const gated = gateSuggestions(result);
-      // Discard stale: if note.version changed since analyze started
-      const fresh = await db.get('notes', payload.noteId);
-      if (fresh.version !== note.version) return; // stale — discard
-      // Emit suggestions for UI accept/reject
-      emit('note:suggestions', { noteId: note.id, ...gated });
-    } catch { /* swallow — EventBus handlers must not throw */ }
-  })();
-});
-```
+// Source: StructuredOutput.ts (Appendix L pattern already in codebase)
+import { requestJson } from '../ai/StructuredOutput';
+import { resolveTier } from '../ai/TierResolver';
+import { ProviderRegistry } from '../ai/ProviderRegistry';
+import { route } from '../ai/ProviderRouter';
 
-### Pattern 2: Structured JSON via ProviderRouter + zod-to-json-schema
-**What:** Single LLM call returning structured JSON validated against NoteTagResultSchema.
-**When to use:** NoteTagger.analyze() needs deterministic, parseable output.
-**Example:**
-```typescript
-// Source: spec Appendix C.1 (spec 4767-4774) + StructuredOutput.ts pattern
-const NoteTagResultSchema = z.object({
-  tags: z.array(z.object({ value: z.string(), confidence: z.number().min(0).max(1) })).max(10),
-  categoryPath: z.string().nullable(),
-  summary: z.string(),
-  memoryFacts: z.array(z.object({ content: z.string(), confidence: z.number().min(0).max(1) })).max(10).default([]),
-});
-
-// Invoke via ProviderRouter at fast tier, temperature 0
 const result = await requestJson(NoteTagResultSchema, prompt, {
-  operationId: crypto.randomUUID(),
-  providerId: resolved.providerId,
-  model: resolved.model,
+  operationId,
+  providerId: resolution.providerId,
+  model: resolution.model,
   timeoutMs: 15_000,
-  callProviderJsonMode: (prompt, schema, signal) => provider.requestJson(prompt, schema, signal),
-  abortSignal: new AbortController().signal,
+  callProviderJsonMode: (p, schema, signal) =>
+    provider.requestJson(p, schema, signal),
+  abortSignal,
 });
 ```
 
-### Pattern 3: OKF v0.2 Frontmatter Serialization
-**What:** Serialize Note to `.md` with YAML frontmatter + markdown body.
-**When to use:** NoteFileSync.syncNote() writes per-save backup files.
+### Pattern 2: OKF v0.2 Frontmatter Serialization
+**What:** YAML frontmatter block + markdown body for .md backup files
+**When to use:** NoteFileSync.writeNote() per SYNC-04
 **Example:**
 ```typescript
-// Source: spec §27.3 SYNC-04 (spec 3829-3864)
+// Source: spec §27.3 SYNC-04 canonical emitted example (spec 3844-3862)
 import { stringify } from 'yaml';
 
 function serializeNote(note: Note): string {
-  const frontmatter = {
+  const frontmatter = stringify({
     type: note.type ?? 'Note',
     title: note.title,
-    ...(note.summary ? { description: note.summary } : {}),
+    description: note.summary,
     id: note.id,
     created: note.created,
     updated: note.updated,
-    ...(note.tags.length ? { tags: note.tags } : {}),
-    ...(note.categoryPath ? { categoryPath: note.categoryPath } : {}),
+    tags: note.tags,
+    categoryPath: note.categoryPath,
     generated: { by: 'nowpilot/fast-tier', at: new Date().toISOString() },
     status: 'stable',
-  };
-  return `---\n${stringify(frontmatter)}---\n${note.content}`;
+  });
+  return `---\n${frontmatter}---\n${note.content}`;
 }
 ```
 
-### Pattern 4: IDB Handle Persistence (Non-serializable)
-**What:** Persist FileSystemDirectoryHandle in IndexedDB (not chrome.storage.local).
-**When to use:** NoteFileSync stores the backup folder handle across sessions.
+### Pattern 3: File System Access API Handle Persistence
+**What:** FileSystemDirectoryHandle persisted in IDB, permission verified on mount
+**When to use:** NoteFileSync initialization (SYNC-01/02)
 **Example:**
 ```typescript
-// Source: spec §27.3 SYNC-01 + D-08
-interface NotesBackupConfig {
-  id: 'primary';
-  handle: FileSystemDirectoryHandle;  // Non-serializable — IDB only
-  lastSyncAt: number;
+// Source: SYNC-01/SYNC-02 — handle in notes_backup_config IDB store
+async function getBackupHandle(db: IDBPDatabase): Promise<FileSystemDirectoryHandle | null> {
+  const record = await db.get('notes_backup_config', 'backup_handle');
+  if (!record) return null;
+  const handle = record.handle as FileSystemDirectoryHandle;
+  const permission = await handle.queryPermission({ mode: 'readwrite' });
+  if (permission !== 'granted') return null; // SYNC-02: banner + disabled
+  return handle;
 }
+```
 
-// Store in notes_backup_config IDB store
-const db = await openNotesDB();
-await db.put('notes_backup_config', { id: 'primary', handle, lastSyncAt: Date.now() });
+### Pattern 4: RAG Retrieval + Synthesis Pipeline
+**What:** MiniSearch top-5 + MemoryEngine facts → balanced-tier synthesis with citations
+**When to use:** NoteQA.ask() per LLM-WIKI-06
+**Example:**
+```typescript
+// Source: LLM-WIKI-06 / D-117 — balanced-tier synthesis with citations
+async function askQuestion(query: string): Promise<NoteQAResult> {
+  const noteHits = await MiniSearchIndex.query(db, query); // top-5 via search
+  const memoryHints = await MemoryEngine.retrieveMemoryHints(query); // NMEM-01
+  const context = [...noteHits.map(h => h.content), ...memoryHints.map(h => h.content)];
+  // Balanced-tier synthesis with per-statement citations
+  const synthesis = await synthesizeWithCitations(query, context, 'balanced');
+  return synthesis;
+}
 ```
 
 ### Anti-Patterns to Avoid
-- **Blocking the save pipeline on LLM:** NoteTagger must be non-blocking — fire after IDB write + emit, never await before persisting.
-- **Storing FileSystemDirectoryHandle in chrome.storage.local:** Handles are non-serializable and will throw. Always use IndexedDB.
-- **Emitting OKF markdown-link edges:** OKF-WIKI-04 is an active v0.1 prohibition — wikilinks stay body syntax, never convert to `[text](path)` edges.
-- **Background SW LLM calls:** All LLM-Wiki runs in UI contexts only (MV3 boundary §0.2).
-- **Conflating DB_VERSION with store version:** IndexedDB DB_VERSION (reaches v4) is separate from Zustand persist store version.
+- **Background jobs for maintenance:** NoteMaintenance must be user-initiated per D-06 — no MV3 alarms/background timers
+- **Bidirectional sync:** Explicitly out of scope (§27.9) — don't build polling/file watcher
+- **chrome.storage.local for handles:** FileSystemDirectoryHandle is non-serializable — must use IDB (SYNC-01/D-08)
+- **Conflating Note.type with identity:** type is OKF metadata; id (UUID) is identity (WIKI-ID-01, D-108)
+- **Embedding/vector search:** Deferred per §3.2 — MiniSearch + cosine is the v0.1 approach
 
 ## Don't Hand-Roll
 
 | Problem | Don't Build | Use Instead | Why |
 |---------|-------------|-------------|-----|
-| YAML frontmatter parsing | Custom regex parser | `yaml` ^2 library | Edge cases (multiline strings, escaping, nested objects); spec mandates yaml ^2 |
-| Structured LLM output | Custom JSON extraction | `zod-to-json-schema` + provider JSON mode | Repair loop, schema validation, provider-native JSON mode |
-| File System Access API types | Custom type definitions | `@types/wicg-file-system-access` | Official TS types for `showDirectoryPicker()`, `FileSystemDirectoryHandle` |
-| UUID generation | Custom random string | `crypto.randomUUID()` | Standard, collision-resistant, already used for note identity |
-| Fuzzy text search | Custom string matching | `minisearch` ^7.2.0 | Already in stack; prefix + fuzzy + boosting |
-| IndexedDB versioning | Custom migration logic | `IndexedDBMigrator` framework | Already proven with v1→v2 fixture; conditional blocks |
+| YAML serialization | Custom frontmatter serializer | yaml ^2 library | Edge cases in quoting, escaping, multiline strings |
+| JSON repair from LLM | Custom regex/parse logic | StructuredOutput (Appendix L) | Already handles fences, malformed JSON, one-shot repair |
+| Structured JSON extraction | Manual stream consumption | StructuredOutput.requestJson() | Repair loop + Zod validation built in |
+| File path sanitization | Custom regex | `/[\\/:*?"<>|]/g → '_'` pattern (SYNC-04) | Simple, well-defined character set |
+| IDB versioning | Custom migration framework | IndexedDBMigrator.registerMigration() | Already supports conditional blocks, idempotent migrations |
 
-**Key insight:** The phase's complexity is in orchestration (non-blocking pipelines, stale detection, OKF compatibility), not in low-level primitives. Every deceptively complex problem (YAML, JSON schema, IDB migrations, UUIDs) has an existing library or framework in the stack.
+**Key insight:** The codebase already has StructuredOutput (for LLM JSON), IndexedDBMigrator (for IDB versioning), and ProviderRouter (for AI routing). Phase 5 services are additive modules that reuse these seams — no custom infrastructure needed.
 
 ## Common Pitfalls
 
-### Pitfall 1: Stale Suggestions After Note Edit
-**What goes wrong:** User edits a note before the async LLM call returns; suggestions for the old version get applied to new content.
-**Why it happens:** Non-blocking pipeline means the LLM call races with user edits.
-**How to avoid:** Capture `note.version` before analyze(); after LLM returns, re-read the note and discard if version changed (D-116: "stale suggestions for the prior version are discarded").
-**Warning signs:** Suggestions appearing on a note that no longer matches their content.
+### Pitfall 1: Missing yaml/@types/wicg-file-system-access packages
+**What goes wrong:** CONTEXT.md D-120 claims "yaml ^2 (already in STACK)" but `package.json` has no yaml or @types/wicg-file-system-access entry. NoteFileSync cannot compile.
+**Why it was assumed:** STACK.md is outdated relative to actual package.json.
+**How to avoid:** Install both packages before any NoteFileSync work begins.
+**Warning signs:** `Cannot find module 'yaml'` compile error; `showDirectoryPicker` type errors.
 
-### Pitfall 2: FileSystemDirectoryHandle Serialization Attempt
-**What goes wrong:** Attempting to persist the directory handle in `chrome.storage.local` throws `DataCloneError`.
-**Why it happens:** `FileSystemDirectoryHandle` is non-serializable by design.
-**How to avoid:** Always use IndexedDB (`notes_backup_config` store) for handle persistence (SYNC-01/D-08).
-**Warning signs:** `DataCloneError: Failed to execute 'setItem' on 'Storage'` at runtime.
+### Pitfall 2: Gate mismatch — verify:phase-9
+**What goes wrong:** Current package.json has `verify:phase-9: tsc --noEmit && vitest run && pnpm run lint` but spec §24 defines `tsc --noEmit && vitest run tests/core/notes tests/core/storage/migrations`. Tests outside this scope would run/fail unexpectedly.
+**Why it matters:** D-114 precedent established gate re-pointing per phase.
+**How to avoid:** Re-point verify:phase-9 to spec §24 scope before implementation begins.
+**Warning signs:** Unrelated test failures in verify:phase-9.
 
-### Pitfall 3: OKF-WIKI-04 Boundary Violation
-**What goes wrong:** Emitting OKF standard-markdown-link edges (`[text](path)`) or adopting path-as-identity.
-**Why it happens:** Misreading "OKF-compatible" as "OKF-constrained."
-**How to avoid:** Wikilinks stay body syntax (`[[Title]]`); UUID identity stays authoritative; path is a display/backup concern only. Test asserts no markdown-link edges in output.
-**Warning signs:** Round-trip restore breaks wikilink edges or changes note identity.
+### Pitfall 3: MemoryEngine.assemble() doesn't exist yet
+**What goes wrong:** NMEM-03 (D-118) references `MemoryEngine.assemble()` for NoteChatConverter, but MemoryEngine.ts currently only has `retrieveConversationMemory`, `retrieveUserMemory`, `buildPreferenceProfile`, `retrieveMemoryHints`.
+**Why it matters:** NoteChatConverter needs memory context for richer drafts.
+**How to avoid:** Create `assemble()` in Phase 9 — returns a compact memory context string from user facts/preferences (similar to `retrieveMemoryHints` but formatted for note drafting).
+**Warning signs:** TypeScript compile error when NoteChatConverter calls `MemoryEngine.assemble()`.
 
-### Pitfall 4: LLM Call Blocking the Save Pipeline
-**What goes wrong:** UI freezes or save is delayed waiting for LLM response.
-**Why it happens:** Awaiting NoteTagger.analyze() before completing the save.
-**How to avoid:** Fire-and-forget after `db.put()` + `emit('note:saved')`. Suggestions arrive asynchronously for accept/reject.
-**Warning signs:** Save button spinner lasts >100ms; UI thread blocked during LLM call.
+### Pitfall 4: v4 migration framework semantics
+**What goes wrong:** NotesDB is currently at `NOTES_DB_VERSION = 1`. The v4 migration requires creating `notes_backup_config` store + populating `Note.type` + adding tags/summary to MiniSearch index. The IndexedDBMigrator framework uses `registerMigration` with conditional blocks — incorrect `fromVersion`/`toVersion` ordering can skip or double-apply.
+**Why it matters:** D-125 mandates idempotent migration. Idb's `openDB` with `targetVersion: 4` triggers upgrade from v1→v4, but registered migrations apply based on `fromVersion <= oldVersion + 1`.
+**How to avoid:** Use inline `upgrade()` callback in NotesDB.openNotesDB for v1 bootstrap (existing), and a registered v4 migration for the new store. The framework's `openVersionedDB` applies registered migrations where `m.toVersion > oldVersion && m.fromVersion <= oldVersion + 1` — a v1→v4 migration with `fromVersion: 1, toVersion: 4` fires correctly from v1.
+**Warning signs:** `notes_backup_config` store missing after migration; Note.type not populated.
 
-### Pitfall 5: NMEM-02 Fact Upsert on Secondary Surface
-**What goes wrong:** Duplicate or conflicting memory facts written from non-primary surfaces.
-**Why it happens:** Missing `isPrimaryWriter()` gate before fact upsert.
-**How to avoid:** Gate NMEM-02 fact routing on `WorkspaceStore.isPrimaryWriter()` (D-123, §13).
-**Warning signs:** Same fact written multiple times from different surfaces.
+### Pitfall 5: FileSystemDirectoryHandle non-serializability
+**What goes wrong:** Attempting to persist FileSystemDirectoryHandle in chrome.storage.local (which uses JSON serialization) — handle becomes `{}` and loses all methods.
+**Why it matters:** SYNC-01/D-08 explicitly mandates IDB storage.
+**How to avoid:** Always use `notes_backup_config` IDB store. FileSystemHandle is structured-cloneable (supported by IDB) but not JSON-serializable.
+**Warning signs:** `handle.getFileHandle is not a function` at restore time.
 
-### Pitfall 6: v4 Migration Non-idempotency
-**What goes wrong:** Re-running v4 migration throws `ConstraintError` on existing store/index.
-**Why it happens:** Missing conditional `if (oldVersion < 4)` block or skip-if-present guard.
-**How to avoid:** Use the existing `IndexedDBMigrator` framework with conditional blocks; skip `Note.type` population if field already present (D-125).
-**Warning signs:** `ConstraintError: An object store with the specified name already exists`.
+### Pitfall 6: Stale async LLM suggestions
+**What goes wrong:** NoteTagger.analyze() is non-blocking (D-115). If the user edits the note before the async LLM call returns, stale suggestions would be applied to newer content.
+**Why it matters:** LLM-WIKI-11 explicitly requires discarding stale suggestions.
+**How to avoid:** Capture `note.version` at analyze() call time; on response, compare with current `note.version`. Discard if mismatched.
+**Warning signs:** Tags/summary from old content appearing after edit+regenerate race.
 
-### Pitfall 7: Missing MemoryEngine.assemble() Method
-**What goes wrong:** NMEM-03 references `MemoryEngine.assemble()` but the method doesn't exist yet.
-**Why it happens:** `assemble()` is a Phase 9 addition to MemoryEngine (NMEM-03).
-**How to avoid:** Add `assemble()` method to MemoryEngine that returns assembled memory context for draft enrichment.
-**Warning signs:** TypeScript compile error — `Property 'assemble' does not exist on type 'MemoryEngine'`.
+### Pitfall 7: External-change guard tolerance
+**What goes wrong:** SYNC-06 requires detecting external file changes (lastModified newer than last sync, 2s tolerance). Without the tolerance, legitimate rapid app writes trigger false conflict dialogs.
+**Why it matters:** The 50ms debounce (SYNC-03) + near-simultaneous writes could appear as "external" changes without tolerance.
+**How to avoid:** Track `lastSyncTimestamp` per note; compare with `file.lastModified` using `> lastSyncTimestamp + 2000` threshold.
+**Warning signs:** Spurious "Overwrite?" dialogs on rapid save.
 
 ## Code Examples
 
-### NoteTagger.analyze() — Single Structured LLM Call
+### OKF v0.2 Frontmatter Serialization (SYNC-04)
 ```typescript
-// Source: spec Appendix C.1 (spec 4767-4774) + D-115
-import { z } from 'zod';
-import { zodToJsonSchema } from 'zod-to-json-schema';
-import type { Note } from '../../types/notes';
+// Source: spec §27.3 SYNC-04 field table (spec 3830-3863)
+import { stringify, parse } from 'yaml';
+import type { Note } from '@/types/notes';
 
-const ConfidentTag = z.object({ value: z.string(), confidence: z.number().min(0).max(1) });
-const ConfidentFact = z.object({ content: z.string(), confidence: z.number().min(0).max(1) });
-
-const NoteTagResultSchema = z.object({
-  tags: z.array(ConfidentTag).max(10),
-  categoryPath: z.string().nullable(),
-  summary: z.string(),
-  memoryFacts: z.array(ConfidentFact).max(10).default([]),
-});
-
-export interface NoteTagResult {
-  tags: Array<{ value: string; confidence: number }>;
-  categoryPath: string | null;
-  summary: string;
-  memoryFacts: Array<{ content: string; confidence: number }>;
+interface OkfFrontmatter {
+  type: string;
+  title: string;
+  description?: string;
+  id: string;
+  created: number;
+  updated: number;
+  tags?: string[];
+  categoryPath?: string;
+  generated: { by: string; at: string };
+  status: 'draft' | 'stable';
 }
 
-export async function analyzeNote(
-  note: Note,
-  ctx: { provider: ILLMProvider; model: string; operationId: string },
-): Promise<NoteTagResult> {
-  const prompt = `Analyze this note and return JSON: title="${note.title}", content="${note.content.substring(0, 2000)}"`;
-  const jsonSchema = zodToJsonSchema(NoteTagResultSchema);
-  const raw = await ctx.provider.requestJson(prompt, jsonSchema, undefined);
-  const parsed = NoteTagResultSchema.parse(JSON.parse(raw.trim()));
-  return parsed;
+export function serializeNoteToMarkdown(note: Note, tier: string): string {
+  const fm: OkfFrontmatter = {
+    type: note.type ?? 'Note',
+    title: note.title,
+    description: note.summary,
+    id: note.id,
+    created: note.created,
+    updated: note.updated,
+    tags: note.tags,
+    categoryPath: note.categoryPath,
+    generated: { by: `nowpilot/${tier}`, at: new Date().toISOString() },
+    status: 'stable',
+  };
+  const yamlBlock = stringify(fm);
+  return `---\n${yamlBlock}---\n\n${note.content}`;
+}
+
+export function parseNoteFromMarkdown(md: string): { frontmatter: OkfFrontmatter; body: string } {
+  const match = md.match(/^---\n([\s\S]*?)\n---\n\n?([\s\S]*)$/);
+  if (!match) throw new Error('No valid OKF frontmatter found');
+  const frontmatter = parse(match[1]) as OkfFrontmatter;
+  return { frontmatter, body: match[2] };
 }
 ```
 
-### gateSuggestions() — LLM-WIKI-11 Confidence Gating
+### LLM-WIKI-11 Suggestion Gating
 ```typescript
-// Source: spec Appendix C.1 (spec 4776-4786) + LLM-WIKI-11
-export const NOTE_SUGGESTION_DISPLAY_THRESHOLD = 0.60;
-export const NOTE_SUGGESTION_MAX_FACTS_PER_SAVE = 3;
-export const NOTE_SUGGESTION_MAX_TAGS_PER_SAVE = 5;
+// Source: spec Appendix C.1 (spec 4776-4786) + notes.ts
+import type { NoteTagResult } from '@/types/notes';
+import {
+  NOTE_SUGGESTION_DISPLAY_THRESHOLD,
+  NOTE_SUGGESTION_MAX_TAGS_PER_SAVE,
+  NOTE_SUGGESTION_MAX_FACTS_PER_SAVE,
+} from '@/types/notes';
 
 export function gateSuggestions(r: NoteTagResult): { tags: string[]; memoryFacts: string[] } {
   const pick = <T extends { confidence: number }>(arr: T[], cap: number) =>
@@ -449,193 +422,237 @@ export function gateSuggestions(r: NoteTagResult): { tags: string[]; memoryFacts
 }
 ```
 
-### NoteFileSync.serializeNote() — OKF v0.2 Frontmatter
+### NoteTagger Invoke Pattern
 ```typescript
-// Source: spec §27.3 SYNC-04 (spec 3829-3864)
-import { stringify } from 'yaml';
-import type { Note } from '../../types/notes';
+// Source: D-115 + StructuredOutput (Appendix L pattern)
+import { z } from 'zod';
+import { requestJson } from '@/core/ai/StructuredOutput';
+import { resolveTier } from '@/core/ai/TierResolver';
+import { route } from '@/core/ai/ProviderRouter';
+import { ProviderRegistry } from '@/core/ai/ProviderRegistry';
 
-export function serializeNote(note: Note): string {
-  const frontmatter: Record<string, unknown> = {
-    type: note.type ?? 'Note',
-    title: note.title,
-    id: note.id,
-    created: note.created,
-    updated: note.updated,
-    generated: { by: 'nowpilot/fast-tier', at: new Date().toISOString() },
-    status: 'stable',
-  };
-  if (note.summary) frontmatter.description = note.summary;
-  if (note.tags.length) frontmatter.tags = note.tags;
-  if (note.categoryPath) frontmatter.categoryPath = note.categoryPath;
-  return `---\n${stringify(frontmatter)}---\n${note.content}`;
+export const NoteTagResultSchema = z.object({
+  tags: z.array(z.object({ value: z.string(), confidence: z.number().min(0).max(1) })).max(10),
+  categoryPath: z.string().nullable(),
+  summary: z.string(),
+  memoryFacts: z.array(z.object({ content: z.string(), confidence: z.number().min(0).max(1) })).max(10).default([]),
+});
+
+export async function analyzeNote(note: Note, operationId: string, abortSignal: AbortSignal): Promise<NoteTagResult> {
+  const resolution = resolveTier('fast');
+  if (!resolution) throw new Error('FAST_TIER_UNCONFIGURED');
+
+  const prompt = `Analyze this note and return structured JSON.
+Title: ${note.title}
+Content: ${note.content}
+Existing categories: ${getExistingCategories().join(', ')}`;
+
+  return requestJson(NoteTagResultSchema, prompt, {
+    operationId,
+    providerId: resolution.providerId,
+    model: resolution.model,
+    timeoutMs: 15_000,
+    callProviderJsonMode: async (p, schema, signal) => {
+      const routed = await route({
+        operationId, tier: 'fast', systemPrompt: p,
+        providerCandidates: ProviderRegistry.getAll().filter(e => e.enabled).map(e => e.provider!),
+        modelForProvider: (pid) => pid === resolution.providerId ? resolution.model : undefined,
+        allowCloudFallbackFromLocal: true, abortSignal: signal,
+      });
+      // Extract JSON from stream...
+      return jsonText;
+    },
+    abortSignal,
+  });
 }
 ```
 
-### NoteFileSync — Filename Sanitization (SYNC-04)
+### NoteQA RAG Pipeline
 ```typescript
-// Source: spec §27.3 SYNC-04
-const INVALID_FILENAME_CHARS = /[\\/:*?"<>|]/g;
+// Source: LLM-WIKI-06 / D-117 — MiniSearch top-5 + memory + balanced synthesis
+export async function askNotes(query: string, db: IDBPDatabase<NotesDBV1>): Promise<NoteQAResult> {
+  // Retrieval: MiniSearch top-5 (notes index already has summary/tags fields per v4 migration)
+  const noteHits = await MiniSearchIndex.query(db, query);
+  // Memory facts: NMEM-01 — MemoryEngine.retrieveMemoryHints
+  const memoryHints = await MemoryEngine.retrieveMemoryHints(query, { tier: 'balanced' });
 
-export function sanitizeFilename(title: string): string {
-  return title.replace(INVALID_FILENAME_CHARS, '_').trim() || 'Untitled';
+  const context = [
+    ...noteHits.map(h => `[Note: ${h.title}] ${h.content.slice(0, 200)}`),
+    ...memoryHints.map(h => `[Memory: ${h.type}] ${h.content}`),
+  ];
+
+  // Balanced-tier synthesis with per-statement citations
+  const synthesis = await synthesizeWithCitations(query, context);
+  return synthesis;
 }
 ```
 
-### v4 Migration — Idempotent notes_backup_config Store
+### v4 Migration (notes_backup_config store)
 ```typescript
-// Source: spec §20.4 (line 3156) + D-125
-import { registerMigration } from '../IndexedDBMigrator';
+// Source: spec §20.4 (spec 3156) + IndexedDBMigrator pattern
+import { registerMigration } from './IndexedDBMigrator';
 
 registerMigration('NotesDB', {
-  fromVersion: 3,
+  fromVersion: 1,
   toVersion: 4,
-  description: 'Add notes_backup_config store + populate Note.type',
-  async migrate(db) {
+  description: 'Add notes_backup_config store; populate Note.type; add tags/summary to search index',
+  migrate: async (db) => {
+    // Create notes_backup_config store (idempotent — skip if exists)
     if (!db.objectStoreNames.contains('notes_backup_config')) {
-      db.createObjectStore('notes_backup_config', { keyPath: 'id' });
+      db.createObjectStore('notes_backup_config', { keyPath: 'key' });
     }
-    // Note.type population is idempotent — skip if already present
-    // (forward-compatible: existing notes without type get default 'Note' on next save)
+    // Note.type population (idempotent — skip if already set)
+    const notesStore = db.transaction('notes', 'readwrite').objectStore('notes');
+    let cursor = await notesStore.openCursor();
+    while (cursor) {
+      if (!cursor.value.type) {
+        await cursor.update({ ...cursor.value, type: 'Note' });
+      }
+      cursor = await cursor.continue();
+    }
+    // MiniSearch index fields (tags/summary) — handled by MiniSearchIndex rebuild
   },
 });
-```
-
-### NoteQA.ask() — RAG with Citations (LLM-WIKI-06)
-```typescript
-// Source: spec §27.2 LLM-WIKI-06 + D-117
-export interface NoteQAResult {
-  answer: string;
-  citations: Array<{ noteId: string; title: string; snippet: string }>;
-}
-
-export async function askNotes(
-  query: string,
-  ctx: { db: IDBPDatabase<NotesDBV1>; provider: ILLMProvider; model: string },
-): Promise<NoteQAResult> {
-  // 1. MiniSearch top-5 retrieval
-  const hits = await MiniSearchIndex.query(ctx.db, query);
-  const top5 = hits.slice(0, 5);
-  // 2. Memory facts (NMEM-01)
-  const memoryHints = await MemoryEngine.retrieveMemoryHints(query);
-  // 3. Balanced-tier synthesis with citations
-  const prompt = `Answer based on these notes:\n${top5.map(h => `[${h.id}] ${h.title}: ${h.content.substring(0, 300)}`).join('\n')}\n\nMemory context:\n${memoryHints.map(h => h.content).join('\n')}\n\nQuery: ${query}`;
-  // ... LLM call with NoteQAResultSchema ...
-  return { answer: '...', citations: [{ noteId: top5[0].id, title: top5[0].title, snippet: top5[0].content.substring(0, 100) }] };
-}
 ```
 
 ## State of the Art
 
 | Old Approach | Current Approach | When Changed | Impact |
 |--------------|------------------|--------------|--------|
-| Multiple LLM calls (one per enrichment) | Single structured JSON call (D-01) | Phase 9 | Cheaper, faster, atomic |
-| Plain text backup | OKF v0.2 YAML frontmatter (D-02a) | Phase 9 | Interoperable with OKF consumers |
-| No memory integration | Memory↔Notes bidirectional context (NMEM-01…03) | Phase 9 | Richer RAG + smarter drafts |
+| Multiple LLM calls (tags, category, summary separately) | Single structured JSON call (D-01) | Phase 9 design | Cheaper/faster; one fast-tier call returns all fields |
+| Flat note storage | OKF v0.2 YAML frontmatter + folder tree | Phase 9 (rev 2026-08-12) | Interoperability with generic OKF consumers |
+| No AI enrichment | LLM auto-tagging + RAG Q&A | Phase 9 | Notes become first-class knowledge retrieval targets |
 
 **Deprecated/outdated:**
-- None — Phase 9 is additive on Phase 8 foundations.
+- STACK.md claiming yaml is already installed — it's NOT in package.json (verified 2026-09-01)
+- MemoryEngine.assemble() referenced in decisions but not yet implemented
 
 ## Assumptions Log
 
 | # | Claim | Section | Risk if Wrong |
 |---|-------|---------|---------------|
-| A1 | `yaml` ^2.9.0 is the current latest version | Standard Stack | Low — spec mandates yaml ^2; minor version differences are compatible |
-| A2 | `MemoryEngine.assemble()` is a new method to be added in Phase 9 | Code Examples | Medium — if the method name differs, NoteChatConverter integration breaks; verify with spec NMEM-03 |
-| A3 | `@types/wicg-file-system-access` ^2023.10.7 is current | Standard Stack | Low — types are stable; API spec hasn't changed |
-| A4 | `NotesDB` needs a v4 migration (DB_VERSION 1 → 4) | v4 Migration | Medium — if the migration framework doesn't support multi-version jumps, may need intermediate steps |
-| A5 | `Note.type` field can be added idempotently without a v5 bump | v4 Migration | Low — spec §20.4 line 3156 explicitly states this |
+| A1 | `yaml@^2.9.0` is the correct package for OKF frontmatter | Standard Stack | If wrong package, frontmatter serialization fails at runtime |
+| A2 | `@types/wicg-file-system-access@^2023.10.5` provides showDirectoryPicker types | Standard Stack | If types missing, NoteFileSync won't compile |
+| A3 | MemoryEngine.assemble() should be created in Phase 9 | Architecture Patterns | If method belongs elsewhere, NMEM-03 contract breaks |
+| A4 | StructuredOutput.requestJson is the lighter invoke path satisfying D-115 | Don't Hand-Roll | If AgentOrchestrator wrapper needed, adds complexity |
+| A5 | NOTES_DB_VERSION bump from 1→4 triggers migration correctly | Common Pitfalls | If migration framework skips, notes_backup_config store won't be created |
 
 ## Open Questions
 
-1. **MemoryEngine.assemble() exact signature**
-   - What we know: NMEM-03 references `MemoryEngine.assemble()` for richer draft context
-   - What's unclear: Exact return type and whether it replaces or supplements `buildPreferenceProfile()`
-   - Recommendation: Define `assemble()` to return a compact string of relevant memory facts (similar to `buildPreferenceProfile()` but for note-draft context)
+1. **MemoryEngine.assemble() exact contract**
+   - What we know: D-118 references it for NoteChatConverter's memory context enrichment
+   - What's unclear: Exact return type and whether it's a formatting wrapper around retrieveMemoryHints or a separate concept
+   - Recommendation: Implement as `assemble(query?: string): Promise<string>` returning compact memory context for note drafting; defer to Phase 10 for MEM-01…05 governance
 
-2. **NoteQA streaming vs one-shot**
-   - What we know: D-117 says "balanced-tier synthesis" — both streaming and one-shot satisfy LLM-WIKI-06
-   - What's unclear: Whether the Bubble component needs streaming for the "Ask notes" UX
-   - Recommendation: Start with one-shot (simpler); add streaming in Phase 15 if UX demands it
+2. **NoteFileSync test strategy in jsdom**
+   - What we know: File System Access API is not available in jsdom
+   - What's unclear: How to unit test NoteFileSync without browser APIs
+   - Recommendation: Abstract FS operations behind an interface; inject mock for tests; integration test in extension context
 
-3. **NoteFileSync debounce scope**
-   - What we know: SYNC-03 requires 50ms debounce
-   - What's unclear: Module-level timer vs hook-scoped timer
-   - Recommendation: Module-level timer in NoteFileSync (simpler, testable)
+3. **v4 migration from v1 (skip v2/v3)**
+   - What we know: NotesDB is at v1; spec §20.4 says "v4 migration" adds the store
+   - What's unclear: Whether intermediate v2/v3 migrations exist or this is a direct v1→v4 bump
+   - Recommendation: Direct v1→v4 bump with `NOTES_DB_VERSION = 4` and a single registered migration with `fromVersion: 1, toVersion: 4`
+
+## Phase Requirements
+
+| ID | Description | Research Support |
+|----|-------------|------------------|
+| CAT-01 | Path-based categoryPath, `/` separator, normalized | Pattern: categoryPath normalization in save pipeline |
+| CAT-02 | NoteList tree grouped by "Uncategorized" | UI component reads categoryPath, groups client-side |
+| CAT-03 | LLM suggests category during auto-tagging | NoteTagger.analyze() returns categoryPath in structured JSON |
+| CAT-04 | Backup saves as `{categoryPath}/{title}.md` | NoteFileSync builds nested folder path from categoryPath |
+| CAT-05 | Normalize on save; invalid segments flagged | Save pipeline validates + UI shows AntD red border |
+| LLM-WIKI-01 | One fast-tier temp-0 call: ≤5 tags + category + summary | NoteTagger via StructuredOutput at fast tier |
+| LLM-WIKI-02 | Independent toggles: autoTag/autoCategorize/autoSummary/aiSearch | Options → Notes → np_notes_llm_features store |
+| LLM-WIKI-03 | Optional summary field in NoteList | Note.summary persisted, displayed as secondary text |
+| LLM-WIKI-04 | "Regenerate" toolbar button | Re-runs NoteTagger.analyze() in place |
+| LLM-WIKI-05 | AI-enhanced search rerank | MiniSearch fuzzy → fast-tier rerank if <3 results |
+| LLM-WIKI-06 | "Ask your notes" RAG with citations | NoteQA: MiniSearch + MemoryEngine + balanced synthesis |
+| LLM-WIKI-07 | "Save to note" → NoteChatConverter draft | Conversation messages + MemoryEngine.assemble() → NoteEditor |
+| LLM-WIKI-08 | Staleness detection | summaryGeneratedAt/tagsGeneratedAt vs updated comparison |
+| LLM-WIKI-09 | Orphan detection (0 links + 0 backlinks) | NoteGraph.computeBacklinks() → badge |
+| LLM-WIKI-10 | "Re-analyze all notes" user-initiated | Sequential batch with real-time stats |
+| LLM-WIKI-11 | Confidence gating (threshold 0.60, max 3 facts/5 tags) | gateSuggestions() in schemas.ts |
+| SYNC-01 | showDirectoryPicker Standalone-only; IDB store | notes_backup_config store in NotesDB v4 migration |
+| SYNC-02 | queryPermission on mount; banner if denied | NoteFileSync init verifies handle permission |
+| SYNC-03 | Per-save .md write; 50ms debounce; fire-and-forget | Debounced sync after note:saved event |
+| SYNC-04 | OKF v0.2 YAML frontmatter | serializeNoteToMarkdown() with yaml library |
+| SYNC-05 | Title collision → numeric suffix | Scan existing files before write |
+| SYNC-06 | External-change guard (2s tolerance) | Compare lastModified vs lastSyncTimestamp |
+| SYNC-07 | No folder → no-ops; "Backup: off" | handle null → all ops become no-ops |
+| SYNC-08 | Status Tag (On/Off/Error) | UI indicator from NoteSyncState |
+| SYNC-09 | Restore from backup via showDirectoryPicker | Walk tree → parse frontmatter → upsert by id |
+| SYNC-10 | Restore preview modal | "Found N notes (X new, Y updated, Z unchanged)" |
+| SYNC-11 | Delete-on-sync removes .md + empty folders | NoteFileSync handles deletion |
+| NMEM-01 | Memory-aware RAG | NoteQA includes MemoryEngine.retrieveMemoryHints() |
+| NMEM-02 | On-save memory fact extraction | NoteTagger → MemoryExtractor → MemoryEngine.upsert() |
+| NMEM-03 | "Save from chat" uses MemoryEngine.assemble() | NoteChatConverter calls assemble() for context |
+| WIKI-ID-01 | Immutable UUID identity | id from crypto.randomUUID(), never changes |
+| WIKI-ID-02 | [[Title]] syntax, resolveLinks() on save | LinkParser.parseLinks + resolveLinks (existing) |
+| WIKI-ID-03 | Unresolved links in unresolvedLinks[] | LinkParser returns unresolved targets |
+| WIKI-ID-04 | Deletion doesn't rewrite bodies; demote to unresolved | LinkParser.demoteDangling (existing) |
+| OKF-WIKI-01 | type default 'Note' | OKF_NOTE_DEFAULT_TYPE constant |
+| OKF-WIKI-02 | generated/status trust-lifecycle families | generated: {by, at}, status: 'draft'|'stable' |
+| OKF-WIKI-03 | id as OKF extension key for round-trip | id in frontmatter preserves identity on restore |
+| OKF-WIKI-04 | v0.1 boundary — NO OKF markdown-link edges | Wikilinks stay in body; verified in DONE-when |
 
 ## Environment Availability
 
 | Dependency | Required By | Available | Version | Fallback |
 |------------|------------|-----------|---------|----------|
-| `yaml` | NoteFileSync frontmatter | ✗ (not installed) | — | Install: `pnpm add yaml@^2` |
-| `@types/wicg-file-system-access` | NoteFileSync types | ✗ (not installed) | — | Install: `pnpm add -D @types/wicg-file-system-access` |
-| File System Access API | NoteFileSync (Standalone) | ✓ (browser) | — | Feature-detect; disable sync if unavailable |
-| `minisearch` | NoteQA retrieval | ✓ | ^7.2.0 | — |
-| `idb` | notes_backup_config store | ✓ | ^8.0.3 | — |
-| `zod-to-json-schema` | Structured output | ✓ | 3.25.2 | — |
+| yaml ^2.9.0 | NoteFileSync frontmatter | ✗ Must install | 2.9.0 on npm | None — required |
+| @types/wicg-file-system-access | NoteFileSync types | ✗ Must install | 2023.10.7 on npm | None — required |
+| minisearch ^7.2.0 | NoteQA retrieval | ✓ | 7.2.0 | — |
+| idb ^8.0.3 | notes_backup_config store | ✓ | 8.0.3 | — |
+| zod ^4.4.3 | Schema validation | ✓ | 4.4.3 | — |
+| File System Access API | NoteFileSync | ✓ (Standalone/Chrome) | Browser native | Sync disabled in side panel |
 
 **Missing dependencies with no fallback:**
-- `yaml` — blocks NoteFileSync implementation; must install
+- yaml@^2.9.0 — must install before NoteFileSync can compile
+- @types/wicg-file-system-access@^2023.10.5 — must install for type safety
 
 **Missing dependencies with fallback:**
-- `@types/wicg-file-system-access` — blocks type-safe File System Access API usage; can use `any` temporarily but install is required for strict mode
+- File System Access API unavailable in side panel → sync disabled (per SYNC-07, by design)
 
 ## Validation Architecture
 
 ### Test Framework
 | Property | Value |
 |----------|-------|
-| Framework | vitest (with globals enabled) |
+| Framework | Vitest 3.2.7 |
 | Config file | vitest.config.ts |
 | Quick run command | `pnpm test -- tests/core/notes/NoteTagger.test.ts` |
-| Full suite command | `pnpm verify:phase-9` |
+| Full suite command | `pnpm run verify:phase-9` |
 
 ### Phase Requirements → Test Map
 | Req ID | Behavior | Test Type | Automated Command | File Exists? |
 |--------|----------|-----------|-------------------|-------------|
 | CAT-01 | categoryPath normalization | unit | `pnpm test -- tests/core/notes/NoteTagger.test.ts` | ❌ Wave 0 |
-| CAT-03 | LLM suggests category | unit (mocked provider) | `pnpm test -- tests/core/notes/NoteTagger.test.ts` | ❌ Wave 0 |
-| CAT-05 | Normalize on save | unit | `pnpm test -- tests/core/notes/NoteTagger.test.ts` | ❌ Wave 0 |
-| LLM-WIKI-01 | Fast-tier combined call | unit (mocked provider) | `pnpm test -- tests/core/notes/NoteTagger.test.ts` | ❌ Wave 0 |
-| LLM-WIKI-02 | LLM toggles gate calls | unit | `pnpm test -- tests/core/notes/NoteTagger.test.ts` | ❌ Wave 0 |
-| LLM-WIKI-05 | AI-enhanced rerank | unit (mocked provider) | `pnpm test -- tests/core/notes/NoteQA.test.ts` | ❌ Wave 0 |
-| LLM-WIKI-06 | Ask notes RAG + citations | unit (mocked provider) | `pnpm test -- tests/core/notes/NoteQA.test.ts` | ❌ Wave 0 |
-| LLM-WIKI-07 | Chat→note draft | unit (mocked provider) | `pnpm test -- tests/core/notes/NoteChatConverter.test.ts` | ❌ Wave 0 |
-| LLM-WIKI-08 | Staleness detection | unit | `pnpm test -- tests/core/notes/NoteMaintenance.test.ts` | ❌ Wave 0 |
-| LLM-WIKI-09 | Orphan detection | unit | `pnpm test -- tests/core/notes/NoteMaintenance.test.ts` | ❌ Wave 0 |
-| LLM-WIKI-10 | Re-analyze all | unit | `pnpm test -- tests/core/notes/NoteMaintenance.test.ts` | ❌ Wave 0 |
-| LLM-WIKI-11 | Confidence gating | unit | `pnpm test -- tests/core/notes/NoteTagger.test.ts` | ❌ Wave 0 |
-| SYNC-01 | Handle persist in IDB | unit (fake-indexeddb) | `pnpm test -- tests/core/notes/NoteFileSync.test.ts` | ❌ Wave 0 |
-| SYNC-03 | Per-save .md write | unit (mock FS) | `pnpm test -- tests/core/notes/NoteFileSync.test.ts` | ❌ Wave 0 |
-| SYNC-04 | OKF frontmatter format | unit | `pnpm test -- tests/core/notes/NoteFileSync.okf-frontmatter.test.ts` | ❌ Wave 0 |
-| SYNC-05 | Collision suffixing | unit | `pnpm test -- tests/core/notes/NoteFileSync.test.ts` | ❌ Wave 0 |
-| SYNC-06 | External-change guard | unit | `pnpm test -- tests/core/notes/NoteFileSync.test.ts` | ❌ Wave 0 |
-| SYNC-09 | Restore parser | unit | `pnpm test -- tests/core/notes/NoteFileSync.test.ts` | ❌ Wave 0 |
-| SYNC-10 | Restore preview | unit | `pnpm test -- tests/core/notes/NoteFileSync.test.ts` | ❌ Wave 0 |
-| SYNC-11 | Delete-on-sync | unit | `pnpm test -- tests/core/notes/NoteFileSync.test.ts` | ❌ Wave 0 |
-| NMEM-01 | Memory-aware RAG | unit (mocked memory) | `pnpm test -- tests/core/notes/NoteQA.test.ts` | ❌ Wave 0 |
-| NMEM-02 | Fact upsert primary-only | unit (mocked isPrimaryWriter) | `pnpm test -- tests/core/notes/NoteTagger.test.ts` | ❌ Wave 0 |
-| NMEM-03 | assemble() for drafts | unit | `pnpm test -- tests/core/notes/NoteChatConverter.test.ts` | ❌ Wave 0 |
-| WIKI-ID-01 | UUID preserved on round-trip | unit | `pnpm test -- tests/core/notes/NoteFileSync.okf-frontmatter.test.ts` | ❌ Wave 0 |
-| OKF-WIKI…01…03 | OKF frontmatter emission | unit | `pnpm test -- tests/core/notes/NoteFileSync.okf-frontmatter.test.ts` | ❌ Wave 0 |
-| OKF-WIKI-04 | No markdown-link edges | unit (grep assert) | `pnpm test -- tests/core/notes/NoteFileSync.okf-frontmatter.test.ts` | ❌ Wave 0 |
+| LLM-WIKI-01 | Single LLM call returns structured JSON | unit (mocked provider) | `pnpm test -- tests/core/notes/NoteTagger.test.ts` | ❌ Wave 0 |
+| LLM-WIKI-11 | Confidence gating drops below 0.60 | unit | `pnpm test -- tests/core/notes/schemas.test.ts` | ❌ Wave 0 |
+| LLM-WIKI-06 | NoteQA RAG with citations | unit (mocked MiniSearch + MemoryEngine) | `pnpm test -- tests/core/notes/NoteQA.test.ts` | ❌ Wave 0 |
+| SYNC-04 | OKF frontmatter serialization round-trip | unit | `pnpm test -- tests/core/notes/NoteFileSync.test.ts` | ❌ Wave 0 |
+| SYNC-09 | Restore preserves UUID + wikilinks | unit (mocked FS) | `pnpm test -- tests/core/notes/NoteFileSync.test.ts` | ❌ Wave 0 |
+| NMEM-02 | Memory fact routing via MemoryEngine | unit | `pnpm test -- tests/core/notes/NoteTagger.test.ts` | ❌ Wave 0 |
+| WIKI-ID-01 | UUID identity preserved on restore | unit | `pnpm test -- tests/core/notes/NoteFileSync.test.ts` | ❌ Wave 0 |
+| v4 migration | Idempotent store creation + Note.type | unit (fake-indexeddb) | `pnpm test -- tests/core/storage/migrations/v4-notes-backup-config.test.ts` | ❌ Wave 0 |
 
 ### Sampling Rate
-- **Per task commit:** `pnpm test -- tests/core/notes/`
-- **Per wave merge:** `pnpm verify:phase-9`
-- **Phase gate:** Full suite green before `/gsd-verify-work`
+- **Per task commit:** `pnpm test -- tests/core/notes/{module}.test.ts`
+- **Per wave merge:** `pnpm run verify:phase-9`
+- **Phase gate:** Full verify:phase-9 green before `/gsd-verify-work`
 
 ### Wave 0 Gaps
-- [ ] `tests/core/notes/NoteTagger.test.ts` — covers CAT-01/03/05, LLM-WIKI-01/02/11, NMEM-02
-- [ ] `tests/core/notes/NoteQA.test.ts` — covers LLM-WIKI-05/06, NMEM-01
+- [ ] `tests/core/notes/NoteTagger.test.ts` — covers LLM-WIKI-01/11, NMEM-02
+- [ ] `tests/core/notes/NoteQA.test.ts` — covers LLM-WIKI-06
 - [ ] `tests/core/notes/NoteChatConverter.test.ts` — covers LLM-WIKI-07, NMEM-03
-- [ ] `tests/core/notes/NoteFileSync.test.ts` — covers SYNC-01/03/05/06/09/10/11
-- [ ] `tests/core/notes/NoteFileSync.okf-frontmatter.test.ts` — covers SYNC-04, OKF-WIKI-01/02/03/04, WIKI-ID-01
+- [ ] `tests/core/notes/NoteFileSync.test.ts` — covers SYNC-04/09/11, WIKI-ID-01, OKF-WIKI-03
 - [ ] `tests/core/notes/NoteMaintenance.test.ts` — covers LLM-WIKI-08/09/10
-- [ ] `tests/core/storage/migrations/v4.test.ts` — covers D-125 (idempotent v4 migration)
-- [ ] `src/core/storage/migrations/v4_notes_backup_config.ts` — v4 migration implementation
-- [ ] `yaml` package install: `pnpm add yaml@^2`
-- [ ] `@types/wicg-file-system-access` install: `pnpm add -D @types/wicg-file-system-access`
+- [ ] `tests/core/notes/schemas.test.ts` — covers LLM-WIKI-11 gateSuggestions
+- [ ] `tests/core/storage/migrations/v4-notes-backup-config.test.ts` — covers v4 idempotency
+- [ ] Package install: `pnpm add yaml@^2.9.0 && pnpm add -D @types/wicg-file-system-access@^2023.10.5`
+- [ ] Gate re-point: verify:phase-9 to spec §24 scope
 
 ## Security Domain
 
@@ -645,49 +662,52 @@ export async function askNotes(
 |---------------|---------|-----------------|
 | V2 Authentication | no | — |
 | V3 Session Management | no | — |
-| V4 Access Control | yes | `isPrimaryWriter()` gate for NMEM-02 |
-| V5 Input Validation | yes | Zod schemas for all LLM output (NoteTagResultSchema, NoteQAResultSchema, NoteDraftSchema) |
+| V4 Access Control | no | — |
+| V5 Input Validation | yes | zod schemas for all LLM outputs (NoteTagResultSchema, NoteQAResultSchema, NoteDraftSchema) |
 | V6 Cryptography | no | — |
+| V7 Error Handling | yes | debugLog + TraceRedactor before persist/log/disk (§27.6) |
 
 ### Known Threat Patterns for Chrome MV3 + LLM
 
 | Pattern | STRIDE | Standard Mitigation |
 |---------|--------|---------------------|
-| LLM output injection | Tampering | Zod validation on all LLM output; never trust raw LLM text |
-| Note content exfiltration | Information Disclosure | TraceRedactor before logging/persist (§27.6) |
-| FileSystem handle leak | Information Disclosure | Handle in IDB only; never in chrome.storage.local; permission check on mount |
-| Stale suggestion application | Tampering | Version-check before applying async suggestions |
+| LLM prompt injection via note content | Tampering | Note content is untrusted data (CTX-02); system prompts separate from user content; structured output via JSON schema |
+| Sensitive data in backup files | Information Disclosure | TraceRedactor before disk write (§27.6); password values never written (§16.4) |
+| Malformed YAML frontmatter | Tampering | yaml library handles escaping; restore parser tolerates unknown keys (OKF §11) |
+| Stale async suggestions applied to newer content | Tampering | version-check on NoteTagger response (LLM-WIKI-11) |
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- `src/core/storage/NotesDB.ts` — existing IDB schema, v4 migration target
-- `src/core/memory/MemoryEngine.ts` — retrieveMemoryHints(), buildPreferenceProfile() seams
-- `src/core/memory/MemoryExtractor.ts` — memoryFacts schema + parse seam
-- `src/core/search/MiniSearchIndex.ts` — persistent notes index (NoteQA retrieval)
-- `src/core/notes/LinkParser.ts` — parseLinks/resolveLinks (WIKI-ID-02/03/04)
-- `src/core/ai/ProviderRouter.ts` — Phase-3 AI runtime (NoteTagger/NoteQA invoke)
-- `src/core/ai/StructuredOutput.ts` — JSON-mode structured output pattern
-- `src/core/ai/TierResolver.ts` — fast/balanced tier resolution
-- `src/core/events/EventBus.ts` — note:saved emit/subscribe
-- `src/core/storage/IndexedDBMigrator.ts` — v4 migration framework
-- `src/types/notes.ts` — canonical Note type + OKF frontmatter interface
-- `.planning/PRODUCT_SPEC_v0_1.md` §27 — full LLM-Wiki & Filesystem Sync spec
-- `.planning/PRODUCT_SPEC_v0_1.md` §20.4 — v4 migration policy
-- `.planning/PRODUCT_SPEC_v0_1.md` Appendix C.1 — NoteTagResultSchema + gating constants
+- `src/types/notes.ts` — canonical Note interface, OkfNoteFrontmatter, OKF_NOTE_DEFAULT_TYPE, NOTE_SUGGESTION_DISPLAY_THRESHOLD [VERIFIED: src/types/notes.ts:26-81]
+- `src/core/storage/NotesDB.ts` — NotesDB schema, openNotesDB, NOTES_DB_VERSION=1 [VERIFIED: src/core/storage/NotesDB.ts:26-89]
+- `src/core/ai/StructuredOutput.ts` — requestJson with repair loop [VERIFIED: src/core/ai/StructuredOutput.ts:46-107]
+- `src/core/storage/IndexedDBMigrator.ts` — registerMigration, openVersionedDB [VERIFIED: src/core/storage/IndexedDBMigrator.ts:52-157]
+- `src/core/memory/MemoryEngine.ts` — retrieveMemoryHints, retrieveUserMemory [VERIFIED: src/core/memory/MemoryEngine.ts:33-116]
+- `src/core/memory/MemoryExtractor.ts` — memoryFactsSchema, parseMemoryFacts [VERIFIED: src/core/memory/MemoryExtractor.ts:14-78]
+- `src/core/search/MiniSearchIndex.ts` — query, buildIndex, NoteDoc, NOTE_SEARCH_FIELDS [VERIFIED: src/core/search/MiniSearchIndex.ts:39-155]
+- `src/core/notes/LinkParser.ts` — parseLinks, resolveLinks, demoteDangling [VERIFIED: src/core/notes/LinkParser.ts:25-100]
+- `src/core/events/EventBus.ts` — on/emit for note:saved [VERIFIED: src/core/events/EventBus.ts:16-54]
+- `src/core/ai/ProviderRouter.ts` — route(), ProviderRouteInput [VERIFIED: src/core/ai/ProviderRouter.ts:198-283]
+- `src/core/ai/ILLMProvider.ts` — ILLMProvider interface, requestJson [VERIFIED: src/core/ai/ILLMProvider.ts:42-46]
 
 ### Secondary (MEDIUM confidence)
-- npm registry — `yaml` ^2.9.0, `@types/wicg-file-system-access` ^2023.10.7
+- `.planning/PRODUCT_SPEC_v0_1.md` §27.3 SYNC-04 — OKF frontmatter field table (spec 3830-3863)
+- `.planning/PRODUCT_SPEC_v0_1.md` §24 verify:phase-9 — `tests/core/notes tests/core/storage/migrations` (spec 3613)
+- `.planning/PRODUCT_SPEC_v0_1.md` §20.4 — v4 migration policy (spec 3156)
+- `.planning/PRODUCT_SPEC_v0_1.md` Appendix C.1 — NoteTagResultSchema, gateSuggestions (spec 4764-4786)
+- `.planning/phases/09-llm-wiki-filesystem-sync/09-CONTEXT.md` — D-115…D-125 decisions
 
 ### Tertiary (LOW confidence)
-- None — all claims verified against codebase or spec
+- npm registry: yaml@2.9.0 exists (verified via npm view)
+- npm registry: @types/wicg-file-system-access@2023.10.7 exists (verified via npm view)
 
 ## Metadata
 
 **Confidence breakdown:**
-- Standard stack: HIGH — all packages verified against npm registry; versions confirmed
-- Architecture: HIGH — integration points verified against existing codebase; patterns established in Phases 2-8
-- Pitfalls: HIGH — derived from spec §27.6/§27.8/§27.9 + codebase analysis (MemoryEngine.assemble() gap, IDB handle serialization)
+- Standard stack: HIGH — all packages verified via npm view; integration targets read from source
+- Architecture: HIGH — all integration points confirmed by reading source files
+- Pitfalls: HIGH — based on existing codebase patterns and MV3 constraints
 
 **Research date:** 2026-09-01
-**Valid until:** 2026-10-01 (30 days — stable domain, no fast-moving dependencies)
+**Valid until:** 2026-10-01 (stable — core dependencies unchanged)
