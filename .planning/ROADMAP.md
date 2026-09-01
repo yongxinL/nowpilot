@@ -297,6 +297,18 @@ Plans:
   6. NMEM-02 upserts facts only on the primary surface; v4 migration is idempotent (skip if `Note.type` already present).
 
 **Verification gate:** `pnpm run verify:phase-9` (§24).
+**Plans:** 4 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 09-01-PLAN.md — TRACER: LLM enrichment spine (NoteTagger + schemas + v4 migration + MemoryEngine.assemble)
+- [ ] 09-02-PLAN.md — NoteQA RAG + NoteChatConverter (Ask notes with citations + chat-to-note drafts)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 09-03-PLAN.md — NoteFileSync (OKF .md sync + restore parser)
+- [ ] 09-04-PLAN.md — NoteMaintenance (staleness/orphan/bulk) + verify:phase-9 gate re-point
 
 ### Phase 10: Memory Governance and Experience Candidates
 
@@ -483,7 +495,7 @@ Plans:
 | 6. PageContentService (Knowledge Acquisition) | 5/5 | Complete    | 2026-08-30 |
 | 7. Trust-Aware Context and Receipts | 3/3 | Complete    | 2026-08-30 |
 | 8. Knowledge Base (Memory + MiniSearch + Notes) | 5/5 | Complete    | 2026-09-01 |
-| 9. LLM-Wiki & Filesystem Sync | 0/4 | Not started | — |
+| 9. LLM-Wiki & Filesystem Sync | 0/4 | Planning complete | — |
 | 10. Memory Governance and Experience Candidates | 0/2 | Not started | — |
 | 11. Transaction Logging and Diagnostics | 0/2 | Not started | — |
 | 12. Agent Evaluation | 0/3 | Not started | — |
