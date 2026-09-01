@@ -5,10 +5,10 @@ milestone_name: milestone
 current_phase: 8
 current_phase_name: Knowledge Base (Memory + MiniSearch + Notes)
 status: planning
-stopped_at: Phase 7 UI-SPEC approved
-last_updated: "2026-08-30T05:08:31.813Z"
+stopped_at: Phase 8 context gathered
+last_updated: "2026-09-01T02:22:19.904Z"
 progress:
-  total_phases: 7
+  total_phases: 8
   completed_phases: 6
   total_plans: 39
   completed_plans: 38
@@ -126,27 +126,27 @@ All inherited decisions are **— Pending** (awaiting first implementation to va
 
 ## Session Continuity
 
-**Last session:** 2026-08-30T02:43:14.789Z
-**Stopped at:** Phase 7 UI-SPEC approved
-**Resume file:** .planning/phases/07-trust-aware-context-and-receipts/07-UI-SPEC.md
+**Last session:** 2026-09-01T02:22:19.886Z
+**Stopped at:** Phase 8 context gathered
+**Resume file:** .planning/phases/08-knowledge-base-memory-minisearch-notes/08-CONTEXT.md
 
-- **Last action:** Phase 6 completed end-to-end — all 5 plans (Defuddle + APC-lite extraction spine, §26.4a cache, PageIndexBuilder, content-shell trio, §24 isolation gate + D-92 re-point + ADR-P6-01 flip) executed, verified 14/14 truths, gate green. Post-verification fixes: entrypoint defect resolved (`entrypoints/content/index.ts`, manifest registers content.js 9.51 kB), journalingAdapter path fixed, `/tmp` ENOSPC cleared. verify:phase-6 94/94, full suite 559/559. Code review 11 findings (3 CR/5 WR/3 IN) advisory — surfaced for Phase 7 fix consideration.
-- **Last updated:** 2026-08-30 after Phase 6 completion.
-- **Resume with:** Phase 7 planning (no CONTEXT.md yet — discuss first).
+- **Last action:** Phase 7 completed end-to-end — all 3 plans (TrustPolicy + ContextReceipt spine, ContextQualityMetrics + stable-prefix snapshots, SkillDisclosure + verify:phase-7 re-point) executed, verified 18/18 truths, verify:phase-7 64/64 green, full suite 621/621, code review 0 critical. PROJECT.md evolved (commit 17e5dc0).
+- **Last updated:** 2026-08-30 after Phase 7 completion.
+- **Resume with:** Phase 8 (Knowledge Base — Memory + MiniSearch + Notes) planning — no phase dir / CONTEXT.md yet, discuss first.
 
 ---
 
 ## Next-up
 
-Phase 6 is complete. Phase 7 (Trust-Aware Context and Receipts) has no CONTEXT.md. Run:
+Phase 7 is complete. Phase 8 (Knowledge Base) has no CONTEXT.md. Run:
 
 ```text
-/gsd-discuss-phase 7
+/gsd-discuss-phase 8
 ```
 
 ---
 
-*Last updated: 2026-08-30 after Phase 6 completion*
+*Last updated: 2026-09-01 (resume session)*
 
 ## Decisions
 
