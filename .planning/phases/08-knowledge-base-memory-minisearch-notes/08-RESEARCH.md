@@ -503,27 +503,31 @@ export interface RetrievedMemory {
 | A5 | `MemoryMessage.role` union is extended with `'tool'` only if Phase-8 tests need to store tool turns in MemoryDB.messages (Pitfall 2 note) | Common Pitfalls 2 | If §3.3 tool-role messages must be persisted, the union must be extended; additive + schema-flexible, so low risk |
 | A6 | The np_facts metadata record shape (ids + recency + useCount, per D-104) is a Phase-8 design decision; §3.4 fields map onto it (updatedAt ↔ recency window, useCount ↔ useCountScore) | Pattern 2 | A mismatched metadata shape would force MemoryScorer to open IDB per fact — perf regression only, no correctness failure |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Where does the canonical §3.4 `UserMemoryFact` type live?**
    - What we know: MemoryDB.ts:37-45 declares a simplified bootstrap shape; §3.4 (spec 601-612) is the canonical shape; D-104 makes MemoryDB.userFacts the body store; Appendix C.1 maps only `WorkingMemory`→harness and `RetrievedMemory`/`UserPreferences`→core/memory/types (spec 4833-4845) — `UserMemoryFact` is unassigned.
    - What's unclear: whether `src/core/memory/types.ts` hosts it (and MemoryDB imports/re-exports per D-72) or MemoryDB.ts is edited in place.
    - Recommendation: put the canonical `UserMemoryFact` in `src/core/memory/types.ts` and have MemoryDB import it (matches the D-72/D-107 supersession precedent and keeps the memory home authoritative). This also answers the CONTEXT discretion item "whether memory/types.ts also holds local store types" — yes for the §3.4 fact shape, no for idb row schemas (those stay in the DB modules).
+   - **RESOLVED:** 08-01 Task 2 — canonical `UserMemoryFact` (spec 601-612) declared at `src/core/memory/types.ts`; `MemoryDB.ts` imports/re-exports it (D-104 supersession, write-empty = zero migration).
 
 2. **Does the np_persona write path feed PersonaInjector in Phase 8, or is it store-only?**
    - What we know: D-112 says overrides are "now sourced from PreferenceMemoryStore/np_persona"; D-105 forbids live chat/AgentOrchestrator wiring; PersonaInjector.resolvePersona takes `prefs` as a parameter (PersonaInjector.ts:18-30) and needs no edit.
    - What's unclear: whether any Phase-8 code reads np_persona into the UserPreferences object consumers see, or whether PreferenceMemoryStore is a standalone persisted store + `buildPreferenceProfile()` producer proven by tests (the RICH-R-05 DONE-when wording).
    - Recommendation: store + producers only (PreferenceMemoryStore.hydrate/get/update + MemoryEngine.buildPreferenceProfile()); the live injection re-point is Phase 15 RICH. Mark in the plan that PersonaInjector's parameter source changes later, not now.
+   - **RESOLVED:** 08-01 Task 3 — PreferenceMemoryStore ships as a standalone persisted store (np_persona) + producers only; the live PersonaInjector re-point is marked Phase 15 in the store's swap-point comment; RICH-R-05 DONE-when proven by MemoryEngine.buildPreferenceProfile() in 08-02 Task 3.
 
 3. **`personaOverrides` has two homes after D-112 (legacy np_preferences + canonical np_persona) — who is authoritative?**
    - What we know: Phase-3 useUserPreferencesStore persists personaOverrides under np_preferences (UserPreferences.ts:98-102); D-112 gives PreferenceMemoryStore ownership of np_persona (PersonaProfile + personaId + personaOverrides).
    - What's unclear: whether Phase 8 migrates/redirects the np_preferences write (an edit to the Phase-3 store file — allowed since UserPreferences.ts is already being edited for the re-export) or leaves both writing independently (divergence risk).
    - Recommendation: PreferenceMemoryStore is canonical for personaOverrides; the Phase-3 store keeps persisting fastModel/balancedModel only, dropping personaOverrides from its partialize — but ONLY if the plan also verifies no existing consumer reads `useUserPreferencesStore.personaOverrides` in the live path (grep before dropping). If any live reader exists, keep both and note the Phase-15 consolidation point.
+   - **RESOLVED:** 08-01 Task 3 — np_persona is canonical for personaOverrides; the Phase-3 store drops personaOverrides from partialize ONLY after a live-reader grep (recorded in the commit message); if a live reader exists, both persist with a Phase-15 consolidation comment.
 
 4. **Does the delete path emit an event, or does MiniSearchIndex expose a direct remove?**
    - What we know: Flow 3 (spec 1690) emits only `note:saved`; D-109 requires deletion to remove the note's document; WIKI-ID-04 demotes dangling edges at next save/rebuild.
    - What's unclear: the delete-side trigger for MiniSearchIndex.discard (a `note:deleted` event is an invention; the save-path core may not own deletion in Phase 8).
    - Recommendation: expose `MiniSearchIndex.remove(noteId)` (via `discard`) as a public API and let the note-delete caller invoke it — no new event needed. Tests exercise remove directly.
+   - **RESOLVED:** 08-03 Task 2 — `MiniSearchIndex.remove(noteId)` → `index.discard(noteId)` ships as the public delete API (Open Q4); no `note:deleted` event invented; the MiniSearchIndex.test.ts remove/discard case exercises it directly.
 
 ## Environment Availability
 
