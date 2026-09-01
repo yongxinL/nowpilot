@@ -164,6 +164,34 @@ export async function getTopFacts(
   return scored.slice(0, k).map((s) => s.fact);
 }
 
+/**
+ * Retrieve scored facts for a query — returns { fact, score } pairs in
+ * score-desc order. Used by MemoryEngine to attach scores to the
+ * RetrievedMemory shape (spec 4572-4578).
+ */
+export async function getScoredFacts(
+  query: string,
+  opts?: { k?: number; now?: number },
+): Promise<Array<{ fact: UserMemoryFact; score: number }>> {
+  await hydrate();
+
+  const k = opts?.k ?? 5;
+  const now = opts?.now ?? Date.now();
+  const queryTerms = query
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  const db = await openMemoryDB();
+  const allFacts = await db.getAll('userFacts');
+
+  const scored = allFacts
+    .map((fact) => ({ fact, score: scoreMemory(fact, queryTerms, now) }))
+    .sort((a, b) => b.score - a.score);
+
+  return scored.slice(0, k);
+}
+
 /** Read the current metadata index (tests + diagnostics). */
 export function getMetadataIndex(): FactsMetadata[] {
   return metadataIndex;
