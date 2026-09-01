@@ -28,7 +28,7 @@ state_head: 9b50aca
 
 - **What this is:** Privacy-first Chrome MV3 AI assistant + personal knowledge platform for ServiceNow Support Engineers (Copilot + Obsidian + NotebookLM in one extension). See `.planning/PROJECT.md` §What This Is.
 - **Core value:** *AI chat and a personal knowledge base that work together, locally-first, so a support engineer can capture knowledge once and retrieve it with citations — without any data leaving their machine unless they opt in.*
-- **Current focus:** Phase 8 — Knowledge Base (Memory + MiniSearch + Notes)
+- **Current focus:** Phase 9 — LLM-Wiki & Filesystem Sync
 - **Companion files:**
   - `.planning/PROJECT.md` — project context, Active/Out of Scope, Key Decisions
   - `.planning/REQUIREMENTS.md` — 220 v1 requirements (spec-native IDs + `REQ-F*` for §9 gaps)
@@ -46,7 +46,7 @@ state_head: 9b50aca
 - **Phase:** 9 — LLM-Wiki & Filesystem Sync
 - **Plan:** Not started
 - **Status:** Ready to plan
-- **Progress:** 6/19 phases complete · 35/74 plans done · 220/220 requirements mapped ([██████████] 98% coverage).
+- **Progress:** 7/19 phases complete · 43/74 plans done · 220/220 requirements mapped ([████████████████████] 100% coverage).
 
 ---
 
@@ -131,27 +131,27 @@ All inherited decisions are **— Pending** (awaiting first implementation to va
 
 ## Session Continuity
 
-**Last session:** 2026-09-01T06:13:50.171Z
-**Stopped at:** Completed 08-05-PLAN.md
+**Last session:** 2026-09-01T06:37:17.171Z
+**Stopped at:** Phase 8 complete, ready to plan Phase 9
 **Resume file:** None
 
-- **Last action:** Phase 7 completed end-to-end — all 3 plans (TrustPolicy + ContextReceipt spine, ContextQualityMetrics + stable-prefix snapshots, SkillDisclosure + verify:phase-7 re-point) executed, verified 18/18 truths, verify:phase-7 64/64 green, full suite 621/621, code review 0 critical. PROJECT.md evolved (commit 17e5dc0).
-- **Last updated:** 2026-08-30 after Phase 7 completion.
-- **Resume with:** Phase 8 (Knowledge Base — Memory + MiniSearch + Notes) planning — no phase dir / CONTEXT.md yet, discuss first.
+- **Last action:** Phase 8 completed end-to-end — all 5 plans (canonical type spine + RICH-R-05 persona, memory subsystem, MiniSearch + LinkParser + save seam, NoteGraph + components, E2E proof + verify:phase-8 re-point) executed, verified 5/5 must-haves, verify:phase-8 72/72 green, full suite 747/747, code review 10 findings (1 critical, advisory). PROJECT.md evolved (commit 7261d3d).
+- **Last updated:** 2026-09-01 after Phase 8 completion.
+- **Resume with:** Phase 9 (LLM-Wiki & Filesystem Sync) planning — no phase dir / CONTEXT.md yet, discuss first.
 
 ---
 
 ## Next-up
 
-Phase 7 is complete. Phase 8 (Knowledge Base) has no CONTEXT.md. Run:
+Phase 8 is complete. Phase 9 (LLM-Wiki & Filesystem Sync) has no CONTEXT.md. Run:
 
 ```text
-/gsd-discuss-phase 8
+/gsd-discuss-phase 9
 ```
 
 ---
 
-*Last updated: 2026-09-01 (resume session)*
+*Last updated: 2026-09-01 after Phase 8 completion (transition to Phase 9)*
 
 ## Decisions
 
