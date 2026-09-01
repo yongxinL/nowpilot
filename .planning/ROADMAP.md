@@ -265,11 +265,11 @@ Plans:
   5. Wikilinks resolve with tie-break rule; end-to-end `Page → PageContentService → Note → MiniSearch` path works.
 
 **Verification gate:** `pnpm run verify:phase-8` (§24).
-**Plans:** 5 plans
+**Plans:** 1/5 plans executed
 Plans:
 **Wave 1**
 
-- [ ] 08-01-PLAN.md — Canonical type homes + persona persistence (RICH-R-05): notes.ts canonical Note (D-107/D-108), memory/types.ts + harness WorkingMemory supersessions (D-104/D-112/D-113), PreferenceMemoryStore np_persona (RICH-R-05)
+- [x] 08-01-PLAN.md — Canonical type homes + persona persistence (RICH-R-05): notes.ts canonical Note (D-107/D-108), memory/types.ts + harness WorkingMemory supersessions (D-104/D-112/D-113), PreferenceMemoryStore np_persona (RICH-R-05)
 
 **Wave 2** *(blocked on Wave 1)*
 
@@ -482,7 +482,7 @@ Plans:
 | 5. Context-Adaptive Execution | 2/2 | Complete    | 2026-08-29 |
 | 6. PageContentService (Knowledge Acquisition) | 5/5 | Complete    | 2026-08-30 |
 | 7. Trust-Aware Context and Receipts | 3/3 | Complete    | 2026-08-30 |
-| 8. Knowledge Base (Memory + MiniSearch + Notes) | 0/3 | Not started | — |
+| 8. Knowledge Base (Memory + MiniSearch + Notes) | 1/5 | In Progress|  |
 | 9. LLM-Wiki & Filesystem Sync | 0/4 | Not started | — |
 | 10. Memory Governance and Experience Candidates | 0/2 | Not started | — |
 | 11. Transaction Logging and Diagnostics | 0/2 | Not started | — |
