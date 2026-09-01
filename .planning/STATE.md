@@ -5,13 +5,13 @@ milestone_name: milestone
 current_phase: 8
 current_phase_name: Knowledge Base (Memory + MiniSearch + Notes)
 status: executing
-stopped_at: Completed 08-01-PLAN.md
-last_updated: "2026-09-01T04:05:25.980Z"
+stopped_at: Completed 08-02-PLAN.md
+last_updated: "2026-09-01T04:37:45.710Z"
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 44
-  completed_plans: 39
+  completed_plans: 40
 state_head: 9b50aca
 ---
 
@@ -44,9 +44,9 @@ state_head: 9b50aca
 ## Current Position
 
 - **Phase:** 8 (Knowledge Base (Memory + MiniSearch + Notes)) — EXECUTING
-- **Plan:** 2 of 5
+- **Plan:** 3 of 5
 - **Status:** Ready to execute
-- **Progress:** 6/19 phases complete · 35/74 plans done · 220/220 requirements mapped ([█████████░] 89% coverage).
+- **Progress:** 6/19 phases complete · 35/74 plans done · 220/220 requirements mapped ([█████████░] 91% coverage).
 
 ---
 
@@ -80,6 +80,7 @@ state_head: 9b50aca
 | Phase 06 P04 | 17min | 3 tasks | 10 files |
 | Phase 06-pagecontentservice-knowledge-acquisition P05 | 16min | 3 tasks | 4 files |
 | Phase 08 P01 | 16min | 3 tasks | 14 files |
+| Phase 08 P02 | 24min | 3 tasks | 13 files |
 
 ## Accumulated Context — Decisions (inherited from PROJECT.md Key Decisions)
 
@@ -127,8 +128,8 @@ All inherited decisions are **— Pending** (awaiting first implementation to va
 
 ## Session Continuity
 
-**Last session:** 2026-09-01T04:05:25.968Z
-**Stopped at:** Completed 08-01-PLAN.md
+**Last session:** 2026-09-01T04:37:45.681Z
+**Stopped at:** Completed 08-02-PLAN.md
 **Resume file:** None
 
 - **Last action:** Phase 7 completed end-to-end — all 3 plans (TrustPolicy + ContextReceipt spine, ContextQualityMetrics + stable-prefix snapshots, SkillDisclosure + verify:phase-7 re-point) executed, verified 18/18 truths, verify:phase-7 64/64 green, full suite 621/621, code review 0 critical. PROJECT.md evolved (commit 17e5dc0).
@@ -176,3 +177,5 @@ Phase 7 is complete. Phase 8 (Knowledge Base) has no CONTEXT.md. Run:
 - [Phase 6]: 06-05: built-bundle isolation check reads manifest.json content_scripts[].js as authoritative artifact list; describe.skipIf when no build artifact — gate never depends on a build (Open Question 2)
 - [Phase 6]: Entrypoint shape corrected (2026-08-30): `entrypoints/content/core.content.ts` matched no WXT 0.20.27 content-script glob — added `entrypoints/content/index.ts` re-export; manifest now registers `content-scripts/content.js` (9.51 kB, ISOLATED); built-bundle checks green (verify:phase-6 94/94)
 - [Phase ?]: [Phase 8]: 08-01: Note.type?: string declaration-only (D-108) — zero consumers in Phase 8; identity stays immutable UUID id (WIKI-ID-01/ADR-NOTE-01)
+- [Phase ?]: MemoryScorer keyword scoring matches query terms against tags; sub-scores independently normalized to [0,1]
+- [Phase ?]: MemoryEngine.buildPreferenceProfile reads np_persona (PreferenceMemoryStore) — never the fact store (RICH-R-05 DONE-when)

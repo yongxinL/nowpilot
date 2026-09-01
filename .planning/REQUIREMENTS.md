@@ -474,7 +474,7 @@ Every v1 requirement maps to exactly one phase. Counts: v1 = 220, mapped = 220, 
 | CTX-04 | Phase 7 | Pending |
 | CTX-05 | Phase 7 | Pending |
 | CTX-06 | Phase 7 | Pending |
-| RICH-R-05 | Phase 8 | Pending |
+| RICH-R-05 | Phase 8 | Complete |
 | CAT-01 | Phase 9 | Pending |
 | CAT-02 | Phase 9 | Pending |
 | CAT-03 | Phase 9 | Pending |
