@@ -1,14 +1,25 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
-  UserPreferencesSchema,
   useUserPreferencesStore,
   PERSONA_TONE_ENUM,
   PERSONA_BREVITY_ENUM,
 } from '../../../src/core/ai/UserPreferences';
+import { UserPreferencesSchema } from '../../../src/core/memory/types';
+import type { UserPreferences } from '../../../src/core/memory/types';
 import {
   flushPendingWrites,
   __test__ as adapterTest,
 } from '../../../src/core/theme/chromeStorageAdapter';
+
+/** Base required §3.5 fields — tests add optional fields on top. */
+const basePrefs: UserPreferences = {
+  responseStyle: 'mixed',
+  preferredLanguage: 'en',
+  preferStructuredOutput: true,
+  allowCloudFallbackFromLocal: false,
+  toolAutonomy: 'ask',
+  defaultSurface: 'sidepanel',
+};
 
 /**
  * UserPreferences acceptance proof (plan 03-02, Task 2): schema parses the
@@ -24,6 +35,7 @@ describe('UserPreferences (03-02 Task 2)', () => {
     storageMap.clear();
     adapterTest.resetPendingState();
     useUserPreferencesStore.setState({
+      ...basePrefs,
       fastModel: undefined,
       balancedModel: undefined,
       personaOverrides: undefined,
@@ -34,6 +46,7 @@ describe('UserPreferences (03-02 Task 2)', () => {
 
   it('schema parses a full preferences object', () => {
     const parsed = UserPreferencesSchema.parse({
+      ...basePrefs,
       fastModel: 'gpt-4o-mini',
       balancedModel: 'gpt-4o',
       personaOverrides: { name: 'NP-Consult', tone: 'concise', brevity: 'detailed' },
@@ -47,22 +60,22 @@ describe('UserPreferences (03-02 Task 2)', () => {
     });
   });
 
-  it('schema parses a minimal (all-optional) preferences object', () => {
+  it('schema parses a minimal (defaults-filled) preferences object', () => {
     const result = UserPreferencesSchema.safeParse({});
     expect(result.success).toBe(true);
   });
 
   it('schema REJECTS an empty-string override (min(1) keeps seed authoritative)', () => {
-    expect(UserPreferencesSchema.safeParse({ personaOverrides: { name: '' } }).success).toBe(false);
-    expect(UserPreferencesSchema.safeParse({ personaOverrides: { tone: '' } }).success).toBe(false);
-    expect(UserPreferencesSchema.safeParse({ personaOverrides: { brevity: '' } }).success).toBe(false);
+    expect(UserPreferencesSchema.safeParse({ ...basePrefs, personaOverrides: { name: '' } }).success).toBe(false);
+    expect(UserPreferencesSchema.safeParse({ ...basePrefs, personaOverrides: { tone: '' } }).success).toBe(false);
+    expect(UserPreferencesSchema.safeParse({ ...basePrefs, personaOverrides: { brevity: '' } }).success).toBe(false);
   });
 
   it('schema rejects invalid tone / brevity override values', () => {
-    expect(UserPreferencesSchema.safeParse({ personaOverrides: { tone: 'casual' } }).success).toBe(
+    expect(UserPreferencesSchema.safeParse({ ...basePrefs, personaOverrides: { tone: 'casual' } }).success).toBe(
       false,
     );
-    expect(UserPreferencesSchema.safeParse({ personaOverrides: { brevity: 'chatty' } }).success).toBe(
+    expect(UserPreferencesSchema.safeParse({ ...basePrefs, personaOverrides: { brevity: 'chatty' } }).success).toBe(
       false,
     );
   });
@@ -81,11 +94,12 @@ describe('UserPreferences (03-02 Task 2)', () => {
   });
 
   it('hydrate() re-reads np_preferences from chrome.storage.local', async () => {
-    // What a previous session would have left on disk.
+    // What a previous session would have left on disk (full S3.5 shape).
     storageMap.set(
       'np_preferences',
       JSON.stringify({
         state: {
+          ...basePrefs,
           fastModel: 'gpt-4o-mini',
           balancedModel: undefined,
           personaOverrides: { brevity: 'balanced' },

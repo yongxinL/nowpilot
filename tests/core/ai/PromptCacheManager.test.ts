@@ -64,13 +64,29 @@ describe('buildSystemPrompt — D-59 single choke-point', () => {
   it('re-derives the cache key when persona overrides change (Open Q5 — no invalidation API)', () => {
     const base = buildSystemPrompt('planner');
     const overridden = buildSystemPrompt('planner', {
-      prefs: { personaOverrides: { tone: 'friendly' } },
+      prefs: {
+        responseStyle: 'mixed',
+        preferredLanguage: 'en',
+        preferStructuredOutput: true,
+        allowCloudFallbackFromLocal: false,
+        toolAutonomy: 'ask',
+        defaultSurface: 'sidepanel',
+        personaOverrides: { tone: 'friendly' },
+      },
     });
     expect(overridden.cacheKeyHash).not.toBe(base.cacheKeyHash);
     expect(overridden.sections[0].text).not.toBe(base.sections[0].text);
     // The override is re-applied on the next call — same hash again (stable per persona).
     const overriddenAgain = buildSystemPrompt('planner', {
-      prefs: { personaOverrides: { tone: 'friendly' } },
+      prefs: {
+        responseStyle: 'mixed',
+        preferredLanguage: 'en',
+        preferStructuredOutput: true,
+        allowCloudFallbackFromLocal: false,
+        toolAutonomy: 'ask',
+        defaultSurface: 'sidepanel',
+        personaOverrides: { tone: 'friendly' },
+      },
     });
     expect(overriddenAgain.cacheKeyHash).toBe(overridden.cacheKeyHash);
   });

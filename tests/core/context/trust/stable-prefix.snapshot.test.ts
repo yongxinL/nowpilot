@@ -66,6 +66,12 @@ const canonicalFixtureInput: ContextOptimizerInput = {
     { id: 'mem-2', content: 'Sev-2 escalation path is the on-call DB team', type: 'fact', tags: [], score: 0.7 },
   ],
   preferences: {
+    responseStyle: 'mixed',
+    preferredLanguage: 'en',
+    preferStructuredOutput: true,
+    allowCloudFallbackFromLocal: false,
+    toolAutonomy: 'ask',
+    defaultSurface: 'sidepanel',
     fastModel: 'fast-fixture',
     balancedModel: 'balanced-fixture',
     personaOverrides: { name: 'NowPilot', tone: 'professional-warm', brevity: 'balanced' },

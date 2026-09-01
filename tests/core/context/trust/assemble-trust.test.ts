@@ -49,7 +49,14 @@ function makeInput(overrides: Partial<ContextOptimizerInput> = {}): ContextOptim
     memoryHints: [
       { id: 'm1', content: 'user prefers concise', type: 'preference', tags: [], score: 0.9 },
     ],
-    preferences: {},
+    preferences: {
+      responseStyle: 'mixed',
+      preferredLanguage: 'en',
+      preferStructuredOutput: true,
+      allowCloudFallbackFromLocal: false,
+      toolAutonomy: 'ask',
+      defaultSurface: 'sidepanel',
+    },
     ...overrides,
   };
 }

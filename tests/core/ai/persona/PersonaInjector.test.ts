@@ -18,6 +18,12 @@ import type { UserPreferences } from '../../../../src/core/ai/UserPreferences';
 const BASE_SYSTEM = 'You are the planner stage. Respond concisely.';
 
 const fullPrefs: UserPreferences = {
+  responseStyle: 'mixed',
+  preferredLanguage: 'en',
+  preferStructuredOutput: true,
+  allowCloudFallbackFromLocal: false,
+  toolAutonomy: 'ask',
+  defaultSurface: 'sidepanel',
   personaOverrides: { name: 'NP-Consult', tone: 'concise', brevity: 'detailed' },
 };
 
@@ -38,6 +44,12 @@ describe('PersonaInjector (03-02 Task 3)', () => {
 
   it('(c) partial overrides leave unset fields from the seed', () => {
     const resolved = resolvePersona(DEFAULT_PERSONA, {
+      responseStyle: 'mixed',
+      preferredLanguage: 'en',
+      preferStructuredOutput: true,
+      allowCloudFallbackFromLocal: false,
+      toolAutonomy: 'ask',
+      defaultSurface: 'sidepanel',
       personaOverrides: { tone: 'concise' },
     });
     expect(resolved.languageStyle.tone).toBe('concise');
@@ -54,7 +66,15 @@ describe('PersonaInjector (03-02 Task 3)', () => {
     expect(a).toBe(b);
 
     const changed = PersonaInjector.inject('planner', BASE_SYSTEM, {
-      prefs: { personaOverrides: { tone: 'friendly' } },
+      prefs: {
+        responseStyle: 'mixed',
+        preferredLanguage: 'en',
+        preferStructuredOutput: true,
+        allowCloudFallbackFromLocal: false,
+        toolAutonomy: 'ask',
+        defaultSurface: 'sidepanel',
+        personaOverrides: { tone: 'friendly' },
+      },
     });
     expect(changed).not.toBe(a);
     expect(changed).toContain('Tone: friendly.');

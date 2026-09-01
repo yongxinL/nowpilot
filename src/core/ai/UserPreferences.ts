@@ -1,47 +1,33 @@
-// Minimal UserPreferences shape + np_preferences persistence (plan 03-02, Task 2).
+// Full §3.5 UserPreferences store + np_preferences persistence (plan 08-01, Task 3).
 //
-// Phase-3 supply point for PersonaInjector (Appendix N.2 imports UserPreferences
-// from `@/core/memory/types`, which does not exist — RESEARCH Open Q2). The
-// memory phases (8/10) own the FULL UserPreferences shape; this minimal shape
-// is the supersession point those phases replace in place.
+// D-112: the full §3.5 UserPreferences shape is now canonical at
+// @/core/memory/types. This store re-exports the type + schema + enums from
+// there (Pitfall 3: the store's initialPreferences/partialize must be updated
+// for the new required §3.5 fields).
 //
-// Override strings are z.string().min(1).optional() so an empty-string override
-// is REJECTED at the boundary — the data-merge `??` would otherwise treat '' as
-// a value and clobber the seeded persona field (flagged assumption).
+// Open Q3 grep result (2026-09-01): personaOverrides has live readers in
+//   - src/core/context/trust/contextItems.ts:147
+//   - src/core/ai/PromptCacheManager.ts:165-166
+//   - src/core/ai/persona/PersonaInjector.ts:19-20
+// So personaOverrides STAYS in partialize (np_preferences legacy). Phase 15
+// consolidates personaOverrides -> np_persona.
 //
 // No secrets live here: apiKey stays in the encrypted np_providers store
 // (Phase 2) — this store holds only non-secret preferences per §15.2
 // partition rules (threat T-3-05 disposition: accept).
-import { z } from 'zod';
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import { chromeStorageAdapter } from '../theme/chromeStorageAdapter';
+import type { UserPreferences, PersonaTone, PersonaBrevity, PersonaOverrides } from '../memory/types';
+import { personaOverridesSchema, PERSONA_TONE_ENUM, PERSONA_BREVITY_ENUM } from '../memory/types';
 
-/** Locked §21.6 tone enum (D-58) — const array exported for reuse. */
-export const PERSONA_TONE_ENUM = ['professional-warm', 'concise', 'friendly'] as const;
-export type PersonaTone = (typeof PERSONA_TONE_ENUM)[number];
-
-/** Locked §21.6 brevity enum (D-58) — const array exported for reuse. */
-export const PERSONA_BREVITY_ENUM = ['brief', 'balanced', 'detailed'] as const;
-export type PersonaBrevity = (typeof PERSONA_BREVITY_ENUM)[number];
-
-export const personaOverridesSchema = z.object({
-  name: z.string().min(1).optional(),
-  tone: z.enum(PERSONA_TONE_ENUM).optional(),
-  brevity: z.enum(PERSONA_BREVITY_ENUM).optional(),
-});
-export type PersonaOverrides = z.infer<typeof personaOverridesSchema>;
-
-export const UserPreferencesSchema = z.object({
-  /** D-54 write-through target: fast-tier model the operator assigned. */
-  fastModel: z.string().optional(),
-  /** D-54 write-through target: balanced-tier model the operator assigned. */
-  balancedModel: z.string().optional(),
-  /** RICH-R-02 data-merge overrides applied at render time by PersonaInjector. */
-  personaOverrides: personaOverridesSchema.optional(),
-});
-export type UserPreferences = z.infer<typeof UserPreferencesSchema>;
+/** D-112: re-export canonical UserPreferences from @/core/memory/types. */
+export type { UserPreferences };
+/** D-112: re-export canonical enums/schema from @/core/memory/types. */
+export { PERSONA_TONE_ENUM, PERSONA_BREVITY_ENUM, personaOverridesSchema };
+/** D-112: re-export canonical Persona* types from @/core/memory/types. */
+export type { PersonaTone, PersonaBrevity, PersonaOverrides };
 
 interface UserPreferencesStore extends UserPreferences {
   setFastModel: (model: string) => void;
@@ -52,9 +38,20 @@ interface UserPreferencesStore extends UserPreferences {
 }
 
 const initialPreferences: UserPreferences = {
+  // Required §3.5 fields (defaults from spec 4579-4595)
+  responseStyle: 'mixed',
+  preferredLanguage: 'en',
+  preferStructuredOutput: true,
+  allowCloudFallbackFromLocal: false,
+  toolAutonomy: 'ask',
+  defaultSurface: 'sidepanel',
+  // Optional fields
+  defaultProviderId: undefined,
+  personaId: undefined,
+  personaOverrides: undefined,
+  // D-54 additive fields
   fastModel: undefined,
   balancedModel: undefined,
-  personaOverrides: undefined,
 };
 
 /**
@@ -96,9 +93,21 @@ export const useUserPreferencesStore = create<UserPreferencesStore>()(
       name: 'np_preferences',
       storage: createJSONStorage(() => chromeStorageAdapter),
       partialize: (state) => ({
+        // Required §3.5 fields
+        responseStyle: state.responseStyle,
+        preferredLanguage: state.preferredLanguage,
+        preferStructuredOutput: state.preferStructuredOutput,
+        allowCloudFallbackFromLocal: state.allowCloudFallbackFromLocal,
+        toolAutonomy: state.toolAutonomy,
+        defaultSurface: state.defaultSurface,
+        // Optional fields
+        defaultProviderId: state.defaultProviderId,
+        personaId: state.personaId,
+        // Phase 15: consolidate personaOverrides -> np_persona (Open Q3)
+        personaOverrides: state.personaOverrides,
+        // D-54 additive fields
         fastModel: state.fastModel,
         balancedModel: state.balancedModel,
-        personaOverrides: state.personaOverrides,
       }),
       version: 1,
     },
