@@ -324,6 +324,16 @@ Plans:
   4. Notes/Memory boundary preserved: only Notes → Memory upsert direction (NMEM-02).
 
 **Verification gate:** `pnpm run verify:phase-10` (§24).
+**Plans:** 2 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 10-01-PLAN.md — TRACER: MemoryRecord taxonomy + conflict resolution + v5 migration + MemoryGovernance facade
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 10-02-PLAN.md — NoteGraphProvenance + Note links[] migration + ProceduralExperience + verify:phase-10 gate
 
 ### Phase 11: Transaction Logging and Diagnostics
 
@@ -496,7 +506,7 @@ Plans:
 | 7. Trust-Aware Context and Receipts | 3/3 | Complete    | 2026-08-30 |
 | 8. Knowledge Base (Memory + MiniSearch + Notes) | 5/5 | Complete    | 2026-09-01 |
 | 9. LLM-Wiki & Filesystem Sync | 4/4 | Complete    | 2026-09-01 |
-| 10. Memory Governance and Experience Candidates | 0/2 | Ready to plan | — |
+| 10. Memory Governance and Experience Candidates | 0/2 | Planned | — |
 | 11. Transaction Logging and Diagnostics | 0/2 | Not started | — |
 | 12. Agent Evaluation | 0/3 | Not started | — |
 | 13. Verified Continual Evolution | 0/3 | Not started | — |
