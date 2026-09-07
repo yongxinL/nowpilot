@@ -1,15 +1,15 @@
 # NowPilot — Product Specification v0.1
 
-**Document ID:** PRODUCT_SPEC_v0_1.md
+**Document ID:** .planning/PRODUCT_SPEC_v0_1.md
 **Status:** Canonical, standalone implementation reference
-**Date:** 2026-08-02
-**Version:** v0.1
+**Date:** 2026-08-02 (Codex/tool-neutral revision 2026-09-07)
+**Version:** v0.1, tool-neutral implementation revision
 **Scope:** NowPilot v0.1 — Chrome MV3 AI Assistant using Side Panel + Standalone view. Add-on architecture preserved. Page injection deferred to v0.2+.
 
 **Purpose:** This document is the single, self-contained product specification for NowPilot v0.1. It does not reference any prior document. Any AI coding agent implementing this spec must treat this file as authoritative and complete.
 
-**Target implementation agents:** Anthropic Claude Haiku, Google Gemini Flash, DeepSeek Flash, or equivalent cost-effective coding models.
-**Target runtime providers:** OpenAI, Anthropic, Gemini, Ollama
+**Target implementation agents:** any repository-aware coding agent or human developer selected by the operator. The specification does not require a particular coding-agent runtime, model provider, orchestration framework, or development harness. This spec mandates **no** specific build-agent model; a small number of high-complexity modules carry a vendor-neutral `@implementation-tier: advanced` marker the operator may stub or route to a stronger agent (see §0.3a).
+**Target runtime providers:** OpenAI, Anthropic, Gemini, Ollama (the product's runtime tier→model mapping is operator-configured; Appendix D).
 **Primary application:** Chrome MV3 extension using WXT + React + TypeScript + Ant Design v6 + Ant Design X 2.x.
 
 ### How to Read This Specification
@@ -46,12 +46,10 @@ Read in this exact order:
 - §27 — LLM-Wiki & Filesystem Sync
 - §28 — Verified Agent Harness Requirements
 - §29 — Multimodal Input & Real-Time Interaction Foundation
-- §30 — Revised Master Implementation Order
-- §31 Verification, Security, and Acceptance Gates
-- §32 — Bounded Multi-Agent Collaboration
-- Appendices A–M — canonical constants, type registry, and reference implementations
+- §30 — Bounded Multi-Agent Collaboration (single-agent default)
+- Appendices A–O — canonical constants, type registry, error-code registry, and reference implementations (incl. Appendix O worked examples for cost-effective models)
 
-Appendices C, E, F, G, I, J, K, L, and M are **mandatory** reading for any AI coding agent.
+Appendices C, E, F, G, I, J, K, L, M, and O are **mandatory** reading for any AI coding agent. Appendix O gives copy-pasteable reference implementations for the harness sub-phases and the coordinator platform.
 
 ## §0 — Hard Rules (Non-Negotiable)
 
@@ -61,7 +59,7 @@ These rules apply to every phase, every module, and every AI coding agent.
 
 - Read §§0–5 fully before writing any code.
 - Read §§6–17 as background for the feature being implemented.
-- Read §§18–27 and the relevant appendix for the current phase.
+- Read §18 and the relevant feature sections, §§28–32, and appendices for the current phase. Use §18 only for implementation order.
 - Do not implement more than one phase per response unless explicitly requested.
 
 ### §0.2 DO NOT Rules
@@ -72,7 +70,7 @@ These rules apply to every phase, every module, and every AI coding agent.
 - **DO NOT** invent type names. Use Appendix C for every shape.
 - **DO NOT** invent tool names. Planner may only select tools from the enum passed by ExecutorService.
 - **DO NOT** invent provider IDs. The four valid IDs are `'openai' | 'anthropic' | 'gemini' | 'ollama'` (use `openai` with a custom `baseURL` for OpenAI-compatible providers).
-- **DO NOT** invent runtime model names. Resolve tier: `'haiku' | 'flash'` through Appendix D.
+- **DO NOT** invent runtime model names. Resolve tier: `'fast' | 'balanced'` through Appendix D.
 
 **MV3 / Chrome:**
 
@@ -114,7 +112,7 @@ These rules apply to every phase, every module, and every AI coding agent.
 **AI orchestration:**
 
 - **DO NOT** let the LLM execute tools directly. PlannerService may request tools; ExecutorService validates and runs them.
-- **DO NOT** use large-model agent loops (maxSteps=15) for Haiku/Gemini Flash/DeepSeek Flash. Use the tier caps in §1.4.
+- **DO NOT** use large-model agent loops (maxSteps=15) for cost-effective `fast`/`balanced`-tier runtime models. Use the tier caps in §1.4.
 - **DO NOT** use raw full history in prompts. All prompts pass through ContextOptimizer.
 - **DO NOT** assemble any system prompt without the persona block once `PersonaInjector` (RICH-R-02) exists. Every AI call (Planner, Executor, Renderer, MemoryExtractor) routes its system string through `PersonaInjector.inject()` (§17.7, Appendix A note).
 
@@ -144,8 +142,18 @@ These rules apply to every phase, every module, and every AI coding agent.
 
 - Every public module boundary must have a Zod schema and at least one fixture test.
 - Every phase must define a real npm script under verify:phase-N.
-- Every module marked @implementation-tier: sonnet-class must be stubbed by Haiku/Flash implementers, not written.
+- Every module marked `@implementation-tier: advanced` (high-complexity) must be stubbed in cost-effective builds, not written. *(Complexity marker only — names no vendor/model. Stub vs implement is the operator's model-routing choice, not a spec mandate; see §0.3a.)*
 - Every catch block must call debugLog(code, message, context). Empty catches are forbidden.
+
+### §0.3a Model policy — two independent "models" (READ FIRST)
+
+This spec deliberately separates two things that are often confused. **Neither mandates a specific vendor model, and the spec names no vendor model at all.**
+
+1. **Runtime model (what the *product* calls at run time).** NowPilot resolves a **capability tier — `'fast' | 'balanced'`** (Appendix D) to a concrete `(providerId, model)` that **the operator configures**. "fast"/"balanced" are **tier labels, not vendor mandates**: `TIER_TO_MODEL_CANDIDATES` maps them to whatever providers/models you enable (Anthropic, OpenAI/DeepSeek-compatible, Gemini, Ollama). Change the table to change the runtime model; no other file hard-codes model names.
+
+2. **Implementation agent (the coding agent or human developer that writes the repository code).** The spec does **not** dictate the build-agent model. `@implementation-tier: advanced` is a **complexity marker** meaning "this module is high-complexity; in a cost-effective build, stub it." Whether you (a) stub it now or (b) route just that module/stage to a higher-capability agent is **entirely the operator's implementation-routing decision**. Discussion, plan, execute, and verify stages may each use a different model — the spec is agnostic.
+
+> **Implementation-harness neutrality:** any concrete build-agent model id (a `provider/model` slug) that appears at plan/subagent time comes from your **harness agent config**, not this spec. This document names **no** build-agent model. Configure your coding-agent environment to the model you want per stage; the only spec-side signal is the vendor-neutral `@implementation-tier: advanced` complexity marker on a small number of modules (e.g. §14.4 CodeSearchSkill), which you may stub or implement as you choose.
 
 ### §0.4 Canonical Runtime Concepts
 
@@ -154,9 +162,11 @@ These rules apply to every phase, every module, and every AI coding agent.
 | PlannerService | src/core/ai/PlannerService.ts | Cheap JSON-only action planner |
 | ExecutorService | src/core/ai/ExecutorService.ts | Deterministic MCP/skill/built-in tool executor |
 | RendererService | src/core/ai/RendererService.ts | Final concise response renderer |
-| AgentOrchestrator | src/core/ai/AgentOrchestrator.ts | Planner → Executor loop with tier caps (Appendix I) |
+| AgentOrchestrator | src/core/ai/AgentOrchestrator.ts | Planner → Executor loop with tier caps (Appendix I) — the single-role engine |
+| CollaborationCoordinator | src/core/collaboration/CollaborationCoordinator.ts | Runs a CollaborationPlan; owns sequencing, permissions, commits, termination (§1.6, §30) |
+| CollaborationRoleRegistry | src/core/collaboration/CollaborationRoleRegistry.ts | Closed registry of allowed roles; the default one-role plan is the single-agent path |
 | ProviderRouter | src/core/ai/ProviderRouter.ts | Provider selection, retry, fallback, circuit breaker |
-| TierResolver | src/core/ai/TierResolver.ts | Maps haiku/flash tier → concrete (providerId, model) (Appendix D) |
+| TierResolver | src/core/ai/TierResolver.ts | Maps fast/balanced tier → concrete (providerId, model) (Appendix D) |
 | PromptCacheManager | src/core/ai/PromptCacheManager.ts | Prompt cache segmentation and provider hints |
 | PromptCacheAdapter | src/core/ai/PromptCacheAdapter.ts | Per-provider cache-hint transformation (Appendix K) |
 | StructuredOutput | src/core/ai/StructuredOutput.ts | JSON mode + schema validation + one-shot repair (Appendix L) |
@@ -188,6 +198,42 @@ These rules apply to every phase, every module, and every AI coding agent.
 | NoteMaintenance | src/core/notes/NoteMaintenance.ts | Staleness/orphan detection, bulk analysis (§27) |
 | DiagnosticsPanel | src/components/options/DiagnosticsSection.tsx | Standalone view → Options → Diagnostics UI |
 
+### §0.5 Implementation Guardrails & Risk Register (cost-effective models — READ FIRST)
+
+This section keeps a cheap/fast implementer (a cost-effective `fast`/`balanced`-tier model) on the right track. It is the concentrated "how to not go wrong" checklist; the detailed rules live in the referenced sections.
+
+#### §0.5.1 The 10 golden rules
+
+1. **One phase per response.** Implement exactly one §18 phase (or sub-phase) at a time. Never jump ahead; later phases depend on earlier contracts.
+2. **Never invent identifiers.** File paths come from §8.5 and §18; type names from **Appendix C** (harness/collaboration types → `@/types/harness`, §C.1); tool names from the ExecutorService enum; provider IDs are exactly `'openai' | 'anthropic' | 'gemini' | 'ollama'`; runtime tiers are exactly `'fast' | 'balanced'` (Appendix D).
+3. **All prompts through the pipeline.** No React component or hook assembles a prompt directly. Every AI call consumes an `OptimizedContext` (§2.3) and routes through PersonaInjector (§1.3).
+4. **Structured output = Zod + one repair only.** Use Appendix L's `requestJson`. Exactly one repair attempt, then throw `STRUCTURED_OUTPUT_FAILED`. Never hand-parse JSON with regex.
+5. **Retries do not multiply.** Only three retry layers exist (ProviderRouter §1.5, AGT-04 replan, one per-stage retry) and they are bounded by tier caps §1.4. Never nest them (§1.6.1). See risk R-2 below.
+6. **Respect the budgets.** Memory injection ≤ 1000 tokens / top-5 (top-3 tiny); working memory ≤ 300 tokens (§3.6); renderer ≤ 512 tokens (§1.2). If over budget, degrade per §2.4 — never silently truncate mid-structure.
+7. **Retrieved data is never instructions.** Page/note/memory/tool output is `trust: 'retrieved'|'untrusted'` with `instructionAuthority: false` (§28.3, Appendix O.3). Wrap it as data.
+8. **No success without evidence.** A side-effecting tool is "done" only with matching `CompletionEvidence` (§28.2, Appendix O.2). Cap exhaustion is `partial`, never `completed`.
+9. **Every catch calls `debugLog(code, …)`** with a canonical error code from **Appendix C.2**. No empty catches. No new error strings.
+10. **Every phase ends green.** A phase is not done until its `verify:phase-N` script (§24) passes. In cost-effective builds, stub `@implementation-tier: advanced` modules; do not attempt them. *(Complexity marker only — no vendor/model implied; see §0.3a.)*
+
+#### §0.5.2 Risk register (top failure modes → mitigation)
+
+| ID | Risk (what a cheap model tends to do) | Mitigation (do this instead) | Ref |
+|---|---|---|---|
+| **R-1** | Invents a second module path for a type (e.g. `@/types/collaboration`) | All §C.1 types live in `@/types/harness` — see the Canonical Type Home table | §C.1 |
+| **R-2** | Wraps retries so calls multiply (N×N×N cost blow-up) | One retry per layer; three layers max; all under tier caps | §1.6.1 |
+| **R-3** | Calls a provider/EventSource/IndexedDB from the background SW | AI + IndexedDB live in Side Panel/Standalone only; SW does PROXY_FETCH/alarms | §0.2, §5.2 |
+| **R-4** | Lets the LLM execute tools directly | Planner *requests*; ExecutorService *validates + runs* | §1.2 |
+| **R-5** | Renders host-page UI or writes back to page fields in v0.1 | Content scripts are extraction-only; RICH-H-04/07 = clipboard-only | §0.2, R1 |
+| **R-6** | Treats a `deferred`/`proposed` evolution candidate as active | `CandidateProposer` only proposes; activation is human-gated | §28.7a |
+| **R-7** | Puts persona config in the fact store | Persona = user config in PreferenceMemoryStore (`np_persona`), not UserMemoryStore | R2, §3.5 |
+| **R-8** | Skips the verifier and marks a write "done" | Postcondition verifier + `CompletionEvidence` required | §28.2 |
+| **R-9** | Installs a banned package (framer-motion, x-sdk, langchain…) | Use only the approved stack in §7; see §0.2 package hygiene | §7, §0.2 |
+| **R-10** | Logs raw prompt/tool bodies or secrets | Everything through `TraceRedactor` before persist/UI/export | §4.4 |
+
+#### §0.5.3 Per-turn implementation checklist
+
+Before returning code for a phase, confirm: (a) files match §8.5/§18; (b) types imported from the homes in §C.1; (c) a `verify:phase-N` script exists in `package.json` (§24); (d) at least one Zod fixture test per public boundary (§0.3); (e) every `catch` uses a §C.2 code; (f) no banned import; (g) worked example in **Appendix O** consulted for this phase (see the phase→example map in the Appendix O intro).
+
 ## §1 — Cost-Effective Runtime AI Architecture
 
 ### §1.1 Runtime Design Principle
@@ -195,6 +241,8 @@ These rules apply to every phase, every module, and every AI coding agent.
 NowPilot must assume the active runtime model may be cheap, fast, weaker at reasoning, small-context, local, or configured as the user's only provider. The system must not rely on the model to remember, decide tool safety, or preserve state.
 
 Runtime AI uses: `PlannerService → ExecutorService → RendererService` with a bounded loop between Planner and Executor as defined in §1.4 and Appendix I.
+
+NowPilot's runtime is a **coordinator-based agent platform**. The `Planner → Executor → Renderer` loop is the execution engine for a **single role**. A `CollaborationCoordinator` runs a `CollaborationPlan`; the **default configuration is a one-role plan**, which *is* the single-agent path. Selected complex workflows opt into multi-role plans (§30). Single-agent and multi-agent execution share one runtime, one tool-governance model, one memory model, one evaluation model, and one security model. See §1.6.
 
 ### §1.2 Planner → Executor → Renderer Flow
 
@@ -239,7 +287,7 @@ export const PlannerDecisionSchema = z.discriminatedUnion('action', [
 
 Rules:
 
-- Use haiku tier where available (Appendix D).
+- Use fast tier where available (Appendix D).
 - Return JSON only. Do not explain reasoning.
 - Timeout: 3 seconds.
 - One malformed-JSON repair retry only (Appendix L).
@@ -268,7 +316,7 @@ Renderer converts validated context and tool output into a concise answer.
 
 Rules:
 
-- Use flash tier where available (Appendix D).
+- Use balanced tier where available (Appendix D).
 - Do not invent missing tool results.
 - Use structured output for cards/tables/checklists.
 - Timeout: 5 seconds for normal answers.
@@ -340,6 +388,38 @@ Retry / circuit breaker policy:
 - Non-retryable: AUTH, MODEL_UNKNOWN, SCHEMA_INVALID, HOST_NOT_PERMITTED.
 - Circuit breaker: after 3 consecutive failures for a provider within 60 s, mark provider open for 5 minutes.
 
+### §1.6 Agent Platform Model (single-agent default, multi-agent opt-in)
+
+NowPilot is a **bounded agent platform**, not a single-purpose chat loop and not an open-ended multi-agent swarm. One architecture serves both modes:
+
+- **Default (single-agent):** every ordinary turn runs as a **one-role `CollaborationPlan`** — a single `AssistantRole` whose engine is the §1.2 `Planner → Executor → Renderer` loop under the §1.4 tier caps. There is no coordinator overhead beyond selecting the one-role plan. Routine chat, summarisation, rewriting, note Q&A, and simple retrieval always use this path.
+- **Opt-in (multi-agent):** selected complex workflows (§30.3) activate a **multi-role plan** of two or more registered roles coordinated through typed handoffs and shared verified task state. Activation is explicit (user / workflow / allowed deterministic complexity policy); the planner alone can never silently enable it (COLLAB-01).
+
+Invariants across **both** modes, enforced by the same modules:
+
+- one `CollaborationCoordinator` owns sequencing, permission requests, side-effect commits, and termination (COLLAB-05);
+- roles come from a **closed** `CollaborationRoleRegistry` (COLLAB-02) — no dynamic role or agent creation;
+- tools run only through `ExecutorService` under `ToolCapabilityManifest` governance (§28.5);
+- memory is system-owned (§3.1); workers never write durable memory/notes or execute side effects directly (COLLAB-06);
+- every trajectory produces a structured `AgentTurnOutcome` with `CompletionEvidence` (§28.2).
+
+**Forbidden in every mode (§0.2, §16.6):** open-ended agent-to-agent chat, dynamic unbounded spawning, peer-granted permissions, shared mutable worker memory, and treating agreement among roles as verification.
+
+#### §1.6.1 Stage events, human-in-the-loop, and retry bounds
+
+Three orchestration rules keep the coordinator predictable and cheap. They are **internal contracts**, not a runtime engine — NowPilot deliberately does **not** ship an event bus/emitter or the (deprecated) LlamaIndex Workflows engine.
+
+- **Typed stage events (L1).** Each stage's input/output is a member of a **discriminated `StageEvent` union** (Appendix C.1), so a stage's shape is compile-time checked for cost-effective `fast`/`balanced`-tier implementers. This is a *type*, not an event system: the coordinator still calls stages directly in §18/§30 order.
+- **Within-turn human input (L2).** A stage may emit an `input-required` `StageEvent` to pause **inside the current turn** for a clarification or a permission decision — surfaced as the `waiting-for-permission` / `ask_clarification` trajectory states (AGT-01). This is **within-turn only**; durable cross-session suspend/resume/rewind is explicitly **out of scope for v0.1** (§17.7.7) and deferred to v0.2+.
+- **Bounded, non-multiplying retry (L3).** NowPilot has exactly **three** retry layers and they **must not multiply**:
+  1. `ProviderRouter` — pre-first-token provider retry + circuit breaker (§1.5);
+  2. Agent loop replan — the deterministic AGT-04 policy (§28.2);
+  3. Per-stage coordinator retry — **at most one** retry per stage, after which the stage is terminal.
+
+  All three are bounded by the tier caps in §1.4; the per-stage retry is simply AGT-04 applied once per stage. The coordinator MUST NOT nest these into an N×N×N fan-out — total planner/tool calls always stay under the `CollaborationPlan` caps (COLLAB-03).
+
+This makes "single agent" the **degenerate one-role case** of the platform, so there is no second runtime to build later — multi-role workflows are added as **data** (roles + plans), not as a parallel architecture.
+
 ## §2 — Context-Adaptive Execution
 
 ### §2.1 Model Context Tiers
@@ -359,7 +439,7 @@ export function classifyModelContext(contextWindow: number): ModelContextTier {
 | tiny | ≤4K | default local model | Minimal mode, one tool max |
 | small | 8K–16K | tuned local model | Summary + last few turns |
 | medium | 32K–128K | strong local/cloud model | Balanced context |
-| large | ≥200K | large cloud Flash/Haiku class | Full context with caching |
+| large | ≥200K | large cloud model | Full context with caching |
 
 ### §2.2 Token Budget Formula
 
@@ -513,6 +593,8 @@ Rules:
 - Summarise older messages after every 12 messages.
 - Store message bodies in IndexedDB only.
 
+> **Observational rolling summary (M2, enhancement).** The 12-message summariser MAY maintain a single **rolling observation log** — a dense running summary that *replaces* raw older turns as history grows, instead of appending isolated summaries. This keeps the injected `summary` small on long threads while preserving decisions, preferences, and open tasks. It is a refinement of the existing summariser, **not** a new store: it is **single-writer** on the primary surface (§13), lives only in `ConversationMemory.summary`, and never exceeds the tier's history budget (§2.2).
+
 ### §3.4 User Memory
 
 ```ts
@@ -580,6 +662,36 @@ export interface UserPreferences {
 ```
 
 Preferences are injected as compact JSON, not verbose prose. **Persona configuration (RICH-R-05) persists in this store (`np_persona`), never in UserMemoryStore (reconciliation R2, §17.7.5).**
+
+### §3.6 Working Memory (always-on user profile)
+
+Working memory is a **single Markdown block** the system keeps continuously available — a cheap "always-on user profile" that suits tiny models better than top-k retrieval. It answers "what should I always know about this user?" (name, role, environment, standing preferences, long-term goals) without spending a retrieval pass.
+
+```ts
+// One block per resource (user); Markdown so it is human-editable and token-cheap.
+export interface WorkingMemory {
+  resourceId: string;            // user/owner scope (NOT thread) — see §3.1
+  markdown: string;              // fixed template, see below
+  tokens: number;                // enforced cap
+  updatedAt: number;
+}
+export const WORKING_MEMORY_TEMPLATE = `# User Profile
+- **Name**:
+- **Role / Team**:
+- **Environment**:
+- **Preferences**:
+- **Long-term Goals**:`;
+```
+
+**Ownership & guardrails (mandatory):**
+
+- **Home store.** Working memory lives in **`UserMemoryStore`** as an *inferred* artefact (its facts have `source: 'inferred'|'explicit'`). It is **not** persona — persona is user *config* in `PreferenceMemoryStore` (R2, §3.5). Do not blur the two.
+- **Budget.** It is injected as part of the memory section and counts against the **memory budget** (§3.4: ≤ 1000 tokens total; top-3 memories in tiny mode, §2.5). Cap the block (recommended ≤ 300 tokens) so it can never crowd out retrieved facts; if over budget, truncate the block **before** dropping retrieved facts.
+- **Single-writer.** Updated only by the **primary surface** through `MemoryEngine` (§13). The Side Panel and Standalone view read the same block; they never write concurrently.
+- **Privacy.** All writes pass through `TraceRedactor` (§4.4). Working memory is **never** written to notes or `.md` backups and must not contain secrets or raw customer data.
+- **Scope.** Resource-scoped (per user), not thread-scoped — it persists across conversations, unlike `ConversationMemory` (§3.3).
+
+*Implementation lands in Phase 8 (Knowledge Base — `UserMemoryStore`); see Appendix O.10 for a worked updater.*
 
 ## §4 — AI/MCP Transaction Logging and Diagnostics
 
@@ -972,7 +1084,7 @@ Core never knows about specific websites. Add-ons never bypass core APIs.
 
 **In scope for v0.1:**
 
-- Side panel shell (Chat, Agent, Write, TeamGQM, Open Standalone view)
+- Side panel shell (Chat only, plus Switch to Full chat)
 - Full app shell (Chat, Agent, Notes, TeamGQM, Options)
 - Shared WorkspaceStore across both surfaces
 - 4 provider adapters (OpenAI, Anthropic, Gemini, Ollama)
@@ -1008,8 +1120,8 @@ See §25 for the future page-injection reintroduction plan.
 
 | Package | Version | Purpose |
 |---|---|---|
-| wxt | ^0.19 | MV3 scaffold, HMR, manifest generation |
-| @wxt-dev/module-react | ^0.3 | React integration |
+| wxt | ^0.21 (≥ 0.21.4) | MV3 scaffold, HMR, manifest generation. **Rev 2026-08-12:** bumped from the draft `^0.19` (WXT is `0.x`, so `^0.19` would not auto-jump). v0.21 is breaking: **Node.js ≥ 22, Vite ≥ 6.3.4, TypeScript ≥ 5.4**, and `vite`/`web-ext`/`typescript` are now **peer dependencies** (add `vite` to devDependencies; `web-ext` optional for auto-open). Install footprint cut ~78%. |
+| @wxt-dev/module-react | ^1 (≥ 1.1.6) | React integration. **Rev 2026-08-12:** bumped from `^0.3` — the module reached **v1.x** (adds WXT v0.20/0.21 support); `^0.3` cannot resolve to 1.x. |
 
 ### §7.2 UI
 
@@ -1020,7 +1132,7 @@ See §25 for the future page-injection reintroduction plan.
 | @ant-design/icons | ^6 | Ant Design icon set (must match antd major version) |
 | @ant-design/x | ^2 | Ant Design X — AI chat presentation components (Bubble, Sender, Conversations, Prompts, Welcome, Attachments, Suggestion, Actions, ThoughtChain, Think, FileCard, Sources, Folder) — RICH building blocks |
 | @ant-design/x-markdown | ^2 | Streaming-aware Markdown renderer with built-in LaTeX, mermaid, and code-highlight plugins. Replaces react-markdown/remark-gfm/rehype-highlight/highlight.js/katex. |
-| motion | ^12 | Framer Motion v12; import from motion/react. **Do not install framer-motion.** |
+| motion | ^12 | Framer Motion (import from `motion/react`). **Do not install framer-motion.** **Rev 2026-08-12:** current latest is v13 (framer-motion 13.x); v12 remains fully React-19-compatible, so `^12` is retained as a conservative pin. Optionally move to `^13` for the newest features — the `motion/react` import surface is unchanged. |
 
 **Explicitly removed from v0.1:** tailwindcss, @tailwindcss/vite, shadcn/ui, @radix-ui/react-*, class-variance-authority, clsx, tailwind-merge, react-markdown, remark-gfm, rehype-highlight, highlight.js, katex (superseded by @ant-design/x-markdown).
 
@@ -1031,19 +1143,19 @@ See §25 for the future page-injection reintroduction plan.
 | Package | Version | Purpose |
 |---|---|---|
 | zustand | ^5 | Global stores (workspace, theme, chat) |
-| immer | ^10 | Immutable updates |
+| immer | ^11 (≥ 11.1.16) | Immutable updates. **Rev 2026-08-12:** bumped from `^10` — Immer is now on **v11** (`^10` cannot resolve to 11.x). v11 also carries prototype-pollution hardening; the `produce`/draft API is unchanged. Confirmed authoritative 2026-08-19 (RESEARCH-RECONCILIATION.md §F); STACK.md "hold 10.x" superseded. |
 
 ### §7.4 AI & Workflow
 
 | Package | Version | Purpose |
 |---|---|---|
-| ai | ^4 | Vercel AI SDK: streamText, tool calling, abort |
-| @ai-sdk/openai | ^1 | OpenAI + Ollama (custom baseURL for OpenAI-compatible providers) |
-| @ai-sdk/anthropic | ^1 | Anthropic Claude |
-| @ai-sdk/google | ^1 | Google Gemini |
-| @modelcontextprotocol/sdk | ^1 | MCP client — StreamableHTTP transport |
-| zod | ^3 | Boundary validation |
-| zod-to-json-schema | ^3 | Zod → JSON Schema for tool definitions |
+| ai | ^5 (min modern baseline; latest 7.x) | Vercel AI SDK: streamText, tool calling, abort. **Rev 2026-08-12:** bumped from `^4` (three majors stale). AI SDK **v5** is the first "modern unified" line and the minimum this spec's code shape targets; latest stable is **7.x** (Aug 2026). Pin to the **current major at implementation time**. **Breaking vs v4** (insulated by the `ILLMProvider` abstraction, §10.1): tool `parameters` → `inputSchema`, `maxTokens` → `maxOutputTokens`, `maxSteps` → `stopWhen: stepCountIs(n)`, message `parts` model. Provider factories (`createOpenAI/createAnthropic/createGoogleGenerativeAI`) are unchanged. |
+| @ai-sdk/openai | current major (≈ 4.x) | OpenAI + Ollama (custom baseURL for OpenAI-compatible providers). **Rev 2026-08-12:** the `@ai-sdk/*` provider packages **version independently** — do **not** pin them to one shared `^1`. Install each at its own current major (openai ≈ 4.x, google ≈ 3.x, anthropic ≈ 3.x) matched to the chosen `ai` core version. |
+| @ai-sdk/anthropic | current major (≈ 3.x) | Anthropic Claude (see note above — independent major). |
+| @ai-sdk/google | current major (≈ 3.x) | Google Gemini (see note above — independent major). |
+| @modelcontextprotocol/sdk | ^1 (≥ 1.30) | MCP client — StreamableHTTP transport. ✓ current (caret resolves to 1.30.x). Note: the SDK now imports `zod/v4` internally but stays back-compatible with Zod v3.25+ — consistent with the Zod 4 bump below. |
+| zod | ^4 (≥ 4.4) | Boundary validation. **Rev 2026-08-12:** bumped from `^3` — **Zod 4 is stable** (root `zod` export), ~14× faster parsing, and is the version the MCP SDK and AI SDK 5+ already target. Existing `z.object(...)` schemas are source-compatible; review the [migration guide](https://zod.dev/v4) for edge cases (error `.issues` shape, `.email()` → `z.email()`). Confirmed authoritative 2026-08-19 (RESEARCH-RECONCILIATION.md §F); STACK.md "keep 3.24" superseded (below the 3.25+ floor). Appendix L zod-to-json-schema unchanged. |
+| zod-to-json-schema | `^3` — **KEEP in v0.1** | Zod → JSON Schema for tool definitions. **Rev 2026-08-12 (definitive for implementers):** **v0.1 keeps `zod-to-json-schema` exactly as written in Appendix L** — do **not** change that code. Zod 4 also ships native `z.toJSONSchema()`, but migrating to it is a **v0.2 cleanup** (tracked, not in scope for any v0.1 phase). This avoids ambiguity: a Phase-implementer uses `zodToJsonSchema(schema)` per Appendix L and nothing else. |
 
 ### §7.5 Storage
 
@@ -1056,12 +1168,12 @@ See §25 for the future page-injection reintroduction plan.
 
 | Package | Version | Purpose |
 |---|---|---|
-| defuddle | ^0.6 | Primary main-content extraction → clean Markdown (Readability successor; preserves footnotes/math/code, richer metadata) |
-| @mozilla/readability | ^0.5 | Fallback article extraction when Defuddle yields low-confidence output |
+| defuddle | ^0.19 (≥ 0.19.2) | Primary main-content extraction → clean Markdown (Readability successor; preserves footnotes/math/code, richer metadata). Use the **`defuddle/full`** bundle (adds `mathml-to-latex` + `temml` for reliable Markdown/math). Call `parse()` **synchronously** with `{ markdown: true, url, useAsync: false }` — `useAsync:false` disables Defuddle's third-party API extractors (e.g. FxTwitter), which is mandatory for the privacy-first, no-data-leaves-the-machine posture (§0.2, §6.1). `^0.6` (spec draft) is superseded — see §23 ADR. |
+| @mozilla/readability | ^0.6 (≥ 0.6.0) | Fallback article extraction when Defuddle yields low-confidence output. **Rev 2026-08-12:** bumped from `^0.5` — 0.6.0 is current (Readability is `0.x`, so `^0.5` would not auto-jump to 0.6). API (`new Readability(doc).parse()`) unchanged. |
 | turndown | ^7 | HTML → Markdown (used by APC-lite path / non-Defuddle output) |
 | dompurify | ^3 | XSS sanitisation for AI/tool output |
 
-**Rationale:** Defuddle is a drop-in Readability replacement built for exactly this job (see §23 ADR). MIT-licensed.
+**Rationale:** Defuddle is a drop-in Readability replacement built for exactly this job (see §23 ADR). MIT-licensed. **Version note (rev 2026-08-12):** pinned to `^0.19` (≥ 0.19.2), not `^0.6`. Because Defuddle is a `0.x` package, `^0.19` correctly locks the `0.19.x` line (npm caret on a pre-1.0 package does **not** auto-jump minors), so a future `0.20` breaking change is not pulled in automatically. The `0.19.x` line adds the CVE-2026-30830 XSS fix and `data:`/`blob:` URL rejection, iframe-`sandbox` retention, and SVG `<style>` stripping — directly relevant since PageContentService parses arbitrary untrusted host-page HTML (§16.1). DOMPurify (§16.1) still runs on output; Defuddle hardening is defense-in-depth, not a replacement.
 
 ### §7.7 Search & Data
 
@@ -1079,7 +1191,7 @@ See §25 for the future page-injection reintroduction plan.
 | crypto.subtle (native) | AES-GCM encryption |
 | crypto.randomUUID() (native) | ID generation |
 | vitest, @testing-library/react, jsdom, msw | Testing |
-| typescript ≥5.5, strict: true | Type safety |
+| typescript ≥5.5, strict: true | Type safety. **Rev 2026-08-12:** `≥5.5` is a floor and remains valid (WXT 0.21 requires TS ≥ 5.4). Current releases are **TS 6.0** (last JS-based compiler; removes long-deprecated APIs) and **TS 7.0** (native Go compiler, preview→stable). Recommend developing on **TS 6.x** now; treat TS 7 as a fast-follow once the toolchain (WXT/Vite/vitest) certifies it. |
 | eslint, prettier | Linting / formatting |
 | **@types/wicg-file-system-access** | TypeScript types for File System Access API (§27) |
 
@@ -1099,7 +1211,7 @@ Chrome Browser
 │   └── WorkspaceRouter           opens Standalone view, dedupes existing tabs
 │
 ├── Side Panel (sidepanel/main.tsx)                           [persistent while open]
-│   ├── AntD ConfigProvider (compact) + AntdApp
+│   ├── XProvider (compact AntD config) + AntdApp
 │   ├── SidePanelShell / SidePanelRouter
 │   ├── ProviderRegistry / ProviderRouter / TierResolver
 │   ├── AgentOrchestrator + Planner/Executor/Renderer (+ PersonaInjector)
@@ -1110,10 +1222,10 @@ Chrome Browser
 │   ├── StorageLayer (ChatHistoryDB, NotesDB, MemoryDB, ErrorStore, WriteJournal)
 │   ├── WorkspaceStore (Zustand) + WorkspaceSync (BroadcastBus)
 │   ├── MessageBus (cross-context), EventBus (in-panel), BroadcastBus (cross-surface)
-│   └── UI: Chat / Agent / Write (add-on) / TeamGQM (add-on) / Open Standalone view + RICH surfaces
+│   └── UI: Chat only + Switch to Full chat + RICH conversational surfaces
 │
-├── Standalone view (app/main.tsx)                               [persistent tab]
-│   ├── AntD ConfigProvider (default density) + AntdApp
+├── Standalone view (standalone/main.tsx)                               [persistent tab]
+│   ├── XProvider (default-density AntD config) + AntdApp
 │   ├── StandaloneShell + StandaloneRouter (AntD Layout w/ Sider)
 │   ├── Same core services as Side Panel (single-writer coordination via WorkspaceStore)
 │   ├── LLM-Wiki services (NoteTagger/NoteQA/NoteChatConverter/NoteFileSync/NoteMaintenance)
@@ -1171,7 +1283,7 @@ Rules:
 | Width | ~400 px (Chrome default) | Full browser viewport |
 | Density | AntD **compact** algorithm | AntD default density |
 | Purpose | Fast, context-adjacent workflows | Deep work, config, diagnostics |
-| Pages | Chat, Agent, Write, TeamGQM, Open Standalone view | Chat, Agent, Notes (+LLM-Wiki), TeamGQM, Options |
+| Pages | Chat only + Switch to Full chat | Chat, Agent, Notes (+LLM-Wiki), TeamGQM, Options |
 | Persistence | Persistent while open | Persistent tab |
 | Opened by | Chrome action button, keyboard shortcut, context menu | "Open Standalone view" action, command palette, options link |
 | Notes management | ❌ (view/quick-save only) | ✅ full workspace + LLM-Wiki + Filesystem Sync |
@@ -1240,7 +1352,7 @@ nowpilot/
 │   │   ├── search/MiniSearchIndex.ts
 │   │   ├── intent/IntentClassifier.ts
 │   │   ├── notes/
-│   │   │   ├── LinkParser.ts, NoteGraph.ts                                    # Phase 5 (atomic notes + wikilinks)
+│   │   │   ├── LinkParser.ts, NoteGraph.ts                                    # Phase 8 (atomic notes + wikilinks)
 │   │   │   ├── NoteTagger.ts (§27)
 │   │   │   ├── NoteQA.ts (§27)
 │   │   │   ├── NoteChatConverter.ts (§27)
@@ -1284,7 +1396,7 @@ nowpilot/
 │   │   └── OnboardingModal.tsx
 │   │
 │   ├── hooks/{useChat, useStreamingLLM, useProviderRouter, useMemory, useDiagnostics, useConversations, useAddonContext, useWorkspace, useTheme, usePersona, useRichSuggestions}.ts   # +usePersona +useRichSuggestions
-│   └── types/{messages, storage, errors, addon, workspace, notes, persona}.ts   # +notes +persona
+│   └── types/{messages, storage, errors, addon, workspace, notes, persona, harness}.ts   # +notes +persona +harness(§C.1)
 │
 └── tests/  (see §24)
 ```
@@ -1304,7 +1416,7 @@ nowpilot/
 | Quick save to note | P1 | "Save this response as note" quick action (lightweight, non-LLM) |
 | Slash commands | P1 | /write, /ask, /research, etc. |
 | Tab pinning | P1 | Max 10 pinned |
-| Selection → Ask AI | P1 | Right-click context menu → opens side panel with selection prefilled |
+| Selection → Ask AI | P0 | Right-click context menu → opens side panel with selection prefilled. Promoted P1→P0 2026-08-19 (REQ-R24 / RESEARCH-RECONCILIATION.md §F) — #1 habit-forming entry point; assert in Phase 17 acceptance. |
 | Theme toggle | P1 | light/dark/auto |
 | Cmd+K palette | P1 | Includes "Open Standalone view" |
 | Error toast + "Open Diagnostics" link | P1 | Diagnostics lives in Standalone view → Options |
@@ -1380,11 +1492,11 @@ Rules:
 
 **Location:** src/addons/write/ · **Scope:** global
 
-**Side Panel Page:** SidePanelWritePage — quick actions: Rewrite professionally · Summarize · Draft customer update · Draft internal note · Explain technical issue · Create action plan · Generate concise status update.
+**Standalone view Page:** StandaloneWritePage — quick actions: Rewrite professionally · Summarize · Draft customer update · Draft internal note · Explain technical issue · Create action plan · Generate concise status update.
 
 **Skills:** DraftSkill, RewriteSkill, SummarizeSkill, CustomerUpdateSkill.
 
-**Standalone view Page:** Not required in v0.1 (side-panel-only). If added later, it must live in src/addons/write/pages/StandaloneWritePage.tsx.
+**Standalone view Page:** Required in v0.1 at `src/addons/write/pages/StandaloneWritePage.tsx`. The Write add-on does not register a Side Panel page; its capabilities may be invoked from Chat through slash commands or tools.
 
 **Input source:** current clipboard, selected text (via SelectionContextMenu), pinned tab context, or free-form text area.
 
@@ -1394,7 +1506,7 @@ Rules:
 
 **Location:** src/addons/teamgqm/ · **Scope:** global (v0.1)
 
-**Side Panel Page:** SidePanelTeamGQMPage — compact quick view: Latest TeamGQM digest · Quick action buttons · Link to full page.
+**Side Panel Page:** None in v0.1. TeamGQM is available in the Standalone view; Side Panel Chat may link to it through a workspace handoff.
 
 **Standalone view Page:** StandaloneTeamGQMPage — full workspace: History · Reports · Detailed views · Shared workspace context (same conversationId as Chat/Agent).
 
@@ -1505,6 +1617,12 @@ export const ProviderConfigSchema = z.object({
 | 11 | export-data | { scopes: string[] } | yes | Export bundle (no API keys) |
 | 12 | execute-webhook | { event: string; payload: unknown } | yes | Fires a webhook |
 
+> **Tool-design guardrails (M4).** When adding or exposing tools (built-in or MCP), follow these principles — they keep the planner's tool budget small and behaviour predictable for cheap models:
+> - **Minimise surface area.** Prefer a few **workflow-shaped** capability tools (e.g. `search-notes`, `get-page-content`) over many narrow endpoint tools; a smaller enum is easier for a `fast`/`balanced`-tier model to select correctly.
+> - **Read-only by default.** A tool is `dangerous: false` unless it has a side effect; side-effecting tools are the minority and each carries a `ToolCapabilityManifest` (§28.5) with a postcondition verifier.
+> - **Deterministic & bounded.** Tools validate input/output with Zod, are size-limited and redacted (TOL-04), and write tools are idempotent (TOL-05).
+> - **Discoverable.** When the combined schemas exceed the tools budget, use active discovery (TOL-06) rather than injecting every schema.
+
 ### §10.6 endpoints.ts
 
 ```ts
@@ -1611,7 +1729,7 @@ AntD Modal with Input + filtered list. Commands include Open Standalone view, Fo
 
 - User clicks "Save to note" on an assistant message (ChatMessage three-dot menu or first-class button, RICH-H-06).
 - SaveToNoteDialog opens.
-- NoteChatConverter.convert(messages, memoryContext) drafts title, content (markdown), tags, wikilinks, categoryPath (haiku tier + MemoryEngine.assemble(), NMEM-03).
+- NoteChatConverter.convert(messages, memoryContext) drafts title, content (markdown), tags, wikilinks, categoryPath (fast tier + MemoryEngine.assemble(), NMEM-03).
 - Dialog shows a pre-filled NoteEditor + NotePreview. **User is always the gatekeeper.**
 - User edits → save → NotesDB.createNote() → save pipeline: NoteTagger merge + NMEM-02 upsert (primary surface) + NoteFileSync.sync().
 
@@ -1619,7 +1737,7 @@ AntD Modal with Input + filtered list. Commands include Open Standalone view, Fo
 
 - User types a question in the Notes "Ask notes" bar (LLM-WIKI-06).
 - NoteQA.ask(query): MiniSearch top-5 snippets + MemoryEngine relevant facts (NMEM-01).
-- Flash-tier synthesis with per-statement citations.
+- Balanced-tier synthesis with per-statement citations.
 - Rendered as an ephemeral @ant-design/x Bubble with clickable citation Tags that navigate to the source note.
 - Tiny mode: falls back to plain MiniSearch results, no LLM synthesis (§2.5).
 
@@ -1639,7 +1757,7 @@ AntD Modal with Input + filtered list. Commands include Open Standalone view, Fo
 ### Flow 16 — RICH Clarification & Follow-up
 
 - Ambiguous intent → Planner returns ask_clarification → focused question + 2–4 option chips in the Bubble (RICH-C-01/04); chips inject into Sender; max 2 rounds then best-effort with caveat (RICH-C-03).
-- After a response, 1–3 follow-up chips are generated by a non-blocking haiku suggestion call (RICH-C-05/08); tapping sends as the next message; degrades to none on timeout.
+- After a response, 1–3 follow-up chips are generated by a non-blocking fast suggestion call (RICH-C-05/08); tapping sends as the next message; degrades to none on timeout.
 
 ### Flow 17 — Open Chat History
 - **Side Panel:** composer 🕘 → **bottom sheet** slides up over a dimmed conversation (§17.1b).
@@ -1762,9 +1880,9 @@ WorkflowRunner executes sequentially. Step N output is available as {{step_N_out
 
 ### §14.4 CodeSearchSkill Chunking Contract
 
-Marked @implementation-tier: sonnet-class — Haiku/Flash implementers must stub with { type: 'error', content: 'CODESEARCH_NEEDS_LARGE_MODEL' }.
+Marked `@implementation-tier: advanced` (high-complexity) — in a cost-effective build, stub with { type: 'error', content: 'CODESEARCH_NEEDS_ADVANCED_MODEL' }. *(Complexity marker only; the operator decides whether to route this module to a higher-capability agent — §0.3a.)*
 
-Full implementation shape (for Sonnet-class agents):
+Full implementation shape (when built by a high-capability agent):
 
 - **Input schema:** { query: string; scriptScope?: string; maxResults?: number }.
 - Fetch candidate scripts via SNowTableClient, rate-limited.
@@ -1773,6 +1891,48 @@ Full implementation shape (for Sonnet-class agents):
 - **Output schema:** { matches: Array<{ scriptName: string; lines: [number,number]; snippet: string; reason: string }> }.
 - Abort: each window call receives ctx.abortSignal; reduce halts on abort.
 - **Model gate:** if active model context < 16K → SkillResult{ type: 'error', content: 'CODESEARCH_NEEDS_16K_CONTEXT' }.
+
+### §14.5 Dynamic Per-Call Tool Approval (M3)
+
+`UserPreferences.toolAutonomy` (`ask_every_time` | `allow_safe_tools` | `manual_only`, §3.5) sets the baseline. On top of that baseline, approval can be decided **per call** so risk scales with the actual arguments, not just the tool identity — this is the runtime expression of TOL-02 ("risk- and side-effect-based permission policy", §28.5).
+
+```ts
+// src/core/ai/ToolApprovalPolicy.ts
+import type { ToolCapabilityManifest } from '@/types/harness';
+
+export type ApprovalDecision = 'allow' | 'require-approval' | 'deny';
+
+export interface ApprovalContext {
+  manifest: ToolCapabilityManifest;
+  input: unknown;
+  autonomy: 'ask_every_time' | 'allow_safe_tools' | 'manual_only';
+}
+
+/** Deterministic baseline + optional per-call override. Coordinator-owned only. */
+export function decideApproval(
+  ctx: ApprovalContext,
+  perCall?: (ctx: ApprovalContext) => ApprovalDecision,   // optional dynamic hook (TOL-02)
+): ApprovalDecision {
+  if (ctx.autonomy === 'manual_only' && ctx.manifest.sideEffect) return 'require-approval';
+  const base: ApprovalDecision =
+    !ctx.manifest.sideEffect ? 'allow'
+    : ctx.autonomy === 'ask_every_time' ? 'require-approval'
+    : ctx.manifest.risk === 'high' ? 'require-approval'
+    : 'allow';                                             // allow_safe_tools + low/med risk
+  const dynamic = perCall?.(ctx);
+  // Fail-safe: a dynamic hook may only ESCALATE, never downgrade a required approval.
+  if (dynamic === 'deny') return 'deny';
+  if (dynamic === 'require-approval') return 'require-approval';
+  return base;
+}
+```
+
+**Rules:**
+
+- **Coordinator-owned (COLLAB-05).** Only the `CollaborationCoordinator` / `ExecutorService` may run `decideApproval`. **Worker roles can never self-approve** (COLLAB-06).
+- **Escalate-only.** A per-call hook may raise the requirement (`allow → require-approval → deny`) but must never lower a baseline `require-approval` to `allow`.
+- **Manifest-driven.** The hook reads only the `ToolCapabilityManifest` (§28.5) + validated input; it never inspects raw untrusted context to decide (§28.3).
+- **Traced.** Every decision is recorded on the `ToolTrace.permission` field (§4.3).
 
 ## §15 — Storage Architecture
 
@@ -1881,7 +2041,8 @@ if (!MessageTypeValues.includes(message.type)) return false;
 ```
 permissions: [
   'sidePanel','storage','cookies','alarms','tabs',
-  'scripting','contextMenus','notifications'
+  'scripting','contextMenus','notifications',
+  'unlimitedStorage' // Added at Phase 2 when IndexedDB ships (ADR-STACK-02); exempts the extension origin from quota/eviction. Not present in the Phase 1 manifest (least-privilege).
 ],
 optional_permissions: ['webNavigation'],
 host_permissions: [
@@ -1903,6 +2064,21 @@ Rules:
 ### §16.5 Secret Redaction
 
 TraceRedactor.redact(value) MUST run before: writing to AITransactionLogDB; writing to ErrorStore; writing to debugLog; rendering in DiagnosticsPanel; exporting a debug bundle; **indexing note content or writing .md files**. See §4.4 for the mandatory patterns.
+
+### §16.6 Advanced Agent Security Rules
+
+These apply to every agent mode (single-agent default and multi-role, §1.6) and every harness track (§§28–30).
+
+- **DO NOT** claim a side effect completed without `CompletionEvidence` (§28.2).
+- **DO NOT** treat retrieved data (page, note, memory, upload, tool output) as instructions (§28.3).
+- **DO NOT** write raw traces directly into procedural memory (§28.4).
+- **DO NOT** activate an evolution candidate without evaluation and approval (§28.7).
+- **DO NOT** persist raw image/audio data in diagnostics (§29.3).
+- **DO NOT** execute tools from partial voice transcription (§29.2).
+- **DO NOT** infer that APC-lite enables browser automation (§29.2, MM-07).
+- **DO NOT** allow open-ended agent-to-agent conversations or dynamic unbounded spawning (§30).
+- **DO NOT** let worker roles grant permissions, execute side effects, or write durable memory directly (§30, COLLAB-06).
+- **DO NOT** treat agreement among agents as evidence or verification (§30, COLLAB-13).
 
 ## §17 — UI/UX Requirements
 
@@ -2069,7 +2245,7 @@ Full theme details in Appendix F.
 
 **Source:** [Ant Design X RICH Design Paradigm](https://x.ant.design/docs/spec/introduce).
 **Scope:** four pillars — **R**ole (角色), **I**ntention (意图), **C**onversation (会话), **H**ybrid UI (混合界面). 60 requirements total (17 P0 / 22 P1 / 21 P2).
-**Framework note:** RICH is implemented **on the already-adopted Ant Design X presentation components** (Bubble, Sender, Prompts, Welcome, Suggestion, Actions, ThoughtChain — §5.5, §7.2). No new UI framework. Persona runtime (RICH-R-01/02/10) built in Phase 3; all UI/behavior built in Phase 7 sub-waves 7.3/7.4/7.5 (§18).
+**Framework note:** RICH is implemented **on the already-adopted Ant Design X presentation components** (Bubble, Sender, Prompts, Welcome, Suggestion, Actions, ThoughtChain — §5.5, §7.2). No new UI framework. Persona runtime (RICH-R-01/02/10) built in Phase 3; all UI/behavior built in Phase 15 sub-waves 15.3/15.4/15.5 (§18).
 **Priority key:** P0 = must-have · P1 = should-have · P2 = nice-to-have. **Effort:** S <4h · M 4–16h · L >16h.
 
 #### §17.7.1 — R — Role (角色设计)
@@ -2142,7 +2318,7 @@ Full theme details in Appendix F.
 - **RICH-C-05 (P0, L)** — 1–3 contextual follow-up chips after a response. Depends on PlannerService.
 - **RICH-C-06 (P0, S)** — "Follow up" divider separating suggestions. Depends on C-05.
 - **RICH-C-07 (P0, S)** — Tapping a chip sends it as the next user message. Depends on C-05.
-- **RICH-C-08 (P0, M)** — Non-blocking haiku suggestion model, graceful timeout → no chips. Depends on C-05.
+- **RICH-C-08 (P0, M)** — Non-blocking fast suggestion model, graceful timeout → no chips. Depends on C-05.
 
 **[C-03] Conversation Closure — 结束**
 
@@ -2152,7 +2328,7 @@ Full theme details in Appendix F.
 
 **[C-04] Structured Confirmation — 确认**
 
-- **RICH-C-12 (P1, L)** — Inline confirmation chip for side-effect chat actions ("I'll search the web. [Proceed] [Cancel]"). Depends on PermissionDialog (Phase 8).
+- **RICH-C-12 (P1, L)** — Inline confirmation chip for side-effect chat actions ("I'll search the web. [Proceed] [Cancel]"). Depends on PermissionDialog (Phase 17).
 - **RICH-C-13 (P1, S)** — Read-only actions execute immediately. Depends on C-12.
 
 **[C-05] Personalized Greeting — 开始**
@@ -2188,7 +2364,7 @@ Full theme details in Appendix F.
 - **RICH-H-11 (P1, L)** — Standalone view split-pane: left 60% chat, right 40% Context panel; toggle.
 - **RICH-H-12 (P1, L)** — Right-pane tabs: Context / Notes / Tools. Depends on H-11.
 - **RICH-H-13 (P2, S)** — Split-pane layout persistent. Depends on H-11.
-- **RICH-H-14 (P2, M)** — Inline notes Q&A layout. Depends on notes CRUD (Phase 5).
+- **RICH-H-14 (P2, M)** — Inline notes Q&A layout. Depends on notes CRUD (Phase 8).
 
 **[H-05] Sender Rich Input — 表达**
 
@@ -2225,21 +2401,29 @@ Role 11 · Intention 14 · Conversation 15 · Hybrid UI 20 = **60**. P0 17 · P1
 
 ## §18 — Master Implementation Phases
 
-> **Canonical order.** §18 defines the v0.1 GA phase plan (1 → 9). When the flag-gated hardening tracks (§§28, 29, 32) are enabled, the single combined build order — including sub-phases 3a/4b/5b/6a/6b/6c/7a/8a — is given in §30.1 and supersedes this list without changing any Phase 1–9 requirement.
+> **Single authoritative roadmap.** §18 is the sole source of implementation sequencing for NowPilot v0.1. The roadmap is harness-neutral: Codex, OpenCode, another coding agent, or a human developer may execute it. Git and the §0.6 repository artefacts track progress. All implementation phases, sub-phases, dependencies, verification gates, and release ordering are defined here. Sections §28–§30 provide requirement detail and supporting contracts, but they do not define a separate implementation order.
 
-This is the single canonical phase plan. Do not implement more than one phase per response unless explicitly requested.
+**Canonical order:**
 
-**Reorganization principle:** phases follow the product data-flow — *acquire → store → understand → display → extend → harden* — instead of pure implementation dependency order. Key moves: **PageContentService → Phase 4a** (core infrastructure, §26); **Notes + Memory + MiniSearch consolidate into Phase 5 (Knowledge Base)**; **LLM-Wiki + Filesystem Sync → Phase 5a**; **Phase 7 becomes the pure Workspace Experience (UI/UX) phase** hosting the RICH sub-waves; **Hardening & Release stays last (Phase 9)**. Persona runtime seeds are added to Phase 3.
-
+```text
+1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10
+  → 11 → 12 → 13 → 14 → 15 → 16 → 17 → 18 → 19
 ```
-Data-flow view:
-  Page → PageContentService (4a)
-       → Knowledge Base: Memory · MiniSearch · Notes · Wikilinks (5)
-       → LLM-Wiki: RAG · auto-tag/category/summary · chat/page→note · filesystem sync (5a)
-       → Diagnostics (6)
-       → Workspace Experience UI/UX + RICH (7)
-       → Add-ons (8)
-       → Hardening & Release (9)
+
+Do not implement more than one phase per response unless explicitly requested.
+
+**Reorganisation principle:** phases follow the product data-flow of _acquire → store → understand → display → extend → harden_, while governance and reliability sub-phases are placed immediately after the capability they extend. Key placements: **PageContentService → Phase 6**; **Notes + Memory + MiniSearch → Phase 8**; **LLM-Wiki + Filesystem Sync → Phase 9**; **Workspace Experience + RICH → Phase 15**; **Hardening & Release → Phase 19**.
+
+```text
+AI runtime (3) → reliability/evidence (4)
+Page → context (5) → PageContentService (6) → trust-aware context (7)
+    → Knowledge Base (8) → LLM-Wiki and filesystem sync (9)
+    → memory governance and experience candidates (10)
+    → Diagnostics (11) → evaluation (12) → verified evolution (13)
+    → bounded multi-role collaboration (14)
+    → Workspace Experience + RICH (15) → multimodal input (16)
+    → Add-ons (17) → tool governance and active discovery (18)
+    → Hardening & Release (19)
 ```
 
 ### Phase 1 — MV3/WXT Runtime + AntD Shells + Workspace
@@ -2383,7 +2567,17 @@ tests/core/ai/persona/PersonaInjector.test.ts
 - **PersonaInjector prepends the persona block to the Planner, Executor, Renderer, and MemoryExtractor system prompts (persona-aware from day one), placed in the cached [SYSTEM] section so prompt caching is preserved.**
 - **UserPreferences.personaOverrides (name/tone/brevity) apply without a code change.**
 
-### Phase 4 — Context-Adaptive Execution
+### Phase 4 — Agent Reliability and Evidence
+
+**Depends on:** Phase 3  
+**Create/modify:** AgentTrajectoryState, OutcomeVerifier, CompletionEvidence, AgentTurnOutcome, AgentOrchestrator integration, Renderer completion guard.  
+**Required tests:** `tests/core/ai/trajectory/**`, `tests/core/ai/OutcomeVerifier.test.ts`  
+**Verification:** `pnpm run verify:phase-4`  
+**Requirements (from §28.2):** AGT-01 (P0) trajectory states · AGT-02 (P0) side-effect success needs CompletionEvidence · AGT-03 (P0) structured AgentTurnOutcome, cap exhaustion is `partial` · AGT-04 (P0) deterministic replan/terminal policy.  
+**Types:** `AgentTrajectoryState`, `CompletionEvidence`, `AgentTurnOutcome` (Appendix C.1).  
+**DONE when:** transitions, evidence, partial/cap behaviour, abort, and false-completion tests pass.
+
+### Phase 5 — Context-Adaptive Execution
 
 **Create:**
 
@@ -2411,7 +2605,7 @@ tests/core/context/TokenBudget.test.ts
 - Minimal mode blocks MCP chaining (and LLM-Wiki RAG synthesis).
 - ContextProvenanceManifest is attached to every OptimizedContext.
 
-### Phase 4a — PageContentService (Knowledge Acquisition)
+### Phase 6 — PageContentService (Knowledge Acquisition)
 
 **Create:**
 
@@ -2447,9 +2641,19 @@ tests/isolation/no-content-script-ui.test.ts        # verifies no React/AntD/def
 - PageIndexBuilder builds an ephemeral per-tab MiniSearch index (never persisted).
 - SPA-nav (wxt:locationchange) + tabs.onUpdated invalidation works.
 - Passwords never captured (isPassword ⇒ value omitted).
-- pnpm run verify:phase-4a passes.
+- pnpm run verify:phase-6 passes.
 
-### Phase 5 — Knowledge Base (Memory + MiniSearch + Notes)
+### Phase 7 — Trust-Aware Context and Receipts
+
+**Depends on:** Phases 5 and 6  
+**Create/modify:** ContextItem, trust policy, context receipt, injection defences, stable-prefix snapshots, progressive skill disclosure.  
+**Required tests:** `tests/core/context/trust/**`, `tests/security/prompt-injection/**`  
+**Verification:** `pnpm run verify:phase-7`  
+**Requirements (from §28.3):** CTX-01 (P0) source trust/authority metadata · CTX-02 (P0) retrieved data is never instructions · CTX-03 (P0) ContextProvenanceManifest → context receipt · CTX-04 (P0) stable-prefix snapshot tests · CTX-05 (P1) progressive skill disclosure · CTX-06 (P1) context-quality diagnostics without raw text.  
+**Types:** `ContextItem`, `ContextReceiptEntry` (Appendix C.1).  
+**DONE when:** malicious page, note, and tool fixtures cannot alter policy, and Prompt Inspector reconstructs packing decisions.
+
+### Phase 8 — Knowledge Base (Memory + MiniSearch + Notes)
 
 **Create:**
 
@@ -2466,7 +2670,9 @@ src/core/notes/NoteGraph.ts
 src/components/notes/{BacklinksPanel, WikilinkAutocomplete, NoteGraphView}.tsx   # core logic
 ```
 
-**Knowledge model established here:** atomic notes (the unit) + wikilinks (`links[]`, the connective web) + tags (many-to-many labels). The `categoryPath` field is introduced on the Note type here (populated later by LLM-Wiki in Phase 5a).
+**Knowledge model established here:** atomic notes (the unit) + wikilinks (`links[]`, the connective web) + tags (many-to-many labels). The `categoryPath` field is introduced on the Note type here (populated later by LLM-Wiki in Phase 9).
+
+**OKF v0.2 alignment — type declaration only (rev 2026-08-12).** Add the optional OKF-aligned field `type?: string` to the `Note` interface in `src/types/notes.ts` here (declaration only; default `Note` applied at serialization time in Phase 9). This mirrors how `categoryPath` is *declared* in Phase 8 and *populated* by LLM-Wiki in Phase 9 — no serialization, no migration, and no LLM behaviour change in Phase 8. DONE-when (append): `Note.type?: string` exists in `src/types/notes.ts` and type-checks; no reader/writer consumes it yet (Phase 9 owns population + serialization).
 
 **Required tests:**
 
@@ -2487,9 +2693,9 @@ tests/core/notes/LinkParser.test.ts
 - MiniSearch < 50 ms over 1,000 notes.
 - Wikilinks resolve with tie-break rule.
 - End-to-end `Page → PageContentService → Note → MiniSearch` path works.
-- pnpm run verify:phase-5 passes.
+- pnpm run verify:phase-8 passes.
 
-### Phase 5a — LLM-Wiki & Filesystem Sync
+### Phase 9 — LLM-Wiki & Filesystem Sync
 
 **Create:**
 
@@ -2505,7 +2711,18 @@ src/components/options/ImportExportSection.tsx       # + "Restore from folder"
 src/core/storage/migrations/v4_notes_backup_config.ts  # add notes_backup_config store + Note fields
 ```
 
-Implements the full §27 requirement set: CAT-01…05, LLM-WIKI-01…10, SYNC-01…11, NMEM-01…03.
+Implements the full §27 requirement set: CAT-01…05, LLM-WIKI-01…10, SYNC-01…11, NMEM-01…03, **plus the OKF v0.2 note-format alignment (OKF-WIKI-01…04, rev 2026-08-12).**
+
+**OKF v0.2 alignment — serialization, migration, restore (rev 2026-08-12).** These are additive changes to files **already created** in Phase 9 — no new files:
+- `src/core/notes/NoteFileSync.ts` — emit the OKF-aligned YAML frontmatter (SYNC-04): OKF-required `type` (default `Note`), recommended `description` (= `Note.summary` when present), and the `generated: { by: nowpilot/<tier-model>, at: <ISO 8601> }` + `status` families. `id` (UUID) is emitted as an OKF **extension key**; wikilinks stay in the body.
+- `src/core/storage/migrations/v4_notes_backup_config.ts` — fold the optional `Note.type` into the **existing v4 migration** (idempotent; skip if the field already exists — **no new v5 bump**).
+- `src/components/options/ImportExportSection.tsx` — the "Restore from folder" parser tolerates OKF keys (`type`/`description`/`generated`/`status`) and ignores unknown OKF fields (SYNC-09).
+
+**New requirements (rev 2026-08-12):**
+- **OKF-WIKI-01 (P1)** NoteFileSync emits OKF-required `type` (default `Note`) + recommended `description` (= `Note.summary` when present).
+- **OKF-WIKI-02 (P1)** NoteFileSync emits the OKF trust/lifecycle families `generated: { by, at }` (ISO 8601) and `status` (`draft`|`stable`, default `stable`).
+- **OKF-WIKI-03 (P1)** `Note.id` (UUID) is emitted and parsed as an OKF **extension key**; a write→restore round-trip preserves it and every wikilink edge (WIKI-ID-01/04 unchanged).
+- **OKF-WIKI-04 (P0 boundary)** v0.1 does **not** emit OKF standard-markdown-link edges and does **not** adopt path-as-identity; wikilinks + UUID identity remain authoritative. Strict-OKF link/identity conformance (and `sources`/`verified` families) is deferred to v0.2+ behind a dedicated ADR.
 
 **Required tests:**
 
@@ -2514,25 +2731,38 @@ tests/core/notes/NoteTagger.test.ts
 tests/core/notes/NoteQA.test.ts
 tests/core/notes/NoteChatConverter.test.ts
 tests/core/notes/NoteFileSync.test.ts
+tests/core/notes/NoteFileSync.okf-frontmatter.test.ts   # emitted frontmatter has type+generated+status; round-trips (OKF-WIKI-01/02/03)
 tests/core/notes/NoteMaintenance.test.ts
-tests/core/storage/migrations/v4.test.ts
+tests/core/storage/migrations/v4.test.ts                 # extended: v4 adds Note.type idempotently (skip if present)
 ```
 
 **DONE when:**
 
-- Save pipeline runs NoteTagger.analyze() (haiku, combined tags+category+summary+memory-facts) non-blocking after the IndexedDB write.
+- Save pipeline runs NoteTagger.analyze() (fast, combined tags+category+summary+memory-facts) non-blocking after the IndexedDB write.
 - Auto-tag/category/summary suggestions render with accept/reject.
-- "Ask notes" RAG (flash) returns cited answers; tiny mode falls back to plain MiniSearch.
+- "Ask notes" RAG (balanced) returns cited answers; tiny mode falls back to plain MiniSearch.
 - Chat/page → note conversion opens a pre-filled editor (user is the gatekeeper).
 - NMEM-02 upserts facts only on the primary surface.
 - showDirectoryPicker() + handle persist in notes_backup_config (Standalone view only).
-- Per-save .md sync with YAML frontmatter + nested folders + collision suffixing + external-change guard.
+- Per-save .md sync with **OKF v0.2-aligned YAML frontmatter** (`type`/`description`/`id`/`generated`/`status`, SYNC-04) + nested folders + collision suffixing + external-change guard.
+- Every emitted `.md` carries OKF-required `type` + `generated` + `status`, and the UUID `id` survives a write→restore round-trip (OKF-WIKI-01/02/03).
+- Restore parser tolerates OKF keys and ignores unknown OKF fields (SYNC-09); wikilinks (not OKF markdown-link edges) remain the body syntax (OKF-WIKI-04).
 - Delete-on-sync + empty-folder cleanup.
 - Restore preview + additive upsert (never deletes local notes not in the folder).
-- v4 migration idempotent.
-- pnpm run verify:phase-5a passes.
+- v4 migration idempotent (adding `Note.type` is skipped when already present).
+- pnpm run verify:phase-9 passes.
 
-### Phase 6 — Transaction Logging and Diagnostics
+### Phase 10 — Memory Governance and Experience Candidates
+
+**Depends on:** Phases 8 and 9  
+**Create/modify:** MemoryRecord, conflict resolver, lifecycle controls, procedural experience candidate store, edge provenance.  
+**Required tests:** `tests/core/memory/governance/**`, `tests/core/knowledge/provenance/**`  
+**Verification:** `pnpm run verify:phase-10`  
+**Requirements (from §28.4):** MEM-01 (P0) working/episodic/semantic/preference/procedural taxonomy · MEM-02 (P0) source+confidence+lifecycle+sensitivity+verified-at · MEM-03 (P0) conflict precedence (correction > verified > prior > inference) · MEM-04 (P0) view/edit/pin/forget/disable/export/cloud-exclude controls · MEM-05 (P1) procedural experience gated by approval · KNW-01 (P1) edge provenance.  
+**Types:** `MemoryRecord`, `ProceduralExperience`, `KnowledgeEdgeSource` (Appendix C.1).  
+**DONE when:** conflicts, forget, expiry, sensitivity, provenance, and Notes/Memory boundaries pass.
+
+### Phase 11 — Transaction Logging and Diagnostics
 
 **Create:**
 
@@ -2561,7 +2791,40 @@ tests/components/DiagnosticsSection.test.tsx
 - Redaction test proves secrets (+ note content + filesystem paths) are not persisted.
 - Diagnostics panel in Options can copy operation ID.
 
-### Phase 7 — Workspace Experience (UI/UX) + RICH
+### Phase 12 — Agent Evaluation
+
+**Depends on:** Phase 11 and available core capabilities  
+**Create:** `src/core/evaluation/**`, `tests/evals/**`, evaluation reports in Diagnostics.  
+**Required tests:** `tests/evals/**`  
+**Verification:** `pnpm run verify:phase-12`  
+**Requirements (from §28.6):** EVAL-01 (P0) versioned golden suites · EVAL-02 (P0) multi-dimension trajectory rubric · EVAL-03 (P0) deterministic validators, judges only for qualitative dims · EVAL-04 (P0) first-failing-layer diagnostics · EVAL-05 (P0) safety/leak/injection/false-completion/citation/isolation regressions block release · EVAL-06 (P1) cost/latency/quality Pareto · EVAL-07 (P1) calibrated, versioned judges.  
+**Types:** `FailureLayer` (Appendix C.1).  
+**DONE when:** golden suites produce per-dimension evidence and failure-layer categorisation.
+
+### Phase 13 — Verified Continual Evolution
+
+**Depends on:** Phases 10 and 12  
+**Create:** `src/core/evolution/**`, candidate store, sandbox runner, approval/version/rollback contracts.  
+**Required tests:** `tests/core/evolution/**`  
+**Verification:** `pnpm run verify:phase-13`  
+**Requirements (from §28.7):** EVO-01 (P1) trajectories create candidates, never direct prod changes · EVO-02 (P1) one target layer per candidate · EVO-03 (P1) EvolutionCandidate stores evidence/baseline/security/version/rollback · EVO-04 (P0) untrusted content cannot update active prompts/tools/permissions/code/procedural memory · EVO-05 (P1) sandbox→approve→scoped rollout→monitor→rollback · EVO-06 (P2) agent-generated tools stay sandbox proposals.  
+**Candidate Proposer (from §28.7a):** PROP-01 (P1) inputs = failing evals + trace evidence only · PROP-02 (P1) one layer per proposal (deterministic `FailureLayer`→`targetLayer`) · PROP-03 (P1) evidence threshold (≥3 agreeing failures, ≥0.15 score drop) · PROP-04 (P1) per-proposal sandbox cost cap · PROP-05 (P0) proposes only, never activates · PROP-06 (P1) reproducible (suite version + op-ids + hash).  
+**Create:** `src/core/evolution/CandidateProposer.ts` (deterministic proposer), candidate store, sandbox runner, approval/version/rollback contracts.  
+**Types:** `EvolutionCandidate`, `EvolutionCandidateProposal`, `ProposerInput` (Appendix C.1).  
+**Worked example:** Appendix O.9.  
+**DONE when:** raw traces cannot self-activate; the proposer maps a failing eval to exactly one single-layer, cost-capped `proposed` candidate; and a candidate can be proposed, tested, approved, scoped, and rolled back.
+
+### Phase 14 — Bounded Multi-Role Collaboration
+
+**Depends on:** Phases 4, 7, 12, and 13  
+**Create:** `src/core/collaboration/**`, typed role policies and handoffs, collaboration coordinator, trace integration, and baseline evaluation fixtures.  
+**Required tests:** `tests/core/collaboration/**`, `tests/evals/collaboration/**`, `tests/security/collaboration-permissions.test.ts`  
+**Verification:** `pnpm run verify:phase-14`  
+**Requirements (from §30.2):** COLLAB-01 (P1) explicit activation · COLLAB-02 (P1) closed role registry · COLLAB-03 (P1) CollaborationPlan caps/deadline (single-agent = one-role plan) · COLLAB-04 (P1) typed handoffs, no hidden reasoning · COLLAB-05/06 (P0) coordinator owns commits, workers no side effects · COLLAB-07 (P1) independent reviewer · COLLAB-08 (P1) contained failure/fallback · COLLAB-09/10 (P1) shared projected context + traces · COLLAB-11 (P1) single-agent baseline gate · COLLAB-12 (P2) future isolated workers · COLLAB-13 (P0) no open-ended/unbounded agents.  
+**Types:** `CollaborationRole`, `RolePolicy`, `CollaborationPlan`, `AgentHandoffArtifact`, `CollaborationOutcome` (Appendix C.1).  
+**DONE when:** roles, tools, contexts, budgets, permissions, handoffs, independent review, failure fallback, and single-agent baseline gates pass. Full requirements are in §30.
+
+### Phase 15 — Workspace Experience (UI/UX) + RICH
 
 **Create:**
 
@@ -2603,13 +2866,13 @@ tests/core/intent/IntentClassifier.test.ts
 tests/core/notes/LinkParser.test.ts
 ```
 
-This phase exposes capabilities built in Phases 3–5a as polished surfaces, then layers RICH in sub-waves:
+This phase exposes capabilities built in Phases 3–9 as polished surfaces, then layers RICH in sub-waves:
 
-- **Phase 7.1 — Core screens:** Chat/Agent/Notes/Options render with Planner→Executor→Renderer, ChunkBuffer streaming, /write /ask presets, note wikilinks, Options forms, Diagnostics.
-- **Phase 7.2 — LLM-Wiki UI surfacing:** NotesPage "Ask notes" bar, category tree toggle, summary lines, orphan badges, AI-search toggle, backup status Tag, SaveToNoteDialog.
-- **Phase 7.3 — RICH Core (17 P0):** RICH-R-01/02/11, RICH-H-01, RICH-I-01/05/06, RICH-C-01/02/03/04, RICH-C-05/06/07/08, RICH-H-04 (clipboard-only insert), RICH-H-08. *(persona runtime seeds already in Phase 3.)*
-- **Phase 7.4 — RICH Enhance (22 P1):** RICH-R-03/05/06/08/09/10, RICH-I-02/03/08/09/10, RICH-C-09/12/13/14, RICH-H-02/03/05/06/11/12/16.
-- **Phase 7.5 — RICH Polish (21 P2):** all remaining P2 items (RICH-H-07 remains deferred, R1).
+- **Phase 15.1 — Core screens:** Chat/Agent/Notes/Options render with Planner→Executor→Renderer, ChunkBuffer streaming, /write /ask presets, note wikilinks, Options forms, Diagnostics.
+- **Phase 15.2 — LLM-Wiki UI surfacing:** NotesPage "Ask notes" bar, category tree toggle, summary lines, orphan badges, AI-search toggle, backup status Tag, SaveToNoteDialog.
+- **Phase 15.3 — RICH Core (17 P0):** RICH-R-01/02/11, RICH-H-01, RICH-I-01/05/06, RICH-C-01/02/03/04, RICH-C-05/06/07/08, RICH-H-04 (clipboard-only insert), RICH-H-08. *(persona runtime seeds already in Phase 3.)*
+- **Phase 15.4 — RICH Enhance (22 P1):** RICH-R-03/05/06/08/09/10, RICH-I-02/03/08/09/10, RICH-C-09/12/13/14, RICH-H-02/03/05/06/11/12/16.
+- **Phase 15.5 — RICH Polish (21 P2):** all remaining P2 items (RICH-H-07 remains deferred, R1).
 
 **DONE when:**
 
@@ -2619,10 +2882,22 @@ This phase exposes capabilities built in Phases 3–5a as polished surfaces, the
 - Options page shows all sub-sections (incl. Persona + Notes) with functional forms.
 - DiagnosticsPanel renders in Standalone view → Options → Diagnostics.
 - LLM-Wiki UI functional (Ask notes, category tree, backup status, SaveToNoteDialog).
-- RICH P0 (7.3) complete: persona header, welcome cards, quick-action chips, clarification + follow-up chips (max 2 rounds; graceful timeout), code-block Copy/Save-as-macro (Insert=clipboard-only), streaming stage indicators.
-- pnpm run verify:phase-7 passes.
+- RICH P0 (15.3) complete: persona header, welcome cards, quick-action chips, clarification + follow-up chips (max 2 rounds; graceful timeout), code-block Copy/Save-as-macro (Insert=clipboard-only), streaming stage indicators.
+- **Visual acceptance (rev 2026-08-12):** the delivered Side Panel, Standalone chat, Notes 4-column workspace, and Options/provider-modal surfaces match the annotated mockups in `.planning/mockup/` (indexed in **DESIGN_SYSTEM §8.0**), within the precedence rule (a *functional rule* defers to this spec; *visual layout intent* defers to the mockup). Mockup-vs-build deltas are logged as UI-review findings. Exact metrics to verify: Side Panel width 400 / header 52 / composer 44 / input 60 / status 28 px (§8.1); Standalone Sider 240/72 px + Add-ons group (§8.2); Notes four column toggles with persistent Content + bottom status bar (§8.3); chat-history bottom sheet ≤ ~70 % vs right drawer 320 px (§8.4/§8.5); Options menu General·Notes·Advance (§8.6); provider dialog 6-column model table (§8.7); message action sets 6/8/4 (§8.8).
+- pnpm run verify:phase-15 passes.
 
-### Phase 8 — Add-ons and Content Script Runtime (Extraction-Only)
+### Phase 16 — Multimodal Input Foundation
+
+**Depends on:** Phase 15 and Phase 7  
+**Create:** `src/core/multimodal/**`, image input UI, voice transcription input, provider capability gates, modality fixtures.  
+**Required tests:** `tests/core/multimodal/**`, `tests/components/multimodal/**`  
+**Verification:** `pnpm run verify:phase-16`  
+**Requirements (from §29.2):** MM-01 (P1) ModalityInput (no inline binary) · MM-02 (P1) ModalityObservation with confidence/sensitivity · MM-03 (P1) image paste/upload via vision model · MM-04 (P1) voice → editable Sender, explicit send · MM-05 (P2) later fast/slow split · MM-06 (P1) AbortSignal across transcribe/plan/tool/render · MM-07 (P0 boundary) APC-lite ≠ browser automation.  
+**Types:** `ModalityInput`, `ModalityObservation` (Appendix C.1).  
+**Visual reference:** the multimodal input UI (image paste/upload, voice → editable Sender) follows DESIGN_SYSTEM §8.1 (composer **Attach**) and the `.planning/mockup/00-sidepanel-chat.png` composer annotations (indexed in DESIGN_SYSTEM §8.0).  
+**DONE when:** image and audio inputs become redacted ContextItems, unsupported providers fail safely, and abort works.
+
+### Phase 17 — Add-ons and Content Script Runtime (Extraction-Only)
 
 **Create/complete:**
 
@@ -2656,11 +2931,21 @@ tests/isolation/no-content-script-ui.test.ts
 - ServiceNow API calls use PROXY_FETCH only.
 - Right-click selection → "Ask AI" opens Side Panel with selection prefilled.
 - /research runs via ResearchSkill.
-- Write add-on renders in Side Panel with all quick actions.
-- TeamGQM add-on renders in Side Panel and Standalone view.
+- Write add-on renders in the Standalone view with all quick actions; Side Panel Chat may invoke its registered skills.
+- TeamGQM add-on renders in the Standalone view; Side Panel Chat may hand off to it.
 - Add-ons can consume PageContentService + Memory + Notes + LLM-Wiki.
 
-### Phase 9 — Hardening and Release
+### Phase 18 — Tool Governance and Active Discovery
+
+**Depends on:** Phase 17 and Phase 4  
+**Create/modify:** ToolCapabilityManifest, risk matrix, verifier registry, result shaping, idempotency, active tool discovery.  
+**Required tests:** `tests/core/tools/governance/**`, `tests/core/tools/discovery/**`  
+**Verification:** `pnpm run verify:phase-18`  
+**Requirements (from §28.5):** TOL-01 (P0) ToolCapabilityManifest (category/risk/side-effect/perms/scopes/timeout/cost/idempotency/verifier/hashes) · TOL-02 (P0) risk- & side-effect-based permission policy · TOL-03 (P0) postcondition verification · TOL-04 (P0) validate/redact/size-limit/shape/attribute results · TOL-05 (P0) idempotent write replay-safety · TOL-06 (P1) active discovery over tools budget · TOL-07 (P2) resumable long-running contract (future).  
+**Types:** `ToolCapabilityManifest` (Appendix C.1).  
+**DONE when:** manifests are complete, risky writes require confirmation, duplicate writes are prevented, and discovery stays within token budget.
+
+### Phase 19 — Hardening and Release
 
 **Required test suites:**
 
@@ -2688,6 +2973,11 @@ tests/perf/**
 - First token < 2 s local / < 3 s cloud.
 - Filesystem restore round-trips a full vault.
 - RAG returns correct citations on a fixture note set.
+- Every inserted sub-phase verification command passes.
+- Prompt-injection, secret-leakage, false-completion, permission, and memory-isolation regressions block release.
+- Multimodal privacy and provider-routing fixtures pass.
+- Evolution candidate activation and rollback drills pass.
+- Release records include evaluation-suite and rubric versions.
 
 ## §19 — Runtime Edge Cases and Mitigations
 
@@ -2798,7 +3088,7 @@ tests/perf/**
 
 ### §19.20 RICH Suggestion Timeout
 
-- Clarification/follow-up haiku call times out → render the response with no chips (graceful, RICH-C-08). Error code RICH_SUGGESTION_TIMEOUT (logged, non-fatal).
+- Clarification/follow-up fast call times out → render the response with no chips (graceful, RICH-C-08). Error code RICH_SUGGESTION_TIMEOUT (logged, non-fatal).
 
 ## §20 — Runtime State Models & Cross-Context Coordination
 
@@ -2863,7 +3153,7 @@ export interface IndexedDBMigration {
 - Every version bump includes a migration function.
 - Migrations are deterministic and idempotent where practical.
 - Migration failures record IDB_MIGRATION_FAILED in ErrorStore and enter degraded mode.
-- **v4 migration:** add the `notes_backup_config` object store; add optional Note fields `summary`, `categoryPath`, `summaryGeneratedAt`, `tagsGeneratedAt`; add `tags` and `summary` to the MiniSearch notes index fields. Idempotent: skip if store/fields already present.
+- **v4 migration:** add the `notes_backup_config` object store; add optional Note fields `summary`, `categoryPath`, `summaryGeneratedAt`, `tagsGeneratedAt`, **and `type` (OKF v0.2 alignment, default `Note`, rev 2026-08-12)**; add `tags` and `summary` to the MiniSearch notes index fields. Idempotent: skip if store/fields already present (adding `Note.type` is skipped when the field already exists — no new v5 bump).
 
 ### §20.5 Background Worker State
 
@@ -3017,15 +3307,19 @@ export interface Note {
     lastWikiRunAt?: number;
   };
   // --- LLM-Wiki fields (§27) ---
-  summary?: string;                // LLM-generated (LLM-WIKI-03)
+  summary?: string;                // LLM-generated (LLM-WIKI-03) — also emitted as OKF `description`
   categoryPath?: string;           // e.g. "InfoTech/Database/MySQL" (CAT-01) → filesystem folder
   summaryGeneratedAt?: number;     // staleness detection (LLM-WIKI-08)
   tagsGeneratedAt?: number;        // staleness detection (LLM-WIKI-08)
+  // --- OKF v0.2 alignment (rev 2026-08-12) ---
+  type?: string;                   // OKF-required frontmatter field; default 'Note' (declared Phase 8, serialized Phase 9)
   version: number;
 }
 ```
 
 > **Knowledge model:** atomic note (unit) + `links[]` (wikilink web) + `tags[]` (many-to-many labels) + `categoryPath` (single hierarchy → folder). Categories and tags are deliberately separate (D-03, §27).
+
+> **OKF v0.2 alignment (rev 2026-08-12).** The on-disk `.md` file is **OKF v0.2-compatible**: a directory of Markdown files with YAML frontmatter and a free-form body — exactly OKF's container. The `type` field satisfies OKF's only always-required key (default `Note`); `summary` is additionally emitted as OKF's recommended `description`; and the trust-lifecycle families `generated`/`status` are added by the serializer (see §27.3 SYNC-04). NowPilot's immutable UUID `id` is retained and written as an OKF **extension key** — legal because OKF consumers "MUST NOT reject documents with unrecognized fields." Wikilinks remain the body edge syntax (WIKI-ID-01…04); NowPilot does **not** emit OKF standard-markdown-link edges or adopt path-as-identity in v0.1 (those conflict with the UUID-identity/wikilink model and are deferred to v0.2+). The `type` field is **declared here in Phase 8** (type only) and **populated/serialized in Phase 9** — mirroring how `categoryPath` is declared in Phase 8 and populated by LLM-Wiki in Phase 9.
 
 ### §21.3 Conversation Metadata + Memory Bodies
 
@@ -3154,7 +3448,7 @@ SCHEMA_INVALID
 NETWORK
 PLANNER_FAILED
 CODESEARCH_NEEDS_16K_CONTEXT
-CODESEARCH_NEEDS_LARGE_MODEL
+CODESEARCH_NEEDS_ADVANCED_MODEL
 BACKGROUND_START_FAILED
 BACKGROUND_ROUTER_REGISTER_FAILED
 BACKGROUND_ALARM_RECREATE_FAILED
@@ -3195,8 +3489,8 @@ RICH_SUGGESTION_TIMEOUT
 | BroadcastBus round-trip (cross-surface) | < 100 ms p95 |
 | Workspace handoff | < 1 s |
 | ChunkBuffer flush rate | max every 16 ms (upgrade to 33 ms if enqueue > 8 kB/s) |
-| **NoteTagger analyze (haiku)** | non-blocking; save never waits |
-| **Ask-notes RAG synthesis (flash)** | < 4 s p95 |
+| **NoteTagger analyze (fast)** | non-blocking; save never waits |
+| **Ask-notes RAG synthesis (balanced)** | < 4 s p95 |
 | **Per-save .md file write** | < 200 ms; 50 ms debounce; fire-and-forget |
 | **Restore parse (100 notes)** | < 3 s |
 
@@ -3233,20 +3527,23 @@ Runs nightly via Scheduler. v0.1 produces exactly three Insight values: tag-tren
 | **AI chat components** | **Ant Design X 2.x** (presentation only) | Bubble, Sender, Conversations, ThoughtChain, Think, Attachments, Suggestion, Sources, FileCard map onto Chat/Agent needs. X 2.x targets antd v6 and is the actively developed line; X 1.x pairs with antd v5 (1-year bugfix-only window from Nov 2025) |
 | **Markdown/streaming rendering** | **@ant-design/x-markdown** | Purpose-built for incremental/streaming; built-in LaTeX/mermaid/code-highlight replace 5 packages |
 | **AI chat data flow** | **NOT @ant-design/x-sdk** — kept AgentOrchestrator/ProviderRouter/ContextOptimizer | x-sdk's useXChat/ChatProvider calls providers directly from the UI, bypassing Planner→Executor→Renderer, ContextOptimizer, MemoryEngine, AITransactionLog |
-| **Dynamic agent-generated UI (A2UI)** | **Deferred to v0.2+** — not @ant-design/x-card in v0.1 | A2UI's createSurface/updateComponents command stream is a harder JSON target than the 3-action PlannerDecisionSchema; unsafe for Haiku/Flash today (§25.6) |
+| **Dynamic agent-generated UI (A2UI)** | **Deferred to v0.2+** — not @ant-design/x-card in v0.1 | A2UI's createSurface/updateComponents command stream is a harder JSON target than the 3-action PlannerDecisionSchema; unsafe for `fast`/`balanced`-tier models today (§25.6) |
 | **Theming** | AntD ConfigProvider + XProvider + Zustand ThemeStore | Centralized token system, dark mode via darkAlgorithm, per-surface compact toggle |
 | **Two UI surfaces** | Side Panel + Standalone view | Side Panel = daily workflow, Standalone view = deep work / config / diagnostics |
 | **Shared workspace** | WorkspaceStore (Zustand) + BroadcastBus | Single source of truth across surfaces; cross-surface handoff |
 | **Content scripts** | Extraction-only in v0.1 | No UI in host pages; simpler bundle; page injection deferred |
 | **Page injection** | **Deferred to v0.2+** | Reduces v0.1 complexity; add-on architecture preserved |
 | **Page-content extraction placement** | **Core PageContentService**, not a tool | Shared infra for Chat/Agent/Summarize/research/add-ons; central cache, concurrency, redaction |
-| **Main-content extraction** | **Defuddle** | Purpose-built Readability successor; preserves footnotes/math/code; clean Markdown; MIT; runs in side panel/standalone view |
+| **Main-content extraction** | **Defuddle `^0.19` (≥ 0.19.2)** — full bundle, sync `parse()`, `useAsync:false` | Purpose-built Readability successor; preserves footnotes/math/code; clean Markdown; MIT; runs in side panel/standalone view. Pinned to `0.19.x` (superseding the draft `^0.6`) for the CVE-2026-30830 XSS fix + `data:`/`blob:` rejection + iframe-`sandbox` retention + non-mutating `parse()`. `useAsync:false` + synchronous `parse()` disable third-party API extractors (privacy). `defuddle/full` bundle for reliable Markdown/math; math deps stay out of the content bundle (rev 2026-08-12; §7.6, §26.4) |
 | **Extraction model** | **Layered strategy** (Defuddle → APC-lite → ServiceNow API) | Right tool per page type |
 | **Page-content retrieval** | **MiniSearch over extracted content** (ephemeral, per-tab) | Keeps large pages within the 2,000-token budget; reuses core engine; never persisted |
 | **Browser automation** | **Deferred to v2** (chrome.debugger + CDP Input) | Trusted-event automation needs the debugger; out of scope for read-only v0.1 |
 | State | Zustand | 1 KB, no boilerplate, works outside React |
 | AI SDK | Vercel AI SDK + custom orchestrator | Streaming/abort/tools; lighter than LangChain |
+| **AI SDK version** (rev 2026-08-12) | **`ai ^5`+ (min modern; latest 7.x)** — pin current major at implementation | v4 was three majors stale. v5+ is the unified modern API; the `ILLMProvider` abstraction (§10.1) insulates the app from the `parameters`→`inputSchema` / `maxTokens`→`maxOutputTokens` / `maxSteps`→`stopWhen` breaking changes, so only the provider adapters (§10.2) touch the SDK surface directly |
+| **AI provider packages** (rev 2026-08-12) | **Pin each `@ai-sdk/*` to its own current major** (openai ≈4.x, google ≈3.x, anthropic ≈3.x) | The provider packages version **independently** — a shared `^1` is incorrect; match each to the chosen `ai` core version |
 | AI providers | @ai-sdk/* only | Single codepath for 4 providers (OpenAI uses custom baseURL for compatible endpoints) |
+| **Validation library** (rev 2026-08-12) | **`zod ^4`**; **keep `zod-to-json-schema` in v0.1** | Zod 4 is stable, ~14× faster, and is what MCP SDK + AI SDK 5+ already target. Existing `z.object(...)` schemas are source-compatible. **v0.1 keeps `zod-to-json-schema` (Appendix L unchanged)**; migrating to native `z.toJSONSchema()` is a deferred **v0.2 cleanup** so no v0.1 phase has to touch it |
 | Runtime orchestration | Planner → Executor → Renderer | Cheap models cannot drive maxSteps=15 loops safely |
 | Tier resolution | TierResolver (Appendix D) | Prevents hallucinated model names |
 | Animation | motion | Do not install framer-motion — v12 is published under motion |
@@ -3273,19 +3570,28 @@ Runs nightly via Scheduler. v0.1 produces exactly three Insight values: tag-tren
 | Notes placement | Standalone view only | Rich workspace needs full viewport |
 | Cross-surface consistency | Same ThemeStore and WorkspaceStore | One product across two surfaces |
 | **Phase ordering** | **Knowledge-first data-flow** (acquire→store→understand→display→extend→harden) | Matches product value (Copilot + Obsidian + NotebookLM); PageContentService/Notes/LLM-Wiki are the core, not late add-ons |
-| **PageContentService placement** | **Phase 4a** (was Phase 8) | Core infrastructure (§26); consumers in every later phase |
-| **Knowledge Base consolidation** | Memory + MiniSearch + Notes + Wikilinks in **Phase 5** | One coherent knowledge layer before enrichment |
-| **LLM-Wiki phase** | **Phase 5a** (LLM enrichment + RAG + filesystem sync together) | Single shared save pipeline; depends on Phases 4a/5 |
-| **Note enrichment** | **Single haiku call** (tags+category+summary+memory facts) | Cheaper/faster than separate calls (D-01) |
+| **PageContentService placement** | **Phase 6** (was Phase 17) | Core infrastructure (§26); consumers in every later phase |
+| **Knowledge Base consolidation** | Memory + MiniSearch + Notes + Wikilinks in **Phase 8** | One coherent knowledge layer before enrichment |
+| **LLM-Wiki phase** | **Phase 9** (LLM enrichment + RAG + filesystem sync together) | Single shared save pipeline; depends on Phases 6/8 |
+| **Note enrichment** | **Single fast call** (tags+category+summary+memory facts) | Cheaper/faster than separate calls (D-01) |
 | **Notes dual-friendly** | **Markdown body + YAML frontmatter** | Human reads body; LLM/machine reads frontmatter (D-02) |
+| **Note file format** | **OKF v0.2-aligned — OKF-compatible, not OKF-constrained** (rev 2026-08-12) | The `.md` + YAML-frontmatter + folder-tree container already matches OKF v0.2. Frontmatter adds OKF-required `type`, recommended `description`, and the `generated`/`status` trust-lifecycle families so a generic OKF consumer can read a NowPilot note. NowPilot's immutable UUID `id` (WIKI-ID-01) is retained as an OKF **extension key** (OKF §11: consumers must not reject unknown fields), and wikilinks stay the body edge syntax. Full-OKF markdown-link edges + path-as-identity + `sources`/`verified` provenance families conflict with the UUID-identity/wikilink model and are **deferred to v0.2+** behind a dedicated ADR (§21.2, §27.3 SYNC-04, §18 Phase 8/9) |
 | **Category model** | **Path-based `categoryPath` → folders**, separate from tags | 1:1 filesystem mapping; tags stay many-to-many (D-03) |
 | **Notes↔Memory direction** | **Notes → Memory only** | Notes are user-owned; memory is system-owned (D-05) |
 | **Semantic search** | **LLM-routed reranking over MiniSearch** (no embeddings) | No model download; sufficient for v0.1 |
 | **Filesystem sync** | **One-way app→FS + import-for-restore** | Backup use case; bidirectional deferred |
 | **Backup handle storage** | **`notes_backup_config` IndexedDB store** | FileSystemDirectoryHandle non-serializable (D-08) |
 | **Persona** | **PersonaProfile + PersonaInjector in Phase 3; config in PreferenceMemoryStore** | Persona-aware prompts from day one; user config ≠ inferred fact (R2) |
-| **RICH implementation** | **On Ant Design X presentation components, phased 7.3/7.4/7.5** | Reuses adopted stack; no new UI framework |
+| **RICH implementation** | **On Ant Design X presentation components, phased 15.3/15.4/15.5** | Reuses adopted stack; no new UI framework |
 | **Host-page write-back** | **Deferred (clipboard-only in v0.1)** | Extraction-only rule (§0.2); write-back needs v0.2+ injection (R1) |
+| **Agent architecture** | **Coordinator platform; single-agent = one-role plan** | One runtime, tool-governance, memory, evaluation & security model for both modes; multi-role added as data (roles + plans), not a second architecture (§1.6, §30) |
+| **Self-learning model** | **Human-verified continual evolution — NOT autonomous self-modification** | Live orchestration is deterministic; learning is a gated candidate pipeline (§28.6/§28.7/§28.7a). `CandidateProposer` only *proposes*; nothing activates without sandbox eval + human approval (EVO-01/04/05, PROP-05). Fits privacy/cost/safety posture |
+| **Stage typing** | **Discriminated `StageEvent` union (type only), not an event engine** | Compile-time-checked stage I/O for cheap models (L1); avoids importing the deprecated LlamaIndex Workflows engine (§1.6.1) |
+| **Human-in-the-loop** | **Within-turn `input-required` only** | Maps to `waiting-for-permission`/`ask_clarification` (AGT-01); durable cross-session suspend/resume/rewind deferred to v0.2+ (L2, §17.7.7) |
+| **Retry layering** | **Three bounded, non-multiplying layers** | ProviderRouter (§1.5) + AGT-04 replan + one per-stage retry, all under §1.4 tier caps; prevents N×N×N cost blow-up on cheap models (L3, §1.6.1) |
+| **Working memory** | **Markdown block in `UserMemoryStore`, budget-capped** | Cheap always-on user profile for tiny models (Mastra M1); kept distinct from persona config (R2); single-writer, redacted (§3.6) |
+| **Per-call tool approval** | **Dynamic, escalate-only, coordinator-owned** | Risk scales with actual arguments (TOL-02); workers never self-approve (COLLAB-06); baseline from `toolAutonomy` (Mastra M3, §14.5) |
+| **External agent frameworks** | **Rejected: @ant-design/x-sdk, LlamaIndex Workflows, Mastra** | Each is a server/UI-first or deprecated runtime that would duplicate the owned coordinator; patterns borrowed instead (see `DECISIONS.md`) |
 
 **Explicitly out of scope (do not implement):** Tailwind v4 + np-* tokens; shadcn/ui; @radix-ui/react-*; Tweakcn HSL mapping; Shadow DOM injection via ContentScriptHost UI mount; split preflight CSS; portal isolation via ui-shadow/ wrappers; dark mode via .dark class. See §25.
 
@@ -3299,14 +3605,22 @@ Each phase must define a real script. Minimum expected commands in package.json:
     "verify:phase-1":  "tsc --noEmit && vitest run tests/core/runtime tests/core/events tests/core/workspace tests/core/theme",
     "verify:phase-2":  "tsc --noEmit && vitest run tests/core/storage tests/core/security tests/core/utils tests/core/workspace/WorkspacePersistence.test.ts",
     "verify:phase-3":  "tsc --noEmit && vitest run tests/core/ai tests/core/ai/persona",
-    "verify:phase-4":  "tsc --noEmit && vitest run tests/core/context",
-    "verify:phase-4a": "tsc --noEmit && vitest run tests/core/extraction tests/core/content tests/isolation/no-content-script-ui.test.ts",
-    "verify:phase-5":  "tsc --noEmit && vitest run tests/core/memory tests/core/search tests/core/notes/LinkParser.test.ts",
-    "verify:phase-5a": "tsc --noEmit && vitest run tests/core/notes tests/core/storage/migrations",
-    "verify:phase-6":  "tsc --noEmit && vitest run tests/core/telemetry tests/components/DiagnosticsSection.test.tsx",
-    "verify:phase-7":  "tsc --noEmit && vitest run tests/hooks tests/components tests/components/rich tests/core/intent tests/core/notes",
-    "verify:phase-8":  "tsc --noEmit && vitest run tests/core/content tests/addons tests/isolation",
-    "verify:phase-9":  "tsc --noEmit && vitest run && pnpm run lint",
+    "verify:phase-4": "tsc --noEmit && vitest run tests/core/ai/trajectory tests/core/ai/OutcomeVerifier.test.ts",
+    "verify:phase-5":  "tsc --noEmit && vitest run tests/core/context",
+    "verify:phase-6": "tsc --noEmit && vitest run tests/core/extraction tests/core/content tests/isolation/no-content-script-ui.test.ts",
+    "verify:phase-7": "tsc --noEmit && vitest run tests/core/context/trust tests/security/prompt-injection",
+    "verify:phase-8":  "tsc --noEmit && vitest run tests/core/memory tests/core/search tests/core/notes/LinkParser.test.ts",
+    "verify:phase-9": "tsc --noEmit && vitest run tests/core/notes tests/core/storage/migrations",
+    "verify:phase-10": "tsc --noEmit && vitest run tests/core/memory/governance tests/core/knowledge/provenance",
+    "verify:phase-11":  "tsc --noEmit && vitest run tests/core/telemetry tests/components/DiagnosticsSection.test.tsx",
+    "verify:phase-12": "tsc --noEmit && vitest run tests/evals",
+    "verify:phase-13": "tsc --noEmit && vitest run tests/core/evolution tests/core/evolution/CandidateProposer.test.ts",
+    "verify:phase-14": "tsc --noEmit && vitest run tests/core/collaboration tests/evals/collaboration tests/security/collaboration-permissions.test.ts",
+    "verify:phase-15":  "tsc --noEmit && vitest run tests/hooks tests/components tests/components/rich tests/core/intent tests/core/notes",
+    "verify:phase-16": "tsc --noEmit && vitest run tests/core/multimodal tests/components/multimodal",
+    "verify:phase-17":  "tsc --noEmit && vitest run tests/core/content tests/addons tests/isolation",
+    "verify:phase-18": "tsc --noEmit && vitest run tests/core/tools/governance tests/core/tools/discovery",
+    "verify:phase-19":  "tsc --noEmit && vitest run && pnpm run lint",
     "verify:all":      "tsc --noEmit && vitest run && pnpm run lint",
     "test:perf":       "vitest run tests/perf",
     "test:isolation":  "vitest run tests/isolation"
@@ -3314,7 +3628,7 @@ Each phase must define a real script. Minimum expected commands in package.json:
 }
 ```
 
-`tests/isolation/no-content-script-ui.test.ts` greps the content-script bundle and rejects if it finds `antd`, `React`, `react-dom` — **and `defuddle` or `yaml`, or any File System Access API usage.**
+`tests/isolation/no-content-script-ui.test.ts` greps the content-script bundle and rejects if it finds `antd`, `React`, `react-dom` — **and `defuddle` or `yaml`, or any File System Access API usage.** **Rev 2026-08-12:** because Defuddle is pinned to the `defuddle/full` bundle (§7.6, §26.4), the grep MUST also reject Defuddle's transitive Markdown/math deps in the content bundle — `mathml-to-latex`, `temml`, and `turndown` — so the panel-only extraction rule (R-3) stays enforced.
 
 ## §25 — Future Page Injection Architecture & Deferred UI Features
 
@@ -3349,7 +3663,7 @@ Side Panel + Standalone view continue to use AntD. Injected UI uses Tailwind + R
 
 ### §25.6 @ant-design/x-card / A2UI — Deferred to v0.2+
 
-**Why deferred:** JSON-generation difficulty mismatch — NowPilot's runtime keeps the JSON a Haiku/Flash model must emit small (PlannerDecisionSchema is a 3-branch union; StructuredOutput budgets one repair). A2UI's adjacency-list component trees + JSON-Pointer bindings are a much larger, error-prone target. New canonical types (Catalog, Surface, ActionPayload) would need Appendix C additions. Overlaps existing SkillResult card/table/checklist rendering.
+**Why deferred:** JSON-generation difficulty mismatch — NowPilot's runtime keeps the JSON a `fast`/`balanced`-tier model must emit small (PlannerDecisionSchema is a 3-branch union; StructuredOutput budgets one repair). A2UI's adjacency-list component trees + JSON-Pointer bindings are a much larger, error-prone target. New canonical types (Catalog, Surface, ActionPayload) would need Appendix C additions. Overlaps existing SkillResult card/table/checklist rendering.
 
 **Preserved for future:** RendererService's structured-output rule (§1.2) and SkillResult.type 'card-grid'|'list' (§14.1) are stepping stones. @ant-design/x-card is antd/@ant-design/x-adjacent (same tokens, same XProvider), so only new Zod schemas + capability gate needed later.
 
@@ -3359,26 +3673,26 @@ Side Panel + Standalone view continue to use AntD. Injected UI uses Tailwind + R
 
 ### §26.1 Principle
 
-Page-content extraction is **core infrastructure**, not a tool (built in **Phase 4a**). A single PageContentService owns extraction for every surface (Chat, Agent, Summarize, /research, add-ons). It applies a **layered strategy**, caches per tab, redacts before use, and feeds ContextOptimizerInput.pageContext (§2.3).
+Page-content extraction is **core infrastructure**, not a tool (built in **Phase 6**). A single PageContentService owns extraction for every surface (Chat, Agent, Summarize, /research, add-ons). It applies a **layered strategy**, caches per tab, redacts before use, and feeds ContextOptimizerInput.pageContext (§2.3).
 
 ### §26.2 Layered strategy (ordered)
 
 ```
 extract(tabId, mode)
    │
-   ├─ 1. ServiceNow record?  ── yes ─▶ ServiceNow add-on: Table API → SNowCaseData   [API-FIRST, §9.7]
+   ├─ 1. ServiceNow record?  ── yes ─▶ ServiceNow add-on: Table API → SNowCaseData   [API-FIRST, §9.7 — PHASE 17, not 4a]
    │
-   ├─ 2. mode = 'default' (read/summarize)
+   ├─ 2. mode = 'default' (read/summarize)                                  [PHASE 6]
    │        └─▶ DefuddleStrategy  → clean Markdown (main content)          [PRIMARY read path]
    │             └─ low confidence? → Readability fallback
    │
-   └─ 3. mode = 'actionable' (Agent needs structure/interaction)
-            └─▶ ApcLiteStrategy   → APCLiteNode tree (roles, geometry, interaction)
+   └─ 3. mode = 'actionable' (Agent needs structure/interaction)           [PHASE 6]
+            └─▶ ApcLiteStrategy   → APCLiteNode tree (roles, interaction; geometry omitted in v0.1, §26.6)
 ```
 
-- **DefuddleStrategy** is the default for reading/summarizing.
-- **ApcLiteStrategy** is used when the Agent needs structure (forms, tables, clickable/editable elements, node ids + geometry) — the substrate for future v2 automation (§26.7).
-- **ServiceNow** always tries the Table API first (§9.7); extraction is fallback only.
+- **DefuddleStrategy** is the default for reading/summarizing. **(Phase 6)**
+- **ApcLiteStrategy** is used when the Agent needs structure (forms, tables, clickable/editable elements, node ids) — the substrate for future v2 automation (§26.7). **(Phase 6; geometry omitted in v0.1 per §26.6.)**
+- **ServiceNow** always tries the Table API first (§9.7); extraction is fallback only. **⚠️ Phase 6 does NOT implement this layer** — it only reserves the `servicenow-api` strategy id and ordering; the ServiceNow add-on **registers** the strategy in **Phase 17** (§8.2, F5 note in Appendix C). A Phase-6 implementer builds strategies 2 and 3 only.
 
 ### §26.3 Strategy contract
 
@@ -3395,15 +3709,64 @@ export interface IExtractionStrategy {
 Defuddle is **not** bundled into the content script (would break the < 50 KB extraction-only bundle, §22.1, §5.6). Instead:
 
 ```
-Content script (tiny):  outerHTML (or targeted subtree)  ──RuntimeEnvelope──▶ Side Panel / Standalone view
-Side Panel / Standalone view:  DOMParser → new Defuddle(doc).parse()  → markdown → PageContext
+Content script (tiny):  stripped outerHTML clone + effective base URL  ──RuntimeEnvelope──▶ Side Panel / Standalone view
+Side Panel / Standalone view:  DOMParser → inject <base href> → Defuddle(doc, opts).parse()  → markdown → PageContext
 ```
 
 The content script only reads/serializes HTML; **Defuddle parsing runs in the side panel / standalone view**. Preserves the isolation rule (§5.6) and the 50 KB cap (§22.1).
 
+**Canonical Defuddle call shape (Defuddle ≥ 0.19.2, rev 2026-08-12).** The `0.19.x` API requires markdown to be requested explicitly and third-party API extractors to be disabled:
+
+```ts
+import { Defuddle } from 'defuddle/full';        // full bundle → reliable Markdown + math (mathml-to-latex, temml)
+
+// panel side: the payload from the content script carries the page's effective base URL
+const doc = new DOMParser().parseFromString(payload.html, 'text/html');
+// A detached DOMParser document has no layout and no base href, so relative URLs/images
+// resolve wrong. The content script stamps the effective base URL; the panel restores it:
+if (payload.baseUrl && !doc.querySelector('base')) {
+  const base = doc.createElement('base');
+  base.setAttribute('href', payload.baseUrl);
+  doc.head?.prepend(base);
+}
+const result = new Defuddle(doc, {
+  url: payload.baseUrl,   // feeds relative-URL resolution (0.19.x)
+  markdown: true,         // 0.19.x: markdown is opt-in
+  useAsync: false,        // PRIVACY-CRITICAL: never let Defuddle fetch third-party APIs (e.g. FxTwitter). §0.2, §6.1
+}).parse();               // synchronous parse() — async extractors never run on parse()
+// result.content = markdown; result.title/author/description/published/wordCount/... = metadata
+```
+
+**Why `useAsync:false` + `parse()` (not `parseAsync()`) is mandatory.** Defuddle `0.19.x` added async extractors that fetch from third-party APIs (e.g. FxTwitter for X/Twitter) when a page has no locally usable content. For a privacy-first extension where no data leaves the machine unless the user configures a cloud provider (§6.1), that silent outbound call is prohibited. Synchronous `parse()` never triggers async extractors, and `useAsync:false` is belt-and-braces. This also keeps §0.2's "no custom User-Agent in fetch" invariant intact, since Defuddle would otherwise be the fetch initiator.
+
+**Bundle choice.** Use `defuddle/full` (not the core `defuddle` bundle) in the panel: the core bundle "handles math but doesn't include fallbacks for converting between MathML and LaTeX," so clean-Markdown fidelity (which DefuddleStrategy depends on, §26.2) needs `full`. Size is acceptable because Defuddle runs in the Side Panel/Standalone view, **not** the < 50 KB content bundle — and its math deps (`mathml-to-latex`, `temml`) plus `turndown` must stay out of the content bundle (enforced by the isolation grep, §24, Appendix G).
+
+### §26.4a Extraction trigger & cache lifecycle (authoritative)
+
+This subsection is **normative** and fixes the timing/lifecycle rules a Phase-6 implementer must follow. All constants live in Appendix C.
+
+**Trigger model — on-demand extraction + subscription-gated auto re-extract:**
+- **Lightweight live context** (title, url, meta) updates **always** on navigation — this is the tiny content-bridge payload, not the heavy path.
+- **Full extraction** (Defuddle → Readability → APC-lite) runs **only when a surface requests it** (Chat/Summarize/agent `get-page-content`/pin/quick-action). NowPilot never proactively extracts every page (read-only + no MV3 background work + cost-effective posture).
+- **Auto re-extract** after `wxt:locationchange` (SPA-nav) or `tabs.onUpdated` fires **only if a surface is subscribed to that tab**. Unsubscribed tabs are **mark-stale only**.
+- **"Subscribed" is defined as:** the Side Panel/Standalone is active on that tab **OR** the tab is pinned as context (`WorkspaceState.pinnedTabs` / `currentPageContext`).
+
+**PageContentCache (per tab):**
+- Keyed by `tabId`; **separate** from the Phase-1 `PageRegistry` (which registers surface pages, not page content).
+- **Invalidate + evict** the tab's cache **and** its ephemeral MiniSearch index immediately on `wxt:locationchange`, `tabs.onUpdated`; evict on `tabs.onRemoved`.
+- **Bounded LRU:** keep at most `PAGE_CACHE_MAX_TABS` (default **20**) tab entries; on insert beyond the cap, evict the **least-recently-accessed** tab's entry+index. Access recency is bumped on every cache read/serve. Extraction and its index are **always evicted together** (never orphan an index).
+- **Never LRU-evict an in-flight or subscribed tab** (active extraction promise or live subscription). **Pinned tabs are eviction-last** (they count against the cap but are evicted only after unsubscribed/unpinned entries).
+- Cache is **ephemeral — never persisted** to IndexedDB.
+
+**Concurrency & race guard:** coalesce concurrent extractions per tab (dedup on the in-flight promise keyed by `tabId`). A read arriving **after invalidation but before re-extract completes** must **await the in-flight extraction**, never return the stale entry.
+
 ### §26.5 MiniSearch integration (retrieval-augmented context)
 
-- After extraction, PageIndexBuilder builds an **ephemeral** MiniSearch index (core engine) over the extracted content (Defuddle markdown chunked by heading, or APC-lite text nodes).
+- The ephemeral MiniSearch index is built **lazily on the first `query()` for a tab** (`PageIndexBuilder`). Until then the cache stores raw Defuddle markdown / APC-lite tree only; the index is **built once and memoized** for the tab, and evicted together with the extraction (§26.4a). Never persisted.
+- **Chunking (`chunked by heading`, authoritative):** chunk Defuddle markdown by heading boundaries (`h1–h6`); each chunk is a MiniSearch doc with fields `title`, `url`, `headingPath` (breadcrumb), `sectionText`, plus an index-wide `tabId`. Additional rules:
+  - **Preamble:** content before the first heading becomes a synthetic `"(preamble)"` chunk under the page title (never orphaned).
+  - **No-heading pages:** if the page has zero headings, fall back to **paragraph-block chunks** (blank-line separated) under the page title.
+  - **Oversized sections:** if a heading section exceeds `INDEX_CHUNK_MAX_TOKENS` (default **500**), split it into paragraph sub-chunks that **inherit the same `headingPath`**.
 - When extracted tokens exceed the **2,000-token webpage budget** (§22.2), inject only selectRelevant(query) results and mark compressionApplied:'topk' in the provenance manifest (§2.6).
 - Minimal mode (§2.5) always routes through selectRelevant.
 - Page indexes are ephemeral — **never persisted** to IndexedDB.
@@ -3412,12 +3775,14 @@ The content script only reads/serializes HTML; **Defuddle parsing runs in the si
 
 ### §26.6 Reliability & privacy
 
-- **Concurrency guard:** coalesce duplicate extractions per tab.
-- **Timeout:** 5 s hard cap (§13); on failure fall back (Defuddle→Readability, AX→DOM) and record source.
+- **HTML payload (content script → panel):** serialize a **pre-stripped clone** of `document.documentElement` (remove `script`/`style`/`noscript`/`svg`/cross-origin `iframe` markup and `form action` attributes; **keep** text, headings, links, and input controls). Stamp the page's **effective base URL** into the payload so the panel's detached `DOMParser` resolves relative URLs (§26.4). Apply a hard size cap `PAGE_HTML_MAX_BYTES` (default **2 MB**); if still larger, **truncate at an element boundary and set `truncated:true`** — no multi-envelope chunking protocol in v0.1.
+- **APC-lite depth (v0.1):** ship the **full `APCLiteNode` type** (Appendix C) but a **minimal structural walk** — roles + text + hierarchy + interaction flags + links + tables; **geometry omitted** (the optional `geometry?` field stays unset). If ever populated, geometry MUST be read **content-script-side** against live layout, never in the panel's detached doc. The `AxDomWalker` runs **only on a `mode:'actionable'` request** (zero AX cost on the default read/summarize path).
+- **Concurrency guard:** coalesce duplicate extractions per tab; serve the in-flight promise, never a stale entry (§26.4a).
+- **Timeout:** 5 s hard cap (§13) via a single `AbortController` threaded through the round-trip; on failure fall back (Defuddle→Readability, AX→DOM), record source, then surface the typed error `CONTENT_EXTRACT_FAILED` (Appendix C.2) — **never a silent empty result**.
 - **Invalidation:** SPANavigationWatcher (wxt:locationchange) + tabs.onUpdated.
-- **Redaction:** run TraceRedactor-style redaction **before** indexing or logging (§4.4, §16).
-- **Passwords:** field values never captured (isPassword ⇒ value omitted).
-- **Metrics:** duration, node/char count, source, truncation → Diagnostics (§4.5).
+- **Redaction:** run `TraceRedactor` **panel-side**, over the extracted markdown/tree, **before** indexing or logging (§4.4, §16). The content script performs **no** redaction (keeps the content bundle free of core deps, Appendix G) — it only strips markup and omits password values at capture.
+- **Passwords:** field values never captured (isPassword ⇒ value omitted), enforced at capture in the content-script `AxDomWalker` via `FormControlSchema.refine` (Appendix C).
+- **Metrics:** duration, node/char count, source, truncation → Diagnostics (§4.5); redacted, no raw body persisted.
 
 ### §26.7 Browser automation — deferred to v2
 
@@ -3430,7 +3795,7 @@ NowPilot v0.1 is **read-only**: content scripts are extraction-only (§5.6); the
 
 ## §27 — LLM-Wiki & Filesystem Sync
 
-**Built in Phase 5a.** Requires Phase 5 (Notes + Memory + MiniSearch), Phase 4a (PageContentService), Phase 3 (AI runtime). Extends the atomic-note-with-wikilinks system with LLM enrichment, a hierarchical category system that maps to filesystem folders, RAG Q&A, chat/page-to-note capture, Memory↔Notes integration, and one-way app→filesystem backup with import-for-restore.
+**Built in Phase 9.** Requires Phase 8 (Notes + Memory + MiniSearch), Phase 6 (PageContentService), Phase 3 (AI runtime). Extends the atomic-note-with-wikilinks system with LLM enrichment, a hierarchical category system that maps to filesystem folders, RAG Q&A, chat/page-to-note capture, Memory↔Notes integration, and one-way app→filesystem backup with import-for-restore.
 
 **Surfaces affected:** Standalone view (all features + Options); Side Panel (`ChatMessage` "Save to note" only). **Not touched:** BacklinksPanel, NoteGraphView, WikilinkAutocomplete, NotePreview — the atomic-note + wikilink core is preserved unchanged.
 
@@ -3444,29 +3809,64 @@ NowPilot v0.1 is **read-only**: content scripts are extraction-only (§5.6); the
 
 ### §27.2 LLM Features (LLM-WIKI-01…10)
 
-- **LLM-WIKI-01** On save, one **haiku-tier, temperature-0** call returns ≤5 tags + 1 categoryPath (or null) + a 1–2 sentence summary (+ memory facts, NMEM-02). Rendered as accept/reject Tags + inline category input.
+- **LLM-WIKI-01** On save, one **fast-tier, temperature-0** call returns ≤5 tags + 1 categoryPath (or null) + a 1–2 sentence summary (+ memory facts, NMEM-02). Rendered as accept/reject Tags + inline category input.
 - **LLM-WIKI-02** Independent toggles in Options → Notes (`np_notes_llm_features`: autoTag, autoCategorize, autoSummary, aiSearch). When off, no LLM call on save.
 - **LLM-WIKI-03** Optional `summary` field; displayed as secondary text in NoteList.
 - **LLM-WIKI-04** "Regenerate tags/summary" toolbar button; re-runs the combined call in place.
-- **LLM-WIKI-05** Natural-language search: MiniSearch fuzzy → if <3 results or "AI Search", a haiku call reranks top-10 by semantic relevance ("AI-enhanced" indicator). No embeddings/vector store.
-- **LLM-WIKI-06** "Ask your notes" RAG: MiniSearch top-5 + memory facts (NMEM-01) → **flash-tier** synthesis with per-statement citations → ephemeral @ant-design/x Bubble with clickable citation Tags (Flow 13).
+- **LLM-WIKI-05** Natural-language search: MiniSearch fuzzy → if <3 results or "AI Search", a fast call reranks top-10 by semantic relevance ("AI-enhanced" indicator). No embeddings/vector store.
+- **LLM-WIKI-06** "Ask your notes" RAG: MiniSearch top-5 + memory facts (NMEM-01) → **balanced-tier** synthesis with per-statement citations → ephemeral @ant-design/x Bubble with clickable citation Tags (Flow 13).
 - **LLM-WIKI-07** "Save to note" on any assistant message → `NoteChatConverter` drafts title/content/tags/wikilinks/categoryPath → pre-filled NoteEditor for review (user is gatekeeper).
 - **LLM-WIKI-08** Staleness: `summaryGeneratedAt`/`tagsGeneratedAt` vs `updated` → subtle "Content has changed — [Regenerate tags/summary]" hint.
 - **LLM-WIKI-09** Orphan detection (algorithmic, no LLM): 0 wikilinks + 0 backlinks → "Orphan" badge + "Find context" (triggers RAG).
 - **LLM-WIKI-10** "Re-analyze all notes" (Options → Notes), user-initiated only, sequential; updates stats in real time.
-- **LLM-WIKI-11** Suggestion confidence gating. Every enrichment item the model returns (`memoryFacts[]`, suggested `tags[]`, suggested wikilinks) carries a self-reported `confidence` in `[0,1]`. Items below `NOTE_SUGGESTION_DISPLAY_THRESHOLD = 0.60` are **never surfaced** to the user (silently discarded, not stored). Of the items at or above the threshold, at most `NOTE_SUGGESTION_MAX_PER_SAVE = 3` `memoryFacts` and `5` `tags` are shown per save, ordered by descending confidence; overflow is dropped. Accepted items persist at their reported confidence; rejected items are discarded and never re-suggested for the same `{noteId, version}`. When the note is edited before the (non-blocking) suggestions return, stale suggestions for the prior `version` are discarded (never applied to newer content).
+- **LLM-WIKI-11** Suggestion confidence gating. Every enrichment item the model returns (`memoryFacts[]`, suggested `tags[]`, suggested wikilinks) carries a self-reported `confidence` in `[0,1]`. Items below `NOTE_SUGGESTION_DISPLAY_THRESHOLD = 0.60` are **never surfaced** to the user (silently discarded, not stored). Of the items at or above the threshold, at most `NOTE_SUGGESTION_MAX_FACTS_PER_SAVE = 3` `memoryFacts` and `NOTE_SUGGESTION_MAX_TAGS_PER_SAVE = 5` `tags` are shown per save, ordered by descending confidence; overflow is dropped. (Both constants are defined in Appendix C — there is no single `NOTE_SUGGESTION_MAX_PER_SAVE`.) Accepted items persist at their reported confidence; rejected items are discarded and never re-suggested for the same `{noteId, version}`. When the note is edited before the (non-blocking) suggestions return, stale suggestions for the prior `version` are discarded (never applied to newer content).
 
 ### §27.3 One-Way Filesystem Sync (SYNC-01…11)
 
 - **SYNC-01** "Set backup folder" via `showDirectoryPicker()` (**Standalone view only**); FileSystemDirectoryHandle persisted in `notes_backup_config` IndexedDB store (cannot use chrome.storage.local — handles are non-serializable).
 - **SYNC-02** On NotesPage mount, verify `handle.queryPermission()`; if denied/missing → sync disabled + banner "Backup folder not accessible. [Re-select folder] [Dismiss]".
 - **SYNC-03** Per-save write/update/delete of the `.md` file; fire-and-forget (no loading state); 50 ms debounce prevents rapid-save bursts.
-- **SYNC-04** File format: `{categoryPath}/{title}.md` with YAML frontmatter (`id, created, updated, tags, categoryPath, summary`) + markdown body. Empty categoryPath → root folder. Filename sanitized: `/ \ : * ? " < > |` → `_`.
+- **SYNC-04 (OKF v0.2-aligned, rev 2026-08-12)** File path: `{categoryPath}/{title}.md`; empty categoryPath → root folder; filename sanitized: `/ \ : * ? " < > |` → `_`. Each file is a UTF-8 Markdown document with an **OKF v0.2-compatible YAML frontmatter block** followed by the Markdown body (wikilinks live inline in the body). Frontmatter fields:
+
+  | Field | OKF role | Source | Required |
+  |-------|----------|--------|----------|
+  | `type` | OKF **required** (only always-required key) | fixed default `Note` (or producer value, e.g. `Playbook`) | required |
+  | `title` | OKF recommended | `Note.title` | required |
+  | `description` | OKF recommended | `Note.summary` (when present) | optional |
+  | `id` | OKF **extension key** | `Note.id` (immutable UUID, WIKI-ID-01) | required (NowPilot identity) |
+  | `created` / `updated` | extension | `Note.created` / `Note.updated` (epoch) | required |
+  | `tags` | OKF `tags` | `Note.tags[]` | optional |
+  | `categoryPath` | extension | `Note.categoryPath` | optional |
+  | `generated` | OKF `generated` | `{ by: nowpilot/<tier-model>, at: <ISO 8601> }` from `tagsGeneratedAt`/`summaryGeneratedAt` | required |
+  | `status` | OKF `status` | `draft` | `stable` (default `stable`) | required |
+
+  **Canonical emitted example:**
+  ```markdown
+  ---
+  type: Note
+  title: INC Lifecycle Flow
+  description: One-row-per-state summary of the incident lifecycle in ServiceNow.
+  id: 6f2c1a90-7b3e-4d51-9c2a-1e77aa42b0c9
+  created: 1754870400000
+  updated: 1754956800000
+  tags: [servicenow, incident, lifecycle]
+  categoryPath: Work Knowledge Base/ServiceNow/Incident
+  generated: { by: nowpilot/fast-tier, at: 2026-08-12T09:58:00Z }
+  status: stable
+  ---
+  # Incident lifecycle
+
+  New -> In Progress -> On Hold -> Resolved -> Closed.
+
+  See [[Problem Lifecycle Flow]] and [[Change Request Flow]] for related processes.
+  ```
+
+  **Contract notes.** (a) **Identity stays UUID** - OKF v0.2 treats the file *path* as the Concept ID, but NowPilot intentionally keeps the immutable `id` (WIKI-ID-01) as the source of truth and exposes it as an OKF extension key; a generic OKF consumer ignores it, restore (SYNC-09) keys off it. (b) **Links stay wikilinks** - `[[Title]]` remains inside the body so the atomic-note graph is fully reconstructable on restore (§27.7a); NowPilot does **not** emit OKF standard-markdown-link edges in v0.1. (c) **No secrets** - all frontmatter/body still passes through TraceRedactor before write; password field values are never written (§16.4, §27.6).
 - **SYNC-05** Title collision (same title + same category) → numeric suffix: `My Note.md`, `My Note (1).md`, … Scan existing files for highest suffix before writing.
 - **SYNC-06** External-change detection: if file lastModified newer than last sync (2 s tolerance) → confirm "Overwrite with app version? [Overwrite] [Skip]", default Skip.
 - **SYNC-07** No backup folder → all sync ops are no-ops; toolbar indicator "Backup: off [Configure]".
 - **SYNC-08** Status Tag: green "Backup: On" / gray "Backup: Off" / red "Backup: Error" (tooltip shows last error).
-- **SYNC-09** "Restore from backup" via `showDirectoryPicker()` → walk tree → parse `.md` frontmatter → upsert: id exists → update (preserve updated if newer); id missing → create; additive (notes not in folder are NOT deleted); categoryPath reconstructed from folder path.
+- **SYNC-09** "Restore from backup" via `showDirectoryPicker()` → walk tree → parse `.md` frontmatter → upsert: id exists → update (preserve updated if newer); id missing → create; additive (notes not in folder are NOT deleted); categoryPath reconstructed from folder path. **OKF tolerance (rev 2026-08-12):** the parser reads the OKF-aligned frontmatter (SYNC-04) — `type`/`description`/`generated`/`status` are parsed without error, and **any unknown OKF key is tolerated and preserved** (OKF §11: consumers must not reject unrecognized fields). Missing OKF families never reject a file; `id` is read from the OKF extension key to preserve identity and every wikilink edge on round-trip.
 - **SYNC-10** Restore preview modal: "Found 24 notes (12 new, 3 updated, 9 unchanged). Proceed? [Import] [Cancel]".
 - **SYNC-11** Delete-on-sync: deleting a note removes its `.md`; if the nested category folder becomes empty it is removed (clean backup).
 
@@ -3492,7 +3892,9 @@ TraceRedactor-style redaction runs **before** indexing, logging, or writing to d
 
 ### §27.7 Note-Taking Method (clarification)
 
-The method is **atomic notes + wikilinks** (the Phase 5 core), *extended* by LLM-Wiki with: `categoryPath` (single hierarchy → folder), `tags` (many-to-many labels), and an LLM `summary` (glanceable context). Wikilinks remain the primary linking mechanism and live inside the markdown body, so the atomic-note graph is fully reconstructable on restore. LLM wikilink *autocomplete* suggestions are **not** in v0.1 (D-04; MiniSearch title matching is sufficient) — but chat/page-to-note conversion (LLM-WIKI-07) still *suggests* wikilinks for the drafted note.
+The method is **atomic notes + wikilinks** (the Phase 8 core), *extended* by LLM-Wiki with: `categoryPath` (single hierarchy → folder), `tags` (many-to-many labels), and an LLM `summary` (glanceable context). Wikilinks remain the primary linking mechanism and live inside the markdown body, so the atomic-note graph is fully reconstructable on restore. LLM wikilink *autocomplete* suggestions are **not** in v0.1 (D-04; MiniSearch title matching is sufficient) — but chat/page-to-note conversion (LLM-WIKI-07) still *suggests* wikilinks for the drafted note.
+
+**OKF v0.2 compatibility (informative, rev 2026-08-12).** The on-disk `.md` format is **OKF v0.2-compatible** (see the [Open Knowledge Format v0.2 spec](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md)): a directory of Markdown files with YAML frontmatter and a free-form body. The serialized frontmatter carries OKF's only always-required key `type` (default `Note`), the recommended `description` (= the LLM `summary`), and the `generated`/`status` trust-lifecycle families (SYNC-04). NowPilot deliberately keeps its **immutable UUID `id`** as the source of truth (written as an OKF *extension key*, which OKF consumers must tolerate) and keeps **wikilinks** — not OKF standard-markdown-link edges — as the body edge syntax, so the atomic-note graph survives rename/move/restore (WIKI-ID-01…04). Strict-OKF conformance (markdown-link edges as graph edges, path-as-Concept-ID, and the `sources`/`verified` provenance families) would break the UUID-identity/wikilink model and is therefore **out of scope for v0.1** — deferred to v0.2+ behind a dedicated ADR. The net posture is **OKF-compatible, not OKF-constrained**: a generic OKF consumer can read a NowPilot note today, while NowPilot's internal identity/link graph stays authoritative.
 
 ### §27.7a Note Identity, Rename & Unresolved Links (WIKI-ID-01…04)
 
@@ -3505,13 +3907,14 @@ The method is **atomic notes + wikilinks** (the Phase 5 core), *extended* by LLM
 
 | # | Decision | Rationale |
 |---|---|---|
-| D-01 | Single LLM call for tags + category + summary | One haiku call is cheaper/faster than three; structured JSON returns all three |
+| D-01 | Single LLM call for tags + category + summary | One fast call is cheaper/faster than three; structured JSON returns all three |
 | D-02 | Notes dual-friendly: human body, machine frontmatter | Body is natural markdown; YAML frontmatter is structured metadata; both consumers served by one file |
+| D-02a | **Note frontmatter is OKF v0.2-aligned** (rev 2026-08-12) — OKF-compatible, not OKF-constrained | The `.md` + YAML-frontmatter + folder-tree container already matches OKF v0.2's "directory of markdown files with YAML frontmatter." Adding OKF `type`/`description`/`generated`/`status` makes a note readable by any generic OKF consumer while keeping the immutable UUID `id` as an OKF extension key and wikilinks as body edges. OKF's own value-add (provenance/trust/lifecycle) maps onto the harness `MemoryRecord`/`CompletionEvidence` taxonomy (§28.2/§28.4), avoiding two competing metadata vocabularies. Strict-OKF markdown-link edges + path-as-identity + `sources`/`verified` families conflict with WIKI-ID-01…04 and are deferred to v0.2+ behind a dedicated ADR |
 | D-03 | Category path-based, not flat | categoryPath maps 1:1 to folders; flat tags already cover many-to-many |
 | D-04 | LLM wikilink suggestions dropped from v0.1 | MiniSearch covers title-based matching; edge case rare |
 | D-05 | Notes feed into MemoryEngine, not the reverse | Notes are user-curated; extracting facts enriches chat context without polluting notes |
 | D-06 | Maintenance is user-initiated | No background jobs in MV3; staleness is passive timestamp comparison |
-| D-07 | Haiku for analysis, Flash for synthesis | Tag/category/summary is low-complexity (Haiku); RAG synthesis benefits from Flash |
+| D-07 | `fast` tier for analysis, `balanced` tier for synthesis | Tag/category/summary is low-complexity (`fast` tier); RAG synthesis benefits from `balanced` tier |
 | D-08 | Backup handle in IndexedDB | FileSystemDirectoryHandle is non-serializable; dedicated store required |
 
 ### §27.9 Out of Scope (v0.1)
@@ -3532,12 +3935,14 @@ Bidirectional filesystem sync (requires polling/Native Messaging) · embedding-b
 
 This section adds evidence-backed completion, trust-aware context, governed memory, capability-based tools, trajectory evaluation, and verified evolution. It does not replace the bounded Planner → Executor → Renderer architecture.
 
+> **Where each requirement is built:** the P0/P1 IDs below are folded next to their implementation phase in §18 (AGT→4, CTX→7, MEM/KNW→10, TOL→18, EVAL→12, EVO→13). Canonical shapes are in Appendix C.1; **worked reference implementations are in Appendix O**.
+
 ### §28.2 Agent reliability requirements
 
 - **AGT-01 (P0):** Add explicit trajectory states: assembling-context, planning, waiting-for-permission, executing, verifying, replanning, rendering, completed, failed, aborted.
 - **AGT-02 (P0):** Side-effecting success requires `CompletionEvidence`. Renderer must not claim execution without matching evidence.
 - **AGT-03 (P0):** Every turn produces a structured `AgentTurnOutcome`; cap exhaustion is partial, not successful.
-- **AGT-04 (P0):** Replanning follows the deterministic retry/terminal policy in `NOWPILOT_ADDITIONAL_REQUIREMENTS_AGENT_HARNESS.md`.
+- **AGT-04 (P0):** Replanning follows a deterministic retry/terminal policy: at most one replan per failed tool within the tier's planner cap (§1.4); a repeated identical failure, a cap breach, or an abort is terminal and yields a `partial` or `failed` `AgentTurnOutcome` — never a silent success.
 
 ### §28.3 Trust-aware context requirements
 
@@ -3589,11 +3994,28 @@ This section adds evidence-backed completion, trust-aware context, governed memo
 - **EVO-05 (P1):** Candidate activation requires sandbox evaluation, approval, scoped rollout, monitoring, and rollback.
 - **EVO-06 (P2):** Agent-generated tools remain sandbox proposals and cannot self-publish.
 
+### §28.7a Candidate Proposer contract
+
+**Design intent.** NowPilot's self-learning is **human-verified continual evolution, not autonomous self-modification.** The live orchestration (§1.2, §1.6) is deterministic and never rewrites itself at runtime. Learning happens *beside* the runtime as a **gated candidate pipeline**: evaluation (§28.6) detects a weakness, the **Candidate Proposer** turns it into a typed `EvolutionCandidate`, and nothing activates without sandbox evaluation + human approval (EVO-01/04/05).
+
+`CandidateProposer` (`src/core/evolution/CandidateProposer.ts`, Phase 13) is the missing bridge between *evaluation output* and *evolution input*. It is **deterministic**: same eval failures ⇒ same proposals.
+
+- **PROP-01 (P1):** The proposer's **only** inputs are (a) failed golden-suite results carrying a `FailureLayer` (EVAL-04) and (b) the `AITransactionLog` evidence for those operations. It never reads raw untrusted content (page/note/tool output) to form a proposal (EVO-04, §28.3).
+- **PROP-02 (P1):** Each proposal targets **exactly one** layer, mapped deterministically from `FailureLayer` → candidate `targetLayer` (EVO-02). A failure spanning multiple layers yields multiple single-layer proposals, never one blended patch.
+- **PROP-03 (P1):** A proposal is emitted **only** when the weakness clears an **evidence threshold**: at least `PROPOSE_MIN_FAILURES` (default **3**) failing trajectories agree on the same `FailureLayer`, over a rubric-score drop ≥ `PROPOSE_MIN_SCORE_DELTA` (default **0.15**). Below threshold ⇒ no proposal (avoids over-fitting to one bad run).
+- **PROP-04 (P1):** Every proposal carries a **cost cap**: an estimated token/latency budget for its sandbox evaluation. If the projected sandbox cost exceeds `PROPOSE_MAX_EVAL_TOKENS` (default **50_000**), the proposal is marked `deferred`, not run — keeping self-learning affordable for cost-effective deployments.
+- **PROP-05 (P0):** The proposer **only proposes**. It emits `status: 'proposed'` candidates into the Phase 13 store and can never activate, scope-roll, or write them into active prompts/tools/permissions/procedural memory (EVO-01/04/05). Activation stays human-gated.
+- **PROP-06 (P1):** Every proposal is reproducible: it records the eval-suite version, the contributing `operationId`s, and a content hash so the same inputs regenerate an identical candidate (supports EVAL-07 judge/version calibration).
+
+Canonical types are in **Appendix C.1**; a worked implementation is in **Appendix O.9**. Constants live in Appendix C.1 alongside the types.
+
 ## §29 — Multimodal Input and Real-Time Interaction Foundation
 
 ### §29.1 Scope
 
 v0.1 adds a bounded multimodal input foundation, not a second agent architecture. Image, audio, and document inputs become normalised observations consumed by the existing ContextOptimizer and agent pipeline.
+
+> **Where each requirement is built:** the MM-* IDs below are folded into Phase 16 (§18). Canonical shapes are in Appendix C.1; a worked adapter is in **Appendix O.6**.
 
 ### §29.2 Requirements
 
@@ -3613,195 +4035,35 @@ v0.1 adds a bounded multimodal input foundation, not a second agent architecture
 - Never switch local to cloud for multimodal processing unless `allowCloudFallbackFromLocal` permits it.
 - If no compatible model is configured, return `MULTIMODAL_MODEL_UNAVAILABLE` with a settings action.
 
-## §30 — Revised Master Implementation Order
+## §30 — Bounded Multi-Agent Collaboration (single-agent default)
 
-### §30.1 Canonical order
+### §30.1 Architecture decision
 
-```text
-1 → 2 → 3 → 3a → 4 → 4a → 4b → 5 → 5a → 5b
-  → 6 → 6a → 6b → 6c → 7 → 7a → 8 → 8a → 9
-```
+NowPilot uses a **coordinator-based agent platform** (§1.6). **Single-agent execution is the default configuration, implemented as a one-role `CollaborationPlan`.** Multi-agent execution uses two or more registered roles coordinated through typed handoffs and shared verified task state.
 
-The original Phase 1–9 requirements remain intact. The following sub-phases insert new work without deleting or renumbering existing features.
+All agent execution — single-agent or multi-agent — uses the **same** runtime (§1.2), tool governance (§28.5), evaluation (§28.6), memory governance (§28.4), and security model (§16.6). Multi-role workflows are added as **data** (roles + plans), never as a second runtime, so there is no separate architecture to build later.
 
-### Phase 3a — Agent Reliability and Evidence
+The initial multi-role implementation is one `CollaborationCoordinator` running **bounded staged roles**. Dynamic agent creation, unbounded spawning, peer-granted permissions, uncontrolled agent-to-agent conversation, shared mutable worker memory, and agreement-as-verification remain **prohibited** in every mode (§16.6). Isolated parallel workers are deferred (§30.6).
 
-**Depends on:** Phase 3  
-**Create/modify:** `AgentTrajectoryState`, `OutcomeVerifier`, `CompletionEvidence`, `AgentTurnOutcome`, AgentOrchestrator integration, Renderer completion guard.  
-**DONE when:** transitions, evidence, partial/cap behaviour, abort, and false-completion tests pass.
+Routine chat, summarisation, rewriting, and simple retrieval run on the default one-role plan and never pay multi-agent overhead.
 
-### Phase 4b — Trust-Aware Context and Receipts
+### §30.2 Requirements
 
-**Depends on:** Phases 4 and 4a  
-**Create/modify:** `ContextItem`, trust policy, context receipt, injection defences, stable-prefix snapshots, progressive skill disclosure.  
-**DONE when:** malicious page/note/tool fixtures cannot alter policy and Prompt Inspector reconstructs packing decisions.
-
-### Phase 5b — Memory Governance and Experience Candidates
-
-**Depends on:** Phases 5 and 5a  
-**Create/modify:** `MemoryRecord`, conflict resolver, lifecycle controls, procedural experience candidate store, edge provenance.  
-**DONE when:** conflicts, forget, expiry, sensitivity, provenance, and Notes/Memory boundaries pass.
-
-### Phase 6a — Agent Evaluation
-
-**Depends on:** Phase 6 and available core capabilities  
-**Create:** `src/core/evaluation/**`, `tests/evals/**`, evaluation reports in Diagnostics.  
-**DONE when:** golden suites produce per-dimension evidence and failure-layer categorisation.
-
-### Phase 6b — Verified Continual Evolution
-
-**Depends on:** Phases 5b and 6a  
-**Create:** `src/core/evolution/**`, candidate store, sandbox runner, approval/version/rollback contracts.  
-**DONE when:** raw traces cannot self-activate; a candidate can be proposed, tested, approved, scoped, and rolled back.
-
-### Phase 6c — Bounded Multi-Role Collaboration
-
-**Depends on:** Phases 3a, 4b, 6a, and 6b  
-**Create:** `src/core/collaboration/**`, typed role policies and handoffs, collaboration coordinator, trace integration, and baseline evaluation fixtures.  
-**DONE when:** roles, tools, contexts, budgets, permissions, handoffs, independent review, failure fallback, and single-agent baseline gates pass. Full requirements are in §32.
-
-### Phase 7a — Multimodal Input Foundation
-
-**Depends on:** Phase 7 and Phase 4b  
-**Create:** `src/core/multimodal/**`, image input UI, voice transcription input, provider capability gates, modality fixtures.  
-**DONE when:** image/audio inputs become redacted ContextItems, unsupported providers fail safely, and abort works.
-
-### Phase 8a — Tool Governance and Active Discovery
-
-**Depends on:** Phase 8 and Phase 3a  
-**Create/modify:** `ToolCapabilityManifest`, risk matrix, verifier registry, result shaping, idempotency, active tool discovery.  
-**DONE when:** manifests are complete, risky writes require confirmation, duplicate writes are prevented, and discovery stays within token budget.
-
-### Phase 9 — Hardening and Release (expanded)
-
-In addition to all existing Phase 9 gates:
-
-- run every new sub-phase verification command;
-- block prompt-injection, secret-leakage, false-completion, permission, and memory-isolation regressions;
-- run multimodal privacy/provider fixtures;
-- run candidate activation/rollback drills;
-- include evaluation-suite and rubric versions in release records.
-
-## §31 — Additional Types, Error Codes, Verification & Security (Harness Tracks)
-
-### §31.1 New canonical types
-
-The full shapes are defined in `NOWPILOT_ADDITIONAL_REQUIREMENTS_AGENT_HARNESS.md`. Add them to Appendix C when implementing their target sub-phase:
-
-- `AgentTrajectoryState`
-- `CompletionEvidence`
-- `AgentTurnOutcome`
-- `ContextItem`
-- `ContextReceiptEntry`
-- `MemoryRecord`
-- `ProceduralExperience`
-- `KnowledgeEdgeSource`
-- `ToolCapabilityManifest`
-- `FailureLayer`
-- `EvolutionCandidate`
-- `ModalityInput`
-- `ModalityObservation`
-- `CollaborationRole`
-- `RolePolicy`
-- `CollaborationPlan`
-- `AgentHandoffArtifact`
-- `CollaborationOutcome`
-
-### §31.2 New error codes
-
-```text
-AGENT_STATE_INVALID
-TOOL_POSTCONDITION_FAILED
-COMPLETION_EVIDENCE_MISSING
-CONTEXT_INSTRUCTION_INJECTION_BLOCKED
-MEMORY_CONFLICT
-MEMORY_EXPIRED
-TOOL_MANIFEST_INVALID
-TOOL_IDEMPOTENCY_CONFLICT
-EVALUATION_FAILED
-EVOLUTION_CANDIDATE_REJECTED
-MULTIMODAL_MODEL_UNAVAILABLE
-MULTIMODAL_INPUT_INVALID
-MULTIMODAL_TRANSCRIPTION_FAILED
-COLLAB_DISABLED
-COLLAB_PLAN_INVALID
-COLLAB_ROLE_UNKNOWN
-COLLAB_ROLE_BUDGET_EXCEEDED
-COLLAB_TOTAL_BUDGET_EXCEEDED
-COLLAB_HANDOFF_INVALID
-COLLAB_TOOL_SCOPE_VIOLATION
-COLLAB_PERMISSION_VIOLATION
-COLLAB_REVIEW_REJECTED
-COLLAB_BASELINE_NOT_MET
-COLLAB_DEADLINE_EXCEEDED
-```
-
-### §31.3 New verification scripts
-
-```json
-{
-  "verify:phase-3a": "tsc --noEmit && vitest run tests/core/ai/trajectory tests/core/ai/OutcomeVerifier.test.ts",
-  "verify:phase-4b": "tsc --noEmit && vitest run tests/core/context/trust tests/security/prompt-injection",
-  "verify:phase-5b": "tsc --noEmit && vitest run tests/core/memory/governance tests/core/knowledge/provenance",
-  "verify:phase-6a": "tsc --noEmit && vitest run tests/evals",
-  "verify:phase-6b": "tsc --noEmit && vitest run tests/core/evolution",
-  "verify:phase-6c": "tsc --noEmit && vitest run tests/core/collaboration tests/evals/collaboration tests/security/collaboration-permissions.test.ts",
-  "verify:phase-7a": "tsc --noEmit && vitest run tests/core/multimodal tests/components/multimodal",
-  "verify:phase-8a": "tsc --noEmit && vitest run tests/core/tools/governance tests/core/tools/discovery"
-}
-```
-
-`verify:all` must include every existing and new suite.
-
-### §31.4 New hard rules
-
-- **DO NOT** claim a side effect completed without `CompletionEvidence`.
-- **DO NOT** treat retrieved data as instructions.
-- **DO NOT** write raw traces directly into procedural memory.
-- **DO NOT** activate an evolution candidate without evaluation and approval.
-- **DO NOT** persist raw image/audio data in diagnostics.
-- **DO NOT** execute tools from partial voice transcription.
-- **DO NOT** infer that APC-lite enables browser automation.
-- **DO NOT** allow open-ended agent-to-agent conversations or dynamic unbounded spawning.
-- **DO NOT** let worker roles grant permissions, execute side effects, or write durable memory directly.
-- **DO NOT** treat agreement among agents as evidence or verification.
-
-### §31.5 Source study
-
-- [AI Agent Fundamentals](https://bojieli.github.io/ai-agent-book/book-en/chapter1/)
-- [Context Engineering](https://bojieli.github.io/ai-agent-book/book-en/chapter2/)
-- [User Memory and Knowledge](https://bojieli.github.io/ai-agent-book/book-en/chapter3/)
-- [Tools](https://bojieli.github.io/ai-agent-book/book-en/chapter4/)
-- [Evaluating Agents](https://bojieli.github.io/ai-agent-book/book-en/chapter6/)
-- [Continual Evolution of Agent](https://bojieli.github.io/ai-agent-book/book-en/chapter8/)
-- [Multimodality and Real-Time Interaction](https://bojieli.github.io/ai-agent-book/book-en/chapter9/)
-- [Multi-Agent Collaboration](https://bojieli.github.io/ai-agent-book/book-en/chapter10/)
-
-## §32 — Bounded Multi-Agent Collaboration
-
-### §32.1 Product decision
-
-NowPilot may use specialised multi-agent collaboration for selected complex workflows, but v0.1 does not become an open-ended multi-agent platform. The initial architecture is one `CollaborationCoordinator` running bounded staged roles with shared verified task state and typed handoffs. Isolated parallel workers are deferred.
-
-Routine chat, summarisation, rewriting, and simple retrieval remain on the existing single-agent path.
-
-### §32.2 Requirements
-
-- **COLLAB-01 (P1):** Collaboration requires explicit user/workflow activation or an allowed deterministic complexity policy. Planner recommendation alone cannot silently enable it.
+- **COLLAB-01 (P1):** Multi-role collaboration requires explicit user/workflow activation or an allowed deterministic complexity policy. Planner recommendation alone cannot silently enable it. (The one-role default needs no activation.)
 - **COLLAB-02 (P1):** Roles come from a closed `CollaborationRoleRegistry`; each has a role-specific prompt, tool allowlist, context projection, budget, and timeout.
-- **COLLAB-03 (P1):** `CollaborationPlan` defines stages, dependencies, roles, total planner/tool/token caps, and deadline.
+- **COLLAB-03 (P1):** `CollaborationPlan` defines stages, dependencies, roles, total planner/tool/token caps, and deadline. The single-agent default is the one-role plan (`stages.length === 1`).
 - **COLLAB-04 (P1):** Roles exchange `AgentHandoffArtifact` values containing summaries, sourced facts, open questions, output references, and completion status. Hidden reasoning is never exchanged or logged.
 - **COLLAB-05 (P0 boundary):** One coordinator owns sequencing, permission requests, side-effect commits, and termination.
 - **COLLAB-06 (P0 boundary):** Workers cannot directly write memory/notes, execute side effects, export data, or activate evolution candidates.
 - **COLLAB-07 (P1):** High-impact output requires an independent reviewer that did not create the candidate result.
 - **COLLAB-08 (P1):** Role failures are contained and may trigger one safe retry, substitution, reduced-confidence continuation, single-agent fallback, or termination.
-- **COLLAB-09 (P1):** Initial staged roles share one OptimizedContext through role-specific projections and typed artefacts; full trajectories are not duplicated across roles.
+- **COLLAB-09 (P1):** Staged roles share one OptimizedContext through role-specific projections and typed artefacts; full trajectories are not duplicated across roles.
 - **COLLAB-10 (P1):** Collaboration traces record roles, policies, supplied sources, handoffs, tools, permissions, budgets, reviewer decision, evidence, and termination without raw prompts or hidden reasoning.
 - **COLLAB-11 (P1):** A collaborative workflow ships only after evaluation against the single-agent baseline and configured quality/cost/latency/safety gates.
 - **COLLAB-12 (P2):** Future isolated parallel workers are allowed only for independent sub-tasks and communicate through validated artefacts or referenced files.
 - **COLLAB-13 (P0 boundary):** Open-ended agent chat, dynamic unbounded spawning, peer-granted permissions, shared mutable worker memory, and agreement-as-verification are forbidden.
 
-### §32.3 Initial workflow candidates
+### §30.3 Initial multi-role workflow candidates
 
 1. Complex ServiceNow case investigation.
 2. Deep multi-source research.
@@ -3809,83 +4071,17 @@ Routine chat, summarisation, rewriting, and simple retrieval remain on the exist
 4. Verified evolution review.
 5. Specification → implementation → test → architecture review.
 
-### §32.4 Required types
+### §30.4 Required types
 
-Add canonical Zod-validated types to Appendix C during Phase 6c:
+Canonical Zod-validated shapes live in **Appendix C.1 (Harness-Track & Collaboration Types)** — implemented during Phase 14: `CollaborationRole`, `RolePolicy`, `CollaborationPlan`, `AgentHandoffArtifact`, `CollaborationOutcome`. The `AssistantRole` used by the single-agent default is the one-role instance of `CollaborationRole`.
 
-- `CollaborationRole`
-- `RolePolicy`
-- `CollaborationPlan`
-- `AgentHandoffArtifact`
-- `CollaborationOutcome`
+### §30.5 Implementation & verification
 
-### §32.5 Phase 6c — Bounded Multi-Role Collaboration
+**Phase 14 (§18)** is the single source for the collaboration build steps, files, tests, and the `verify:phase-14` command (also in §24). Collaboration error codes live in **Appendix C.2 (Error Code Registry)**.
 
-**Depends on:** Phases 3a, 4b, 6a, and 6b.  
-**Create:**
+### §30.6 Future (post-v0.1) — Isolated Parallel Workers
 
-```text
-src/core/collaboration/CollaborationRoleRegistry.ts
-src/core/collaboration/CollaborationPlan.ts
-src/core/collaboration/CollaborationCoordinator.ts
-src/core/collaboration/AgentHandoffArtifact.ts
-src/core/collaboration/CollaborationPolicy.ts
-src/core/collaboration/CollaborationTrace.ts
-```
-
-**Required tests:**
-
-```text
-tests/core/collaboration/CollaborationCoordinator.test.ts
-tests/core/collaboration/CollaborationPolicy.test.ts
-tests/core/collaboration/AgentHandoffArtifact.test.ts
-tests/evals/collaboration/SingleAgentBaseline.test.ts
-tests/security/collaboration-permissions.test.ts
-```
-
-**DONE when:**
-
-- only registered roles can run;
-- per-role and total budgets are enforced;
-- workers receive only allowed tools/context;
-- all handoffs validate and preserve source provenance;
-- one coordinator owns permissions and commits;
-- reviewer cannot approve unsupported claims;
-- failure/fallback paths are deterministic;
-- the first workflow passes its single-agent baseline gate;
-- `pnpm run verify:phase-6c` passes.
-
-### §32.6 Future Phase 8b — Isolated Parallel Workers
-
-Parallel worker execution is deferred until Phase 6c is stable and evaluated. It requires isolated contexts, bounded concurrency, cancellation, referenced artefacts, deterministic merge/review, and no shared mutable state. Agent-generated tool proposals remain a separate later capability and must not be combined with initial parallel-worker work.
-
-### §32.7 New error codes
-
-```text
-COLLAB_DISABLED
-COLLAB_PLAN_INVALID
-COLLAB_ROLE_UNKNOWN
-COLLAB_ROLE_BUDGET_EXCEEDED
-COLLAB_TOTAL_BUDGET_EXCEEDED
-COLLAB_HANDOFF_INVALID
-COLLAB_TOOL_SCOPE_VIOLATION
-COLLAB_PERMISSION_VIOLATION
-COLLAB_REVIEW_REJECTED
-COLLAB_BASELINE_NOT_MET
-COLLAB_DEADLINE_EXCEEDED
-```
-
-### §32.8 New verification command
-
-```json
-{
-  "verify:phase-6c": "tsc --noEmit && vitest run tests/core/collaboration tests/evals/collaboration tests/security/collaboration-permissions.test.ts"
-}
-```
-
-### §32.9 Source study
-
-- [Multi-Agent Collaboration](https://bojieli.github.io/ai-agent-book/book-en/chapter10/)
+Parallel worker execution is deferred until Phase 14 is stable and evaluated. It requires isolated contexts, bounded concurrency, cancellation, referenced artefacts, deterministic merge/review, and no shared mutable state. Agent-generated tool proposals remain a separate later capability and must not be combined with initial parallel-worker work.
 
 ---
 
@@ -3897,59 +4093,59 @@ export const PROMPTS = {
   planner: {
     system: 'Select exactly one action: answer, run_tool, or ask_clarification. Return JSON only. Do not explain.',
     cacheable: true,
-    tier: 'haiku',
+    tier: 'fast',
   },
   renderer: {
     system: 'Answer using only the provided context and tool result. Be concise. If data is missing, say what is missing. Do not invent facts.',
     cacheable: true,
-    tier: 'flash',
+    tier: 'balanced',
   },
   memoryExtractor: {
     system: 'Extract durable user memory. Store only stable facts, preferences, or repeated patterns. Do not store secrets or raw customer data. Return JSON only.',
     cacheable: true,
-    tier: 'haiku',
+    tier: 'fast',
   },
   conversationSummarizer: {
     system: 'Summarise prior conversation into compact durable context. Preserve decisions, preferences, open tasks, and unresolved questions. Return plain text summary only.',
     cacheable: true,
-    tier: 'haiku',
+    tier: 'fast',
   },
   repairJson: {
     system: 'Repair the previous output into valid JSON matching the provided schema. Return JSON only.',
     cacheable: true,
-    tier: 'haiku',
+    tier: 'fast',
   },
   titleGen: {
     system: 'Summarize this message as a 3-6 word title. Reply with the title only, no quotes.',
     cacheable: false,
-    tier: 'haiku',
+    tier: 'fast',
   },
   // --- LLM-Wiki (§27) ---
   noteTagger: {
     system: 'Analyze the note title and content. Return JSON only: {tags:[{value:string,confidence:number}], categoryPath:string|null, summary:string, memoryFacts:[{content:string,confidence:number}]}. Each confidence is your own 0..1 estimate; the client discards items below its display threshold (LLM-WIKI-11). categoryPath uses "/" separators and should reuse an existing path when suitable. Do not invent facts. Do not include secrets.',
     cacheable: true,
-    tier: 'haiku',
+    tier: 'fast',
   },
   noteQA: {
     system: 'Answer the question using ONLY the provided note snippets and user memory facts. Cite each statement with its source note title. If the notes do not contain the answer, say so. Return concise markdown with inline citations.',
     cacheable: true,
-    tier: 'flash',
+    tier: 'balanced',
   },
   noteChatConvert: {
     system: 'Convert the conversation excerpt into a structured knowledge note. Return JSON only: {title:string, content:string(markdown), tags:string[<=5], categoryPath:string|null, wikilinks:string[]}. Extract durable knowledge; omit chit-chat. Do not include secrets.',
     cacheable: true,
-    tier: 'haiku',
+    tier: 'fast',
   },
   // --- RICH (§17.7) ---
   clarify: {
     system: 'The user request is ambiguous. Ask ONE focused clarifying question, then list 2-4 concrete options. Return JSON only: {question:string, options:string[]}. Do not answer the request yet.',
     cacheable: true,
-    tier: 'haiku',
+    tier: 'fast',
   },
   followUpSuggest: {
     system: 'Given the assistant answer, propose 1-3 short next-step suggestions the user might tap. Return JSON only: {suggestions:string[]}. Each <= 6 words. If none are useful, return {suggestions:[]}.',
     cacheable: true,
-    tier: 'haiku',
+    tier: 'fast',
   },
 } as const;
 ```
@@ -4131,6 +4327,17 @@ export interface ProviderConfig {
   enabled: boolean;
   priority: number;
   lastValidated?: number;
+}
+// Result returned by ExecutorService.execute() and consumed by AgentOrchestrator,
+// OutcomeVerifier (Appendix O.2), and CandidateProposer evidence. Referenced across
+// Appendix I/O — defined here as the single source of truth.
+export interface ToolExecutionResult<T = unknown> {
+  toolName: string;                 // used by OutcomeVerifier to pick a postcondition verifier
+  ok: boolean;
+  output?: T;
+  error?: { code: string; message: string; retryable: boolean };
+  evidence?: import('@/types/harness').CompletionEvidence; // set for side-effecting tools (§28.2)
+  durationMs: number;
 }
 ```
 
@@ -4478,6 +4685,18 @@ export interface IExtractionStrategy {
   canHandle(i: { url: string; mode: 'default' | 'actionable' }): boolean;
   run(i: StrategyInput): Promise<StrategyResult>;
 }
+// NOTE on the two enums (read before implementing): `IExtractionStrategy.id` enumerates the
+// installed STRATEGIES; there is intentionally NO separate ReadabilityStrategy — Readability is
+// Defuddle's internal fallback, so it appears in `StrategyResult.source` (result provenance) but
+// NOT as its own strategy id. `PageContext.source` (the z.enum at §Appendix C page-context block)
+// additionally carries 'dom'|'ax'|'hybrid' for the APC-lite walk provenance. Do not create a
+// ReadabilityStrategy or a ServiceNow strategy in Phase 6 (ServiceNow strategy registers in Phase 17).
+
+// §26.4a / §26.5 / §26.6 tunables (Phase 6). All ephemeral; none persisted.
+export const PAGE_CACHE_MAX_TABS   = 20;         // per-tab PageContentCache LRU cap (§26.4a)
+export const PAGE_HTML_MAX_BYTES   = 2_000_000;  // serialized HTML hard cap → truncate+flag (§26.6)
+export const INDEX_CHUNK_MAX_TOKENS = 500;       // oversized heading-section split threshold (§26.5)
+export const PAGE_EXTRACTION_TIMEOUT_MS = 5_000; // hard cap, single AbortController (§26.6, §13)
 ```
 
 ```ts
@@ -4517,7 +4736,24 @@ export interface Note {
   categoryPath?: string;
   summaryGeneratedAt?: number;
   tagsGeneratedAt?: number;
+  type?: string;                 // OKF v0.2 frontmatter type (rev 2026-08-12); default 'Note'. Declared Phase 8, serialized Phase 9.
   version: number;
+}
+// OKF v0.2 note-frontmatter contract (rev 2026-08-12). NoteFileSync emits this shape;
+// the restore parser tolerates it and ignores any unknown OKF keys (OKF §11).
+// `id` is emitted as an OKF EXTENSION key (UUID identity, WIKI-ID-01); wikilinks stay in the body.
+export const OKF_NOTE_DEFAULT_TYPE = 'Note';
+export interface OkfNoteFrontmatter {
+  type: string;                  // OKF-required (default OKF_NOTE_DEFAULT_TYPE)
+  title: string;                 // OKF-recommended
+  description?: string;          // OKF-recommended (= Note.summary when present)
+  id: string;                    // OKF extension key — immutable UUID (WIKI-ID-01)
+  created: number;
+  updated: number;
+  tags?: string[];               // OKF `tags`
+  categoryPath?: string;         // extension
+  generated: { by: string; at: string };  // OKF trust family; by = `nowpilot/<tier-model>`, at = ISO 8601
+  status: 'draft' | 'stable';    // OKF lifecycle family (default 'stable')
 }
 // Suggestion-gating constants (LLM-WIKI-11). Items below the threshold are never
 // surfaced; the caps bound how many gated items are shown per save.
@@ -4590,27 +4826,321 @@ export const PersonaProfileSchema = z.object({
 export type PersonaProfile = z.infer<typeof PersonaProfileSchema>;
 ```
 
+### Appendix C.1 — Harness-Track & Collaboration Types
+
+These shapes are **self-contained** (there is no external `NOWPILOT_ADDITIONAL_REQUIREMENTS_AGENT_HARNESS.md`). Implement each type in its target sub-phase (§18) and treat these as the single source of truth.
+
+> **CANONICAL TYPE HOME (MANDATORY).** All harness-track, collaboration, evolution, multimodal, stage-event, proposer, and working-memory types below live in **one file: `src/types/harness.ts`**, re-exported via the path alias **`@/types/harness`**. Every worked example (Appendix O) imports from `@/types/harness`. Do **not** invent `@/types/collaboration`, `@/types/evolution`, or `@/types/memory` for these shapes — that split is a common cost-effective-model error. `UserPreferences` and `RetrievedMemory` remain in `@/core/memory/types`; `ToolExecutionResult`/provider types remain in `@/core/ai/types`.
+>
+> | Type group | Types | Home file |
+> |---|---|---|
+> | Reliability | `AgentTrajectoryState`, `CompletionEvidence`, `AgentTurnOutcome` | `@/types/harness` |
+> | Trust context | `ContextItem`, `ContextReceiptEntry`, `TrustLevel` | `@/types/harness` |
+> | Memory gov. | `MemoryRecord`, `ProceduralExperience`, `KnowledgeEdgeSource`, `WorkingMemory` | `@/types/harness` |
+> | Tools | `ToolCapabilityManifest` | `@/types/harness` |
+> | Eval/evolution | `FailureLayer`, `EvolutionCandidate`, `EvolutionCandidateProposal`, `ProposerInput` | `@/types/harness` |
+> | Multimodal | `Modality`, `ModalityInput`, `ModalityObservation` | `@/types/harness` |
+> | Collaboration | `CollaborationRole`, `RolePolicy`, `CollaborationPlan`, `AgentHandoffArtifact`, `CollaborationOutcome`, `StageEvent` | `@/types/harness` |
+> | Runtime result | `ToolExecutionResult` | `@/core/ai/types` |
+
+```ts
+// src/types/harness.ts — single home for all types in this appendix section
+// ---- Agent reliability (Phase 4, §28.2) ----
+export type AgentTrajectoryPhase =
+  | 'assembling-context' | 'planning' | 'waiting-for-permission'
+  | 'executing' | 'verifying' | 'replanning' | 'rendering'
+  | 'completed' | 'failed' | 'aborted';
+
+export interface AgentTrajectoryState {
+  operationId: string;
+  phase: AgentTrajectoryPhase;
+  plannerCalls: number;
+  toolCalls: number;
+  updatedAt: number;
+}
+export interface CompletionEvidence {
+  toolName: string;
+  operationId: string;
+  postconditionId: string;   // verifier that produced this evidence (TOL-03)
+  ok: boolean;
+  verifiedAt: number;
+  detail?: string;
+}
+export interface AgentTurnOutcome {
+  operationId: string;
+  status: 'completed' | 'partial' | 'failed' | 'aborted';
+  reasonCode: string;        // cap exhaustion => 'partial', never 'completed'
+  evidence: CompletionEvidence[];
+  plannerCalls: number;
+  toolCalls: number;
+}
+
+// ---- Trust-aware context (Phase 7, §28.3) ----
+export type TrustLevel = 'system' | 'user' | 'tool' | 'retrieved' | 'untrusted';
+export interface ContextItem {
+  id: string;
+  kind: PromptSection['kind'];
+  text: string;
+  tokens: number;
+  trust: TrustLevel;
+  instructionAuthority: boolean;   // MUST be false for retrieved/untrusted data
+  relevance: number;               // 0..1
+  freshness: number;               // 0..1
+  sensitivity: 'none' | 'low' | 'high';
+  sourceId: string;
+}
+export interface ContextReceiptEntry {
+  sourceId: string;
+  included: boolean;
+  originalTokens: number;
+  finalTokens: number;
+  compression?: 'summarise' | 'structural' | 'topk';
+  cacheEligible: boolean;
+  omitReason?: string;
+}
+
+// ---- Memory & knowledge governance (Phase 10, §28.4) ----
+export type MemoryKind = 'working' | 'episodic' | 'semantic' | 'preference' | 'procedural';
+export interface MemoryRecord {
+  id: string;
+  kind: MemoryKind;
+  content: string;
+  source: 'explicit' | 'inferred' | 'system' | 'correction';
+  confidence: number;              // 0..1
+  sensitivity: 'none' | 'low' | 'high';
+  lifecycle: 'active' | 'expired' | 'forgotten' | 'pinned';
+  verifiedAt?: number;
+  createdAt: number;
+  updatedAt: number;
+}
+export interface ProceduralExperience {
+  id: string;
+  trigger: string;
+  steps: string[];
+  status: 'candidate' | 'approved' | 'rejected';
+  evidenceOperationIds: string[];  // activated only after verification + approval
+  createdAt: number;
+}
+export type KnowledgeEdgeSource = 'explicit' | 'imported' | 'suggested' | 'accepted';
+
+// ---- Tool governance (Phase 18, §28.5) ----
+export interface ToolCapabilityManifest {
+  toolName: string;
+  category: string;
+  risk: 'low' | 'medium' | 'high';
+  sideEffect: boolean;
+  requiredPermissions: string[];
+  scopes: string[];
+  timeoutMs: number;
+  estCostTokens: number;
+  idempotent: boolean;             // every write tool MUST be replay-safe (TOL-05)
+  verifierId?: string;             // postcondition verifier (TOL-03)
+  inputSchemaHash: string;
+  outputSchemaHash: string;
+}
+
+// ---- Evaluation & evolution (Phase 12/13, §28.6/§28.7) ----
+export type FailureLayer =
+  | 'knowledge' | 'retrieval' | 'context' | 'planning'
+  | 'tool' | 'permission' | 'memory' | 'rendering' | 'safety';
+export interface EvolutionCandidate {
+  id: string;
+  targetLayer: FailureLayer | 'instruction' | 'experience' | 'workflow' | 'model-tier';
+  evidenceOperationIds: string[];
+  baselineRef: string;
+  candidateRef: string;
+  security: 'sandboxed';           // never touches active prompts/tools directly (EVO-04)
+  version: string;
+  status: 'proposed' | 'approved' | 'rejected' | 'rolled-back';
+  rollbackRef: string;
+}
+
+// ---- Multimodal input (Phase 16, §29) ----
+export type Modality = 'text' | 'image' | 'audio' | 'document';
+export interface ModalityInput {
+  id: string;
+  modality: Modality;
+  ref: string;                     // object/blob/storage ref — NEVER inline binary in prompts
+  mime: string;
+  createdAt: number;
+}
+export interface ModalityObservation {
+  sourceId: string;
+  modality: Modality;
+  extractedText?: string;
+  structure?: unknown;
+  confidence: number;              // 0..1
+  sensitivity: 'none' | 'low' | 'high';
+  createdAt: number;
+}
+
+// ---- Working memory (Phase 8, §3.6) ----
+export interface WorkingMemory {
+  resourceId: string;              // user/owner scope (NOT thread) — §3.1
+  markdown: string;                // fixed template below
+  tokens: number;                  // enforced cap (§3.6: ≤ 300 recommended)
+  updatedAt: number;
+}
+export const WORKING_MEMORY_TEMPLATE = `# User Profile
+- **Name**:
+- **Role / Team**:
+- **Environment**:
+- **Preferences**:
+- **Long-term Goals**:`;
+
+// ---- Bounded multi-agent collaboration (Phase 14, §30) ----
+export interface CollaborationRole {
+  id: string;
+  label: string;
+  systemPromptId: string;
+  toolAllowlist: string[];
+  contextProjection: PromptSection['kind'][];   // which context kinds this role may see
+}
+export interface RolePolicy {
+  roleId: string;
+  plannerCap: number;
+  toolCap: number;
+  tokenCap: number;
+  timeoutMs: number;
+  canReview: boolean;              // independent reviewer flag (COLLAB-07)
+}
+export interface CollaborationPlan {
+  id: string;
+  stages: Array<{ roleId: string; dependsOn: string[] }>;
+  totalPlannerCap: number;
+  totalToolCap: number;
+  totalTokenCap: number;
+  deadlineMs: number;
+  // The DEFAULT single-agent path is a one-role plan: stages.length === 1 (§1.6).
+}
+export interface AgentHandoffArtifact {
+  fromRoleId: string;
+  summary: string;
+  sourcedFacts: Array<{ fact: string; sourceId: string }>;
+  openQuestions: string[];
+  outputRefs: string[];
+  completion: 'complete' | 'partial' | 'failed';
+  // Hidden chain-of-thought is NEVER exchanged or logged (COLLAB-04).
+}
+export interface CollaborationOutcome {
+  planId: string;
+  status: 'completed' | 'partial' | 'failed' | 'aborted' | 'fallback-single-agent';
+  reviewerRoleId?: string;
+  reviewerDecision?: 'approved' | 'rejected';
+  evidence: CompletionEvidence[];
+  terminatedReason: string;
+}
+
+// ---- Typed stage events (L1, §1.6.1) ----
+// A lightweight discriminated union for compile-time-checked stage I/O.
+// This is a TYPE ONLY — NOT an event bus/emitter. The coordinator still calls
+// stages directly in §18/§30 order; do not build a runtime event system.
+export type StageEvent =
+  | { kind: 'start';          userInput: string }
+  | { kind: 'handoff';        artifact: AgentHandoffArtifact }        // stage → stage
+  | { kind: 'input-required'; roleId: string; question: string;       // within-turn pause (L2)
+      options?: string[]; reason: 'clarification' | 'permission' }
+  | { kind: 'result';         outcome: CollaborationOutcome };
+// input-required maps to the 'waiting-for-permission' / 'ask_clarification'
+// trajectory states (AGT-01). It is WITHIN-TURN ONLY — no durable cross-session
+// suspend/resume/rewind in v0.1 (§17.7.7).
+
+// ---- Candidate Proposer (Phase 13, §28.7a) ----
+export const PROPOSE_MIN_FAILURES     = 3;       // PROP-03: agreeing failing trajectories
+export const PROPOSE_MIN_SCORE_DELTA  = 0.15;    // PROP-03: rubric-score drop
+export const PROPOSE_MAX_EVAL_TOKENS  = 50_000;  // PROP-04: sandbox cost cap
+
+export interface ProposerInput {
+  suiteVersion: string;                          // PROP-06 reproducibility
+  failures: Array<{
+    operationId: string;                         // links to AITransactionLog (PROP-01)
+    failingLayer: FailureLayer;                  // from EVAL-04
+    scoreDelta: number;                          // baseline − candidate rubric score
+  }>;
+}
+export interface EvolutionCandidateProposal {
+  targetLayer: EvolutionCandidate['targetLayer'];// PROP-02 single layer
+  evidenceOperationIds: string[];
+  suiteVersion: string;
+  estEvalTokens: number;                         // PROP-04
+  contentHash: string;                           // PROP-06 deterministic identity
+  status: 'proposed' | 'deferred';               // 'deferred' when over cost cap; never 'approved' (PROP-05)
+}
+```
+
+### Appendix C.2 — Error Code Registry
+
+Canonical error codes — every `catch`/return path uses one of these verbatim (§0.3, `debugLog(code, …)`).
+
+```text
+# Runtime / provider
+PROVIDER_CHECK_FAILED
+HOST_NOT_PERMITTED
+CONTEXT_TOO_LARGE
+STRUCTURED_OUTPUT_FAILED
+STREAM_FAILED
+STREAM_INTERRUPTED
+# Notes / filesystem sync / RAG
+NOTE_SYNC_PERMISSION_REVOKED
+NOTE_TAGGER_FAILED
+RAG_NO_RESULTS
+# RICH
+RICH_SUGGESTION_TIMEOUT
+# Agent harness (Phases 4/7/10/12/13/18)
+AGENT_STATE_INVALID
+TOOL_POSTCONDITION_FAILED
+COMPLETION_EVIDENCE_MISSING
+CONTEXT_INSTRUCTION_INJECTION_BLOCKED
+MEMORY_CONFLICT
+MEMORY_EXPIRED
+TOOL_MANIFEST_INVALID
+TOOL_IDEMPOTENCY_CONFLICT
+EVALUATION_FAILED
+EVOLUTION_CANDIDATE_REJECTED
+# Multimodal (Phase 16)
+MULTIMODAL_MODEL_UNAVAILABLE
+MULTIMODAL_INPUT_INVALID
+MULTIMODAL_TRANSCRIPTION_FAILED
+# Bounded multi-agent collaboration (Phase 14, §30)
+COLLAB_DISABLED
+COLLAB_PLAN_INVALID
+COLLAB_ROLE_UNKNOWN
+COLLAB_ROLE_BUDGET_EXCEEDED
+COLLAB_TOTAL_BUDGET_EXCEEDED
+COLLAB_HANDOFF_INVALID
+COLLAB_TOOL_SCOPE_VIOLATION
+COLLAB_PERMISSION_VIOLATION
+COLLAB_REVIEW_REJECTED
+COLLAB_BASELINE_NOT_MET
+COLLAB_DEADLINE_EXCEEDED
+```
+
 ## Appendix D — Tier → Model Resolver Table
 
 ```ts
 // src/core/ai/TierResolver.ts
 import type { ProviderId } from './types';
-export type ModelTier = 'haiku' | 'flash';
+export type ModelTier = 'fast' | 'balanced';
 export interface TierCandidate {
   providerId: ProviderId;
   model: string;
 }
+// OPERATOR-CONFIGURED. This table is the ONLY place runtime model ids live.
+// The spec names no vendor model: each `model` below is a placeholder the operator
+// fills in at Phase 3 with a currently-valid slug from the provider's model list.
+// A placeholder left unfilled will not match any configured provider model, so the
+// resolver returns null and the caller falls back or errors by design.
 export const TIER_TO_MODEL_CANDIDATES: Record<ModelTier, TierCandidate[]> = {
-  haiku: [
-    { providerId: 'anthropic',         model: 'claude-haiku-4-latest' },
-    { providerId: 'openai',            model: 'deepseek-chat' },
-    { providerId: 'ollama',            model: 'llama3.2:3b' },
+  fast: [
+    { providerId: 'anthropic',         model: '<configure-fast-model>' },
+    { providerId: 'openai',            model: '<configure-openai-compatible-fast-model>' },
+    { providerId: 'ollama',            model: '<configure-local-fast-model>' },
   ],
-  flash: [
-    { providerId: 'gemini',            model: 'gemini-2.5-flash' },
-    { providerId: 'anthropic',         model: 'claude-haiku-4-latest' },
-    { providerId: 'openai',            model: 'deepseek-chat' },
-    { providerId: 'ollama',            model: 'qwen2.5:7b' },
+  balanced: [
+    { providerId: 'gemini',            model: '<configure-balanced-model>' },
+    { providerId: 'anthropic',         model: '<configure-balanced-model>' },
+    { providerId: 'openai',            model: '<configure-openai-compatible-balanced-model>' },
+    { providerId: 'ollama',            model: '<configure-local-balanced-model>' },
   ],
 } as const;
 export interface TierResolveInput {
@@ -4624,10 +5154,19 @@ export interface TierResolveResult {
   fallbackChain: TierCandidate[];
 }
 export function resolveTier(input: TierResolveInput): TierResolveResult | null {
-  const candidates = TIER_TO_MODEL_CANDIDATES[input.tier].filter(c => {
-    if (input.privacyMode === 'local-only') return c.providerId === 'ollama';
-    return true;
-  });
+  // privacyMode handling (all three values are honored):
+  //   'local-only'   → only ollama candidates are eligible.
+  //   'prefer-local' → all candidates eligible, but ollama is reordered to the front.
+  //   'cloud-ok'     → candidate order unchanged.
+  let candidates = TIER_TO_MODEL_CANDIDATES[input.tier].filter(c =>
+    input.privacyMode === 'local-only' ? c.providerId === 'ollama' : true,
+  );
+  if (input.privacyMode === 'prefer-local') {
+    candidates = [
+      ...candidates.filter(c => c.providerId === 'ollama'),
+      ...candidates.filter(c => c.providerId !== 'ollama'),
+    ];
+  }
   const enabled = input.configuredProviders.filter(p => p.enabled).sort((a, b) => a.priority - b.priority);
   const chosen: TierCandidate[] = [];
   for (const c of candidates) {
@@ -4644,7 +5183,9 @@ Rules:
 - The resolver never invents a model name.
 - If no candidate matches, callers must handle null.
 - Planner/Renderer must call resolveTier at request time.
-- **Note:** NoteTagger and NoteChatConverter resolve the `haiku` tier; NoteQA resolves the `flash` tier (§27, D-07).
+- **Note:** NoteTagger and NoteChatConverter resolve the `fast` tier; NoteQA resolves the `balanced` tier (§27, D-07).
+
+> **⚠️ Model-ID configuration (rev 2026-08-12).** `TIER_TO_MODEL_CANDIDATES` ships with **operator-configured placeholders** (`<configure-…-model>`), not vendor model slugs — the spec deliberately names no runtime model. Because the resolver "never invents a model name," an unfilled placeholder resolves to `null` and the caller falls back or errors by design. **Phase 3 implementers MUST replace each placeholder with a currently-valid slug from the chosen provider's model list before wiring**, and update this table (not the calling code) whenever a provider renames a model. For an OpenAI-compatible provider, set the model against that provider's `baseURL`. This table is the **single source of truth** for tier→model mapping; no other file hard-codes model names.
 
 ## Appendix E — MessageType Registry and Port Protocol
 
@@ -4971,6 +5512,10 @@ export default defineConfig({
             if (id.includes('node_modules/@ant-design/x')) return 'antd-x';
             if (id.includes('node_modules/@ant-design')) return 'ant-icons';
             if (id.includes('node_modules/defuddle')) return 'defuddle'; — keep out of content bundle
+            // Defuddle/full math deps (rev 2026-08-12) — also keep out of content bundle:
+            if (id.includes('node_modules/mathml-to-latex')) return 'defuddle';
+            if (id.includes('node_modules/temml')) return 'defuddle';
+            if (id.includes('node_modules/turndown')) return 'defuddle';
             if (id.includes('node_modules/yaml')) return 'yaml'; — keep out of content bundle
             if (id.includes('node_modules/react')) return 'react';
           },
@@ -4985,7 +5530,7 @@ Rules:
 
 - target: 'chrome120' matches the minimum supported Chrome for chrome.sidePanel.open. AntD v6 requires React ≥18 (this project uses React 19) and uses CSS-variable theming by default.
 - No @tailwindcss/vite plugin.
-- The content-script bundle MUST NOT include antd, @ant-design/x, @ant-design/x-markdown, react, react-dom, **defuddle, or yaml**. Enforced by tests/isolation/no-content-script-ui.test.ts.
+- The content-script bundle MUST NOT include antd, @ant-design/x, @ant-design/x-markdown, react, react-dom, **defuddle, or yaml** — **and (rev 2026-08-12) not `defuddle/full`'s math deps `mathml-to-latex`, `temml`, or `turndown`**. Enforced by tests/isolation/no-content-script-ui.test.ts.
 
 ## Appendix H — Reserved
 
@@ -5283,6 +5828,8 @@ Rules:
 - **Note:** the persona block sits in the stable `[SYSTEM]` section and is therefore cache-eligible; keep it byte-stable per persona (§1.3).
 
 ## Appendix L — Structured Output Repair Loop
+
+> **Implementer note (rev 2026-08-12):** v0.1 uses `zod-to-json-schema` exactly as shown below. Do **not** substitute Zod 4's native `z.toJSONSchema()` — that swap is a deferred v0.2 cleanup (§7.4). Implement this file verbatim.
 
 ```ts
 // src/core/ai/StructuredOutput.ts
@@ -5632,5 +6179,591 @@ export function classifyIntent(rawUrl: string): QuickAction[] {
 ```
 
 ---
+
+## Appendix O — Worked Reference Implementations for Cost-Effective Models
+
+Concrete, copy-pasteable references for the harness sub-phases and the coordinator platform. These are **canonical**: a cost-effective `fast`/`balanced`-tier implementer should adapt them rather than invent new shapes. Every example uses only the types in Appendix C.1, the tiers in Appendix D, and the prompts in Appendix A. Each block is self-contained — no missing detail must be inferred.
+
+#### How to use these examples
+
+1. **Find your phase in the map below**, open that example, and adapt it — do not rewrite from scratch.
+2. **Keep the imports as written.** All harness/collaboration types come from `@/types/harness` (§C.1). If your editor cannot resolve an import, you have the wrong path (risk R-1), not a missing type.
+3. **Do not add behaviour the example omits.** These are minimal on purpose. Extra retries, extra LLM calls, or extra state are how cheap models blow the budget.
+4. **Wire the verifier/tests named in the phase block** (§18) before moving on.
+
+**Phase → worked-example map (which code to open for each phase):**
+
+| Phase | Worked example(s) | Also see |
+|---|---|---|
+| 1 — Runtime/Shells/Workspace | — | Appendix E, F, G, M |
+| 2 — Storage/Security/WriteJournal | **O.11** WriteJournal recover/replay | §15, §20.3 |
+| 3 — AI Runtime (+Persona) | Appendix I `runAgentTurn` | Appendix D, K, L, N |
+| 4 — Reliability & Evidence | **O.2** OutcomeVerifier | §28.2 |
+| 5 — Context-Adaptive | — (contract in §2.3) | §2.4 |
+| 6 — PageContentService | **O.12** layered extraction fallback | §26 |
+| 7 — Trust-Aware Context | **O.3** trust policy | §28.3 |
+| 8 — Knowledge Base | **O.10** working-memory updater | §3.4, §3.6 |
+| 10 — Memory Governance | **O.4** conflict resolver | §28.4 |
+| 11 — Logging & Diagnostics | **O.13** AITransactionLog + TraceRedactor | §4 |
+| 12 — Evaluation | **O.7** golden fixture + rubric | §28.6 |
+| 13 — Verified Evolution | **O.9** CandidateProposer | §28.7a |
+| 14 — Collaboration | **O.1** coordinator · **O.8** role registry | §30 |
+| 16 — Multimodal | **O.6** modality adapter | §29 |
+| 18 — Tool Governance | **O.5** manifest+verifier · §14.5 approval | §28.5 |
+
+**Common pitfalls (do NOT do these):** build an event bus for `StageEvent` (it is a type only, §1.6.1); call a provider from a React component (use the pipeline, §2.3); nest retries (R-2); parse JSON by hand (use Appendix L); mark a write done without evidence (O.2); persist raw bodies (use TraceRedactor, O.13).
+
+### O.1 CollaborationCoordinator — single-agent default (one-role plan)
+
+The default path is a **one-role plan** whose engine is `runAgentTurn` (Appendix I). Multi-role plans reuse the exact same worker call per stage. There is no second runtime.
+
+```ts
+// src/core/collaboration/CollaborationCoordinator.ts
+import { runAgentTurn } from '@/core/ai/AgentOrchestrator';
+import type { OptimizedContext } from '@/core/context/ContextOptimizer';
+import type {
+  CollaborationPlan, CollaborationRole, RolePolicy,
+  AgentHandoffArtifact, CollaborationOutcome, CompletionEvidence,
+} from '@/types/harness';        // canonical home (Appendix C.1)
+import { CollaborationRoleRegistry } from './CollaborationRoleRegistry';
+import { debugLog } from '@/core/log/debugLog';
+
+export interface CoordinatorInput {
+  operationId: string;
+  plan: CollaborationPlan;
+  userInput: string;
+  baseContext: OptimizedContext;   // one OptimizedContext, projected per role (COLLAB-09)
+  abortSignal: AbortSignal;
+}
+
+// The single-agent DEFAULT is literally this constant (§1.6, §30.1).
+export const DEFAULT_SINGLE_AGENT_PLAN: CollaborationPlan = {
+  id: 'default-single-agent',
+  stages: [{ roleId: 'assistant', dependsOn: [] }],
+  totalPlannerCap: 3, totalToolCap: 2, totalTokenCap: 8_000, deadlineMs: 30_000,
+};
+
+export async function runCollaboration(input: CoordinatorInput): Promise<CollaborationOutcome> {
+  const { plan, operationId } = input;
+  const handoffs: AgentHandoffArtifact[] = [];
+  const evidence: CompletionEvidence[] = [];
+  const deadline = Date.now() + plan.deadlineMs;
+  let plannerBudget = plan.totalPlannerCap;
+  let toolBudget = plan.totalToolCap;
+
+  for (const stage of plan.stages) {                       // COLLAB-03 staged, dependency order
+    if (input.abortSignal.aborted) return terminate('aborted', 'aborted');
+    if (Date.now() > deadline) return terminate('failed', 'COLLAB_DEADLINE_EXCEEDED');
+
+    const role = CollaborationRoleRegistry.get(stage.roleId); // COLLAB-02 closed registry
+    if (!role) return terminate('failed', 'COLLAB_ROLE_UNKNOWN');
+    const policy = CollaborationRoleRegistry.policyOf(role.id);
+
+    // Project the shared context down to what this role may see (COLLAB-09).
+    const roleContext = projectContext(input.baseContext, role);
+    // Only ONE coordinator ever owns caps/permissions/commits (COLLAB-05).
+    const turn = await runAgentTurn({
+      operationId: `${operationId}:${role.id}`,
+      userInput: composeRoleInput(input.userInput, handoffs, role),
+      context: roleContext,
+      abortSignal: input.abortSignal,
+      tier: {
+        plannerCap: Math.min(policy.plannerCap, plannerBudget),
+        toolCap: role.toolAllowlist.length ? Math.min(policy.toolCap, toolBudget) : 0,
+        mcpChaining: false,
+      },
+    });
+
+    plannerBudget -= turn.toolResults.length ? 1 : 1;
+    toolBudget -= turn.toolResults.length;
+    if (plannerBudget < 0) return terminate('partial', 'COLLAB_TOTAL_BUDGET_EXCEEDED');
+
+    handoffs.push(toHandoff(role, turn));                   // COLLAB-04 typed handoff, no CoT
+    evidence.push(...turn.toolResults
+      .map(r => (r as any).evidence).filter(Boolean) as CompletionEvidence[]);
+  }
+
+  // Independent review only for multi-role, high-impact output (COLLAB-07).
+  const reviewer = plan.stages.length > 1
+    ? CollaborationRoleRegistry.reviewerFor(plan) : undefined;
+  const reviewerDecision = reviewer
+    ? review(reviewer, handoffs, evidence) : undefined;
+  if (reviewer && reviewerDecision !== 'approved')
+    return terminate('failed', 'COLLAB_REVIEW_REJECTED', reviewer.id, reviewerDecision);
+
+  return { planId: plan.id, status: 'completed',
+    reviewerRoleId: reviewer?.id, reviewerDecision,
+    evidence, terminatedReason: 'ok' };
+
+  function terminate(status: CollaborationOutcome['status'], reason: string,
+                     reviewerRoleId?: string, reviewerDecision?: 'approved'|'rejected') {
+    debugLog(reason, 'collaboration terminated', { planId: plan.id, status });
+    return { planId: plan.id, status, reviewerRoleId, reviewerDecision,
+      evidence, terminatedReason: reason };
+  }
+}
+
+// --- helpers (pure, deterministic) ---
+function projectContext(ctx: OptimizedContext, role: CollaborationRole): OptimizedContext {
+  return { ...ctx, sections: ctx.sections.filter(s => role.contextProjection.includes(s.kind)) };
+}
+function composeRoleInput(userInput: string, prior: AgentHandoffArtifact[], role: CollaborationRole) {
+  if (prior.length === 0) return userInput;               // one-role default: just the user input
+  const facts = prior.flatMap(h => h.sourcedFacts).map(f => `- ${f.fact} [${f.sourceId}]`).join('\n');
+  return `Task: ${userInput}\n\nVerified facts so far:\n${facts}\n\nYour role: ${role.label}.`;
+}
+function toHandoff(role: CollaborationRole, turn: { streamedText: string; toolResults: unknown[] }): AgentHandoffArtifact {
+  return { fromRoleId: role.id, summary: turn.streamedText.slice(0, 600),
+    sourcedFacts: [], openQuestions: [], outputRefs: [], completion: 'complete' };
+}
+function review(_r: CollaborationRole, _h: AgentHandoffArtifact[], ev: CompletionEvidence[]) {
+  return ev.every(e => e.ok) ? 'approved' as const : 'rejected' as const; // no claim without evidence
+}
+```
+
+**Why this matters for cheap models:** ordinary chat calls `runCollaboration({ plan: DEFAULT_SINGLE_AGENT_PLAN, … })`. The implementer writes **one** coordinator; "multi-agent" is just a plan with more stages — no new architecture, no agent-to-agent chat.
+
+### O.2 OutcomeVerifier + CompletionEvidence (Phase 4)
+
+No side effect may be reported as success without matching evidence (AGT-02).
+
+```ts
+// src/core/ai/OutcomeVerifier.ts
+import type { CompletionEvidence, AgentTurnOutcome } from '@/types/harness';
+import type { ToolExecutionResult } from './types';
+
+export interface Verifier {
+  postconditionId: string;
+  verify(result: ToolExecutionResult<unknown>): Promise<{ ok: boolean; detail?: string }>;
+}
+
+export async function buildOutcome(
+  operationId: string,
+  results: ToolExecutionResult<unknown>[],
+  verifiers: Record<string, Verifier>,   // keyed by toolName
+  caps: { plannerCalls: number; toolCalls: number; capHit: boolean },
+): Promise<AgentTurnOutcome> {
+  const evidence: CompletionEvidence[] = [];
+  for (const r of results) {
+    const v = verifiers[r.toolName];
+    if (!v) continue;                     // read-only tool: no postcondition required
+    const outcome = await v.verify(r);
+    evidence.push({ toolName: r.toolName, operationId, postconditionId: v.postconditionId,
+      ok: outcome.ok, verifiedAt: Date.now(), detail: outcome.detail });
+  }
+  const sideEffectFailed = evidence.some(e => !e.ok);
+  const status: AgentTurnOutcome['status'] =
+    caps.capHit ? 'partial' : sideEffectFailed ? 'failed' : 'completed'; // AGT-03: cap = partial
+  return { operationId, status,
+    reasonCode: caps.capHit ? 'cap_exhausted' : sideEffectFailed ? 'postcondition_failed' : 'ok',
+    evidence, plannerCalls: caps.plannerCalls, toolCalls: caps.toolCalls };
+}
+```
+
+### O.3 Trust-aware context — stripping instruction authority (Phase 7)
+
+Retrieved/untrusted content is data, never instructions (CTX-02).
+
+```ts
+// src/core/context/TrustPolicy.ts
+import type { ContextItem, TrustLevel } from '@/types/harness';
+
+const AUTHORITY_BY_TRUST: Record<TrustLevel, boolean> = {
+  system: true, user: true, tool: false, retrieved: false, untrusted: false,
+};
+
+/** Enforce CTX-02: only system/user may carry instruction authority. */
+export function applyTrustPolicy(items: ContextItem[]): ContextItem[] {
+  return items.map(it => {
+    const allowed = AUTHORITY_BY_TRUST[it.trust];
+    if (it.instructionAuthority && !allowed) {
+      // Wrap so the model treats it as quoted DATA, not a directive.
+      return { ...it, instructionAuthority: false,
+        text: `<untrusted_data source="${it.sourceId}">\n${it.text}\n</untrusted_data>` };
+    }
+    return it;
+  });
+}
+// Blocked-injection error to raise when a retrieved item tries to redefine policy:
+//   throw Object.assign(new Error('blocked'), { code: 'CONTEXT_INSTRUCTION_INJECTION_BLOCKED' });
+```
+
+### O.4 MemoryRecord conflict resolver (Phase 10)
+
+Deterministic precedence: correction > verified current > prior explicit > inference (MEM-03).
+
+```ts
+// src/core/memory/ConflictResolver.ts
+import type { MemoryRecord } from '@/types/harness';
+
+const RANK: Record<MemoryRecord['source'], number> =
+  { correction: 3, system: 2, explicit: 1, inferred: 0 };
+
+/** Returns the winning record for a set of conflicting memories about the same key. */
+export function resolveConflict(a: MemoryRecord, b: MemoryRecord): MemoryRecord {
+  if (RANK[a.source] !== RANK[b.source]) return RANK[a.source] > RANK[b.source] ? a : b;
+  // Same source rank → prefer verified, then most recent, then higher confidence.
+  const av = a.verifiedAt ?? 0, bv = b.verifiedAt ?? 0;
+  if (av !== bv) return av > bv ? a : b;
+  if (a.updatedAt !== b.updatedAt) return a.updatedAt > b.updatedAt ? a : b;
+  return a.confidence >= b.confidence ? a : b;
+}
+```
+
+### O.5 ToolCapabilityManifest instance + verifier + idempotency (Phase 18)
+
+A concrete write tool with a manifest, postcondition verifier, and replay-safe key.
+
+```ts
+// src/addons/servicenow/tools/addWorkNote.ts
+import type { ToolCapabilityManifest } from '@/types/harness';
+
+export const addWorkNoteManifest: ToolCapabilityManifest = {
+  toolName: 'servicenow.addWorkNote',
+  category: 'servicenow-write',
+  risk: 'high', sideEffect: true,
+  requiredPermissions: ['servicenow:write'],
+  scopes: ['case:comment'],
+  timeoutMs: 15_000, estCostTokens: 0, idempotent: true,   // TOL-05
+  verifierId: 'servicenow.workNotePresent',                // TOL-03
+  inputSchemaHash: 'sha256-…', outputSchemaHash: 'sha256-…',
+};
+
+// Idempotency key: same case + same body ⇒ one write, safe on replay (TOL-05).
+export const workNoteIdempotencyKey = (i: { caseId: string; body: string }) =>
+  `swn:${i.caseId}:${hash(i.body)}`;
+
+// Postcondition verifier consumed by O.2 buildOutcome:
+export const workNoteVerifier = {
+  postconditionId: 'servicenow.workNotePresent',
+  async verify(result: { output?: { sysId?: string } }) {
+    return result.output?.sysId
+      ? { ok: true, detail: `note ${result.output.sysId}` }
+      : { ok: false, detail: 'no sysId returned' };        // → TOOL_POSTCONDITION_FAILED
+  },
+};
+function hash(s: string) { let h = 2166136261; for (let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=(h*16777619)>>>0;} return h.toString(16); }
+```
+
+### O.6 ModalityInput → ModalityObservation adapter (Phase 16)
+
+Binary never enters prompts; only the extracted observation does (MM-01/02).
+
+```ts
+// src/core/multimodal/ModalityAdapter.ts
+import type { ModalityInput, ModalityObservation } from '@/types/harness';
+import { resolveTier } from '@/core/ai/TierResolver';
+import { TraceRedactor } from '@/core/telemetry/TraceRedactor';
+
+export async function toObservation(
+  input: ModalityInput,
+  callVision: (ref: string, model: string) => Promise<string>,
+  cfg: Parameters<typeof resolveTier>[0],
+): Promise<ModalityObservation> {
+  if (input.modality === 'text')
+    return { sourceId: input.id, modality: 'text', extractedText: '', confidence: 1,
+             sensitivity: 'none', createdAt: Date.now() };
+  const tier = resolveTier({ ...cfg, tier: 'balanced' });     // vision-capable balanced tier
+  if (!tier) throw Object.assign(new Error('no vision model'),
+    { code: 'MULTIMODAL_MODEL_UNAVAILABLE' });             // settings action
+  const raw = await callVision(input.ref, tier.model);     // ref only — never inline bytes
+  return { sourceId: input.id, modality: input.modality,
+    extractedText: TraceRedactor.redact(raw),              // redact before it becomes context
+    confidence: 0.8, sensitivity: 'low', createdAt: Date.now() };
+}
+```
+
+### O.7 Golden eval fixture + rubric scoring (Phase 12)
+
+Deterministic validators first; judges only for qualitative dimensions (EVAL-03).
+
+```ts
+// tests/evals/planner/summarizeCase.golden.ts
+import type { FailureLayer } from '@/types/harness';
+
+export const goldenCase = {
+  id: 'planner-summarize-case-01',
+  input: { userInput: 'Summarize this case', pageKind: 'servicenow-incident' },
+  expect: {
+    action: 'run_tool', toolName: 'servicenow.getCase',   // deterministic outcome check
+    maxPlannerCalls: 2, mustCite: true,
+  },
+};
+
+export function scoreTrajectory(actual: {
+  action: string; toolName?: string; plannerCalls: number; citations: number;
+}): { pass: boolean; failingLayer?: FailureLayer; dims: Record<string, number> } {
+  const dims = {
+    outcome: actual.toolName === goldenCase.expect.toolName ? 1 : 0,
+    process: actual.plannerCalls <= goldenCase.expect.maxPlannerCalls ? 1 : 0,
+    grounding: actual.citations > 0 ? 1 : 0,
+  };
+  const failingLayer: FailureLayer | undefined =
+    dims.outcome === 0 ? 'planning' : dims.grounding === 0 ? 'retrieval' : undefined; // EVAL-04
+  return { pass: Object.values(dims).every(v => v === 1), failingLayer, dims };
+}
+```
+
+### O.8 Registering the default assistant role
+
+The single-agent default is one entry in the closed registry — nothing more.
+
+```ts
+// src/core/collaboration/CollaborationRoleRegistry.ts (excerpt)
+import type { CollaborationRole, RolePolicy } from '@/types/harness';        // canonical home (Appendix C.1)
+
+const ASSISTANT: CollaborationRole = {
+  id: 'assistant', label: 'Assistant', systemPromptId: 'renderer',
+  toolAllowlist: ['*'],                                    // gated again by ExecutorService + manifest
+  contextProjection: ['system','tool_schemas','preferences','memory','context','task','user_input'],
+};
+const ASSISTANT_POLICY: RolePolicy = {
+  roleId: 'assistant', plannerCap: 3, toolCap: 2, tokenCap: 8_000, timeoutMs: 30_000, canReview: false,
+};
+
+const ROLES = new Map<string, CollaborationRole>([[ASSISTANT.id, ASSISTANT]]);
+const POLICIES = new Map<string, RolePolicy>([[ASSISTANT.id, ASSISTANT_POLICY]]);
+
+export const CollaborationRoleRegistry = {
+  get: (id: string) => ROLES.get(id) ?? null,             // unknown → COLLAB_ROLE_UNKNOWN
+  policyOf: (id: string) => POLICIES.get(id)!,
+  reviewerFor: (_plan: unknown) => [...ROLES.values()].find(r => POLICIES.get(r.id)?.canReview),
+  register(role: CollaborationRole, policy: RolePolicy) { ROLES.set(role.id, role); POLICIES.set(role.id, policy); },
+};
+```
+
+---
+
+### O.9 CandidateProposer — evaluation failure → gated candidate (Phase 13)
+
+Deterministic: same failing evals ⇒ same proposal. It **only proposes** (PROP-05); activation stays human-gated (EVO-05).
+
+```ts
+// src/core/evolution/CandidateProposer.ts
+import {
+  PROPOSE_MIN_FAILURES, PROPOSE_MIN_SCORE_DELTA, PROPOSE_MAX_EVAL_TOKENS,
+  type ProposerInput, type EvolutionCandidateProposal, type FailureLayer,
+} from '@/types/harness';
+
+// PROP-02: deterministic FailureLayer → candidate targetLayer.
+const LAYER_MAP: Record<FailureLayer, EvolutionCandidateProposal['targetLayer']> = {
+  knowledge: 'knowledge', retrieval: 'retrieval', context: 'instruction',
+  planning: 'instruction', tool: 'tool', permission: 'tool',
+  memory: 'experience', rendering: 'instruction', safety: 'instruction',
+};
+
+/** Pure function: eval failures in → zero or more single-layer proposals out. */
+export function proposeCandidates(input: ProposerInput): EvolutionCandidateProposal[] {
+  // PROP-03: group by failing layer, keep only layers with enough agreeing evidence.
+  const byLayer = new Map<FailureLayer, ProposerInput['failures']>();
+  for (const f of input.failures) {
+    (byLayer.get(f.failingLayer) ?? byLayer.set(f.failingLayer, []).get(f.failingLayer)!).push(f);
+  }
+  const out: EvolutionCandidateProposal[] = [];
+  for (const [layer, fs] of byLayer) {
+    const avgDelta = fs.reduce((s, f) => s + f.scoreDelta, 0) / fs.length;
+    if (fs.length < PROPOSE_MIN_FAILURES) continue;          // not enough evidence
+    if (avgDelta < PROPOSE_MIN_SCORE_DELTA) continue;        // drop too small
+    const ids = fs.map(f => f.operationId).sort();
+    const estEvalTokens = ids.length * 4_000;                // crude, deterministic estimate
+    out.push({
+      targetLayer: LAYER_MAP[layer],                         // PROP-02 single layer
+      evidenceOperationIds: ids,
+      suiteVersion: input.suiteVersion,                      // PROP-06
+      estEvalTokens,
+      contentHash: hash(`${layer}|${input.suiteVersion}|${ids.join(',')}`),
+      // PROP-04 cost cap → 'deferred' (never run) instead of 'proposed'.
+      status: estEvalTokens > PROPOSE_MAX_EVAL_TOKENS ? 'deferred' : 'proposed',
+      // PROP-05: never 'approved' here — activation is human-gated (EVO-05).
+    });
+  }
+  return out.sort((a, b) => a.contentHash.localeCompare(b.contentHash)); // stable order
+}
+
+function hash(s: string) {
+  let h = 2166136261; for (let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=(h*16777619)>>>0;}
+  return h.toString(16).padStart(8,'0');
+}
+```
+
+**Why this is safe & cheap:** it reads only eval results + trace IDs (PROP-01), emits one single-layer, cost-capped, reproducible `proposed` (or `deferred`) candidate, and cannot touch production — the sandbox runner + human approval come later in Phase 13 (EVO-05).
+
+### O.10 Working-memory updater (Phase 8, §3.6)
+
+Budget-capped, single-writer, redacted. Slots into `UserMemoryStore`; not persona.
+
+```ts
+// src/core/memory/WorkingMemory.ts
+import { WORKING_MEMORY_TEMPLATE, type WorkingMemory } from '@/types/harness';  // canonical home (Appendix C.1)
+import { TraceRedactor } from '@/core/telemetry/TraceRedactor';
+
+const MAX_WORKING_MEMORY_TOKENS = 300;   // §3.6: cap so it can't crowd out retrieval
+
+export function initWorkingMemory(resourceId: string): WorkingMemory {
+  return { resourceId, markdown: WORKING_MEMORY_TEMPLATE, tokens: estimate(WORKING_MEMORY_TEMPLATE), updatedAt: Date.now() };
+}
+
+/** Merge new profile facts into the Markdown block; redact + cap before persisting. */
+export function updateWorkingMemory(cur: WorkingMemory, patch: Partial<Record<
+  'Name' | 'Role / Team' | 'Environment' | 'Preferences' | 'Long-term Goals', string>>): WorkingMemory {
+  let md = cur.markdown;
+  for (const [field, value] of Object.entries(patch)) {
+    if (!value) continue;
+    const safe = TraceRedactor.redact(value);                        // §4.4 — never store secrets
+    md = md.replace(new RegExp(`(- \\*\\*${field}\\*\\*:).*`), `$1 ${safe}`);
+  }
+  let tokens = estimate(md);
+  if (tokens > MAX_WORKING_MEMORY_TOKENS) { md = truncateToTokens(md, MAX_WORKING_MEMORY_TOKENS); tokens = MAX_WORKING_MEMORY_TOKENS; }
+  return { ...cur, markdown: md, tokens, updatedAt: Date.now() };     // single-writer: primary surface only (§13)
+}
+
+const estimate = (s: string) => Math.ceil(s.length / 4);
+function truncateToTokens(s: string, cap: number) { return s.slice(0, cap * 4); }
+```
+
+### O.11 WriteJournal — crash-safe multi-store write + replay (Phase 2)
+
+Notes/memory span two stores (metadata in `chrome.storage.local`, body in IndexedDB). The journal makes a multi-store write **atomic-on-recovery**: on startup, any `pending`/`applying` entry is replayed or rolled back. Idempotent steps make replay safe (§20.3).
+
+```ts
+// src/core/storage/WriteJournal.ts
+import type { WriteJournalEntry } from '@/types/storage';   // Appendix C
+import { debugLog } from '@/core/log/debugLog';
+
+export interface JournalStep {
+  name: string;
+  apply(): Promise<void>;      // MUST be idempotent (safe to run twice on replay)
+  rollback(): Promise<void>;
+}
+
+export async function runJournaled(
+  entry: WriteJournalEntry,
+  steps: JournalStep[],
+  persist: (e: WriteJournalEntry) => Promise<void>,   // writes the journal entry itself
+): Promise<void> {
+  entry.status = 'applying'; entry.attempts++; await persist(entry);
+  const done: JournalStep[] = [];
+  try {
+    for (const s of steps) {
+      await s.apply();                                  // idempotent → replay-safe
+      entry.steps.push({ name: s.name, status: 'completed' });
+      done.push(s);
+      await persist(entry);
+    }
+    entry.status = 'completed'; await persist(entry);
+  } catch (e: any) {
+    debugLog('WRITE_JOURNAL_FAILED', 'rolling back', { id: entry.id, step: done.at(-1)?.name });
+    for (const s of done.reverse()) {
+      try { await s.rollback(); } catch (r: any) { debugLog('WRITE_JOURNAL_ROLLBACK_FAILED', r?.message ?? 'rollback', { id: entry.id }); }
+    }
+    entry.status = 'rolled-back'; await persist(entry);
+    throw e;
+  }
+}
+
+/** On startup: finish or undo any entry left mid-flight (crash recovery). */
+export async function recoverJournal(
+  load: () => Promise<WriteJournalEntry[]>,
+  replay: (e: WriteJournalEntry) => Promise<void>,
+): Promise<void> {
+  for (const e of await load()) {
+    if (e.status === 'applying' || e.status === 'pending') await replay(e); // idempotent replay
+  }
+}
+```
+
+**Why:** covers the Phase 2 DONE-when "WriteJournal recovery test passes." Keep every `apply()` idempotent (e.g. upsert by id) so a replay after a crash is a no-op, not a duplicate.
+
+### O.12 PageContentService — layered extraction with recorded fallback (Phase 6)
+
+The service tries strategies in order and **records which one produced the result** (§26). Heavy libs (Defuddle) run in the panel, never in the content bundle (isolation test).
+
+```ts
+// src/core/extraction/PageContentService.ts
+import type { IExtractionStrategy, StrategyInput, StrategyResult } from './strategies/IExtractionStrategy'; // Appendix C
+import { debugLog } from '@/core/log/debugLog';
+
+export interface ExtractionOutcome {
+  result: StrategyResult;
+  sourceUsed: StrategyResult['source'];   // provenance — which layer won
+  fallbacksTried: string[];
+}
+
+export async function extractLayered(
+  input: StrategyInput,
+  strategies: IExtractionStrategy[],      // ordered: Defuddle → Readability → APC-lite → ServiceNow API
+): Promise<ExtractionOutcome> {
+  const tried: string[] = [];
+  for (const s of strategies) {
+    if (!s.canHandle({ url: input.url, mode: input.mode })) continue;
+    try {
+      const result = await s.run(input);
+      // Accept the first strategy that returns usable content.
+      if ((result.markdown && result.markdown.length > 0) || result.root) {
+        return { result, sourceUsed: result.source, fallbacksTried: tried };
+      }
+      tried.push(s.id);
+    } catch (e: any) {
+      tried.push(s.id);
+      debugLog('EXTRACTION_STRATEGY_FAILED', e?.message ?? 'strategy error', { strategy: s.id, url: input.url });
+    }
+  }
+  // Typed failure — never throw a bare error; caller shows a user-facing message.
+  throw Object.assign(new Error('no strategy produced content'), { code: 'EXTRACTION_FAILED', fallbacksTried: tried });
+}
+```
+
+**Guardrails:** the content-script bundle must contain **no** React/AntD/Defuddle/yaml (isolation test, §24). Content scripts only serialise HTML; `extractLayered` runs in the Side Panel/Standalone view. Passwords are never captured (`isPassword ⇒ value omitted`, §16).
+
+### O.13 AITransactionLog + TraceRedactor — safe tracing (Phase 11)
+
+Every AI/tool/provider op is traceable, but **nothing raw is persisted**. Redaction runs before *every* sink (persist, UI, console, export).
+
+```ts
+// src/core/telemetry/TraceRedactor.ts
+const REDACTION_PATTERNS: RegExp[] = [
+  /sk-[A-Za-z0-9_-]+/g, /key-[A-Za-z0-9_-]+/g, /Bearer\s+[A-Za-z0-9._-]+/gi,
+  /JSESSIONID=[^;\s]+/gi, /sysparm_ck[=:]\s*[^&\s]+/gi, /g_ck[=:]\s*[^&\s]+/gi,
+];
+export const TraceRedactor = {
+  redact(value: string): string {
+    return REDACTION_PATTERNS.reduce((s, re) => s.replace(re, '[REDACTED]'), value);
+  },
+};
+
+// src/core/telemetry/AITransactionLog.ts
+import type { AITransaction } from '@/types/harness';   // (trace shapes live with harness types)
+import { TraceRedactor } from './TraceRedactor';
+
+export function startTx(base: Omit<AITransaction, 'status' | 'startedAt'>): AITransaction {
+  return { ...base, status: 'started', startedAt: Date.now() };
+}
+/** Persist ONLY redacted metadata by default (raw bodies never stored — §4.2/§4.4). */
+export async function completeTx(
+  tx: AITransaction,
+  write: (t: AITransaction) => Promise<void>,
+  errorCode?: string,           // MUST be a code from Appendix C.2
+): Promise<void> {
+  tx.status = errorCode ? 'failed' : 'completed';
+  tx.endedAt = Date.now();
+  tx.durationMs = tx.endedAt - tx.startedAt;
+  if (errorCode) tx.errorCode = errorCode;
+  await write(tx);              // no prompt/body fields on this object by design
+}
+```
+
+**Rule of thumb:** if you ever pass a prompt, tool input/output, cookie, clipboard text, or case body toward a log/UI/export, it goes through `TraceRedactor.redact()` first (risk R-10). Deep traces store **redacted previews only** and expire fast (§4.2).
+
+
+### Appendix P — Repository Agent Workflow
+
+The repository ships with these tool-neutral prompt files:
+- `.planning/prompts/START_PROJECT.md`
+- `.planning/prompts/DISCUSS_PHASE.md`
+- `.planning/prompts/PLAN_PHASE.md`
+- `.planning/prompts/EXECUTE_PHASE.md`
+- `.planning/prompts/VERIFY_PHASE.md`
+
+They are operator prompts, not product runtime prompts. They must not be imported into the extension bundle. Each prompt requires the coding agent to follow `AGENTS.md`, preserve canonical contracts, use Git-scoped phase work, and record verification evidence under `.planning/`.
 
 **End of NowPilot Product Specification v0.1.**
