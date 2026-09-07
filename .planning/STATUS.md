@@ -3,9 +3,9 @@
 ## Current State
 
 - **Project:** NowPilot v0.1
-- **Status:** Repository assessment required
-- **Active phase:** Not selected
-- **Active branch:** Not recorded
+- **Status:** Phase 1 plan revised — pending operator review
+- **Active phase:** Phase 1 — MV3/WXT Runtime + AntD Shells + Workspace
+- **Active branch:** sapphire
 - **Last verified phase:** None recorded
 - **Last verified commit:** None recorded
 - **Verification state:** Not run
@@ -21,13 +21,13 @@
 
 ## Next Required Action
 
-Run `prompts/START_PROJECT.md` from the repository root. The agent must inspect the actual Git repository before selecting an active phase. It must not infer completion from planning documents alone.
+Review revised plan `.planning/phases/01-runtime-shells/PLAN.md`. On approval, run `prompts/EXECUTE_PHASE.md`.
 
 ## Phase Status
 
 | Phase | Name | Status | Verified commit |
 |---:|---|---|---|
-| 1 | MV3/WXT Runtime + AntD Shells + Workspace | Unverified | None |
+| 1 | MV3/WXT Runtime + AntD Shells + Workspace | Plan revised — pending review | None |
 | 2 | Storage, Security, WriteJournal, Workspace Persistence | Unverified | None |
 | 3 | Cost-Effective AI Runtime + Persona Seed | Unverified | None |
 | 4 | Agent Reliability and Evidence | Not started | None |
