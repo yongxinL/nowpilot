@@ -129,6 +129,36 @@ This file records concise, ratified implementation decisions needed across agent
   - `tests/isolation/no-content-script-ui.test.ts` — greps `src/entrypoints/core.content.ts` bundle for banned imports.
 - **Consequences:** One palette component serves both surfaces. Command and keymap concerns are separated into distinct registries with strict ownership. Content script path is flat under `src/entrypoints/`. No `src/entrypoints/content/` directory.
 
+### DEC-014: Phase 1 command IDs
+
+- **Status:** Ratified
+- **Phase:** Phase 1
+- **Context:** DEC-013 specifies the minimum Flow 10 command set ("Open Standalone view", "Focus Side Panel", "Open Options") and assigns command-ID ownership to `CommandRegistry`, but does not define canonical string IDs. The product specification Flow 10 (§11) also defines only human-facing labels. Implementer-chosen IDs (`open-standalone`, `focus-side-panel`, `open-options`) are used consistently across `CommandRegistry`, `KeymapRegistry`, and `CommandPalette`.
+- **Decision:** Ratify the following canonical command IDs for the minimum Flow 10 set:
+  - `open-standalone` — opens or focuses the Standalone view (handler: `WorkspaceRouter.openStandalone()`)
+  - `focus-side-panel` — opens the Side Panel for the current tab (handler: `WorkspaceRouter.focusSidePanel()`)
+  - `open-options` — opens the Options page in the Standalone view (handler: `WorkspaceRouter.openStandalone({ page: 'options' })`)
+- **ID convention:** kebab-case verb-namespace. Future command IDs follow the same convention.
+- **Consequences:** `CommandRegistry.ts`, `KeymapRegistry.ts`, `CommandPalette.tsx` are consistent with ratified IDs. No change to runtime behaviour.
+
+### DEC-015: Phase 1 internal error codes
+
+- **Status:** Ratified
+- **Phase:** Phase 1
+- **Context:** §0.3 requires every catch block to call `debugLog(code, …)` with a canonical error code from Appendix C.2. Two Phase 1 catch paths have no applicable C.2 code: (a) `EventBus.emit()` wrapping a handler that throws, and (b) `BackgroundRouter` default branch for valid-but-unhandled `MessageTypeValues`. The C.2 registry has no "internal event failure" or "unhandled message" code.
+- **Decision:** Add the following two codes to the canonical error-code registry (Appendix C.2, under a new "Internal / runtime" group):
+  - `EVENT_BUS_HANDLER_FAILED` — an EventBus subscriber handler threw during `emit`. The failing handler is isolated; other subscribers still run.
+  - `UNHANDLED_MESSAGE` — a `RuntimeEnvelope` with a valid `MessageTypeValue` reached `BackgroundRouter.dispatch()` but no case handled it. Distinct from the register guard rejecting unknown types (which returns `false` and no response).
+- **Consequences:** `EventBus.ts` and `background.ts` now use canonical codes. Appendix C.2 grows from 33 to 35 codes.
+
+### DEC-016: WXT manualChunks compatibility deviation
+
+- **Status:** Ratified
+- **Phase:** Phase 1
+- **Context:** Appendix G specifies `output.manualChunks` in `wxt.config.ts`. WXT 0.21 builds content-script/unlisted entrypoints as IIFE, which forces `output.inlineDynamicImports`. Rollup rejects `manualChunks` combined with `inlineDynamicImports` (`Invalid value for option "output.manualChunks"`). The manualChunks config also produced a circular-chunk warning (`ant-icons -> antd -> ant-icons`).
+- **Decision:** Remove `manualChunks` from `wxt.config.ts`. Retain `target: 'chrome120'` and `sourcemap: 'inline'` from Appendix G. Manual chunking is a non-functional build optimization; its removal affects bundle layout only. Chunking may be revisited if a WXT 0.21-compatible approach is found.
+- **Consequences:** `wxt.config.ts` deviates from Appendix G by omission of `manualChunks`. `antd` bundle is larger (~5.2 MB) as a single chunk. No runtime behaviour change.
+
 ## Open Decisions
 
 None recorded. A phase discussion may add a proposed decision only when the product specification and repository evidence do not already determine the answer.
