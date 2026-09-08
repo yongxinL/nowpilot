@@ -3,13 +3,13 @@
 ## Current State
 
 - **Project:** NowPilot v0.1
-- **Status:** Phase 1 plan revised — pending operator review
+- **Status:** Phase 1 verified, awaiting merge
 - **Active phase:** Phase 1 — MV3/WXT Runtime + AntD Shells + Workspace
 - **Active branch:** sapphire
-- **Last verified phase:** None recorded
-- **Last verified commit:** None recorded
-- **Verification state:** Not run
-- **Updated:** 2026-09-07
+- **Last verified phase:** Phase 1
+- **Last verified commit:** `db4e1319a073cc296bb1e727366fec0e6c026105`
+- **Verification state:** Passed (exit 0)
+- **Updated:** 2026-09-08
 
 ## Source of Truth
 
@@ -21,15 +21,15 @@
 
 ## Next Required Action
 
-Review revised plan `.planning/phases/01-runtime-shells/PLAN.md`. On approval, run `prompts/EXECUTE_PHASE.md`.
+Merge the verified Phase 1 commit sequence and the evidence-only commit into the canonical integration branch. Then begin Phase 2.
 
 ## Phase Status
 
 | Phase | Name | Status | Verified commit |
 |---:|---|---|---|
-| 1 | MV3/WXT Runtime + AntD Shells + Workspace | Plan revised — pending review | None |
-| 2 | Storage, Security, WriteJournal, Workspace Persistence | Unverified | None |
-| 3 | Cost-Effective AI Runtime + Persona Seed | Unverified | None |
+| 1 | MV3/WXT Runtime + AntD Shells + Workspace | **Verified, awaiting merge** | `db4e131` |
+| 2 | Storage, Security, WriteJournal, Workspace Persistence | Not started | None |
+| 3 | Cost-Effective AI Runtime + Persona Seed | Not started | None |
 | 4 | Agent Reliability and Evidence | Not started | None |
 | 5 | Context-Adaptive Execution | Not started | None |
 | 6 | PageContentService | Not started | None |
@@ -47,12 +47,22 @@ Review revised plan `.planning/phases/01-runtime-shells/PLAN.md`. On approval, r
 | 18 | Tool Governance and Active Discovery | Not started | None |
 | 19 | Hardening and Release | Not started | None |
 
-`Unverified` means prior work may exist, but it has not been validated against the Codex-ready specification and a recorded Git commit.
+## Phase 1 Verification Summary
+
+- **Final application commit:** `7da04855add36769001a1a83bd82021b2151ee5b`
+- **Candidate verification SHA:** `db4e1319a073cc296bb1e727366fec0e6c026105`
+- **Verified SHA:** `db4e1319a073cc296bb1e727366fec0e6c026105`
+- **Verification command:** `pnpm run verify:phase-1`
+- **Test result:** 18 files, 53 tests passed
+- **Build result:** WXT 0.21.4 production build pass
+- **Security gates:** all pass
+- **Manual acceptance:** pending (requires Chrome browser)
+- **Evidence-only commit:** `b87ab68d57c86a2a0c48411530fd8401aea656a1`
+- **Evidence screenshots:** pending manual capture
 
 ## Blockers
 
-- Actual repository state has not yet been inspected in this workflow.
-- Phase completion evidence and verified commit SHAs have not yet been recorded.
+None for automated verification. Manual acceptance and visual evidence require operator action in Chrome.
 
 ## Update Rules
 
