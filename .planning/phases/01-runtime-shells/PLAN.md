@@ -523,72 +523,180 @@ When a mock-up conflicts with the product specification, decisions or this plan,
 **Precondition:** T10
 
 **Files:**
-- `tests/components/OnboardingModal.test.tsx` (extended with secret-handling assertions)
+- `tests/components/OnboardingModal.test.tsx`, extended with
+  secret-handling assertions.
 
 **Test assertions:**
-- API key input value is not present in component state after modal closes
-- No `chrome.storage` write occurs during onboarding
-- No `debugLog` call includes the key value
-- No `fetch` / network call includes the key
+- API-key input value is not present in component state after the modal closes.
+- No `chrome.storage` write occurs during onboarding.
+- No `debugLog` call includes the key value.
+- No `fetch` or other network call includes the key.
 
-**Completion criteria:** All secret-handling assertions pass
-
----
-
-### T20 — Implementation verification
-
-**Precondition:** T1–T19 complete
-
-**Actions:**
-1. Commit all implementation (code, tests, scripts, configs) → this is the **candidate implementation commit**
-2. Record the candidate commit SHA
-3. Run `pnpm run verify:phase-1` against that commit SHA
-4. If verification passes → record as **verified implementation SHA**
-5. If verification fails → fix code, re-commit, re-verify (new candidate SHA)
-
-**Final verified implementation commit SHA:** `<to-be-recorded>`
+**Completion criteria:**
+- All secret-handling assertions pass.
+- The implementation and directly related tests are included in the
+  appropriate atomic implementation commit.
 
 ---
 
-### T21 — Evidence recording
+### Phase 1 Commit Protocol
 
-**Precondition:** T20 verification passed
+T1–T19 must be represented by atomic commits for complete logical outcomes.
+
+Implementation and directly related tests may be combined into one commit even when they have separate task numbers.
+
+Recommended mapping:
+- T1: toolchain commit
+- T2 + T13: runtime messaging commit
+- T3 + applicable T16 isolation test: content-entrypoint commit
+- T4 + applicable T14 tests: theme commit
+- T5 + applicable T17 test: Side Panel commit
+- T6 + applicable T17 test: Standalone commit
+- T7 + T11 + applicable T14 tests: workspace-handoff commit
+- T8 + applicable T15/T16 tests: messaging, events and registry commit
+- T9 + applicable T15/T17 tests: command and palette commit
+- T10 + applicable T17/T19 tests: onboarding commit
+- Remaining T18 work: verification-gates commit
+
+The actual task-to-commit mapping must be recorded in `RESULT.md`.
+
+Do not require one commit for every numbered task when implementation and tests form one inseparable logical outcome.
+
+Do not create an empty Phase 1 checkpoint commit after the final implementation commit.
+
+---
+
+### T20 — Candidate implementation verification
+
+**Preconditions:**
+- T1–T19 are complete.
+- Each logical implementation task or coupled implementation-and-test group has
+  an atomic commit.
+- The actual task-to-commit mapping has been prepared for `RESULT.md`.
+- The `AGENTS.md`, `PLAN.md`, and pre-verification process corrections have
+  been committed.
+- No application or planning changes remain uncommitted.
+- Required visual evidence is not expected to exist yet.
 
 **Actions:**
-1. Create `RESULT.md` with:
-   - Exact verification command run
-   - UTC timestamp
-   - Exit status (0 = pass)
-   - Test summary (count, pass/fail)
-   - Verified implementation commit SHA
-   - Deviations from plan
-   - Known issues
-   - Deferred items
-2. Create `ACCEPTANCE.md` with:
-   - Manual acceptance checklist results
-   - Visual evidence references
-   - Requirement coverage matrix
-3. Capture and commit the following Phase 1 evidence under `.planning/evidence/phase-01/`:
+1. Inspect the complete Phase 1 commit sequence and final Git diff.
+2. Confirm that no unrelated files or future-phase functionality were
+   committed.
+3. Confirm that each implementation commit has a task mapping and focused test
+   result.
+4. Record the last commit that changed application code as the
+   **final application commit SHA**.
+5. Record the current clean `HEAD`, including any documentation-only workflow
+   commit, as the **candidate verification SHA**.
+6. Confirm that the documentation-only commits after the final application
+   commit did not change:
+   - `src/`;
+   - `tests/`;
+   - `scripts/`;
+   - `package.json`;
+   - dependency lockfiles;
+   - TypeScript, Vite, Vitest, or WXT configuration.
+7. Do not create an empty candidate checkpoint commit.
+8. Run `pnpm run verify:phase-1` against the exact candidate verification SHA.
+9. If verification passes:
+   - record the candidate verification SHA as the verified SHA;
+   - retain the final application commit SHA separately for traceability.
+10. If verification fails:
+    - create one or more atomic fix commits;
+    - run the applicable focused checks;
+    - treat the new clean `HEAD` as the new candidate verification SHA;
+    - rerun the complete `pnpm run verify:phase-1` command.
+
+**Final application commit SHA:** `<to-be-recorded>`
+
+**Candidate verification SHA:** `<to-be-recorded>`
+
+**Verified SHA:** `<to-be-recorded>`
+
+---
+
+### T21 — Manual acceptance and evidence recording
+
+**Precondition:** T20 automated verification passed.
+
+**Actions:**
+
+1. Perform every applicable manual acceptance check in this plan.
+2. Finalise `.planning/phases/01-runtime-shells/RESULT.md` with:
+   - actual task-to-commit mapping;
+   - final application commit SHA;
+   - exact verification target SHA;
+   - exact verification command;
+   - UTC timestamp;
+   - exit status;
+   - test summary;
+   - deviations from plan;
+   - known issues;
+   - deferred items.
+3. Create or finalise `.planning/phases/01-runtime-shells/ACCEPTANCE.md` with:
+   - manual acceptance results;
+   - visual evidence references;
+   - requirement coverage matrix;
+   - tested viewport widths;
+   - reviewer and result.
+4. Capture the following implemented Phase 1 states under `.planning/evidence/phase-01/`:
+   Required:
    - `sidepanel-400px.png`
-   - `sidepanel-under-380px.png`
-      - Required only if the below-380 px rendering differs visibly from the canonical responsive screenshot or exposes a responsive issue.
-      - Otherwise record the tested width and unchanged result in `ACCEPTANCE.md`.
    - `sidepanel-empty-state.png`
    - `standalone-default.png`
    - `standalone-narrow-alert.png`
    - `command-palette-sidepanel.png`
    - `command-palette-standalone.png`
    - `onboarding-shell.png`
-4. Update `.planning/STATUS.md` with verified commit SHA
-5. Commit evidence files → this is the **evidence-only commit SHA**
+   Conditional:
+   - `sidepanel-under-380px.png`
+     - Required only if the below-380 px rendering differs visibly from the 400 px rendering or exposes a responsive issue.
+     - Otherwise, record the tested narrow width and unchanged result in `ACCEPTANCE.md`.
+5. Confirm that screenshots contain no API keys, credentials, customer data, browser-session information, or unrelated private content.
+6. Update `.planning/STATUS.md` with:
+   - Phase 1 state;
+   - final application commit SHA;
+   - verified SHA;
+   - verification result;
+   - evidence status;
+   - next action.
+7. Create one evidence-only commit containing only:
+   - `.planning/phases/01-runtime-shells/RESULT.md`
+   - `.planning/phases/01-runtime-shells/ACCEPTANCE.md`
+   - `.planning/STATUS.md`
+   - `.planning/evidence/phase-01/`
+8. Record the evidence-only commit SHA.
 
-**Verification invalidation rule:** Any change to `src/`, `tests/`, `package.json`, `wxt.config.ts`, or other application files after the verified implementation commit invalidates verification. Re-run `verify:phase-1` after any such change. Evidence-only commits (RESULT.md, ACCEPTANCE.md, STATUS.md) do NOT invalidate verification.
+**Verification invalidation rule:**
+
+Any subsequent change to application or verification files invalidates the existing verification. This includes changes to:
+- `src/`
+- `tests/`
+- `scripts/`
+- `package.json`
+- dependency lockfiles
+- `tsconfig.json`
+- `vite.config.ts`
+- `vitest.config.ts`
+- `wxt.config.ts`
+
+After such a change, create an atomic fix commit and rerun `pnpm run verify:phase-1`.
+
+Changes limited to `RESULT.md`, `ACCEPTANCE.md`, `.planning/STATUS.md`, and the applicable `.planning/evidence/` files do not invalidate verification.
 
 **Final evidence-only commit SHA:** `<to-be-recorded>`
 
-**Phase status after T21:** `Verified, awaiting merge`.
+**Phase status after T21:** `Verified, awaiting merge`
 
-**Phase complete:** Only after both the verified implementation commit and the evidence-only commit are merged into the canonical integration branch. If the merged application tree differs from the verified implementation tree, re-run `verify:phase-1` against the merged result.
+**Phase complete only when:**
+- the verified Phase 1 commit sequence has been merged into the canonical
+  integration branch;
+- the evidence-only commit has been merged;
+- `.planning/STATUS.md` records the merged state;
+- the merged application tree is identical to the verified application tree.
+
+If the merge changes the verified application tree, run
+`pnpm run verify:phase-1` again against the merged commit.
 
 ---
 

@@ -42,14 +42,26 @@ If two canonical sources conflict, stop implementation and report the exact conf
 
 ## Phase Workflow
 
-For each phase use this sequence:
+For each phase, use this sequence:
 
-1. **Discuss**, only if unresolved decisions, repository/spec conflicts, or material ambiguity exist.
+1. **Discuss**, only when unresolved decisions, repository/specification conflicts, or material ambiguity exist.
 2. **Plan** the phase in `.planning/phases/<NN>-<name>/PLAN.md`.
 3. **Execute** only the approved plan.
-4. **Verify** using focused tests and `pnpm run verify:phase-N`.
-5. Record `RESULT.md`, `ACCEPTANCE.md`, and update `.planning/STATUS.md`.
-6. Commit the verified state.
+4. During execution, create atomic commits for each complete logical task or tightly coupled implementation-and-test group.
+5. Treat the final implementation `HEAD` as the candidate implementation SHA. Do not create an empty phase checkpoint commit.
+6. **Verify** the candidate implementation SHA using the required focused checks and `pnpm run verify:phase-N`.
+7. If verification fails:
+   - create atomic fix commits;
+   - treat the new final `HEAD` as the new candidate implementation SHA;
+   - rerun the complete phase verification.
+8. After verification passes, perform manual acceptance and capture any required evidence.
+9. Record the final results in:
+   - `.planning/phases/<NN>-<name>/RESULT.md`;
+   - `.planning/phases/<NN>-<name>/ACCEPTANCE.md`;
+   - `.planning/STATUS.md`.
+10. Create an evidence-only commit containing the result, acceptance, status and applicable `.planning/evidence/` files.
+11. Merge the verified implementation commits and evidence-only commit into the canonical integration branch.
+12. Mark the phase complete only after the merge. If the merged application tree differs from the verified tree, rerun verification against the merged commit.
 
 Discussion is not required when all contracts, paths, dependencies and acceptance criteria are already deterministic.
 
@@ -65,6 +77,32 @@ Discussion is not required when all contracts, paths, dependencies and acceptanc
   - `docs(03): record verification evidence`
 - Do not rewrite shared history.
 - Do not merge with failing verification.
+
+### Atomic Commit Protocol
+
+Implementation agents must create atomic commits during phase execution.
+
+Rules:
+
+- Commit after each complete logical task or tightly coupled
+  implementation-and-test group.
+- Include directly related tests in the same commit as the implementation.
+- Every implementation commit must leave the repository buildable and its relevant focused tests passing.
+- Do not create separate incomplete source and test commits when both are required for one logical contract.
+- Do not combine unrelated phase tasks in one commit.
+- Do not commit after every individual file edit.
+- Do not create an empty phase checkpoint commit.
+- Record task IDs, commit SHA, files and focused checks in the phase `RESULT.md`.
+- The final implementation commit after all planned implementation tasks is the candidate implementation SHA.
+- Verification failures must be corrected through new atomic fix commits.
+- Verification must be rerun against the new final implementation SHA.
+- Do not squash implementation commits before verification.
+- After verification and manual acceptance, create one evidence-only commit containing:
+  - `RESULT.md`
+  - `ACCEPTANCE.md`
+  - `.planning/STATUS.md`
+  - applicable `.planning/evidence/` files
+- A phase becomes complete only after its verified implementation and evidence-only commits are merged into the canonical integration branch.
 
 ## Planning Requirements
 
