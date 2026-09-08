@@ -57,7 +57,7 @@ Merge the verified Phase 1 commit sequence and the evidence-only commit into the
 - **Build result:** WXT 0.21.4 production build pass
 - **Security gates:** all pass
 - **Manual acceptance:** pending (requires Chrome browser)
-- **Evidence-only commit:** `b87ab68d57c86a2a0c48411530fd8401aea656a1`
+- **Evidence-only commit:** `8a3283a982e28361773d44df5d2cefce1de78647`
 - **Evidence screenshots:** pending manual capture
 
 ## Blockers
