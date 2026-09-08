@@ -571,6 +571,8 @@ When a mock-up conflicts with the product specification, decisions or this plan,
 3. Capture and commit the following Phase 1 evidence under `.planning/evidence/phase-01/`:
    - `sidepanel-400px.png`
    - `sidepanel-under-380px.png`
+      - Required only if the below-380 px rendering differs visibly from the canonical responsive screenshot or exposes a responsive issue.
+      - Otherwise record the tested width and unchanged result in `ACCEPTANCE.md`.
    - `sidepanel-empty-state.png`
    - `standalone-default.png`
    - `standalone-narrow-alert.png`
