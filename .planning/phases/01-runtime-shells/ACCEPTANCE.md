@@ -84,4 +84,4 @@ Pending operator sign-off.
 **Automated verification: PASS**
 **Manual acceptance: PENDING** (requires Chrome browser)
 
-Evidence-only commit: `8a3283a982e28361773d44df5d2cefce1de78647`
+Evidence-only commit: `81d4e8aa73d57561e9681f3d3941b5f7faadedaf`

@@ -13,7 +13,7 @@
 - **Final application commit SHA:** `7da04855add36769001a1a83bd82021b2151ee5b`
 - **Candidate verification SHA:** `db4e1319a073cc296bb1e727366fec0e6c026105`
 - **Verified SHA:** `db4e1319a073cc296bb1e727366fec0e6c026105`
-- **Evidence-only commit SHA:** `8a3283a982e28361773d44df5d2cefce1de78647`
+- **Evidence-only commit SHA:** `81d4e8aa73d57561e9681f3d3941b5f7faadedaf`
 
 ## Task Completion
 
