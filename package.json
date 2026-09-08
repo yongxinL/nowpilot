@@ -1,0 +1,45 @@
+{
+  "name": "nowpilot",
+  "version": "0.1.0",
+  "description": "AI-native Chrome Side Panel + Standalone view assistant",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.22.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev:ext": "wxt",
+    "build:ext": "wxt build",
+    "verify:phase-1": "tsc --noEmit && vitest run tests/core/runtime tests/core/events tests/core/workspace tests/core/theme tests/core/messaging tests/core/registry tests/core/commands tests/core/input tests/components/sidepanel tests/components/standalone tests/components/CommandPalette.test.tsx tests/components/OnboardingModal.test.tsx tests/isolation && bash scripts/verify-no-tailwind.sh && bash scripts/verify-no-framer-motion.sh && bash scripts/verify-no-dangerous-html.sh && pnpm run build:ext"
+  },
+  "dependencies": {
+    "@ant-design/icons": "^6",
+    "@ant-design/x": "^2",
+    "@ant-design/x-markdown": "^2",
+    "antd": "^6",
+    "immer": "^11",
+    "motion": "^12",
+    "react": "^19",
+    "react-dom": "^19",
+    "zod": "^4",
+    "zustand": "^5"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^7",
+    "@testing-library/react": "^16",
+    "@testing-library/user-event": "^14",
+    "@types/chrome": "^0.0.287",
+    "@types/node": "^22",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^4",
+    "@wxt-dev/module-react": "^1",
+    "jsdom": "^25",
+    "typescript": "^5.5.4",
+    "vite": "^6",
+    "vitest": "^3",
+    "vitest-chrome": "^0.1",
+    "wxt": "^0.21"
+  }
+}
