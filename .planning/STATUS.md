@@ -9,18 +9,18 @@ rewrite or delete prior history.
 - **Current phase:** Phase 01 — Runtime, Shells, and Workspace
 - **Design status:** Approved and amended by ADR-0001 (background-serialised workspace election)
 - **Plan status:** Approved and amended (corrective task T13C; T14/T16/T22/T24/T25/T26/T28 amendment notes)
-- **Implementation status:** T01–T13C accepted; T14, T15, and T16 implemented and verified; T17 implemented and verified; T18 implemented and verified; T19 implemented and verified; T20–T28 not started
+- **Implementation status:** T01–T13C accepted; T14, T15, and T16 implemented and verified; T17 implemented and verified; T18 implemented and verified; T19 implemented and verified; T20 implemented and verified; T21–T28 not started
 - **Planning baseline branch:** `phoenix`
 - **Implementation branch:** `phoenix`
 - **Historical approved planning baseline commit:** `bd6ac44d6f562722c18f0d07e6910634e549c713`
 - **Approved planning baseline commit:** `b2c6ef289bc1abebbeccfad81d7034ced81f4eb7`
-- **Current task:** T19 complete; next task T20
-- **Last commit:** the T19 task commit `feat(phase-01): add standalone shell router and sider`, on top of `f146e79` (`feat(phase-01): register standalone pages and skeletons`)
-- **Verification result:** T19 component suite 7/7 new tests (3 files); full unit suite 206/206 (29 files); `typecheck`, `lint`, `prettier --check .`, and the phase chain `typecheck && lint && test` all exit 0. `StandaloneSider` renders the five primary plus two footer routes from the T05 registry and emits the clicked route id; `StandaloneRouter` renders the registered page or nothing; `useStandaloneRoute` defaults to `chat`, reports an unknown hash through `onRouteFallback`, and writes only `window.history.replaceState`; `StandaloneShell` composes Sider and routed page. The authorised unused `DEFAULT_STANDALONE_ROUTE_ID` import was removed from `StandaloneRouter.tsx`; an explicit `afterEach(cleanup)` was added to the three component test files (no global cleanup is configured) with test bodies/assertions unchanged.
-- **Next action:** implement T20 per approved Phase 01 `PLAN.md`
-- **Blockers:** None; T13, T13C, T14, T15, T16, T17, T18, and T19 are accepted
-- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 14, Task 15, Task 16, Task 17, Task 18, and Task 19 sections)
-- **Evidence status:** T19 verified; self-review PASS
+- **Current task:** T20 complete; next task T21
+- **Last commit:** the T20 task commit `feat(phase-01): add options appearance controls`, on top of `586b354` (`feat(phase-01): add standalone shell router and sider`)
+- **Verification result:** T20 focused test 3/3 new tests (1 file); full unit suite 209/209 (30 files); `typecheck`, `lint`, `prettier --check .`, and the phase chain `typecheck && lint && test` all exit 0. `AppearanceSection` renders Display mode (Auto/Light/Dark) and Theme pack (Default/Liquid Glass/Claude Warm) from the canonical `THEME_MODES`/`THEME_PACKS`; `OptionsPage` renders exactly `General → Appearance`, wires an optional `ThemeStore`, persists only through `writeMode`/`writePack`, and preserves `data-testid="standalone-page-options"`. Test-only corrections (disclosed): annotated the stub `read` return as `Promise<ThemePreferences>` to satisfy `tsc` (T20-A) and added an explicit `afterEach(cleanup)` to the new test file (T20-B, no global cleanup is configured); `prettier` reflowed only the new `AppearanceSection.tsx` import (T20-C).
+- **Next action:** implement T21 per approved Phase 01 `PLAN.md`
+- **Blockers:** None; T13, T13C, T14, T15, T16, T17, T18, T19, and T20 are accepted
+- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 14, Task 15, Task 16, Task 17, Task 18, Task 19, and Task 20 sections)
+- **Evidence status:** T20 verified; self-review PASS
 
 ## History
 
@@ -808,3 +808,37 @@ rewrite or delete prior history.
   `.planning/evidence/phase-01/review.md` (Task 19 sections). Task commit
   `feat(phase-01): add standalone shell router and sider`. Current task T19 accepted;
   next task T20 — per approved Phase 01 `PLAN.md`.
+- Task 20 (Options Appearance Controls) executed on `phoenix` in the repository root.
+  Implementation tier balanced. RED confirmed at
+  `pnpm run test -- tests/components/optionsAppearance.test.tsx` (exit 1; 1 file failed
+  with a module-resolution error for `@/components/options/AppearanceSection`; the 29
+  pre-existing files / 206 tests still passed). Created
+  `src/components/options/AppearanceSection.tsx` (antd `Space`/`Typography.Title`/
+  `Segmented`; Display mode maps `THEME_MODES` through `MODE_LABELS` = Auto/Light/Dark;
+  Theme pack maps `THEME_PACKS` through `PACK_LABELS` = Default/Liquid Glass/Claude
+  Warm; `onModeChange`/`onPackChange` receive the constrained `ThemeMode`/`ThemePack`)
+  and replaced the skeleton body of `src/components/options/OptionsPage.tsx` with the
+  brief implementation (optional `store?: ThemeStore`; defaults to
+  `createThemeStore(createValidatedStorage(getChromeStorage()))`; mount effect subscribes
+  and reads once behind an `active` flag and unsubscribes on cleanup; renders exactly
+  `General → Card → AppearanceSection { Display mode, Theme pack }`; persists only via
+  `themeStore.writeMode`/`writePack`; keeps `data-testid="standalone-page-options"` and
+  `aria-label="Options"`). Created `tests/components/optionsAppearance.test.tsx`
+  (3 tests: 2 AppearanceSection, 1 OptionsPage). Authorised test correction (T20-A): the
+  brief's stub `read` callback inferred `{ mode: string; pack: string }` which fails the
+  pinned `tsc --noEmit`, so its return was annotated `Promise<ThemePreferences>` with a
+  type-only import; identifiers/values/assertions unchanged. Disclosed test-only
+  correction (T20-B): because vitest runs without `globals: true` and the repo has no
+  global `afterEach(cleanup)`, the three renders in the new file needed an explicit
+  `afterEach(cleanup)`, with bodies/assertions unchanged. `prettier --check .` reflowed
+  only the new `AppearanceSection.tsx` import (T20-C). GREEN:
+  `pnpm run test -- tests/components` exit 0 (30 files, 209 tests), the T18
+  `tests/core/registry/registerCorePages.test.tsx` still passes (`OptionsPage.store` is
+  optional), `typecheck` exit 0, `lint` exit 0, `prettier --check .` exit 0; phase chain
+  `typecheck && lint && test` exit 0 (30 files, 209 tests). No new storage key, error
+  code, message type, permission, dependency, provider, or `DiagnosticEvent`; no other
+  Options sections, provider dialog, or Chrome options page. Evidence recorded in
+  `.planning/evidence/phase-01/verification.txt` and
+  `.planning/evidence/phase-01/review.md` (Task 20 sections). Task commit
+  `feat(phase-01): add options appearance controls`. Current task T20 accepted;
+  next task T21 — per approved Phase 01 `PLAN.md`.

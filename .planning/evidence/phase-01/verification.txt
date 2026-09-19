@@ -2255,3 +2255,130 @@ Code-quality and security checklist:
 Completion criteria: component tests green; typecheck and lint pass; prettier check
 passes; phase-applicable chain exit 0; one atomic task commit exists; working tree
 clean; status recorded.
+
+================================================================================
+
+=== Task 20 — Options Appearance Controls (2026-09-19T22:05:16Z) ===
+
+task ID: T20
+branch: phoenix
+repository root: /Users/george.li/Documents/workspaces/nowpilot
+classification: code task; TDD RED->GREEN applied
+implementation tier: balanced
+base commit: 586b354dc73a6919def7f95edff985d6484d0185 (T19 atomic commit
+  `feat(phase-01): add standalone shell router and sider`)
+Files created (production):
+  src/components/options/AppearanceSection.tsx
+Files created (tests):
+  tests/components/optionsAppearance.test.tsx
+Files modified:
+  src/components/options/OptionsPage.tsx (skeleton body replaced per the brief),
+  .planning/evidence/phase-01/verification.txt,
+  .planning/evidence/phase-01/review.md, .planning/STATUS.md only.
+  No dependency, permission, storage key, message type, error code, or
+  DiagnosticEvent change.
+
+Step 1 — test file created from the brief.
+
+Step 2 — RED:
+  command: pnpm run test -- tests/components/optionsAppearance.test.tsx
+  exit status: 1
+  observed: Test Files 1 failed | 29 passed (30); Tests 206 passed (206)
+    FAIL |unit| tests/components/optionsAppearance.test.tsx
+      Error: Failed to resolve import
+      "@/components/options/AppearanceSection" ... Does the file exist?
+      Plugin: vite:import-analysis
+  Expected failure reason confirmed: the `@/components/options/AppearanceSection`
+  module was absent (and OptionsPage did not yet accept a `store` prop), so Vite
+  could not resolve the import. The 29 passing files (206 tests) were the
+  pre-existing unit tests.
+
+Steps 3–4 — implementation per the brief:
+  AppearanceSection.tsx: antd Space/Typography.Title/Segmented presentational
+    component; Display mode maps THEME_MODES through MODE_LABELS (Auto, Light,
+    Dark) and Theme pack maps THEME_PACKS through PACK_LABELS (Default, Liquid
+    Glass, Claude Warm); onChange calls onModeChange/onPackChange with the
+    constrained ThemeMode/ThemePack cast. Interface AppearanceSectionProps and
+    export AppearanceSection exactly as specified.
+  OptionsPage.tsx: optional `store?: ThemeStore`; defaults to
+    createThemeStore(createValidatedStorage(getChromeStorage())); subscribes and
+    reads once on mount (guarded by an `active` flag, unsubscribe on cleanup);
+    renders exactly General -> Card -> AppearanceSection { Display mode, Theme
+    pack }; onModeChange/onPackChange update local state and persist via
+    themeStore.writeMode/writePack. Keeps data-testid="standalone-page-options"
+    and aria-label="Options".
+
+Authorised correction applied:
+  The brief's test literal `vi.fn(async () => ({ mode: 'auto', pack: 'default' }))`
+  infers `{ mode: string; pack: string }`, which fails the pinned `tsc --noEmit`
+  against `ThemeStore.read(): Promise<ThemePreferences>`. Annotated the callback
+  return as `Promise<ThemePreferences>` (added type-only import `ThemePreferences`);
+  identifiers, values, and assertions are unchanged.
+
+Necessary test-only correction (disclosed in review.md):
+  The repository runs vitest without `globals: true` and imports vitest APIs
+  explicitly, so no global `afterEach` exists and `@testing-library/react` cannot
+  auto-register cleanup. The brief's `optionsAppearance.test.tsx` renders three
+  times in one file; without cleanup the later `getByText('Display mode')` matched
+  multiple mounted subtrees. Added `cleanup`/`afterEach` imports and
+  `afterEach(cleanup)` to the new test file. All test bodies, identifiers, values,
+  and assertions are unchanged.
+
+Step 5 — GREEN:
+  command: pnpm run test -- tests/components
+  exit status: 0
+  output: Test Files 30 passed (30); Tests 209 passed (209), 0 failed, 0 skipped.
+  T18 regression: pnpm run test -- tests/core/registry/registerCorePages.test.tsx
+  exit 0 (OptionsPage.store is optional; the registry test still renders the page
+  with no props and finds test id standalone-page-options).
+
+Focused verification (sequential):
+  pnpm run test -- tests/components/optionsAppearance.test.tsx => exit 0
+    (3 tests: 2 AppearanceSection, 1 OptionsPage)
+  pnpm run typecheck                             => exit 0  (tsc --noEmit clean)
+  pnpm run lint                                  => exit 0  (eslint . clean)
+  pnpm exec prettier --check .                   => exit 0  (All matched files use
+    Prettier code style; the T20 AppearanceSection.tsx import list required a
+    single-line reflow — identifiers/values/assertions unchanged; no other file
+    reformatted)
+
+Phase 01 verification applicable now:
+  command: pnpm run typecheck && pnpm run lint && pnpm run test
+  exit status: 0
+  output: typecheck clean; lint clean; unit project 30 files, 209 tests passed.
+
+Test counts:
+  T20 test file: 1 passed, 3 tests passed (2 AppearanceSection, 1 OptionsPage),
+  0 failed, 0 skipped.
+  Unit project total after T20: 30 files, 209 passed.
+
+Specification-compliance checklist:
+  - nested exactly General -> Appearance -> { Display mode, Theme pack }: yes
+    (Typography.Title "General" > Card > AppearanceSection with the two Segmented
+    controls; "Providers"/"Diagnostics" asserted absent)
+  - approved display-mode options Auto/Light/Dark and pack options
+    Default/Liquid Glass/Claude Warm come from THEME_MODES/THEME_PACKS: yes
+  - controls update only theme config and persistence (writeMode/writePack via the
+    ThemeStore); persistence goes to chrome.storage.sync through the approved
+    ValidatedStorage/THEME key path: yes
+  - interfaces produced exactly as specified (AppearanceSectionProps,
+    AppearanceSection; OptionsPage with optional ThemeStore prop): yes
+  - only Appearance controls present; no Providers/Models/MCP/Memory/Diagnostics/
+    Notes/Persona/Import-Export/Feature-Flags/Add-on sections, no provider dialog,
+    no Chrome options page: yes
+  - only the two created files plus OptionsPage.tsx and .planning evidence/STATUS
+    changed: yes
+
+Code-quality and security checklist:
+  - accessible labels (Typography.Text "Display mode"/"Theme pack"), section
+    aria-label="Options", and antd Segmented controls: yes
+  - subscription and initial read guard against post-unmount state updates via the
+    `active` flag; the subscribe unsubscribe function is returned in cleanup: yes
+  - no other Options controls; no `any`; strict typing through ThemeMode/
+    ThemePack/ThemeStore: yes
+  - no secrets, tokens, cookies, passwords, prompts, page content, or customer
+    data read, logged, persisted, exported, or committed: yes
+
+Completion criteria: options test green; typecheck and lint pass; prettier check
+passes; phase-applicable chain exit 0; one atomic task commit exists; working tree
+clean; status recorded.

@@ -1889,3 +1889,96 @@ output is recorded in `verification.txt` (Task 19 section).
 **PASS** — Task 19 meets specification-compliance, code-quality, and security/privacy
 requirements; the only findings are two Low-severity plan/test-isolation corrections
 (authorised/disclosed) and one formatting pass, and no blocking finding remains.
+
+---
+
+## Task 20 — Options Appearance Controls (2026-09-19)
+
+**Classification:** code task (TDD RED→GREEN); implementation tier balanced
+
+### Scope reviewed
+
+- `src/components/options/AppearanceSection.tsx` (created)
+- `src/components/options/OptionsPage.tsx` (modified — skeleton body replaced)
+- `tests/components/optionsAppearance.test.tsx` (created)
+
+### 1. Specification-compliance review
+
+- The Options surface renders exactly `General → Card → AppearanceSection →
+  { Display mode, Theme pack }`; `AppearanceSection` owns the single
+  `Appearance` heading. `Providers` and `Diagnostics` are asserted absent. PASS
+- The approved display-mode options (Auto, Light, Dark) and pack options (Default,
+  Liquid Glass, Claude Warm) are derived from the canonical `THEME_MODES` /
+  `THEME_PACKS` arrays through label maps, not re-declared string arrays. PASS
+- Mode and pack changes flow through `onModeChange` / `onPackChange`; `OptionsPage`
+  updates local state and persists only via `themeStore.writeMode` /
+  `themeStore.writePack`, so persistence stays in the approved `chrome.storage.sync`
+  path through `ValidatedStorage`. PASS
+- Interfaces produced exactly as specified: `AppearanceSectionProps` /
+  `AppearanceSection`, and `OptionsPage` accepting an optional `ThemeStore` prop
+  (`OptionsPageProps.store?`), so the T18 registry test that renders `<Page />`
+  with no props still works. PASS
+- Non-goals respected: no Providers, Models, MCP, Memory, Diagnostics, Notes,
+  Persona, Import/Export, Feature-Flags, or Add-on sections; no provider dialog; no
+  Chrome options page; no new dependency, permission, storage key, message type,
+  error code, or `DiagnosticEvent`. Only the two created files, `OptionsPage.tsx`,
+  and `.planning` evidence/STATUS changed. PASS
+
+### 2. Code-quality review
+
+- `AppearanceSection` is a small presentational component; the label maps are
+  exhaustive `Record<ThemeMode, string>` / `Record<ThemePack, string>` values, and
+  the `Segmented` key cast is constrained to `ThemeMode` / `ThemePack`; no `any`.
+  PASS
+- `OptionsPage` builds the default store once with a lazy `useState` initialiser,
+  so `createThemeStore` is not re-created per render. The mount effect guards state
+  updates with an `active` flag and returns the subscription unsubscribe in cleanup,
+  preventing post-unmount updates. PASS
+- The effect depends only on `themeStore`; `writeMode`/`writePack` failures are
+  already structured inside `ThemeStore` (canonical `THEME_PERSIST_FAILED`) and are
+  not swallowed here. PASS
+- The page keeps its canonical `data-testid="standalone-page-options"` and
+  `aria-label="Options"`, so the T18 registry contract is preserved. PASS
+
+### 3. Security and privacy review (assets and trust boundaries)
+
+- No user input beyond the two Segmented controls; no content-script or host-page
+  access; the component runs only in the extension-owned Standalone context. PASS
+- Only the approved `ThemeStore` is touched; no direct `chrome.*` reach-through in
+  the component (the store encapsulates `ValidatedStorage`), no IndexedDB, network,
+  filesystem, provider, or MCP access. PASS
+- Only validated theme enums are written (`ThemeModeSchema` / `ThemePackSchema` at
+  the storage boundary); no free-form value can be persisted. PASS
+- No secrets, tokens, cookies, passwords, prompts, page content, or customer data
+  are read, logged, persisted, exported, or committed. PASS
+
+### 4. Findings and dispositions
+
+| ID | Severity | Finding | Disposition |
+|----|----------|---------|-------------|
+| T20-A | Low (plan defect) | The brief's test stub `vi.fn(async () => ({ mode: 'auto', pack: 'default' }))` infers `{ mode: string; pack: string }` and fails the pinned `tsc --noEmit` against `ThemeStore.read(): Promise<ThemePreferences>`. | Authorised test correction: annotated the callback return as `Promise<ThemePreferences>` and added the type-only `ThemePreferences` import; identifiers, values, and assertions unchanged. |
+| T20-B | Low (test isolation) | The brief's test renders three times in one file; because vitest runs without `globals: true` and the repo has no global `afterEach(cleanup)`, later `getByText` calls matched multiple mounted subtrees. | Added explicit `afterEach(cleanup)` to the new test file; test bodies, identifiers, values, and assertions unchanged. |
+| T20-C | Low (formatting) | `pnpm exec prettier --check .` flagged `AppearanceSection.tsx` (multi-line import collapsed to one line). | Reformatted only the new file; no identifier/value/assertion change. |
+
+T20-A and T20-B are confined to the permitted new test file and do not alter
+contracts, identifiers, values, or assertions. T20-C is formatting only.
+
+No Critical, High, or Medium finding remains unresolved.
+
+### 5. Verification evidence
+
+RED: `pnpm run test -- tests/components/optionsAppearance.test.tsx` exit 1 —
+module-resolution failure for `@/components/options/AppearanceSection`; the 29
+pre-existing files (206 tests) still passed. GREEN: `pnpm run test -- tests/components`
+exit 0 (30 files, 209 tests), `pnpm run typecheck` exit 0, `pnpm run lint` exit 0,
+`pnpm exec prettier --check .` exit 0, and the phase-applicable chain
+`typecheck && lint && test` exit 0 (30 files, 209 tests). The T18
+`tests/core/registry/registerCorePages.test.tsx` still passes. Full output is
+recorded in `verification.txt` (Task 20 section).
+
+### Acceptance decision
+
+**PASS** — Task 20 meets specification-compliance, code-quality, and
+security/privacy requirements; the only findings are two Low-severity plan/
+test-isolation corrections (authorised/disclosed) and one formatting pass, and no
+blocking finding remains.
