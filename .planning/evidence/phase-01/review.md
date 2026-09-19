@@ -1982,3 +1982,92 @@ recorded in `verification.txt` (Task 20 section).
 security/privacy requirements; the only findings are two Low-severity plan/
 test-isolation corrections (authorised/disclosed) and one formatting pass, and no
 blocking finding remains.
+
+---
+
+## Task 21 — Chat-Only Side Panel Shell and Its Two Actions (2026-09-20)
+
+**Phase:** Phase 01 — Runtime, Shells, and Workspace
+**Branch:** `phoenix`
+**Repository root:** /Users/george.li/Documents/workspaces/nowpilot
+**Base commit:** `d3c83b7d068bd55985bc2c02c73544dd11d3357c`
+**Classification:** code task; TDD RED→GREEN applied
+**Implementation tier:** balanced
+
+### Scope reviewed
+
+- `src/components/sidepanel/SidePanelShell.tsx` (created)
+- `tests/components/sidePanelShell.test.tsx` (created)
+- `.planning/evidence/phase-01/verification.txt`, `.planning/evidence/phase-01/review.md`,
+  `.planning/STATUS.md`
+
+### 1. Specification-compliance review
+
+- The Side Panel shell is Chat-only: it renders a header (`NowPilot` plus the two
+  actions), a single `<section aria-label="Chat" role="region">` with a
+  deterministic `Empty` state, and a non-interactive composer placeholder. No
+  Agent/Notes/Write/Tools/TeamGQM/provider/diagnostics screens and no Standalone
+  admin UI are present. PASS
+- The produced interface matches the brief exactly:
+  `interface SidePanelShellProps { onNavigate(destination: StandaloneRouteId):
+  void | Promise<void> }`; both actions pass the canonical
+  `StandaloneRouteId` values `'options'` and `'chat'` (`SidePanelShell.tsx:4`,
+  `SidePanelShell.tsx:84`, `SidePanelShell.tsx:89`). PASS
+- Exactly two actions exist ("Options", "Switch to Full Chat"); there is no text
+  input, send button, attachment button, model selector, provider control,
+  keyboard submit, or speculative chat state. The composer region is
+  `aria-hidden` and non-interactive (no form element). PASS
+- Only the two permitted files were created and only the permitted `.planning`
+  records were modified; no dependency, permission, storage key, message type,
+  error code, or `DiagnosticEvent` was added. PASS
+
+### 2. Code-quality review
+
+- Small presentational component composed from antd `Layout` / `Typography` /
+  `Space` / `Button` / `Empty` with the canonical `@ant-design/icons`; no `any`,
+  no unnecessary state, and the navigation callback is invoked with
+  `void onNavigate(...)` so a returned promise is intentionally ignored. PASS
+- Icon-only controls carry explicit `aria-label` values, and the chat region is
+  exposed as a named `region`; the layout uses `minHeight: '100vh'` to fill the
+  panel. PASS
+- No catch blocks, no async work, and no abortable call chain are introduced by
+  this task, so the Section 8 error-handling and `AbortSignal` rules do not
+  apply. PASS
+
+### 3. Security and privacy review (assets and trust boundaries)
+
+- Runs only in the extension-owned Side Panel context; no content-script,
+  host-page, background, IndexedDB, network, filesystem, provider, or MCP access. PASS
+- No user input surfaces and no data are read, logged, persisted, exported, or
+  committed; passwords, tokens, page content, and customer data are untouched. PASS
+
+### 4. Findings and dispositions
+
+| ID | Severity | Finding | Disposition |
+|----|----------|---------|-------------|
+| T21-A | Low (test isolation) | The brief's test file renders in three tests without a global `afterEach`; because vitest runs without `globals: true` and the repo has no global cleanup, mounted subtrees could accumulate. | Added explicit `cleanup`/`afterEach` imports and `afterEach(cleanup)` to the new test file; test bodies, identifiers, values, and assertions unchanged. |
+
+T21-A is confined to the permitted new test file, mirrors the existing
+component-test convention, and does not alter contracts, identifiers, values, or
+assertions.
+
+No Critical, High, or Medium finding remains unresolved.
+
+### 5. Verification evidence
+
+RED: `pnpm run test -- tests/components/sidePanelShell.test.tsx` exit 1 —
+module-resolution failure for `@/components/sidepanel/SidePanelShell`; the 30
+pre-existing files (209 tests) still passed. GREEN:
+`pnpm run test -- tests/components/sidePanelShell.test.tsx` exit 0 (31 files,
+212 tests) and `pnpm exec vitest run --project unit
+tests/components/sidePanelShell.test.tsx` exit 0 (1 file, 3 tests);
+`pnpm run typecheck` exit 0, `pnpm run lint` exit 0, `pnpm exec prettier --check .`
+exit 0, and the phase-applicable chain `typecheck && lint && test` exit 0 (31
+files, 212 tests). Full output is recorded in `verification.txt` (Task 21
+section).
+
+### Acceptance decision
+
+**PASS** — Task 21 meets specification-compliance, code-quality, and
+security/privacy requirements; the only finding is one Low-severity test-isolation
+addition (disclosed) and no blocking finding remains.

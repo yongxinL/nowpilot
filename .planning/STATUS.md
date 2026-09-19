@@ -9,18 +9,18 @@ rewrite or delete prior history.
 - **Current phase:** Phase 01 — Runtime, Shells, and Workspace
 - **Design status:** Approved and amended by ADR-0001 (background-serialised workspace election)
 - **Plan status:** Approved and amended (corrective task T13C; T14/T16/T22/T24/T25/T26/T28 amendment notes)
-- **Implementation status:** T01–T13C accepted; T14, T15, and T16 implemented and verified; T17 implemented and verified; T18 implemented and verified; T19 implemented and verified; T20 implemented and verified; T21–T28 not started
+- **Implementation status:** T01–T13C accepted; T14, T15, and T16 implemented and verified; T17 implemented and verified; T18 implemented and verified; T19 implemented and verified; T20 implemented and verified; T21 implemented and verified; T22–T28 not started
 - **Planning baseline branch:** `phoenix`
 - **Implementation branch:** `phoenix`
 - **Historical approved planning baseline commit:** `bd6ac44d6f562722c18f0d07e6910634e549c713`
 - **Approved planning baseline commit:** `b2c6ef289bc1abebbeccfad81d7034ced81f4eb7`
-- **Current task:** T20 complete; next task T21
-- **Last commit:** the T20 task commit `feat(phase-01): add options appearance controls`, on top of `586b354` (`feat(phase-01): add standalone shell router and sider`)
-- **Verification result:** T20 focused test 3/3 new tests (1 file); full unit suite 209/209 (30 files); `typecheck`, `lint`, `prettier --check .`, and the phase chain `typecheck && lint && test` all exit 0. `AppearanceSection` renders Display mode (Auto/Light/Dark) and Theme pack (Default/Liquid Glass/Claude Warm) from the canonical `THEME_MODES`/`THEME_PACKS`; `OptionsPage` renders exactly `General → Appearance`, wires an optional `ThemeStore`, persists only through `writeMode`/`writePack`, and preserves `data-testid="standalone-page-options"`. Test-only corrections (disclosed): annotated the stub `read` return as `Promise<ThemePreferences>` to satisfy `tsc` (T20-A) and added an explicit `afterEach(cleanup)` to the new test file (T20-B, no global cleanup is configured); `prettier` reflowed only the new `AppearanceSection.tsx` import (T20-C).
-- **Next action:** implement T21 per approved Phase 01 `PLAN.md`
-- **Blockers:** None; T13, T13C, T14, T15, T16, T17, T18, T19, and T20 are accepted
-- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 14, Task 15, Task 16, Task 17, Task 18, Task 19, and Task 20 sections)
-- **Evidence status:** T20 verified; self-review PASS
+- **Current task:** T21 complete; next task T22
+- **Last commit:** the T21 task commit `feat(phase-01): add chat-only side panel shell and actions`, on top of `d3c83b7` (`feat(phase-01): add options appearance controls`)
+- **Verification result:** T21 focused test 3/3 new tests (1 file); full unit suite 212/212 (31 files); `typecheck`, `lint`, `prettier --check .`, and the phase chain `typecheck && lint && test` all exit 0. `SidePanelShell` is Chat-only: an antd `Layout` with a `NowPilot` header, exactly the "Options" (`onNavigate('options')`) and "Switch to Full Chat" (`onNavigate('chat')`) icon actions using the canonical `StandaloneRouteId`, a `role="region"` `aria-label="Chat"` empty state, and a non-interactive `aria-hidden` composer placeholder; no textbox, send, or attach controls. Test-only correction (disclosed, T21-A): added an explicit `cleanup`/`afterEach(cleanup)` to the new test file because the repo has no configured global cleanup; test bodies/assertions unchanged.
+- **Next action:** implement T22 per approved Phase 01 `PLAN.md`
+- **Blockers:** None; T13, T13C, T14, T15, T16, T17, T18, T19, T20, and T21 are accepted
+- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 14, Task 15, Task 16, Task 17, Task 18, Task 19, Task 20, and Task 21 sections)
+- **Evidence status:** T21 verified; self-review PASS
 
 ## History
 
@@ -842,3 +842,40 @@ rewrite or delete prior history.
   `.planning/evidence/phase-01/review.md` (Task 20 sections). Task commit
   `feat(phase-01): add options appearance controls`. Current task T20 accepted;
   next task T21 — per approved Phase 01 `PLAN.md`.
+
+### 2026-09-20
+
+- Task 21 (Chat-Only Side Panel Shell and Its Two Actions) executed on `phoenix` in
+  the repository root. Implementation tier balanced. RED confirmed at
+  `pnpm run test -- tests/components/sidePanelShell.test.tsx` (exit 1; 1 file failed
+  with a module-resolution error for `@/components/sidepanel/SidePanelShell`; the 30
+  pre-existing files / 209 tests still passed). Created
+  `src/components/sidepanel/SidePanelShell.tsx` verbatim from the brief: an antd
+  `Layout` whose `Layout.Header` holds `Typography.Text strong` "NowPilot" and a
+  `Space` of exactly two `type="text"` icon buttons (`aria-label="Options"` calling
+  `onNavigate('options')`; `aria-label="Switch to Full Chat"` calling
+  `onNavigate('chat')`) and whose `Layout.Content` holds a
+  `<section aria-label="Chat" role="region">` with `<Empty description="Start a
+  conversation from a later phase." />` and a non-interactive
+  `<div aria-hidden="true" data-testid="composer-placeholder" />`; exported
+  `SidePanelShellProps` / `SidePanelShell` with `onNavigate(destination:
+  StandaloneRouteId): void | Promise<void>`. Created
+  `tests/components/sidePanelShell.test.tsx` (3 tests: Chat-only region and empty
+  state with Agent/Notes/Tools/Diagnostics absent; only the Options and Switch to
+  Full Chat actions invoking the canonical destinations; no textbox/send/attach
+  controls). Disclosed test-only correction (T21-A): because vitest runs without
+  `globals: true` and the repo has no global `afterEach(cleanup)`, an explicit
+  `cleanup`/`afterEach(cleanup)` was added to the new test file, with
+  bodies/identifiers/values/assertions unchanged. GREEN:
+  `pnpm run test -- tests/components/sidePanelShell.test.tsx` exit 0 (31 files, 212
+  tests) and `pnpm exec vitest run --project unit
+  tests/components/sidePanelShell.test.tsx` exit 0 (1 file, 3 tests); `typecheck`
+  exit 0, `lint` exit 0, `prettier --check .` exit 0; phase chain
+  `typecheck && lint && test` exit 0 (31 files, 212 tests). No new storage key,
+  error code, message type, permission, dependency, provider, or `DiagnosticEvent`;
+  no interactive chat controls, model/provider selector, or Standalone admin UI. No
+  `prettier` reflow was required. Evidence recorded in
+  `.planning/evidence/phase-01/verification.txt` and
+  `.planning/evidence/phase-01/review.md` (Task 21 sections). Task commit
+  `feat(phase-01): add chat-only side panel shell and actions`. Current task T21
+  accepted; next task T22 — per approved Phase 01 `PLAN.md`.

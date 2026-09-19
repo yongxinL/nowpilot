@@ -2382,3 +2382,106 @@ Code-quality and security checklist:
 Completion criteria: options test green; typecheck and lint pass; prettier check
 passes; phase-applicable chain exit 0; one atomic task commit exists; working tree
 clean; status recorded.
+
+================================================================================
+
+=== Task 21 — Chat-Only Side Panel Shell and Its Two Actions (2026-09-19T22:09:27Z) ===
+
+task ID: T21
+branch: phoenix
+repository root: /Users/george.li/Documents/workspaces/nowpilot
+classification: code task; TDD RED->GREEN applied
+implementation tier: balanced
+base commit: d3c83b7d068bd55985bc2c02c73544dd11d3357c (T20 atomic commit
+  `feat(phase-01): add options appearance controls`)
+Files created (production):
+  src/components/sidepanel/SidePanelShell.tsx
+Files created (tests):
+  tests/components/sidePanelShell.test.tsx
+Files modified:
+  .planning/evidence/phase-01/verification.txt,
+  .planning/evidence/phase-01/review.md, .planning/STATUS.md only.
+  No dependency, permission, storage key, message type, error code, or
+  DiagnosticEvent change.
+
+Step 1 — test file created from the brief.
+
+Step 2 — RED:
+  command: pnpm run test -- tests/components/sidePanelShell.test.tsx
+  exit status: 1
+  output: Error: Failed to resolve import
+    "@/components/sidepanel/SidePanelShell" from
+    "tests/components/sidePanelShell.test.tsx". Does the file exist?
+    (vite:import-analysis). Test Files 1 failed | 30 passed (31);
+    Tests 209 passed (209). Expected module-resolution failure for the
+    not-yet-created shell; the 30 pre-existing files / 209 tests still passed.
+
+Step 3 — implementation:
+  src/components/sidepanel/SidePanelShell.tsx created verbatim from the brief:
+    antd `Layout` with `Layout.Header` (Typography.Text strong "NowPilot" and a
+    `Space` of two `type="text"` icon Buttons) and `Layout.Content` containing
+    `<section aria-label="Chat" role="region">` with `<Empty description=
+    "Start a conversation from a later phase." />` and a non-interactive
+    `<div aria-hidden="true" data-testid="composer-placeholder" />`. Exposes
+    `interface SidePanelShellProps { onNavigate(destination: StandaloneRouteId):
+    void | Promise<void> }` and `SidePanelShell`. Both actions (aria-label
+    "Options" -> onNavigate('options'); aria-label "Switch to Full Chat" ->
+    onNavigate('chat')) call `void onNavigate(...)`.
+
+Step 4 — GREEN:
+  command: pnpm run test -- tests/components/sidePanelShell.test.tsx
+  exit status: 0
+  output: Test Files 31 passed (31); Tests 212 passed (212), 0 failed,
+    0 skipped (the new 3 tests included).
+
+Focused verification (sequential):
+  pnpm exec vitest run --project unit tests/components/sidePanelShell.test.tsx
+                                                  => exit 0 (1 file, 3 tests:
+     Chat-only region/empty state; two actions call onNavigate with the
+     canonical destination ids; no textbox/send/attach controls)
+  pnpm run typecheck                              => exit 0 (tsc --noEmit clean)
+  pnpm run lint                                   => exit 0 (eslint . clean)
+  pnpm exec prettier --check .                    => exit 0 (All matched files use
+    Prettier code style; no reflow required)
+
+Phase 01 verification applicable now:
+  command: pnpm run typecheck && pnpm run lint && pnpm run test
+  exit status: 0
+  output: typecheck clean; lint clean; unit project 31 files, 212 tests passed.
+
+Test counts:
+  T21 test file: 1 passed, 3 tests passed, 0 failed, 0 skipped.
+  Unit project total after T21: 31 files, 212 passed (was 30 files / 209 at T20).
+
+Necessary test-only correction (disclosed in review.md):
+  The repository runs vitest without `globals: true` and imports vitest APIs
+  explicitly, so no global `afterEach` exists and `@testing-library/react`
+  cannot auto-register cleanup. Added `cleanup` and `afterEach` imports plus
+  `afterEach(cleanup)` to the new test file, mirroring the existing component
+  tests. All test bodies, identifiers, values, and assertions are unchanged.
+
+Specification-compliance checklist:
+  - Side Panel is Chat-only: the shell renders only a header, the `Chat`
+    region, and the deterministic empty state; no Agent/Notes/Write/Tools/
+    TeamGQM/provider/diagnostics screens: yes
+  - both actions use the canonical navigation destination type: yes
+    (`onNavigate(destination: StandaloneRouteId)`; 'options' and 'chat')
+  - no Standalone admin UI and no host-page UI: yes
+  - exactly two actions; no text input, send button, attachment button, model
+    selector, provider control, keyboard submit, or speculative chat state: yes
+    (asserted: no textbox, no send, no attach; composer placeholder is
+    aria-hidden and non-interactive)
+  - only the two new files plus .planning evidence/STATUS changed: yes
+
+Code-quality and security checklist:
+  - icon-only controls have `aria-label` ("Options", "Switch to Full Chat"):
+    yes; the chat region carries `role="region"` / `aria-label="Chat"`
+  - no host-page access; content-script isolation untouched: yes
+  - no credentials, secrets, tokens, page content, or customer data read,
+    logged, persisted, exported, or committed: yes
+  - no `any`; the navigation destination is constrained to `StandaloneRouteId`:
+    yes
+
+Completion criteria: side-panel shell test green; typecheck and lint pass;
+prettier check passes; phase-applicable chain exit 0; one atomic task commit
+exists; working tree clean; status recorded.
