@@ -9,18 +9,18 @@ rewrite or delete prior history.
 - **Current phase:** Phase 01 — Runtime, Shells, and Workspace
 - **Design status:** Approved and amended by ADR-0001 (background-serialised workspace election)
 - **Plan status:** Approved and amended (corrective task T13C; T14/T16/T22/T24/T25/T26/T28 amendment notes)
-- **Implementation status:** T01–T13C accepted; T14, T15, and T16 implemented and verified; T17 implemented and verified; T18 implemented and verified; T19 implemented and verified; T20 implemented and verified; T21 implemented and verified; T22–T28 not started
+- **Implementation status:** T01–T13C accepted; T14, T15, and T16 implemented and verified; T17 implemented and verified; T18 implemented and verified; T19 implemented and verified; T20 implemented and verified; T21 implemented and verified; T22 implemented and verified; T23–T28 not started
 - **Planning baseline branch:** `phoenix`
 - **Implementation branch:** `phoenix`
 - **Historical approved planning baseline commit:** `bd6ac44d6f562722c18f0d07e6910634e549c713`
 - **Approved planning baseline commit:** `b2c6ef289bc1abebbeccfad81d7034ced81f4eb7`
-- **Current task:** T21 complete; next task T22
-- **Last commit:** the T21 task commit `feat(phase-01): add chat-only side panel shell and actions`, on top of `d3c83b7` (`feat(phase-01): add options appearance controls`)
-- **Verification result:** T21 focused test 3/3 new tests (1 file); full unit suite 212/212 (31 files); `typecheck`, `lint`, `prettier --check .`, and the phase chain `typecheck && lint && test` all exit 0. `SidePanelShell` is Chat-only: an antd `Layout` with a `NowPilot` header, exactly the "Options" (`onNavigate('options')`) and "Switch to Full Chat" (`onNavigate('chat')`) icon actions using the canonical `StandaloneRouteId`, a `role="region"` `aria-label="Chat"` empty state, and a non-interactive `aria-hidden` composer placeholder; no textbox, send, or attach controls. Test-only correction (disclosed, T21-A): added an explicit `cleanup`/`afterEach(cleanup)` to the new test file because the repo has no configured global cleanup; test bodies/assertions unchanged.
-- **Next action:** implement T22 per approved Phase 01 `PLAN.md`
-- **Blockers:** None; T13, T13C, T14, T15, T16, T17, T18, T19, T20, and T21 are accepted
-- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 14, Task 15, Task 16, Task 17, Task 18, Task 19, Task 20, and Task 21 sections)
-- **Evidence status:** T21 verified; self-review PASS
+- **Current task:** T22 complete; next task T23
+- **Last commit:** the T22 task commit `feat(phase-01): wire WXT entrypoints and background listeners`, on top of `7517ec7` (`feat(phase-01): add chat-only side panel shell and actions`)
+- **Verification result:** T22 focused test 8/8 new tests (1 file); T13C/T14/T16 workspace regression 7 files, 104 tests; full unit suite 220/220 (32 files); `typecheck`, `lint`, `prettier --check .`, and the phase chain `typecheck && lint && test` all exit 0; `pnpm run build` emits `.output/chrome-mv3/sidepanel.html` and `.output/chrome-mv3/standalone.html`, and the manifest gains `side_panel.default_path` with permissions unchanged (`sidePanel`/`storage`, no `tabs`/host). Wiring applied the binding controller rulings R22.1–R22.8 (background arbiter + synchronous T13C election listener; arbiter-mediated synthetic-relinquish close recovery with no direct election write; UI response bridge; additive `WorkspaceElection.request` exposure; App dependency corrections). Two Low-severity disclosed corrections: T22-A a type-only `listeners[0]!`/`removed[0]!` adaptation in the new test under `noUncheckedIndexedAccess`, and T22-B a Prettier reflow of only `src/entrypoints/sidepanel/App.tsx`.
+- **Next action:** implement T23 per approved Phase 01 `PLAN.md`
+- **Blockers:** None; T13, T13C, T14, T15, T16, T17, T18, T19, T20, T21, and T22 are accepted
+- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 14, Task 15, Task 16, Task 17, Task 18, Task 19, Task 20, Task 21, and Task 22 sections)
+- **Evidence status:** T22 verified; self-review PASS
 
 ## History
 
@@ -879,3 +879,48 @@ rewrite or delete prior history.
   `.planning/evidence/phase-01/review.md` (Task 21 sections). Task commit
   `feat(phase-01): add chat-only side panel shell and actions`. Current task T21
   accepted; next task T22 — per approved Phase 01 `PLAN.md`.
+- Task 22 (WXT Entrypoints and Background Listener Wiring) executed on `phoenix`
+  in the repository root. Implementation tier advanced (context wiring and
+  isolation). The brief's text was stale against the accepted T13C/T14 contracts,
+  so the binding controller rulings R22.1–R22.8 were applied and disclosed.
+  RED confirmed at `pnpm run test -- tests/core/runtime/backgroundRuntime.test.ts`
+  (exit 1; `TypeError: createBackgroundRuntime is not a function` in all 7 new
+  cases; 1 failed | 31 passed files, 7 failed | 212 passed tests). Created
+  `src/entrypoints/sidepanel/{index.html,main.tsx,App.tsx}` and
+  `src/entrypoints/standalone/{index.html,main.tsx,App.tsx}` (both Apps build the
+  R22.3 `sendMessage` response bridge into the bus's local listeners, pass `bus`
+  to `createWorkspaceElection`, pass `submitElectionRequest: election.request` to
+  `createWorkspaceHandoff`, call `election.claim('initial')`, and keep the
+  per-surface compact flags, `CORE_PAGE_REGISTRY`, focus subscription, and
+  `STANDALONE_ROUTE_FALLBACK` diagnostic; Standalone also
+  `void coordinator.announce()`). Modified `src/entrypoints/background.ts`
+  (validated storage, singleton tab controller as the only `chrome.tabs` caller,
+  singleton arbiter, `createBackgroundRuntime(...).start()`, R22.2 synthetic
+  relinquish close recovery with no direct `np_workspace_election` write, the
+  synchronously registered R22.1 election listener, and the `onInstalled`
+  side-panel behaviour); appended `createBackgroundRuntime` to
+  `src/core/runtime/StandaloneNavigation.ts`; and made the R22.4 additive
+  `request` exposure in `src/core/workspace/WorkspaceElection.ts`. Created
+  `tests/core/runtime/backgroundRuntime.test.ts` (7 brief cases plus an optional
+  R22.6 real-arbiter/real-storage listener-integration case asserting literal
+  `true`, exactly one `sendResponse`, `source: 'background'`, target = requester,
+  and `correlationId` = request id). Two Low-severity disclosed corrections:
+  T22-A a type-only `listeners[0]!`/`removed[0]!` adaptation under the pinned
+  `noUncheckedIndexedAccess`, and T22-B a Prettier reflow of only
+  `src/entrypoints/sidepanel/App.tsx`. GREEN: focused test exit 0 (1 file, 8
+  tests); `tests/core/workspace` regression exit 0 (7 files, 104 tests); full unit
+  suite 32 files, 220 tests; `typecheck` exit 0; `lint` exit 0;
+  `prettier --check .` exit 0; phase chain `typecheck && lint && test` exit 0;
+  `pnpm run build` exit 0 with `.output/chrome-mv3/sidepanel.html` and
+  `.output/chrome-mv3/standalone.html` present. Manifest permissions unchanged
+  (`sidePanel`, `storage`; no `tabs`/`activeTab`/host permission) and now includes
+  `side_panel.default_path = "sidepanel.html"`; the built `background.js`
+  contains no React/antd/IndexedDB/provider markers. No new dependency,
+  permission, storage key, message type, error code, or `DiagnosticEvent`;
+  `BroadcastBus.ts`, `WorkspaceElectionArbiter.ts`, `WorkspaceHandoff.ts`,
+  `WorkspaceSync.ts`, `DESIGN.md`, `PLAN.md`, ADR-0001, `wxt.config.ts`,
+  `package.json`, and `tsconfig.json` were not modified. Evidence recorded in
+  `.planning/evidence/phase-01/verification.txt` and
+  `.planning/evidence/phase-01/review.md` (Task 22 sections). Task commit
+  `feat(phase-01): wire WXT entrypoints and background listeners`. Current task
+  T22 accepted; next task T23 — per approved Phase 01 `PLAN.md`.

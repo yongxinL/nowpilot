@@ -5,7 +5,11 @@ import type { StorageKey } from '../storage/storageKeys';
 import { StandaloneTabRecordSchema, type StandaloneTabRecord } from '../workspace/workspaceTypes';
 import type { BroadcastBus } from './BroadcastBus';
 import { createOperationId } from './OperationId';
-import type { RuntimeEnvelope } from './RuntimeEnvelope';
+import {
+  validateInboundEnvelope,
+  type RuntimeEnvelope,
+  type SenderIdentity,
+} from './RuntimeEnvelope';
 import type { WorkspaceWriterSurface } from './RuntimeSurface';
 
 export interface StandaloneNavigationOpenRequest {
@@ -163,6 +167,48 @@ export function createStandaloneTabController(
       if (!record || record.tabId !== tabId) return false;
       await deps.storage.remove(STANDALONE_TAB_KEY);
       return true;
+    },
+  };
+}
+
+export interface BackgroundRuntimeDependencies {
+  extensionId: string;
+  controller: StandaloneTabController;
+  onMessage(listener: (message: unknown, sender: unknown) => void): void;
+  removeMessageListener(listener: (message: unknown, sender: unknown) => void): void;
+  onTabRemoved(listener: (tabId: number) => void): void;
+  onSingletonTabClosed?(): Promise<void>;
+}
+
+export interface BackgroundRuntime {
+  start(): () => void;
+}
+
+export function createBackgroundRuntime(deps: BackgroundRuntimeDependencies): BackgroundRuntime {
+  const handleMessage = (message: unknown, sender: unknown): void => {
+    const validated = validateInboundEnvelope(message, sender as SenderIdentity, deps.extensionId);
+    if (!validated.ok) return;
+    if (validated.envelope.type === 'standalone.closed') return;
+    const request = readStandaloneNavigationRequest(validated.envelope);
+    if (request) void deps.controller.open(request.destination);
+  };
+
+  const handleTabRemoved = (tabId: number): void => {
+    void (async () => {
+      const wasSingleton = await deps.controller.handleTabRemoved(tabId);
+      if (wasSingleton && deps.onSingletonTabClosed) {
+        await deps.onSingletonTabClosed();
+      }
+    })();
+  };
+
+  return {
+    start() {
+      deps.onMessage(handleMessage);
+      deps.onTabRemoved(handleTabRemoved);
+      return () => {
+        deps.removeMessageListener(handleMessage);
+      };
     },
   };
 }

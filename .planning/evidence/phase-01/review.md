@@ -2071,3 +2071,121 @@ section).
 **PASS** — Task 21 meets specification-compliance, code-quality, and
 security/privacy requirements; the only finding is one Low-severity test-isolation
 addition (disclosed) and no blocking finding remains.
+
+## Task 22 — WXT Entrypoints and Background Listener Wiring (2026-09-20)
+
+### Scope reviewed
+
+- `src/entrypoints/sidepanel/{index.html,main.tsx,App.tsx}`
+- `src/entrypoints/standalone/{index.html,main.tsx,App.tsx}`
+- `src/entrypoints/background.ts`
+- `src/core/runtime/StandaloneNavigation.ts` (`createBackgroundRuntime` append)
+- `src/core/workspace/WorkspaceElection.ts` (R22.4 additive `request`)
+- `tests/core/runtime/backgroundRuntime.test.ts`
+- `.planning/evidence/phase-01/{verification.txt,review.md}`, `.planning/STATUS.md`
+
+Binding rulings R22.1–R22.8 were applied. The brief's stale sections were
+corrected and disclosed in `verification.txt` (election listener registration,
+arbiter-mediated close recovery, response bridge, `request` exposure, and App
+dependency corrections).
+
+### 1. Specification-compliance review
+
+- Background wiring: `createValidatedStorage`, the singleton
+  `createStandaloneTabController`, the singleton arbiter,
+  `createBackgroundRuntime(...).start()`, the synchronously registered
+  `createBackgroundElectionMessageListener`, and the `onInstalled` side-panel
+  behaviour are all present inside `defineBackground`. PASS.
+- ADR-0001 / R22.2: `onSingletonTabClosed` reads `np_workspace_election` with
+  `ElectionRecordSchema` and, only for a valid standalone writer, submits a
+  synthetic `relinquish` through the same arbiter with the record's instance ID,
+  committed version, and epoch. There is no manual `storage.remove`/`write` of
+  `np_workspace_election` in `background.ts`. The arbiter owns removal of both
+  session keys. PASS.
+- MV3 isolation: `background.ts` imports only storage, navigation, operation-id,
+  arbiter, and workspace-type modules; it imports no React/antd/IndexedDB/
+  provider/MCP module, and the built `background.js` contains none of those
+  markers. The only `chrome.tabs` caller is the background controller. PASS.
+- UI transport (R22.3): both Apps build the bus with the `sendMessage` response
+  bridge that re-dispatches the resolved response into the bus's local inbound
+  listeners, so the T13C client's `workspace.election.response` correlation
+  works in production. `RawMessageListener` is imported from `BroadcastBus.ts`;
+  that file was not modified. PASS.
+- UI dependencies (R22.5): both `createWorkspaceElection` calls pass `bus`; both
+  `createWorkspaceHandoff` calls pass `submitElectionRequest: election.request`;
+  both effects call `election.claim('initial')`; Standalone additionally calls
+  `void coordinator.announce()`. PASS.
+- R22.4: only the `WorkspaceElection` interface gained a `request` member and the
+  object literal now returns the existing private `request` function; `read`,
+  `claim`, `relinquish`, and `isWriter` are unchanged, and the T13C/T14/T16 suites
+  still pass. PASS.
+- Surfaces: Side Panel uses `compact: true` and is Chat-only via
+  `SidePanelShell`; Standalone uses `compact: false` and keeps
+  `CORE_PAGE_REGISTRY`, the `standalone.focus` subscription, and the
+  `STANDALONE_ROUTE_FALLBACK` diagnostic. PASS.
+- Manifest: `pnpm run build` emits `sidepanel.html` and `standalone.html` and the
+  manifest gains `side_panel.default_path`, with permissions still exactly
+  `["sidePanel","storage"]` and no `tabs`/`activeTab`/host permission. PASS.
+- Files: only the brief's created files, the three permitted modified source
+  files, the new test file, and `.planning` evidence/status changed. No forbidden
+  file was modified; no dependency, permission, storage key, message type, or
+  error code was added. PASS.
+
+### 2. Code-quality review
+
+- `createBackgroundRuntime` reuses the T08 `validateInboundEnvelope` boundary,
+  ignores `standalone.closed`, and does not throw on malformed input; the
+  async close-recovery chain is fire-and-forget but only runs for the matching
+  singleton tab and delegates to the arbiter. PASS.
+- Both Apps factor the bridge exactly once per surface with one shared
+  `rawListeners` set; there is no duplicated transport logic and no `any`. PASS.
+- The election listener is registered synchronously at module evaluation and
+  returns the literal `true` required by ADR-0001; response construction and
+  double-response suppression are already covered by T13C. PASS.
+- The `request` exposure is minimal and additive; no behaviour changed. PASS.
+- No empty catch blocks; canonical error codes and structured redacting logging
+  are retained in the reused modules. PASS.
+
+### 3. Security and privacy review (assets and trust boundaries)
+
+- Background is the only `chrome.tabs` caller and reads only the numeric tab id
+  from `tabs.get`; no URL, title, favicon, or page content is read. PASS.
+- The election listener validates the sender and envelope before any arbiter
+  work; untrusted or invalid messages receive no response. PASS.
+- No secrets, credentials, tokens, prompts, tool I/O, clipboard, page content, or
+  customer data are logged, persisted, exported, or committed. The bus bridge
+  passes only already-schema-validated response envelopes. PASS.
+- No content script, host-page mutation, IndexedDB, network, provider, or MCP
+  access is introduced. PASS.
+
+### 4. Findings and dispositions
+
+| ID | Severity | Finding | Disposition |
+|----|----------|---------|-------------|
+| T22-A | Low (test types) | The brief's Step 1 test invokes `listeners[0]`/`removed[0]`, which is TS2722 (`Cannot invoke an object which is possibly 'undefined'`) under the pinned `noUncheckedIndexedAccess: true`. | Type-only adaptation: use `listeners[0]!`/`removed[0]!`; test bodies, identifiers, values, and assertions unchanged; `tsconfig.json` unchanged. Same Low class as T03 B5 / T09 / T10 / T11. |
+| T22-B | Low (format) | `prettier --check .` flagged only the new `src/entrypoints/sidepanel/App.tsx` (JSX prop wrapping). | Formatted that one file; identifiers, values, and behaviour unchanged; no other file reformatted. |
+
+T22-A and T22-B are confined to permitted files and do not alter contracts,
+identifiers, values, or assertions.
+
+No Critical, High, or Medium finding remains unresolved.
+
+### 5. Verification evidence
+
+RED: `pnpm run test -- tests/core/runtime/backgroundRuntime.test.ts` exit 1 —
+`createBackgroundRuntime is not a function` (7 failed | 212 passed; 1 failed file
+| 31 passed). GREEN: `pnpm exec vitest run --project unit
+tests/core/runtime/backgroundRuntime.test.ts` exit 0 (1 file, 8 tests); the
+T13C/T14/T16 workspace regression `pnpm exec vitest run --project unit
+tests/core/workspace` exit 0 (7 files, 104 tests); `pnpm run typecheck` exit 0;
+`pnpm run lint` exit 0; `pnpm exec prettier --check .` exit 0; the
+phase-applicable chain `typecheck && lint && test` exit 0 (32 files, 220 tests);
+and `pnpm run build` exit 0 with `.output/chrome-mv3/sidepanel.html` and
+`.output/chrome-mv3/standalone.html` present and a clean manifest. Full output is
+recorded in `verification.txt` (Task 22 section).
+
+### Acceptance decision
+
+**PASS** — Task 22 meets specification-compliance, code-quality, and
+security/privacy requirements; the only findings are two Low-severity test/
+format additions (disclosed) and no blocking finding remains.

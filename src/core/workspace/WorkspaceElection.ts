@@ -43,6 +43,7 @@ export interface WorkspaceElection {
   claim(reason: WorkspaceElectionClaimReason): Promise<ElectionClaimResult>;
   relinquish(): Promise<ElectionRelinquishResult>;
   isWriter(record: ElectionRecord | undefined): boolean;
+  request(payload: WorkspaceElectionRequestPayload): Promise<WorkspaceElectionResponsePayload>;
 }
 
 export function createWorkspaceElection(deps: WorkspaceElectionDependencies): WorkspaceElection {
@@ -94,6 +95,7 @@ export function createWorkspaceElection(deps: WorkspaceElectionDependencies): Wo
 
   return {
     read,
+    request,
     isWriter(record) {
       return record?.writerInstanceId === deps.instanceId && record.writerType === deps.writerType;
     },

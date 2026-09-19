@@ -2485,3 +2485,192 @@ Code-quality and security checklist:
 Completion criteria: side-panel shell test green; typecheck and lint pass;
 prettier check passes; phase-applicable chain exit 0; one atomic task commit
 exists; working tree clean; status recorded.
+
+=== Task 22 — WXT Entrypoints and Background Listener Wiring (2026-09-19T22:18:00Z) ===
+
+task ID: T22
+branch: phoenix
+repository root: /Users/george.li/Documents/workspaces/nowpilot
+classification: code task; TDD RED->GREEN applied
+implementation tier: advanced (context wiring and isolation)
+base commit: 7517ec746e7357657779c265b9b7ce014adf8d53 (T21 atomic commit
+  `feat(phase-01): add chat-only side panel shell and actions`)
+Binding controller rulings applied: R22.1–R22.8. The brief's `PLAN.md` text was
+stale against the accepted T13C/T14 contracts in five places and was corrected
+as follows and disclosed:
+  R22.1 background creates the singleton arbiter and registers the T13C
+    `createBackgroundElectionMessageListener` synchronously inside
+    `defineBackground`.
+  R22.2 background close recovery replaces the brief's direct
+    `storage.remove('np_workspace_election')` with a serialised synthetic
+    `relinquish` through the same arbiter (already accepted records are read with
+    `ElectionRecordSchema`; the arbiter removes both session keys). No direct
+    election-record write remains in `background.ts`.
+  R22.3 the UI bus uses a `sendMessage` response bridge that re-dispatches the
+    resolved `chrome.runtime.sendMessage` response into the bus's local inbound
+    listeners, so the T13C `WorkspaceElection` correlation on
+    `workspace.election.response` functions in production.
+  R22.4 `WorkspaceElection.request(payload)` is exposed additively (interface +
+    existing private implementation returned) to supply T14's
+    `submitElectionRequest` without duplicating transport.
+  R22.5 both Apps pass `bus` to `createWorkspaceElection`, pass
+    `submitElectionRequest: election.request` to `createWorkspaceHandoff`, and
+    call `election.claim('initial')`; Standalone also `void coordinator.announce()`.
+Files created (production):
+  src/entrypoints/sidepanel/index.html
+  src/entrypoints/sidepanel/main.tsx
+  src/entrypoints/sidepanel/App.tsx
+  src/entrypoints/standalone/index.html
+  src/entrypoints/standalone/main.tsx
+  src/entrypoints/standalone/App.tsx
+Files created (tests):
+  tests/core/runtime/backgroundRuntime.test.ts
+Files modified:
+  src/entrypoints/background.ts (full wiring per R22.1/R22.2)
+  src/core/runtime/StandaloneNavigation.ts (appended `createBackgroundRuntime`,
+    `BackgroundRuntimeDependencies`, `BackgroundRuntime`)
+  src/core/workspace/WorkspaceElection.ts (R22.4 additive `request` only)
+  .planning/evidence/phase-01/verification.txt,
+  .planning/evidence/phase-01/review.md, .planning/STATUS.md.
+  No dependency, permission, storage key, message type, error code, or
+  DiagnosticEvent change. No wildcard/permissive registry entry. `BroadcastBus.ts`,
+  `WorkspaceElectionArbiter.ts`, `WorkspaceHandoff.ts`, `WorkspaceSync.ts`,
+  `DESIGN.md`, `PLAN.md`, ADR-0001, `wxt.config.ts`, `package.json`, and
+  `tsconfig.json` were not modified.
+
+Step 1 — test file `tests/core/runtime/backgroundRuntime.test.ts` created from
+  the brief's Step 1 (7 navigation/close-recovery cases; the `createOperationId`
+  module import is used for envelope ids).
+
+Step 2 — RED:
+  command: pnpm run test -- tests/core/runtime/backgroundRuntime.test.ts
+  exit status: 1
+  output: 1 failed | 31 passed (32 files); Tests 7 failed | 212 passed (219).
+    All 7 failures are `TypeError: createBackgroundRuntime is not a function`
+    (also surfaced as the expected export-missing), and the 212 pre-existing
+    unit tests still passed. FAIL reason matches the brief exactly.
+    Note: the pinned `pnpm run test -- <path>` form forwards `--` and runs the
+    unit project in full; an explicit single-file run was also executed (below).
+
+Step 3 — implementation:
+  - `src/core/runtime/StandaloneNavigation.ts`: appended `createBackgroundRuntime`
+    verbatim from the brief (validates the inbound envelope at the boundary via
+    T08 `validateInboundEnvelope`, ignores `standalone.closed`, opens the
+    requested destination for `standalone.open`/`standalone.focus`, routes
+    `tabs.onRemoved` through `controller.handleTabRemoved` and, only for the
+    matching singleton, runs the optional `onSingletonTabClosed`; `start`
+    registers the message + tab listeners and returns a cleanup that removes the
+    message listener). Merged the `RuntimeEnvelope` import into a single
+    import statement to avoid a duplicate-module import.
+  - `src/core/workspace/WorkspaceElection.ts`: R22.4 additive only — added
+    `request(payload): Promise<WorkspaceElectionResponsePayload>` to the
+    `WorkspaceElection` interface and returned the existing private `request`
+    implementation. `read`/`claim`/`relinquish`/`isWriter` unchanged.
+  - Side Panel entrypoint: `index.html`, `main.tsx`, and `App.tsx` with the
+    R22.3 response bridge, R22.5 dependency corrections, `useTheme(themeStore,
+    { compact: true })`, `openStandalone(destination, 'sidepanel', bus)`, and
+    the `election.claim('initial')` + `coordinator.start()` effect.
+  - Standalone entrypoint: `index.html`, `main.tsx`, and `App.tsx` with the same
+    bridge/corrections, `useTheme(themeStore, { compact: false })`,
+    `CORE_PAGE_REGISTRY`, `focusSubscription` over `standalone.focus`, the
+    `STANDALONE_ROUTE_FALLBACK` diagnostic via `debugLog(createDiagnosticRecord
+    (...))`, `void election.claim('initial')`, `void coordinator.announce()`, and
+    `coordinator.start()`.
+  - `src/entrypoints/background.ts`: `createValidatedStorage`, the singleton
+    `createStandaloneTabController` (only `chrome.tabs` caller), the singleton
+    arbiter, `createBackgroundRuntime(...).start()` with the R22.2 synthetic
+    relinquish close recovery, the synchronously registered R22.1 election
+    listener, and the `onInstalled` `chrome.sidePanel.setPanelBehavior({
+    openPanelOnActionClick: true })` behaviour. No React/antd/IndexedDB/provider
+    import.
+
+Step 4 — GREEN:
+  command: pnpm run test -- tests/core/runtime/backgroundRuntime.test.ts
+  exit status: 0
+  output: Test Files 32 passed (32); Tests 219 passed (219), 0 failed,
+    0 skipped (the 7 new tests included).
+
+Optional R22.6 listener-integration case added (same test file, after the brief's
+  7 cases): wires the real `createBackgroundElectionMessageListener` to a real
+  `createWorkspaceElectionArbiter` over `createValidatedStorage(
+  createChromeStorageMock())`, sends a schema-valid `workspace.election.request`
+  from a trusted sidepanel sender, asserts the literal-`true` synchronous return,
+  and then asserts exactly one `sendResponse` whose parsed envelope is a
+  `workspace.election.response` with `source: 'background'`, `target: 'sidepanel'`,
+  and `correlationId` equal to the request envelope id.
+
+Focused verification (sequential):
+  pnpm exec vitest run --project unit tests/core/runtime/backgroundRuntime.test.ts
+                                                  => exit 0 (1 file, 8 tests)
+  pnpm exec vitest run --project unit tests/core/workspace
+                                                  => exit 0 (7 files, 104 tests;
+     T13C/T14/T16 regression green including workspaceElectionArbiter,
+     workspaceElection, workspaceHandoff, and workspaceSync)
+  pnpm run typecheck                              => exit 0 (tsc --noEmit clean)
+  pnpm run lint                                   => exit 0 (eslint . clean)
+  pnpm exec prettier --check .                    => exit 0 (All matched files use
+     Prettier code style; one test-only reflow of sidepanel/App.tsx)
+
+Phase 01 verification applicable now:
+  command: pnpm run typecheck && pnpm run lint && pnpm run test
+  exit status: 0
+  output: typecheck clean; lint clean; unit project 32 files, 220 tests passed.
+
+Build and entrypoint verification (R22.8):
+  command: pnpm run build
+  exit status: 0
+  output: WXT 0.21.4 built chrome-mv3 in 458 ms; emitted
+    .output/chrome-mv3/sidepanel.html (403 B), .output/chrome-mv3/standalone.html
+    (415 B), and .output/chrome-mv3/background.js (106.40 kB).
+  test -f .output/chrome-mv3/sidepanel.html   => EXISTS
+  test -f .output/chrome-mv3/standalone.html  => EXISTS
+  manifest checks: permissions = ["sidePanel","storage"] (unchanged); no `tabs`
+    permission; no host_permissions; `side_panel.default_path = "sidepanel.html"`.
+  background bundle inspection: no `react`, `antd`, `ant-design`, `react-dom`,
+    `createRoot`, or `indexedDB` marker present in
+    .output/chrome-mv3/background.js (isolation rule preserved).
+
+Test counts:
+  T22 test file: 1 file, 8 tests (7 brief cases + 1 R22.6 integration case).
+  Unit project total after T22: 32 files, 220 passed (was 31 files / 212 at T21).
+
+Necessary test-only correction (disclosed in review.md):
+  The brief's Step 1 test indexes `listeners[0]` / `removed[0]` and invokes them
+  directly; under the pinned `noUncheckedIndexedAccess: true` this is TS2722
+  (`Cannot invoke an object which is possibly 'undefined'`). A type-only
+  adaptation replaced the six call sites with non-null assertions
+  (`listeners[0]!` / `removed[0]!`) — the same Low-severity class as T03 B5 /
+  T09 / T10 / T11. Test identifiers, values, and assertions are unchanged and
+  `tsconfig.json` was not modified.
+
+Specification-compliance checklist:
+  - `sidepanel` and `standalone` entrypoints exist and the build emits both HTML
+    pages; manifest gains `side_panel`: yes
+  - background registers the election listener synchronously and uses canonical
+    boundary validation: yes
+  - background close recovery is a serialised synthetic relinquish through the
+    arbiter; no direct `np_workspace_election` write in background: yes
+  - theme provider per surface with correct compact flags (sidepanel compact
+    true, standalone compact false): yes
+  - UI election response bridge present in both Apps; `bus` passed to
+    `createWorkspaceElection`; `submitElectionRequest: election.request` passed
+    to `createWorkspaceHandoff`; `election.claim('initial')`; standalone
+    `coordinator.announce()`: yes
+  - standalone keeps `CORE_PAGE_REGISTRY`, focus subscription, and
+    `STANDALONE_ROUTE_FALLBACK` diagnostic: yes
+  - only the allowed files changed; `.planning` evidence/status appended: yes
+
+Code-quality and security checklist:
+  - background bundle contains no React/antd/IndexedDB/provider code: yes
+  - tab API usage is bounded to the stored tab ID; no URL/title/favicon/content
+    read: yes
+  - no secrets, credentials, tokens, prompts, page content, or customer data
+    read, logged, persisted, exported, or committed: yes
+  - no new dependency, permission (`tabs`/`activeTab`/host), storage key,
+    message type, or error code: yes
+  - no `any`; structured fail-closed handling and canonical error codes retained:
+    yes
+
+Completion criteria: background runtime test green; workspace regression green;
+typecheck, lint, prettier, and the phase chain exit 0; build emits both HTML
+pages; one atomic task commit exists; working tree clean; status recorded.
