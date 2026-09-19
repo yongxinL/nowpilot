@@ -1464,3 +1464,127 @@ T15-only 1 file, 7 tests), `pnpm run typecheck` exit 0, `pnpm run lint` exit 0,
 **PASS** — Task 15 meets specification-compliance, code-quality, and security/privacy
 requirements; the only finding is a Low-severity formatting correction and no blocking
 finding remains. Next task T16.
+
+## Task 16 — Mirror Ordering, Gap Rehydration, and Writer Coordination self-review (2026-09-19)
+
+### Scope reviewed
+
+- Created `src/core/workspace/WorkspaceSync.ts` and
+  `tests/core/workspace/workspaceSync.test.ts` only. No T13C/T14 source or test,
+  `WorkspaceElection.ts`, `WorkspaceElectionArbiter.ts`, `WorkspaceHandoff.ts`,
+  `DESIGN.md`, `PLAN.md`, config, or T17+ file was modified. Review is against the
+  T16 brief (amended note), the binding rulings R16.1–R16.7, ADR-0001, and
+  `DESIGN.md` Section 6.
+
+### 1. Specification-compliance review
+
+- **Mirror ordering (DESIGN.md Section 6).** `classifyMirrorEnvelope` applies only a
+  current-epoch next-version envelope, ignores duplicates and stale versions, ignores
+  a different epoch, and requests rehydration on a version gap. `applyMirrorEnvelope`
+  advances the mirror state only for `apply`. PASS
+- **Canonical rehydration pair.** `createRehydrateRequestEnvelope` /
+  `createRehydrateResponseEnvelope` build the existing
+  `workspace.rehydrate.request` / `workspace.rehydrate.response` types; the
+  response carries `electionEpoch` and `workspaceVersion`. `parseRuntimeEnvelope`
+  accepts both. No new message type. PASS
+- **No new contracts (R16.7).** No new message type, storage key, error code,
+  permission, dependency, or `DiagnosticEvent`; the coordinator returns only the
+  canonical `WORKSPACE_HANDOFF_FAILED` / `WORKSPACE_INVALID_METADATA` codes already in
+  the T03 registry. No IndexedDB. PASS
+- **Coordinator dependency shape (R16.1).** `WorkspaceCoordinatorDependencies` is
+  exactly `{ bus, surface, instanceId, storage, election, handoff, store }`, where
+  `election` is the T13C request client and `handoff` is the T14 module. `WorkspaceSync`
+  contains no `np_workspace_election` write and no `workspace.election.response`
+  subscription; correlation stays in the T13C client and the handoff's injected
+  `submitElectionRequest`. PASS
+- **Handoff prepare (R16.3).** `handleHandoffPrepare` checks the target instance,
+  calls `deps.handoff.acknowledge(epoch, baseVersion)`, fails closed with
+  `WORKSPACE_HANDOFF_FAILED` unless the result is `acknowledged`, and only then sends
+  the `workspace.handoff.ack` envelope and returns `acknowledged`. The direct test
+  asserts the handoff record transitions to `phase: 'acknowledged'`. PASS
+- **Handoff ack / relinquish (R16.4).** `handleHandoffAck` keeps the local-writer
+  guard, calls `deps.handoff.commit(...)` (T14 submits the arbiter `handoff-commit`
+  request), and returns `committed` only on success; a non-committed result maps to
+  `WORKSPACE_HANDOFF_FAILED`. `handleRelinquish` calls `deps.election.relinquish()`
+  only for the validated local writer and returns `relinquished` only when accepted,
+  otherwise `noop`. The handshake test proves the persisted record is
+  `standalone`/`st`/epoch 1; the relinquish test proves the record is removed and a
+  non-writer is ignored. PASS
+- **start() recovery (R16.2).** `start()` subscribes to the five runtime message types
+  and the `np_workspace_election` storage subscription. The storage subscription never
+  writes the record; for a sidepanel it delegates to `claim('fallback')` on `missing`
+  and `claim('stale-recovery')` on `invalid`. Tests assert each reason is used and that
+  a valid record reappears. PASS
+- **Independently testable handlers (R16.5, Approved Interpretation 2).** Every
+  handler is exposed and covered both through the bus-driven handshake and directly
+  (`handleHandoffPrepare`, `handleHandoffAck`, `handleRelinquish`, `handleMutation`).
+  `start()` wraps the same exposed functions thinly. PASS
+- **Test redesign (R16.6).** The handshake suite uses a real in-memory bus that routes
+  `workspace.election.request` to a real `WorkspaceElectionArbiter` over the same
+  storage and dispatches the `workspace.election.response` (`source: 'background'`,
+  `target` = request source, `correlationId` = request envelope `id`) to registered
+  handlers, exercising the real T13C correlation and arbiter. The T14 handoff is wired
+  to `arbiter.handle`. PASS
+
+### 2. Code-quality review
+
+- Correctness: the mirror decision is total over epoch/version combinations; state is
+  never mutated in place. Handler results use the closed `CoordinatorStep` union; no
+  unhandled case. PASS
+- Concurrency/orchestration observation: `handleRehydrateRequest` and the prepare/ack
+  chain are `await`ed through the bus, so the test bus is deterministic. In production
+  the same chain is `void`-inferred by the bus subscription handlers (`EnvelopeHandler`
+  returns `void`), matching the T09 bus contract; the coordinator does not assume
+  serialised handler execution and relies on the arbiter for ownership serialisation.
+  Each handler re-reads the authoritative election record before acting, so a handler
+  that runs after another surface changed ownership fails closed (`noop`/`failed`)
+  rather than acting on a stale in-memory view. PASS
+- Error handling: no empty catch, no swallowed rejection. Handoff and relinquish
+  failures are reported as canonical `CoordinatorStep` failures; recovery claims are
+  fire-and-forget `void` exactly as specified. PASS
+- Maintainability/readability: single orchestration module, exact interfaces from the
+  brief, no duplication of the arbiter or client correlation, no speculative cleanup,
+  no unrelated refactor. PASS
+- Test quality: 17 tests assert real behaviour through the real arbiter/client/handoff
+  and the T04 storage adapter (not mock call counts); envelope builders are validated
+  with `parseRuntimeEnvelope`. PASS
+
+### 3. Security and privacy review (assets and trust boundaries)
+
+- No page, note, memory, upload, prompt, tool input/output, clipboard, password, token,
+  API key, or customer content is read, logged, or persisted. The coordinator moves
+  only non-sensitive workspace metadata and identity/version fields. PASS
+- Ordinary `workspace.mutation` envelopes are mirrored or trigger a rehydrate request;
+  they never route through the background election arbiter, so the single-writer
+  boundary is preserved and the background stays outside ordinary mutation brokerage. PASS
+- `WorkspaceSync` performs no direct `chrome.*` access and no direct
+  `np_workspace_election` write; all storage goes through the T04 validated adapter and
+  all election-changing operations go through the T13C client / T14 handoff to the T13C
+  arbiter. PASS
+- No secrets or sensitive data embedded in production code, tests, or evidence. PASS
+
+### 4. Findings and dispositions
+
+| ID | Severity | Finding | Disposition |
+|----|----------|---------|-------------|
+| — | Low (formatting) | `pnpm exec prettier --check .` flagged the two new T16 files. | Formatted only those two files with Prettier; identifiers, message-type strings, payloads, and assertions unchanged; no other file reformatted. |
+| — | Low (type-only) | `storage.write('np_workspace_election', ElectionRecordSchema, {...})` needs the schema-defaulted `recentCompletedRequests` field under the inferred output type. | Added a local `electionRecord`/`standaloneRecord`/`sidepanelRecord` test helper that includes `recentCompletedRequests: []`; production code and schemas unchanged. |
+| — | Info | The brief's focused command runs the whole unit project (the positional path does not narrow the Vitest 5 project run); T16-only count confirmed with an explicit single-file path. | Recorded; not a defect. |
+
+No Critical, High, or Medium finding remains unresolved.
+
+### 5. Verification evidence
+
+RED: `pnpm run test -- tests/core/workspace/workspaceSync.test.ts` exit 1 — Vite import
+analysis failed to resolve `@/core/workspace/WorkspaceSync`; the 163 pre-existing unit
+tests still passed. GREEN: explicit single-file run exit 0 (1 file, 17 tests),
+`pnpm run test -- tests/core/workspace/workspaceSync.test.ts` exit 0 (20 files, 180
+tests), `pnpm run typecheck` exit 0, `pnpm run lint` exit 0, `pnpm exec prettier
+--check .` exit 0, and the phase-applicable chain `typecheck && lint && test` exit 0.
+Full output is recorded in `verification.txt` (Task 16 section).
+
+### Acceptance decision
+
+**PASS** — Task 16 meets specification-compliance, code-quality, and security/privacy
+requirements; only Low-severity formatting/type-only test-helper corrections were
+needed and no blocking finding remains. Next task T17.

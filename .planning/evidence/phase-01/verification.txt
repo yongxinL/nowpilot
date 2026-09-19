@@ -1705,3 +1705,141 @@ Code-quality and security checklist:
 
 Completion criteria: mutation test green; typecheck and lint pass; phase-applicable
 chain exit 0; one atomic task commit exists; working tree clean; status recorded.
+
+===============================================================================
+Task 16 — Mirror Ordering, Gap Rehydration, and Writer Coordination
+===============================================================================
+
+Date: 2026-09-19T12:27:45Z (22:27 AEST)
+Task ID: T16 (amended by ADR-0001 and binding rulings R16.1-R16.7)
+Branch: phoenix
+Repository root: /Users/george.li/Documents/workspaces/nowpilot
+Classification: code task; TDD RED->GREEN applied
+Implementation tier: advanced (convergence and ownership coordination)
+Base commit at task start: 1d7afcf6dd7496904a558e516513edd0d35c24ba (T15 atomic
+  commit `feat(phase-01): version and idempotently apply workspace mutations`)
+Files created: src/core/workspace/WorkspaceSync.ts,
+  tests/core/workspace/workspaceSync.test.ts
+Files modified: none (production or toolchain); only .planning evidence/STATUS
+Atomic commit: feat(phase-01): coordinate writer handoff and mirror convergence
+
+Step 1 — test file written first at tests/core/workspace/workspaceSync.test.ts
+(mirror + envelope tests from the brief, plus the redesigned coordinator handshake
+tests required by R16.6: a real in-memory bus that routes workspace.election.request
+to a real createWorkspaceElectionArbiter and dispatches the workspace.election.response
+to registered handlers; the T13C client and T14 handoff are built over that bus/arbiter).
+
+Step 2 — RED (focused, brief command):
+  command: pnpm run test -- tests/core/workspace/workspaceSync.test.ts
+  exit status: 1
+  output: FAIL |unit| tests/core/workspace/workspaceSync.test.ts [0 test]
+    Error: Failed to resolve import "@/core/workspace/WorkspaceSync" from
+      "tests/core/workspace/workspaceSync.test.ts". Does the file exist?
+      Plugin: vite:import-analysis
+    Test Files 1 failed | 19 passed (20); Tests 163 passed (163).
+  Expected failure reason confirmed: the T16 coordinator module did not yet exist, so
+  the test file failed at Vite import analysis for `@/core/workspace/WorkspaceSync`.
+  The 163 pre-existing unit tests still passed. No canonical identifier, message type,
+  envelope builder, or arbitration contract was missing.
+
+Step 3 — src/core/workspace/WorkspaceSync.ts created per the brief and rulings:
+  - Mirror: MirrorState, MirrorDecision, classifyMirrorEnvelope (current-epoch
+    next-version -> apply; equal -> duplicate; lower -> stale; wrong epoch -> epoch;
+    higher-than-next -> rehydrate gap), applyMirrorEnvelope (state advances only on
+    apply).
+  - Envelope builders: createRehydrateRequestEnvelope, createRehydrateResponseEnvelope,
+    createHandoffPrepareEnvelope, createHandoffAckEnvelope, createHandoffCommitEnvelope.
+  - Coordinator: createWorkspaceCoordinator with the exact R16.1 dependency shape
+    { bus, surface, instanceId, storage, election (T13C client), handoff (T14), store }.
+    handleRehydrateRequest (writer-only; rehydrate response; Side Panel prepares the
+    handoff to a Standalone requester); handleHandoffPrepare (R16.3: calls
+    deps.handoff.acknowledge(epoch, baseVersion) and fails closed with
+    WORKSPACE_HANDOFF_FAILED unless acknowledged, then sends the workspace.handoff.ack
+    envelope); handleHandoffAck (R16.4: local-writer check then deps.handoff.commit,
+    which submits the handoff-commit election request through the arbiter; reports
+    committed only on success, else WORKSPACE_HANDOFF_FAILED); handleMutation (mirror
+    apply/ignore/rehydrate; ordinary mutations never touch the arbiter);
+    handleRelinquish (R16.4: relinquish only for the validated local writer and report
+    relinquished only when accepted). start() (R16.2) subscribes to rehydrate.request,
+    handoff.prepare, handoff.ack, mutation, relinquish, and the np_workspace_election
+    storage subscription; the storage subscription never writes the record and, for a
+    sidepanel, delegates recovery to the T13C client via claim('fallback') for missing
+    and claim('stale-recovery') for invalid.
+  - No third workspace.election.response subscription (R16.1): request/response
+    correlation remains in the T13C client and the handoff's injected
+    submitElectionRequest. No direct np_workspace_election access or write.
+
+Step 4 — GREEN:
+  command: pnpm exec vitest run --project unit tests/core/workspace/workspaceSync.test.ts
+  exit status: 0
+  output: Test Files 1 passed (1); Tests 17 passed (17), 0 failed, 0 skipped.
+    - workspace mirror: applies next version; ignores duplicate/stale/other-epoch;
+      rehydrates on a version gap; advances state only on apply; builds schema-valid
+      rehydrate request/response envelopes
+    - workspace coordinator handshake (10):
+      - hands writer ownership from sidepanel to standalone through prepare/ack/commit
+        (persisted record standalone/st/epoch 1)
+      - reclaims sidepanel ownership after the election is relinquished (arbiter)
+      - routes missing-record recovery through the election client as a fallback claim
+      - routes invalid-record recovery through the election client as stale recovery
+      - mirrors a current-epoch next-version mutation
+      - requests rehydration on a version gap
+      - relinquishes only for the current writer; ignores a non-writer
+      - acknowledges the handoff record before sending the handoff ack
+      - commits ownership through the arbiter on handoff ack
+
+Focused verification (sequential, fresh output):
+  pnpm run test -- tests/core/workspace/workspaceSync.test.ts  => exit 0
+    (unit project: 20 files, 180 tests passed; T16 file 17 tests)
+  pnpm run typecheck                                          => exit 0 (tsc --noEmit clean)
+  pnpm run lint                                               => exit 0 (eslint . clean)
+  pnpm exec prettier --check .                                => exit 0 after formatting only
+    Both new files were formatted with Prettier (printWidth 100). Formatting changed
+    whitespace only; identifiers, message-type strings, payloads, and assertions are
+    unchanged; no other file was reformatted.
+
+Phase 01 verification applicable now:
+  command: pnpm run typecheck && pnpm run lint && pnpm run test
+  exit status: 0
+  output: typecheck clean; lint clean; unit project 20 files, 180 tests passed.
+
+Test counts:
+  T16 test file: 1 passed, 17 tests passed, 0 failed, 0 skipped.
+  Unit project total after T16: 20 files, 180 passed (T15's 163 + T16's 17).
+
+Specification-compliance checklist (verbatim from the brief, applied per the rulings):
+  - ignore duplicate/stale; rehydrate on gaps: yes
+  - apply only current-epoch next-version: yes
+  - rehydration uses the canonical message pair: yes (workspace.rehydrate.request /
+    workspace.rehydrate.response, schema-valid, no new type)
+  - handoff prepare/ack/commit never authorises two writers: yes (T14 prepare/ack
+    local, commit through the single background arbiter; on acceptance the persisted
+    record moves to exactly one new writer at epoch+1)
+  - R16.3 handleHandoffPrepare acknowledges the handoff record and fails closed
+    otherwise: yes
+  - R16.4 handleHandoffAck commits via deps.handoff.commit and reports committed only
+    on success; handleRelinquish reports relinquished only when accepted: yes
+  - R16.2 start() does not write the election record; non-valid sidepanel records
+    delegate to claim('fallback'|'stale-recovery'): yes
+  - R16.1 no third workspace.election.response subscription; no direct
+    np_workspace_election write: yes
+  - R16.7 no new message type, storage key, error code, permission, dependency, or
+    DiagnosticEvent; no IndexedDB: yes
+  - Only WorkspaceSync.ts and the one new test file created (plus .planning
+    evidence/STATUS): yes
+
+Code-quality and security checklist:
+  - no mirror state advanced on ignored/rehydrate decisions: yes (applyMirrorEnvelope
+    returns the input state unchanged for non-apply decisions)
+  - no silent gap skip: yes (a gap emits a rehydrate request and reports rehydrated)
+  - coordinator validates writer status before preparing/committing/relinquishing: yes
+  - no committed mutation replay: yes (ordinary mutations are mirrored or trigger
+    rehydration; they never route through the background arbiter)
+  - only canonical error codes (WORKSPACE_HANDOFF_FAILED, WORKSPACE_INVALID_METADATA)
+    are returned; no invented code: yes
+  - no catch blocks, no empty catch, no swallowed rejection: yes
+  - no secrets, tokens, passwords, page content, prompts, or tool I/O read, logged, or
+    persisted; no direct chrome.* (storage only through the T04 adapter): yes
+
+Completion criteria: sync test green; typecheck and lint pass; phase-applicable chain
+exit 0; one atomic task commit exists; working tree clean; status recorded.

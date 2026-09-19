@@ -9,18 +9,18 @@ rewrite or delete prior history.
 - **Current phase:** Phase 01 — Runtime, Shells, and Workspace
 - **Design status:** Approved and amended by ADR-0001 (background-serialised workspace election)
 - **Plan status:** Approved and amended (corrective task T13C; T14/T16/T22/T24/T25/T26/T28 amendment notes)
-- **Implementation status:** T01–T13C accepted; T14 and T15 implemented and verified; T16–T28 not started
+- **Implementation status:** T01–T13C accepted; T14, T15, and T16 implemented and verified; T17–T28 not started
 - **Planning baseline branch:** `phoenix`
 - **Implementation branch:** `phoenix`
 - **Historical approved planning baseline commit:** `bd6ac44d6f562722c18f0d07e6910634e549c713`
 - **Approved planning baseline commit:** `b2c6ef289bc1abebbeccfad81d7034ced81f4eb7`
-- **Current task:** T15 complete; next task T16
-- **Last commit:** the T15 task commit `feat(phase-01): version and idempotently apply workspace mutations`, on top of `81bc563` (`feat(phase-01): implement prepare acknowledge commit handoff`)
-- **Verification result:** T15 mutation suite 7/7 new tests; full unit suite 163/163 (19 files); `typecheck`, `lint`, `prettier --check .`, and the phase chain `typecheck && lint && test` all exit 0. Duplicate detection precedes all other checks; wrong writer/epoch, stale base, and non-monotonic resulting version are rejected with canonical codes; version increments are monotonic; `commitWorkspaceMutation` persists only on `applied`.
-- **Next action:** implement T16 per approved Phase 01 `PLAN.md`
-- **Blockers:** None; T13, T13C, T14, and T15 are accepted
-- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 14 and Task 15 sections)
-- **Evidence status:** T15 verified; self-review PASS
+- **Current task:** T16 complete; next task T17
+- **Last commit:** the T16 task commit `feat(phase-01): coordinate writer handoff and mirror convergence`, on top of `1d7afcf` (`feat(phase-01): version and idempotently apply workspace mutations`)
+- **Verification result:** T16 sync suite 17/17 new tests; full unit suite 180/180 (20 files); `typecheck`, `lint`, `prettier --check .`, and the phase chain `typecheck && lint && test` all exit 0. `handleHandoffPrepare` acknowledges the handoff record and fails closed otherwise; `handleHandoffAck` commits ownership through the T14 handoff/arbiter and reports committed only on success; `handleRelinquish` reports relinquished only when accepted; `start()` never writes the election record and delegates missing/invalid sidepanel recovery to the T13C client as `fallback`/`stale-recovery`.
+- **Next action:** implement T17 per approved Phase 01 `PLAN.md`
+- **Blockers:** None; T13, T13C, T14, T15, and T16 are accepted
+- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 14, Task 15, and Task 16 sections)
+- **Evidence status:** T16 verified; self-review PASS
 
 ## History
 
@@ -659,3 +659,48 @@ rewrite or delete prior history.
   `.planning/evidence/phase-01/review.md` (Task 15 sections). Task commit
   `feat(phase-01): version and idempotently apply workspace mutations`. Current task T15
   accepted; next task T16 — per approved Phase 01 `PLAN.md`.
+- Task 16 (Mirror Ordering, Gap Rehydration, and Writer Coordination, amended by
+  ADR-0001 and binding rulings R16.1–R16.7) executed on `phoenix` in the repository
+  root. Implementation tier advanced (convergence and ownership coordination). RED
+  confirmed at `pnpm run test -- tests/core/workspace/workspaceSync.test.ts` (exit 1;
+  Vite import analysis failed to resolve `@/core/workspace/WorkspaceSync`; the 163
+  pre-existing unit tests still passed). Created
+  `src/core/workspace/WorkspaceSync.ts` with the exact brief interfaces plus the
+  rulings: `MirrorState`, `MirrorDecision`, `classifyMirrorEnvelope` (current-epoch
+  next-version → apply; equal → duplicate; lower → stale; other epoch → epoch; gap →
+  rehydrate), `applyMirrorEnvelope` (advances state only on apply), the five canonical
+  envelope builders (`createRehydrateRequestEnvelope`,
+  `createRehydrateResponseEnvelope`, `createHandoffPrepareEnvelope`,
+  `createHandoffAckEnvelope`, `createHandoffCommitEnvelope`), and
+  `createWorkspaceCoordinator` with the exact R16.1 dependency shape `{ bus, surface,
+  instanceId, storage, election, handoff, store }`. `handleRehydrateRequest` is
+  writer-only and prepares the Side Panel handoff to a Standalone requester;
+  `handleHandoffPrepare` calls `deps.handoff.acknowledge(epoch, baseVersion)` and fails
+  closed with `WORKSPACE_HANDOFF_FAILED` unless acknowledged before sending the
+  `workspace.handoff.ack` envelope (R16.3); `handleHandoffAck` keeps the local-writer
+  guard and calls `deps.handoff.commit` (T14 submits the arbiter `handoff-commit`
+  request), reporting committed only on success (R16.4); `handleRelinquish` calls
+  `deps.election.relinquish()` only for the validated local writer and reports
+  relinquished only when accepted (R16.4); ordinary `workspace.mutation` handling
+  mirrors current-epoch next-version, ignores duplicate/stale/other-epoch, and requests
+  rehydration on a gap without ever routing through the background arbiter. `start()`
+  (R16.2) subscribes to the five runtime message types and the `np_workspace_election`
+  storage subscription; the subscription never writes the record and, for a sidepanel,
+  delegates recovery to the T13C client via `claim('fallback')` for `missing` and
+  `claim('stale-recovery')` for `invalid`. No third `workspace.election.response`
+  subscription (R16.1); no direct `np_workspace_election` write. Created
+  `tests/core/workspace/workspaceSync.test.ts` (17 tests) with a real in-memory bus that
+  routes `workspace.election.request` to a real `WorkspaceElectionArbiter` and
+  dispatches the schema-valid `workspace.election.response` to registered handlers,
+  exercising the real T13C correlation and arbiter and the real T14 handoff. GREEN:
+  explicit single-file run 17/17; `pnpm run test -- tests/core/workspace/workspaceSync.test.ts`
+  exit 0 (20 files, 180 tests); `typecheck` exit 0; `lint` exit 0;
+  `prettier --check .` exit 0 after formatting only the two new files; phase chain
+  `typecheck && lint && test` exit 0. No new message type, storage key, error code,
+  permission, dependency, or `DiagnosticEvent`; no IndexedDB; only the two allowed files
+  were created and only `.planning` evidence/status modified. Evidence recorded in
+  `.planning/evidence/phase-01/verification.txt` and
+  `.planning/evidence/phase-01/review.md` (Task 16 sections, including the orchestration
+  observation). Task commit
+  `feat(phase-01): coordinate writer handoff and mirror convergence`. Current task T16
+  accepted; next task T17 — per approved Phase 01 `PLAN.md`.
