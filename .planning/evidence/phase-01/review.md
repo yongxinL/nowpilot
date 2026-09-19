@@ -931,3 +931,106 @@ chain `typecheck && lint && test` exit 0. Full output is recorded in `verificati
 **PASS** — Task 11 meets specification-compliance, code-quality, and security/privacy
 requirements; the only findings are two Low-severity type-only adaptations (disclosed)
 and a Low-severity formatting correction, and no blocking finding remains.
+
+## Task 12 — Workspace Metadata Store and Durable Version
+
+**Phase:** Phase 01 — Runtime, Shells, and Workspace
+**Branch:** `phoenix`
+**Repository root:** /Users/george.li/Documents/workspaces/nowpilot
+**Base commit:** `29595fc` (T11 atomic commit)
+**Classification:** code task (TDD RED→GREEN); implementation tier balanced
+
+### Scope reviewed
+
+- `src/core/workspace/WorkspaceStore.ts` (created)
+- `tests/core/workspace/workspaceStore.test.ts` (created)
+
+### 1. Specification-compliance review
+
+- Interfaces and types match the brief exactly: `WorkspaceMetadataReadResult`
+  (`missing` | `valid` + `metadata` | `invalid`), `WorkspaceStore`
+  (`readMetadata`/`writeMetadata`/`readVersion`/`writeVersion`), and
+  `createWorkspaceStore(storage: ValidatedStorage): WorkspaceStore`. PASS
+- Durability matches DESIGN.md Section 9: the only keys written are `np_workspace_meta`
+  and `np_workspace_version`, both mapped by the T04 `STORAGE_KEY_AREAS` to
+  `chrome.storage.local`. No `session`/`sync` value is treated as durable workspace
+  state, and no session value is read or written by this store. PASS
+- Durable state is metadata plus the committed version only: `writeMetadata` persists the
+  schema-valid metadata and a `{ committedVersion, updatedAt }` version record derived
+  from it; `writeVersion` persists only the version record. No notes, conversation
+  bodies, prompts, or blobs. PASS
+- Fail closed: a valid read returns `valid`; an invalid record returns the canonical
+  `invalid` (metadata) / `0` (version) result; an absent record returns the canonical
+  `missing` (metadata) / `0` (version) result. No path throws and none reports silent
+  success. PASS
+- The invalid-metadata path logs the canonical T03 `WORKSPACE_INVALID_METADATA` code with
+  only a fixed `key` label (`np_workspace_meta` / `np_workspace_version`); no invented
+  code or message. PASS
+- Canonical schemas are reused from T06 (`WorkspaceMetadataSchema`,
+  `WorkspaceVersionRecordSchema`, `WorkspaceMetadata`); no duplicated or weakened
+  schema. Reads and writes go through the injected T04 `ValidatedStorage`; there is no
+  direct `chrome.*`, no IndexedDB, no network, no provider/MCP call, and no new
+  dependency. PASS
+- Only `WorkspaceStore.ts` and the one new test file changed, plus `.planning`
+  evidence/STATUS. PASS
+
+### 2. Code-quality review
+
+- `readMetadata` is a total function over the three adapter outcomes (missing/valid/
+  invalid); the `invalid` branch returns before the fall-through, so no malformed record
+  can be misclassified as missing. PASS
+- `readVersion` collapses both the invalid and missing cases to the safe default `0`
+  (an absent committed version is legitimately version zero), while still logging the
+  canonical code for the invalid case. PASS
+- `writeMetadata` writes the metadata first and the version record second through the
+  schema-validating adapter, so a rejected write cannot persist an unvalidated value.
+  No partial-write repair or silent mutation is attempted. PASS
+- No mutable module state, timers, I/O beyond the injected storage, or `any`; the returned
+  object satisfies the `WorkspaceStore` interface. PASS
+- Test quality: 4 focused tests cover the fresh-profile missing/zero case, the
+  persist-and-read-back case with the local-area assertion (and the explicit
+  `sync.set` non-call), the invalid-metadata `invalid` case, and the invalid-version
+  zero fallback. Storage is the real T04 validated adapter over the T04 mocked chrome
+  storage; no production code is mocked. PASS
+
+### 3. Security and privacy review (assets and trust boundaries)
+
+- No page content, note, memory, prompt, clipboard, password, token, API key, or customer
+  content is read, logged, or persisted. The stored values are the non-sensitive
+  workspace metadata (`schemaVersion`, non-negative integer `committedVersion`,
+  non-negative integer `updatedAt`). PASS
+- The only log records are the canonical `WORKSPACE_INVALID_METADATA` code plus a fixed
+  storage-key label, passed through the T03 `debugLog` key-based redaction sink; no raw
+  stored value or payload is logged. PASS
+- Values are schema-validated on both read and write; malformed or tampered stored data
+  is surfaced as `invalid`/`0` rather than repaired, trusted, or thrown. PASS
+- Writes target the `local` area only; no secrets in `sync`/`session`, no encryption
+  claim (deferred to Phase 2), no external transmission. Content-script isolation,
+  manifest permissions, and password handling are unaffected. PASS
+- No secrets or sensitive data embedded in production code or evidence. PASS
+
+### 4. Findings and dispositions
+
+| ID | Severity | Finding | Disposition |
+|----|----------|---------|-------------|
+| — | Low (formatting) | `pnpm exec prettier --check .` flagged only `src/core/workspace/WorkspaceStore.ts` (the `WorkspaceMetadataReadResult` union reflowed at printWidth 100). | Formatted only the T12 module; the type members, identifiers, and behaviour are unchanged; the test file and no other file were reformatted. |
+
+No Critical, High, Medium, or required-Low behavioural finding remains unresolved. No
+type-only adaptation was required for T12; the brief's test and implementation
+typechecked as written under the pinned `noUncheckedIndexedAccess: true`.
+
+### 5. Verification evidence
+
+RED: `pnpm run test -- tests/core/workspace/workspaceStore.test.ts` exit 1 — Vite import
+analysis failed to resolve `@/core/workspace/WorkspaceStore`; the 78 pre-existing unit
+tests still passed. GREEN: explicit focused path exit 0 (1 file, 4 tests),
+`pnpm run test` exit 0 (15 files, 82 tests), `pnpm run typecheck` exit 0,
+`pnpm run lint` exit 0, `pnpm exec prettier --check .` exit 0, and the phase-applicable
+chain `typecheck && lint && test` exit 0. Full output is recorded in `verification.txt`
+(Task 12 section).
+
+### Acceptance decision
+
+**PASS** — Task 12 meets specification-compliance, code-quality, and security/privacy
+requirements; the only finding is a Low-severity formatting correction and no blocking
+finding remains.

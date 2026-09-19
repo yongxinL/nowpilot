@@ -9,18 +9,18 @@ rewrite or delete prior history.
 - **Current phase:** Phase 01 — Runtime, Shells, and Workspace
 - **Design status:** Approved
 - **Plan status:** Approved
-- **Implementation status:** In progress — T01 accepted; T02 accepted; T03 accepted; T04 accepted; T05 accepted; T06 accepted; T07 accepted; T08 accepted; T09 accepted; T10 accepted; T11 accepted
+- **Implementation status:** In progress — T01 accepted; T02 accepted; T03 accepted; T04 accepted; T05 accepted; T06 accepted; T07 accepted; T08 accepted; T09 accepted; T10 accepted; T11 accepted; T12 accepted
 - **Planning baseline branch:** `phoenix`
 - **Implementation branch:** `phoenix`
 - **Historical approved planning baseline commit:** `bd6ac44d6f562722c18f0d07e6910634e549c713`
 - **Approved planning baseline commit:** `3fb619730c8032d4aa121c5b8aa9649901b45f5f`
-- **Current task:** T11 — Singleton Standalone Tab Controller (accepted)
-- **Last commit:** `feat(phase-01): add singleton standalone tab controller` (SHA captured post-commit in `.superpowers/sdd/PLAN/task-11-report.md`)
-- **Verification result:** Pass — T11 focused test exit 0 (1 file, 7 tests), `typecheck` exit 0, `lint` exit 0, `prettier --check .` exit 0; phase chain `typecheck && lint && test` exit 0 (14 files, 78 tests)
-- **Next task:** T12 — (per approved Phase 01 `PLAN.md`)
+- **Current task:** T12 — Workspace Metadata Store and Durable Version (accepted)
+- **Last commit:** `feat(phase-01): persist workspace metadata and version` (SHA captured post-commit in `.superpowers/sdd/PLAN/task-12-report.md`)
+- **Verification result:** Pass — T12 focused test exit 0 (1 file, 4 tests), `typecheck` exit 0, `lint` exit 0, `prettier --check .` exit 0; phase chain `typecheck && lint && test` exit 0 (15 files, 82 tests)
+- **Next task:** T13 — (per approved Phase 01 `PLAN.md`)
 - **Blockers:** None
-- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 11 sections)
-- **Evidence status:** Task 11 verification and review recorded
+- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 12 sections)
+- **Evidence status:** Task 12 verification and review recorded
 
 ## History
 
@@ -408,3 +408,33 @@ rewrite or delete prior history.
   `.planning/evidence/phase-01/review.md` (Task 11 sections). Task commit
   `feat(phase-01): add singleton standalone tab controller`. Current task T11 accepted;
   next task T12 — per approved Phase 01 `PLAN.md`.
+- Task 12 (Workspace Metadata Store and Durable Version) executed on `phoenix` in the
+  repository root. Implementation tier balanced. RED confirmed at
+  `pnpm run test -- tests/core/workspace/workspaceStore.test.ts` (exit 1; Vite import
+  analysis failed to resolve `@/core/workspace/WorkspaceStore`; the 78 pre-existing unit
+  tests still passed). Created `src/core/workspace/WorkspaceStore.ts` with the exact brief
+  interfaces `WorkspaceMetadataReadResult` (missing | valid+metadata | invalid),
+  `WorkspaceStore` (readMetadata/writeMetadata/readVersion/writeVersion), and
+  `createWorkspaceStore(storage: ValidatedStorage): WorkspaceStore`. `readMetadata` reads
+  `np_workspace_meta` through the T04 validated adapter, returns `{status:'valid',metadata}`,
+  logs `WORKSPACE_INVALID_METADATA` (fixed key label) and returns `{status:'invalid'}` for a
+  malformed record, and returns `{status:'missing'}` when absent — never throwing.
+  `writeMetadata` writes `np_workspace_meta` then the derived
+  `{committedVersion,updatedAt}` `np_workspace_version` record. `readVersion` returns the
+  committed version for a valid record, logs the canonical code and returns `0` for an
+  invalid record, and returns `0` when absent. `writeVersion` writes
+  `np_workspace_version`. Both keys are T04 `local`-area keys (DESIGN.md Section 9); durable
+  state is metadata plus committed version only; no session value is treated as durable; no
+  direct `chrome.*`, no IndexedDB/network, no new dependency. Created
+  `tests/core/workspace/workspaceStore.test.ts` (4 tests). No type-only adaptation was
+  required; the brief's test and implementation typechecked as written under the pinned
+  `noUncheckedIndexedAccess: true`. `pnpm exec prettier --check .` flagged only the T12
+  module (the `WorkspaceMetadataReadResult` union reflowed at printWidth 100); it was
+  formatted with type members, identifiers, and behaviour unchanged, and no other file was
+  reformatted. GREEN: explicit focused path exit 0 (1 file, 4 tests), `pnpm run test` exit 0
+  (15 files, 82 tests), `typecheck` exit 0, `lint` exit 0, `prettier --check .` exit 0;
+  phase chain `typecheck && lint && test` exit 0 (15 files, 82 tests). Evidence recorded in
+  `.planning/evidence/phase-01/verification.txt` and
+  `.planning/evidence/phase-01/review.md` (Task 12 sections). Task commit
+  `feat(phase-01): persist workspace metadata and version`. Current task T12 accepted;
+  next task T13 — per approved Phase 01 `PLAN.md`.

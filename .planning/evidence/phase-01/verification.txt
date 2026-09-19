@@ -1174,3 +1174,110 @@ Code-quality and security checklist:
 
 Completion criteria: controller test green; typecheck and lint pass; phase-applicable
 chain exit 0; one atomic task commit exists; working tree clean; status recorded.
+
+================================================================================
+Task 12 — Workspace Metadata Store and Durable Version
+================================================================================
+
+Date: 2026-09-19T11:05:57Z
+Task ID: T12
+Branch: phoenix
+Repository root: /Users/george.li/Documents/workspaces/nowpilot
+Classification: code task; TDD RED->GREEN applied
+Implementation tier: balanced
+Base commit: 29595fc (T11 atomic commit
+  `feat(phase-01): add singleton standalone tab controller`)
+Files created: src/core/workspace/WorkspaceStore.ts,
+  tests/core/workspace/workspaceStore.test.ts
+Files modified: none
+Atomic commit: feat(phase-01): persist workspace metadata and version
+  (SHA captured post-commit in .superpowers/sdd/PLAN/task-12-report.md; a commit
+   cannot embed its own SHA, so the subject is recorded here and the exact SHA is
+   recorded in the task report and the current-state STATUS entry.)
+
+Step 1 — test file created verbatim from the brief at
+tests/core/workspace/workspaceStore.test.ts (4 tests).
+
+Step 2 — RED (focused, brief command):
+  command: pnpm run test -- tests/core/workspace/workspaceStore.test.ts
+  exit status: 1
+  output: Error: Failed to resolve import "@/core/workspace/WorkspaceStore" from
+    "tests/core/workspace/workspaceStore.test.ts". Does the file exist?
+    Test Files 1 failed | 14 passed (15); Tests 78 passed (78).
+  Expected failure reason confirmed: the T12 store module did not yet exist, so the
+  test file failed at Vite import analysis for `@/core/workspace/WorkspaceStore`. The
+  78 pre-existing unit tests still passed. No canonical key, schema, error code, or
+  adapter export was missing.
+
+Step 3 — src/core/workspace/WorkspaceStore.ts created verbatim per the brief:
+  Imports the T03 createErrorRecord/debugLog, the T04 ValidatedStorage type, and the
+  T06 WorkspaceMetadataSchema/WorkspaceVersionRecordSchema/WorkspaceMetadata.
+  Interfaces/types exactly as specified: WorkspaceMetadataReadResult
+  (missing | valid+metadata | invalid), WorkspaceStore
+  (readMetadata/writeMetadata/readVersion/writeVersion), and
+  createWorkspaceStore(storage: ValidatedStorage): WorkspaceStore.
+  readMetadata(): validated read of `np_workspace_meta`; valid -> {status:'valid',
+  metadata}; invalid -> logs WORKSPACE_INVALID_METADATA with key np_workspace_meta and
+  returns {status:'invalid'}; absent -> {status:'missing'}; never throws.
+  writeMetadata(metadata): validated write of `np_workspace_meta` then a validated
+  `np_workspace_version` record ({committedVersion, updatedAt}) derived from the
+  metadata; metadata and committed version are the only durable values.
+  readVersion(): validated read of `np_workspace_version`; valid -> committedVersion;
+  invalid -> logs WORKSPACE_INVALID_METADATA with key np_workspace_version and returns
+  0; absent -> 0; never throws.
+  writeVersion(committedVersion, updatedAt): validated write of
+  `np_workspace_version`.
+  Both keys are T04 `local` area keys (DESIGN.md Section 9); no direct chrome.*, no
+  session values treated as durable, no IndexedDB/network, no new dependency.
+
+Step 4 — GREEN (focused, explicit path):
+  command: pnpm exec vitest run --project unit tests/core/workspace/workspaceStore.test.ts
+  exit status: 0
+  output: Test Files 1 passed (1); Tests 4 passed (4), 0 failed, 0 skipped (T12-only).
+
+Focused verification (sequential):
+  pnpm run test -- tests/core/workspace/workspaceStore.test.ts => exit 0
+    (unit project: 15 files, 82 tests passed)
+  pnpm run typecheck                                  => exit 0 (tsc --noEmit clean)
+  pnpm run lint                                       => exit 0 (eslint . clean)
+  pnpm exec prettier --check .                        => exit 0 after formatting only
+    src/core/workspace/WorkspaceStore.ts (the WorkspaceMetadataReadResult union was
+    reflowed onto one line at printWidth 100). Formatting changed whitespace only; the
+    type members, identifiers, and behaviour are unchanged. The T12 test file was
+    already clean; no other file was reformatted.
+
+Phase 01 verification applicable now:
+  command: pnpm run typecheck && pnpm run lint && pnpm run test
+  exit status: 0
+  output: typecheck clean; lint clean; unit project 15 files, 82 tests passed.
+
+Test counts:
+  T12 test file: 1 passed, 4 tests passed, 0 failed, 0 skipped.
+  Unit project total after T12: 15 files, 82 passed.
+
+Specification-compliance checklist (verbatim from the brief):
+  - interfaces exact: WorkspaceStore; createWorkspaceStore; WorkspaceMetadataReadResult:
+    yes
+  - only np_workspace_meta and np_workspace_version written, both in
+    chrome.storage.local (T04 mapping): yes
+  - durable = metadata + committed version only; session values never treated as
+    durable workspace state: yes
+  - fail closed: invalid/absent stored metadata returns a canonical missing/invalid
+    result; never throws; never silent success: yes
+  - invalid metadata logs WORKSPACE_INVALID_METADATA (canonical T03 code): yes
+  - no IndexedDB/network/new dependency; no provider/MCP; no direct chrome.* (injected
+    T04 validated storage only): yes
+  - only WorkspaceStore.ts and the one new test file changed (plus .planning
+    evidence/STATUS): yes
+
+Code-quality and security checklist:
+  - reads never throw on malformed data (invalid -> canonical result, absent ->
+    missing/0): yes
+  - no raw stored value or payload is logged; only the canonical error code and a fixed
+    key label, passed through the T03 redaction sink: yes
+  - writes are schema-validated by the T04 adapter before persistence: yes
+  - both catches (none required) absent; no empty catch; no swallowed rejection: yes
+  - no secrets, tokens, passwords, or page content read/logged/persisted: yes
+
+Completion criteria: store test green; typecheck and lint pass; phase-applicable
+chain exit 0; one atomic task commit exists; working tree clean; status recorded.
