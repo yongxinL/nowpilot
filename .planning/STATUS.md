@@ -9,18 +9,18 @@ rewrite or delete prior history.
 - **Current phase:** Phase 01 — Runtime, Shells, and Workspace
 - **Design status:** Approved and amended by ADR-0001 (background-serialised workspace election)
 - **Plan status:** Approved and amended (corrective task T13C; T14/T16/T22/T24/T25/T26/T28 amendment notes)
-- **Implementation status:** T01–T13C accepted; T14, T15, and T16 implemented and verified; T17 implemented and verified; T18 implemented and verified; T19 implemented and verified; T20 implemented and verified; T21 implemented and verified; T22 implemented and verified; T23–T28 not started
+- **Implementation status:** T01–T13C accepted; T14, T15, and T16 implemented and verified; T17 implemented and verified; T18 implemented and verified; T19 implemented and verified; T20 implemented and verified; T21 implemented and verified; T22 implemented and verified; T23 implemented and verified; T24–T28 not started
 - **Planning baseline branch:** `phoenix`
 - **Implementation branch:** `phoenix`
 - **Historical approved planning baseline commit:** `bd6ac44d6f562722c18f0d07e6910634e549c713`
 - **Approved planning baseline commit:** `b2c6ef289bc1abebbeccfad81d7034ced81f4eb7`
-- **Current task:** T22 complete; next task T23
-- **Last commit:** the T22 task commit `feat(phase-01): wire WXT entrypoints and background listeners`, on top of `7517ec7` (`feat(phase-01): add chat-only side panel shell and actions`)
-- **Verification result:** T22 focused test 8/8 new tests (1 file); T13C/T14/T16 workspace regression 7 files, 104 tests; full unit suite 220/220 (32 files); `typecheck`, `lint`, `prettier --check .`, and the phase chain `typecheck && lint && test` all exit 0; `pnpm run build` emits `.output/chrome-mv3/sidepanel.html` and `.output/chrome-mv3/standalone.html`, and the manifest gains `side_panel.default_path` with permissions unchanged (`sidePanel`/`storage`, no `tabs`/host). Wiring applied the binding controller rulings R22.1–R22.8 (background arbiter + synchronous T13C election listener; arbiter-mediated synthetic-relinquish close recovery with no direct election write; UI response bridge; additive `WorkspaceElection.request` exposure; App dependency corrections). Two Low-severity disclosed corrections: T22-A a type-only `listeners[0]!`/`removed[0]!` adaptation in the new test under `noUncheckedIndexedAccess`, and T22-B a Prettier reflow of only `src/entrypoints/sidepanel/App.tsx`.
-- **Next action:** implement T23 per approved Phase 01 `PLAN.md`
-- **Blockers:** None; T13, T13C, T14, T15, T16, T17, T18, T19, T20, T21, and T22 are accepted
-- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 14, Task 15, Task 16, Task 17, Task 18, Task 19, Task 20, Task 21, and Task 22 sections)
-- **Evidence status:** T22 verified; self-review PASS
+- **Current task:** T23 complete; next task T24
+- **Last commit:** the T23 task commit `test(phase-01): inspect generated manifest`, on top of `b9a13565ccc244200e6efae901c4e7fcbce7efac` (`feat(phase-01): wire WXT entrypoints and background listeners`)
+- **Verification result:** T23 focused assertions test 6/6 new tests; real-manifest `test:manifest` 1/1 test parsing the actual `.output/chrome-mv3/manifest.json`; full unit suite 226/226 (33 files); `typecheck`, `lint`, `prettier --check .`, and the phase chain `pnpm run typecheck && pnpm run lint && pnpm run test && pnpm run build && pnpm run test:manifest` all exit 0 (binding ruling D23a: `test:isolation` omitted because its file is created by T24). The generated manifest matches the Phase 01 contract: permissions exactly `["sidePanel","storage"]`, no `host_permissions`, no `content_scripts`, `side_panel.default_path = "sidepanel.html"`, `action.default_title = "NowPilot"`, icons 16/32/48/128, and `standalone.html` present; no unexpected permission or content script, so the STOP condition did not trigger. One Low-severity disclosed correction: T23-A a Prettier reflow of only the three new T23 test files (`manifestChecks.ts`, `manifest.test.ts`, `manifestAssertions.test.ts`), identifiers/values/assertions unchanged.
+- **Next action:** implement T24 per approved Phase 01 `PLAN.md`
+- **Blockers:** None; T13, T13C, T14, T15, T16, T17, T18, T19, T20, T21, T22, and T23 are accepted
+- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 14, Task 15, Task 16, Task 17, Task 18, Task 19, Task 20, Task 21, Task 22, and Task 23 sections)
+- **Evidence status:** T23 verified; self-review PASS
 
 ## History
 
@@ -924,3 +924,37 @@ rewrite or delete prior history.
   `.planning/evidence/phase-01/review.md` (Task 22 sections). Task commit
   `feat(phase-01): wire WXT entrypoints and background listeners`. Current task
   T22 accepted; next task T23 — per approved Phase 01 `PLAN.md`.
+- Task 23 (Generated-Manifest Inspection) executed on `phoenix` in the repository
+  root. Implementation tier balanced. RED confirmed at
+  `pnpm run test -- tests/build/manifestAssertions.test.ts` (exit 1; module-resolution
+  failure for `./manifestChecks`; Test Files 1 failed | 32 passed (33); Tests 220
+  passed (220); the pre-existing unit tests still passed). Created
+  `tests/build/manifestChecks.ts` with the exact brief interfaces `GeneratedManifest`,
+  `ManifestCheckResult`, and `checkGeneratedManifest(manifest, options)`; the checker
+  fails closed with explicit messages for a wrong `manifest_version`, a permission set
+  other than exactly `sidePanel` + `storage`, each forbidden permission (`tabs`,
+  `activeTab`, `scripting`, `alarms`, `unlimitedStorage`), non-empty
+  `host_permissions`, any `content_scripts`, a wrong `side_panel.default_path`, a
+  missing `action`, a missing required icon size (16/32/48/128), and a missing
+  `standalone.html`. Created `tests/build/manifest.test.ts` (dedicated `manifest`
+  project; parses the real `.output/chrome-mv3/manifest.json` from actual build output
+  per Approved Interpretation 4) and `tests/build/manifestAssertions.test.ts` (`unit`
+  project; proves checker logic only). GREEN: focused assertions test exit 0 (33 files,
+  226 tests), `pnpm run build` exit 0, `pnpm run test:manifest` exit 0 (1 file, 1 test)
+  against the real generated manifest — permissions exactly `["sidePanel","storage"]`,
+  no `host_permissions`, no `content_scripts`, `side_panel.default_path =
+  "sidepanel.html"`, `action.default_title = "NowPilot"`, icons present, and
+  `standalone.html` present — so no unexpected permission or content script and the
+  STOP condition did not trigger. `typecheck` exit 0; `lint` exit 0; `prettier --check
+  .` exit 0 after a reflow of only the three new T23 files; and the phase chain
+  `typecheck && lint && test && build && test:manifest` exit 0 under binding ruling
+  D23a (no `test:isolation`, whose file is created by T24). One Low-severity disclosed
+  correction: T23-A a Prettier reflow of only the three new T23 test files
+  (`manifestChecks.ts`, `manifest.test.ts`, `manifestAssertions.test.ts`);
+  identifiers, values, permission names, and assertions unchanged. No new dependency,
+  permission, storage key, message type, or error code; `wxt.config.ts`,
+  `vitest.config.ts`, source files, `DESIGN.md`, and `PLAN.md` were not modified.
+  Evidence recorded in `.planning/evidence/phase-01/verification.txt` and
+  `.planning/evidence/phase-01/review.md` (Task 23 sections). Task commit
+  `test(phase-01): inspect generated manifest`. Current task T23 accepted; next task
+  T24 — per approved Phase 01 `PLAN.md`.

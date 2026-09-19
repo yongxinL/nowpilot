@@ -2674,3 +2674,123 @@ Code-quality and security checklist:
 Completion criteria: background runtime test green; workspace regression green;
 typecheck, lint, prettier, and the phase chain exit 0; build emits both HTML
 pages; one atomic task commit exists; working tree clean; status recorded.
+
+=== Task 23 — Generated-Manifest Inspection (2026-09-20) ===
+
+task ID: T23
+branch: phoenix
+repository root: /Users/george.li/Documents/workspaces/nowpilot
+classification: code task; TDD RED->GREEN applied
+implementation tier: balanced
+base commit: b9a13565ccc244200e6efae901c4e7fcbce7efac (T22 atomic commit
+  `feat(phase-01): wire WXT entrypoints and background listeners`)
+Files created (test support):
+  tests/build/manifestChecks.ts
+Files created (tests):
+  tests/build/manifest.test.ts (manifest project)
+  tests/build/manifestAssertions.test.ts (unit project)
+Files modified: none (production, toolchain, config); no dependency change
+
+Step 1-2 — RED (focused, brief command):
+  command: pnpm run test -- tests/build/manifestAssertions.test.ts
+  exit status: 1
+  output: Test Files 1 failed | 32 passed (33); Tests 220 passed (220).
+    FAIL |unit| tests/build/manifestAssertions.test.ts (0 test)
+      Error: Failed to resolve import "./manifestChecks" from
+      "tests/build/manifestAssertions.test.ts". Does the file exist?
+      Plugin: vite:import-analysis
+  Expected failure reason confirmed: tests/build/manifestChecks.ts did not exist yet,
+  so Vite could not resolve the `./manifestChecks` import. The 32 passing files were
+  the pre-existing unit tests; 220 tests passed. No canonical identifier, name,
+  permission, or assertion was missing.
+
+Step 3 — tests/build/manifestChecks.ts implemented verbatim per the brief:
+  Exports the `GeneratedManifest` and `ManifestCheckResult` interfaces and
+  `checkGeneratedManifest(manifest, options)`. FORBIDDEN_PERMISSIONS = tabs,
+  activeTab, scripting, alarms, unlimitedStorage. REQUIRED_PERMISSIONS = sidePanel,
+  storage. REQUIRED_ICON_SIZES = 16, 32, 48, 128. Fails closed with explicit messages:
+  manifest_version must be 3; permissions must be exactly sidePanel and storage
+  (sorted comparison); each forbidden permission present; host_permissions absent or
+  empty; content_scripts must be absent; side_panel.default_path must be
+  sidepanel.html; action must be present; each required icon size must be present;
+  standalone.html must exist in the build output. Returns
+  { ok: failures.length === 0, failures }. No permission broadening; no dependency
+  change.
+
+Step 4 — tests/build/manifest.test.ts created verbatim per the brief:
+  Runs in the dedicated `manifest` Vitest project, reads the actual generated
+  `.output/chrome-mv3/manifest.json`, checks `standalone.html` existence in the same
+  output directory, and asserts `result.failures` is `[]` and `result.ok` is `true`.
+
+Step 5 — GREEN:
+  command: pnpm run build
+  exit status: 0
+  output: WXT 0.21.4 chrome-mv3 build emitted manifest.json (387 B), sidepanel.html,
+    standalone.html, background.js, and icon assets.
+  command: pnpm run test:manifest
+  exit status: 0
+  output: Test Files 1 passed (1); Tests 1 passed (1), 0 failed, 0 skipped.
+  Real generated manifest parsed by the test:
+    {"manifest_version":3,"name":"NowPilot","description":"Privacy-first Chrome extension for support engineers.","version":"0.1.0","icons":{"16":"icon/16.png","32":"icon/32.png","48":"icon/48.png","128":"icon/128.png"},"permissions":["sidePanel","storage"],"action":{"default_title":"NowPilot"},"background":{"service_worker":"background.js"},"side_panel":{"default_path":"sidepanel.html"}}
+  Parsed manifest permission list: ["sidePanel","storage"]
+  host_permissions: absent; content_scripts: absent.
+  side_panel.default_path: "sidepanel.html"; action: {"default_title":"NowPilot"}.
+  icons present: 16, 32, 48, 128. standalone.html exists: true.
+  Failures reported by the checker for the real manifest: none ([]).
+  No unexpected permission and no content script; the STOP condition did not trigger.
+
+Focused verification (sequential):
+  pnpm run test -- tests/build/manifestAssertions.test.ts  => exit 0
+    (unit project: 33 files, 226 tests passed; T23-only 6 assertions tests)
+  pnpm run typecheck                                      => exit 0 (tsc --noEmit clean)
+  pnpm run lint                                           => exit 0 (eslint . clean)
+  pnpm exec prettier --check .                            => exit 0 after formatting only
+    the three T23 files (manifestChecks.ts, manifest.test.ts,
+    manifestAssertions.test.ts, line wrapping at printWidth 100). Formatting changed
+    whitespace/line wrapping only; all identifiers, literals, permission names, and
+    assertions are unchanged. No other file was reformatted.
+
+Phase 01 verification applicable now (binding ruling D23a; test:isolation omitted
+because its file is created by T24 and the project currently exits 1 with no test
+files):
+  command: pnpm run typecheck && pnpm run lint && pnpm run test && pnpm run build && pnpm run test:manifest
+  exit status: 0
+  output: typecheck clean; lint clean; unit project 33 files, 226 tests passed;
+    build exit 0; manifest project 1 file, 1 test passed.
+
+Test counts:
+  T23 test files: 2 passed, 7 tests passed (6 manifestAssertions + 1 real manifest),
+  0 failed, 0 skipped.
+  Unit project total after T23: 33 files, 226 passed.
+
+Specification-compliance checklist (verbatim from the brief):
+  - presence of sidePanel/storage in the real generated manifest: yes
+  - absence of tabs, activeTab, scripting, alarms, unlimitedStorage: yes
+  - absence of host permissions: yes
+  - absence of content scripts: yes
+  - side_panel present with default_path sidepanel.html: yes
+  - standalone.html present in the build output: yes
+  - checker fails closed with explicit messages for each violation: yes
+  - manifest inspection runs in the dedicated `manifest` project, after
+    `pnpm run build`, parsing `.output/chrome-mv3/manifest.json` from actual build
+    output (Approved Interpretation 4): yes
+  - `manifestAssertions.test.ts` runs in the `unit` project and proves checker logic
+    only (Approved Interpretation 4): yes
+  - config unit tests are not accepted as proof; no source-scan substitute: yes
+  - no `wxt.config.ts`, source, config, DESIGN.md, or PLAN.md change; no new
+    dependency, permission, storage key, message type, or error code: yes
+
+Code-quality and security checklist:
+  - assertion fails closed with explicit, actionable messages: yes
+  - forbidden permission, host-permission, and content-script checks are explicit and
+    independent of the exact-required-set check: yes
+  - no permission broadening; the task only reads the generated manifest: yes
+  - pure checker; no network, storage, IndexedDB, filesystem write, or side effects
+    in production code (the test reads build output only): yes
+  - no secrets, credentials, tokens, prompts, page content, or customer data handled:
+    yes
+  - no `any`; no catch blocks; no global mutable state: yes
+
+Completion criteria: both manifest tests pass against the real build; typecheck,
+lint, prettier, and the phase-applicable chain exit 0; one atomic task commit exists;
+working tree clean; status recorded.

@@ -2189,3 +2189,106 @@ recorded in `verification.txt` (Task 22 section).
 **PASS** — Task 22 meets specification-compliance, code-quality, and
 security/privacy requirements; the only findings are two Low-severity test/
 format additions (disclosed) and no blocking finding remains.
+
+---
+
+## Task 23 — Generated-Manifest Inspection
+
+**Phase:** Phase 01 — Runtime, Shells, and Workspace
+**Branch:** `phoenix`
+**Repository root:** /Users/george.li/Documents/workspaces/nowpilot
+**Base commit:** `b9a13565ccc244200e6efae901c4e7fcbce7efac` (T22 atomic commit)
+**Classification:** code task (TDD RED→GREEN); implementation tier balanced
+
+### Scope reviewed
+
+- `tests/build/manifestChecks.ts` (created; checker support module)
+- `tests/build/manifest.test.ts` (created; runs in the `manifest` project)
+- `tests/build/manifestAssertions.test.ts` (created; runs in the `unit` project)
+
+### 1. Specification-compliance review
+
+- `checkGeneratedManifest(manifest, options)` returns a `ManifestCheckResult`
+  (`ok`, `failures`) and rejects: a wrong `manifest_version`, a permission set other
+  than exactly `sidePanel` + `storage`, each of the forbidden permissions (`tabs`,
+  `activeTab`, `scripting`, `alarms`, `unlimitedStorage`), non-empty
+  `host_permissions`, any `content_scripts`, a wrong `side_panel.default_path`, a
+  missing `action`, a missing required icon size, and a missing `standalone.html`.
+  PASS
+- Approved Interpretation 4: the real test runs in the dedicated `manifest` Vitest
+  project after `pnpm run build`, parses `.output/chrome-mv3/manifest.json` from
+  actual build output, and checks `standalone.html` in the same output directory; the
+  fixture test runs in the `unit` project and proves checker logic only. No config
+  unit test and no source-scan substitute is used as proof. PASS
+- Real generated manifest satisfies the Phase 01 contract: permissions exactly
+  `["sidePanel","storage"]`; no `host_permissions`; no `content_scripts`;
+  `side_panel.default_path = "sidepanel.html"`; `action.default_title = "NowPilot"`;
+  icons 16/32/48/128; `standalone.html` exists. The task STOP condition (an
+  unapproved permission or a content script in the generated manifest) did not
+  trigger. PASS
+- Only the three allowed test files were created (plus `.planning` evidence/STATUS);
+  `wxt.config.ts`, `vitest.config.ts`, source files, `DESIGN.md`, and `PLAN.md` were
+  not modified. No new dependency, permission, storage key, message type, or error
+  code. PASS
+
+### 2. Code-quality review
+
+- The checker is small, pure, and side-effect free: it reads its argument and the
+  `standaloneHtmlExists` option and returns a structured result; it performs no I/O,
+  no logging, and no global-state mutation. PASS
+- Fail-closed assertions carry explicit, actionable messages; the exact-required-set
+  comparison uses sorted arrays and a JSON comparison, independent of the forbidden
+  and host-permission checks, so an unexpected permission produces a failure rather
+  than passing. PASS
+- No catch blocks; no empty catch; no `any`. The index signature on
+  `GeneratedManifest` allows the real manifest's extra keys (`name`, `description`,
+  `version`, `background`) to parse without weakening the asserted contract. PASS
+- Test quality: the fixture test covers the passing case and each failure class
+  (forbidden permission, wrong side-panel path, content scripts, host permissions,
+  missing standalone.html); the real test fails loudly if the build output is absent
+  (`missing <path>; run pnpm run build first`). PASS
+- Low-severity formatting: `pnpm exec prettier --check .` flagged only the three new
+  T23 files (line wrapping at printWidth 100). They were formatted with identifiers,
+  literals, permission names, and assertions unchanged, and no other file was
+  reformatted. PASS
+
+### 3. Security and privacy review
+
+- The task reads only the generated manifest and checks build-output file existence;
+  it reads no page, note, memory, tool, secret, credential, token, prompt, or
+  customer content. PASS
+- The checker is an assertion helper, not a runtime permission grant: it cannot
+  broaden permissions, and it fails closed on an unapproved permission or a content
+  script. No permission or manifest change is introduced by this task. PASS
+- No network, storage, IndexedDB, clipboard, or filesystem write; the only filesystem
+  access is a read of build output in a test. PASS
+- No sensitive value is embedded as a literal or committed in evidence. PASS
+
+### 4. Findings and dispositions
+
+| ID | Severity | Finding | Disposition |
+|----|----------|---------|-------------|
+| — | Low (formatting) | `pnpm exec prettier --check .` flagged only the three new T23 files (line wrapping at printWidth 100). | Fixed by formatting only the three T23 files; identifiers, literals, permission names, and assertions unchanged; no other file reformatted. |
+| — | Info | The brief's `manifestAssertions.test.ts` long `checkGeneratedManifest(...)` line and the checker's long template-literal lines were reflowed by Prettier; no value or assertion changed. | Recorded; not a defect. Prettier reflow is explicitly allowed by the task. |
+
+No Critical, High, or Medium finding remains unresolved. No type-level deviation was
+required: production and test code typecheck under the pinned
+`strict`/`noUncheckedIndexedAccess` configuration without non-null assertions.
+
+### 5. Verification evidence
+
+RED: `pnpm run test -- tests/build/manifestAssertions.test.ts` exit 1 — module-
+resolution failure for `./manifestChecks`; the 32 pre-existing unit files and 220
+tests still passed. GREEN: focused assertions test exit 0 (33 files, 226 tests);
+`pnpm run build` exit 0; `pnpm run test:manifest` exit 0 (1 file, 1 test) against the
+real `.output/chrome-mv3/manifest.json`; `pnpm run typecheck` exit 0; `pnpm run lint`
+exit 0; `pnpm exec prettier --check .` exit 0; and the phase-applicable chain
+`typecheck && lint && test && build && test:manifest` exit 0. Full output is recorded
+in `verification.txt` (Task 23 section).
+
+### Acceptance decision
+
+**PASS** — Task 23 meets specification-compliance, code-quality, and
+security/privacy requirements; the generated manifest matches the Phase 01 contract,
+the only finding is a Low-severity formatting correction, and no blocking finding
+remains.
