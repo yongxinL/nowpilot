@@ -409,3 +409,122 @@ chain `typecheck && lint && test` exit 0 (7 files, 35 tests). Full output is rec
 
 **PASS** — Task 06 meets specification-compliance, code-quality, and security/privacy
 requirements; no type-level deviation was needed and no blocking finding remains.
+
+---
+
+## Task 07 — Runtime Primitives, Payload Schemas, and `RuntimeEnvelope`
+
+**Phase:** Phase 01 — Runtime, Shells, and Workspace
+**Branch:** `phoenix`
+**Repository root:** /Users/george.li/Documents/workspaces/nowpilot
+**Base commit:** `f85718931b80e63751506b9347b4597c045bfbdd` (T06 atomic commit)
+**Classification:** code task (TDD RED→GREEN); implementation tier balanced
+
+### Scope reviewed
+
+- `src/core/runtime/RuntimeSurface.ts` (created)
+- `src/core/runtime/OperationId.ts` (created)
+- `src/core/runtime/MessageType.ts` (created)
+- `src/core/runtime/messageSchemas.ts` (created)
+- `src/core/runtime/RuntimeEnvelope.ts` (created)
+- `tests/core/runtime/runtimePrimitives.test.ts`, `tests/core/runtime/messageSchemas.test.ts`,
+  `tests/core/runtime/runtimeEnvelope.test.ts` (created)
+
+### 1. Specification-compliance review
+
+- `RuntimeSurface` is exactly `'background' | 'sidepanel' | 'standalone'`; `content` is
+  absent and rejected (asserted). `RUNTIME_TARGETS` adds only `'*'`, matching
+  `RuntimeSurface | '*'`. `RuntimeSurfaceSchema` and `RuntimeTargetSchema` are closed
+  `z.enum`s; `WorkspaceWriterSurface` excludes `background`. PASS
+- `MessageType` is exactly the eleven DESIGN.md Section 5 strings in the approved order;
+  no type is invented, renamed, added, or reordered. `MessageTypeSchema` is a closed
+  `z.enum`; `workspace.unknown` is rejected (asserted). PASS
+- Approved Interpretation 1: `MESSAGE_TYPE_ALLOWED_SOURCES` is the single canonical
+  allowed-source registry in `src/core/runtime/MessageType.ts`, typed
+  `Readonly<Record<MessageType, readonly RuntimeSurface[]>>` and explicit for all eleven
+  types. There is no wildcard, permissive default, or fallback source, and no second copy.
+  It is consumed only by T08/T09 (not yet implemented). PASS
+- The eleven canonical type→payload-schema names in `messageSchemas.ts` match DESIGN.md
+  Section 5 exactly: `WorkspaceMutationPayload`, `WorkspaceHandoffPreparePayload`,
+  `WorkspaceHandoffAckPayload`, `WorkspaceHandoffCommitPayload`, `WorkspaceRelinquishPayload`,
+  `WorkspaceRehydrateRequestPayload`, `WorkspaceRehydrateResponsePayload`,
+  `StandaloneOpenPayload`, `StandaloneFocusPayload`, `StandaloneClosedPayload`,
+  `RuntimeErrorPayload`. PASS
+- Approved Interpretation 2: `WorkspaceRehydrateRequestPayload` carries `sinceVersion`,
+  `instanceId`, and `writerType` (tested). `WorkspaceWriterType` is the T06 closed enum. PASS
+- `StandaloneOpenPayload` / `StandaloneFocusPayload` validate `destination` with the T05
+  `StandaloneRouteIdSchema`; `options` accepted and `teamgqm` rejected (tested). PASS
+- `RuntimeErrorPayload.code` validates with the T03 `ErrorCodeSchema`; a valid code is
+  accepted and `NOT_A_CODE` rejected (tested). PASS
+- `RUNTIME_PAYLOAD_SCHEMAS` maps every `MessageType` exactly once (registry completeness
+  test asserts key-set equality). `RuntimeMessageSchema` is one closed discriminated union.
+  `MESSAGE_TYPES` is re-exported once from `messageSchemas.ts`; `RuntimeEnvelope.ts` imports
+  payloads from that module, so there is no second message-type list. PASS
+- `RuntimeEnvelopeSchema` is one closed discriminated union over the eleven types; base
+  fields match DESIGN.md Section 5 exactly (`envelopeVersion: 1`, `id`, `source`, `target`,
+  `timestamp`, optional `correlationId`/`electionEpoch`/`workspaceVersion`, plus per-variant
+  `type`/`payload`). `parseRuntimeEnvelope` uses `safeParse`, so an unknown type or a
+  payload/type mismatch fails closed with no `RUNTIME_ENVELOPE_INVALID` side effect here
+  (T08 owns emitting the canonical error). PASS
+- No dependency added (`zod` was already an approved direct dependency); no IndexedDB,
+  network, storage, or side effect. Only the five source files, three test files, and
+  evidence/STATUS changed. PASS
+
+### 2. Code-quality review
+
+- Both unions are genuinely closed and discriminated; unknown types cannot match a variant,
+  so `safeParse` fails closed as required (tested for unknown type, payload mismatch,
+  invalid target, and unexpected envelope version). PASS
+- The three redaction-free modules are pure and side-effect free; no mutable module state,
+  timers, I/O, or catch blocks; no empty catch. PASS
+- Types are derived once (`z.infer`) and canonical registries are declared once; no
+  duplication of message-type strings or payload-schema names. PASS
+- `.int().nonnegative()` is applied consistently to every numeric payload/envelope field,
+  so negative or fractional versions, epochs, and timestamps are rejected (tested for
+  mutation epoch and rehydrate `sinceVersion`). PASS
+- Readability is minimal; the `MESSAGE_TYPE_ALLOWED_SOURCES` mapping is exhaustive by type,
+  so adding a type without a source list is a compile error. PASS
+- Error handling: none required at this pure-schema layer; no catch blocks. N/A
+
+### 3. Security and privacy review (assets and trust boundaries)
+
+- Assets/boundaries: this task defines the runtime message contract and the closed
+  allowed-source registry that T08/T09 will enforce at the extension-context trust
+  boundary. No secrets, tokens, cookies, clipboard, passwords, prompts, or customer content
+  are handled, logged, persisted, or transmitted. PASS
+- Zod strips unknown extra keys rather than accepting them; no payload schema accepts
+  arbitrary additional fields as meaningful. This is explicitly not sender validation:
+  T08 must still validate the sender and envelope at the boundary. No such validation is
+  claimed here. PASS
+- No message body uses Chrome local storage; nothing is persisted in this task. Data has no
+  instruction authority: page/message content is schema-validated data only and cannot
+  modify policy, prompts, permissions, or code. PASS
+- No side effects, so no permission-policy, idempotency, or postcondition concerns arise in
+  this task. `parseRuntimeEnvelope` is read-only. PASS
+- No manifest or permission change; content scripts are untouched. PASS
+
+### 4. Findings and dispositions
+
+| ID | Severity | Finding | Disposition |
+|----|----------|---------|-------------|
+| — | Low (formatting) | `pnpm exec prettier --check .` flagged only `src/core/runtime/messageSchemas.ts` and `tests/core/runtime/messageSchemas.test.ts` (line wrapping at printWidth 100). | Fixed by formatting only those two T07 files; identifiers, message-type strings, payload-schema names, and assertions unchanged; no other file reformatted. |
+| — | Info | `pnpm run test -- tests/core/runtime` also runs the pre-existing unit tests under Vitest 5; T07-only count confirmed with explicit file paths (3 files, 13 tests). | Recorded; not a defect. |
+
+No Critical, High, or Medium finding remains unresolved. No type-level deviation from the
+brief was required: production code and tests both typecheck under the pinned
+`strict`/`noUncheckedIndexedAccess` configuration without non-null assertions.
+
+### 5. Verification evidence
+
+RED: `pnpm run test -- tests/core/runtime` exit 1 — module-resolution failure for all five
+`@/core/runtime/*` modules across the three new suites. GREEN: focused test exit 0
+(10 files, 48 tests; T07-only 3 files, 13 tests), `pnpm run typecheck` exit 0,
+`pnpm run lint` exit 0, `pnpm exec prettier --check .` exit 0, and the phase-applicable
+chain `typecheck && lint && test` exit 0 (10 files, 48 tests). Full output is recorded in
+`verification.txt` (Task 07 section).
+
+### Acceptance decision
+
+**PASS** — Task 07 meets specification-compliance, code-quality, and security/privacy
+requirements; the only finding is a Low-severity formatting correction and no blocking
+finding remains.

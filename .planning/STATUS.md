@@ -9,18 +9,18 @@ rewrite or delete prior history.
 - **Current phase:** Phase 01 — Runtime, Shells, and Workspace
 - **Design status:** Approved
 - **Plan status:** Approved
-- **Implementation status:** In progress — T01 accepted; T02 accepted; T03 accepted; T04 accepted; T05 accepted; T06 accepted
+- **Implementation status:** In progress — T01 accepted; T02 accepted; T03 accepted; T04 accepted; T05 accepted; T06 accepted; T07 accepted
 - **Planning baseline branch:** `phoenix`
 - **Implementation branch:** `phoenix`
 - **Historical approved planning baseline commit:** `bd6ac44d6f562722c18f0d07e6910634e549c713`
 - **Approved planning baseline commit:** `3fb619730c8032d4aa121c5b8aa9649901b45f5f`
-- **Current task:** T06 — Workspace Types and Durable Metadata Schemas (accepted)
-- **Last commit:** T06 atomic commit `feat(phase-01): add workspace types and durable metadata schemas` (SHA captured post-commit in `.superpowers/sdd/PLAN/task-06-report.md`)
-- **Verification result:** Pass — T06 focused test exit 0 (1 file, 7 tests), `typecheck` exit 0, `lint` exit 0, `prettier --check .` exit 0 (after formatting the T06 test file only); phase chain `typecheck && lint && test` exit 0 (7 files, 35 tests)
-- **Next task:** T07 — Runtime Primitives, Payload Schemas, and `RuntimeEnvelope`
+- **Current task:** T07 — Runtime Primitives, Payload Schemas, and `RuntimeEnvelope` (accepted)
+- **Last commit:** T07 atomic commit `feat(phase-01): add runtime envelope primitives and registries` (SHA captured post-commit in `.superpowers/sdd/PLAN/task-07-report.md`)
+- **Verification result:** Pass — T07 focused test exit 0 (10 files, 48 tests; T07-only 3 files, 13 tests), `typecheck` exit 0, `lint` exit 0, `prettier --check .` exit 0 (after formatting the two T07 `messageSchemas` files only); phase chain `typecheck && lint && test` exit 0 (10 files, 48 tests)
+- **Next task:** T08 — (per approved Phase 01 `PLAN.md`)
 - **Blockers:** None
-- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 06 sections)
-- **Evidence status:** Task 06 verification and review recorded
+- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 07 sections)
+- **Evidence status:** Task 07 verification and review recorded
 
 ## History
 
@@ -221,3 +221,38 @@ rewrite or delete prior history.
   `feat(phase-01): add workspace types and durable metadata schemas`. Current task
   T06 accepted; next task T07 — Runtime Primitives, Payload Schemas, and
   `RuntimeEnvelope`.
+- Task 07 (Runtime Primitives, Payload Schemas, and `RuntimeEnvelope`) executed on
+  `phoenix` in the repository root. RED confirmed at
+  `pnpm run test -- tests/core/runtime` (exit 1; module-resolution errors for
+  `@/core/runtime/messageSchemas`, `@/core/runtime/OperationId`, and
+  `@/core/runtime/MessageType` across the three new suites). Created
+  `src/core/runtime/RuntimeSurface.ts` (exact three surfaces
+  background/sidepanel/standalone; `RUNTIME_TARGETS` adds only `'*'`;
+  closed `RuntimeSurfaceSchema`/`RuntimeTargetSchema`; `WorkspaceWriterSurface`),
+  `src/core/runtime/OperationId.ts` (`z.string().uuid()`; `createOperationId()`
+  via runtime `crypto.randomUUID`), `src/core/runtime/MessageType.ts` (the eleven
+  DESIGN.md Section 5 message types in approved order; closed `MessageTypeSchema`;
+  `MESSAGE_TYPE_ALLOWED_SOURCES` closed, typed, explicit for all eleven types with
+  no wildcard/permissive default per Approved Interpretation 1),
+  `src/core/runtime/messageSchemas.ts` (the eleven canonical type→payload schema
+  names verbatim; rehydrate request carries `instanceId`/`writerType` per Approved
+  Interpretation 2; standalone destinations via the T05 `StandaloneRouteIdSchema`;
+  runtime error `code` via the T03 `ErrorCodeSchema`; `RUNTIME_PAYLOAD_SCHEMAS`
+  maps each type exactly once; `RuntimeMessageSchema` closed discriminated union;
+  single `MESSAGE_TYPES` re-export, no second list), and
+  `src/core/runtime/RuntimeEnvelope.ts` (DESIGN.md Section 5 base envelope fields;
+  one closed discriminated union over the eleven types; `parseRuntimeEnvelope` =
+  `safeParse`, unknown type fails closed). Created
+  `tests/core/runtime/runtimePrimitives.test.ts` (3 tests),
+  `tests/core/runtime/messageSchemas.test.ts` (4 tests + the Step 9 registry
+  completeness test), and `tests/core/runtime/runtimeEnvelope.test.ts` (5 tests).
+  No type-level deviation required. `pnpm exec prettier --check .` flagged only the
+  two T07 `messageSchemas` files (line wrapping); they were formatted, identifiers
+  and assertions unchanged, and no other file was reformatted. GREEN: focused test
+  exit 0 (10 files, 48 tests; T07-only 3 files, 13 tests), `typecheck` exit 0,
+  `lint` exit 0, `prettier --check .` exit 0; phase chain
+  `typecheck && lint && test` exit 0 (10 files, 48 tests). Evidence recorded in
+  `.planning/evidence/phase-01/verification.txt` and
+  `.planning/evidence/phase-01/review.md` (Task 07 sections). Task commit
+  `feat(phase-01): add runtime envelope primitives and registries`. Current task
+  T07 accepted; next task T08 — per approved Phase 01 `PLAN.md`.
