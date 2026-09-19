@@ -11,10 +11,10 @@ rewrite or delete prior history.
 - **Plan status:** Approved
 - **Implementation status:** Not started
 - **Planning baseline branch:** `phoenix`
-- **Planned implementation branch:** `phase/01-phoenix`
-- **Approved planning baseline commit:** Not yet recorded
+- **Implementation branch:** `phase/01-phoenix`
+- **Approved planning baseline commit:** `bd6ac44d6f562722c18f0d07e6910634e549c713`
 - **Current task:** None
-- **Next action:** Commit the approved plan and status
+- **Next task:** T01 from the approved `PLAN.md`
 - **Blockers:** None
 - **Evidence status:** Not started
 
@@ -37,3 +37,9 @@ rewrite or delete prior history.
   `unit`/`manifest`/`isolation` Vitest projects with the approved aggregate
   order. Phase 01 `PLAN.md` is approved as authoritative and the interpretations
   are recorded in `PLAN.md`. No commit was made; no implementation started.
+- Phase 01 approved-plan commit recorded as `approvedPlanningBaselineCommit` =
+  `bd6ac44d6f562722c18f0d07e6910634e549c713` (`docs(phase-01): approve runtime
+  implementation plan`), which contains the approved `DESIGN.md` and `PLAN.md`.
+  Implementation branch `phase/01-phoenix`; implementation not started; next task
+  T01. No production code, worktree, branch, dependency install, or evidence was
+  created. No commit was made.
