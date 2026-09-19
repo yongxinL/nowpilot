@@ -1525,3 +1525,56 @@ routes through the arbiter. No forbidden file was modified.
 Corrected T13 acceptance: the T13 direct read-then-write critical finding is remediated by the
 single FIFO arbiter executor; simultaneous claims produce exactly one writer; corrected T13 is
 accepted.
+
+=== Task 14 — Prepare, Acknowledge, and Commit Handoff (ADR-0001 amended) — 2026-09-19 ===
+
+Task: T14 (amended by ADR-0001 and binding rulings R14.1-R14.5: commit via the arbiter).
+Branch: phoenix. Repository root: /Users/george.li/Documents/workspaces/nowpilot.
+Base commit at task start: bcd06326a0b06a829b2856194e0fec314da5d4ed
+  (docs(phase-01): preserve historical status line).
+Runner date: 2026-09-19 22:11 AEST.
+
+RED (before implementation), focused suite:
+  $ pnpm run test -- tests/core/workspace/workspaceHandoff.test.ts
+    FAIL tests/core/workspace/workspaceHandoff.test.ts (0 test)
+    Error: Failed to resolve import "@/core/workspace/WorkspaceHandoff" from
+      "tests/core/workspace/workspaceHandoff.test.ts". Does the file exist?
+    Test Files 1 failed | 17 passed; Tests 145 passed; exit 1
+  Expected failure: module-resolution error for the not-yet-created module.
+
+GREEN (after implementation), fresh output:
+  $ pnpm run test -- tests/core/workspace/workspaceHandoff.test.ts
+    Test Files 18 passed (18); Tests 156 passed (156)   exit 0
+  $ pnpm run typecheck                                      exit 0
+  $ pnpm run lint                                            exit 0
+  $ pnpm exec prettier --check .                             exit 0 (All matched files use Prettier)
+  $ pnpm run typecheck && pnpm run lint && pnpm exec prettier --check . && pnpm run test
+    typecheck exit 0; lint exit 0; prettier exit 0;
+    Test Files 18 passed (18); Tests 156 passed (156)   exit 0
+
+Behaviour verified (fresh tests in tests/core/workspace/workspaceHandoff.test.ts):
+  - prepare reads np_workspace_election and writes ONLY np_workspace_handoff; the election
+    record is byte-identical afterwards (handoffPhase stays 'idle') [R14.2].
+  - prepare from a non-writer is rejected WORKSPACE_HANDOFF_FAILED; no handoff record written.
+  - acknowledge requires phase 'prepared'; epoch mismatch -> WORKSPACE_EPOCH_MISMATCH;
+    baseVersion mismatch -> WORKSPACE_VERSION_CONFLICT; success writes phase 'acknowledged'
+    with acknowledgedAt and leaves the election record unchanged.
+  - commit before acknowledgement is rejected WORKSPACE_HANDOFF_FAILED with no arbiter call.
+  - commit after acknowledgement mints a fresh requestId and submits exactly one
+    workspace.election.request with operation 'handoff-commit', requester identity,
+    committedVersion, expectedEpoch, targetInstanceId, targetWriterType, and no reason; on
+    accepted:true it removes np_workspace_handoff and returns 'committed' while leaving
+    np_workspace_election untouched [R14.3/R14.4].
+  - commit delegates to a real WorkspaceElectionArbiter: ownership becomes standalone at
+    epoch 1 and exactly one authorised writer remains.
+  - accepted:false with WORKSPACE_ELECTION_REJECTED / WORKSPACE_ELECTION_FAILED maps to the
+    same canonical code and leaves the handoff record; any other rejection code or a thrown
+    submission fails closed to WORKSPACE_HANDOFF_FAILED with the handoff record unchanged [R14.3].
+
+Files changed: src/core/workspace/WorkspaceHandoff.ts (new),
+  tests/core/workspace/workspaceHandoff.test.ts (new).
+
+No np_workspace_election write in WorkspaceHandoff; the arbiter remains its only writer.
+No new storage key, message type, error code, permission, dependency, or DiagnosticEvent.
+No forbidden file was modified (WorkspaceElection.ts, WorkspaceElectionArbiter.ts, DESIGN.md,
+PLAN.md, config, and T15+ files untouched).

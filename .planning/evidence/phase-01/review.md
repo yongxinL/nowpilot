@@ -1281,3 +1281,64 @@ Scope: `WorkspaceElectionArbiter.ts` + arbiter suite (new); `errorCodes`, `Messa
 `prettier --check .`, and the phase chain all exit 0; no blocking finding remains. The T13
 Critical two-writer finding is remediated: simultaneous claims produce exactly one writer and
 the loser receives `WORKSPACE_ELECTION_REJECTED`. Corrected T13 is accepted; next task T14.
+
+## Task 14 — Prepare, Acknowledge, and Commit Handoff self-review (2026-09-19)
+
+Scope: `src/core/workspace/WorkspaceHandoff.ts` (new) and
+`tests/core/workspace/workspaceHandoff.test.ts` (new), per the ADR-0001-amended T14 and binding
+rulings R14.1-R14.5. Branch `phoenix`.
+
+### Specification compliance
+
+- Dependency shape matches R14.1: `WorkspaceHandoffDependencies` adds the injected
+  `submitElectionRequest(payload): Promise<WorkspaceElectionResponsePayload>`;
+  `WorkspaceElection.ts` and `WorkspaceElectionArbiter.ts` were not modified.
+- `prepare`/`acknowledge` are handoff-record only (R14.2): `prepare` reads
+  `np_workspace_election` via `ElectionRecordSchema`, requires this instance/type as writer,
+  writes only `np_workspace_handoff` at `phase:'prepared'` with `from`/`to` identity,
+  `epoch = election.epoch`, `baseVersion`, `preparedAt`, `acknowledgedAt:null`; the election
+  record is untouched (asserted byte-identical). `acknowledge` checks phase then epoch
+  (`WORKSPACE_EPOCH_MISMATCH`) then version (`WORKSPACE_VERSION_CONFLICT`) and writes
+  `phase:'acknowledged'` plus `acknowledgedAt`, leaving the election record unchanged.
+- `commit` (R14.3): requires `phase:'acknowledged'`; applies the epoch/version guards; mints a
+  fresh `requestId` via `createOperationId()` and submits one `handoff-commit` request with
+  `expectedEpoch`, target identity, and no `reason`; on `accepted:true` removes
+  `np_workspace_handoff` and returns `committed`; on `accepted:false` maps
+  `WORKSPACE_ELECTION_REJECTED`/`WORKSPACE_ELECTION_FAILED` verbatim, else
+  `WORKSPACE_HANDOFF_FAILED`; a thrown submission fails closed to `WORKSPACE_HANDOFF_FAILED`.
+  The arbiter owns `np_workspace_election`; this module never writes it.
+- `HandoffRejectionCode` is widened exactly as R14.3 specifies (five codes). `read()` semantics
+  are unchanged and every existing `HandoffRecordSchema` field is retained.
+- No new storage key, message type, error code, permission, dependency, or `DiagnosticEvent`.
+
+### Code quality
+
+- All rejections return canonical coded data and pass through the redacting `debugLog` with
+  fixed labels (`phase`, `key`); there are no empty catch blocks and every catch path fails
+  closed.
+- Types are clean under the pinned strict toolchain (`strict`, `noUncheckedIndexedAccess`); no
+  `any`, no non-null assertions, no comments. The removed direct election write is replaced by
+  a single injected transport call, keeping T14 free of background/storage-writer coupling.
+- Storage-removal failure is also fail-closed (returns `WORKSPACE_HANDOFF_FAILED` rather than
+  claiming `committed`), consistent with the phase invariant that success requires
+  verification and the arbiter-owned record is the only source of truth.
+
+### Security and privacy
+
+- Only canonical error codes and fixed label keys are logged; no payload, identity, or record
+  content is emitted.
+- No direct `chrome.*`, IndexedDB, provider/MCP, or network access; the module is pure
+  orchestration over an injected `ValidatedStorage` and election-request transport.
+
+### Findings and dispositions
+
+- None blocking. `tests/core/workspace/workspaceHandoff.test.ts` covers both a controlled fake
+  transport (exact payload fields and rejection-code mapping) and a real
+  `WorkspaceElectionArbiter` (end-to-end ownership transition to standalone at epoch 1),
+  satisfying R14.4.
+
+### Acceptance decision
+
+**PASS** — focused handoff suite 11/11 new tests (unit project 18 files, 156 tests);
+`typecheck`, `lint`, `prettier --check .`, and the phase chain `typecheck && lint && test` all
+exit 0; no blocking finding remains. Next task T15.

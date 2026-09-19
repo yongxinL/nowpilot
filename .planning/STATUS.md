@@ -9,18 +9,18 @@ rewrite or delete prior history.
 - **Current phase:** Phase 01 — Runtime, Shells, and Workspace
 - **Design status:** Approved and amended by ADR-0001 (background-serialised workspace election)
 - **Plan status:** Approved and amended (corrective task T13C; T14/T16/T22/T24/T25/T26/T28 amendment notes)
-- **Implementation status:** T01–T12 accepted; T13 implemented and corrected by T13C; T13C complete and verified; T14–T28 not started
+- **Implementation status:** T01–T13C accepted; T14 implemented and verified; T15–T28 not started
 - **Planning baseline branch:** `phoenix`
 - **Implementation branch:** `phoenix`
 - **Historical approved planning baseline commit:** `bd6ac44d6f562722c18f0d07e6910634e549c713`
 - **Approved planning baseline commit:** `b2c6ef289bc1abebbeccfad81d7034ced81f4eb7`
-- **Current task:** T13C complete; next task T14 — Prepare, Acknowledge, and Commit Handoff
-- **Last commit:** the T13C corrective commit `fix(phase-01): serialise workspace election through the background arbiter`, on top of `c608708` (`docs(phase-01): record election amendment baseline`)
-- **Verification result:** T13C arbiter suite 41/41; corrected client suite 14/14; full unit suite 145/145 (17 files); `typecheck`, `lint`, `prettier --check .`, and the phase chain `typecheck && lint && test` all exit 0. Simultaneous claims produce exactly one writer; epochs are monotonic; persistence failure/mismatch never reports success.
-- **Next action:** implement T14 (Prepare, Acknowledge, and Commit Handoff) per approved Phase 01 `PLAN.md`, routing the handoff commit through the arbiter `handoff-commit`
-- **Blockers:** None; T13 and T13C are accepted
-- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 13C sections)
-- **Evidence status:** T13C verified; corrected T13 accepted
+- **Current task:** T14 complete; next task T15 — Mutation Versioning and Idempotency
+- **Last commit:** the T14 task commit `feat(phase-01): implement prepare acknowledge commit handoff`, on top of `bcd0632` (`docs(phase-01): preserve historical status line`)
+- **Verification result:** T14 handoff suite 11/11 new tests; full unit suite 156/156 (18 files); `typecheck`, `lint`, `prettier --check .`, and the phase chain `typecheck && lint && test` all exit 0. `prepare`/`acknowledge` touch only `np_workspace_handoff`; `commit` routes `handoff-commit` through the arbiter and removes the handoff record only on an accepted response; rejection/throw paths fail closed.
+- **Next action:** implement T15 (Mutation Versioning and Idempotency) per approved Phase 01 `PLAN.md`
+- **Blockers:** None; T13, T13C, and T14 are accepted
+- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 13C and Task 14 sections)
+- **Evidence status:** T14 verified; self-review PASS
 
 ## History
 
@@ -596,3 +596,29 @@ rewrite or delete prior history.
   `fix(phase-01): serialise workspace election through the background arbiter`.
   Current task T13C accepted; next task T14 — per approved Phase 01 `PLAN.md`.
   Commits `7633615` and `88fbdb6` remain unchanged.
+- Task 14 (Prepare, Acknowledge, and Commit Handoff, amended by ADR-0001/rulings
+  R14.1–R14.5) executed on `phoenix` in the repository root. RED confirmed before
+  implementation: `tests/core/workspace/workspaceHandoff.test.ts` failed to resolve
+  `@/core/workspace/WorkspaceHandoff` (module absent) — Test Files 1 failed | 17
+  passed; Tests 145 passed; exit 1. GREEN: focused handoff suite 11/11 new tests;
+  full unit suite 156/156 (18 files); `typecheck` exit 0; `lint` exit 0;
+  `prettier --check .` exit 0; and the phase chain `typecheck && lint && test`
+  exit 0. Implemented `src/core/workspace/WorkspaceHandoff.ts` with an injected
+  `submitElectionRequest` (R14.1): `prepare` reads `np_workspace_election` and
+  writes only `np_workspace_handoff` at `phase:'prepared'` (R14.2), `acknowledge`
+  requires phase `'prepared'` and maps epoch/version mismatches to
+  `WORKSPACE_EPOCH_MISMATCH`/`WORKSPACE_VERSION_CONFLICT`, and `commit` submits a
+  fresh-`requestId` `workspace.election.request` with
+  `operation:'handoff-commit'`/`expectedEpoch`/target identity, removes the handoff
+  record and returns `committed` only on `accepted:true`, and otherwise fails
+  closed (mapping `WORKSPACE_ELECTION_REJECTED`/`WORKSPACE_ELECTION_FAILED`, else
+  `WORKSPACE_HANDOFF_FAILED`). The module never writes `np_workspace_election`;
+  the arbiter remains its only writer. No new storage key, message type, error
+  code, permission, dependency, or `DiagnosticEvent`; `WorkspaceElection.ts`,
+  `WorkspaceElectionArbiter.ts`, `DESIGN.md`, `PLAN.md`, config, and T15+ files were
+  not modified. T14 self-review PASS; evidence recorded in
+  `.planning/evidence/phase-01/verification.txt` and
+  `.planning/evidence/phase-01/review.md` (Task 14 sections). Task commit
+  `feat(phase-01): implement prepare acknowledge commit handoff`. Current task T14
+  accepted; next task T15 — Mutation Versioning and Idempotency, per approved
+  Phase 01 `PLAN.md`.
