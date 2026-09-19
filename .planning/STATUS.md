@@ -7,20 +7,20 @@ rewrite or delete prior history.
 ## Current state
 
 - **Current phase:** Phase 01 — Runtime, Shells, and Workspace
-- **Design status:** Approved; ADR-0001 approved by the operator (2026-09-19) with mandatory clarifications incorporated; amendment ready to commit
-- **Plan status:** Approved; T13C corrective task and affected-task amendments, including the idempotency, listener, and sender/target clarifications, ready to commit
-- **Implementation status:** In progress — T01–T12 accepted; T13 implemented and committed but NOT accepted until T13C; T13C defined and not started; amendment uncommitted
+- **Design status:** Approved and amended by ADR-0001 (background-serialised workspace election)
+- **Plan status:** Approved and amended (corrective task T13C; T14/T16/T22/T24/T25/T26/T28 amendment notes)
+- **Implementation status:** Blocked pending T13C correction — T01–T12 accepted; T13 implemented and committed but NOT accepted until T13C; T13C not started
 - **Planning baseline branch:** `phoenix`
 - **Implementation branch:** `phoenix`
 - **Historical approved planning baseline commit:** `bd6ac44d6f562722c18f0d07e6910634e549c713`
-- **Approved planning baseline commit:** `3fb619730c8032d4aa121c5b8aa9649901b45f5f` (pending refresh to the amendment commit per the operator-approved sequence)
-- **Current task:** T13C — Corrective: Background-Serialised Workspace Election (ADR-0001), defined and not started
-- **Last commit:** `88fbdb6` (`docs(phase-01): record task 13 ownership-race blocker`); the amendment is prepared but uncommitted
-- **Verification result:** Documentation-only amendment; no production verification applies. T13 automated verification passed but T13 is not accepted (Critical review finding).
-- **Next task:** commit the amendment as `docs(phase-01): serialise workspace election in background`; capture its SHA; commit the baseline refresh as `docs(phase-01): record election amendment baseline`; then implement T13C
-- **Blockers:** None for planning; T14–T28 remain not started until T13C is accepted
+- **Approved planning baseline commit:** `b2c6ef289bc1abebbeccfad81d7034ced81f4eb7`
+- **Current task:** T13C — Corrective: Background-Serialised Workspace Election (ADR-0001)
+- **Last commit:** `b2c6ef289bc1abebbeccfad81d7034ced81f4eb7` (`docs(phase-01): serialise workspace election in background`), plus this baseline status record
+- **Verification result:** The planning amendment is documentation-only; no production verification applies. T13 automated verification passed but T13 is not accepted (Critical review finding addressed by T13C).
+- **Next action:** implement and verify T13C
+- **Blockers:** None after baseline refresh; T14–T28 remain not started until T13C is accepted
 - **Evidence path:** `.planning/architecture/decisions/ADR-0001-background-serialised-workspace-election.md`; `.planning/evidence/phase-01/review.md` and `verification.txt` (Task 13 blocker sections)
-- **Evidence status:** Task 13 blocker and the ADR-0001 amendment (with operator clarifications) recorded
+- **Evidence status:** T13 blocker recorded; T13C pending
 
 ## History
 
@@ -549,3 +549,21 @@ rewrite or delete prior history.
   name the single-entry field and required no correction. No production code was
   modified; the amendment remains uncommitted. Commits `7633615` and `88fbdb6`
   remain unchanged.
+- Baseline refresh (2026-09-19, ADR-0001 election amendment): the planning-compilation
+  amendment commit `b2c6ef289bc1abebbeccfad81d7034ced81f4eb7`
+  (`docs(phase-01): serialise workspace election in background`) is recorded as the
+  current `approvedPlanningBaselineCommit`. It contains the amended `AGENTS.md`,
+  `.planning/architecture/ARCHITECTURE.md`, the new
+  `.planning/architecture/decisions/ADR-0001-background-serialised-workspace-election.md`,
+  `.planning/DECISIONS.md`, `DESIGN.md` (ADR-0001, bounded 32-entry
+  `recentCompletedRequests` idempotency ledger, listener and sender/target
+  contracts), `PLAN.md` (Global Constraint 7, Interpretation 2 amendment, corrective
+  task T13C, and T14/T16/T22/T24/T25/T26/T28 amendment notes), and the prior
+  `STATUS.md`. The previous `3fb619730c8032d4aa121c5b8aa9649901b45f5f` is retained
+  as the historical pre-amendment approved-plan baseline. Implementation branch
+  `phoenix`; implementation status blocked pending the T13C correction; current
+  task T13C; next action implement and verify T13C; blockers none; evidence status:
+  T13 blocker recorded, T13C pending. This status record is committed separately
+  from the amendment commit so the pre-implementation gate's status-record
+  assertion is satisfied. No production code changed; commits `7633615` and
+  `88fbdb6` remain unchanged.
