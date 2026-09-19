@@ -164,3 +164,76 @@ chain `typecheck && lint && test` exit 0. Full output is recorded in
 
 **PASS** — Task 03 meets specification-compliance, code-quality, and security/privacy
 requirements; the single Low-severity B5 typing adaptation is documented and non-behavioural.
+
+---
+
+## Task 04 — Storage Keys and Validated Chrome-Storage Adapter
+
+### 1. Specification-compliance review
+
+- Task scope: create the five T04 files and modify only `tests/setup.ts`. No other
+  file touched; `background.ts`, `wxt.config.ts`, `vitest.config.ts`, `tsconfig.json`,
+  `eslint.config.mjs`, `.prettierrc`, `.prettierignore`, and `package.json` unchanged. PASS
+- `STORAGE_KEYS` contains exactly the seven DESIGN.md Section 9 keys in approved order;
+  each declared once (test asserts `new Set(STORAGE_KEYS).size === STORAGE_KEYS.length`). PASS
+- `STORAGE_KEY_AREAS` maps exactly `local/local/session/session/session/sync/sync`;
+  `storageAreaForKey` returns the mapped area. PASS
+- `STORAGE_AREAS`, `StorageArea`, `StorageKey`, the Chrome-storage structural types,
+  `StorageReadResult`, `ValidatedStorage`, `createValidatedStorage`, and `getChromeStorage`
+  match the interfaces produced by the brief. PASS
+- All reads are Zod-validated through `safeParse`; malformed or absent data fails closed
+  to `{status:'invalid'}` / `{status:'missing'}` and never throws (tested). PASS
+- `write` calls `schema.parse(value)` before `set`, so invalid values are rejected before
+  persistence (tested). PASS
+- Approved dependency only (`zod`); no new dependency. PASS
+- Acceptance-criterion coverage: the two required storage test files assert key/area
+  mapping, missing/valid/invalid reads, validated writes, removal, and scoped validated
+  change notifications. PASS
+
+### 2. Code-quality review
+
+- `read` uses `safeParse` and has no throw path on malformed data. PASS
+- `write` fails fast on invalid input and never reaches the area `set`. PASS
+- `subscribe` filters on the exact key and its mapped area; it removes the listener on
+  unsubscribe and does not leak. PASS
+- Concurrency/abort: no asynchronous coordination or AbortSignal surface is in scope for
+  this pure adapter; underlying area calls are awaited. N/A
+- Readability and complexity are minimal; no mutable module state. PASS
+- `tests/setup.ts` default mock is a fallback only; storage tests still inject their own
+  mocks explicitly. PASS
+
+### 3. Security and privacy review
+
+- Values are never logged or persisted outside the mapped `chrome.storage` area; no raw
+  content is emitted. PASS
+- No network, IndexedDB, filesystem, clipboard, or host-page access; no side effects. PASS
+- `getChromeStorage` throws a fixed, non-sensitive error when `chrome.storage` is absent;
+  it does not read or reveal stored values. PASS
+- No secret or credential is embedded in production code or evidence. PASS
+- Session-area keys remain ephemeral coordination state and are not treated as durable. PASS
+
+### 4. Findings and dispositions
+
+| ID | Severity | Finding | Disposition |
+|----|----------|---------|-------------|
+| B6 | Low (typing) | The plan's `tests/helpers/chromeMock.ts` imports `StorageArea` from `@/core/storage/chromeStorage`, which the plan's adapter did not export. | Fixed type-only with an additive `export type { StorageArea, StorageKey } from './storageKeys';`; no runtime surface changed. |
+| B7 | Low (typing) | The plan's object-literal generic methods (`async read<T>(key, schema)`) fail the pinned `strict`/`noUnusedParameters` check (TS6133 'T' unused; TS7006 implicit any) because generic contextual typing does not flow into object-literal methods. | All three methods given their explicit `ValidatedStorage` signatures; behaviour and values unchanged. |
+| B8 | Low (typing) | The plan's `changes[key]` is optional under the pinned `noUncheckedIndexedAccess: true` (TS2532 on `change.newValue`). | Minimal non-null assertion `changes[key]!` applied inside the existing `key in changes` guard; assertions and behaviour unchanged. |
+| — | Info | `pnpm run test -- tests/core/storage` also runs the pre-existing unit tests under Vitest 5; T04-only count confirmed with explicit file paths (2 files, 10 tests). | Recorded; not a defect. |
+
+No Critical, High, or Medium finding remains unresolved.
+
+### 5. Verification evidence
+
+RED: `pnpm run test -- tests/core/storage` exit 1 — module-resolution failure for
+`@/core/storage/storageKeys` and `@/core/storage/chromeStorage`. GREEN: focused test
+exit 0 (T04-only 2 files, 10 tests), `pnpm run typecheck` exit 0, `pnpm run lint` exit 0,
+`pnpm exec prettier --check .` exit 0, and the phase-applicable chain
+`typecheck && lint && test` exit 0 (5 files, 21 tests). Full output is recorded in
+`verification.txt` (Task 04 section).
+
+### Acceptance decision
+
+**PASS** — Task 04 meets specification-compliance, code-quality, and security/privacy
+requirements; the three Low-severity typing adaptations (B6–B8) are documented,
+type-only, and non-behavioural.

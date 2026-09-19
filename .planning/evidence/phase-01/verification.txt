@@ -277,3 +277,95 @@ Code-quality and security checklist:
 
 Completion criteria: both test files green; typecheck and lint pass; phase-applicable
 chain exit 0; one atomic task commit exists; working tree clean; status recorded.
+
+=== Task 04 — Storage Keys and Validated Chrome-Storage Adapter (2026-09-19T10:28:14Z) ===
+
+task ID: T04
+branch: phoenix
+repository root: /Users/george.li/Documents/workspaces/nowpilot
+base commit: d357adf3d71b181eb9478fa39ce5499adc3f247b
+implementation tier: economy
+
+Step 1 — Files created:
+  src/core/storage/storageKeys.ts
+  src/core/storage/chromeStorage.ts
+  tests/helpers/chromeMock.ts
+  tests/core/storage/storageKeys.test.ts
+  tests/core/storage/chromeStorage.test.ts
+Step 6 — Files modified:
+  tests/setup.ts (default chrome.storage mock; imported createChromeStorageMock)
+
+Step 2 — RED (prove modules absent):
+  command: pnpm run test -- tests/core/storage
+  observed exit status: 1
+  output: Failed to resolve import "@/core/storage/chromeStorage" from
+          tests/core/storage/chromeStorage.test.ts; Failed to resolve import
+          "@/core/storage/storageKeys" from tests/core/storage/storageKeys.test.ts.
+  expected failure reason confirmed: both target modules do not exist yet.
+
+Step 5 — GREEN:
+  command: pnpm run test -- tests/core/storage
+  exit status: 0
+  output: Test Files 5 passed (5); Tests 21 passed (21)
+  note: under Vitest 5 the pnpm-script passthrough runs the whole unit project;
+        T04-only count confirmed with explicit paths (2 files, 10 tests).
+
+Step 7 — Focused verification:
+  command: pnpm exec vitest run --project unit tests/core/storage
+  exit status: 0
+  output: Test Files 2 passed (2); Tests 10 passed (10), 0 failed, 0 skipped.
+
+Phase 01 verification applicable now:
+  command: pnpm run typecheck && pnpm run lint && pnpm run test
+  exit status: 0
+  output: typecheck clean; lint clean; unit project 5 files, 21 tests passed.
+
+Formatting:
+  pnpm exec prettier --write src/core/storage/chromeStorage.ts ...   => exit 0
+  pnpm exec prettier --check .                                      => exit 0
+    (All matched files use Prettier code style!)
+
+Test counts:
+  T04 test files: 2 passed, 10 tests passed (2 storageKeys + 8 chromeStorage),
+  0 failed, 0 skipped.
+  Unit project total after T04: 5 files, 21 passed.
+
+Specification-compliance checklist:
+  - exactly the 7 DESIGN.md Section 9 keys, in order: np_workspace_meta,
+    np_workspace_version, np_workspace_election, np_workspace_handoff,
+    np_standalone_tab, np_theme, np_theme_pack: yes
+  - area mapping exact (local/local/session/session/session/sync/sync): yes
+  - each key declared exactly once; no invented keys: yes
+  - all reads Zod-validated; malformed/missing data fails closed to
+    {status:'invalid'} or {status:'missing'}, never throws: yes
+  - write validates through the schema before persisting: yes
+  - session values are ephemeral coordination state, never labelled durable: yes
+  - no IndexedDB, no network, no WXT storage API, no direct chrome.storage call
+    outside this adapter, no side effects: yes
+  - no new dependency (zod reused): yes
+
+Code-quality and security checklist:
+  - read never throws on malformed stored data: yes
+  - write rejects invalid values before the underlying set: yes
+  - subscribe filters by exact key and mapped area; unsubscribe removes the
+    listener and is safe to call once per subscription: yes
+  - no raw value or sensitive content logged: yes
+  - only the six task files created/modified; toolchain config untouched: yes
+
+Type-level deviations (disclosed):
+  (D1) tests/helpers/chromeMock.ts (verbatim from plan) imports `StorageArea`
+       from '@/core/storage/chromeStorage'. The plan's chromeStorage.ts did not
+       export it. A single additive type re-export line
+       `export type { StorageArea, StorageKey } from './storageKeys';` was added;
+       no runtime surface changed.
+  (D2) The plan's object-literal generic methods (`async read<T>(key, schema)`)
+       fail the pinned `strict`/`noUnusedParameters` type-check (TS6133/TS7006
+       implicit any; generic contextual typing does not flow into object-literal
+       methods). The three methods were given their explicit interface
+       signatures; behaviour and values are identical.
+  (D3) The plan's `const change = changes[key]` is optional under the pinned
+       `noUncheckedIndexedAccess: true`; minimal non-null assertion
+       `changes[key]!` applied inside the already-guarded `key in changes` branch.
+
+Completion criteria: storage tests green; typecheck and lint pass; phase-applicable
+chain exit 0; one atomic task commit exists; working tree clean; status recorded.

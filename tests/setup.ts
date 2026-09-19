@@ -1,4 +1,12 @@
 import '@testing-library/jest-dom/vitest';
+import { createChromeStorageMock } from './helpers/chromeMock';
+
+if (typeof globalThis.chrome === 'undefined') {
+  (globalThis as { chrome?: unknown }).chrome = {
+    storage: createChromeStorageMock(),
+    runtime: { id: 'test-extension-id' },
+  };
+}
 
 if (typeof window !== 'undefined' && typeof window.matchMedia !== 'function') {
   window.matchMedia = ((query: string) => ({

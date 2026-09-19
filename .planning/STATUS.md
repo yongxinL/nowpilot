@@ -9,18 +9,18 @@ rewrite or delete prior history.
 - **Current phase:** Phase 01 — Runtime, Shells, and Workspace
 - **Design status:** Approved
 - **Plan status:** Approved
-- **Implementation status:** In progress — T01 accepted; T02 accepted; T03 accepted
+- **Implementation status:** In progress — T01 accepted; T02 accepted; T03 accepted; T04 accepted
 - **Planning baseline branch:** `phoenix`
 - **Implementation branch:** `phoenix`
 - **Historical approved planning baseline commit:** `bd6ac44d6f562722c18f0d07e6910634e549c713`
 - **Approved planning baseline commit:** `3fb619730c8032d4aa121c5b8aa9649901b45f5f`
-- **Current task:** T03 — Operational Error and Diagnostic Registries with `debugLog` (accepted)
-- **Last commit:** T03 atomic commit `feat(phase-01): add error and diagnostic registries` (SHA captured post-commit in `.superpowers/sdd/PLAN/task-03-report.md`)
-- **Verification result:** Pass — T03 focused test exit 0 (3 files, 11 tests; T03-only 2 files, 7 tests), `typecheck` exit 0, `lint` exit 0, `prettier --check .` exit 0; phase chain `typecheck && lint && test` exit 0
-- **Next task:** T04
+- **Current task:** T04 — Storage Keys and Validated Chrome-Storage Adapter (accepted)
+- **Last commit:** T04 atomic commit `feat(phase-01): add storage keys and validated storage adapter` (SHA captured post-commit in `.superpowers/sdd/PLAN/task-04-report.md`)
+- **Verification result:** Pass — T04 focused test exit 0 (2 files, 10 tests), `typecheck` exit 0, `lint` exit 0, `prettier --check .` exit 0; phase chain `typecheck && lint && test` exit 0 (5 files, 21 tests)
+- **Next task:** T05 — Canonical Standalone Route Registry
 - **Blockers:** None
-- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 03 sections)
-- **Evidence status:** Task 03 verification and review recorded
+- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 04 sections)
+- **Evidence status:** Task 04 verification and review recorded
 
 ## History
 
@@ -146,3 +146,28 @@ rewrite or delete prior history.
   `.planning/evidence/phase-01/review.md` (Task 03 sections). Task commit
   `feat(phase-01): add error and diagnostic registries`. Current task T03 accepted;
   next task T04.
+- Task 04 (Storage Keys and Validated Chrome-Storage Adapter) executed on `phoenix`
+  in the repository root. RED confirmed at `pnpm run test -- tests/core/storage`
+  (exit 1; "Failed to resolve import `@/core/storage/storageKeys`" and
+  `@/core/storage/chromeStorage`). Created `src/core/storage/storageKeys.ts`
+  (exactly the 7 DESIGN.md Section 9 keys in approved order; `STORAGE_AREAS`,
+  `StorageArea`, `StorageKey`, `STORAGE_KEY_AREAS` with mapping
+  local/local/session/session/session/sync/sync, `storageAreaForKey`) and
+  `src/core/storage/chromeStorage.ts` (structural `ChromeStorage*` types,
+  `getChromeStorage`, `StorageReadResult`, `ValidatedStorage`,
+  `createValidatedStorage` with schema-validated read/write/remove/subscribe and
+  fail-closed handling). Created `tests/helpers/chromeMock.ts`,
+  `tests/core/storage/storageKeys.test.ts` (2 tests), and
+  `tests/core/storage/chromeStorage.test.ts` (8 tests); modified `tests/setup.ts`
+  to install a default `chrome.storage` mock. Three Low-severity type-only
+  adaptations (B6–B8) documented in `review.md`: an additive
+  `export type { StorageArea, StorageKey } from './storageKeys'` re-export,
+  explicit `ValidatedStorage` method signatures on the returned object literal,
+  and `changes[key]!` under the pinned `noUncheckedIndexedAccess`. GREEN: focused
+  test exit 0 (2 files, 10 tests), `typecheck` exit 0, `lint` exit 0,
+  `prettier --check .` exit 0; phase chain `typecheck && lint && test` exit 0
+  (5 files, 21 tests). Evidence recorded in
+  `.planning/evidence/phase-01/verification.txt` and
+  `.planning/evidence/phase-01/review.md` (Task 04 sections). Task commit
+  `feat(phase-01): add storage keys and validated storage adapter`. Current task
+  T04 accepted; next task T05.
