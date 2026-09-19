@@ -9,18 +9,18 @@ rewrite or delete prior history.
 - **Current phase:** Phase 01 — Runtime, Shells, and Workspace
 - **Design status:** Approved and amended by ADR-0001 (background-serialised workspace election)
 - **Plan status:** Approved and amended (corrective task T13C; T14/T16/T22/T24/T25/T26/T28 amendment notes)
-- **Implementation status:** T01–T13C accepted; T14, T15, and T16 implemented and verified; T17–T28 not started
+- **Implementation status:** T01–T13C accepted; T14, T15, and T16 implemented and verified; T17 implemented and verified; T18–T28 not started
 - **Planning baseline branch:** `phoenix`
 - **Implementation branch:** `phoenix`
 - **Historical approved planning baseline commit:** `bd6ac44d6f562722c18f0d07e6910634e549c713`
 - **Approved planning baseline commit:** `b2c6ef289bc1abebbeccfad81d7034ced81f4eb7`
-- **Current task:** T16 complete; next task T17
-- **Last commit:** the T16 task commit `feat(phase-01): coordinate writer handoff and mirror convergence`, on top of `1d7afcf` (`feat(phase-01): version and idempotently apply workspace mutations`)
-- **Verification result:** T16 sync suite 17/17 new tests; full unit suite 180/180 (20 files); `typecheck`, `lint`, `prettier --check .`, and the phase chain `typecheck && lint && test` all exit 0. `handleHandoffPrepare` acknowledges the handoff record and fails closed otherwise; `handleHandoffAck` commits ownership through the T14 handoff/arbiter and reports committed only on success; `handleRelinquish` reports relinquished only when accepted; `start()` never writes the election record and delegates missing/invalid sidepanel recovery to the T13C client as `fallback`/`stale-recovery`.
-- **Next action:** implement T17 per approved Phase 01 `PLAN.md`
-- **Blockers:** None; T13, T13C, T14, T15, and T16 are accepted
-- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 14, Task 15, and Task 16 sections)
-- **Evidence status:** T16 verified; self-review PASS
+- **Current task:** T17 complete; next task T18
+- **Last commit:** the T17 task commit `feat(phase-01): add theme schemas config store and hook`, on top of `7aa7e96` (`feat(phase-01): coordinate writer handoff and mirror convergence`)
+- **Verification result:** T17 theme suite 14/14 new tests (4 files); full unit suite 194/194 (24 files); `typecheck`, `lint`, `prettier --check .`, and the phase chain `typecheck && lint && test` all exit 0. `np_theme`/`np_theme_pack` persist to `chrome.storage.sync` through the T04 adapter; `getAntdConfig` composes seed → pack overlay → algorithm with `cssVar { key: 'nowpilot' }`; invalid values fall back to canonical defaults and log `THEME_INVALID_VALUE`; write failures fail closed with `THEME_PERSIST_FAILED`; live propagation uses `chrome.storage.onChanged` via `subscribe`.
+- **Next action:** implement T18 per approved Phase 01 `PLAN.md`
+- **Blockers:** None; T13, T13C, T14, T15, T16, and T17 are accepted
+- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 14, Task 15, Task 16, and Task 17 sections)
+- **Evidence status:** T17 verified; self-review PASS
 
 ## History
 
@@ -704,3 +704,42 @@ rewrite or delete prior history.
   observation). Task commit
   `feat(phase-01): coordinate writer handoff and mirror convergence`. Current task T16
   accepted; next task T17 — per approved Phase 01 `PLAN.md`.
+- Task 17 (Theme Schemas, Ant Design Configuration, Persistence, and Live Propagation)
+  executed on `phoenix` in the repository root. Implementation tier balanced. RED confirmed
+  at `pnpm run test -- tests/core/theme` (exit 1; Vite import analysis failed to resolve
+  `@/core/theme/themeTypes`, `@/core/theme/antdConfig`, `@/core/theme/ThemeStore`, and
+  `@/core/theme/useTheme`; the 20 pre-existing files / 180 tests still passed). Created
+  `src/core/theme/themeTypes.ts` (`THEME_MODES` auto/light/dark; `ThemeMode`;
+  `ThemeModeSchema`; `THEME_PACKS` default/liquid-glass/claude-warm; `ThemePack`;
+  `ThemePackSchema`; `DEFAULT_THEME_MODE='auto'`; `DEFAULT_THEME_PACK='default'`;
+  `resolveColorScheme(mode, prefersDark)`), `src/core/theme/antdConfig.ts`
+  (`NOWPILOT_SEED`, `NOWPILOT_COMPONENTS`, `NOWPILOT_PACK_OVERLAYS`, `AntdConfigInput`,
+  and `getAntdConfig` composing seed → pack overlay → default/dark algorithm with
+  `compactAlgorithm` appended when compact, plus `cssVar { key: 'nowpilot' }`),
+  `src/core/theme/ThemeStore.ts` (`ThemePreferences`, `ThemeStore`,
+  `createThemeStore(storage)` reading/writing `np_theme`/`np_theme_pack` through the T04
+  `chrome.storage.sync` mapping; invalid/missing values fall back to canonical defaults and
+  log `THEME_INVALID_VALUE` with a fixed key label only; write failures log and fail closed
+  with `THEME_PERSIST_FAILED`; `subscribe` emits combined preferences from
+  `chrome.storage.onChanged`), and `src/core/theme/useTheme.ts` (`useTheme(store, options)`
+  seeding canonical defaults, reading stored preferences with an active/unmount guard, and
+  returning the composed `config` plus `mode`/`pack`). Created
+  `tests/core/theme/themeTypes.test.ts` (3 tests), `antdConfig.test.ts` (5 tests),
+  `themeStore.test.ts` (5 tests), and `useTheme.test.tsx` (1 test). Two Low-severity
+  type-only test adaptations (T17-A/T17-B) documented in `review.md`: the storage
+  reject mock uses `vi.mocked(chromeStorage.sync.set).mockRejectedValueOnce(...)`
+  (TS2339 from the widened `StorageAreaMock` signature), and the `useTheme` store mock
+  now invokes the stored listener after `writeMode`/`writePack` so the write-only
+  `listener` variable satisfies `noUnusedLocals`/`no-unused-vars`; identifiers, values,
+  and assertions are unchanged and the supplied implementation is untouched.
+  `pnpm exec prettier --check .` flagged only the eight new T17 files, which were
+  formatted with no identifier/value/assertion change. GREEN: explicit focused path exit 0
+  (4 files, 14 tests), `pnpm run test` exit 0 (24 files, 194 tests), `typecheck` exit 0,
+  `lint` exit 0, `prettier --check .` exit 0; phase chain `typecheck && lint && test`
+  exit 0 (24 files, 194 tests). No new storage key, error code, message type, permission,
+  dependency, provider, or `DiagnosticEvent`; no `@ant-design/x`; no direct `chrome.*`
+  outside the T04 adapter; theme is independent of writer election. Evidence recorded in
+  `.planning/evidence/phase-01/verification.txt` and
+  `.planning/evidence/phase-01/review.md` (Task 17 sections). Task commit
+  `feat(phase-01): add theme schemas config store and hook`. Current task T17 accepted;
+  next task T18 — per approved Phase 01 `PLAN.md`.

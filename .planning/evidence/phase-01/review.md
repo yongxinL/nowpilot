@@ -1588,3 +1588,120 @@ Full output is recorded in `verification.txt` (Task 16 section).
 **PASS** — Task 16 meets specification-compliance, code-quality, and security/privacy
 requirements; only Low-severity formatting/type-only test-helper corrections were
 needed and no blocking finding remains. Next task T17.
+
+---
+
+## Task 17 — Theme Schemas, Ant Design Configuration, Persistence, and Live Propagation
+
+**Phase:** Phase 01 — Runtime, Shells, and Workspace
+**Branch:** `phoenix`
+**Repository root:** /Users/george.li/Documents/workspaces/nowpilot
+**Base commit:** `7aa7e9683ecc17fe9f06c7679cc735c4755d2d3f` (T16 atomic commit)
+**Classification:** code task (TDD RED→GREEN); implementation tier balanced
+
+### Scope reviewed
+
+- `src/core/theme/themeTypes.ts` (created)
+- `src/core/theme/antdConfig.ts` (created)
+- `src/core/theme/ThemeStore.ts` (created)
+- `src/core/theme/useTheme.ts` (created)
+- `tests/core/theme/themeTypes.test.ts`, `tests/core/theme/antdConfig.test.ts`,
+  `tests/core/theme/themeStore.test.ts`, `tests/core/theme/useTheme.test.tsx` (created)
+
+### 1. Specification-compliance review
+
+- `THEME_MODES` is exactly `['auto','light','dark']`; `THEME_PACKS` is exactly
+  `['default','liquid-glass','claude-warm']`; `DEFAULT_THEME_MODE='auto'` and
+  `DEFAULT_THEME_PACK='default'`; `ThemeModeSchema`/`ThemePackSchema` are closed `z.enum`s
+  that reject `sepia`/`solarized` (asserted). PASS
+- `resolveColorScheme(mode, prefersDark)` resolves `auto` from `prefers-dark-scheme` and
+  passes `light`/`dark` through unchanged (asserted for all four combinations). PASS
+- `np_theme` and `np_theme_pack` are the T04 `sync`-area keys; `ThemeStore` performs all
+  access through the T04 `ValidatedStorage` adapter, not `chrome.storage` directly. The
+  test asserts both keys land in `chromeStorage.sync.set` and that `local.set` is never
+  called. PASS
+- `getAntdConfig` composes `NOWPILOT_SEED` → `NOWPILOT_PACK_OVERLAYS[pack]` → algorithm.
+  Dark selects `theme.darkAlgorithm`, light selects `theme.defaultAlgorithm`, and compact
+  appends `theme.compactAlgorithm` (asserted against the live antd 6.6.4 exports). The
+  claude-warm `colorBgBase` and liquid-glass `colorBgContainer` overlays are asserted. PASS
+- `cssVar: { key: 'nowpilot' }` and `hashed: false` enable stable CSS-variable switching
+  (asserted); no `@ant-design/x` import and no provider is configured. PASS
+- Invalid/missing stored values fall back to canonical defaults and log the T03 canonical
+  `THEME_INVALID_VALUE` with only a fixed key label (no raw stored value). `read()` never
+  throws. PASS
+- `writeMode`/`writePack` write validated values through the T04 adapter and fail closed:
+  a rejected `set` logs `THEME_PERSIST_FAILED` and rejects with an error carrying the same
+  code (asserted). PASS
+- `subscribe` combines both key subscriptions and re-emits the full combined preferences
+  after a change (asserted with `vi.waitFor`); `useTheme` seeds from canonical defaults,
+  performs an async read, guards post-unmount updates, and unsubscribes. PASS
+- Theme is independent of writer election: no election, workspace, background, or
+  mutation code is referenced. `compact` is a caller-supplied input (Side Panel true,
+  Standalone false), not surface-hard-coded here. PASS
+- Only the eight T17 files were created, plus `.planning` evidence/STATUS; no new storage
+  key, error code, message type, permission, dependency, or `DiagnosticEvent`. PASS
+
+### 2. Code-quality review
+
+- Modules are small, single-purpose, and strongly typed; no `any`. `getAntdConfig` is a
+  pure function; `ThemeStore` is a closure over the injected `ValidatedStorage`; `useTheme`
+  is a thin React effect wrapper. PASS
+- `ThemeStore.read` reads both keys before deciding so a single invalid key does not
+  suppress the valid one; each fallback is independent. PASS
+- Both catch blocks are non-empty: each logs the canonical code and rethrows a coded error.
+  No silent failure. PASS
+- `useTheme`'s effect guards every `setState` with the `active` flag and calls the returned
+  unsubscribe on cleanup, so no state update occurs after unmount and no listener leaks. PASS
+- No duplication of canonical identifiers: mode/pack literals, schemas, defaults, keys,
+  seed, and overlays are each declared once and imported. PASS
+- Two Low-severity type-only test adaptations were required (below); production code
+  typechecked exactly as written under the pinned `strict`/`noUncheckedIndexedAccess`
+  configuration.
+
+### 3. Security and privacy review (assets and trust boundaries)
+
+- No raw stored value is ever logged: `THEME_INVALID_VALUE` and `THEME_PERSIST_FAILED`
+  records carry only a fixed `{ key }` label, and the T03 `debugLog` still applies
+  key-based redaction. The only asserted log content is the canonical code string. PASS
+- No secrets, tokens, cookies, passwords, prompts, page content, or customer data are
+  read, logged, persisted, exported, or committed; theme values are closed enums and
+  fixed tokens. PASS
+- Persistence is limited to the two approved `sync` keys through the validated adapter;
+  invalid values cannot be persisted (`write` parses before `set`). PASS
+- No direct `chrome.*` access in any theme module, no IndexedDB, no network, no filesystem,
+  no content script, and no host-page interaction. PASS
+- Theme state has no instruction authority and cannot affect permissions, prompts, or
+  code; unknown mode/pack values fail closed to canonical defaults. PASS
+
+### 4. Findings and dispositions
+
+| ID | Severity | Finding | Disposition |
+|----|----------|---------|-------------|
+| T17-A | Low (type-only) | The brief's `chromeStorage.sync.set.mockRejectedValueOnce(...)` is TS2339 because `StorageAreaMock` widens area methods to `ChromeStorageAreaLike` signatures. | Used the canonical `vi.mocked(chromeStorage.sync.set).mockRejectedValueOnce(new Error('quota'))`; identifiers, value, and all assertions unchanged. |
+| T17-B | Low (type-only) | The brief's `useTheme` test mock held a write-only `listener` variable, rejected by `noUnusedLocals` (TS6133) and the repo ESLint `no-unused-vars` rule. | The mock now invokes the stored listener after updating `prefs` in `writeMode`/`writePack` (`listener?.(prefs)`), matching the real store's propagation contract. Identifiers, initial values, and assertions unchanged; the test performs no writes, so observed behaviour is unchanged. |
+| — | Low (formatting) | `pnpm exec prettier --check .` was applied to the eight new T17 files after creation. | Formatted only the T17 files; identifiers, values, and assertions unchanged; no other file reformatted. |
+| — | Info | The brief's focused command runs the whole unit project (the positional path does not narrow the Vitest 5 project run); T17-only count confirmed with an explicit path (4 files, 14 tests). | Recorded; not a defect. |
+
+The two type-only adaptations are confined to the two permitted test files, were required
+solely to satisfy the repo's pinned TypeScript and ESLint configuration (which the task
+requires to exit 0), and do not touch the supplied implementation, assertions, or mock
+values. No production code and no shared helper or configuration was modified.
+
+No Critical, High, or Medium finding remains unresolved.
+
+### 5. Verification evidence
+
+RED: `pnpm run test -- tests/core/theme` exit 1 — module-resolution failures for
+`@/core/theme/themeTypes`, `@/core/theme/antdConfig`, `@/core/theme/ThemeStore`, and
+`@/core/theme/useTheme`; the 20 pre-existing files (180 tests) still passed. GREEN:
+explicit focused path exit 0 (4 files, 14 tests), `pnpm run test -- tests/core/theme`
+exit 0 (24 files, 194 tests), `pnpm run typecheck` exit 0, `pnpm run lint` exit 0,
+`pnpm exec prettier --check .` exit 0, and the phase-applicable chain
+`typecheck && lint && test` exit 0 (24 files, 194 tests). Full output is recorded in
+`verification.txt` (Task 17 section).
+
+### Acceptance decision
+
+**PASS** — Task 17 meets specification-compliance, code-quality, and security/privacy
+requirements; the only findings are Low-severity type-only test adaptations and a
+Low-severity formatting pass, both disclosed, and no blocking finding remains.

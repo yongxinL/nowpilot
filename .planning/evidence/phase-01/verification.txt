@@ -1843,3 +1843,157 @@ Code-quality and security checklist:
 
 Completion criteria: sync test green; typecheck and lint pass; phase-applicable chain
 exit 0; one atomic task commit exists; working tree clean; status recorded.
+
+=== Task 17 — Theme Schemas, Ant Design Configuration, Persistence, and Live Propagation (2026-09-19T22:34:45Z) ===
+
+task ID: T17
+branch: phoenix
+repository root: /Users/george.li/Documents/workspaces/nowpilot
+classification: code task; TDD RED->GREEN applied
+implementation tier: balanced
+base commit: 7aa7e9683ecc17fe9f06c7679cc735c4755d2d3f (T16 atomic commit
+  `feat(phase-01): coordinate writer handoff and mirror convergence`)
+Files created (production):
+  src/core/theme/themeTypes.ts
+  src/core/theme/antdConfig.ts
+  src/core/theme/ThemeStore.ts
+  src/core/theme/useTheme.ts
+Files created (tests):
+  tests/core/theme/themeTypes.test.ts
+  tests/core/theme/antdConfig.test.ts
+  tests/core/theme/themeStore.test.ts
+  tests/core/theme/useTheme.test.tsx
+Files modified: none (production or toolchain); no dependency change
+
+Step 1 — four test files created verbatim from the brief:
+  themeTypes.test.ts (3 tests), antdConfig.test.ts (5 tests), themeStore.test.ts
+  (5 tests), useTheme.test.tsx (1 test).
+
+Step 2 — RED:
+  command: pnpm run test -- tests/core/theme
+  exit status: 1
+  observed: Test Files 4 failed | 20 passed (24); Tests 180 passed (180)
+    FAIL |unit| tests/core/theme/themeTypes.test.ts (0 test)
+      Error: Failed to resolve import "@/core/theme/themeTypes" from
+      "tests/core/theme/themeTypes.test.ts". Does the file exist?
+      Plugin: vite:import-analysis
+    FAIL |unit| tests/core/theme/antdConfig.test.ts (0 test)
+      Error: Failed to resolve import "@/core/theme/antdConfig" from
+      "tests/core/theme/antdConfig.test.ts". Does the file exist?
+    FAIL |unit| tests/core/theme/themeStore.test.ts (0 test)
+      Error: Failed to resolve import "@/core/theme/ThemeStore" from
+      "tests/core/theme/themeStore.test.ts". Does the file exist?
+    FAIL |unit| tests/core/theme/useTheme.test.tsx (0 test)
+      Error: Failed to resolve import "@/core/theme/useTheme" from
+      "tests/core/theme/useTheme.test.tsx". Does the file exist?
+  Expected failure reason confirmed: all four theme modules were absent, so Vite could
+  not resolve the `@/core/theme/*` imports. The 20 passing files were the pre-existing
+  unit tests (Vitest 5 does not restrict `--` positionals to the requested
+  subdirectory under `--project unit`). The four pre-existing baseline had 180 tests.
+  No canonical token, key, algorithm, or error code was missing; `antd` 6.6.4 exposes
+  `theme.defaultAlgorithm`, `theme.darkAlgorithm`, `theme.compactAlgorithm`,
+  `ThemeConfig.algorithm`, `token`, `components`, `hashed`, and `cssVar`.
+
+Steps 3–6 — implementation verbatim per the brief:
+  themeTypes.ts: THEME_MODES exactly ['auto','light','dark']; ThemeMode; ThemeModeSchema
+    (closed z.enum); THEME_PACKS exactly ['default','liquid-glass','claude-warm'];
+    ThemePack; ThemePackSchema; DEFAULT_THEME_MODE='auto'; DEFAULT_THEME_PACK='default';
+    ResolvedColorScheme='light'|'dark'; resolveColorScheme(mode, prefersDark) resolves
+    'auto' from prefersDark and passes explicit modes through.
+  antdConfig.ts: NOWPILOT_SEED (primary/success/warning/error/info colours,
+    colorTextBase #1F2430, colorBgBase #FCFCFD, borderRadius 8, wireframe false);
+    NOWPILOT_COMPONENTS (Card/Button/Layout/Menu/Modal); NOWPILOT_PACK_OVERLAYS
+    (default {}, liquid-glass colorBgContainer rgba(255,255,255,0.68), claude-warm
+    colorBgBase #FAF7F2); AntdConfigInput; getAntdConfig applies seed -> pack overlay ->
+    algorithm (default/dark by resolved scheme, plus compactAlgorithm when compact),
+    cssVar { key: 'nowpilot' }, hashed false.
+  ThemeStore.ts: ThemePreferences; ThemeStore (read/writeMode/writePack/subscribe);
+    createThemeStore(storage) reads np_theme/np_theme_pack through the T04 validated
+    adapter, logs canonical THEME_INVALID_VALUE (fixed key label, no raw value) and falls
+    back to canonical defaults for invalid/missing values; writeMode/writePack write to
+    chrome.storage.sync (T04 area mapping) and fail closed with THEME_PERSIST_FAILED on
+    rejection; subscribe combines both key subscriptions and re-reads to emit combined
+    preferences. Theme is independent of writer election; no chrome.storage call outside
+    the T04 adapter; no @ant-design/x.
+  useTheme.ts: UseThemeOptions/UseThemeResult; useTheme(store, options) seeds from
+    canonical defaults, subscribes and reads stored preferences in an effect (active
+    guard + unsubscribe cleanup), and returns config from getAntdConfig plus mode/pack.
+
+Step 7 — GREEN (focused, explicit path):
+  command: pnpm exec vitest run --project unit tests/core/theme
+  exit status: 0
+  output: Test Files 4 passed (4); Tests 14 passed (14), 0 failed, 0 skipped (T17-only).
+  command: pnpm run test -- tests/core/theme
+  exit status: 0
+  output: Test Files 24 passed (24); Tests 194 passed (194)
+  note: under Vitest 5 the pnpm-script passthrough runs the whole unit project.
+
+Focused verification (sequential):
+  pnpm run typecheck                             => exit 0  (tsc --noEmit clean)
+  pnpm run lint                                  => exit 0  (eslint . clean)
+  pnpm exec prettier --check .                   => exit 0  (All matched files use
+    Prettier code style; the eight new T17 files were formatted after creation with
+    identifiers, values, and assertions unchanged and no other file reformatted)
+
+Phase 01 verification applicable now:
+  command: pnpm run typecheck && pnpm run lint && pnpm run test
+  exit status: 0
+  output: typecheck clean; lint clean; unit project 24 files, 194 tests passed.
+
+Test counts:
+  T17 test files: 4 passed, 14 tests passed (3 themeTypes + 5 antdConfig + 5 themeStore
+  + 1 useTheme), 0 failed, 0 skipped.
+  Unit project total after T17: 24 files, 194 passed.
+
+Type-only test adaptations (two; disclosed; supplied implementation unchanged):
+  (T17-A) tests/core/theme/themeStore.test.ts: the brief's
+    `chromeStorage.sync.set.mockRejectedValueOnce(...)` is TS2339 because
+    `StorageAreaMock` extends `ChromeStorageAreaLike` and therefore widens the area
+    methods to their plain signatures. Wrapped in the canonical Vitest type helper:
+    `vi.mocked(chromeStorage.sync.set).mockRejectedValueOnce(...)`. All identifiers,
+    the mock value `new Error('quota')`, and every assertion are unchanged.
+  (T17-B) tests/core/theme/useTheme.test.tsx: the brief's mock held a write-only
+    `listener` variable, which the pinned `noUnusedLocals` (tsc) and the repo ESLint
+    rule `@typescript-eslint/no-unused-vars` reject. The mock now invokes the stored
+    listener after updating `prefs` in `writeMode`/`writePack` (`listener?.(prefs)`),
+    matching the real `ThemeStore` propagation contract. All identifiers, initial
+    values, and assertions are unchanged; the one test performs no writes, so no
+    assertion or observed behaviour changes.
+  Before these adaptations `pnpm run typecheck` exited 2 (TS2339 at
+  themeStore.test.ts:33 and TS6133 at useTheme.test.tsx:7) and `pnpm run lint` exited
+  1 (same unused variable). After them both exit 0. tsconfig.json, vitest.config.ts,
+  eslint.config.mjs, and tests/helpers/chromeMock.ts were not modified.
+
+Specification-compliance checklist:
+  - np_theme and np_theme_pack persist to chrome.storage.sync via the T04 mapping: yes
+  - seed -> pack overlay -> algorithm ordering in getAntdConfig: yes
+  - default/dark algorithm by resolved mode; compactAlgorithm appended when compact: yes
+  - resolveColorScheme resolves 'auto' from prefersDark and passes explicit modes: yes
+  - invalid/missing stored values fall back to canonical defaults (auto/default): yes
+  - invalid stored values log canonical THEME_INVALID_VALUE with a fixed key label only: yes
+  - write failures fail closed and reject with THEME_PERSIST_FAILED: yes
+  - Side Panel compact true / Standalone compact false is applied by callers (compact
+    is a hook input; no surface-specific hard-coding here): yes
+  - closed ThemeModeSchema/ThemePackSchema reject unknown modes/packs: yes
+  - no @ant-design/x; no hard-coded hex in components (seed/overlays only): yes
+  - no provider configuration; no new storage key, error code, permission, or
+    dependency; theme independent of writer election: yes
+  - only the eight T17 files created (plus .planning evidence/STATUS); no other file
+    changed (except the two disclosed test-only adaptations within the allowed files): yes
+
+Code-quality and security checklist:
+  - no raw stored value is logged; THEME_INVALID_VALUE/THEME_PERSIST_FAILED carry only a
+    fixed key label through the redacting T03 debugLog: yes
+  - write failures fail closed; no empty catch; the canonical code is logged and then
+    rethrown as an error bearing the same code: yes
+  - live propagation is driven by chrome.storage.onChanged through the T04 subscribe
+    path; no remount-dependent switching: yes
+  - useTheme seeds canonical defaults before the async read and guards state updates
+    after unmount (active flag) and unsubscribes the store subscription: yes
+  - no direct chrome.* outside the T04 adapter; no IndexedDB/network/filesystem; no
+    content script; pure schema/config modules: yes
+  - no secrets, tokens, passwords, page content, or prompts handled or persisted: yes
+
+Completion criteria: theme tests green; typecheck and lint pass; prettier check passes;
+phase-applicable chain exit 0; one atomic task commit exists; working tree clean;
+status recorded.
