@@ -623,3 +623,82 @@ output is recorded in `verification.txt` (Task 08 section).
 **PASS** — Task 08 meets specification-compliance, code-quality, and security/privacy
 requirements; the only finding is a Low-severity formatting correction and no blocking
 finding remains.
+
+## Task 09 — Canonical Broadcast Bus
+
+### 1. Specification-compliance review
+
+- Interfaces match the brief exactly: `RawMessageListener`, `BroadcastBusDependencies`
+  (`extensionId`, `sendMessage`, `addMessageListener`, `removeMessageListener`),
+  `EnvelopeHandler`, `BroadcastBus` (`send`, `on`), and `createBroadcastBus(deps)`.
+  PASS
+- Inbound validation is central: `dispatch` calls `validateInboundEnvelope(message,
+  sender, deps.extensionId)` (the T08 boundary) and returns before any handler runs when
+  the result is not ok. Untrusted senders and malformed envelopes are never dispatched;
+  there is no silent success. PASS
+- All outgoing messages are `RuntimeEnvelope`; `on` is keyed only by the canonical
+  `MessageType` closed union. No invented message types, no raw payload, and no sender
+  logging. PASS
+- Only `src/core/runtime/BroadcastBus.ts` and `tests/core/runtime/broadcastBus.test.ts`
+  were created, plus `.planning` evidence/STATUS; no dependency, manifest, or permission
+  change; no content script; no direct `chrome.*`/`chrome.tabs` reference. PASS
+
+### 2. Code-quality review
+
+- The bus is small and closed: `send` delegates to the injected transport; `on` lazily
+  creates one raw transport listener per distinct subscribed `MessageType`, reuses it for
+  additional handlers of the same type, and removes it when its last handler is removed.
+  PASS
+- Unsubscribe cleanup is correct: a handler is deleted from its type set, and the raw
+  listener plus its map entry are removed only when every type set is empty. No leak, no
+  duplicate raw listener per type. PASS
+- No catch blocks; no empty catch; no global mutable state. Validation failure is a
+  fail-closed early return. PASS
+- One type-only adaptation: `handler.mock.calls[0][0].type` is TS2532 under the pinned
+  `noUncheckedIndexedAccess`; changed to `handler.mock.calls[0]![0].type` (same class as
+  T03 B5). No production assertion was added beyond the two `!` already in the brief. PASS
+
+### 3. Security and privacy review (assets and trust boundaries)
+
+- Trust boundary: the bus is a transport, not a validator; it delegates every inbound
+  message to the T08 `validateInboundEnvelope` boundary with the injected `extensionId`
+  and the raw sender before any handler runs. A foreign extension id, a non-extension URL
+  scheme, a disallowed source, or a schema-invalid envelope is rejected upstream and never
+  reaches a subscriber. PASS
+- Fail closed: a non-ok validation result returns from `dispatch`; no wildcard,
+  permissive default, or silent acceptance exists. PASS
+- No raw content logged: the bus itself logs nothing; the only records are the T08
+  canonical error codes with fixed reason labels emitted by `validateInboundEnvelope`.
+  No sender value, envelope id, payload, or message body is logged, persisted, or
+  committed. PASS
+- Input is untrusted data: `RawMessageListener` receives `unknown`/`unknown`; no sender
+  value is dereferenced by the bus, and data has no instruction authority. PASS
+- No consequential side effects: the module only registers/removes listeners and forwards
+  one envelope to an injected transport; no network, storage, IndexedDB, or filesystem
+  access. Content-script isolation, manifest permissions, and password handling are
+  unaffected. PASS
+
+### 4. Findings and dispositions
+
+| ID | Severity | Finding | Disposition |
+|----|----------|---------|-------------|
+| — | Low (type-only) | The brief's `handler.mock.calls[0][0].type` is TS2532 under `noUncheckedIndexedAccess`. | Applied `handler.mock.calls[0]![0].type`; values and assertions unchanged; tsconfig.json unmodified. |
+| — | Low (formatting) | `pnpm exec prettier --check .` flagged only the two new T09 files (line wrapping at printWidth 100). | Fixed by formatting only `src/core/runtime/BroadcastBus.ts` and `tests/core/runtime/broadcastBus.test.ts`; identifiers, message-type strings, payloads, and assertions unchanged; no other file reformatted. |
+
+No Critical, High, or Medium finding remains unresolved.
+
+### 5. Verification evidence
+
+RED: `pnpm run test -- tests/core/runtime/broadcastBus.test.ts` exit 1 — module-resolution
+failure for `@/core/runtime/BroadcastBus`; the 59 pre-existing unit tests still passed.
+GREEN: explicit focused path exit 0 (1 file, 5 tests), `pnpm run test` exit 0 (12 files,
+64 tests), `pnpm run typecheck` exit 0, `pnpm run lint` exit 0,
+`pnpm exec prettier --check .` exit 0, and the phase-applicable chain
+`typecheck && lint && test` exit 0. Full output is recorded in `verification.txt`
+(Task 09 section).
+
+### Acceptance decision
+
+**PASS** — Task 09 meets specification-compliance, code-quality, and security/privacy
+requirements; the only findings are a Low-severity type-only assertion and a Low-severity
+formatting correction, and no blocking finding remains.

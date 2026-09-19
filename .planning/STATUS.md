@@ -9,18 +9,18 @@ rewrite or delete prior history.
 - **Current phase:** Phase 01 — Runtime, Shells, and Workspace
 - **Design status:** Approved
 - **Plan status:** Approved
-- **Implementation status:** In progress — T01 accepted; T02 accepted; T03 accepted; T04 accepted; T05 accepted; T06 accepted; T07 accepted; T08 accepted
+- **Implementation status:** In progress — T01 accepted; T02 accepted; T03 accepted; T04 accepted; T05 accepted; T06 accepted; T07 accepted; T08 accepted; T09 accepted
 - **Planning baseline branch:** `phoenix`
 - **Implementation branch:** `phoenix`
 - **Historical approved planning baseline commit:** `bd6ac44d6f562722c18f0d07e6910634e549c713`
 - **Approved planning baseline commit:** `3fb619730c8032d4aa121c5b8aa9649901b45f5f`
-- **Current task:** T08 — Sender and Envelope Boundary Validation (accepted)
-- **Last commit:** T08 atomic commit `feat(phase-01): validate runtime envelope and sender at boundaries` (SHA captured post-commit in `.superpowers/sdd/PLAN/task-08-report.md`)
-- **Verification result:** Pass — T08 focused test exit 0 (1 file, 11 tests), `typecheck` exit 0, `lint` exit 0, `prettier --check .` exit 0 (after formatting the T08 test file only); phase chain `typecheck && lint && test` exit 0 (11 files, 59 tests)
-- **Next task:** T09 — (per approved Phase 01 `PLAN.md`)
+- **Current task:** T09 — Canonical Broadcast Bus (accepted)
+- **Last commit:** T09 atomic commit `feat(phase-01): add canonical broadcast bus` (SHA captured post-commit in `.superpowers/sdd/PLAN/task-09-report.md`)
+- **Verification result:** Pass — T09 focused test exit 0 (1 file, 5 tests), `typecheck` exit 0, `lint` exit 0, `prettier --check .` exit 0 (after formatting the two T09 files only); phase chain `typecheck && lint && test` exit 0 (12 files, 64 tests)
+- **Next task:** T10 — (per approved Phase 01 `PLAN.md`)
 - **Blockers:** None
-- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 08 sections)
-- **Evidence status:** Task 08 verification and review recorded
+- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 09 sections)
+- **Evidence status:** Task 09 verification and review recorded
 
 ## History
 
@@ -285,3 +285,32 @@ rewrite or delete prior history.
   `.planning/evidence/phase-01/review.md` (Task 08 sections). Task commit
   `feat(phase-01): validate runtime envelope and sender at boundaries`. Current task
   T08 accepted; next task T09 — per approved Phase 01 `PLAN.md`.
+- Task 09 (Canonical Broadcast Bus) executed on `phoenix` in the repository root.
+  Implementation tier balanced. RED confirmed at
+  `pnpm run test -- tests/core/runtime/broadcastBus.test.ts` (exit 1; "Failed to
+  resolve import `@/core/runtime/BroadcastBus`"; the 59 pre-existing unit tests still
+  passed). Created `src/core/runtime/BroadcastBus.ts` with the exact brief interfaces
+  `RawMessageListener`, `BroadcastBusDependencies` (`extensionId`, `sendMessage`,
+  `addMessageListener`, `removeMessageListener`), `EnvelopeHandler`, `BroadcastBus`
+  (`send`, `on`), and `createBroadcastBus(deps)`. Inbound `dispatch` runs the T08
+  `validateInboundEnvelope(message, sender, deps.extensionId)` boundary and returns
+  before any handler when the result is not ok, so untrusted senders and malformed
+  envelopes are never dispatched; `send` forwards a `RuntimeEnvelope` to the injected
+  transport; `on` is keyed by the canonical `MessageType`, lazily registers one raw
+  transport listener per distinct subscribed type, and removes it when its last handler
+  is removed. No direct `chrome.*`, content script, `chrome.tabs`, IndexedDB, network,
+  or dependency change. Created `tests/core/runtime/broadcastBus.test.ts` (5 tests:
+  send via transport; deliver only the subscribed type; ignore untrusted sender; ignore
+  malformed message without throwing; stop after unsubscribe). One Low-severity type-only
+  adaptation (same class as T03 B5): the brief's `handler.mock.calls[0][0].type` is TS2532
+  under the pinned `noUncheckedIndexedAccess: true`, so `handler.mock.calls[0]![0].type`
+  was used; values and assertions unchanged and `tsconfig.json` unmodified. `pnpm exec
+  prettier --check .` flagged only the two T09 files; both were formatted, identifiers,
+  message-type strings, payloads, and assertions unchanged, and no other file was
+  reformatted. GREEN: explicit focused path exit 0 (1 file, 5 tests), `pnpm run test`
+  exit 0 (12 files, 64 tests), `typecheck` exit 0, `lint` exit 0, `prettier --check .`
+  exit 0; phase chain `typecheck && lint && test` exit 0 (12 files, 64 tests). Evidence
+  recorded in `.planning/evidence/phase-01/verification.txt` and
+  `.planning/evidence/phase-01/review.md` (Task 09 sections). Task commit
+  `feat(phase-01): add canonical broadcast bus`. Current task T09 accepted; next task
+  T10 — per approved Phase 01 `PLAN.md`.
