@@ -461,3 +461,113 @@ Type-level deviations (disclosed):
 
 Completion criteria: route test green; typecheck and lint pass; phase-applicable
 chain exit 0; one atomic task commit exists; working tree clean; status recorded.
+
+=== Task 06 — Workspace Types and Durable Metadata Schemas (2026-09-19T10:33:44Z) ===
+
+task ID: T06
+branch: phoenix
+repository root: /Users/george.li/Documents/workspaces/nowpilot
+classification: code task; TDD RED->GREEN applied
+implementation tier: economy
+base commit: 25ac23ed3e8ffefd9561a121273ca15785e079c1 (T05 atomic commit
+  `feat(phase-01): add canonical standalone route registry`)
+Files created: src/core/workspace/workspaceTypes.ts,
+  tests/core/workspace/workspaceTypes.test.ts
+Files modified: none (production)
+
+Step 1 — test file created verbatim from the brief at
+tests/core/workspace/workspaceTypes.test.ts (7 tests).
+
+Step 2 — RED:
+  command: pnpm run test -- tests/core/workspace/workspaceTypes.test.ts
+  exit status: 1
+  observed: Test Files 1 failed | 6 passed (7); Tests 28 passed (28)
+    FAIL |unit| tests/core/workspace/workspaceTypes.test.ts (0 test)
+      Error: Failed to resolve import "@/core/workspace/workspaceTypes" from
+      "tests/core/workspace/workspaceTypes.test.ts". Does the file exist?
+      Plugin: vite:import-analysis
+  Expected failure reason confirmed: the workspace types module did not exist yet,
+  so Vite could not resolve the `@/core/workspace/workspaceTypes` import. The six
+  passing files were the pre-existing unit tests (Vitest 5 does not restrict `--`
+  positionals to the requested subdirectory under `--project unit`). No required
+  schema or field was missing.
+
+Step 3 — src/core/workspace/workspaceTypes.ts implemented verbatim per the brief:
+  WORKSPACE_SCHEMA_VERSION = 1 (as const).
+  WorkspaceWriterTypeSchema = closed z.enum(['sidepanel', 'standalone']).
+  HandoffPhaseSchema = closed z.enum(['idle', 'prepared', 'acknowledged',
+    'committed']).
+  InstanceIdSchema = z.string().min(1).
+  createInstanceId() uses the runtime crypto.randomUUID.
+  WorkspaceMetadataSchema = { schemaVersion literal, committedVersion int
+    nonnegative, updatedAt int nonnegative }.
+  WorkspaceVersionRecordSchema = { committedVersion, updatedAt } (int nonnegative).
+  ElectionRecordSchema = { writerType, writerInstanceId, epoch, committedVersion,
+    handoffPhase, handoffTargetInstanceId nullable, updatedAt } — matches DESIGN.md
+    Section 6 election metadata (writer type, instance ID, epoch, committed version,
+    handoff state, target ID).
+  HandoffRecordSchema = { phase ['prepared','acknowledged'], fromInstanceId,
+    fromWriterType, toInstanceId, toWriterType, epoch, baseVersion, preparedAt,
+    acknowledgedAt nullable }.
+  StandaloneTabRecordSchema = { tabId int nonnegative, openedAt int nonnegative }.
+  WorkspaceMutationKindSchema = z.literal('workspace.metadata.set') (Approved
+    Interpretation 3: closed single kind only).
+  WorkspaceMutationSchema = { mutationId uuid, writerInstanceId, epoch, baseVersion,
+    resultingVersion, kind, payload: WorkspaceMetadataSchema } — matches DESIGN.md
+    Section 6 mutation protocol (mutation ID, writer instance ID, epoch, base version,
+    resulting version, type, schema-valid payload).
+  createEmptyWorkspaceMetadata(now) returns schemaVersion/committedVersion 0/updatedAt.
+  No IndexedDB, no network, no new dependency (zod reused), no side effects, no store,
+  election, handoff, or mutation logic.
+
+Step 4 — GREEN (focused, explicit path):
+  command: pnpm run test -- tests/core/workspace/workspaceTypes.test.ts
+  exit status: 0
+  output: Test Files 7 passed (7); Tests 35 passed (35)
+  note: under Vitest 5 the pnpm-script passthrough runs the whole unit project;
+        T06-only count confirmed with an explicit file path.
+  command: pnpm exec vitest run --project unit tests/core/workspace/workspaceTypes.test.ts
+  exit status: 0
+  output: Test Files 1 passed (1); Tests 7 passed (7), 0 failed, 0 skipped.
+
+Step 4 — Focused verification (sequential):
+  pnpm run typecheck                             => exit 0  (tsc --noEmit clean)
+  pnpm run lint                                  => exit 0  (eslint . clean)
+  pnpm exec prettier --check .                   => exit 0 after formatting the T06
+    test file only (`all matched files use Prettier code style`). Formatting changed
+    only the final `expect(...).toBe(false)` line wrapping; all values, schema literals,
+    imports, and assertions unchanged. No other file was reformatted.
+
+Phase 01 verification applicable now:
+  command: pnpm run typecheck && pnpm run lint && pnpm run test
+  exit status: 0
+  output: typecheck clean; lint clean; unit project 7 files, 35 tests passed.
+
+Test counts:
+  T06 test file: 1 passed, 7 tests passed, 0 failed, 0 skipped.
+  Unit project total after T06: 7 files, 35 passed.
+
+Specification-compliance checklist:
+  - WORKSPACE_SCHEMA_VERSION exact (1): yes
+  - WorkspaceWriterType exactly sidepanel | standalone: yes
+  - handoff phases exactly idle/prepared/acknowledged/committed: yes
+  - InstanceId string min 1; createInstanceId uses crypto.randomUUID: yes
+  - election metadata fields match DESIGN.md Section 6 (writer type, instance ID,
+    epoch, committed version, handoff state, target ID): yes
+  - mutation fields match DESIGN.md Section 6 (mutation ID, writer instance ID, epoch,
+    base version, resulting version, type, schema-valid payload): yes
+  - WorkspaceMutationKind closed literal 'workspace.metadata.set' only; generic/arbitrary
+    and note/conversation/memory/provider kinds absent and rejected (tested): yes
+  - no invented fields; no store/election/handoff/mutation logic: yes
+  - no IndexedDB, no network, no new dependency, no side effects: yes
+  - only the two task files created (plus evidence/STATUS); no other file changed: yes
+
+Code-quality and security checklist:
+  - closed schemas; no `any`: yes
+  - instance IDs generated with the runtime crypto.randomUUID: yes
+  - schemas reject negative versions and unknown writer types (tested): yes
+  - acknowledgement timestamp required present-or-null (tested): yes
+  - pure module; no secrets or sensitive content: yes
+
+Completion criteria: type test green; typecheck and lint pass; phase-applicable
+chain exit 0; one atomic task commit exists; working tree clean; status recorded.

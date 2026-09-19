@@ -9,18 +9,18 @@ rewrite or delete prior history.
 - **Current phase:** Phase 01 — Runtime, Shells, and Workspace
 - **Design status:** Approved
 - **Plan status:** Approved
-- **Implementation status:** In progress — T01 accepted; T02 accepted; T03 accepted; T04 accepted; T05 accepted
+- **Implementation status:** In progress — T01 accepted; T02 accepted; T03 accepted; T04 accepted; T05 accepted; T06 accepted
 - **Planning baseline branch:** `phoenix`
 - **Implementation branch:** `phoenix`
 - **Historical approved planning baseline commit:** `bd6ac44d6f562722c18f0d07e6910634e549c713`
 - **Approved planning baseline commit:** `3fb619730c8032d4aa121c5b8aa9649901b45f5f`
-- **Current task:** T05 — Canonical Standalone Route Registry (accepted)
-- **Last commit:** T05 atomic commit `feat(phase-01): add canonical standalone route registry` (SHA captured post-commit in `.superpowers/sdd/PLAN/task-05-report.md`)
-- **Verification result:** Pass — T05 focused test exit 0 (1 file, 7 tests), `typecheck` exit 0, `lint` exit 0, `prettier --check .` exit 0; phase chain `typecheck && lint && test` exit 0 (6 files, 28 tests)
-- **Next task:** T06 — Workspace Types and Durable Metadata Schemas
+- **Current task:** T06 — Workspace Types and Durable Metadata Schemas (accepted)
+- **Last commit:** T06 atomic commit `feat(phase-01): add workspace types and durable metadata schemas` (SHA captured post-commit in `.superpowers/sdd/PLAN/task-06-report.md`)
+- **Verification result:** Pass — T06 focused test exit 0 (1 file, 7 tests), `typecheck` exit 0, `lint` exit 0, `prettier --check .` exit 0 (after formatting the T06 test file only); phase chain `typecheck && lint && test` exit 0 (7 files, 35 tests)
+- **Next task:** T07 — Runtime Primitives, Payload Schemas, and `RuntimeEnvelope`
 - **Blockers:** None
-- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 05 sections)
-- **Evidence status:** Task 05 verification and review recorded
+- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 06 sections)
+- **Evidence status:** Task 06 verification and review recorded
 
 ## History
 
@@ -194,3 +194,30 @@ rewrite or delete prior history.
   `.planning/evidence/phase-01/review.md` (Task 05 sections). Task commit
   `feat(phase-01): add canonical standalone route registry`. Current task T05
   accepted; next task T06.
+- Task 06 (Workspace Types and Durable Metadata Schemas) executed on `phoenix` in
+  the repository root. RED confirmed at
+  `pnpm run test -- tests/core/workspace/workspaceTypes.test.ts` (exit 1; "Failed
+  to resolve import `@/core/workspace/workspaceTypes`"). Created
+  `src/core/workspace/workspaceTypes.ts` (exact `WORKSPACE_SCHEMA_VERSION = 1`;
+  `WorkspaceWriterTypeSchema` = sidepanel | standalone; `HandoffPhaseSchema` =
+  idle/prepared/acknowledged/committed; `InstanceIdSchema` string min 1;
+  `createInstanceId()` via runtime `crypto.randomUUID`; `WorkspaceMetadataSchema`;
+  `WorkspaceVersionRecordSchema`; `ElectionRecordSchema` (writer type, instance ID,
+  epoch, committed version, handoff state, nullable target ID — DESIGN.md Section 6);
+  `HandoffRecordSchema`; `StandaloneTabRecordSchema`; `WorkspaceMutationKindSchema`
+  closed literal `workspace.metadata.set` per Approved Interpretation 3;
+  `WorkspaceMutationSchema` (mutation ID uuid, writer instance ID, epoch, base
+  version, resulting version, kind, schema-valid metadata payload);
+  `createEmptyWorkspaceMetadata(now)`) and
+  `tests/core/workspace/workspaceTypes.test.ts` (7 tests). No new type-level
+  deviation was required. `pnpm exec prettier --check .` flagged only the T06 test
+  file (final assertion line wrapping); it was formatted, values and assertions
+  unchanged, and no other file was reformatted. GREEN: focused test exit 0 (7 files,
+  35 tests; T06-only 1 file, 7 tests), `typecheck` exit 0, `lint` exit 0,
+  `prettier --check .` exit 0; phase chain `typecheck && lint && test` exit 0
+  (7 files, 35 tests). Evidence recorded in
+  `.planning/evidence/phase-01/verification.txt` and
+  `.planning/evidence/phase-01/review.md` (Task 06 sections). Task commit
+  `feat(phase-01): add workspace types and durable metadata schemas`. Current task
+  T06 accepted; next task T07 — Runtime Primitives, Payload Schemas, and
+  `RuntimeEnvelope`.

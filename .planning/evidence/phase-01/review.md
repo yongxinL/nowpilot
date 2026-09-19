@@ -318,3 +318,94 @@ chain `typecheck && lint && test` exit 0 (6 files, 28 tests). Full output is rec
 **PASS** — Task 05 meets specification-compliance, code-quality, and security/privacy
 requirements; the single Low-severity D4 typing adaptation is documented, type-only, and
 non-behavioural.
+
+---
+
+## Task 06 — Workspace Types and Durable Metadata Schemas
+
+**Phase:** Phase 01 — Runtime, Shells, and Workspace
+**Branch:** `phoenix`
+**Repository root:** /Users/george.li/Documents/workspaces/nowpilot
+**Base commit:** `25ac23ed3e8ffefd9561a121273ca15785e079c1` (T05 atomic commit)
+**Classification:** code task (TDD RED→GREEN); implementation tier economy
+
+### Scope reviewed
+
+- `src/core/workspace/workspaceTypes.ts` (created)
+- `tests/core/workspace/workspaceTypes.test.ts` (created)
+
+### 1. Specification-compliance review
+
+- `WORKSPACE_SCHEMA_VERSION` is exactly `1`; `WorkspaceMetadataSchema.schemaVersion` is
+  `z.literal(WORKSPACE_SCHEMA_VERSION)`. PASS
+- `WorkspaceWriterTypeSchema` is the closed enum `sidepanel | standalone`; `background`
+  is rejected (asserted by test). PASS
+- `HandoffPhaseSchema` is exactly `idle | prepared | acknowledged | committed`. PASS
+- `InstanceIdSchema` is `z.string().min(1)`; `createInstanceId()` returns the runtime
+  `crypto.randomUUID()` (test asserts uniqueness). PASS
+- `ElectionRecordSchema` matches DESIGN.md Section 6 election metadata exactly: writer
+  type, instance ID, epoch, committed version, handoff state, and target ID (nullable
+  when idle). No field invented, renamed, added, or removed. PASS
+- `WorkspaceMutationSchema` matches DESIGN.md Section 6 mutation protocol exactly:
+  mutation ID (uuid), writer instance ID, epoch, base version, resulting version, type,
+  and schema-valid payload (`WorkspaceMetadataSchema`). PASS
+- Approved Interpretation 3: `WorkspaceMutationKindSchema` is the single closed literal
+  `'workspace.metadata.set'`; the test asserts both acceptance of that exact kind and
+  rejection of `'workspace.notes.set'`. No generic/arbitrary mutation name and no
+  note/conversation/memory/provider/later-phase kind exists. Extending the registry
+  requires a future approved design and plan. PASS
+- `HandoffRecordSchema` requires `acknowledgedAt` present-or-null (tested for the null
+  and absent cases); `StandaloneTabRecordSchema` rejects a negative `tabId` (tested). PASS
+- `WorkspaceVersionRecordSchema`, `HandoffRecord`, `StandaloneTabRecord`,
+  `WorkspaceMutation` and all named types are exported as specified by the brief. PASS
+- No store, election, handoff, or mutation logic; no IndexedDB, no network. Only the two
+  task files (plus evidence and STATUS) changed; no dependency added (`zod` was already
+  an approved direct dependency). PASS
+
+### 2. Code-quality review
+
+- Schemas are fully closed; no `any`; no arbitrary-string overloads. PASS
+- `createInstanceId` and `createEmptyWorkspaceMetadata` are pure and side-effect free;
+  the module has no mutable state, timers, or I/O. PASS
+- Numeric fields consistently use `.int().nonnegative()`, so negative and fractional
+  versions/timestamps are rejected. PASS
+- `crypto.randomUUID` is the runtime Web Crypto API available in extension contexts;
+  no polyfill or new dependency was introduced. PASS
+- Readability and complexity are minimal; canonical identifiers are declared once and
+  types are derived with `z.infer`. PASS
+- Error handling: none required; no catch blocks; no empty catch. N/A
+
+### 3. Security and privacy review
+
+- No secrets, tokens, cookies, credentials, or sensitive content in production code or
+  evidence. PASS
+- No data is read, logged, persisted, or transmitted; the module performs no side
+  effects. PASS
+- The payload schema is constrained to workspace metadata, so the single mutation kind
+  cannot carry note/conversation/memory/provider content. PASS
+- `InstanceIdSchema` requires a non-empty identifier but imposes no sensitive content. PASS
+
+### 4. Findings and dispositions
+
+| ID | Severity | Finding | Disposition |
+|----|----------|---------|-------------|
+| — | Low (formatting) | `pnpm exec prettier --check .` flagged only the T06 test file (final assertion line wrapping). | Fixed by formatting the T06 test file only; values and assertions unchanged; no other file reformatted. |
+| — | Info | `pnpm run test -- tests/core/workspace/workspaceTypes.test.ts` also runs the pre-existing unit tests under Vitest 5; T06-only count confirmed with an explicit file path (1 file, 7 tests). | Recorded; not a defect. |
+
+No Critical, High, or Medium finding remains unresolved. No type-level deviation from the
+brief was required: the implementation and test both typecheck under the pinned
+`strict`/`noUncheckedIndexedAccess` configuration without non-null assertions.
+
+### 5. Verification evidence
+
+RED: `pnpm run test -- tests/core/workspace/workspaceTypes.test.ts` exit 1 —
+module-resolution failure for `@/core/workspace/workspaceTypes`. GREEN: focused test
+exit 0 (7 files, 35 tests; T06-only 1 file, 7 tests), `pnpm run typecheck` exit 0,
+`pnpm run lint` exit 0, `pnpm exec prettier --check .` exit 0, and the phase-applicable
+chain `typecheck && lint && test` exit 0 (7 files, 35 tests). Full output is recorded in
+`verification.txt` (Task 06 section).
+
+### Acceptance decision
+
+**PASS** — Task 06 meets specification-compliance, code-quality, and security/privacy
+requirements; no type-level deviation was needed and no blocking finding remains.
