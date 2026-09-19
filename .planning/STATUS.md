@@ -9,18 +9,18 @@ rewrite or delete prior history.
 - **Current phase:** Phase 01 — Runtime, Shells, and Workspace
 - **Design status:** Approved and amended by ADR-0001 (background-serialised workspace election)
 - **Plan status:** Approved and amended (corrective task T13C; T14/T16/T22/T24/T25/T26/T28 amendment notes)
-- **Implementation status:** T01–T13C accepted; T14 implemented and verified; T15–T28 not started
+- **Implementation status:** T01–T13C accepted; T14 and T15 implemented and verified; T16–T28 not started
 - **Planning baseline branch:** `phoenix`
 - **Implementation branch:** `phoenix`
 - **Historical approved planning baseline commit:** `bd6ac44d6f562722c18f0d07e6910634e549c713`
 - **Approved planning baseline commit:** `b2c6ef289bc1abebbeccfad81d7034ced81f4eb7`
-- **Current task:** T14 complete; next task T15 — Mutation Versioning and Idempotency
-- **Last commit:** the T14 task commit `feat(phase-01): implement prepare acknowledge commit handoff`, on top of `bcd0632` (`docs(phase-01): preserve historical status line`)
-- **Verification result:** T14 handoff suite 11/11 new tests; full unit suite 156/156 (18 files); `typecheck`, `lint`, `prettier --check .`, and the phase chain `typecheck && lint && test` all exit 0. `prepare`/`acknowledge` touch only `np_workspace_handoff`; `commit` routes `handoff-commit` through the arbiter and removes the handoff record only on an accepted response; rejection/throw paths fail closed.
-- **Next action:** implement T15 (Mutation Versioning and Idempotency) per approved Phase 01 `PLAN.md`
-- **Blockers:** None; T13, T13C, and T14 are accepted
-- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 13C and Task 14 sections)
-- **Evidence status:** T14 verified; self-review PASS
+- **Current task:** T15 complete; next task T16
+- **Last commit:** the T15 task commit `feat(phase-01): version and idempotently apply workspace mutations`, on top of `81bc563` (`feat(phase-01): implement prepare acknowledge commit handoff`)
+- **Verification result:** T15 mutation suite 7/7 new tests; full unit suite 163/163 (19 files); `typecheck`, `lint`, `prettier --check .`, and the phase chain `typecheck && lint && test` all exit 0. Duplicate detection precedes all other checks; wrong writer/epoch, stale base, and non-monotonic resulting version are rejected with canonical codes; version increments are monotonic; `commitWorkspaceMutation` persists only on `applied`.
+- **Next action:** implement T16 per approved Phase 01 `PLAN.md`
+- **Blockers:** None; T13, T13C, T14, and T15 are accepted
+- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 14 and Task 15 sections)
+- **Evidence status:** T15 verified; self-review PASS
 
 ## History
 
@@ -622,3 +622,40 @@ rewrite or delete prior history.
   `feat(phase-01): implement prepare acknowledge commit handoff`. Current task T14
   accepted; next task T15 — Mutation Versioning and Idempotency, per approved
   Phase 01 `PLAN.md`.
+- Task 15 (Mutation Versioning and Idempotency) executed on `phoenix` in the repository
+  root. Implementation tier advanced (write correctness). RED confirmed at
+  `pnpm run test -- tests/core/workspace/workspaceMutations.test.ts` (exit 1; Vite import
+  analysis failed to resolve `@/core/workspace/WorkspaceMutations`; the 156 pre-existing
+  unit tests still passed). Created `src/core/workspace/WorkspaceMutations.ts` with the
+  exact brief interfaces `MutationEngineState` (committedVersion/epoch/writerInstanceId/
+  appliedMutationIds), `MutationRejectionCode` (the four canonical T03 codes
+  `WORKSPACE_OWNERSHIP_AMBIGUOUS`/`WORKSPACE_EPOCH_MISMATCH`/`WORKSPACE_STALE_MUTATION`/
+  `WORKSPACE_VERSION_CONFLICT`), `MutationOutcome` (applied/duplicate/rejected),
+  `createMutationEngineState(input)`, `applyWorkspaceMutation(state, mutation)`,
+  `CommitWorkspaceMutationDependencies` (store/now), and
+  `commitWorkspaceMutation(deps, state, mutation)`. `applyWorkspaceMutation` checks
+  duplicate `mutationId` first (returns `duplicate` with unchanged state, applying once),
+  then rejects wrong writer, wrong epoch, stale base (`baseVersion !== committedVersion`),
+  and non-monotonic resulting version (`resultingVersion !== baseVersion + 1`) with the
+  canonical T03 codes, and on success advances `committedVersion = resultingVersion` and
+  appends the mutation id, so version increments are strictly monotonic. Rejections log
+  only the canonical code with a fixed `reason: 'mutation'` label through the redacting
+  T03 `debugLog`. `commitWorkspaceMutation` returns the non-applied outcome unchanged
+  before any write, so nothing is persisted unless the outcome is `applied`; only then it
+  parses `WorkspaceMetadataSchema` from the payload with the resulting version and
+  `deps.now()` and writes through the T12 `WorkspaceStore`. The applied-ID set is
+  in-memory only (Phase 01 scope): no durable journal, no IndexedDB, no replay, no second
+  mutation kind, no dependency/permission/manifest change, no direct `chrome.*`. Created
+  `tests/core/workspace/workspaceMutations.test.ts` (7 tests: applied/next-version, four
+  rejections, duplicate-once, and full persistence through the real T04 validated storage
+  over the T04 mocked chrome storage). No type-level adaptation was required; the brief's
+  production and test code typechecked as written under the pinned
+  `noUncheckedIndexedAccess: true`. `pnpm exec prettier --check .` flagged only the T15
+  module (import collapse at printWidth 100); it was formatted with identifiers, values,
+  and codes unchanged, and no other file was reformatted. GREEN: focused test exit 0
+  (19 files, 163 tests; T15-only 1 file, 7 tests), `typecheck` exit 0, `lint` exit 0,
+  `prettier --check .` exit 0; phase chain `typecheck && lint && test` exit 0 (19 files,
+  163 tests). Evidence recorded in `.planning/evidence/phase-01/verification.txt` and
+  `.planning/evidence/phase-01/review.md` (Task 15 sections). Task commit
+  `feat(phase-01): version and idempotently apply workspace mutations`. Current task T15
+  accepted; next task T16 — per approved Phase 01 `PLAN.md`.

@@ -1578,3 +1578,130 @@ No np_workspace_election write in WorkspaceHandoff; the arbiter remains its only
 No new storage key, message type, error code, permission, dependency, or DiagnosticEvent.
 No forbidden file was modified (WorkspaceElection.ts, WorkspaceElectionArbiter.ts, DESIGN.md,
 PLAN.md, config, and T15+ files untouched).
+
+===============================================================================
+Task 15 — Mutation Versioning and Idempotency
+===============================================================================
+
+Date: 2026-09-19T22:16:00Z (22:16 AEST)
+Task ID: T15
+Branch: phoenix
+Repository root: /Users/george.li/Documents/workspaces/nowpilot
+Classification: code task; TDD RED->GREEN applied
+Implementation tier: advanced (write correctness)
+Base commit at task start: 81bc563 (T14 atomic commit
+  `feat(phase-01): implement prepare acknowledge commit handoff`)
+Files created: src/core/workspace/WorkspaceMutations.ts,
+  tests/core/workspace/workspaceMutations.test.ts
+Files modified: none (production or toolchain); only .planning evidence/STATUS
+Atomic commit: feat(phase-01): version and idempotently apply workspace mutations
+
+Step 1 — test file created verbatim from the brief at
+tests/core/workspace/workspaceMutations.test.ts (7 tests).
+
+Step 2 — RED (focused, brief command):
+  command: pnpm run test -- tests/core/workspace/workspaceMutations.test.ts
+  exit status: 1
+  output: FAIL tests/core/workspace/workspaceMutations.test.ts (0 test)
+    Error: Failed to resolve import "@/core/workspace/WorkspaceMutations" from
+      "tests/core/workspace/workspaceMutations.test.ts". Does the file exist?
+      Plugin: vite:import-analysis
+    Test Files 1 failed | 18 passed (19); Tests 156 passed (156).
+  Expected failure reason confirmed: the T15 mutation module did not yet exist, so the
+  test file failed at Vite import analysis for `@/core/workspace/WorkspaceMutations`.
+  The 156 pre-existing unit tests still passed. No canonical mutation kind, error code,
+  store method, or schema export was missing.
+
+Step 3 — src/core/workspace/WorkspaceMutations.ts created per the brief:
+  Imports the T03 createErrorRecord/debugLog, the T12 WorkspaceStore type, and the T06
+  WorkspaceMetadataSchema/InstanceId/WorkspaceMutation.
+  Interfaces/types exactly as specified: MutationEngineState (committedVersion, epoch,
+  writerInstanceId, appliedMutationIds), MutationRejectionCode (the four canonical T03
+  codes WORKSPACE_OWNERSHIP_AMBIGUOUS / WORKSPACE_EPOCH_MISMATCH /
+  WORKSPACE_STALE_MUTATION / WORKSPACE_VERSION_CONFLICT), MutationOutcome
+  (applied+mutation+state | duplicate+state | rejected+code+state),
+  createMutationEngineState(input) (committedVersion default 0, appliedMutationIds
+  default []), applyWorkspaceMutation(state, mutation), and the commit dependency
+  interface CommitWorkspaceMutationDependencies (store, now) plus
+  commitWorkspaceMutation(deps, state, mutation).
+  applyWorkspaceMutation order of checks (duplicate detection precedes all others):
+    1. duplicate: mutationId already in appliedMutationIds -> {status:'duplicate'} with
+       the SAME state (no version/ID change, applies once).
+    2. wrong writerInstanceId -> rejected WORKSPACE_OWNERSHIP_AMBIGUOUS.
+    3. wrong epoch -> rejected WORKSPACE_EPOCH_MISMATCH.
+    4. baseVersion !== committedVersion -> rejected WORKSPACE_STALE_MUTATION.
+    5. resultingVersion !== baseVersion + 1 -> rejected WORKSPACE_VERSION_CONFLICT.
+    Applied: committedVersion becomes resultingVersion and the mutation id is appended,
+    so version increments are strictly monotonic.
+  Every rejection logs the canonical error code through the T03 debugLog with only a
+  fixed `reason: 'mutation'` label (redacted sink); no payload is logged.
+  commitWorkspaceMutation is fail-closed: it calls applyWorkspaceMutation and returns
+  the outcome UNCHANGED for duplicate/rejected, so nothing is persisted unless the
+  outcome is 'applied'; only then does it parse WorkspaceMetadataSchema from the
+  mutation payload with the engine's resultingVersion and deps.now(), and call
+  store.writeMetadata. No direct chrome.*, no IndexedDB, no durable journal (Phase 01
+  scope: in-memory applied-ID set only), no new dependency.
+
+Step 4 — GREEN (focused, explicit path):
+  command: pnpm run test -- tests/core/workspace/workspaceMutations.test.ts
+  exit status: 0
+  output: Test Files 19 passed (19); Tests 163 passed (163), 0 failed, 0 skipped.
+    - applies a valid next mutation and increments the version
+    - rejects a mutation from the wrong writer
+    - rejects a mutation from the wrong epoch
+    - rejects a stale base version
+    - rejects a non-monotonic resulting version
+    - treats a repeated mutation id as a duplicate and applies it once
+    - persists an applied mutation through the workspace store
+
+Focused verification (sequential):
+  pnpm run test -- tests/core/workspace/workspaceMutations.test.ts => exit 0
+    (unit project: 19 files, 163 tests passed)
+  pnpm run typecheck                                  => exit 0 (tsc --noEmit clean)
+  pnpm run lint                                       => exit 0 (eslint . clean)
+  pnpm exec prettier --check .                        => exit 0 after formatting only
+    src/core/workspace/WorkspaceMutations.ts (the three-symbol workspaceTypes import
+    was collapsed onto one line at printWidth 100). Formatting changed whitespace only;
+    identifiers, values, codes, and behaviour are unchanged. The T15 test file was
+    already Prettier-clean; no other file was reformatted.
+
+Phase 01 verification applicable now:
+  command: pnpm run typecheck && pnpm run lint && pnpm run test
+  exit status: 0
+  output: typecheck clean; lint clean; unit project 19 files, 163 tests passed.
+
+Test counts:
+  T15 test file: 1 passed, 7 tests passed, 0 failed, 0 skipped.
+  Unit project total after T15: 19 files, 163 passed.
+
+Specification-compliance checklist (verbatim from the brief):
+  - one mutation kind only (`workspace.metadata.set`), validated by the T06
+    WorkspaceMutationSchema: yes
+  - mutation ID, writer instance, epoch, base + resulting version, kind, and
+    schema-valid payload are all carried and checked: yes
+  - wrong writer / wrong epoch / stale base rejected with canonical codes: yes
+  - non-monotonic resulting version rejected (must equal base + 1): yes
+  - repeated mutationId treated as a duplicate and applied once: yes
+  - version increments are monotonic (committedVersion = resultingVersion): yes
+  - persisted applied mutation goes through the T12 WorkspaceStore.writeMetadata, which
+    writes np_workspace_meta then np_workspace_version; store.readVersion() reads 1 and
+    store.readMetadata() carries { committedVersion: 1, updatedAt: now() }: yes
+  - in-memory applied-ID set only; no durable journal, no IndexedDB, no replay: yes
+  - no dependency change; no manifest/permission change; no direct chrome.*: yes
+  - only WorkspaceMutations.ts and the one new test file created (plus .planning
+    evidence/STATUS): yes
+
+Code-quality and security checklist:
+  - rejections use canonical T03 codes only; no invented code or message: yes
+  - duplicate detection precedes all other checks (including writer/epoch/version): yes
+  - no partial persistence on rejection: commitWorkspaceMutation returns the non-applied
+    outcome before any store.writeMetadata call: yes
+  - monotonic version increments; applied state is immutable (new array/object, no
+    mutation of the input state): yes
+  - only a fixed `reason: 'mutation'` label is logged through the redacting debugLog; no
+    mutation payload or writer id is logged: yes
+  - no catch blocks; no empty catch; no swallowed rejection: yes
+  - no secrets, tokens, passwords, or page content read/logged/persisted: yes
+
+Completion criteria: mutation test green; typecheck and lint pass; phase-applicable
+chain exit 0; one atomic task commit exists; working tree clean; status recorded.

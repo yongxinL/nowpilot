@@ -1342,3 +1342,125 @@ rulings R14.1-R14.5. Branch `phoenix`.
 **PASS** — focused handoff suite 11/11 new tests (unit project 18 files, 156 tests);
 `typecheck`, `lint`, `prettier --check .`, and the phase chain `typecheck && lint && test` all
 exit 0; no blocking finding remains. Next task T15.
+
+## Task 15 — Mutation Versioning and Idempotency self-review (2026-09-19)
+
+**Phase:** Phase 01 — Runtime, Shells, and Workspace
+**Branch:** `phoenix`
+**Repository root:** /Users/george.li/Documents/workspaces/nowpilot
+**Base commit:** `81bc563` (T14 atomic commit
+`feat(phase-01): implement prepare acknowledge commit handoff`)
+**Classification:** code task (TDD RED→GREEN); implementation tier advanced (write
+correctness)
+
+### Scope reviewed
+
+- `src/core/workspace/WorkspaceMutations.ts` (created)
+- `tests/core/workspace/workspaceMutations.test.ts` (created)
+
+### 1. Specification-compliance review
+
+- Interfaces and types match the brief exactly: `MutationEngineState`
+  (`committedVersion`/`epoch`/`writerInstanceId`/`appliedMutationIds`),
+  `MutationRejectionCode` (the four canonical T03 codes), `MutationOutcome`
+  (`applied`+`mutation`+`state` | `duplicate`+`state` | `rejected`+`code`+`state`),
+  `createMutationEngineState(input)`, `applyWorkspaceMutation(state, mutation)`,
+  `CommitWorkspaceMutationDependencies` (`store`/`now`), and
+  `commitWorkspaceMutation(deps, state, mutation)`. PASS
+- Exactly one mutation kind: the payload is a T06 `WorkspaceMutation`, whose `kind`
+  is the closed literal `workspace.metadata.set` and whose payload is
+  `WorkspaceMetadataSchema`. No second or generic kind exists. PASS
+- The T06 mutation contract is honoured: mutation ID, writer instance ID, epoch,
+  base version, resulting version, kind, and schema-valid payload are all present and
+  checked. PASS
+- Rejection mapping is exactly the brief: wrong writer →
+  `WORKSPACE_OWNERSHIP_AMBIGUOUS`; wrong epoch → `WORKSPACE_EPOCH_MISMATCH`; stale base
+  → `WORKSPACE_STALE_MUTATION`; non-monotonic resulting version →
+  `WORKSPACE_VERSION_CONFLICT`. All four are canonical T03 codes; none is invented. PASS
+- Duplicate detection precedes every other check: a repeated `mutationId` returns
+  `duplicate` with the unchanged state before any writer/epoch/version check, so a
+  replayed mutation is applied once and never advances the version. PASS
+- Monotonic versioning: the applied state sets `committedVersion = resultingVersion`
+  and the check requires `resultingVersion === baseVersion + 1`; the version can only
+  advance by one per accepted mutation. PASS
+- Persistence is applied-only: `commitWorkspaceMutation` returns the
+  `duplicate`/`rejected` outcome before calling `store.writeMetadata`, so no partial
+  persistence occurs on rejection. On an applied outcome it parses
+  `WorkspaceMetadataSchema` from the payload with the resulting version and `now()`,
+  then writes through the T12 `WorkspaceStore` (which persists `np_workspace_meta`
+  and the derived `np_workspace_version`). The test asserts
+  `store.readVersion() === 1` and `readMetadata()` returns
+  `{ committedVersion: 1, updatedAt: 77 }`. PASS
+- Scope boundaries: the applied-ID set is in-memory only (Phase 01 scope); there is
+  no durable write journal, no IndexedDB, no replay, no mutation kind beyond
+  `workspace.metadata.set`. No direct `chrome.*`, no network, no provider/MCP, no
+  dependency, permission, or manifest change. Only the two task files changed plus
+  `.planning` evidence/STATUS. PASS
+
+### 2. Code-quality review
+
+- `applyWorkspaceMutation` is a pure function over the state and mutation: applied
+  state is built with a new array/object (`[...state.appliedMutationIds, id]`), so the
+  input state is never mutated. PASS
+- Fail-closed and total: every path returns a discriminated `MutationOutcome`; the
+  module never throws and never reports silent success. PASS
+- Rejections are logged through the T03 `debugLog` with only a fixed
+  `{ reason: 'mutation' }` label; the redacting sink means no payload, writer id, or
+  record content is emitted. No catch blocks, no empty catch, no `any`. PASS
+- `commitWorkspaceMutation` is a small async wrapper that composes the pure engine with
+  the validated store write; it has a single early return for non-applied outcomes, so
+  the persistence branch is unambiguous. PASS
+- Test quality: 7 focused tests cover the applied/next-version case, each of the four
+  rejections, duplicate-once semantics, and the full persist path through the real T04
+  validated storage over the T04 mocked chrome storage (only `now` is injected). PASS
+- No type-only adaptation was required: the brief's test and implementation both
+  typecheck as written under the pinned `strict`/`noUncheckedIndexedAccess: true`.
+  `pnpm exec prettier --check .` flagged only the T15 module (import collapse at
+  printWidth 100); it was formatted with identifiers, values, and codes unchanged and no
+  other file was reformatted. PASS
+
+### 3. Security and privacy review (assets and trust boundaries)
+
+- No page content, note, memory, prompt, clipboard, password, token, API key, or
+  customer content is read, logged, or persisted. The mutation payload is non-sensitive
+  workspace metadata (`schemaVersion`, non-negative integer `committedVersion`,
+  non-negative integer `updatedAt`). PASS
+- The only log records are the canonical T03 rejection codes with a fixed `reason`
+  label, passed through the T03 `debugLog` key-based redaction sink; no raw mutation
+  payload or identifier is logged. PASS
+- Writes are schema-validated on the T04 adapter path; a rejected mutation cannot
+  persist anything (no partial persistence), and an applied mutation persists only the
+  metadata plus derived version in the `local` area. No secrets in `sync`/`session`, no
+  external transmission. PASS
+- Mutations are data only and carry no instruction authority; the engine validates
+  writer identity, epoch, and version before accepting, so a stale or foreign mutation
+  cannot be promoted to a durable write. Content-script isolation, manifest
+  permissions, and password handling are unaffected. PASS
+- No secrets or sensitive data embedded in production code or evidence. PASS
+
+### 4. Findings and dispositions
+
+| ID | Severity | Finding | Disposition |
+|----|----------|---------|-------------|
+| — | Low (formatting) | `pnpm exec prettier --check .` flagged only `src/core/workspace/WorkspaceMutations.ts` (the three-symbol `workspaceTypes` import collapsed at printWidth 100). | Formatted only the T15 module; identifiers, values, codes, and behaviour unchanged; no other file reformatted. |
+| — | Info | `pnpm run test -- tests/core/workspace/workspaceMutations.test.ts` also runs the pre-existing unit tests under Vitest 5; T15-only count confirmed with an explicit path (1 file, 7 tests). | Recorded; not a defect. |
+
+No Critical, High, or Medium finding remains unresolved. No type-level deviation was
+required for T15; the brief's production and test code typechecked as written under the
+pinned `noUncheckedIndexedAccess: true`.
+
+### 5. Verification evidence
+
+RED: `pnpm run test -- tests/core/workspace/workspaceMutations.test.ts` exit 1 — Vite
+import analysis failed to resolve `@/core/workspace/WorkspaceMutations`; the 156
+pre-existing unit tests still passed. GREEN: focused test exit 0 (19 files, 163 tests;
+T15-only 1 file, 7 tests), `pnpm run typecheck` exit 0, `pnpm run lint` exit 0,
+`pnpm exec prettier --check .` exit 0, and the phase-applicable chain
+`typecheck && lint && test` exit 0. Full output is recorded in `verification.txt`
+(Task 15 section).
+
+### Acceptance decision
+
+**PASS** — Task 15 meets specification-compliance, code-quality, and security/privacy
+requirements; the only finding is a Low-severity formatting correction and no blocking
+finding remains. Next task T16.
