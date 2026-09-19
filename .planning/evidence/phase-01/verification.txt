@@ -2120,3 +2120,138 @@ Code-quality and security checklist:
 Completion criteria: registry tests green; typecheck and lint pass; prettier check
 passes; phase-applicable chain exit 0; one atomic task commit exists; working tree
 clean; status recorded.
+
+=== Task 19 — Standalone Shell, Router, and Sider (2026-09-19T19:48:02Z) ===
+
+task ID: T19
+branch: phoenix
+repository root: /Users/george.li/Documents/workspaces/nowpilot
+classification: code task; TDD RED->GREEN applied
+implementation tier: balanced
+base commit: f146e79e8ebb4b21283bf054c524da50113cd5d4 (T18 atomic commit
+  `feat(phase-01): register standalone pages and skeletons`)
+Files created (production):
+  src/components/standalone/StandaloneSider.tsx
+  src/components/standalone/StandaloneRouter.tsx
+  src/components/standalone/StandaloneShell.tsx
+Files created (tests):
+  tests/components/standaloneSider.test.tsx
+  tests/components/standaloneRouter.test.tsx
+  tests/components/standaloneShell.test.tsx
+Files modified: .planning/evidence/phase-01/verification.txt,
+  .planning/evidence/phase-01/review.md, .planning/STATUS.md only.
+  No dependency, permission, storage key, message type, error code, or
+  DiagnosticEvent change.
+
+Step 1 — three test files created from the brief.
+
+Step 2 — RED:
+  command: pnpm run test -- tests/components
+  exit status: 1
+  observed: Test Files 3 failed | 26 passed (29); Tests 199 passed (199)
+    FAIL |unit| tests/components/standaloneSider.test.tsx
+      Error: Failed to resolve import
+      "@/components/standalone/StandaloneSider" ... Does the file exist?
+      Plugin: vite:import-analysis
+    FAIL |unit| tests/components/standaloneRouter.test.tsx
+      Error: Failed to resolve import
+      "@/components/standalone/StandaloneRouter" ... Does the file exist?
+      Plugin: vite:import-analysis
+    FAIL |unit| tests/components/standaloneShell.test.tsx
+      Error: Failed to resolve import
+      "@/components/standalone/StandaloneShell" ... Does the file exist?
+      Plugin: vite:import-analysis
+  Expected failure reason confirmed: all three T19 modules were absent, so Vite
+  could not resolve the `@/components/standalone/*` imports. The 26 passing files
+  (199 tests) were the pre-existing unit tests.
+
+Steps 3–5 — implementation per the brief:
+  StandaloneSider.tsx: antd Layout.Sider (width 240, theme light,
+    aria-label="Workspace navigation") wrapping an inline Menu whose items are
+    built by mapping PRIMARY_STANDALONE_ROUTES then FOOTER_STANDALONE_ROUTES —
+    five primary plus two footer labels come from the T05 registry, with no
+    hard-coded Sider array; selectedKeys={[activeRoute]}; onClick maps the antd
+    key back to StandaloneRouteId and calls onNavigate.
+  StandaloneRouter.tsx: StandaloneRouter renders registry.get(routeId) or null;
+    useStandaloneRoute seeds routeId from initialHash ?? window.location.hash via
+    resolveStandaloneRouteId, invokes onRouteFallback once for a fallback, applies
+    a focusSubscription destination to route state, and writes the hash with
+    window.history.replaceState (no hashchange/popstate listener, no back/forward
+    traversal, no history entries).
+  StandaloneShell.tsx: Layout with StandaloneSider and a Layout.Content holding
+    the StandaloneRouter, wired to useStandaloneRoute.
+
+Authorised correction applied:
+  Removed the unused DEFAULT_STANDALONE_ROUTE_ID import from
+  StandaloneRouter.tsx (the brief's import list included it but the module never
+  referenced it, which fails the pinned noUnusedLocals/eslint). Every other import
+  and all code were transcribed verbatim.
+
+Necessary test-only correction (disclosed in review.md):
+  The repository runs vitest without `globals: true` and imports vitest APIs
+  explicitly, so no global `afterEach` exists and `@testing-library/react` cannot
+  auto-register cleanup. The brief's `standaloneSider.test.tsx` renders in two
+  `it` blocks; without cleanup the second `getByText('Notes')` matched two mounted
+  Siders (`getMultipleElementsFoundError`). Added `cleanup`/`afterEach` imports
+  and `afterEach(cleanup)` to the three component test files. All test bodies,
+  identifiers, values, and assertions are unchanged.
+
+Step 6 — GREEN:
+  command: pnpm run test -- tests/components
+  exit status: 0
+  output: Test Files 29 passed (29); Tests 206 passed (206), 0 failed, 0 skipped.
+
+Focused verification (sequential):
+  pnpm run typecheck                             => exit 0  (tsc --noEmit clean)
+  pnpm run lint                                  => exit 0  (eslint . clean)
+  pnpm exec prettier --check .                   => exit 0  (All matched files use
+    Prettier code style; the T19 files required a formatter reflow of long lines
+    in StandaloneRouter.tsx and the router/shell test files — identifiers, values,
+    and assertions unchanged; no other file reformatted)
+
+Phase 01 verification applicable now:
+  command: pnpm run typecheck && pnpm run lint && pnpm run test
+  exit status: 0
+  output: typecheck clean; lint clean; unit project 29 files, 206 tests passed.
+
+Test counts:
+  T19 test files: 3 passed, 7 tests passed (2 standaloneSider, 3
+  standaloneRouter including useStandaloneRoute, 2 standaloneShell), 0 failed,
+  0 skipped.
+  Unit project total after T19: 29 files, 206 passed.
+
+Specification-compliance checklist:
+  - default route is `chat`; an unknown hash resolves to `chat` and reports the
+    raw hash through onRouteFallback: yes (asserted via resolveStandaloneRouteId
+    and the harness test)
+  - Sider lists the five primary plus two footer routes from the T05 registry:
+    yes (asserted for Chat/Agent/Notes/Write/Tools/Options/Diagnostics)
+  - Sider navigation emits the clicked route id: yes (asserted onNavigate('notes'))
+  - StandaloneRouter renders the registered page for the active route and nothing
+    for an unregistered route: yes (asserted both)
+  - focus destination applied by the live router: implemented via
+    focusSubscription and applied to route state
+  - interfaces produced exactly as specified (StandaloneSiderProps,
+    StandaloneRouterProps, UseStandaloneRouteOptions, StandaloneRouteController,
+    StandaloneShellProps; StandaloneSider, StandaloneRouter, useStandaloneRoute,
+    StandaloneShell): yes
+  - no hashchange/popstate listener, no browser-history traversal, no query/path
+    routing; only replaceState: yes
+  - no hard-coded Sider route array; labels/hashes come from standaloneRoutes.ts:
+    yes
+  - no Side Panel navigation UI; only the six created files (plus .planning
+    evidence/STATUS) changed: yes
+
+Code-quality and security checklist:
+  - accessible navigation label (aria-label="Workspace navigation") on the Sider:
+    yes
+  - no route strings built outside the registry: yes (standaloneHashRoute is used)
+  - no history entries (replaceState only); no direct chrome.*, storage,
+    IndexedDB, network, filesystem, content-script, or host-page access: yes
+  - no secrets, tokens, cookies, passwords, prompts, page content, or customer
+    data read, logged, persisted, exported, or committed: yes
+  - no `any`; strong typing through StandaloneRouteId and the registry types: yes
+
+Completion criteria: component tests green; typecheck and lint pass; prettier check
+passes; phase-applicable chain exit 0; one atomic task commit exists; working tree
+clean; status recorded.

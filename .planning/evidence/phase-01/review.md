@@ -1794,3 +1794,98 @@ tests), `pnpm run typecheck` exit 0, `pnpm run lint` exit 0,
 **PASS** — Task 18 meets specification-compliance, code-quality, and security/privacy
 requirements; the only findings are a Low-severity formatting pass and informational
 observations, both disclosed, and no blocking finding remains.
+
+## Task 19 — Standalone Shell, Router, and Sider (2026-09-19)
+
+**Classification:** code task (TDD RED→GREEN); implementation tier balanced
+
+### Scope reviewed
+
+- `src/components/standalone/StandaloneSider.tsx` (created)
+- `src/components/standalone/StandaloneRouter.tsx` (created)
+- `src/components/standalone/StandaloneShell.tsx` (created)
+- `tests/components/standaloneSider.test.tsx`,
+  `tests/components/standaloneRouter.test.tsx`,
+  `tests/components/standaloneShell.test.tsx` (created)
+
+### 1. Specification-compliance review
+
+- `StandaloneSider` builds its Menu items by mapping `PRIMARY_STANDALONE_ROUTES`
+  then `FOOTER_STANDALONE_ROUTES` from the T05 `standaloneRoutes.ts` registry, so
+  the five primary (Chat, Agent, Notes, Write, Tools) and two footer (Options,
+  Diagnostics) labels are owned by the registry, not hard-coded in the component.
+  PASS
+- Clicking a Menu item maps the antd key back to `StandaloneRouteId` and calls
+  `onNavigate` with the route id (`onNavigate('notes')` asserted). PASS
+- `StandaloneRouter` renders `registry.get(routeId)` and `null` for an
+  unregistered route (both asserted). PASS
+- `useStandaloneRoute` defaults to `chat` via `resolveStandaloneRouteId`, reports
+  the raw hash through `onRouteFallback` on a fallback, writes the resolved hash
+  with `window.history.replaceState`, applies a `focusSubscription` destination to
+  route state, and exposes `navigate(routeId)`. PASS
+- `StandaloneShell` composes the Sider, the routed page, and the hook; navigation
+  switches the rendered page (asserted) and an unknown initial hash reports the
+  fallback (asserted). PASS
+- Interfaces produced exactly as specified: `StandaloneSiderProps`,
+  `StandaloneRouterProps`, `UseStandaloneRouteOptions`, `StandaloneRouteController`,
+  `StandaloneShellProps`, and the four value exports. PASS
+- Non-goals respected: no `hashchange`/`popstate` listener, no browser-history
+  traversal, no query/path routing, no hard-coded Sider array, no Side Panel
+  navigation UI, no new dependency, permission, storage key, message type, error
+  code, or `DiagnosticEvent`. Only the brief's six files plus `.planning`
+  evidence/STATUS changed. PASS
+
+### 2. Code-quality review
+
+- The Sider is a small presentational component; menu items and keys derive from a
+  single registry source, so labels cannot drift. `selectedKeys` reflects the
+  active route, and the click handler is a single expression. PASS
+- The router is a pure render helper; `useStandaloneRoute` centralises hash
+  resolution, fallback reporting, focus subscription, and replaceState so the
+  shell stays declarative. The antd key cast is constrained to
+  `StandaloneRouteId`; no `any` is used. PASS
+- `useCallback`/`useEffect` dependencies are correct: `navigate` is stable, the
+  hash effect depends on `routeId`, and the focus effect depends on
+  `options.focusSubscription`, unsubscribing through the returned function. PASS
+- The shell consumes only the injected `StandalonePageRegistry`; there is no module
+  global or window reach-through beyond `replaceState`. PASS
+
+### 3. Security and privacy review (assets and trust boundaries)
+
+- No user input, forms, or fields; no content-script or host-page access; the
+  components run only in extension-owned Standalone contexts. PASS
+- No `chrome.*`, storage, IndexedDB, network, filesystem, provider, or MCP access;
+  no runtime message is sent or validated here (that boundary remains T08/T09). PASS
+- No secrets, tokens, cookies, passwords, prompts, page content, or customer data
+  are read, logged, persisted, exported, or committed. PASS
+- The Sider carries an accessible `aria-label="Workspace navigation"`; no route
+  string is constructed outside the registry (`standaloneHashRoute`). PASS
+
+### 4. Findings and dispositions
+
+| ID | Severity | Finding | Disposition |
+|----|----------|---------|-------------|
+| T19-A | Low (plan defect) | The brief's `StandaloneRouter.tsx` import list includes unused `DEFAULT_STANDALONE_ROUTE_ID`, which fails the pinned `noUnusedLocals`/eslint. | Authorised correction: removed only that unused import; every other import and all code were transcribed verbatim. |
+| T19-B | Low (test isolation) | The brief's `standaloneSider.test.tsx` renders twice in one file; because vitest runs without `globals: true` and the repo has no global `afterEach(cleanup)`, the second `getByText('Notes')` matched both mounted Siders and failed. | Added explicit `afterEach(cleanup)` to the three component test files; test bodies, identifiers, values, and assertions unchanged. |
+| T19-C | Low (formatting) | `pnpm exec prettier --check .` flagged `StandaloneRouter.tsx` and the router/shell test files (line reflow). | Reformatted those new files; no identifier/value/assertion change; no other file reformatted. |
+
+T19-A and T19-B are confined to permitted new files and do not alter contracts,
+identifiers, values, or assertions. T19-C is formatting only.
+
+No Critical, High, or Medium finding remains unresolved.
+
+### 5. Verification evidence
+
+RED: `pnpm run test -- tests/components` exit 1 — module-resolution failures for
+`@/components/standalone/StandaloneSider`, `.../StandaloneRouter`, and
+`.../StandaloneShell`; the 26 pre-existing files (199 tests) still passed. GREEN:
+`pnpm run test -- tests/components` exit 0 (29 files, 206 tests), `pnpm run typecheck`
+exit 0, `pnpm run lint` exit 0, `pnpm exec prettier --check .` exit 0, and the
+phase-applicable chain `typecheck && lint && test` exit 0 (29 files, 206 tests). Full
+output is recorded in `verification.txt` (Task 19 section).
+
+### Acceptance decision
+
+**PASS** — Task 19 meets specification-compliance, code-quality, and security/privacy
+requirements; the only findings are two Low-severity plan/test-isolation corrections
+(authorised/disclosed) and one formatting pass, and no blocking finding remains.

@@ -9,18 +9,18 @@ rewrite or delete prior history.
 - **Current phase:** Phase 01 — Runtime, Shells, and Workspace
 - **Design status:** Approved and amended by ADR-0001 (background-serialised workspace election)
 - **Plan status:** Approved and amended (corrective task T13C; T14/T16/T22/T24/T25/T26/T28 amendment notes)
-- **Implementation status:** T01–T13C accepted; T14, T15, and T16 implemented and verified; T17 implemented and verified; T18 implemented and verified; T19–T28 not started
+- **Implementation status:** T01–T13C accepted; T14, T15, and T16 implemented and verified; T17 implemented and verified; T18 implemented and verified; T19 implemented and verified; T20–T28 not started
 - **Planning baseline branch:** `phoenix`
 - **Implementation branch:** `phoenix`
 - **Historical approved planning baseline commit:** `bd6ac44d6f562722c18f0d07e6910634e549c713`
 - **Approved planning baseline commit:** `b2c6ef289bc1abebbeccfad81d7034ced81f4eb7`
-- **Current task:** T18 complete; next task T19
-- **Last commit:** the T18 task commit `feat(phase-01): register standalone pages and skeletons`, on top of `aeb287c` (`feat(phase-01): add theme schemas config store and hook`)
-- **Verification result:** T18 registry suite 5/5 new tests (2 files); full unit suite 199/199 (26 files); `typecheck`, `lint`, `prettier --check .`, and the phase chain `typecheck && lint && test` all exit 0. `createStandalonePageRegistry()` rejects duplicate route ids and preserves registration order; `createCorePageRegistry()`/`CORE_PAGE_REGISTRY` register exactly the seven `STANDALONE_ROUTE_IDS`; every skeleton page carries its canonical `data-testid="standalone-page-<id>"`; `OptionsPage.tsx` is a minimal skeleton replaced in T20.
-- **Next action:** implement T19 per approved Phase 01 `PLAN.md`
-- **Blockers:** None; T13, T13C, T14, T15, T16, T17, and T18 are accepted
-- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 14, Task 15, Task 16, Task 17, and Task 18 sections)
-- **Evidence status:** T18 verified; self-review PASS
+- **Current task:** T19 complete; next task T20
+- **Last commit:** the T19 task commit `feat(phase-01): add standalone shell router and sider`, on top of `f146e79` (`feat(phase-01): register standalone pages and skeletons`)
+- **Verification result:** T19 component suite 7/7 new tests (3 files); full unit suite 206/206 (29 files); `typecheck`, `lint`, `prettier --check .`, and the phase chain `typecheck && lint && test` all exit 0. `StandaloneSider` renders the five primary plus two footer routes from the T05 registry and emits the clicked route id; `StandaloneRouter` renders the registered page or nothing; `useStandaloneRoute` defaults to `chat`, reports an unknown hash through `onRouteFallback`, and writes only `window.history.replaceState`; `StandaloneShell` composes Sider and routed page. The authorised unused `DEFAULT_STANDALONE_ROUTE_ID` import was removed from `StandaloneRouter.tsx`; an explicit `afterEach(cleanup)` was added to the three component test files (no global cleanup is configured) with test bodies/assertions unchanged.
+- **Next action:** implement T20 per approved Phase 01 `PLAN.md`
+- **Blockers:** None; T13, T13C, T14, T15, T16, T17, T18, and T19 are accepted
+- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 14, Task 15, Task 16, Task 17, Task 18, and Task 19 sections)
+- **Evidence status:** T19 verified; self-review PASS
 
 ## History
 
@@ -773,3 +773,38 @@ rewrite or delete prior history.
   `.planning/evidence/phase-01/review.md` (Task 18 sections). Task commit
   `feat(phase-01): register standalone pages and skeletons`. Current task T18 accepted;
   next task T19 — per approved Phase 01 `PLAN.md`.
+- Task 19 (Standalone Shell, Router, and Sider) executed on `phoenix` in the repository
+  root. Implementation tier balanced. RED confirmed at `pnpm run test -- tests/components`
+  (exit 1; 3 files failed with module-resolution errors for
+  `@/components/standalone/StandaloneSider`, `StandaloneRouter`, and `StandaloneShell`;
+  the 26 pre-existing files / 199 tests still passed). Created
+  `src/components/standalone/StandaloneSider.tsx` (antd `Layout.Sider` with
+  `aria-label="Workspace navigation"` and an inline `Menu` whose items come from
+  `PRIMARY_STANDALONE_ROUTES` then `FOOTER_STANDALONE_ROUTES` — five primary plus two
+  footer labels, no hard-coded array; `selectedKeys=[activeRoute]`; click casts the antd
+  key to `StandaloneRouteId` and calls `onNavigate`),
+  `src/components/standalone/StandaloneRouter.tsx` (`StandaloneRouter` renders
+  `registry.get(routeId)` or `null`; `useStandaloneRoute` seeds `chat` via
+  `resolveStandaloneRouteId`, reports the raw hash through `onRouteFallback` on fallback,
+  applies a `focusSubscription` destination to state, and writes the hash with
+  `window.history.replaceState` only — no `hashchange`/`popstate`, no history traversal),
+  and `src/components/standalone/StandaloneShell.tsx` (`Layout` composing the Sider and a
+  `Layout.Content` holding the routed page, wired to `useStandaloneRoute`). Created
+  `tests/components/standaloneSider.test.tsx` (2 tests), `standaloneRouter.test.tsx`
+  (3 tests including the `useStandaloneRoute` harness), and `standaloneShell.test.tsx`
+  (2 tests). Authorised correction (T19-A): removed the unused
+  `DEFAULT_STANDALONE_ROUTE_ID` import from `StandaloneRouter.tsx` that fails the pinned
+  `noUnusedLocals`/eslint; all other imports and code are verbatim. Disclosed test-only
+  correction (T19-B): because vitest runs without `globals: true` and the repo has no
+  global `afterEach(cleanup)`, the brief's second Sider test matched two mounted Siders,
+  so an explicit `afterEach(cleanup)` was added to the three component test files with
+  bodies/assertions unchanged. `prettier --check .` reflowed only the new files (T19-C).
+  GREEN: `pnpm run test -- tests/components` exit 0 (29 files, 206 tests), `typecheck`
+  exit 0, `lint` exit 0, `prettier --check .` exit 0; phase chain
+  `typecheck && lint && test` exit 0 (29 files, 206 tests). No new storage key, error
+  code, message type, permission, dependency, provider, or `DiagnosticEvent`; no Side
+  Panel navigation UI; no browser-history entry or traversal. Evidence recorded in
+  `.planning/evidence/phase-01/verification.txt` and
+  `.planning/evidence/phase-01/review.md` (Task 19 sections). Task commit
+  `feat(phase-01): add standalone shell router and sider`. Current task T19 accepted;
+  next task T20 — per approved Phase 01 `PLAN.md`.
