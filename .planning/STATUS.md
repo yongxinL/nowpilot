@@ -9,18 +9,18 @@ rewrite or delete prior history.
 - **Current phase:** Phase 01 — Runtime, Shells, and Workspace
 - **Design status:** Approved
 - **Plan status:** Approved
-- **Implementation status:** In progress — T01 accepted
+- **Implementation status:** In progress — T01 accepted; T02 accepted
 - **Planning baseline branch:** `phoenix`
 - **Implementation branch:** `phoenix`
 - **Historical approved planning baseline commit:** `bd6ac44d6f562722c18f0d07e6910634e549c713`
 - **Approved planning baseline commit:** `3fb619730c8032d4aa121c5b8aa9649901b45f5f`
-- **Current task:** T01 — pnpm and WXT Project Bootstrap (accepted)
-- **Last commit:** `5b0a2da4fb0102595a928019e33338e7c2d84a68` (`chore(phase-01): bootstrap pnpm WXT project`)
-- **Verification result:** Pass — Task 01 Step 10 focused block all exit 0; WXT 0.21.4 build succeeded; `.output/chrome-mv3/manifest.json` produced
-- **Next task:** T02
+- **Current task:** T02 — Test, Lint, Type-Check, Formatting, and Build Configuration (accepted)
+- **Last commit:** T02 atomic commit `chore(phase-01): configure test lint typecheck format and build` (SHA captured post-commit in `.superpowers/sdd/PLAN/task-02-report.md`)
+- **Verification result:** Pass — T02 Step 8 all exit 0 (`test` 4/4, `typecheck`, `lint`, `prettier --check .`, `build`); phase chain `typecheck && lint && test` exit 0
+- **Next task:** T03
 - **Blockers:** None
-- **Evidence path:** `.planning/evidence/phase-01/verification.txt` (Task 01 section)
-- **Evidence status:** Task 01 verification recorded
+- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 02 sections)
+- **Evidence status:** Task 02 verification and review recorded
 
 ## History
 
@@ -105,3 +105,22 @@ rewrite or delete prior history.
   without it, lockfile hash unchanged), so it was removed and not committed.
   Current task T01 accepted; next task T02; verification recorded in
   `.planning/evidence/phase-01/verification.txt`.
+- Task 02 (Test, Lint, Type-Check, Formatting, and Build Configuration) executed
+  on `phoenix`. RED confirmed at `pnpm exec vitest run tests/config/toolchain.test.ts`
+  (exit 1; missing scripts and config files). A first pass surfaced four blocking
+  defects under the pinned toolchain (Vitest 5.0.1 / Vite 8.3.0 / jsdom 30.1.0 /
+  TypeScript 5.9.3); the controller independently reproduced and ruled on each, and
+  the authorised corrections were applied: (B1) `tsconfig.json` `extends` →
+  `./.wxt/tsconfig.json` (TS6053); (B2) `vitest.config.ts` unit project-level
+  `esbuild: { jsx: 'automatic' }` removed (TS2769; Vite 8 uses oxc); (B3)
+  `tests/config/toolchain.test.ts` root now computed with
+  `resolve(dirname(fileURLToPath(import.meta.url)), '../..')` so Vite's client
+  transform no longer rewrites it (jsdom ERR_INVALID_URL_SCHEME); (B4)
+  `tsconfig.json` gained `"jsx": "react-jsx"`. `pnpm run format` reformatted only
+  `tests/config/toolchain.test.ts` and `vitest.config.ts`. Step 8 passed with all
+  commands exit 0 (`test` 4/4, `typecheck`, `lint`, `prettier --check .`, `build`);
+  phase chain `typecheck && lint && test` exit 0. `pnpm-workspace.yaml` remained
+  absent. Evidence recorded in `.planning/evidence/phase-01/verification.txt` and
+  `.planning/evidence/phase-01/review.md` (Task 02 sections). Task commit
+  `chore(phase-01): configure test lint typecheck format and build`. Current task
+  T02 accepted; next task T03.

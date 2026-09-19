@@ -108,3 +108,79 @@ Code-quality and security checklist:
 
 Completion criteria: Steps 10–11 pass; one atomic task commit exists; working tree
 clean; status recorded.
+
+=== Task 02 — Test, Lint, Type-Check, Formatting, and Build Configuration (2026-09-19) ===
+
+task ID: T02
+branch: phoenix
+repository root: /Users/george.li/Documents/workspaces/nowpilot
+classification: configuration exception (AGENTS.md Section 11); RED→GREEN applied to tests/config/toolchain.test.ts
+base commit: ba7ace2427755c66914de6462b24cc1619ef6c17
+
+Files created: vitest.config.ts, tests/setup.ts, tests/config/toolchain.test.ts,
+  eslint.config.mjs, .prettierrc, .prettierignore
+Files modified: package.json (scripts), tsconfig.json (authorised corrections below)
+
+Step 1 — RED:
+  command: pnpm exec vitest run tests/config/toolchain.test.ts
+  exit status: 1
+  result: 4 tests | 2 failed | 2 passed
+    FAIL declares every required verification script: missing script typecheck
+    FAIL provides the test, lint, type-check, and formatting configuration files: missing vitest.config.ts
+
+Pre-correction defects found and independently reproduced by the controller
+(four corrections applied; all controller-verified under the pinned toolchain):
+  B1: tsconfig.json "extends": ".wxt/tsconfig.json" → "./.wxt/tsconfig.json"
+      (TS6053 File '.wxt/tsconfig.json' not found; TS does not treat a bare ".wxt/..." as relative).
+  B2: vitest.config.ts unit project — removed `esbuild: { jsx: 'automatic' }`
+      (TS2769; Vite 8.3.0 moved the transform to oxc).
+  B3: tests/config/toolchain.test.ts line 5 →
+      `const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..') + '/';`
+      (jsdom selects Vite's client transform, which rewrites
+      `new URL('../../', import.meta.url)` to an http://localhost:3000/@fs/... URL and
+      breaks fileURLToPath with ERR_INVALID_URL_SCHEME).
+  B4: tsconfig.json compilerOptions + "jsx": "react-jsx"
+      (.wxt/tsconfig.json does not set jsx; required for later .tsx typecheck).
+  Root-cause proof: probe with "./.wxt/tsconfig.json" resolved config cleanly; a temp
+  config with the unit environment set to 'node' passed the plan test 4/4.
+
+Step 8 — focused verification after corrections (sequential):
+  pnpm run test                  => exit 0  (unit: 1 file, 4 passed)
+  pnpm run typecheck             => exit 0  (tsc --noEmit clean)
+  pnpm run lint                  => exit 0  (eslint . clean)
+  pnpm exec prettier --check .   => exit 0  (after pnpm run format)
+  pnpm run build                 => exit 0  (WXT 0.21.4 chrome-mv3; .output/chrome-mv3/manifest.json 340 B)
+  Note: the first post-correction `pnpm run test` hit a transient forks-worker startup
+  timeout (Duration 63.79s); an immediate retry passed 4/4 (2.58s) with no code change.
+
+Phase 01 verification applicable now:
+  command: pnpm run typecheck && pnpm run lint && pnpm run test
+  exit status: 0
+
+Formatting scope:
+  pnpm run format changed only tests/config/toolchain.test.ts and vitest.config.ts
+  (both T02-authorised). No other file changed; no git checkout -- restore was required.
+  .prettierignore is the verbatim brief content; no extra entry needed.
+
+Unit test count: 4 passed, 0 skipped, 0 failed (tests/config/toolchain.test.ts).
+
+Other checks:
+  pnpm-workspace.yaml absent before and after; not recreated by any T02 command.
+  tsconfig.json existing strict / noFallthroughCasesInSwitch / noUnusedLocals /
+  noUnusedParameters and include entries preserved.
+
+Specification-compliance checklist:
+  - exact script names and identical verify:phase-1 / verify:all chains: yes
+  - Vitest 5 projects only (unit/manifest/isolation), exact include/exclude: yes
+    (project-level esbuild option removed per authoritative correction B2)
+  - no @eslint/js, globals, or other excluded dependency added: yes
+  - no content-script test: yes
+
+Code-quality and security checklist:
+  - no secrets, credentials, or sensitive data: yes
+  - `test` runs only the unit project and requires no build artefacts: yes
+  - test:manifest / test:isolation run separate projects against real build output: yes
+  - no test writes outside the workspace: yes
+
+Completion criteria: Step 8 exit 0 for all five commands; phase-applicable chain exit 0;
+unit test green; one atomic commit.

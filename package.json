@@ -10,7 +10,16 @@
   "scripts": {
     "dev": "wxt",
     "postinstall": "wxt prepare",
-    "build": "wxt build"
+    "build": "wxt build",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run --project unit",
+    "test:manifest": "vitest run --project manifest",
+    "test:isolation": "vitest run --project isolation",
+    "verify:phase-1": "pnpm run typecheck && pnpm run lint && pnpm run test && pnpm run build && pnpm run test:manifest && pnpm run test:isolation",
+    "verify:all": "pnpm run typecheck && pnpm run lint && pnpm run test && pnpm run build && pnpm run test:manifest && pnpm run test:isolation"
   },
   "dependencies": {
     "@ant-design/icons": "6.3.4",
