@@ -15,7 +15,7 @@ rewrite or delete prior history.
 - **Historical approved planning baseline commit:** `bd6ac44d6f562722c18f0d07e6910634e549c713`
 - **Approved planning baseline commit:** `3fb619730c8032d4aa121c5b8aa9649901b45f5f`
 - **Current task:** T01 — pnpm and WXT Project Bootstrap (accepted)
-- **Last commit:** `TASK_01_SHA_PLACEHOLDER` (`chore(phase-01): bootstrap pnpm WXT project`)
+- **Last commit:** `5b0a2da4fb0102595a928019e33338e7c2d84a68` (`chore(phase-01): bootstrap pnpm WXT project`)
 - **Verification result:** Pass — Task 01 Step 10 focused block all exit 0; WXT 0.21.4 build succeeded; `.output/chrome-mv3/manifest.json` produced
 - **Next task:** T02
 - **Blockers:** None
@@ -98,7 +98,8 @@ rewrite or delete prior history.
   verification passed (all exit 0); `pnpm run build` produced WXT 0.21.4
   chrome-mv3 output and `.output/chrome-mv3/manifest.json`. Phase 01 verification
   applicable now: none (toolchain scripts do not exist until T02). Task commit
-  `chore(phase-01): bootstrap pnpm WXT project`. Note: pnpm 12.4.2 auto-created an
+  `5b0a2da4fb0102595a928019e33338e7c2d84a68` (`chore(phase-01): bootstrap pnpm
+  WXT project`). Note: pnpm 12.4.2 auto-created an
   untracked `pnpm-workspace.yaml` during initial resolution; it is forbidden by
   Global Constraint 2 and not required (`pnpm install --frozen-lockfile` passes
   without it, lockfile hash unchanged), so it was removed and not committed.

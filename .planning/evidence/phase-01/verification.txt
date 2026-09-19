@@ -12,7 +12,7 @@ branch: phoenix
 repository root: /Users/george.li/Documents/workspaces/nowpilot
 classification: configuration exception (AGENTS.md Section 11) — TDD not required; no test files
 base commit: b54b01d18d3fdbdc8faaabf0dcc3239ff420c962
-commit range: b54b01d18d3fdbdc8faaabf0dcc3239ff420c962..TASK_01_SHA_PLACEHOLDER
+commit range: b54b01d18d3fdbdc8faaabf0dcc3239ff420c962..5b0a2da4fb0102595a928019e33338e7c2d84a68
 
 Step 1 — RED (prove bootstrap absent):
   command: test -f package.json && test -f .npmrc && test -f wxt.config.ts
