@@ -22,16 +22,25 @@ export interface BroadcastBus {
 }
 
 export function createBroadcastBus(deps: BroadcastBusDependencies): BroadcastBus {
-  const listeners = new Map<RawMessageListener, Map<MessageType, Set<EnvelopeHandler>>>();
+  const handlersByType = new Map<MessageType, Set<EnvelopeHandler>>();
+  let rawListener: RawMessageListener | undefined;
 
-  function dispatch(message: unknown, sender: unknown): void {
-    const validated = validateInboundEnvelope(message, sender as SenderIdentity, deps.extensionId);
-    if (!validated.ok) return;
-    for (const byType of listeners.values()) {
-      const handlers = byType.get(validated.envelope.type);
-      if (!handlers) continue;
-      for (const handler of handlers) handler(validated.envelope, sender);
+  function ensureListener(): RawMessageListener {
+    if (!rawListener) {
+      rawListener = (message, sender) => {
+        const validated = validateInboundEnvelope(
+          message,
+          sender as SenderIdentity,
+          deps.extensionId,
+        );
+        if (!validated.ok) return;
+        const handlers = handlersByType.get(validated.envelope.type);
+        if (!handlers) return;
+        for (const handler of handlers) handler(validated.envelope, sender);
+      };
+      deps.addMessageListener(rawListener);
     }
+    return rawListener;
   }
 
   return {
@@ -39,22 +48,17 @@ export function createBroadcastBus(deps: BroadcastBusDependencies): BroadcastBus
       await deps.sendMessage(envelope);
     },
     on(type, handler) {
-      let raw = [...listeners.keys()].find((candidate) => listeners.get(candidate)?.has(type));
-      if (!raw) {
-        raw = (message, sender) => dispatch(message, sender);
-        listeners.set(raw, new Map());
-        deps.addMessageListener(raw);
-      }
-      const byType = listeners.get(raw)!;
-      const handlers = byType.get(type) ?? new Set<EnvelopeHandler>();
+      ensureListener();
+      const handlers = handlersByType.get(type) ?? new Set<EnvelopeHandler>();
       handlers.add(handler);
-      byType.set(type, handlers);
+      handlersByType.set(type, handlers);
       return () => {
-        const current = listeners.get(raw!);
-        current?.get(type)?.delete(handler);
-        if (current && [...current.values()].every((set) => set.size === 0)) {
-          deps.removeMessageListener(raw!);
-          listeners.delete(raw!);
+        const current = handlersByType.get(type);
+        current?.delete(handler);
+        if (current && current.size === 0) handlersByType.delete(type);
+        if (handlersByType.size === 0 && rawListener) {
+          deps.removeMessageListener(rawListener);
+          rawListener = undefined;
         }
       };
     },

@@ -900,3 +900,81 @@ Code-quality and security checklist:
 
 Completion criteria: bus test green; typecheck and lint pass; phase-applicable chain
 exit 0; one atomic task commit exists; working tree clean; status recorded.
+
+--------------------------------------------------------------------------------
+Task 09 FIX — single transport listener (controller review, Critical)
+--------------------------------------------------------------------------------
+
+Date: 2026-09-19
+Branch: phoenix
+Repository root: /Users/george.li/Documents/workspaces/nowpilot
+Files changed: src/core/runtime/BroadcastBus.ts, tests/core/runtime/broadcastBus.test.ts
+Corrective commit: fix(phase-01): deliver each broadcast message once per subscriber
+  (SHA captured post-commit in .superpowers/sdd/PLAN/task-09-report.md)
+
+Defect: the original `on` registered one raw transport listener per distinct
+subscribed MessageType, while each raw listener's `dispatch` fanned out over all
+listener maps. With N distinct types subscribed, one inbound message was dispatched
+N times, each matching handler fired N times, and invalid messages were validated/logged
+N times (affects T16, 5 subscriptions, and T22).
+
+Fix (exact corrected implementation from controller review): a SINGLE raw transport
+listener created lazily by `ensureListener` and one `handlersByType` map keyed by
+MessageType. `on` adds the handler to its type set; unsubscribe removes the handler,
+deletes an empty type entry, and removes the raw listener (setting it undefined) only
+when no type has any handler. Public interface unchanged.
+
+Step 1 — RED (regression test, against the previous fan-out implementation):
+  command: pnpm exec vitest run --project unit tests/core/runtime/broadcastBus.test.ts
+  exit status: 1
+  output: "delivers each inbound message exactly once across multiple subscribed types"
+    FAILED — AssertionError: expected 2 to be 1 (listeners.size), i.e. two raw
+    transport listeners were registered for two distinct types. 1 failed | 5 passed.
+
+Step 2 — GREEN (corrected implementation):
+  command: pnpm exec vitest run --project unit tests/core/runtime/broadcastBus.test.ts
+  exit status: 0
+  output: Test Files 1 passed (1); Tests 6 passed (6), 0 failed, 0 skipped.
+
+Regression test (added to tests/core/runtime/broadcastBus.test.ts):
+  - subscribes two distinct types (standalone.open, standalone.focus) that are both
+    valid from a trusted sender to one bus;
+  - asserts listeners.size === 1 after both subscriptions (pins the single-listener
+    design);
+  - iterates the `listeners` set as the existing tests do, delivering each message to
+    every registered listener;
+  - asserts openHandler fired exactly once with type standalone.open, focusHandler
+    fired exactly once with type standalone.focus, and neither fired for the other type.
+  It fails against the previous fan-out implementation and passes with the fix.
+
+Focused verification (sequential):
+  pnpm exec vitest run --project unit tests/core/runtime/broadcastBus.test.ts => exit 0
+    (1 file, 6 tests)
+  pnpm run test -- tests/core/runtime/broadcastBus.test.ts  => exit 0
+    (unit project: 12 files, 65 tests)
+  pnpm run typecheck                                        => exit 0 (tsc --noEmit clean)
+  pnpm run lint                                             => exit 0 (eslint . clean)
+  pnpm exec prettier --check .                              => exit 0 (all files formatted;
+    the corrected implementation was already Prettier-clean)
+
+Phase 01 verification applicable now:
+  command: pnpm run typecheck && pnpm run lint && pnpm run test
+  exit status: 0
+  output: typecheck clean; lint clean; unit project 12 files, 65 tests passed.
+
+Specification-compliance checklist (fix):
+  - public interface unchanged (RawMessageListener, BroadcastBusDependencies,
+    EnvelopeHandler, BroadcastBus, createBroadcastBus): yes
+  - inbound messages still pass through the T08 validateInboundEnvelope boundary with
+    the injected extensionId and raw sender before any handler; rejected messages are
+    never dispatched: yes (now validated exactly once per inbound message)
+  - exactly one raw transport listener regardless of subscribed type count: yes
+
+Code-quality and security checklist (fix):
+  - each matching handler fires exactly once per inbound message: yes
+  - invalid messages are validated/logged exactly once per inbound message: yes
+  - raw listener removed when the last handler across all types is removed: yes
+  - no raw message/sender logged; no direct chrome.*; no dependency change: yes
+
+Completion criteria: regression test green; typecheck and lint pass; phase-applicable
+chain exit 0; corrective commit exists; working tree clean; status recorded.

@@ -14,13 +14,13 @@ rewrite or delete prior history.
 - **Implementation branch:** `phoenix`
 - **Historical approved planning baseline commit:** `bd6ac44d6f562722c18f0d07e6910634e549c713`
 - **Approved planning baseline commit:** `3fb619730c8032d4aa121c5b8aa9649901b45f5f`
-- **Current task:** T09 — Canonical Broadcast Bus (accepted)
-- **Last commit:** T09 atomic commit `feat(phase-01): add canonical broadcast bus` (SHA captured post-commit in `.superpowers/sdd/PLAN/task-09-report.md`)
-- **Verification result:** Pass — T09 focused test exit 0 (1 file, 5 tests), `typecheck` exit 0, `lint` exit 0, `prettier --check .` exit 0 (after formatting the two T09 files only); phase chain `typecheck && lint && test` exit 0 (12 files, 64 tests)
+- **Current task:** T09 — Canonical Broadcast Bus (accepted; controller Critical fan-out fix applied)
+- **Last commit:** T09 fix corrective commit `fix(phase-01): deliver each broadcast message once per subscriber` (SHA captured post-commit in `.superpowers/sdd/PLAN/task-09-report.md`)
+- **Verification result:** Pass — T09 fix regression test exit 0 (1 file, 6 tests), `typecheck` exit 0, `lint` exit 0, `prettier --check .` exit 0; phase chain `typecheck && lint && test` exit 0 (12 files, 65 tests)
 - **Next task:** T10 — (per approved Phase 01 `PLAN.md`)
 - **Blockers:** None
-- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 09 sections)
-- **Evidence status:** Task 09 verification and review recorded
+- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 09 and Task 09 FIX sections)
+- **Evidence status:** Task 09 verification, review, and controller Critical fix recorded
 
 ## History
 
@@ -314,3 +314,28 @@ rewrite or delete prior history.
   `.planning/evidence/phase-01/review.md` (Task 09 sections). Task commit
   `feat(phase-01): add canonical broadcast bus`. Current task T09 accepted; next task
   T10 — per approved Phase 01 `PLAN.md`.
+- Task 09 controller review (Critical) and fix. The controller found that the original
+  `on` registered one raw transport listener per distinct subscribed `MessageType`, while
+  each listener's `dispatch` fanned out over all listener maps; with N distinct types
+  subscribed, one inbound message was dispatched N times, each matching handler fired N
+  times, and invalid messages were validated/logged N times (affects T16 and T22).
+  Regression test added first:
+  "delivers each inbound message exactly once across multiple subscribed types" subscribes
+  `standalone.open` and `standalone.focus` on one bus, asserts the transport has exactly
+  one raw listener (`listeners.size === 1`), and asserts each handler fires exactly once
+  for its own type and not the other. It failed against the fan-out implementation
+  (`expected 2 to be 1`; 1 failed | 5 passed). Replaced
+  `src/core/runtime/BroadcastBus.ts` with the controller-specified corrected
+  implementation: a single lazily-created raw transport listener (`ensureListener`) and
+  one `handlersByType: Map<MessageType, Set<EnvelopeHandler>>`; unsubscribe removes the
+  handler, deletes an empty type entry, and removes the raw listener only when no type has
+  any handler. Public interface unchanged; inbound messages still pass through the T08
+  `validateInboundEnvelope` boundary exactly once before any handler. GREEN: focused
+  regression run exit 0 (1 file, 6 tests), `pnpm run test` exit 0 (12 files, 65 tests),
+  `typecheck` exit 0, `lint` exit 0, `prettier --check .` exit 0; phase chain
+  `typecheck && lint && test` exit 0 (12 files, 65 tests). Evidence appended to
+  `.planning/evidence/phase-01/verification.txt` and
+  `.planning/evidence/phase-01/review.md` (Task 09 FIX sections). Corrective commit
+  `fix(phase-01): deliver each broadcast message once per subscriber` (a new commit, not
+  an amend). Current task T09 accepted with the fix applied; next task T10 — per approved
+  Phase 01 `PLAN.md`.

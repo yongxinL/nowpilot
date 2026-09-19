@@ -702,3 +702,48 @@ GREEN: explicit focused path exit 0 (1 file, 5 tests), `pnpm run test` exit 0 (1
 **PASS** — Task 09 meets specification-compliance, code-quality, and security/privacy
 requirements; the only findings are a Low-severity type-only assertion and a Low-severity
 formatting correction, and no blocking finding remains.
+
+## Task 09 FIX — Single Transport Listener
+
+### Finding (Critical, from controller review)
+
+The original `on` registered one raw transport listener per distinct subscribed
+`MessageType`, while each listener's `dispatch` fanned out over all listener maps.
+With N distinct types subscribed, one inbound message was dispatched N times, each
+matching handler fired N times, and invalid messages were validated/logged N times.
+This would break T16 (5 subscriptions) and T22. Reproduced by the controller: two
+subscriptions produced two raw listeners and a matching handler fired twice.
+
+### Resolution
+
+Replaced `src/core/runtime/BroadcastBus.ts` with the controller-specified corrected
+implementation: a single lazily-created raw transport listener (`ensureListener`) and one
+`handlersByType: Map<MessageType, Set<EnvelopeHandler>>`. `on` adds a handler to its
+type set; the returned unsubscribe removes the handler, deletes an empty type entry, and
+removes the raw listener (setting it undefined) only when no type has any handler. The
+public interface is unchanged. Each inbound message is now validated once and dispatched
+once.
+
+### Regression test
+
+Added `delivers each inbound message exactly once across multiple subscribed types` to
+`tests/core/runtime/broadcastBus.test.ts`: two distinct types (`standalone.open`,
+`standalone.focus`) subscribed on one bus; asserts `listeners.size === 1`; delivers both
+messages to every registered listener; asserts each handler fires exactly once for its own
+type and not for the other. It fails (expected 2 to be 1, and duplicate dispatch) against
+the previous fan-out implementation and passes with the fix.
+
+### Verification evidence
+
+RED (regression test vs. old implementation): `pnpm exec vitest run --project unit
+tests/core/runtime/broadcastBus.test.ts` exit 1 — 1 failed (expected 2 to be 1) | 5
+passed. GREEN: same command exit 0 (1 file, 6 tests); `pnpm run test` exit 0 (12 files,
+65 tests); `pnpm run typecheck` exit 0; `pnpm run lint` exit 0;
+`pnpm exec prettier --check .` exit 0; phase chain `typecheck && lint && test` exit 0.
+Full output is recorded in `verification.txt` (Task 09 FIX section).
+
+### Acceptance decision
+
+**PASS** — The Critical fan-out defect is fixed, the regression test pins the
+single-listener and once-per-subscriber behaviour, all focused and phase verification
+passes, and no blocking finding remains.

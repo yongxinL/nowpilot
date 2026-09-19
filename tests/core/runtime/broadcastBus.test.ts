@@ -96,4 +96,25 @@ describe('BroadcastBus', () => {
     for (const listener of listeners) listener(envelope(), TRUSTED_SENDER);
     expect(handler).not.toHaveBeenCalled();
   });
+
+  it('delivers each inbound message exactly once across multiple subscribed types', () => {
+    const { deps, listeners } = createDeps();
+    const bus = createBroadcastBus(deps);
+    const openHandler = vi.fn();
+    const focusHandler = vi.fn();
+    bus.on('standalone.open', openHandler);
+    bus.on('standalone.focus', focusHandler);
+    expect(listeners.size).toBe(1);
+    for (const listener of listeners) {
+      listener(envelope(), TRUSTED_SENDER);
+      listener(
+        envelope({ type: 'standalone.focus', payload: { destination: 'chat' } }),
+        TRUSTED_SENDER,
+      );
+    }
+    expect(openHandler).toHaveBeenCalledTimes(1);
+    expect(focusHandler).toHaveBeenCalledTimes(1);
+    expect(openHandler.mock.calls[0]![0].type).toBe('standalone.open');
+    expect(focusHandler.mock.calls[0]![0].type).toBe('standalone.focus');
+  });
 });
