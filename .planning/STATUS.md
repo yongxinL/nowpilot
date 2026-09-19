@@ -13,10 +13,10 @@ rewrite or delete prior history.
 - **Planning baseline branch:** `phoenix`
 - **Implementation branch:** `phoenix`
 - **Historical approved planning baseline commit:** `bd6ac44d6f562722c18f0d07e6910634e549c713`
-- **Approved planning baseline commit:** pending refresh after the direct-phoenix amendment commit
+- **Approved planning baseline commit:** `3fb619730c8032d4aa121c5b8aa9649901b45f5f`
 - **Current task:** None
-- **Next action:** commit the direct-phoenix planning amendment, capture its SHA, and record it as `approvedPlanningBaselineCommit`; then implement T01 from the approved `PLAN.md`
-- **Blockers:** baseline refresh pending
+- **Next task:** T01
+- **Blockers:** None
 - **Evidence status:** Not started
 
 ## History
@@ -70,3 +70,16 @@ rewrite or delete prior history.
   is pending refresh to the direct-phoenix amendment commit. Blockers: baseline
   refresh pending. No production code changed; no dependency installed; T01 not
   started; no commit made.
+- Baseline refresh (2026-09-19): direct-phoenix amendment commit
+  `3fb619730c8032d4aa121c5b8aa9649901b45f5f` (`docs(phase-01): adopt direct
+  phoenix implementation model`) is recorded as the current
+  `approvedPlanningBaselineCommit`. It contains the amended `AGENTS.md`,
+  `DESIGN.md`, `PLAN.md`, `DECISIONS.md`, `STATUS.md`, and
+  `EXECUTION_PROTOCOL.md`. The previous
+  `bd6ac44d6f562722c18f0d07e6910634e549c713` is retained as the historical
+  pre-amendment approved-plan baseline. Implementation branch `phoenix`;
+  implementation status not started; current task none; next task T01;
+  blockers none; evidence status not started. This baseline-refresh record is
+  committed separately from the baseline commit so the pre-implementation
+  gate's status-record assertion is satisfied. No production code changed; no
+  dependency installed; implementation not started.
