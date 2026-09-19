@@ -2794,3 +2794,124 @@ Code-quality and security checklist:
 Completion criteria: both manifest tests pass against the real build; typecheck,
 lint, prettier, and the phase-applicable chain exit 0; one atomic task commit exists;
 working tree clean; status recorded.
+
+=== Task 24 — Post-Build Bundle-Isolation Inspection (2026-09-20) ===
+
+Phase: Phase 01 — Runtime, Shells, and Workspace
+Task: T24 — Post-Build Bundle-Isolation Inspection
+Branch: phoenix (verified before and after the task)
+Repository root: /Users/george.li/Documents/workspaces/nowpilot
+Commit: test(phase-01): inspect built bundle isolation (SHA printed after commit)
+Parent commit: 2d36787e95997ae53d68c26838c937d0302c6b58
+  (test(phase-01): inspect generated manifest)
+Tier: balanced
+
+Files created:
+  - tests/build/isolationChecks.ts
+  - tests/build/isolation.test.ts
+  - tests/build/isolationAssertions.test.ts
+Files modified: .planning/evidence/phase-01/verification.txt,
+  .planning/evidence/phase-01/review.md, and .planning/STATUS.md (append-only
+  evidence and status records only). No config, source, DESIGN.md, or PLAN.md change.
+
+Command sequence (all exit 0 except the intended RED):
+  1. pnpm run test -- tests/build/isolationAssertions.test.ts   => exit 1 (RED)
+  2. pnpm run test -- tests/build/isolationAssertions.test.ts   => exit 0 (GREEN)
+  3. pnpm run build                                             => exit 0
+  4. pnpm run test:isolation                                    => exit 0
+  5. pnpm run typecheck                                         => exit 0
+  6. pnpm run lint                                              => exit 0
+  7. pnpm exec prettier --check .                               => exit 0
+  8. pnpm run verify:phase-1                                    => exit 0
+
+RED (Step 1): `pnpm run test -- tests/build/isolationAssertions.test.ts`
+  exit status: 1
+  Error: Failed to resolve import "./isolationChecks" from
+  "tests/build/isolationAssertions.test.ts". Does the file exist?
+  Test Files 1 failed | 33 passed (34); Tests 226 passed (226). Intended failure
+  confirmed: the implementation module did not yet exist and no pre-existing test
+  broke.
+
+GREEN (Steps 2-8): focused assertions test exit 0 (34 files, 232 tests); build exit
+0; `pnpm run test:isolation` exit 0 (1 file, 1 test) against the real
+`.output/chrome-mv3` bundle; typecheck exit 0; lint exit 0; prettier --check exit 0;
+`pnpm run verify:phase-1` exit 0 (typecheck, lint, unit 34 files / 232 tests, build,
+manifest 1 file / 1 test, isolation 1 file / 1 test).
+
+Real bundle-isolation result:
+  outputDir: /Users/george.li/Documents/workspaces/nowpilot/.output/chrome-mv3
+  Built JavaScript bundles:
+    - background.js (106.40 kB; self-contained, no static relative imports)
+    - chunks/sidepanel-5dzQBKiU.js (28.32 kB; static import
+      "./WorkspaceSync-BiFvCgGz.js")
+    - chunks/WorkspaceSync-BiFvCgGz.js (599.29 kB, shared)
+    - chunks/standalone-BXReGVUD.js (122.56 kB)
+  checkBundleIsolation(outputDir).failures = []
+  checkBundleIsolation(outputDir).ok = true
+  No content-script bundle exists.
+
+Marker investigation (explicit; no marker-list change):
+  Background graph (background.js only) occurrences:
+    react.element: 0; ant-: 0; indexedDB: 0; IDBDatabase: 0; IDBKeyRange: 0;
+    api.openai.com: 0; api.anthropic.com: 0;
+    generativelanguage.googleapis.com: 0; @ai-sdk: 0; modelcontextprotocol: 0.
+  Side Panel graph (sidepanel chunk plus its static-imported WorkspaceSync chunk)
+  occurrences of the `standalone-page-` marker: 0.
+  The standalone chunk (standalone-BXReGVUD.js) does contain `standalone-page-`,
+  which is expected and is not scanned because it is not part of the background or
+  side-panel graph.
+  The real isolation check therefore reported NO marker; the forbidden-marker lists
+  (BACKGROUND_FORBIDDEN_MARKERS, SIDEPANEL_FORBIDDEN_MARKERS) were not changed and
+  the "real marker found" STOP condition did not trigger.
+
+Required reconciliation of an internal contradiction in the approved T24 plan:
+  The approved PLAN.md T24 and the brief are internally inconsistent for
+  `scanForbiddenMarkers`. PLAN.md line 7481 / brief line 61 asserts
+  `scanForbiddenMarkers(graph, ['indexedDB', 'ant-'])` returns `['indexedDB']`,
+  while the supplied implementation (PLAN.md line 7569 / brief line 149) returns
+  `${file}:${marker}` (i.e. `['background.js:indexedDB']`). The two cannot both hold.
+  The task freezes test assertions ("identifiers/values/assertions unchanged"), so the
+  implementation was reconciled to the executable assertion: `scanForbiddenMarkers`
+  now returns the bare marker. The marker lists are unchanged, and
+  `checkBundleIsolation` still names the bundle and the marker in each failure message
+  (for example "background bundle contains forbidden marker react.element").
+  Reproduction before the reconciliation: `pnpm run test --
+  tests/build/isolationAssertions.test.ts` failed with
+  "expected [ 'background.js:indexedDB' ] to deeply equal [ 'indexedDB' ]".
+
+Type-only adaptations (disclosed):
+  T24-A: removed the unused `statSync` import from `tests/build/isolationChecks.ts`
+    (the brief imports it but never uses it; TS6133 and
+    @typescript-eslint/no-unused-vars).
+  T24-B: `queue.push(join(outDir, match[1]!))` in `collectModuleGraph` — the brief's
+    `match[1]` is `string | undefined` under the pinned `noUncheckedIndexedAccess`
+    (TS2345); same class as T03 B5 / T05 D4 / T09. Non-null assertion only; no
+    behaviour change.
+  No `tsconfig.json`, `vitest.config.ts`, or other config/source file was modified.
+
+Specification-compliance checklist (verbatim from the brief):
+  - background bundle imports no React/antd/IndexedDB/provider: yes
+  - Side Panel bundle imports no Standalone pages/registry/admin: yes
+  - no content-script bundle: yes
+  - composed module graph followed through static relative chunk imports: yes
+  - inspection runs in the dedicated `isolation` project, after `pnpm run build`, and
+    scans actual built bundles under `.output/chrome-mv3/` (Approved Interpretation
+    4): yes
+  - `isolationAssertions.test.ts` runs in the `unit` project and proves checker logic
+    only (Approved Interpretation 4): yes
+  - a source-scan test is not accepted as proof; the real test scans built artifacts:
+    yes
+  - no marker weakening: yes (marker lists unchanged; no real marker found)
+
+Code-quality and security checklist:
+  - graph traversal is bounded and cycle-safe (visited set via `graph.has(name)`; the
+    queue drains): yes
+  - failures name the bundle and the marker: yes
+  - no `any`, no catch blocks, no global mutable state: yes
+  - no network, storage, IndexedDB, clipboard, or filesystem write; test read-only on
+    build output: yes
+  - no secrets, credentials, tokens, prompts, page, or customer content handled: yes
+
+Completion criteria: both isolation tests pass against the real build; the full
+`pnpm run verify:phase-1` chain exits 0; one atomic task commit exists; working tree
+clean; status recorded.

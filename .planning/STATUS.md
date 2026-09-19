@@ -9,18 +9,18 @@ rewrite or delete prior history.
 - **Current phase:** Phase 01 — Runtime, Shells, and Workspace
 - **Design status:** Approved and amended by ADR-0001 (background-serialised workspace election)
 - **Plan status:** Approved and amended (corrective task T13C; T14/T16/T22/T24/T25/T26/T28 amendment notes)
-- **Implementation status:** T01–T13C accepted; T14, T15, and T16 implemented and verified; T17 implemented and verified; T18 implemented and verified; T19 implemented and verified; T20 implemented and verified; T21 implemented and verified; T22 implemented and verified; T23 implemented and verified; T24–T28 not started
+- **Implementation status:** T01–T13C accepted; T14, T15, and T16 implemented and verified; T17 implemented and verified; T18 implemented and verified; T19 implemented and verified; T20 implemented and verified; T21 implemented and verified; T22 implemented and verified; T23 implemented and verified; T24 implemented and verified; T25–T28 not started
 - **Planning baseline branch:** `phoenix`
 - **Implementation branch:** `phoenix`
 - **Historical approved planning baseline commit:** `bd6ac44d6f562722c18f0d07e6910634e549c713`
 - **Approved planning baseline commit:** `b2c6ef289bc1abebbeccfad81d7034ced81f4eb7`
-- **Current task:** T23 complete; next task T24
-- **Last commit:** the T23 task commit `test(phase-01): inspect generated manifest`, on top of `b9a13565ccc244200e6efae901c4e7fcbce7efac` (`feat(phase-01): wire WXT entrypoints and background listeners`)
-- **Verification result:** T23 focused assertions test 6/6 new tests; real-manifest `test:manifest` 1/1 test parsing the actual `.output/chrome-mv3/manifest.json`; full unit suite 226/226 (33 files); `typecheck`, `lint`, `prettier --check .`, and the phase chain `pnpm run typecheck && pnpm run lint && pnpm run test && pnpm run build && pnpm run test:manifest` all exit 0 (binding ruling D23a: `test:isolation` omitted because its file is created by T24). The generated manifest matches the Phase 01 contract: permissions exactly `["sidePanel","storage"]`, no `host_permissions`, no `content_scripts`, `side_panel.default_path = "sidepanel.html"`, `action.default_title = "NowPilot"`, icons 16/32/48/128, and `standalone.html` present; no unexpected permission or content script, so the STOP condition did not trigger. One Low-severity disclosed correction: T23-A a Prettier reflow of only the three new T23 test files (`manifestChecks.ts`, `manifest.test.ts`, `manifestAssertions.test.ts`), identifiers/values/assertions unchanged.
-- **Next action:** implement T24 per approved Phase 01 `PLAN.md`
-- **Blockers:** None; T13, T13C, T14, T15, T16, T17, T18, T19, T20, T21, T22, and T23 are accepted
-- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 14, Task 15, Task 16, Task 17, Task 18, Task 19, Task 20, Task 21, Task 22, and Task 23 sections)
-- **Evidence status:** T23 verified; self-review PASS
+- **Current task:** T24 complete; next task T25
+- **Last commit:** the T24 task commit `test(phase-01): inspect built bundle isolation`, on top of `2d36787e95997ae53d68c26838c937d0302c6b58` (`test(phase-01): inspect generated manifest`)
+- **Verification result:** T24 focused assertions test 5/5 new tests (full unit suite 34 files / 232 tests); real-bundle `test:isolation` 1/1 test scanning the actual `.output/chrome-mv3` bundle graph; `typecheck`, `lint`, `prettier --check .`, and the full phase chain `pnpm run verify:phase-1` all exit 0. The real isolation check reported zero failures: the background graph contains none of the ten forbidden markers, the Side Panel graph contains no `standalone-page-` marker, and no content-script bundle exists; the marker lists were not changed. One disclosed Low-severity required reconciliation: the approved T24 plan is internally inconsistent for `scanForbiddenMarkers` (test asserts `['indexedDB']`; implementation returns `${file}:${marker}`); because assertions are frozen, the implementation was reconciled to return the bare marker, with the contradiction and reproduction recorded in `verification.txt`. Two disclosed type-only adaptations: T24-A removed the brief's unused `statSync` import; T24-B used `match[1]!` under the pinned `noUncheckedIndexedAccess`.
+- **Next action:** implement T25 per approved Phase 01 `PLAN.md`
+- **Blockers:** None; T13, T13C, T14, T15, T16, T17, T18, T19, T20, T21, T22, T23, and T24 are accepted
+- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 14, Task 15, Task 16, Task 17, Task 18, Task 19, Task 20, Task 21, Task 22, Task 23, and Task 24 sections)
+- **Evidence status:** T24 verified; self-review PASS
 
 ## History
 
@@ -958,3 +958,44 @@ rewrite or delete prior history.
   `.planning/evidence/phase-01/review.md` (Task 23 sections). Task commit
   `test(phase-01): inspect generated manifest`. Current task T23 accepted; next task
   T24 — per approved Phase 01 `PLAN.md`.
+- Task 24 (Post-Build Bundle-Isolation Inspection, amended by ADR-0001) executed on
+  `phoenix` in the repository root. Implementation tier balanced. RED confirmed at
+  `pnpm run test -- tests/build/isolationAssertions.test.ts` (exit 1; module-resolution
+  failure for `./isolationChecks`; Test Files 1 failed | 33 passed (34); Tests 226
+  passed (226); the pre-existing unit tests still passed). Created
+  `tests/build/isolationChecks.ts` with the exact brief interfaces
+  `collectModuleGraph(entryFile, outDir): Map<string, string>`,
+  `scanForbiddenMarkers(graph, markers): string[]`, `IsolationCheckResult`, and
+  `checkBundleIsolation(outDir): IsolationCheckResult`: `collectModuleGraph` drains a
+  bounded, cycle-safe queue over static relative `./…js` imports; `scanForbiddenMarkers`
+  reports each forbidden marker found; `checkBundleIsolation` fails closed when the
+  background bundle is missing or contains a forbidden marker, when the Side Panel
+  bundle is missing or contains a `standalone-page-` marker, or when any
+  `content*` bundle exists. Created `tests/build/isolation.test.ts` (dedicated
+  `isolation` project; scans the real `.output/chrome-mv3` graph per Approved
+  Interpretation 4) and `tests/build/isolationAssertions.test.ts` (`unit` project;
+  proves the checker logic only). Real result: background graph contains none of the
+  ten forbidden markers; Side Panel graph contains no `standalone-page-` marker; no
+  content-script bundle exists; `checkBundleIsolation` reported zero failures, so the
+  marker lists were unchanged and the "real marker found" STOP condition did not
+  trigger. One disclosed Low-severity required reconciliation (recorded in
+  `verification.txt`): the approved T24 plan is internally inconsistent for
+  `scanForbiddenMarkers` — PLAN.md line 7481 / brief line 61 asserts `['indexedDB']`
+  while PLAN.md line 7569 / brief line 149 returns `${file}:${marker}`; because the
+  task freezes assertions, the implementation was reconciled to return the bare
+  marker (the unit test failed with "expected [ 'background.js:indexedDB' ] to deeply
+  equal [ 'indexedDB' ]" before the reconciliation). Two disclosed type-only
+  adaptations: T24-A removed the brief's unused `statSync` import (TS6133), and T24-B
+  used `match[1]!` in `collectModuleGraph` under the pinned
+  `noUncheckedIndexedAccess` (TS2345; same class as T03 B5 / T05 D4 / T09). GREEN:
+  focused assertions test exit 0 (34 files, 232 tests); `pnpm run build` exit 0;
+  `pnpm run test:isolation` exit 0 (1 file, 1 test); `typecheck` exit 0; `lint` exit 0;
+  `prettier --check .` exit 0; and `pnpm run verify:phase-1` exit 0 (typecheck, lint,
+  unit 34 files / 232 tests, build, manifest 1 file / 1 test, isolation 1 file / 1
+  test). No config, source, `wxt.config.ts`, `vitest.config.ts`, `DESIGN.md`, or
+  `PLAN.md` change; no new dependency, permission, storage key, message type, error
+  code, or `DiagnosticEvent`. Evidence recorded in
+  `.planning/evidence/phase-01/verification.txt` and
+  `.planning/evidence/phase-01/review.md` (Task 24 sections). Task commit
+  `test(phase-01): inspect built bundle isolation`. Current task T24 accepted; next
+  task T25 — per approved Phase 01 `PLAN.md`.

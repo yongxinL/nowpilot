@@ -2292,3 +2292,102 @@ in `verification.txt` (Task 23 section).
 security/privacy requirements; the generated manifest matches the Phase 01 contract,
 the only finding is a Low-severity formatting correction, and no blocking finding
 remains.
+
+## Task 24 — Post-Build Bundle-Isolation Inspection (2026-09-20)
+
+Branch: `phoenix`; repository root: `/Users/george.li/Documents/workspaces/nowpilot`.
+Files created: `tests/build/isolationChecks.ts`, `tests/build/isolation.test.ts`,
+`tests/build/isolationAssertions.test.ts`. Files modified (append-only records):
+`.planning/evidence/phase-01/verification.txt`, `.planning/evidence/phase-01/review.md`,
+`.planning/STATUS.md`. No config, source, `DESIGN.md`, or `PLAN.md` change.
+
+### 1. Specification-compliance review
+
+- Task scope is exactly the three declared files; no other file was created or
+  modified. PASS
+- Interfaces match the brief and the approved plan:
+  `collectModuleGraph(entryFile, outDir): Map<string, string>`,
+  `scanForbiddenMarkers(graph, markers): string[]`, and
+  `checkBundleIsolation(outDir): IsolationCheckResult`. PASS
+- The real inspection runs in the dedicated `isolation` Vitest project
+  (`tests/build/isolation.test.ts`), after `pnpm run build`, and scans the actual
+  built bundles under `.output/chrome-mv3/` (Approved Interpretation 4). PASS
+- `tests/build/isolationAssertions.test.ts` runs in the `unit` project and proves
+  the checker logic only; it is not accepted as proof of the real build. PASS
+- The background graph contains none of `BACKGROUND_FORBIDDEN_MARKERS`; the Side
+  Panel graph contains none of `SIDEPANEL_FORBIDDEN_MARKERS`; no content-script
+  bundle exists. The real check reports zero failures. PASS
+- Draining the static relative import graph is exercised against a synthetic
+  multi-chunk fixture, and the checker is also exercised against synthetic React,
+  Standalone-page, and content-script violations. PASS
+- No dependency, permission, manifest, storage key, message type, error code, or
+  `DiagnosticEvent` was added or changed; `vitest.config.ts` already lists the two
+  paths used. PASS
+- Marker lists were not weakened; no real marker was found. PASS
+- Brief reconciliation (disclosed): the approved plan is internally inconsistent for
+  `scanForbiddenMarkers` (test asserts `['indexedDB']`; implementation returns
+  `${file}:${marker}`). Because the task freezes assertions, the implementation was
+  reconciled to return the bare marker to satisfy the executable assertion, with the
+  contradiction recorded in `verification.txt` (Task 24 section). This changes no
+  marker list and no acceptance criterion. See finding M1.
+
+### 2. Code-quality review
+
+- Correctness: `collectModuleGraph` visits each distinct basename once (visited set),
+  bounds the traversal, and terminates for cyclic and missing-file imports. PASS
+- `scanForbiddenMarkers` is deterministic over the supplied marker list and returns
+  the marker for each match; `checkBundleIsolation` aggregates failures and
+  distinguishes a missing background/sidepanel entry from a marker hit and from a
+  content-script bundle. PASS
+- Failure messages name the bundle and the marker; the content-script failure names
+  the offending path. PASS
+- No `any`, no catch blocks, no global mutable state; the only I/O is filesystem
+  reads of build output in a test helper. PASS
+- Test quality: the RED failure was the intended module-resolution error; all
+  pre-existing unit tests remained green throughout. PASS
+- Type-only adaptation T24-A removed the brief's unused `statSync` import (TS6133 /
+  `@typescript-eslint/no-unused-vars`); T24-B used `match[1]!` under the pinned
+  `noUncheckedIndexedAccess` (same class as T03 B5 / T05 D4 / T09). Behaviour
+  unchanged; `tsconfig.json` unmodified. PASS
+- `pnpm exec prettier --check .` passed with no T24 reflow required. PASS
+
+### 3. Security and privacy review
+
+- The test reads only built extension artifacts; it reads no page, note, memory,
+  tool, secret, credential, token, prompt, or customer content. PASS
+- The checker is an assertion helper, not a runtime surface: it cannot grant
+  permissions and has no side effects. It fails closed on a forbidden marker,
+  a missing entry bundle, or a content script. PASS
+- No network, storage, IndexedDB, clipboard, or filesystem write. PASS
+- No sensitive value is embedded as a literal or committed in evidence. PASS
+
+### 4. Findings and dispositions
+
+| ID | Severity | Finding | Disposition |
+|----|----------|---------|-------------|
+| M1 | Low | The approved T24 plan is internally inconsistent: `scanForbiddenMarkers` test asserts `['indexedDB']` while the supplied implementation returns `${file}:${marker}`. | Reconciled the implementation to the frozen executable assertion (return the bare marker); marker lists unchanged; contradiction and reproduction recorded in `verification.txt`. |
+| T24-A | Low (type-only) | The brief imports `statSync` in `isolationChecks.ts` but never uses it (TS6133 / `no-unused-vars`). | Removed the unused import; no behaviour change. |
+| T24-B | Low (type-only) | The brief's `match[1]` is `string | undefined` under the pinned `noUncheckedIndexedAccess` (TS2345). | Used `match[1]!` inside the existing code path; non-null assertion only; no behaviour change. |
+| — | Info | The standalone chunk contains `standalone-page-`, but it is not part of the background or Side Panel graph and is correctly not scanned. | Recorded; expected behaviour, not a defect. |
+
+No Critical, High, or Medium finding remains unresolved. The one semantic deviation
+(M1) is a required reconciliation of a plan defect that could not be resolved without
+contradicting the frozen test assertions; it is low severity, disclosed, and does not
+weaken any marker check or acceptance criterion.
+
+### 5. Verification evidence
+
+RED: `pnpm run test -- tests/build/isolationAssertions.test.ts` exit 1 — module-
+resolution failure for `./isolationChecks`; 33 pre-existing unit files and 226 tests
+still passed. GREEN: focused assertions test exit 0 (34 files, 232 tests);
+`pnpm run build` exit 0; `pnpm run test:isolation` exit 0 (1 file, 1 test) against the
+real `.output/chrome-mv3` build; `pnpm run typecheck` exit 0; `pnpm run lint` exit 0;
+`pnpm exec prettier --check .` exit 0; and `pnpm run verify:phase-1` exit 0. Full
+output is recorded in `verification.txt` (Task 24 section).
+
+### Acceptance decision
+
+**PASS** — Task 24 meets specification-compliance, code-quality, and
+security/privacy requirements; both isolation tests pass against the real build; the
+only findings are the disclosed Low-severity reconciliation and two disclosed
+type-only adaptations; no blocking finding remains.
