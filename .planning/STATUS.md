@@ -9,18 +9,18 @@ rewrite or delete prior history.
 - **Current phase:** Phase 01 — Runtime, Shells, and Workspace
 - **Design status:** Approved and amended by ADR-0001 (background-serialised workspace election)
 - **Plan status:** Approved and amended (corrective task T13C; T14/T16/T22/T24/T25/T26/T28 amendment notes)
-- **Implementation status:** T01–T13C accepted; T14, T15, and T16 implemented and verified; T17 implemented and verified; T18 implemented and verified; T19 implemented and verified; T20 implemented and verified; T21 implemented and verified; T22 implemented and verified; T23 implemented and verified; T24 implemented and verified; T25 implemented and verified (verification task, no production change); T26–T28 not started
+- **Implementation status:** T01–T13C accepted; T14, T15, and T16 implemented and verified; T17 implemented and verified; T18 implemented and verified; T19 implemented and verified; T20 implemented and verified; T21 implemented and verified; T22 implemented and verified; T23 implemented and verified; T24 implemented and verified; T25 implemented and verified (verification task, no production change); T26 gate passed (approved non-code gate, evidence only); T27–T28 not started
 - **Planning baseline branch:** `phoenix`
 - **Implementation branch:** `phoenix`
 - **Historical approved planning baseline commit:** `bd6ac44d6f562722c18f0d07e6910634e549c713`
 - **Approved planning baseline commit:** `b2c6ef289bc1abebbeccfad81d7034ced81f4eb7`
-- **Current task:** T25 complete; next task T26
-- **Last commit:** the T25 task commit `test(phase-01): add cross-module integration tests`, on top of `4d1b483c642f2fe8f4679221545dc8de7b40d2db` (`fix(phase-01): follow nested chunks in bundle isolation scan`)
-- **Verification result:** T25 `tests/integration/workspaceIntegration.test.ts` 8/8 tests (focused verbose run 1 file / 8 tests; full unit suite 35 files / 244 tests); `typecheck`, `lint`, `prettier --check .`, and the full phase chain `pnpm run verify:phase-1` all exit 0 (unit 35 files / 244 tests; manifest 1 file / 1 test; isolation 1 file / 1 test). The eight tests passed on first run against already-implemented behaviour, so T25 is recorded as a verification task (brief Step 2) with no production change; no assertion was weakened. Coverage: concurrent initial claims elect exactly one writer (loser `held`); epoch monotonicity across claim/handoff-commit/recovery; handoff-commit versus fallback-claim exclusion; service-worker restart reconstruction (writer/epoch plus duplicate-request idempotency); ordinary `workspace.mutation` never changes the election record/epoch and never routes through the arbiter; plus the brief's mirror-ordering/gap-rehydration, workspace restart durability, and theme-propagation (independent of election) tests. The R25.1 rig routes `workspace.election.request` to a real `createWorkspaceElectionArbiter` behind an in-memory bus.
-- **Next action:** implement T26 per approved Phase 01 `PLAN.md`
-- **Blockers:** None; T13, T13C, T14, T15, T16, T17, T18, T19, T20, T21, T22, T23, T24, and T25 are accepted
-- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 14, Task 15, Task 16, Task 17, Task 18, Task 19, Task 20, Task 21, Task 22, Task 23, Task 24, and Task 25 sections)
-- **Evidence status:** T25 verified; self-review PASS
+- **Current task:** T26 complete; next task T27
+- **Last commit:** the T26 gate commit `test(phase-01): complete build and isolation gate` (this commit), on top of `35ab95a4e3f51d04f190d99606de76d87577a0fe` (`test(phase-01): add cross-module integration tests`)
+- **Verification result:** T26 complete build and isolation gate passed from a clean `.output` (`rm -rf .output` then `pnpm run verify:phase-1`, exit 0): chain order exactly typecheck -> lint -> test -> build -> test:manifest -> test:isolation; unit 35 files / 244 tests; manifest 1 file / 1 test; isolation 1 file / 1 test; build WXT 0.21.4 chrome-mv3, total 858.48 kB. `verify:phase-1` and `verify:all` are byte-identical (Step 2 node check exit 0). All three verbose test runs exit 0 with zero skipped tests. Built manifest declares exactly `permissions:["sidePanel","storage"]`, `side_panel.default_path:"sidepanel.html"`, with no `content_scripts` and no `host_permissions`; `shasum -a 256` recorded for `background.js`, `sidepanel.html`, and `standalone.html`. ADR-0001 registry completeness is covered in the unit run: 13 message types (including the election request/response pair) and 15 operational error codes (including `WORKSPACE_ELECTION_REJECTED`/`WORKSPACE_ELECTION_FAILED`), with diagnostic events kept separate. No production, test, or config file was modified.
+- **Next action:** implement T27 per approved Phase 01 `PLAN.md`
+- **Blockers:** None; T13, T13C, T14, T15, T16, T17, T18, T19, T20, T21, T22, T23, T24, T25, and T26 are accepted
+- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 14, Task 15, Task 16, Task 17, Task 18, Task 19, Task 20, Task 21, Task 22, Task 23, Task 24, Task 25, and Task 26 sections)
+- **Evidence status:** T26 verified; self-review PASS
 
 ## History
 
@@ -1037,3 +1037,33 @@ rewrite or delete prior history.
   `.planning/evidence/phase-01/review.md` (Task 25 sections). Task commit
   `test(phase-01): add cross-module integration tests`. Current task T25 accepted;
   next task T26 — per approved Phase 01 `PLAN.md`.
+
+### 2026-09-20
+
+- Task 26 (Complete Build and Isolation Gate, approved non-code gate task per
+  `AGENTS.md` Section 11) executed on `phoenix` in the repository root. Evidence only;
+  no production, test, or config file was created or modified. Step 1: from a clean
+  build (`rm -rf .output`), `pnpm run verify:phase-1` exit 0 with the exact chain
+  `typecheck -> lint -> test -> build -> test:manifest -> test:isolation` (unit 35
+  files / 244 tests; build WXT 0.21.4 chrome-mv3, total 858.48 kB, built in 517 ms;
+  manifest 1 file / 1 test; isolation 1 file / 1 test). Step 2: the node comparison of
+  `verify:phase-1` and `verify:all` exit 0 (byte-identical strings). Step 3: verbose
+  runs of `test`, `test:manifest`, and `test:isolation` all exit 0 with zero skipped
+  tests (each project reports `N passed (N)`; no skipped/pending/todo rows). Step 4:
+  the built `manifest.json` declares exactly `permissions:["sidePanel","storage"]`,
+  `side_panel.default_path:"sidepanel.html"`, and no `content_scripts` or
+  `host_permissions`; `shasum -a 256` recorded for `background.js`
+  (`8c24f0480d0527d9e471e7f9df141a1753b2644ca8f32423761c11964e55dec0`), `sidepanel.html`
+  (`a7575eeeef4230048f394fef47e7dfa152cddce2ec09d29a261f435326d6111a`), and
+  `standalone.html`
+  (`545585fb974259b3ab479f41efbd19b312fc23ffabef0624ebfc378b70fec25b`). ADR-0001
+  registry completeness is exercised in the aggregate unit run: `MESSAGE_TYPES` has
+  exactly 13 entries including `workspace.election.request`/`workspace.election.response`
+  and `ERROR_CODES` has exactly 15 entries including
+  `WORKSPACE_ELECTION_REJECTED`/`WORKSPACE_ELECTION_FAILED`, with diagnostic events kept
+  separate. The only build advisory is the pre-existing Vite chunk-size warning
+  (`WorkspaceSync-BiFvCgGz.js` 599.29 kB); not a gate failure. Step 5: evidence appended
+  to `.planning/evidence/phase-01/verification.txt` and
+  `.planning/evidence/phase-01/review.md` (Task 26 sections). Task commit
+  `test(phase-01): complete build and isolation gate`. Current task T26 accepted and the
+  gate passed; next task T27 — per approved Phase 01 `PLAN.md`.

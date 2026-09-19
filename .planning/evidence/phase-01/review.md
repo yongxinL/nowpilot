@@ -2520,3 +2520,86 @@ output is recorded in `verification.txt` (Task 25 section).
 **PASS** — Task 25 covers every R25.2 integration case plus the brief's mirror,
 restart, and theme tests without weakening any assertion; all gates exit 0; no
 production defect was found and no production file was modified.
+
+---
+
+## Task 26 — Complete Build and Isolation Gate (2026-09-20)
+
+**Phase:** Phase 01 — Runtime, Shells, and Workspace
+**Branch:** `phoenix`
+**Repository root:** /Users/george.li/Documents/workspaces/nowpilot
+**Base commit:** `35ab95a4e3f51d04f190d99606de76d87577a0fe`
+**Classification:** approved non-code gate task (`AGENTS.md` Section 11) — evidence only
+**Depends on:** T23, T24, T25
+
+### Scope reviewed
+
+- The approved Step 1–5 gate in `.superpowers/sdd/PLAN/task-26-brief.md`, run from a
+  clean `.output`.
+- `pnpm run verify:phase-1` / `verify:all` (the full aggregate chain), the three
+  verbose test runs, the built `chrome-mv3` manifest and artefacts, and the
+  ADR-0001 13-type / 15-code registry completeness coverage.
+- No production, test, config, manifest, or dependency file was created or modified.
+
+### 1. Specification-compliance review
+
+- The aggregate ran from a clean `.output` (`rm -rf .output` first) and completed
+  `typecheck → lint → test → build → test:manifest → test:isolation` in exactly the
+  approved order with exit status 0. PASS
+- Step 2: `verify:phase-1` and `verify:all` compare byte-identically, so the
+  `verify:all` alias is neither weaker nor divergent. PASS
+- Step 3: `test`, `test:manifest`, and `test:isolation` were each run verbose; every
+  project reports `N passed (N)` and no test row is skipped/pending/todo. PASS
+- Step 4: the real built `manifest.json` declares exactly `permissions:
+  ["sidePanel","storage"]` and `side_panel.default_path = sidepanel.html`, with no
+  `content_scripts` and no `host_permissions`; `shasum -a 256` recorded for
+  `background.js`, `sidepanel.html`, and `standalone.html`. PASS
+- ADR-0001 registry completeness is covered in the aggregate unit run: 13 message
+  types (including the election request/response pair) and 15 operational error codes
+  (including `WORKSPACE_ELECTION_REJECTED`/`WORKSPACE_ELECTION_FAILED`), with
+  diagnostic events kept separate. PASS
+- Only `.planning` evidence/status files changed; the task did not touch any
+  production, test, or config path and did not run T27/T28 work. PASS
+
+### 2. Code-quality review
+
+- No source was changed, so this gate adds no code-quality risk; it exercises the
+  existing accepted suites and build end to end.
+- The full unit suite is 35 files / 244 tests; manifest and isolation are 1 file /
+  1 test each; all pass. The build emitted all expected entrypoints and chunks, and
+  the isolation suite confirms the background stays lean, the side panel carries no
+  standalone page markers, and no content-script bundle is shipped. PASS
+- No `any`, no skipped test, no weakened assertion, and no test modified. PASS
+
+### 3. Security and privacy review
+
+- The manifest declares only the two approved permissions (`sidePanel`, `storage`),
+  no host permissions, and no content script. PASS
+- No secret, credential, token, prompt, tool input/output, page, note, memory, or
+  customer content was read, logged, or recorded. Checksums and manifest metadata are
+  non-sensitive. PASS
+- `rm -rf .output` is limited to generated, git-ignored build output explicitly
+  authorised by the approved brief. PASS
+
+### 4. Findings and dispositions
+
+| ID | Severity | Finding | Disposition |
+|----|----------|---------|-------------|
+| — | Info | Build reports a Vite chunk-size warning (`WorkspaceSync-BiFvCgGz.js` 599.29 kB > 500 kB). | Pre-existing informational build advisory only; not a gate failure and outside T26 scope. Recorded for later review. |
+
+No Critical, High, Medium, or Low finding. No gate was weakened.
+
+### 5. Verification evidence
+
+`rm -rf .output` then `pnpm run verify:phase-1` exit 0 (typecheck, lint, unit 35 files /
+244 tests, build, manifest 1 file / 1 test, isolation 1 file / 1 test); Step 2 node
+equality check exit 0; all three verbose runs exit 0 with zero skipped; manifest summary
+and `shasum -a 256` checksums recorded. Full output is in `verification.txt` (Task 26
+section).
+
+### Acceptance decision
+
+**PASS** — Task 26 completes the Phase 01 build and isolation gate from a clean
+`.output`: the full chain passes in the approved order, `verify:all` is byte-identical,
+no test is skipped, and the real manifest/artefacts satisfy the permission, entrypoint,
+and isolation contract. No production, test, or config file was modified.

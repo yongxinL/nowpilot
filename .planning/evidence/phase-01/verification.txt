@@ -3073,3 +3073,99 @@ delivery. No production defect was found; no production file was modified.
 
 Completion criteria: integration tests green; typecheck and lint pass; one atomic task
 commit exists; working tree clean; status recorded.
+
+=== Task 26 — Complete Build and Isolation Gate (2026-09-20; run 2026-09-19T22:45Z) ===
+
+task ID: T26
+branch: phoenix
+repository root: /Users/george.li/Documents/workspaces/nowpilot
+classification: approved non-code gate task (AGENTS.md Section 11) — evidence only; no
+  production, test, or config change
+base commit: 35ab95a4e3f51d04f190d99606de76d87577a0fe
+  (test(phase-01): add cross-module integration tests)
+depends on: T23, T24, T25
+
+Step 1 — full Phase 01 chain from a clean build:
+  command: rm -rf .output
+  observed: .output removed (directory absent before the build)
+  command: pnpm run verify:phase-1
+  exit status: 0
+  chain: typecheck && lint && test && build && test:manifest && test:isolation
+    pnpm run typecheck (tsc --noEmit)                    => exit 0
+    pnpm run lint (eslint .)                             => exit 0
+    pnpm run test (vitest run --project unit)            => exit 0
+        Test Files 35 passed (35); Tests 244 passed (244)
+    pnpm run build (wxt build)                           => exit 0
+        WXT 0.21.4; Building chrome-mv3 for production with Vite 8.3.0
+        Built extension in 517 ms; Finished in 730 ms; Total size: 858.48 kB
+    pnpm run test:manifest (vitest run --project manifest)  => exit 0
+        Test Files 1 passed (1); Tests 1 passed (1)
+    pnpm run test:isolation (vitest run --project isolation) => exit 0
+        Test Files 1 passed (1); Tests 1 passed (1)
+
+  The aggregate order is exactly typecheck -> lint -> test -> build -> test:manifest ->
+  test:isolation; the shell `&&` chain cannot proceed past a failure and exit status 0
+  was observed from a clean `.output`.
+
+Step 2 — verify:all identical and not weaker:
+  command: node -e "const s=require('./package.json').scripts; if(s['verify:phase-1']!==s['verify:all']){throw new Error('verify scripts differ')}"
+  exit status: 0
+  result: verify:phase-1 and verify:all are byte-identical strings.
+
+Step 3 — confirm no test was skipped:
+  pnpm run test -- --reporter=verbose           => exit 0; 35 files / 244 tests passed; 0 "skipped" occurrences
+  pnpm run test:manifest -- --reporter=verbose  => exit 0; 1 file / 1 test passed; 0 "skipped" occurrences
+  pnpm run test:isolation -- --reporter=verbose => exit 0; 1 file / 1 test passed; 0 "skipped" occurrences
+  Direct verbose runs (pnpm exec vitest run --project <p> --reporter=verbose) listed
+  every test with a tick mark (no skipped/pending/todo rows):
+    |manifest| tests/build/manifest.test.ts > generated Chrome MV3 manifest >
+      matches the Phase 01 permission and entrypoint contract
+    |isolation| tests/build/isolation.test.ts > built bundle isolation >
+      keeps the background lean, the side panel free of standalone pages, and ships no
+      content script
+  Every project's Vitest summary has the form "N passed (N)" (passed count equals the
+  total), which reports zero skipped/pending/todo tests.
+
+Step 4 — artifact evidence (fresh from the clean build):
+  manifest summary:
+    node -e "const m=require('./.output/chrome-mv3/manifest.json'); console.log(JSON.stringify({permissions:m.permissions,side_panel:m.side_panel,content_scripts:m.content_scripts,host_permissions:m.host_permissions}))"
+    => {"permissions":["sidePanel","storage"],"side_panel":{"default_path":"sidepanel.html"}}
+    (content_scripts and host_permissions are absent/undefined, so JSON.stringify omits
+    them: no content script and no host permission is declared, matching DESIGN.md and
+    the T24 manifest gate.)
+
+  checksums (shasum -a 256):
+    8c24f0480d0527d9e471e7f9df141a1753b2644ca8f32423761c11964e55dec0  .output/chrome-mv3/background.js
+    a7575eeeef4230048f394fef47e7dfa152cddce2ec09d29a261f435326d6111a  .output/chrome-mv3/sidepanel.html
+    545585fb974259b3ab479f41efbd19b312fc23ffabef0624ebfc378b70fec25b  .output/chrome-mv3/standalone.html
+
+  build artefact inventory:
+    manifest.json 387 B; sidepanel.html 403 B; standalone.html 415 B;
+    background.js 106.40 kB; chunks/sidepanel-5dzQBKiU.js 28.32 kB;
+    chunks/standalone-BXReGVUD.js 122.56 kB; chunks/WorkspaceSync-BiFvCgGz.js 599.29 kB;
+    icon/16.png 82 B; icon/32.png 104 B; icon/48.png 157 B; icon/128.png 360 B;
+    Total size 858.48 kB.
+
+Registry completeness (ADR-0001 amendment gate):
+  The aggregate unit run includes the ADR-0001 registry-completeness coverage:
+    - Message types: `MESSAGE_TYPES` has exactly 13 entries in canonical order, including
+      `workspace.election.request` / `workspace.election.response`. Enforced by
+      `tests/core/runtime/messageSchemas.test.ts` "registers exactly thirteen message
+      types including the election pair" (toHaveLength(13)), the closed-registry equality
+      in that file (RUNTIME_PAYLOAD_SCHEMAS keys === MESSAGE_TYPES), and
+      `tests/core/runtime/boundaryValidation.test.ts` "registers the thirteen-type
+      registry with the election source matrix" plus its allowed-source matrix equality.
+    - Error codes: `ERROR_CODES` has exactly 15 entries in canonical order, including
+      `WORKSPACE_ELECTION_REJECTED` / `WORKSPACE_ELECTION_FAILED`. Enforced by
+      `tests/core/error/errorCodes.test.ts` "contains exactly the approved operational
+      error codes in order" (closed 15-entry list), with DiagnosticEvent kept separate
+      from operational errors.
+  Source counts confirmed: `MESSAGE_TYPES` = 13 (src/core/runtime/MessageType.ts:4-18);
+  `ERROR_CODES` = 15 (src/core/error/errorCodes.ts).
+
+Constraints and non-goals: no production, test, config, manifest, or dependency change;
+`rm -rf .output` operates only on generated, git-ignored output authorised by the brief.
+No gate was weakened and no code was modified.
+
+Completion criteria: Step 1 passes from a clean `.output`; Step 2 and Step 3 pass; no
+test skipped; manifest and isolation gates pass against real artefacts.
