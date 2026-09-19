@@ -2978,3 +2978,98 @@ Commands (all exit 0 after the fix):
 
 Corrective commit: `fix(phase-01): follow nested chunks in bundle isolation scan`
 (new commit; FIX_BASE `a81ae96` was not amended).
+
+=== Task 25 — Cross-Module Integration Tests (ADR-0001 amended) — 2026-09-20 ===
+
+Phase: Phase 01 — Runtime, Shells, and Workspace
+Task: T25 — Cross-Module Integration Tests
+Branch: phoenix (verified before and after the task)
+Repository root: /Users/george.li/Documents/workspaces/nowpilot
+Commit: test(phase-01): add cross-module integration tests (SHA printed after commit)
+Parent commit: 4d1b483c642f2fe8f4679221545dc8de7b40d2db
+  (fix(phase-01): follow nested chunks in bundle isolation scan)
+Tier: balanced
+
+Files created:
+  - tests/integration/workspaceIntegration.test.ts
+Files modified: .planning/evidence/phase-01/verification.txt,
+  .planning/evidence/phase-01/review.md, and .planning/STATUS.md (append-only
+  evidence and status records only). No config, source, DESIGN.md, PLAN.md, or ADR
+  change. No production defect was found, so no production file was modified.
+
+Rig (R25.1):
+  createRig() builds one in-memory BroadcastBus-compatible bus that routes
+  workspace.election.request to a real createWorkspaceElectionArbiter over the shared
+  validated storage and dispatches the resulting workspace.election.response envelope
+  (source:'background', target = request source, correlationId = request envelope id)
+  to handlers registered for that type; all other envelope types dispatch to their
+  registered handlers. createWorkspaceElection clients are constructed with that bus.
+  The real arbiter is wrapped in a vi.fn that delegates to it, so the arbiter can be
+  asserted to have seen no election request. A fresh rig can reuse the same Chrome
+  session storage to model a service-worker restart. Mocked chrome APIs only; no
+  network, provider, MCP, or IndexedDB.
+
+Test file: tests/integration/workspaceIntegration.test.ts (8 tests)
+  Result: `pnpm exec vitest run --project unit
+  tests/integration/workspaceIntegration.test.ts --reporter=verbose` exit 0 —
+  Test Files 1 passed (1); Tests 8 passed (8). All eight tests passed on first run
+  against already-implemented behaviour, so T25 is recorded as a verification task
+  (brief Step 2); no assertion was weakened and no production change was required.
+
+  1. workspace integration > converges on exactly one writer across two surfaces
+     through the background arbiter — PASS
+     Two concurrent initial claims (sidepanel 'sp' and standalone 'st') via the real
+     arbiter behind the bus yield exactly one acquired and one held; the held result
+     names the winner's writerInstanceId/writerType/epoch and the persisted record
+     matches the winner. (R25.2 case 1)
+  2. workspace integration > increases the epoch monotonically across claim,
+     handoff-commit, and recovery — PASS
+     claim('initial') -> epoch 0; handoff-commit (expectedEpoch 0) -> epoch 1 writer
+     standalone; stale-recovery claim (expectedEpoch 1) -> epoch 2 writer sidepanel.
+     Epochs are [0,1,2], strictly increasing and all distinct; the persisted epoch is
+     2 and the non-writer remains a read-only surface. (R25.2 case 2)
+  3. workspace integration > serialises a handoff-commit and a fallback claim so
+     exactly one new epoch results — PASS
+     A handoff-commit (from the writer 'sp-1') and a fallback claim (from 'sp-2'),
+     both queued against epoch 0, produce exactly one accepted response and one
+     WORKSPACE_ELECTION_REJECTED; the persisted record has exactly one new epoch
+     (startEpoch + 1) and matches the single accepted winner. (R25.2 case 3)
+  4. workspace integration > reconstructs the same decision from persisted session
+     state after a service-worker restart — PASS
+     After a claim, a fresh arbiter/client over the same session storage reads the
+     same writer/epoch (sp, 0) and a duplicate request with the same requestId and an
+     identical fingerprint returns the persisted authoritative record with the same
+     epoch and a deep-equal election record; the fresh arbiter saw exactly one
+     request. (R25.2 case 4)
+  5. workspace integration > never routes an ordinary workspace.mutation through the
+     arbiter or changes the election record — PASS
+     With a valid epoch-0 writer, a workspace.mutation (epoch 0, next version) is
+     dispatched over the bus to the coordinator and returns {status:'mirrored'}; the
+     arbiter handle call count is unchanged, the bus recorded only the single initial
+     election request, the raw np_workspace_election object is reference-identical
+     before/after, and the validated record is deep-equal before/after. (R25.2 case 5)
+  6. workspace integration > applies ordered mirror versions, ignores duplicates, and
+     rehydrates a gap — PASS (brief mirror-ordering/gap-rehydration test)
+  7. workspace integration > survives a service-worker-style restart without losing
+     workspace state — PASS (brief restart-durability test)
+  8. workspace integration > propagates theme changes to a second surface
+     independently of election — PASS; the second surface receives
+     {mode:'auto', pack:'claude-warm'} and no np_workspace_election record exists,
+     confirming theme propagation is independent of election. (brief theme test)
+
+Commands (all exit 0):
+  pnpm exec vitest run --project unit tests/integration/workspaceIntegration.test.ts
+    --reporter=verbose                                   => exit 0 (1 file, 8 tests)
+  pnpm run test -- tests/integration                     => exit 0 (35 files, 244 tests)
+  pnpm run typecheck                                     => exit 0
+  pnpm run lint                                          => exit 0
+  pnpm exec prettier --check .                           => exit 0
+  pnpm run verify:phase-1                                => exit 0 (unit 35 files / 244
+    tests; manifest 1 file / 1 test; isolation 1 file / 1 test)
+
+Constraints and non-goals: mocked chrome APIs only; no real network, provider calls,
+or IndexedDB. vi.waitFor is used only for the asynchronous theme storage-change
+delivery. No production defect was found; no production file was modified.
+
+Completion criteria: integration tests green; typecheck and lint pass; one atomic task
+commit exists; working tree clean; status recorded.

@@ -2434,3 +2434,89 @@ Corrective commit: `fix(phase-01): follow nested chunks in bundle isolation scan
 **PASS** — the isolation gate now traverses the real nested WXT chunk graph, the false
 negative is closed by the required non-weakening fix, all four new tests plus the
 pre-existing 232 tests pass, and the full `pnpm run verify:phase-1` chain exits 0.
+
+## Task 25 — Cross-Module Integration Tests (ADR-0001 amended) (2026-09-20)
+
+Branch: `phoenix`; repository root: `/Users/george.li/Documents/workspaces/nowpilot`.
+Files created: `tests/integration/workspaceIntegration.test.ts`. Files modified
+(append-only records): `.planning/evidence/phase-01/verification.txt`,
+`.planning/evidence/phase-01/review.md`, `.planning/STATUS.md`. No config, source,
+`DESIGN.md`, `PLAN.md`, or ADR change. No production defect was found, so no
+production file was modified.
+
+### 1. Specification-compliance review
+
+- Task scope is exactly the one declared test file plus the append-only evidence and
+  status records; no other file was created or modified. PASS
+- The test rig matches R25.1: one in-memory bus routes `workspace.election.request` to
+  a real `createWorkspaceElectionArbiter` over the shared validated storage,
+  dispatches the correlated `workspace.election.response` envelope
+  (`source:'background'`, `target` = request source, `correlationId` = request
+  envelope `id`), and dispatches other envelope types to their handlers. Clients are
+  built with `createWorkspaceElection({ storage, store, bus, writerType, instanceId,
+  now })` and use `claim(reason)`. PASS
+- R25.2 cases are all covered: (1) concurrent initial claims elect exactly one writer
+  with the loser `held` naming the winner; (2) epoch monotonicity across
+  claim/handoff-commit/recovery; (3) handoff-commit versus fallback-claim exclusion
+  with exactly one new epoch; (4) service-worker restart reconstruction (current
+  writer/epoch and duplicate-request idempotency); (5) ordinary `workspace.mutation`
+  never changes the election record/epoch and never routes through the arbiter. PASS
+- The brief's mirror-ordering/gap-rehydration, workspace restart durability, and
+  theme-propagation tests are present; the theme test additionally proves no election
+  record is created. PASS
+- Assertions were not weakened; `vi.waitFor` is used only for the asynchronous theme
+  storage-change delivery. Mocked Chrome APIs only; no network/provider/IndexedDB. PASS
+- No dependency, permission, manifest, storage key, message type, error code, or
+  `DiagnosticEvent` was added or changed. PASS
+
+### 2. Code-quality review
+
+- The rig reuses the accepted T16 in-memory bus pattern; the arbiter is real and is
+  only wrapped in a `vi.fn` that delegates to it, so the "arbiter saw no election
+  request" assertion is direct evidence rather than a mock stub. PASS
+- Concurrency cases use `Promise.all` against the arbiter's FIFO executor and assert
+  outcomes rather than scheduling, so they are deterministic and not timing-flaky. PASS
+- The mutation case drives the mutation through the bus to the coordinator (not by
+  calling the coordinator method directly), asserts the returned step, the arbiter
+  call count, the absence of a new election request, reference identity of the raw
+  stored record, and deep equality of the validated record. PASS
+- The restart case reuses the same Chrome storage mock with a fresh arbiter/client and
+  asserts both reconstruction and duplicate idempotency. PASS
+- No `any`, no catch blocks, no global mutable state, no unused imports; `typecheck`,
+  `lint`, and `prettier --check .` all pass. PASS
+- Test quality: all eight tests passed on first run against implemented behaviour
+  (verification task per brief Step 2); no pre-existing test changed. PASS
+
+### 3. Security and privacy review
+
+- Tests use mocked `chrome.storage` only; no network, provider, MCP, IndexedDB,
+  clipboard, or filesystem access. PASS
+- No secret, credential, token, prompt, tool input/output, page, note, memory, or
+  customer content is read, logged, or persisted. PASS
+- The mutation case is an ordinary `workspace.metadata.set` classification and does
+  not cross the election trust boundary; the arbiter remains the only election-record
+  writer. PASS
+- No sensitive value is embedded as a literal or committed in evidence. PASS
+
+### 4. Findings and dispositions
+
+| ID | Severity | Finding | Disposition |
+|----|----------|---------|-------------|
+| — | Info | All eight integration tests passed on first run against already-implemented behaviour. | Recorded as a verification task per brief Step 2; no production change; tests retained. |
+
+No Critical, High, Medium, or Low finding. No production defect was found.
+
+### 5. Verification evidence
+
+`pnpm exec vitest run --project unit tests/integration/workspaceIntegration.test.ts
+--reporter=verbose` exit 0 (1 file, 8 tests); `pnpm run test -- tests/integration`
+exit 0 (35 files, 244 tests); `pnpm run typecheck` exit 0; `pnpm run lint` exit 0;
+`pnpm exec prettier --check .` exit 0; and `pnpm run verify:phase-1` exit 0 (unit
+35 files / 244 tests; manifest 1 file / 1 test; isolation 1 file / 1 test). Full
+output is recorded in `verification.txt` (Task 25 section).
+
+### Acceptance decision
+
+**PASS** — Task 25 covers every R25.2 integration case plus the brief's mirror,
+restart, and theme tests without weakening any assertion; all gates exit 0; no
+production defect was found and no production file was modified.

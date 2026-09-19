@@ -9,18 +9,18 @@ rewrite or delete prior history.
 - **Current phase:** Phase 01 — Runtime, Shells, and Workspace
 - **Design status:** Approved and amended by ADR-0001 (background-serialised workspace election)
 - **Plan status:** Approved and amended (corrective task T13C; T14/T16/T22/T24/T25/T26/T28 amendment notes)
-- **Implementation status:** T01–T13C accepted; T14, T15, and T16 implemented and verified; T17 implemented and verified; T18 implemented and verified; T19 implemented and verified; T20 implemented and verified; T21 implemented and verified; T22 implemented and verified; T23 implemented and verified; T24 implemented and verified; T25–T28 not started
+- **Implementation status:** T01–T13C accepted; T14, T15, and T16 implemented and verified; T17 implemented and verified; T18 implemented and verified; T19 implemented and verified; T20 implemented and verified; T21 implemented and verified; T22 implemented and verified; T23 implemented and verified; T24 implemented and verified; T25 implemented and verified (verification task, no production change); T26–T28 not started
 - **Planning baseline branch:** `phoenix`
 - **Implementation branch:** `phoenix`
 - **Historical approved planning baseline commit:** `bd6ac44d6f562722c18f0d07e6910634e549c713`
 - **Approved planning baseline commit:** `b2c6ef289bc1abebbeccfad81d7034ced81f4eb7`
-- **Current task:** T24 complete; next task T25
-- **Last commit:** the T24 task commit `test(phase-01): inspect built bundle isolation`, on top of `2d36787e95997ae53d68c26838c937d0302c6b58` (`test(phase-01): inspect generated manifest`)
-- **Verification result:** T24 focused assertions test 5/5 new tests (full unit suite 34 files / 232 tests); real-bundle `test:isolation` 1/1 test scanning the actual `.output/chrome-mv3` bundle graph; `typecheck`, `lint`, `prettier --check .`, and the full phase chain `pnpm run verify:phase-1` all exit 0. The real isolation check reported zero failures: the background graph contains none of the ten forbidden markers, the Side Panel graph contains no `standalone-page-` marker, and no content-script bundle exists; the marker lists were not changed. One disclosed Low-severity required reconciliation: the approved T24 plan is internally inconsistent for `scanForbiddenMarkers` (test asserts `['indexedDB']`; implementation returns `${file}:${marker}`); because assertions are frozen, the implementation was reconciled to return the bare marker, with the contradiction and reproduction recorded in `verification.txt`. Two disclosed type-only adaptations: T24-A removed the brief's unused `statSync` import; T24-B used `match[1]!` under the pinned `noUncheckedIndexedAccess`.
-- **Next action:** implement T25 per approved Phase 01 `PLAN.md`
-- **Blockers:** None; T13, T13C, T14, T15, T16, T17, T18, T19, T20, T21, T22, T23, and T24 are accepted
-- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 14, Task 15, Task 16, Task 17, Task 18, Task 19, Task 20, Task 21, Task 22, Task 23, and Task 24 sections)
-- **Evidence status:** T24 verified; self-review PASS
+- **Current task:** T25 complete; next task T26
+- **Last commit:** the T25 task commit `test(phase-01): add cross-module integration tests`, on top of `4d1b483c642f2fe8f4679221545dc8de7b40d2db` (`fix(phase-01): follow nested chunks in bundle isolation scan`)
+- **Verification result:** T25 `tests/integration/workspaceIntegration.test.ts` 8/8 tests (focused verbose run 1 file / 8 tests; full unit suite 35 files / 244 tests); `typecheck`, `lint`, `prettier --check .`, and the full phase chain `pnpm run verify:phase-1` all exit 0 (unit 35 files / 244 tests; manifest 1 file / 1 test; isolation 1 file / 1 test). The eight tests passed on first run against already-implemented behaviour, so T25 is recorded as a verification task (brief Step 2) with no production change; no assertion was weakened. Coverage: concurrent initial claims elect exactly one writer (loser `held`); epoch monotonicity across claim/handoff-commit/recovery; handoff-commit versus fallback-claim exclusion; service-worker restart reconstruction (writer/epoch plus duplicate-request idempotency); ordinary `workspace.mutation` never changes the election record/epoch and never routes through the arbiter; plus the brief's mirror-ordering/gap-rehydration, workspace restart durability, and theme-propagation (independent of election) tests. The R25.1 rig routes `workspace.election.request` to a real `createWorkspaceElectionArbiter` behind an in-memory bus.
+- **Next action:** implement T26 per approved Phase 01 `PLAN.md`
+- **Blockers:** None; T13, T13C, T14, T15, T16, T17, T18, T19, T20, T21, T22, T23, T24, and T25 are accepted
+- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 14, Task 15, Task 16, Task 17, Task 18, Task 19, Task 20, Task 21, Task 22, Task 23, Task 24, and Task 25 sections)
+- **Evidence status:** T25 verified; self-review PASS
 
 ## History
 
@@ -999,3 +999,41 @@ rewrite or delete prior history.
   `.planning/evidence/phase-01/review.md` (Task 24 sections). Task commit
   `test(phase-01): inspect built bundle isolation`. Current task T24 accepted; next
   task T25 — per approved Phase 01 `PLAN.md`.
+- Task 25 (Cross-Module Integration Tests, amended by ADR-0001/rulings R25.1–R25.4)
+  executed on `phoenix` in the repository root. Created
+  `tests/integration/workspaceIntegration.test.ts` (8 tests) using the R25.1 rig: one
+  in-memory bus routes `workspace.election.request` to a real
+  `createWorkspaceElectionArbiter` over the shared validated storage and dispatches
+  the correlated `workspace.election.response` envelope (`source:'background'`,
+  `target` = request source, `correlationId` = request envelope `id`) to registered
+  handlers, with other envelope types dispatched to their handlers; the real arbiter
+  is wrapped in a delegating `vi.fn` so it can be asserted to have seen no election
+  request. Coverage: (1) two concurrent initial claims elect exactly one writer, the
+  loser returns `held` naming the winner, and the persisted record matches the winner;
+  (2) the epoch increases monotonically across claim -> handoff-commit -> recovery
+  (`[0,1,2]`, all distinct); (3) a handoff-commit and a fallback claim queued against
+  the same epoch produce exactly one accepted response and one
+  `WORKSPACE_ELECTION_REJECTED`, with exactly one new epoch; (4) a fresh
+  arbiter/client over the same session storage reconstructs the same writer/epoch and
+  a duplicate request with the same `requestId` and identical fingerprint returns the
+  persisted authoritative record (deep-equal) with the same epoch; (5) an ordinary
+  `workspace.mutation` dispatched over the bus to the coordinator returns
+  `{status:'mirrored'}` while the arbiter handle call count is unchanged, the bus
+  records no new election request, and the raw `np_workspace_election` object is
+  reference-identical and the validated record deep-equal before/after. Plus the
+  brief's mirror-ordering/gap-rehydration, workspace restart durability, and
+  theme-propagation tests; the theme test also proves no `np_workspace_election`
+  record exists, confirming theme propagation is independent of election. All eight
+  tests passed on first run against already-implemented behaviour, so T25 is recorded
+  as a verification task (brief Step 2); no assertion was weakened and no production
+  file was modified. GREEN: focused verbose run exit 0 (1 file, 8 tests); full unit
+  suite exit 0 (35 files, 244 tests); `typecheck` exit 0; `lint` exit 0;
+  `prettier --check .` exit 0; and the full phase chain `pnpm run verify:phase-1`
+  exit 0 (typecheck, lint, unit 35 files / 244 tests, build, manifest 1 file / 1 test,
+  isolation 1 file / 1 test). No config, source, `wxt.config.ts`, `vitest.config.ts`,
+  `DESIGN.md`, `PLAN.md`, or ADR change; no new dependency, permission, storage key,
+  message type, error code, or `DiagnosticEvent`. Evidence recorded in
+  `.planning/evidence/phase-01/verification.txt` and
+  `.planning/evidence/phase-01/review.md` (Task 25 sections). Task commit
+  `test(phase-01): add cross-module integration tests`. Current task T25 accepted;
+  next task T26 — per approved Phase 01 `PLAN.md`.
