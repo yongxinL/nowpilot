@@ -369,3 +369,95 @@ Type-level deviations (disclosed):
 
 Completion criteria: storage tests green; typecheck and lint pass; phase-applicable
 chain exit 0; one atomic task commit exists; working tree clean; status recorded.
+
+=== Task 05 — Canonical Standalone Route Registry (2026-09-19T10:31:13Z) ===
+
+task ID: T05
+branch: phoenix
+repository root: /Users/george.li/Documents/workspaces/nowpilot
+classification: code task; TDD RED→GREEN applied
+implementation tier: economy
+base commit: 7a4cee0755659730c1fa7a10276555870faf42f2
+Files created: src/core/registry/standaloneRoutes.ts,
+  tests/core/registry/standaloneRoutes.test.ts
+Files modified: none (production)
+
+Step 1 — RED:
+  command: pnpm run test -- tests/core/registry/standaloneRoutes.test.ts
+  exit status: 1
+  observed: Test Files 1 failed | 5 passed (6); Tests 21 passed (21)
+    FAIL |unit| tests/core/registry/standaloneRoutes.test.ts (0 test)
+      Error: Failed to resolve import "@/core/registry/standaloneRoutes" from
+      "tests/core/registry/standaloneRoutes.test.ts". Does the file exist?
+      Plugin: vite:import-analysis
+  Expected failure reason confirmed: the registry module did not exist yet, so Vite
+  could not resolve the `@/core/registry/standaloneRoutes` import. The five passing
+  files were the pre-existing unit tests (Vitest 5 does not restrict `--` positionals
+  to the requested subdirectory under `--project unit`). No canonical route was missing.
+
+Step 3 — src/core/registry/standaloneRoutes.ts implemented per the brief:
+  STANDALONE_ROUTE_IDS has exactly the 7 DESIGN.md Section 11 identifiers in approved
+  order: chat, agent, notes, write, tools, options, diagnostics.
+  DEFAULT_STANDALONE_ROUTE_ID = 'chat'.
+  StandaloneRouteIdSchema is a closed z.enum over STANDALONE_ROUTE_IDS.
+  STANDALONE_ROUTES maps each id to { id, label, placement, order, hash } with labels
+  Chat/Agent/Notes/Write/Tools/Options/Diagnostics, order 1..7, and hash `#/<id>`.
+  PRIMARY_STANDALONE_ROUTES = chat, agent, notes, write, tools (5).
+  FOOTER_STANDALONE_ROUTES = options, diagnostics (2).
+  standaloneHashRoute(id) returns `#/${id}`.
+  parseStandaloneRouteId validates `^#\/([a-z-]+)$` against the closed id list.
+  resolveStandaloneRouteId returns { routeId, fellBack }; unknown/empty → chat + true.
+  No React, page components, TeamGQM, ServiceNow, query/path routing, browser-history
+  concerns, side effects, or new dependency (zod reused).
+
+Step 4 — GREEN (focused, explicit path):
+  command: pnpm run test -- tests/core/registry/standaloneRoutes.test.ts
+  exit status: 0
+  output: Test Files 6 passed (6); Tests 28 passed (28)
+  note: under Vitest 5 the pnpm-script passthrough runs the whole unit project;
+        T05-only count confirmed with explicit path.
+  command: pnpm exec vitest run --project unit tests/core/registry/standaloneRoutes.test.ts
+  exit status: 0
+  output: Test Files 1 passed (1); Tests 7 passed (7), 0 failed, 0 skipped.
+
+Step 4 — Focused verification (sequential):
+  pnpm run typecheck                             => exit 0  (tsc --noEmit clean)
+  pnpm run lint                                  => exit 0  (eslint . clean)
+  pnpm exec prettier --check .                   => exit 0  (All matched files use Prettier code style)
+
+Phase 01 verification applicable now:
+  command: pnpm run typecheck && pnpm run lint && pnpm run test
+  exit status: 0
+  output: typecheck clean; lint clean; unit project 6 files, 28 tests passed.
+
+Test counts:
+  T05 test file: 1 passed, 7 tests passed, 0 failed, 0 skipped.
+  Unit project total after T05: 6 files, 28 passed.
+
+Specification-compliance checklist:
+  - exactly the 7 DESIGN.md Section 11 route IDs in approved order: yes
+  - default route chat: yes
+  - 5 primary (chat, agent, notes, write, tools) + 2 footer (options, diagnostics): yes
+  - hash form `#/<id>` for every route and standaloneHashRoute: yes
+  - closed StandaloneRouteIdSchema; teamgqm and servicenow rejected: yes
+  - unknown hash → chat with explicit fellBack=true signal, no user-facing error: yes
+  - no invented/extra routes; standalone stem only; no `app` family: yes
+  - no path or query routing; no browser-history routing concerns: yes
+  - no new dependency (zod reused); no side effects: yes
+
+Code-quality and security checklist:
+  - closed schema; no stringly-typed route math in UI: yes
+  - fallback is explicit and testable: yes
+  - pure module; no network, storage, filesystem, or global state: yes
+  - no secrets or sensitive content: yes
+  - only the two task files created; no other file modified: yes
+
+Type-level deviations (disclosed):
+  (D4) The brief's `const candidate = match[1]` is `string | undefined` under the
+       T02-pinned `noUncheckedIndexedAccess: true` (RegExpExecArray is array-like),
+       which would fail `.includes(candidate)` (TS2345). Minimal non-null assertion
+       `match[1]!` applied inside the existing `if (!match) return undefined;` guard;
+       all values, regex, and behaviour unchanged. tsconfig.json not modified.
+
+Completion criteria: route test green; typecheck and lint pass; phase-applicable
+chain exit 0; one atomic task commit exists; working tree clean; status recorded.

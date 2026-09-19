@@ -9,18 +9,18 @@ rewrite or delete prior history.
 - **Current phase:** Phase 01 — Runtime, Shells, and Workspace
 - **Design status:** Approved
 - **Plan status:** Approved
-- **Implementation status:** In progress — T01 accepted; T02 accepted; T03 accepted; T04 accepted
+- **Implementation status:** In progress — T01 accepted; T02 accepted; T03 accepted; T04 accepted; T05 accepted
 - **Planning baseline branch:** `phoenix`
 - **Implementation branch:** `phoenix`
 - **Historical approved planning baseline commit:** `bd6ac44d6f562722c18f0d07e6910634e549c713`
 - **Approved planning baseline commit:** `3fb619730c8032d4aa121c5b8aa9649901b45f5f`
-- **Current task:** T04 — Storage Keys and Validated Chrome-Storage Adapter (accepted)
-- **Last commit:** T04 atomic commit `feat(phase-01): add storage keys and validated storage adapter` (SHA captured post-commit in `.superpowers/sdd/PLAN/task-04-report.md`)
-- **Verification result:** Pass — T04 focused test exit 0 (2 files, 10 tests), `typecheck` exit 0, `lint` exit 0, `prettier --check .` exit 0; phase chain `typecheck && lint && test` exit 0 (5 files, 21 tests)
-- **Next task:** T05 — Canonical Standalone Route Registry
+- **Current task:** T05 — Canonical Standalone Route Registry (accepted)
+- **Last commit:** T05 atomic commit `feat(phase-01): add canonical standalone route registry` (SHA captured post-commit in `.superpowers/sdd/PLAN/task-05-report.md`)
+- **Verification result:** Pass — T05 focused test exit 0 (1 file, 7 tests), `typecheck` exit 0, `lint` exit 0, `prettier --check .` exit 0; phase chain `typecheck && lint && test` exit 0 (6 files, 28 tests)
+- **Next task:** T06 — Workspace Types and Durable Metadata Schemas
 - **Blockers:** None
-- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 04 sections)
-- **Evidence status:** Task 04 verification and review recorded
+- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 05 sections)
+- **Evidence status:** Task 05 verification and review recorded
 
 ## History
 
@@ -171,3 +171,26 @@ rewrite or delete prior history.
   `.planning/evidence/phase-01/review.md` (Task 04 sections). Task commit
   `feat(phase-01): add storage keys and validated storage adapter`. Current task
   T04 accepted; next task T05.
+- Task 05 (Canonical Standalone Route Registry) executed on `phoenix` in the
+  repository root. RED confirmed at
+  `pnpm run test -- tests/core/registry/standaloneRoutes.test.ts` (exit 1; "Failed
+  to resolve import `@/core/registry/standaloneRoutes`"). Created
+  `src/core/registry/standaloneRoutes.ts` (exactly the 7 DESIGN.md Section 11 route
+  IDs in approved order; `DEFAULT_STANDALONE_ROUTE_ID = 'chat'`; closed
+  `StandaloneRouteIdSchema`; `STANDALONE_ROUTES` with labels and `#/<id>` hashes;
+  `PRIMARY_STANDALONE_ROUTES` = chat, agent, notes, write, tools;
+  `FOOTER_STANDALONE_ROUTES` = options, diagnostics; `standaloneHashRoute`,
+  `parseStandaloneRouteId`, and `resolveStandaloneRouteId` with explicit
+  `fellBack` signal; no React, page components, TeamGQM/ServiceNow, path/query
+  routing, or side effects) and `tests/core/registry/standaloneRoutes.test.ts`
+  (7 tests). One Low-severity type-only adaptation (D4): the brief's
+  `match[1]` is `string | undefined` under the T02-pinned
+  `noUncheckedIndexedAccess: true`, so `match[1]!` was used inside the existing
+  `if (!match) return undefined;` guard; behaviour unchanged and `tsconfig.json`
+  unmodified. GREEN: focused test exit 0 (6 files, 28 tests; T05-only 1 file, 7
+  tests), `typecheck` exit 0, `lint` exit 0, `prettier --check .` exit 0; phase
+  chain `typecheck && lint && test` exit 0 (6 files, 28 tests). Evidence recorded
+  in `.planning/evidence/phase-01/verification.txt` and
+  `.planning/evidence/phase-01/review.md` (Task 05 sections). Task commit
+  `feat(phase-01): add canonical standalone route registry`. Current task T05
+  accepted; next task T06.

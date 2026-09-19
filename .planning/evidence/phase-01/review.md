@@ -237,3 +237,84 @@ exit 0 (T04-only 2 files, 10 tests), `pnpm run typecheck` exit 0, `pnpm run lint
 **PASS** — Task 04 meets specification-compliance, code-quality, and security/privacy
 requirements; the three Low-severity typing adaptations (B6–B8) are documented,
 type-only, and non-behavioural.
+
+---
+
+## Task 05 — Canonical Standalone Route Registry
+
+**Phase:** Phase 01 — Runtime, Shells, and Workspace
+**Branch:** `phoenix`
+**Repository root:** /Users/george.li/Documents/workspaces/nowpilot
+**Base commit:** `7a4cee0755659730c1fa7a10276555870faf42f2` (T04 atomic commit)
+**Classification:** code task (TDD RED→GREEN); implementation tier economy
+
+### Scope reviewed
+
+- `src/core/registry/standaloneRoutes.ts` (created)
+- `tests/core/registry/standaloneRoutes.test.ts` (created)
+
+### 1. Specification-compliance review
+
+- `STANDALONE_ROUTE_IDS` is exactly the seven DESIGN.md Section 11 identifiers in the
+  approved order (`chat`, `agent`, `notes`, `write`, `tools`, `options`, `diagnostics`);
+  no route is invented, renamed, added, or reordered. PASS
+- `DEFAULT_STANDALONE_ROUTE_ID` is `chat`. PASS
+- `PRIMARY_STANDALONE_ROUTES` is exactly Chat, Agent, Notes, Write, Tools (5) and
+  `FOOTER_STANDALONE_ROUTES` is exactly Options, Diagnostics (2); placement is driven by
+  the registry, not a parallel hard-coded array. PASS
+- Hash representation is `#/<id>` for every route, produced by `standaloneHashRoute` and
+  stored as each definition's `hash`; there is no path or query routing. PASS
+- `StandaloneRouteIdSchema` is a closed `z.enum` over the id list; `teamgqm` and
+  `servicenow` are absent and rejected (asserted). PASS
+- Unknown or empty hashes normalise to `chat` with an explicit `fellBack: true` signal and
+  no user-facing error; the module itself emits no diagnostic (T18 owns the
+  `STANDALONE_ROUTE_FALLBACK` wiring). PASS
+- Only the `standalone` stem is used; no `app` naming family. No React import, no page
+  component, no TeamGQM/ServiceNow entry, no browser-history behaviour. PASS
+- Only the two task files were created; no other file changed. No dependency added
+  (`zod` was already an approved direct dependency). PASS
+
+### 2. Code-quality review
+
+- The module is pure and deterministic: no network, storage, IndexedDB, filesystem, DOM,
+  timers, or mutable module state; a single `RegExp` literal (not `g`-flagged) is reused,
+  so no lastIndex statefulness. PASS
+- `STANDALONE_ROUTES` is typed `Readonly<Record<StandaloneRouteId, ...>>`, so each id is
+  required and no arbitrary string key is accepted; `noUncheckedIndexedAccess` does not
+  widen these explicit union-keyed properties. PASS
+- `parseStandaloneRouteId` fails closed to `undefined`; `resolveStandaloneRouteId`
+  composes it and returns a strongly typed discriminated result. PASS
+- Error handling: none required; no catch blocks; no empty catch. N/A
+- Readability and complexity are minimal; labels and ordering are declared once. PASS
+
+### 3. Security and privacy review
+
+- No secrets, tokens, cookies, credentials, or sensitive content in production code or
+  evidence. PASS
+- No data is read, logged, persisted, or transmitted; the module has no side effects. PASS
+- No untrusted content is evaluated; hash input is only regex-matched and matched against
+  a closed allow-list, never interpolated into markup or execution. PASS
+
+### 4. Findings and dispositions
+
+| ID | Severity | Finding | Disposition |
+|----|----------|---------|-------------|
+| D4 | Low (typing) | The brief's `const candidate = match[1]` is `string | undefined` under the T02-pinned `noUncheckedIndexedAccess: true` (RegExpExecArray is array-like), failing `.includes(candidate)` (TS2345). | Fixed type-only with `match[1]!` inside the existing `if (!match)` guard; regex and behaviour unchanged; tsconfig untouched. |
+| — | Info | `pnpm run test -- tests/core/registry/standaloneRoutes.test.ts` also runs the pre-existing unit tests under Vitest 5; T05-only count confirmed with an explicit file path (1 file, 7 tests). | Recorded; not a defect. |
+
+No Critical, High, or Medium finding remains unresolved.
+
+### 5. Verification evidence
+
+RED: `pnpm run test -- tests/core/registry/standaloneRoutes.test.ts` exit 1 —
+module-resolution failure for `@/core/registry/standaloneRoutes`. GREEN: focused test
+exit 0 (6 files, 28 tests; T05-only 1 file, 7 tests), `pnpm run typecheck` exit 0,
+`pnpm run lint` exit 0, `pnpm exec prettier --check .` exit 0, and the phase-applicable
+chain `typecheck && lint && test` exit 0 (6 files, 28 tests). Full output is recorded in
+`verification.txt` (Task 05 section).
+
+### Acceptance decision
+
+**PASS** — Task 05 meets specification-compliance, code-quality, and security/privacy
+requirements; the single Low-severity D4 typing adaptation is documented, type-only, and
+non-behavioural.
