@@ -710,3 +710,108 @@ Type-level deviations: none — both production and test code typecheck under th
 Completion criteria: all three runtime test files green; registry completeness test green;
 typecheck and lint pass; phase-applicable chain exit 0; one atomic task commit exists;
 working tree clean; status recorded.
+
+=== Task 08 — Sender and Envelope Boundary Validation (2026-09-19T10:42:13Z) ===
+
+task ID: T08
+branch: phoenix
+repository root: /Users/george.li/Documents/workspaces/nowpilot
+classification: code task; TDD RED->GREEN applied
+implementation tier: advanced (trust boundary)
+base commit: af65f4f2adda54bf2d6f08d2043de5edbec5bfbc (T07 atomic commit
+  `feat(phase-01): add runtime envelope primitives and registries`)
+Files created (production): none
+Files created (tests):
+  tests/core/runtime/boundaryValidation.test.ts
+Files modified (production):
+  src/core/runtime/RuntimeEnvelope.ts (validation exports appended)
+Files modified: none (toolchain); no dependency change
+
+Step 1 — test file created verbatim from the brief (11 tests): valid trusted envelope;
+RUNTIME_ENVELOPE_INVALID on schema failure; RUNTIME_SENDER_REJECTED on foreign sender,
+missing sender id, and disallowed source; background allowed for standalone.focus;
+allowed-source registry completeness (exactly one explicit non-empty list per MessageType,
+Object.keys(MESSAGE_TYPE_ALLOWED_SOURCES) equals MESSAGE_TYPES); no wildcard/permissive
+default; every MessageType accepted from each allowed source; a representative disallowed
+source rejected for every type that has one.
+
+Step 2 — RED:
+  command: pnpm run test -- tests/core/runtime/boundaryValidation.test.ts
+  exit status: 1
+  output: Test Files 1 failed | 10 passed (11); Tests 11 failed | 48 passed (59)
+  observed: TypeError: validateInboundEnvelope is not a function; getAllowedSources and
+    isTrustedExtensionSender also not exported.
+  Expected failure reason confirmed: the T08 validation exports did not yet exist on
+    RuntimeEnvelope.ts. No canonical identifier, message type, or payload name was missing.
+
+Step 3 — src/core/runtime/RuntimeEnvelope.ts append verbatim per the brief:
+  getAllowedSources(type) returns MESSAGE_TYPE_ALLOWED_SOURCES[type] ?? [] (fail closed to
+    an empty list for an unregistered type); isSourceAllowed(type, source) membership test;
+  SenderIdentity { id?, url? }; isTrustedExtensionSender(sender, extensionId) requires an
+    exact extension id match and, when a url is present, a chrome-extension://<id>/ prefix;
+  InboundValidationResult union; validateInboundEnvelope(input, sender, extensionId) parses
+    the envelope first (RUNTIME_ENVELOPE_INVALID on schema failure, including an unknown type
+    string), then validates the sender (RUNTIME_SENDER_REJECTED), then checks the source
+    against the closed registry (RUNTIME_SENDER_REJECTED for a disallowed source or an
+    unregistered type). Failure paths log the canonical error code only
+    ({ reason: 'schema' | 'identity' | 'source' }); no raw payload or sender value is logged.
+    Validation never throws to callers.
+
+Step 4 — GREEN (focused, explicit path):
+  command: pnpm exec vitest run --project unit tests/core/runtime/boundaryValidation.test.ts
+  exit status: 0
+  output: Test Files 1 passed (1); Tests 11 passed (11), 0 failed, 0 skipped (T08-only).
+
+Focused verification (sequential):
+  pnpm run typecheck                             => exit 0  (tsc --noEmit clean)
+  pnpm run lint                                  => exit 0  (eslint . clean)
+  pnpm exec prettier --check .                   => exit 0 after formatting only the T08 test
+    file (tests/core/runtime/boundaryValidation.test.ts, line wrapping at printWidth 100).
+    Formatting changed whitespace/line wrapping only; all identifiers, message-type strings,
+    payloads, and assertions are unchanged. RuntimeEnvelope.ts was not reformatted and no
+    other file was reformatted.
+
+Phase 01 verification applicable now:
+  command: pnpm run typecheck && pnpm run lint && pnpm run test
+  exit status: 0
+  output: typecheck clean; lint clean; unit project 11 files, 59 tests passed.
+
+Test counts:
+  T08 test file: 1 passed, 11 tests passed, 0 failed, 0 skipped.
+  Unit project total after T08: 11 files, 59 passed.
+
+Specification-compliance checklist (verbatim from the brief):
+  - interfaces exact: SenderIdentity; isTrustedExtensionSender; getAllowedSources(type):
+    readonly RuntimeSurface[]; isSourceAllowed(type, source): boolean; InboundValidationResult;
+    validateInboundEnvelope: yes
+  - sender validation runs before any use of sender data; only the extension's own origin is
+    trusted; URL scheme is validated; no raw sender/payload is logged: yes
+  - Approved Interpretation 1: every MessageType and all its allowed sources covered, plus a
+    representative disallowed source for each type that has one, plus a completeness test
+    asserting exactly one MESSAGE_TYPE_ALLOWED_SOURCES entry per MessageType with no
+    wildcard/permissive default; Object.keys(MESSAGE_TYPE_ALLOWED_SOURCES) equals MESSAGE_TYPES:
+    yes
+  - invalid envelope (including unknown type string) -> RUNTIME_ENVELOPE_INVALID; unregistered
+    type or disallowed source -> RUNTIME_SENDER_REJECTED; never silent success: yes
+  - only RuntimeEnvelope.ts appended and the one new test file created (plus .planning
+    evidence/STATUS); no dependency change: yes
+
+Code-quality and security checklist:
+  - sender identity checked before use; foreign extension ids rejected; URL scheme validated:
+    yes
+  - fail closed on every failure path; no wildcard or permissive default; no arbitrary error
+    strings (only the canonical RUNTIME_ENVELOPE_INVALID / RUNTIME_SENDER_REJECTED): yes
+  - no catch blocks; no empty catch; no global mutable state; validation never throws: yes
+  - error records carry only a fixed reason label; no raw sensitive content, secrets, tokens,
+    sender values, or payloads are logged/persisted/committed: yes
+  - pure validation module; no network, storage, IndexedDB, or filesystem access: yes
+  - source-map observation: the appended block imports createErrorRecord/debugLog (T03) and
+    MESSAGE_TYPE_ALLOWED_SOURCES/MessageType (T07); debugLog redacts context and emits a JSON
+    string through the supplied sink (default console). No payload body or sender data reaches
+    the log; the reason label is the only context field: yes
+
+Type-level deviations: none — production and test code typecheck under the pinned
+`strict`/`noUncheckedIndexedAccess` configuration without non-null assertions.
+
+Completion criteria: boundary test green; typecheck and lint pass; phase-applicable chain
+exit 0; one atomic task commit exists; working tree clean; status recorded.

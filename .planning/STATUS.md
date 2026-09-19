@@ -9,18 +9,18 @@ rewrite or delete prior history.
 - **Current phase:** Phase 01 — Runtime, Shells, and Workspace
 - **Design status:** Approved
 - **Plan status:** Approved
-- **Implementation status:** In progress — T01 accepted; T02 accepted; T03 accepted; T04 accepted; T05 accepted; T06 accepted; T07 accepted
+- **Implementation status:** In progress — T01 accepted; T02 accepted; T03 accepted; T04 accepted; T05 accepted; T06 accepted; T07 accepted; T08 accepted
 - **Planning baseline branch:** `phoenix`
 - **Implementation branch:** `phoenix`
 - **Historical approved planning baseline commit:** `bd6ac44d6f562722c18f0d07e6910634e549c713`
 - **Approved planning baseline commit:** `3fb619730c8032d4aa121c5b8aa9649901b45f5f`
-- **Current task:** T07 — Runtime Primitives, Payload Schemas, and `RuntimeEnvelope` (accepted)
-- **Last commit:** T07 atomic commit `feat(phase-01): add runtime envelope primitives and registries` (SHA captured post-commit in `.superpowers/sdd/PLAN/task-07-report.md`)
-- **Verification result:** Pass — T07 focused test exit 0 (10 files, 48 tests; T07-only 3 files, 13 tests), `typecheck` exit 0, `lint` exit 0, `prettier --check .` exit 0 (after formatting the two T07 `messageSchemas` files only); phase chain `typecheck && lint && test` exit 0 (10 files, 48 tests)
-- **Next task:** T08 — (per approved Phase 01 `PLAN.md`)
+- **Current task:** T08 — Sender and Envelope Boundary Validation (accepted)
+- **Last commit:** T08 atomic commit `feat(phase-01): validate runtime envelope and sender at boundaries` (SHA captured post-commit in `.superpowers/sdd/PLAN/task-08-report.md`)
+- **Verification result:** Pass — T08 focused test exit 0 (1 file, 11 tests), `typecheck` exit 0, `lint` exit 0, `prettier --check .` exit 0 (after formatting the T08 test file only); phase chain `typecheck && lint && test` exit 0 (11 files, 59 tests)
+- **Next task:** T09 — (per approved Phase 01 `PLAN.md`)
 - **Blockers:** None
-- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 07 sections)
-- **Evidence status:** Task 07 verification and review recorded
+- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 08 sections)
+- **Evidence status:** Task 08 verification and review recorded
 
 ## History
 
@@ -256,3 +256,32 @@ rewrite or delete prior history.
   `.planning/evidence/phase-01/review.md` (Task 07 sections). Task commit
   `feat(phase-01): add runtime envelope primitives and registries`. Current task
   T07 accepted; next task T08 — per approved Phase 01 `PLAN.md`.
+- Task 08 (Sender and Envelope Boundary Validation) executed on `phoenix` in the
+  repository root. Implementation tier advanced (trust boundary). RED confirmed at
+  `pnpm run test -- tests/core/runtime/boundaryValidation.test.ts` (exit 1; 11
+  failures, all `TypeError: ... is not a function` for `getAllowedSources`,
+  `isTrustedExtensionSender`, and `validateInboundEnvelope`; the 48 pre-existing
+  unit tests still passed). Appended to `src/core/runtime/RuntimeEnvelope.ts`:
+  `getAllowedSources` (fails closed to `[]` for an unregistered type),
+  `isSourceAllowed`, `SenderIdentity` (`id?`/`url?`), `isTrustedExtensionSender`
+  (exact `extensionId` match; when `url` is present it must start with
+  `chrome-extension://<extensionId>/`), `InboundValidationResult`, and
+  `validateInboundEnvelope` (envelope schema first — `RUNTIME_ENVELOPE_INVALID`,
+  including an unknown type string; then sender identity — `RUNTIME_SENDER_REJECTED`;
+  then the closed allowed-source registry — `RUNTIME_SENDER_REJECTED` for a
+  disallowed source or unregistered type; never throws; failure paths log only the
+  canonical error code with a fixed `reason` label, no raw payload/sender). Created
+  `tests/core/runtime/boundaryValidation.test.ts` (11 tests) including the Approved
+  Interpretation 1 coverage: every `MessageType` from each allowed source accepted,
+  a representative disallowed source rejected for every type that has one, and the
+  completeness test that `Object.keys(MESSAGE_TYPE_ALLOWED_SOURCES).sort()` equals
+  `[...MESSAGE_TYPES].sort()` with no wildcard/permissive default. `pnpm exec
+  prettier --check .` flagged only the T08 test file; it was formatted, identifiers,
+  message-type strings, payloads, and assertions unchanged, and no other file was
+  reformatted. GREEN: focused test exit 0 (1 file, 11 tests), `typecheck` exit 0,
+  `lint` exit 0, `prettier --check .` exit 0; phase chain
+  `typecheck && lint && test` exit 0 (11 files, 59 tests). Evidence recorded in
+  `.planning/evidence/phase-01/verification.txt` and
+  `.planning/evidence/phase-01/review.md` (Task 08 sections). Task commit
+  `feat(phase-01): validate runtime envelope and sender at boundaries`. Current task
+  T08 accepted; next task T09 — per approved Phase 01 `PLAN.md`.

@@ -528,3 +528,98 @@ chain `typecheck && lint && test` exit 0 (10 files, 48 tests). Full output is re
 **PASS** — Task 07 meets specification-compliance, code-quality, and security/privacy
 requirements; the only finding is a Low-severity formatting correction and no blocking
 finding remains.
+
+---
+
+## Task 08 — Sender and Envelope Boundary Validation
+
+**Phase:** Phase 01 — Runtime, Shells, and Workspace
+**Branch:** `phoenix`
+**Repository root:** /Users/george.li/Documents/workspaces/nowpilot
+**Base commit:** `af65f4f2adda54bf2d6f08d2043de5edbec5bfbc` (T07 atomic commit)
+**Classification:** code task (TDD RED→GREEN); implementation tier advanced (trust boundary)
+
+### Scope reviewed
+
+- `src/core/runtime/RuntimeEnvelope.ts` (validation exports appended; existing schema untouched)
+- `tests/core/runtime/boundaryValidation.test.ts` (created)
+
+### 1. Specification-compliance review
+
+- Interfaces match the brief exactly: `SenderIdentity`, `isTrustedExtensionSender`,
+  `getAllowedSources(type): readonly RuntimeSurface[]`,
+  `isSourceAllowed(type, source): boolean`, `InboundValidationResult`, and
+  `validateInboundEnvelope(input, sender, extensionId)`. PASS
+- Approved Interpretation 1: the test suite covers every `MessageType` and every one of its
+  allowed sources (acceptance loop), a representative disallowed source for each type that
+  has one (rejection loop), and a completeness test asserting every `MessageType` has exactly
+  one explicit non-empty `MESSAGE_TYPE_ALLOWED_SOURCES` entry with no wildcard/permissive
+  default. `Object.keys(MESSAGE_TYPE_ALLOWED_SOURCES).sort()` equals
+  `[...MESSAGE_TYPES].sort()`. PASS
+- Fail-closed mapping matches the brief: an envelope that fails schema validation (including
+  an unknown type string) yields `RUNTIME_ENVELOPE_INVALID`; an unregistered type or a
+  disallowed source yields `RUNTIME_SENDER_REJECTED`. No path returns silent success. PASS
+- `validateInboundEnvelope` parses the envelope first, then validates sender identity, then
+  the source. Sender data is used only inside `isTrustedExtensionSender`, after the envelope
+  contract is established; no sender field is dereferenced or logged elsewhere. PASS
+- Only `src/core/runtime/RuntimeEnvelope.ts` was appended and one test file created, plus
+  `.planning` evidence/STATUS; no dependency change; no manifest or permission change. PASS
+
+### 2. Code-quality review
+
+- Validation is small, readable, and closed: `getAllowedSources` fails closed to `[]` for an
+  unregistered type, `isSourceAllowed` is a membership test, and `isTrustedExtensionSender`
+  short-circuits on a missing/mismatched id and on a non-extension url scheme when a url is
+  present. PASS
+- `validateInboundEnvelope` never throws to callers; every failure returns a discriminated
+  result and logs the canonical error code only. No catch blocks; no empty catch. PASS
+- No duplication: the allowed-source map remains canonical in `MessageType.ts`; the boundary
+  reads it rather than re-declaring a second list. The error codes are the T03 canonical
+  `ErrorCode` values via `createErrorRecord`. PASS
+- No type-level deviation was required under the pinned `strict` /
+  `noUncheckedIndexedAccess` configuration; no non-null assertions were needed. PASS
+
+### 3. Security and privacy review (assets and trust boundaries)
+
+- Trust boundary: this task is the boundary itself. It validates the closed envelope contract
+  and the sender identity before any sender-derived value is trusted. Only the extension's
+  own origin (`chrome-extension://<extensionId>/`) is accepted; a foreign extension id or a
+  non-extension scheme is rejected. PASS
+- Fail closed: unknown message types (schema-invalid) are `RUNTIME_ENVELOPE_INVALID`;
+  unregistered types that somehow reach the source check, and disallowed sources, are
+  `RUNTIME_SENDER_REJECTED`. There is no wildcard, permissive default, or silent acceptance.
+  PASS
+- No raw content logged: failure paths log a canonical error code with only a fixed
+  `reason` label (`schema` | `identity` | `source`). No sender value, envelope id, payload, or
+  message body is logged, persisted, or committed. The T03 `debugLog` still applies key-based
+  redaction before any sink. PASS
+- Input is treated as untrusted data: `input` is typed `unknown` and schema-validated; an
+  unknown type string cannot satisfy the discriminated union and fails closed. Data has no
+  instruction authority. PASS
+- No side effects of consequence: the module only reads registries and logs a redacted
+  structured record; no network, storage, IndexedDB, or filesystem access. PASS
+- Content-script isolation, manifest permissions, and password handling are unaffected. PASS
+
+### 4. Findings and dispositions
+
+| ID | Severity | Finding | Disposition |
+|----|----------|---------|-------------|
+| — | Low (formatting) | `pnpm exec prettier --check .` flagged only `tests/core/runtime/boundaryValidation.test.ts` (line wrapping at printWidth 100). | Fixed by formatting only the T08 test file; identifiers, message-type strings, payloads, and assertions unchanged; `RuntimeEnvelope.ts` and no other file reformatted. |
+| — | Info | `pnpm run test -- tests/core/runtime/boundaryValidation.test.ts` also runs the pre-existing unit tests under Vitest 5; T08-only count confirmed with an explicit path (1 file, 11 tests). | Recorded; not a defect. |
+
+No Critical, High, or Medium finding remains unresolved.
+
+### 5. Verification evidence
+
+RED: `pnpm run test -- tests/core/runtime/boundaryValidation.test.ts` exit 1 — 11 failures,
+all `TypeError: ... is not a function` for the three not-yet-exported validators; the 48
+pre-existing unit tests still passed. GREEN: focused test exit 0 (1 file, 11 tests),
+`pnpm run typecheck` exit 0, `pnpm run lint` exit 0, `pnpm exec prettier --check .` exit 0,
+and the phase-applicable chain `typecheck && lint && test` exit 0 (11 files, 59 tests). Full
+output is recorded in `verification.txt` (Task 08 section).
+
+### Acceptance decision
+
+**PASS** — Task 08 meets specification-compliance, code-quality, and security/privacy
+requirements; the only finding is a Low-severity formatting correction and no blocking
+finding remains.
