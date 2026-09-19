@@ -747,3 +747,72 @@ Full output is recorded in `verification.txt` (Task 09 FIX section).
 **PASS** — The Critical fan-out defect is fixed, the regression test pins the
 single-listener and once-per-subscriber behaviour, all focused and phase verification
 passes, and no blocking finding remains.
+
+## Task 10 — Standalone Navigation Request Contract
+
+### Scope and files
+
+Created `src/core/runtime/StandaloneNavigation.ts` and
+`tests/core/runtime/standaloneNavigation.test.ts`; no other production file changed.
+Interfaces produced exactly as specified: `StandaloneNavigationOpenRequest`,
+`StandaloneNavigationFocusRequest`, `StandaloneNavigationRequest`,
+`createStandaloneOpenEnvelope`, `createStandaloneFocusEnvelope`,
+`readStandaloneNavigationRequest`, `openStandalone`, `focusStandalone`.
+
+### Specification-compliance review
+
+- Destination is the canonical typed `StandaloneRouteId` from the T05 registry; no raw
+  routing strings are constructed and UI callers never need `chrome.tabs`.
+- Envelopes use only the canonical `standalone.open` / `standalone.focus` message types
+  and are schema-valid (`parseRuntimeEnvelope` succeeds in the test).
+- `openStandalone` targets `background`; `focusStandalone` targets `standalone`.
+- The destination is schema-validated (`StandaloneRouteIdSchema.parse`) before envelope
+  creation; there are no invented destinations.
+- No handoff logic; no dependency change; no IndexedDB/network; no content script.
+- `openStandalone` source is `WorkspaceWriterSurface`; `focusStandalone` additionally
+  accepts `'background'`, matching `MESSAGE_TYPE_ALLOWED_SOURCES` for each type.
+- No blocking finding.
+
+### Code-quality review
+
+- `createNavigationEnvelope` is a single private helper; the four public functions are
+  thin and readable. The `Pick<BroadcastBus, 'send'>` dependency keeps the module
+  testable and avoids pulling the full bus interface.
+- `readStandaloneNavigationRequest` narrows on the closed discriminated union and
+  returns `undefined` for unrelated envelopes, so it never throws on a non-navigation
+  envelope.
+- Test quality: covers both envelope builders (type, target, source, payload, schema
+  validity), request reading for both kinds, the unrelated-envelope negative case, and
+  both bus senders via a minimal injected bus double.
+- Low-severity type-only adaptation: the brief's `bus.send.mock.calls[0][0].type` is
+  TS2532/TS2493 under `noUncheckedIndexedAccess: true` with the untyped
+  `vi.fn(async () => {})` args tuple. The mock parameter is typed
+  `_envelope: RuntimeEnvelope` and the index uses `bus.send.mock.calls[0]![0].type`
+  (same class as T03 B5 / T09). Values and assertions are unchanged and `tsconfig.json`
+  is unmodified.
+- Low-severity formatting: `pnpm exec prettier --check .` flagged only the two T10 files;
+  both were formatted with identifiers, values, and assertions unchanged, and no other
+  file was reformatted.
+
+### Security and privacy review
+
+- No raw message, sender, payload, or destination is logged.
+- No direct `chrome.*`, `chrome.tabs`, IndexedDB, network, or storage access in this
+  module; it only builds validated envelopes and forwards them through the injected bus.
+- No secrets or sensitive data are handled.
+- No blocking finding.
+
+### Verification evidence
+
+RED: `pnpm run test -- tests/core/runtime/standaloneNavigation.test.ts` exit 1 — module
+resolution failure for `@/core/runtime/StandaloneNavigation` (1 failed | 12 passed).
+GREEN: focused run exit 0 (13 files, 71 tests); `pnpm run typecheck` exit 0;
+`pnpm run lint` exit 0; `pnpm exec prettier --check .` exit 0; phase chain
+`typecheck && lint && test` exit 0. Full output is recorded in `verification.txt`
+(Task 10 section).
+
+### Acceptance decision
+
+**PASS** — Task 10 meets specification-compliance, code-quality, and security/privacy
+requirements; the only findings are Low-severity type-only and formatting corrections,
+and no blocking finding remains.

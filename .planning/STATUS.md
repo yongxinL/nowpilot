@@ -9,18 +9,18 @@ rewrite or delete prior history.
 - **Current phase:** Phase 01 — Runtime, Shells, and Workspace
 - **Design status:** Approved
 - **Plan status:** Approved
-- **Implementation status:** In progress — T01 accepted; T02 accepted; T03 accepted; T04 accepted; T05 accepted; T06 accepted; T07 accepted; T08 accepted; T09 accepted
+- **Implementation status:** In progress — T01 accepted; T02 accepted; T03 accepted; T04 accepted; T05 accepted; T06 accepted; T07 accepted; T08 accepted; T09 accepted; T10 accepted
 - **Planning baseline branch:** `phoenix`
 - **Implementation branch:** `phoenix`
 - **Historical approved planning baseline commit:** `bd6ac44d6f562722c18f0d07e6910634e549c713`
 - **Approved planning baseline commit:** `3fb619730c8032d4aa121c5b8aa9649901b45f5f`
-- **Current task:** T09 — Canonical Broadcast Bus (accepted; controller Critical fan-out fix applied)
-- **Last commit:** T09 fix corrective commit `fix(phase-01): deliver each broadcast message once per subscriber` (SHA captured post-commit in `.superpowers/sdd/PLAN/task-09-report.md`)
-- **Verification result:** Pass — T09 fix regression test exit 0 (1 file, 6 tests), `typecheck` exit 0, `lint` exit 0, `prettier --check .` exit 0; phase chain `typecheck && lint && test` exit 0 (12 files, 65 tests)
-- **Next task:** T10 — (per approved Phase 01 `PLAN.md`)
+- **Current task:** T10 — Standalone Navigation Request Contract (accepted)
+- **Last commit:** `feat(phase-01): add standalone navigation request contract` (SHA captured post-commit in `.superpowers/sdd/PLAN/task-10-report.md`)
+- **Verification result:** Pass — T10 focused test exit 0 (13 files, 71 tests), `typecheck` exit 0, `lint` exit 0, `prettier --check .` exit 0; phase chain `typecheck && lint && test` exit 0 (13 files, 71 tests)
+- **Next task:** T11 — (per approved Phase 01 `PLAN.md`)
 - **Blockers:** None
-- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 09 and Task 09 FIX sections)
-- **Evidence status:** Task 09 verification, review, and controller Critical fix recorded
+- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 10 sections)
+- **Evidence status:** Task 10 verification and review recorded
 
 ## History
 
@@ -339,3 +339,37 @@ rewrite or delete prior history.
   `fix(phase-01): deliver each broadcast message once per subscriber` (a new commit, not
   an amend). Current task T09 accepted with the fix applied; next task T10 — per approved
   Phase 01 `PLAN.md`.
+- Task 10 (Standalone Navigation Request Contract) executed on `phoenix` in the
+  repository root. Implementation tier balanced. RED confirmed at
+  `pnpm run test -- tests/core/runtime/standaloneNavigation.test.ts` (exit 1; "Failed
+  to resolve import `@/core/runtime/StandaloneNavigation`"; the 65 pre-existing unit
+  tests still passed). Created `src/core/runtime/StandaloneNavigation.ts` with the exact
+  brief interfaces `StandaloneNavigationOpenRequest`, `StandaloneNavigationFocusRequest`,
+  `StandaloneNavigationRequest` (typed on the T05 `StandaloneRouteId`),
+  `createStandaloneOpenEnvelope(destination, source)`,
+  `createStandaloneFocusEnvelope(destination, source)`,
+  `readStandaloneNavigationRequest(envelope)`, `openStandalone(destination, surface, bus)`,
+  and `focusStandalone(destination, surface, bus)`. A single private
+  `createNavigationEnvelope` schema-validates the destination via
+  `StandaloneRouteIdSchema.parse` before building a `RuntimeEnvelope`; `standalone.open`
+  targets `background` and `standalone.focus` targets `standalone`; only the canonical
+  T09 `BroadcastBus` `send` is used (`Pick<BroadcastBus, 'send'>`). No `chrome.tabs`,
+  routing strings beyond the registry, UI, handoff logic, dependency change, IndexedDB,
+  network, or content script. Created
+  `tests/core/runtime/standaloneNavigation.test.ts` (6 tests: both envelope builders with
+  schema validity, target, source, and payload; reading both request kinds; the
+  unrelated-envelope `undefined` case; both bus senders). One Low-severity type-only
+  adaptation (same class as T03 B5 / T09): the brief's verbatim
+  `bus.send.mock.calls[0][0].type` is TS2532/TS2493 under the pinned
+  `noUncheckedIndexedAccess: true` with the untyped `vi.fn(async () => {})` args tuple, so
+  the mock parameter is typed `_envelope: RuntimeEnvelope` and the index uses
+  `bus.send.mock.calls[0]![0].type`; values and assertions unchanged and `tsconfig.json`
+  unmodified. `pnpm exec prettier --check .` flagged only the two T10 files; both were
+  formatted, identifiers, values, and assertions unchanged, and no other file was
+  reformatted. GREEN: focused test exit 0 (13 files, 71 tests), `typecheck` exit 0,
+  `lint` exit 0, `prettier --check .` exit 0; phase chain `typecheck && lint && test`
+  exit 0 (13 files, 71 tests). Evidence recorded in
+  `.planning/evidence/phase-01/verification.txt` and
+  `.planning/evidence/phase-01/review.md` (Task 10 sections). Task commit
+  `feat(phase-01): add standalone navigation request contract`. Current task T10 accepted;
+  next task T11 — per approved Phase 01 `PLAN.md`.

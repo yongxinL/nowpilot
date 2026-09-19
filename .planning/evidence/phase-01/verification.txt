@@ -978,3 +978,68 @@ Code-quality and security checklist (fix):
 
 Completion criteria: regression test green; typecheck and lint pass; phase-applicable
 chain exit 0; corrective commit exists; working tree clean; status recorded.
+
+--------------------------------------------------------------------------------
+Task 10 — Standalone Navigation Request Contract
+--------------------------------------------------------------------------------
+
+Date: 2026-09-19
+Branch: phoenix
+Repository root: /Users/george.li/Documents/workspaces/nowpilot
+Files created: src/core/runtime/StandaloneNavigation.ts,
+  tests/core/runtime/standaloneNavigation.test.ts
+Files modified: none
+Task commit: feat(phase-01): add standalone navigation request contract
+  (SHA captured post-commit in .superpowers/sdd/PLAN/task-10-report.md)
+
+Step 1 — RED:
+  command: pnpm run test -- tests/core/runtime/standaloneNavigation.test.ts
+  exit status: 1
+  output: Error: Failed to resolve import "@/core/runtime/StandaloneNavigation"
+    from "tests/core/runtime/standaloneNavigation.test.ts". Does the file exist?
+    (1 failed | 12 passed; the 65 pre-existing tests still passed.)
+
+Step 2 — GREEN:
+  command: pnpm run test -- tests/core/runtime/standaloneNavigation.test.ts
+  exit status: 0
+  output: Test Files 13 passed (13); Tests 71 passed (71), 0 failed, 0 skipped.
+
+Focused verification (sequential):
+  pnpm run test -- tests/core/runtime/standaloneNavigation.test.ts => exit 0
+    (unit project: 13 files, 71 tests; 6 T10 tests)
+  pnpm run typecheck                                          => exit 0 (tsc --noEmit clean)
+  pnpm run lint                                               => exit 0 (eslint . clean)
+  pnpm exec prettier --check .                                => exit 0 (all files formatted;
+    only the two T10 files were reformatted, identifiers/values/assertions unchanged)
+
+Phase 01 verification applicable now:
+  command: pnpm run typecheck && pnpm run lint && pnpm run test
+  exit status: 0
+  output: typecheck clean; lint clean; unit project 13 files, 71 tests passed.
+
+Specification-compliance checklist:
+  - uses only canonical route IDs (StandaloneRouteId from the T05 registry; no raw
+    routing strings built outside the registry): yes
+  - uses only canonical message types standalone.open / standalone.focus and the T09
+    canonical BroadcastBus; no invented message types: yes
+  - destination typed and schema-validated via StandaloneRouteIdSchema.parse before
+    envelope creation: yes
+  - openStandalone targets background; focusStandalone targets the live standalone: yes
+  - no chrome.tabs call and no direct tab API in this module: yes
+  - no handoff logic (T16 owns coordination; T21 composes handoff + open): yes
+  - no dependency change; no IndexedDB/network; no content script: yes
+
+Type-only adaptation (Low, same class as T03 B5 / T09): the brief's verbatim test
+  `bus.send.mock.calls[0][0].type` is TS2532/TS2493 under the pinned
+  `noUncheckedIndexedAccess: true` (and the untyped `vi.fn(async () => {})` infers an
+  empty args tuple). The mock parameter is typed `_envelope: RuntimeEnvelope` and the
+  index uses `bus.send.mock.calls[0]![0].type`; assertions and values are unchanged and
+  tsconfig.json was not modified.
+
+Code-quality and security checklist:
+  - destination validated before envelope creation: yes
+  - no invented destinations; closed StandaloneRouteId union: yes
+  - no direct tab API; no raw message/sender logged: yes
+
+Completion criteria: navigation test green; typecheck and lint pass; phase-applicable
+chain exit 0; one atomic task commit exists; working tree clean; status recorded.
