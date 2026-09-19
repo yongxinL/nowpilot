@@ -1,0 +1,110 @@
+=== Phase 01 evidence — verification.txt ===
+
+=== Pre-implementation baseline gate (2026-09-19T09:57:18Z) ===
+branch=phoenix HEAD=b54b01d18d3fdbdc8faaabf0dcc3239ff420c962
+BASELINE OK: approvedPlanningBaselineCommit=3fb619730c8032d4aa121c5b8aa9649901b45f5f
+exit status: 0
+
+=== Task 01 — pnpm and WXT Project Bootstrap (2026-09-19) ===
+
+task ID: T01
+branch: phoenix
+repository root: /Users/george.li/Documents/workspaces/nowpilot
+classification: configuration exception (AGENTS.md Section 11) — TDD not required; no test files
+base commit: b54b01d18d3fdbdc8faaabf0dcc3239ff420c962
+commit range: b54b01d18d3fdbdc8faaabf0dcc3239ff420c962..TASK_01_SHA_PLACEHOLDER
+
+Step 1 — RED (prove bootstrap absent):
+  command: test -f package.json && test -f .npmrc && test -f wxt.config.ts
+  expected: exit status 1 (none of the files exist)
+  observed exit status: 1
+
+Step 2 — Remove orphan npm lockfile:
+  command: rm -f package-lock.json
+  observed: package-lock.json removed
+
+Step 3 — .npmrc created with exactly:
+  engine-strict=true
+  save-exact=true
+
+Step 4 — package.json created (exact pins; no floating ranges).
+Step 5 — wxt.config.ts created; manifest permissions exactly ['sidePanel', 'storage'];
+          no side_panel, standalone, content_scripts, or host permissions.
+Step 6 — tsconfig.json created (extends .wxt/tsconfig.json).
+Step 7 — four RGBA PNG icons generated at public/icon/{16,32,48,128}.png:
+  128.png: PNG image data, 128 x 128, 8-bit/color RGBA, non-interlaced
+  16.png:  PNG image data, 16 x 16, 8-bit/color RGBA, non-interlaced
+  32.png:  PNG image data, 32 x 32, 8-bit/color RGBA, non-interlaced
+  48.png:  PNG image data, 48 x 48, 8-bit/color RGBA, non-interlaced
+Step 8 — src/entrypoints/background.ts scaffold created (build scaffold only; T22 owns behaviour).
+
+Step 9 — Install dependencies and generate the pnpm lockfile:
+  command: pnpm install
+  exit status: 0
+  postinstall: "wxt prepare" ran (WXT 0.21.4; Generating types; Finished in 675 ms; Done)
+  result: pnpm-lock.yaml created; package-lock.json removed.
+
+Step 10 — Focused verification (exact block):
+  test ! -f package-lock.json                                      => exit 0
+  test -f pnpm-lock.yaml                                            => exit 0
+  node -e "...wxt...v!=='0.21.4'..."                                => exit 0
+  node -e "...vitest...v!=='5.0.1'..."                              => exit 0
+  pnpm run build                                                    => exit 0
+  test -f .output/chrome-mv3/manifest.json                          => exit 0
+  WXT version output:
+    WXT 0.21.4
+    Building chrome-mv3 for production with Vite 8.3.0
+    Built extension in 96 ms
+    .output/chrome-mv3/manifest.json  340 B
+    .output/chrome-mv3/background.js  508 B
+    .output/chrome-mv3/icon/128.png   360 B
+    .output/chrome-mv3/icon/16.png    82 B
+    .output/chrome-mv3/icon/32.png    104 B
+    .output/chrome-mv3/icon/48.png    157 B
+    Total size: 1.55 kB
+    Finished in 309 ms
+  wxt installed version: 0.21.4
+  vitest installed version: 5.0.1
+  generated manifest: {"manifest_version":3,"name":"NowPilot","description":"Privacy-first Chrome extension for support engineers.","version":"0.1.0","icons":{"16":"icon/16.png","32":"icon/32.png","48":"icon/48.png","128":"icon/128.png"},"permissions":["sidePanel","storage"],"action":{"default_title":"NowPilot"},"background":{"service_worker":"background.js"}}
+  (no side_panel and no standalone.html at this stage; expected for T01)
+
+Step 11 — Build output not committed:
+  command: git status --porcelain
+  observed:
+     D package-lock.json
+    ?? .npmrc
+    ?? package.json
+    ?? pnpm-lock.yaml
+    ?? src/
+    ?? tsconfig.json
+    ?? wxt.config.ts
+  .output/ and .wxt/ are absent (ignored by .gitignore); git check-ignore confirms both ignored.
+  Note: pnpm 12.4.2 auto-created an untracked pnpm-workspace.yaml during the initial
+  resolution (minimumReleaseAgeExclude supply-chain policy). Global Constraint 2 forbids
+  pnpm-workspace.yaml, and it is not required: `pnpm install --frozen-lockfile` passes with
+  the file absent and the pnpm-lock.yaml hash is unchanged, and a subsequent plain
+  `pnpm install` does not re-create it while the lockfile/node_modules are current.
+  The file was therefore removed and is not part of this task's changes.
+
+Lockfile state:
+  pnpm-lock.yaml present (authoritative). package-lock.json absent (deleted).
+  package.json has no excluded direct dependency and no floating version range.
+
+Phase 01 verification applicable now: none — the phase-level toolchain scripts
+(verify:phase-1 / verify:all) do not exist until T02. Recorded explicitly.
+
+Specification-compliance checklist:
+  - exact pins match DESIGN.md Section 3: yes (non-exact pins = none)
+  - wxt.config.ts permissions exactly sidePanel + storage: yes
+  - no excluded direct dependency present: yes
+  - standalone stem rules untouched: yes
+  - no content script: yes
+
+Code-quality and security checklist:
+  - .output/ and .wxt/ uncommitted (ignored): yes
+  - no secrets or local paths committed: yes
+  - package-lock.json removed: yes
+  - pnpm-lock.yaml present: yes
+
+Completion criteria: Steps 10–11 pass; one atomic task commit exists; working tree
+clean; status recorded.

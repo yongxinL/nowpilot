@@ -9,15 +9,18 @@ rewrite or delete prior history.
 - **Current phase:** Phase 01 — Runtime, Shells, and Workspace
 - **Design status:** Approved
 - **Plan status:** Approved
-- **Implementation status:** Not started
+- **Implementation status:** In progress — T01 accepted
 - **Planning baseline branch:** `phoenix`
 - **Implementation branch:** `phoenix`
 - **Historical approved planning baseline commit:** `bd6ac44d6f562722c18f0d07e6910634e549c713`
 - **Approved planning baseline commit:** `3fb619730c8032d4aa121c5b8aa9649901b45f5f`
-- **Current task:** None
-- **Next task:** T01
+- **Current task:** T01 — pnpm and WXT Project Bootstrap (accepted)
+- **Last commit:** `TASK_01_SHA_PLACEHOLDER` (`chore(phase-01): bootstrap pnpm WXT project`)
+- **Verification result:** Pass — Task 01 Step 10 focused block all exit 0; WXT 0.21.4 build succeeded; `.output/chrome-mv3/manifest.json` produced
+- **Next task:** T02
 - **Blockers:** None
-- **Evidence status:** Not started
+- **Evidence path:** `.planning/evidence/phase-01/verification.txt` (Task 01 section)
+- **Evidence status:** Task 01 verification recorded
 
 ## History
 
@@ -83,3 +86,21 @@ rewrite or delete prior history.
   committed separately from the baseline commit so the pre-implementation
   gate's status-record assertion is satisfied. No production code changed; no
   dependency installed; implementation not started.
+- Task 01 (pnpm and WXT Project Bootstrap) executed on `phoenix` in the repository
+  root. Pre-implementation baseline gate passed (branch `phoenix`; tree clean;
+  `approvedPlanningBaselineCommit` = `3fb619730c8032d4aa121c5b8aa9649901b45f5f`;
+  base commit `b54b01d18d3fdbdc8faaabf0dcc3239ff420c962`). Created `package.json`
+  (exact pins), `.npmrc` (`engine-strict=true`, `save-exact=true`), `wxt.config.ts`
+  (permissions exactly `sidePanel` + `storage`), `tsconfig.json`,
+  `src/entrypoints/background.ts`, and `public/icon/{16,32,48,128}.png`; removed
+  the orphan `package-lock.json`; generated `pnpm-lock.yaml` with
+  `pnpm install` (`postinstall` ran `wxt prepare`). Task 01 Step 10 focused
+  verification passed (all exit 0); `pnpm run build` produced WXT 0.21.4
+  chrome-mv3 output and `.output/chrome-mv3/manifest.json`. Phase 01 verification
+  applicable now: none (toolchain scripts do not exist until T02). Task commit
+  `chore(phase-01): bootstrap pnpm WXT project`. Note: pnpm 12.4.2 auto-created an
+  untracked `pnpm-workspace.yaml` during initial resolution; it is forbidden by
+  Global Constraint 2 and not required (`pnpm install --frozen-lockfile` passes
+  without it, lockfile hash unchanged), so it was removed and not committed.
+  Current task T01 accepted; next task T02; verification recorded in
+  `.planning/evidence/phase-01/verification.txt`.
