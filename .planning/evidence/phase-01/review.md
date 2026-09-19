@@ -1705,3 +1705,92 @@ exit 0 (24 files, 194 tests), `pnpm run typecheck` exit 0, `pnpm run lint` exit 
 **PASS** — Task 17 meets specification-compliance, code-quality, and security/privacy
 requirements; the only findings are Low-severity type-only test adaptations and a
 Low-severity formatting pass, both disclosed, and no blocking finding remains.
+
+## Task 18 — Standalone Page Registry, Core Registration, and Skeleton Pages (2026-09-19)
+
+**Classification:** code task (TDD RED→GREEN); implementation tier economy
+
+### Scope reviewed
+
+- `src/core/registry/StandalonePageRegistry.ts` (created)
+- `src/core/registry/registerCorePages.ts` (created)
+- `src/components/standalone/pages/{ChatPage,AgentPage,NotesPage,WritePage,ToolsPage,DiagnosticsPage}.tsx` (created)
+- `src/components/options/OptionsPage.tsx` (created, minimal skeleton replaced in T20)
+- `tests/core/registry/standalonePageRegistry.test.ts`,
+  `tests/core/registry/registerCorePages.test.tsx` (created)
+
+### 1. Specification-compliance review
+
+- `createStandalonePageRegistry()` exposes exactly `register`/`get`/`has`/`entries`;
+  `register` throws on a duplicate route id; `entries()` returns `{ routeId, component }`
+  pairs in registration order. PASS
+- `createCorePageRegistry()` registers exactly the seven `STANDALONE_ROUTE_IDS`
+  (`chat`, `agent`, `notes`, `write`, `tools`, `options`, `diagnostics`) in canonical
+  order, and `CORE_PAGE_REGISTRY` is the module singleton. `entries()` length equals
+  `STANDALONE_ROUTE_IDS.length` (asserted). PASS
+- Each skeleton page renders a `<section data-testid="standalone-page-<id>"
+  aria-label="<Label>">` with the canonical label; the test renders every registry
+  entry and asserts the canonical test id for all seven ids. PASS
+- Primary/footer placement remains owned by `standaloneRoutes.ts`; this task does not
+  duplicate or override placement. Labels match the canonical route labels. PASS
+- `OptionsPage` is a minimal presentational skeleton; `AppearanceSection.tsx` was not
+  created. T20 replaces the page body. This is the brief's permitted atomic-green
+  option and is recorded in the task notes. PASS
+- No later-phase page logic, TeamGQM, ServiceNow, mock services, inactive controls,
+  dependency, permission, storage key, message type, error code, or `DiagnosticEvent`
+  was added. Only the brief's allowed files were created plus `.planning` evidence/STATUS. PASS
+
+### 2. Code-quality review
+
+- Registry is a small closure over a `Map<StandaloneRouteId, StandalonePageComponent>`;
+  no internal state escapes (`entries()` builds a fresh array). Strongly typed through
+  `StandaloneRouteId` and `ComponentType`; no `any`. PASS
+- Duplicate registration fails loudly with a canonical message rather than silently
+  overwriting. PASS
+- Skeleton pages are pure presentational functions: no state, effects, event handlers,
+  or side effects; the only dependencies are `antd` `Typography`/`Empty`. PASS
+- Test files are the brief's verbatim tests and cover registration/resolution, duplicate
+  rejection, order preservation, complete route coverage, and per-route rendering. PASS
+- One Low-severity formatting pass was required (below); no production logic changed.
+
+### 3. Security and privacy review (assets and trust boundaries)
+
+- No interactive controls, forms, or inputs, so no user input can be captured at this
+  stage; pages hold no instruction authority. PASS
+- No direct `chrome.*`, IndexedDB, network, filesystem, content-script, or host-page
+  access; pages run only in extension-owned Standalone contexts. PASS
+- No secrets, tokens, cookies, passwords, prompts, page content, or customer data are
+  read, logged, persisted, exported, or committed. PASS
+- Stable `data-testid` attributes are present solely for the T24 isolation inspection
+  and expose no sensitive surface. PASS
+
+### 4. Findings and dispositions
+
+| ID | Severity | Finding | Disposition |
+|----|----------|---------|-------------|
+| — | Low (formatting) | `pnpm exec prettier --check .` flagged only `src/core/registry/registerCorePages.ts` (long `StandalonePageRegistry` import line). | Reformatted only that new file; identifiers, values, and assertions unchanged; no other file reformatted. |
+| — | Info | The brief's focused command runs the whole unit project (Vitest 5 does not narrow `--` positionals under `--project unit`); T18-only count confirmed with an explicit path (2 files, 5 tests). | Recorded; not a defect. |
+| — | Info | `OptionsPage.tsx` is a minimal skeleton in this task; T20 replaces its body and adds `AppearanceSection.tsx`. | Intentional per the brief; recorded in task notes. |
+
+The formatting change is confined to one permitted new file and does not alter
+identifiers, values, assertions, or behaviour. No shared helper or configuration was
+modified.
+
+No Critical, High, or Medium finding remains unresolved.
+
+### 5. Verification evidence
+
+RED: `pnpm run test -- tests/core/registry` exit 1 — module-resolution failures for
+`@/core/registry/StandalonePageRegistry` and `@/core/registry/registerCorePages`; the
+24 pre-existing files (194 tests) still passed. GREEN: explicit focused path exit 0
+(2 files, 5 tests), `pnpm run test -- tests/core/registry` exit 0 (26 files, 199
+tests), `pnpm run typecheck` exit 0, `pnpm run lint` exit 0,
+`pnpm exec prettier --check .` exit 0, and the phase-applicable chain
+`typecheck && lint && test` exit 0 (26 files, 199 tests). Full output is recorded in
+`verification.txt` (Task 18 section).
+
+### Acceptance decision
+
+**PASS** — Task 18 meets specification-compliance, code-quality, and security/privacy
+requirements; the only findings are a Low-severity formatting pass and informational
+observations, both disclosed, and no blocking finding remains.

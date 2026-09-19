@@ -1997,3 +1997,126 @@ Code-quality and security checklist:
 Completion criteria: theme tests green; typecheck and lint pass; prettier check passes;
 phase-applicable chain exit 0; one atomic task commit exists; working tree clean;
 status recorded.
+
+=== Task 18 — Standalone Page Registry, Core Registration, and Skeleton Pages (2026-09-19T12:40:09Z) ===
+
+task ID: T18
+branch: phoenix
+repository root: /Users/george.li/Documents/workspaces/nowpilot
+classification: code task; TDD RED->GREEN applied
+implementation tier: economy
+base commit: aeb287c1d52dd9739a6de55ca4e87a104df08e75 (T17 atomic commit
+  `feat(phase-01): add theme schemas config store and hook`)
+Files created (production):
+  src/core/registry/StandalonePageRegistry.ts
+  src/core/registry/registerCorePages.ts
+  src/components/standalone/pages/ChatPage.tsx
+  src/components/standalone/pages/AgentPage.tsx
+  src/components/standalone/pages/NotesPage.tsx
+  src/components/standalone/pages/WritePage.tsx
+  src/components/standalone/pages/ToolsPage.tsx
+  src/components/standalone/pages/DiagnosticsPage.tsx
+  src/components/options/OptionsPage.tsx (skeleton; replaced in T20)
+Files created (tests):
+  tests/core/registry/standalonePageRegistry.test.ts
+  tests/core/registry/registerCorePages.test.tsx
+Files modified: none (production or toolchain); no dependency change; no
+  AppearanceSection.tsx created (deferred to T20)
+
+Step 1 — two test files created verbatim from the brief:
+  standalonePageRegistry.test.ts (3 tests), registerCorePages.test.tsx (2 tests).
+
+Step 2 — RED:
+  command: pnpm run test -- tests/core/registry
+  exit status: 1
+  observed: Test Files 2 failed | 24 passed (26); Tests 194 passed (194)
+    FAIL |unit| tests/core/registry/standalonePageRegistry.test.ts
+      Error: Failed to resolve import "@/core/registry/StandalonePageRegistry"
+      from "tests/core/registry/standalonePageRegistry.test.ts". Does the file
+      exist? Plugin: vite:import-analysis
+    FAIL |unit| tests/core/registry/registerCorePages.test.tsx
+      Error: Failed to resolve import "@/core/registry/registerCorePages" from
+      "tests/core/registry/registerCorePages.test.tsx". Does the file exist?
+      Plugin: vite:import-analysis
+  Expected failure reason confirmed: both T18 modules were absent, so Vite could
+  not resolve the `@/core/registry/*` imports. The 24 passing files were the
+  pre-existing unit tests (Vitest 5 does not restrict `--` positionals to the
+  requested subdirectory under `--project unit`). No canonical identifier was
+  missing; `@testing-library/react` and `antd` 6.6.4 are already installed.
+
+Steps 3–5 — implementation verbatim per the brief:
+  StandalonePageRegistry.ts: StandalonePageComponent = ComponentType;
+    StandalonePageRegistry (register/get/has/entries); createStandalonePageRegistry()
+    backed by a Map, register throws `Standalone route already registered: <id>`
+    on duplicate, entries() preserves registration order.
+  Six skeleton pages: ChatPage, AgentPage, NotesPage, WritePage, ToolsPage,
+    DiagnosticsPage — each presentational and non-interactive, wrapping an antd
+    Typography.Title plus Empty inside a <section> carrying its canonical
+    data-testid `standalone-page-<id>` and aria-label.
+  registerCorePages.ts: createCorePageRegistry() registers all seven route ids in
+    STANDALONE_ROUTE_IDS order (chat, agent, notes, write, tools, options,
+    diagnostics); CORE_PAGE_REGISTRY is the module singleton.
+  OptionsPage.tsx (skeleton): <section data-testid="standalone-page-options"
+    aria-label="Options"> with Typography.Title and Empty; body is replaced in T20.
+  Decision recorded: the brief permits either pre-running T20 or creating a
+  minimal OptionsPage skeleton in T18. Chosen: create the minimal skeleton in T18
+  so this task's commit stays atomic and green; T20 replaces its body. No
+  AppearanceSection.tsx was created.
+
+Step 6 — GREEN (focused, explicit path):
+  command: pnpm exec vitest run --project unit tests/core/registry/standalonePageRegistry.test.ts tests/core/registry/registerCorePages.test.tsx
+  exit status: 0
+  output: Test Files 2 passed (2); Tests 5 passed (5), 0 failed, 0 skipped (T18-only).
+  command: pnpm run test -- tests/core/registry
+  exit status: 0
+  output: Test Files 26 passed (26); Tests 199 passed (199)
+  note: under Vitest 5 the pnpm-script passthrough runs the whole unit project.
+
+Focused verification (sequential):
+  pnpm run typecheck                             => exit 0  (tsc --noEmit clean)
+  pnpm run lint                                  => exit 0  (eslint . clean)
+  pnpm exec prettier --check .                   => exit 0  (All matched files use
+    Prettier code style; only src/core/registry/registerCorePages.ts required a
+    reflow of the multi-line StandalonePageRegistry import — identifiers, values,
+    and assertions unchanged; no other file reformatted)
+
+Phase 01 verification applicable now:
+  command: pnpm run typecheck && pnpm run lint && pnpm run test
+  exit status: 0
+  output: typecheck clean; lint clean; unit project 26 files, 199 tests passed.
+
+Test counts:
+  T18 test files: 2 passed, 5 tests passed (3 standalonePageRegistry + 2
+  registerCorePages), 0 failed, 0 skipped.
+  Unit project total after T18: 26 files, 199 passed.
+
+Specification-compliance checklist:
+  - exactly seven registry entries, one per STANDALONE_ROUTE_IDS id: yes (asserted)
+  - CORE_PAGE_REGISTRY.entries() length equals STANDALONE_ROUTE_IDS.length: yes
+  - every page exposes data-testid="standalone-page-<id>": yes (rendered and
+    asserted for all seven ids)
+  - primary/footer placement is owned by standaloneRoutes.ts, not this task: yes
+  - labels match the canonical route labels (Chat/Agent/Notes/Write/Tools/Options/
+    Diagnostics): yes
+  - no route duplication in createCorePageRegistry: yes (registry rejects duplicates)
+  - interfaces produced exactly as specified (StandalonePageComponent,
+    StandalonePageRegistry, createStandalonePageRegistry, createCorePageRegistry,
+    CORE_PAGE_REGISTRY): yes
+  - no AppearanceSection.tsx; no later-phase page logic, TeamGQM, ServiceNow, mock
+    services, inactive controls, dependency, permission, key, or error code: yes
+  - only the brief's allowed files created (plus .planning evidence/STATUS): yes
+
+Code-quality and security checklist:
+  - registry rejects duplicate route ids by throwing: yes
+  - entries() returns a fresh array preserving registration order; no internal Map
+    reference escapes: yes
+  - skeleton pages are presentational and non-interactive; no controls, no event
+    handlers, no state, no side effects: yes
+  - stable data-testids for the T24 isolation inspection: yes
+  - no direct chrome.*, IndexedDB, network, filesystem, content-script, or
+    host-page access; no secrets, tokens, passwords, prompts, or page content: yes
+  - no `any`; strong typing through StandaloneRouteId and ComponentType: yes
+
+Completion criteria: registry tests green; typecheck and lint pass; prettier check
+passes; phase-applicable chain exit 0; one atomic task commit exists; working tree
+clean; status recorded.

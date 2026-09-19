@@ -9,18 +9,18 @@ rewrite or delete prior history.
 - **Current phase:** Phase 01 — Runtime, Shells, and Workspace
 - **Design status:** Approved and amended by ADR-0001 (background-serialised workspace election)
 - **Plan status:** Approved and amended (corrective task T13C; T14/T16/T22/T24/T25/T26/T28 amendment notes)
-- **Implementation status:** T01–T13C accepted; T14, T15, and T16 implemented and verified; T17 implemented and verified; T18–T28 not started
+- **Implementation status:** T01–T13C accepted; T14, T15, and T16 implemented and verified; T17 implemented and verified; T18 implemented and verified; T19–T28 not started
 - **Planning baseline branch:** `phoenix`
 - **Implementation branch:** `phoenix`
 - **Historical approved planning baseline commit:** `bd6ac44d6f562722c18f0d07e6910634e549c713`
 - **Approved planning baseline commit:** `b2c6ef289bc1abebbeccfad81d7034ced81f4eb7`
-- **Current task:** T17 complete; next task T18
-- **Last commit:** the T17 task commit `feat(phase-01): add theme schemas config store and hook`, on top of `7aa7e96` (`feat(phase-01): coordinate writer handoff and mirror convergence`)
-- **Verification result:** T17 theme suite 14/14 new tests (4 files); full unit suite 194/194 (24 files); `typecheck`, `lint`, `prettier --check .`, and the phase chain `typecheck && lint && test` all exit 0. `np_theme`/`np_theme_pack` persist to `chrome.storage.sync` through the T04 adapter; `getAntdConfig` composes seed → pack overlay → algorithm with `cssVar { key: 'nowpilot' }`; invalid values fall back to canonical defaults and log `THEME_INVALID_VALUE`; write failures fail closed with `THEME_PERSIST_FAILED`; live propagation uses `chrome.storage.onChanged` via `subscribe`.
-- **Next action:** implement T18 per approved Phase 01 `PLAN.md`
-- **Blockers:** None; T13, T13C, T14, T15, T16, and T17 are accepted
-- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 14, Task 15, Task 16, and Task 17 sections)
-- **Evidence status:** T17 verified; self-review PASS
+- **Current task:** T18 complete; next task T19
+- **Last commit:** the T18 task commit `feat(phase-01): register standalone pages and skeletons`, on top of `aeb287c` (`feat(phase-01): add theme schemas config store and hook`)
+- **Verification result:** T18 registry suite 5/5 new tests (2 files); full unit suite 199/199 (26 files); `typecheck`, `lint`, `prettier --check .`, and the phase chain `typecheck && lint && test` all exit 0. `createStandalonePageRegistry()` rejects duplicate route ids and preserves registration order; `createCorePageRegistry()`/`CORE_PAGE_REGISTRY` register exactly the seven `STANDALONE_ROUTE_IDS`; every skeleton page carries its canonical `data-testid="standalone-page-<id>"`; `OptionsPage.tsx` is a minimal skeleton replaced in T20.
+- **Next action:** implement T19 per approved Phase 01 `PLAN.md`
+- **Blockers:** None; T13, T13C, T14, T15, T16, T17, and T18 are accepted
+- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 14, Task 15, Task 16, Task 17, and Task 18 sections)
+- **Evidence status:** T18 verified; self-review PASS
 
 ## History
 
@@ -743,3 +743,33 @@ rewrite or delete prior history.
   `.planning/evidence/phase-01/review.md` (Task 17 sections). Task commit
   `feat(phase-01): add theme schemas config store and hook`. Current task T17 accepted;
   next task T18 — per approved Phase 01 `PLAN.md`.
+- Task 18 (Standalone Page Registry, Core Registration, and Skeleton Pages) executed on
+  `phoenix` in the repository root. Implementation tier economy. RED confirmed at
+  `pnpm run test -- tests/core/registry` (exit 1; Vite import analysis failed to resolve
+  `@/core/registry/StandalonePageRegistry` and `@/core/registry/registerCorePages`; the 24
+  pre-existing files / 194 tests still passed). Created
+  `src/core/registry/StandalonePageRegistry.ts` (`StandalonePageComponent`;
+  `StandalonePageRegistry` with `register`/`get`/`has`/`entries`;
+  `createStandalonePageRegistry()` backed by a `Map`, rejecting duplicate route ids and
+  preserving registration order), `src/core/registry/registerCorePages.ts`
+  (`createCorePageRegistry()` registering exactly the seven `STANDALONE_ROUTE_IDS` in
+  canonical order; `CORE_PAGE_REGISTRY` singleton), and the six skeleton pages
+  `src/components/standalone/pages/{ChatPage,AgentPage,NotesPage,WritePage,ToolsPage,
+  DiagnosticsPage}.tsx` — each presentational and non-interactive with its canonical
+  `data-testid="standalone-page-<id>"` and aria-label. Also created
+  `src/components/options/OptionsPage.tsx` as a minimal skeleton
+  (`data-testid="standalone-page-options"`) so the commit is atomic and green; Task 20
+  replaces its body and adds `AppearanceSection.tsx` (not created here). Created
+  `tests/core/registry/standalonePageRegistry.test.ts` (3 tests) and
+  `registerCorePages.test.tsx` (2 tests). One Low-severity formatting pass (T18-A) applied
+  only to `registerCorePages.ts` (import reflow); identifiers, values, and assertions
+  unchanged. GREEN: explicit focused path exit 0 (2 files, 5 tests), `pnpm run test --
+  tests/core/registry` exit 0 (26 files, 199 tests), `typecheck` exit 0, `lint` exit 0,
+  `prettier --check .` exit 0; phase chain `typecheck && lint && test` exit 0 (26 files,
+  199 tests). No new storage key, error code, message type, permission, dependency,
+  provider, or `DiagnosticEvent`; no `@ant-design/x`; no `AppearanceSection.tsx`; no
+  later-phase page logic, TeamGQM, ServiceNow, mock services, or inactive controls.
+  Evidence recorded in `.planning/evidence/phase-01/verification.txt` and
+  `.planning/evidence/phase-01/review.md` (Task 18 sections). Task commit
+  `feat(phase-01): register standalone pages and skeletons`. Current task T18 accepted;
+  next task T19 — per approved Phase 01 `PLAN.md`.
