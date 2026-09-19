@@ -2391,3 +2391,46 @@ output is recorded in `verification.txt` (Task 24 section).
 security/privacy requirements; both isolation tests pass against the real build; the
 only findings are the disclosed Low-severity reconciliation and two disclosed
 type-only adaptations; no blocking finding remains.
+
+## Task 24 FIX ROUND 1 — nested-chunk traversal correction (2026-09-20)
+
+Controller review finding (Important, correctness): the Task 24 isolation check was a
+false positive for the real WXT build layout. `collectModuleGraph` resolved static
+relative imports against `outDir` and keyed the visited set by `basename`, so nested
+`chunks/<name>-<hash>.js` imports resolved to the wrong path, were skipped by
+`existsSync`, and never entered the scanned graph. On the real build the Side Panel
+graph contained only `sidepanel-5dzQBKiU.js`; its shared chunk
+`WorkspaceSync-BiFvCgGz.js` was never scanned, so a forbidden marker inside a nested
+chunk was a false negative. The prior Task 24 verification/review text overstated the
+scanned graph.
+
+Fix (narrow, non-weakening): `collectModuleGraph` now resolves each relative import
+against the importing file's directory (`resolve(dirname(file), match[1]!)`) and tracks
+visited files by resolved absolute path in a `Set<string>`, keeping `basename(file)` as
+the graph key so the `Map<string, string>` interface is unchanged. `outDir` is retained
+in the signature for compatibility and named `_outDir` (unused). No marker list changed;
+no existing assertion changed or removed.
+
+Covering tests added to `tests/build/isolationAssertions.test.ts` (4 new cases):
+nested-directory static import traversal; no conflation of same-named files in
+different directories; and `checkBundleIsolation` failure for a forbidden marker in a
+nested background chunk and for a `standalone-page-` marker in a nested side panel
+chunk. RED before the fix: 4 failed | 232 passed (236); GREEN after: 34 files, 236
+tests passed.
+
+Corrected real graph keys: `BACKGROUND_GRAPH = ["background.js"]`;
+`SIDEPANEL_GRAPH = ["sidepanel-5dzQBKiU.js", "WorkspaceSync-BiFvCgGz.js"]`. Corrected
+real result: `{ ok: true, failures: [] }` — the shared nested chunk contains no
+`standalone-page-` marker, the background graph contains none of the ten forbidden
+markers, and no content-script bundle exists. No marker was reported; marker lists were
+not changed. All commands exit 0 (`test` 34 files / 236 tests; `build`; `test:isolation`
+1 file / 1 test; `typecheck`; `lint`; `prettier --check .`; `verify:phase-1`).
+
+Corrective commit: `fix(phase-01): follow nested chunks in bundle isolation scan`
+(a new commit; FIX_BASE `a81ae96` not amended).
+
+### Fix-round acceptance decision
+
+**PASS** — the isolation gate now traverses the real nested WXT chunk graph, the false
+negative is closed by the required non-weakening fix, all four new tests plus the
+pre-existing 232 tests pass, and the full `pnpm run verify:phase-1` chain exits 0.

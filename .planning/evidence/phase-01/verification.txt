@@ -2915,3 +2915,66 @@ Code-quality and security checklist:
 Completion criteria: both isolation tests pass against the real build; the full
 `pnpm run verify:phase-1` chain exits 0; one atomic task commit exists; working tree
 clean; status recorded.
+
+=== Task 24 FIX ROUND 1 — nested-chunk traversal correction (2026-09-20) ===
+
+Trigger: controller review, Important correctness finding — the T24 isolation gate was
+a false positive (false negative on markers) for the real WXT build layout.
+
+Defect (before this fix): `collectModuleGraph` in `tests/build/isolationChecks.ts`
+resolved each static relative import against `outDir` (`join(outDir, match[1]!)`) and
+keyed the visited set by `basename(file)`. WXT emits nested `chunks/<name>-<hash>.js`,
+so a `./<sibling>.js` import inside `chunks/sidepanel-<hash>.js` was resolved to
+`<outDir>/<sibling>.js`, `existsSync` failed, and the nested sibling was skipped. The
+visited set keyed by basename would also have conflated same-named files in different
+directories. Verified on the real build: `collectModuleGraph(sidepanel, outDir)`
+returned only `['sidepanel-5dzQBKiU.js']`, so the Side Panel's shared/imported chunk
+`WorkspaceSync-BiFvCgGz.js` was never scanned. The Task 24 section above therefore
+overstated the scanned Side Panel graph.
+
+Corrected traversal: resolve each relative import against the IMPORTING file's
+directory (`resolve(dirname(file), match[1]!)`) and track visited files by their
+resolved absolute path in a `Set<string>`, while keeping `basename(file)` as the graph
+key (the graph remains `Map<string, string>` as the interface requires). The `outDir`
+parameter is retained in the signature for interface compatibility and is no longer
+used for resolution; it is named `_outDir` in the implementation.
+
+Remediation test coverage added to `tests/build/isolationAssertions.test.ts`
+(no existing assertion changed; marker lists unchanged):
+  - `collectModuleGraph` follows relative imports inside a nested chunk directory
+    (`chunks/sidepanel.js` -> `chunks/sidepanel-chunk.js` -> `chunks/sidepanel-leaf.js`).
+  - `collectModuleGraph` does not conflate same-named files in different directories
+    (root `shared.js` and `chunks/shared.js`).
+  - `checkBundleIsolation` fails when a nested background chunk
+    (`chunks/vendor-react.js`) contains a forbidden marker.
+  - `checkBundleIsolation` fails when a nested side panel chunk
+    (`chunks/vendor-standalone.js`) contains a `standalone-page-` marker.
+
+RED (before the implementation fix): `pnpm run test --
+tests/build/isolationAssertions.test.ts` exit 1 — 4 failed | 232 passed (236);
+the four new tests failed (nested siblings unresolved). No pre-existing test broke.
+
+Corrected real graph keys (post-fix, real `.output/chrome-mv3`):
+  BACKGROUND_GRAPH = ["background.js"]
+  SIDEPANEL_GRAPH = ["sidepanel-5dzQBKiU.js", "WorkspaceSync-BiFvCgGz.js"]
+  The Side Panel graph now includes the shared/imported chunk, so the marker scan
+  covers the full static module graph.
+
+Corrected real isolation result: `checkBundleIsolation('.output/chrome-mv3')` returned
+`{ ok: true, failures: [] }`. The nested `WorkspaceSync-BiFvCgGz.js` chunk contains no
+`standalone-page-` marker, the background graph contains none of the ten forbidden
+markers, and no content-script bundle exists. No marker was reported, so the marker
+lists were unchanged and the "real marker found" STOP condition did not trigger.
+
+Commands (all exit 0 after the fix):
+  pnpm run test -- tests/build/isolationAssertions.test.ts => exit 0 (34 files, 236 tests)
+  pnpm run build                                          => exit 0
+  pnpm run test:isolation                                 => exit 0 (1 file, 1 test)
+  pnpm run typecheck                                      => exit 0
+  pnpm run lint                                           => exit 0
+  pnpm exec prettier --check .                            => exit 0
+  pnpm run verify:phase-1                                 => exit 0 (unit 34 files / 236
+    tests; manifest 1 file / 1 test; isolation 1 file / 1 test)
+
+Corrective commit: `fix(phase-01): follow nested chunks in bundle isolation scan`
+(new commit; FIX_BASE `a81ae96` was not amended).

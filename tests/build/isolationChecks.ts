@@ -1,19 +1,20 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { basename, join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 
 const STATIC_IMPORT_PATTERN = /(?:from\s*|import\s*\(?\s*)["']\.\/([^"']+\.js)["']/g;
 
-export function collectModuleGraph(entryFile: string, outDir: string): Map<string, string> {
+export function collectModuleGraph(entryFile: string, _outDir: string): Map<string, string> {
   const graph = new Map<string, string>();
+  const visited = new Set<string>();
   const queue = [resolve(entryFile)];
   while (queue.length > 0) {
     const file = queue.shift() as string;
-    const name = basename(file);
-    if (graph.has(name) || !existsSync(file)) continue;
+    if (visited.has(file) || !existsSync(file)) continue;
+    visited.add(file);
     const source = readFileSync(file, 'utf8');
-    graph.set(name, source);
+    graph.set(basename(file), source);
     for (const match of source.matchAll(STATIC_IMPORT_PATTERN)) {
-      queue.push(join(outDir, match[1]!));
+      queue.push(resolve(dirname(file), match[1]!));
     }
   }
   return graph;
