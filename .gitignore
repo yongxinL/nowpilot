@@ -184,3 +184,5 @@ references/
 .output/
 dist/
 .wxt/
+# Playwright CLI output (may contain credentials)
+.playwright-cli/
