@@ -3169,3 +3169,27 @@ No gate was weakened and no code was modified.
 
 Completion criteria: Step 1 passes from a clean `.output`; Step 2 and Step 3 pass; no
 test skipped; manifest and isolation gates pass against real artefacts.
+
+## Task 27 — Manual unpacked-extension acceptance (BLOCKED, no automated substitute) — 2026-09-19
+
+Branch `phoenix`; commit `585ae17ce3cb6255933ccebc76a963b0f5edef96`; working tree clean.
+
+Automated gates confirmed before the stop:
+  $ rm -rf .output && pnpm run verify:phase-1        exit 0
+      typecheck exit 0; lint exit 0; unit 35 files / 244 tests passed;
+      build WXT 0.21.4 chrome-mv3; manifest 1 file / 1 test; isolation 1 file / 1 test
+
+T27 itself is a manual task: it requires ten real Chrome screenshots of the
+unpacked extension, two of which are the Chrome Side Panel
+(`sidepanel-open.png`, `sidepanel-chat-only.png`). The Side Panel is a
+browser-chrome surface requiring a user gesture and is not capturable by
+automation; placeholder/fabricated screenshots are prohibited. No screenshot was
+created and no check was marked passed.
+
+Required manual checks and screenshot filenames (from PLAN.md T27 Step 2):
+  sidepanel-open.png, sidepanel-chat-only.png, standalone-chat.png,
+  standalone-singleton.png, standalone-options.png, standalone-sider.png,
+  theme-dark-warm.png, route-fallback.png, service-worker-restart.png,
+  extension-permissions.png
+
+Status: BLOCKED pending operator manual acceptance.

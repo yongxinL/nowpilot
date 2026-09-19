@@ -2603,3 +2603,32 @@ section).
 `.output`: the full chain passes in the approved order, `verify:all` is byte-identical,
 no test is skipped, and the real manifest/artefacts satisfy the permission, entrypoint,
 and isolation contract. No production, test, or config file was modified.
+
+## Task 27 — Manual unpacked-extension acceptance BLOCKED (operator handoff, 2026-09-19)
+
+T27 requires ten real Chrome screenshots taken from a manually loaded unpacked
+extension (`.output/chrome-mv3` via `chrome://extensions` → Load unpacked),
+including two of the Chrome Side Panel (`sidepanel-open.png`,
+`sidepanel-chat-only.png`). The Chrome Side Panel (`chrome.sidePanel`) is a
+browser-chrome surface that requires a user gesture to open and is not
+addressable as a page; it cannot be captured by Playwright or other headful
+automation. There is no approved automated substitute, and placeholder or
+fabricated screenshots are forbidden by `AGENTS.md` Section 13 and by the task's
+own constraints ("real screenshots only; no placeholder images").
+
+Per `AGENTS.md` Section 18.7 (a manual visual decision cannot be determined from
+approved mock-ups and acceptance criteria) and Section 19 (stop conditions),
+execution is stopped before T27. T28 (acceptance preparation) is not started.
+
+State at the stop:
+- commit `585ae17ce3cb6255933ccebc76a963b0f5edef96`; branch `phoenix`; working
+  tree clean.
+- `pnpm run verify:phase-1` exit 0 (unit 35 files / 244 tests; manifest 1/1;
+  isolation 1/1); manifest permissions exactly `sidePanel` + `storage`; no
+  content script; background bundle isolation clean.
+- The ten T27 manual checks and their required screenshot filenames are listed in
+  `.planning/phases/01-runtime-shells-workspace/PLAN.md` Task 27 Step 2.
+
+Operator decision required: perform the ten manual checks and provide the
+screenshots, or authorise a documented automated-substitute evidence approach.
+No check is marked passed; no screenshot was fabricated.
