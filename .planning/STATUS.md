@@ -9,18 +9,18 @@ rewrite or delete prior history.
 - **Current phase:** Phase 01 — Runtime, Shells, and Workspace
 - **Design status:** Approved
 - **Plan status:** Approved
-- **Implementation status:** In progress — T01 accepted; T02 accepted; T03 accepted; T04 accepted; T05 accepted; T06 accepted; T07 accepted; T08 accepted; T09 accepted; T10 accepted; T11 accepted; T12 accepted
+- **Implementation status:** In progress — T01 accepted; T02 accepted; T03 accepted; T04 accepted; T05 accepted; T06 accepted; T07 accepted; T08 accepted; T09 accepted; T10 accepted; T11 accepted; T12 accepted; T13 accepted
 - **Planning baseline branch:** `phoenix`
 - **Implementation branch:** `phoenix`
 - **Historical approved planning baseline commit:** `bd6ac44d6f562722c18f0d07e6910634e549c713`
 - **Approved planning baseline commit:** `3fb619730c8032d4aa121c5b8aa9649901b45f5f`
-- **Current task:** T12 — Workspace Metadata Store and Durable Version (accepted)
-- **Last commit:** `feat(phase-01): persist workspace metadata and version` (SHA captured post-commit in `.superpowers/sdd/PLAN/task-12-report.md`)
-- **Verification result:** Pass — T12 focused test exit 0 (1 file, 4 tests), `typecheck` exit 0, `lint` exit 0, `prettier --check .` exit 0; phase chain `typecheck && lint && test` exit 0 (15 files, 82 tests)
-- **Next task:** T13 — (per approved Phase 01 `PLAN.md`)
+- **Current task:** T13 — Writer Election (accepted)
+- **Last commit:** `feat(phase-01): elect a single workspace writer` (SHA captured post-commit in `.superpowers/sdd/PLAN/task-13-report.md`)
+- **Verification result:** Pass — T13 focused test exit 0 (1 file, 7 tests), `typecheck` exit 0, `lint` exit 0, `prettier --check .` exit 0; phase chain `typecheck && lint && test` exit 0 (16 files, 89 tests)
+- **Next task:** T14 — (per approved Phase 01 `PLAN.md`)
 - **Blockers:** None
-- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 12 sections)
-- **Evidence status:** Task 12 verification and review recorded
+- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 13 sections)
+- **Evidence status:** Task 13 verification and review recorded
 
 ## History
 
@@ -438,3 +438,40 @@ rewrite or delete prior history.
   `.planning/evidence/phase-01/review.md` (Task 12 sections). Task commit
   `feat(phase-01): persist workspace metadata and version`. Current task T12 accepted;
   next task T13 — per approved Phase 01 `PLAN.md`.
+- Task 13 (Writer Election) executed on `phoenix` in the repository root. Implementation
+  tier advanced (ownership correctness). RED confirmed at
+  `pnpm run test -- tests/core/workspace/workspaceElection.test.ts` (exit 1; Vite import
+  analysis failed to resolve `@/core/workspace/WorkspaceElection`; the 82 pre-existing
+  unit tests still passed). Created `src/core/workspace/WorkspaceElection.ts` with the
+  exact brief interfaces `WorkspaceElectionDependencies`
+  (storage/store/writerType/instanceId/now), `ElectionReadResult`
+  (missing | valid+record | invalid), `ElectionClaimResult`
+  (acquired+record+recovered | held+record), `WorkspaceElection`
+  (read/claim/relinquish/isWriter), and
+  `createWorkspaceElection(deps: WorkspaceElectionDependencies): WorkspaceElection`.
+  `read` validates `np_workspace_election` through the T04 session-area adapter, logging
+  the canonical T03 `WORKSPACE_INVALID_METADATA` (fixed key label) and returning
+  `invalid` for malformed state, `missing` when absent — never throwing. `isWriter`
+  requires BOTH a matching `writerInstanceId` and a matching `writerType`, so identity is
+  never inferred from surface type alone. `claim` returns `{status:'valid'}` records as
+  `held` without writing, so a valid existing writer is NEVER displaced and a repeated
+  same-instance claim is idempotently held; only a missing/invalid record triggers a
+  claim that preserves the committed version via `deps.store.readVersion()`, writes a
+  fresh idle epoch-0 record `{writerType, writerInstanceId, epoch:0, committedVersion,
+  handoffPhase:'idle', handoffTargetInstanceId:null, updatedAt: deps.now()}`, and reports
+  `recovered: true` for invalid-metadata recovery. `relinquish` removes
+  `np_workspace_election` then `np_workspace_handoff` (both T04 session keys). The
+  brief-supplied `isWriter` implementation was used verbatim and typechecked under the
+  pinned `noUncheckedIndexedAccess: true`, so the documented STOP/BLOCKED condition did
+  not trigger. No handoff transitions (T14), no mutations (T15), no background broker, no
+  IndexedDB/network/new dependency, no direct `chrome.*`; owner is always a UI surface.
+  Created `tests/core/workspace/workspaceElection.test.ts` (7 tests). `pnpm exec prettier
+  --check .` flagged only the two T13 files; both were formatted with interface members,
+  literals, and assertions unchanged, and no other file was reformatted. GREEN: explicit
+  focused path exit 0 (1 file, 7 tests), `pnpm run test` exit 0 (16 files, 89 tests),
+  `typecheck` exit 0, `lint` exit 0, `prettier --check .` exit 0; phase chain
+  `typecheck && lint && test` exit 0 (16 files, 89 tests). Evidence recorded in
+  `.planning/evidence/phase-01/verification.txt` and
+  `.planning/evidence/phase-01/review.md` (Task 13 sections). Task commit
+  `feat(phase-01): elect a single workspace writer`. Current task T13 accepted;
+  next task T14 — per approved Phase 01 `PLAN.md`.

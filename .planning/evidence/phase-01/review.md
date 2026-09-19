@@ -1034,3 +1034,122 @@ chain `typecheck && lint && test` exit 0. Full output is recorded in `verificati
 **PASS** — Task 12 meets specification-compliance, code-quality, and security/privacy
 requirements; the only finding is a Low-severity formatting correction and no blocking
 finding remains.
+
+---
+
+## Task 13 — Writer Election
+
+**Phase:** Phase 01 — Runtime, Shells, and Workspace
+**Branch:** `phoenix`
+**Repository root:** /Users/george.li/Documents/workspaces/nowpilot
+**Base commit:** `ba13aef` (T12 atomic commit `feat(phase-01): persist workspace metadata and version`)
+**Classification:** code task (TDD RED→GREEN); implementation tier advanced (ownership correctness)
+
+### Scope reviewed
+
+- `src/core/workspace/WorkspaceElection.ts` (created)
+- `tests/core/workspace/workspaceElection.test.ts` (created)
+
+### 1. Specification-compliance review
+
+- Interfaces match the brief exactly: `WorkspaceElectionDependencies`
+  (`storage`/`store`/`writerType`/`instanceId`/`now`), `ElectionReadResult`
+  (`missing` | `valid`+`record` | `invalid`), `ElectionClaimResult`
+  (`acquired`+`record`+`recovered` | `held`+`record`), `WorkspaceElection`
+  (`read`/`claim`/`relinquish`/`isWriter`), and
+  `createWorkspaceElection(deps: WorkspaceElectionDependencies): WorkspaceElection`. PASS
+- Single live writer: `claim` reads the election record first; when the record is
+  `valid` it returns `{ status: 'held', record }` and never writes, so a valid existing
+  writer is never displaced by any code path. PASS
+- A first eligible surface may claim only when no valid writer exists: the record write
+  happens exclusively in the `missing`/`invalid` branch. PASS
+- Writer identity is never inferred from surface type alone: `isWriter` requires
+  `record.writerInstanceId === deps.instanceId` AND
+  `record.writerType === deps.writerType`; a same-type different-instance record is
+  rejected (tested) and a different-type same-instance record is rejected by the type
+  conjunct. PASS
+- Session storage only for election: `np_workspace_election` is a T04 `session`-area
+  key (DESIGN.md Section 9); `relinquish` also removes `np_workspace_handoff`, likewise
+  session. No `local`/`sync` key is touched. PASS
+- Committed version preserved on claim: `claim` reads
+  `deps.store.readVersion()` (T12 durable version in `chrome.storage.local`) and stores
+  it on the freshly elected record; the test seeds committedVersion 4 and asserts the
+  acquired record carries 4. PASS
+- Invalid election metadata fails closed and logs the canonical T03
+  `WORKSPACE_INVALID_METADATA` code with only a fixed `key` label
+  (`np_workspace_election`); recovery writes a fresh record and reports
+  `recovered: true`. There is no silent writer pick: every acquisition returns an
+  explicit record and status. PASS
+- Scope boundaries: no handoff transitions (T14), no mutations (T15), no background
+  broker; the owner is always a UI surface (`WorkspaceWriterType` is
+  `sidepanel | standalone`). No IndexedDB, network, direct `chrome.*`, or new
+  dependency. Only `WorkspaceElection.ts` and the new test file changed, plus `.planning`
+  evidence/STATUS. PASS
+
+### 2. Code-quality review
+
+- `read` is a total function over the three adapter outcomes and never throws; the
+  `invalid` branch returns before the `missing` fall-through, so malformed state cannot
+  be misclassified as absent. PASS
+- `claim` has a single write site guarded by the `missing`/`invalid` condition, so no
+  interleaving of the validation logic can produce two live writers. Build is a small
+  pure helper deriving the record from `deps` plus the preserved committed version. PASS
+- `relinquish` removes both session records through the schema-validating adapter; no
+  direct storage access. PASS
+- No mutable module state, timers, catch blocks, empty catches, or `any`. The returned
+  object satisfies the `WorkspaceElection` interface. PASS
+- Test quality: 7 focused tests cover first acquisition, committed-version preservation,
+  non-displacement of a valid other-instance writer, idempotent same-instance claim,
+  invalid-metadata recovery, relinquish of both records, and the `isWriter` identity
+  matrix (own record / undefined / other instance). Storage is the real T04 validated
+  adapter over the T04 mocked chrome storage; no production code is mocked. PASS
+- No type-only deviation was required: production code and test both typecheck as
+  written under the pinned `strict`/`noUncheckedIndexedAccess: true`. The brief-supplied
+  `isWriter` expression typechecks with no error at that line, so the documented
+  STOP/BLOCKED condition did not trigger. PASS
+
+### 3. Security and privacy review (assets and trust boundaries)
+
+- No page content, note, memory, prompt, clipboard, password, token, API key, or
+  customer content is read, logged, or persisted. The stored election record is
+  non-sensitive coordination state (writer type, instance id, non-negative integer
+  epoch/committed version, handoff phase, nullable target id, non-negative integer
+  timestamp). PASS
+- The only log record is the canonical `WORKSPACE_INVALID_METADATA` code plus a fixed
+  storage-key label, passed through the T03 `debugLog` key-based redaction sink; no raw
+  stored value, instance id, or payload is logged. PASS
+- Ownership is explicit and fail-closed: an invalid record is never used as a writer
+  identity, and a valid record held by another instance is never overwritten or
+  re-elected. No wildcard, permissive default, or silent take-over exists. PASS
+- Writes target the `session` area only and go through the T04 schema-validating
+  adapter; no secrets in `local`/`sync`, no external transmission, no side effects
+  beyond the two session keys. Content-script isolation, manifest permissions, and
+  password handling are unaffected. PASS
+- No secrets or sensitive data embedded in production code or evidence. PASS
+
+### 4. Findings and dispositions
+
+| ID | Severity | Finding | Disposition |
+|----|----------|---------|-------------|
+| — | Low (formatting) | `pnpm exec prettier --check .` flagged only the two T13 files (`ElectionReadResult` union reflowed; test line wrapping at printWidth 100). | Formatted only the two T13 files; interface members, literals, and assertions unchanged; no other file reformatted. |
+| — | Info | `claim`'s explicit `if (this.isWriter(current.record))` branch returns the same `held` result as its fall-through. | This is the brief-prescribed documentation of the ownership check and was kept verbatim; it introduces no second write path. Not a defect. |
+| — | Info | `pnpm run test -- tests/core/workspace/workspaceElection.test.ts` also runs the pre-existing unit tests under Vitest 5; T13-only count confirmed with an explicit path (1 file, 7 tests). | Recorded; not a defect. |
+
+No Critical, High, or Medium finding remains unresolved.
+
+### 5. Verification evidence
+
+RED: `pnpm run test -- tests/core/workspace/workspaceElection.test.ts` exit 1 — Vite import
+analysis failed to resolve `@/core/workspace/WorkspaceElection`; the 82 pre-existing unit
+tests still passed. GREEN: explicit focused path exit 0 (1 file, 7 tests),
+`pnpm run test` exit 0 (16 files, 89 tests), `pnpm run typecheck` exit 0,
+`pnpm run lint` exit 0, `pnpm exec prettier --check .` exit 0, and the phase-applicable
+chain `typecheck && lint && test` exit 0. Full output is recorded in `verification.txt`
+(Task 13 section).
+
+### Acceptance decision
+
+**PASS** — Task 13 meets specification-compliance, code-quality, and security/privacy
+requirements; the only finding is a Low-severity formatting correction and no blocking
+finding remains. The brief's `isWriter` implementation was accepted verbatim and
+typechecked under the pinned strict configuration.

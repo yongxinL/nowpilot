@@ -1281,3 +1281,148 @@ Code-quality and security checklist:
 
 Completion criteria: store test green; typecheck and lint pass; phase-applicable
 chain exit 0; one atomic task commit exists; working tree clean; status recorded.
+
+================================================================================
+Task 13 — Writer Election
+================================================================================
+
+Date: 2026-09-19T11:10:19Z
+Task ID: T13
+Branch: phoenix
+Repository root: /Users/george.li/Documents/workspaces/nowpilot
+Classification: code task; TDD RED->GREEN applied
+Implementation tier: advanced (ownership correctness)
+Base commit: ba13aef (T12 atomic commit
+  `feat(phase-01): persist workspace metadata and version`)
+Files created: src/core/workspace/WorkspaceElection.ts,
+  tests/core/workspace/workspaceElection.test.ts
+Files modified: none
+Atomic commit: feat(phase-01): elect a single workspace writer
+  (SHA captured post-commit in .superpowers/sdd/PLAN/task-13-report.md; a commit
+   cannot embed its own SHA, so the subject is recorded here and the exact SHA is
+   recorded in the task report and the current-state STATUS entry.)
+
+Step 1 — test file created verbatim from the brief at
+tests/core/workspace/workspaceElection.test.ts (7 tests).
+
+Step 2 — RED (focused, brief command):
+  command: pnpm run test -- tests/core/workspace/workspaceElection.test.ts
+  exit status: 1
+  output: Error: Failed to resolve import "@/core/workspace/WorkspaceElection" from
+    "tests/core/workspace/workspaceElection.test.ts". Does the file exist?
+    File: .../tests/core/workspace/workspaceElection.test.ts:5:40
+    Test Files  1 failed | 15 passed (16); Tests  82 passed (82).
+  Expected failure reason confirmed: the T13 election module did not yet exist, so
+  the test file failed at Vite import analysis for `@/core/workspace/WorkspaceElection`.
+  The 82 pre-existing unit tests still passed. No canonical key, schema, error code,
+  interface, or adapter export was missing.
+
+Step 3 — src/core/workspace/WorkspaceElection.ts created verbatim per the brief:
+  Imports the T03 createErrorRecord/debugLog, the T04 ValidatedStorage type, the T12
+  WorkspaceStore type, and the T06 ElectionRecordSchema/ElectionRecord/InstanceId/
+  WorkspaceWriterType.
+  Interfaces/types exactly as specified: WorkspaceElectionDependencies
+  (storage/store/writerType/instanceId/now), ElectionReadResult
+  (missing | valid+record | invalid), ElectionClaimResult
+  (acquired+record+recovered | held+record), WorkspaceElection
+  (read/claim/relinquish/isWriter), and
+  createWorkspaceElection(deps: WorkspaceElectionDependencies): WorkspaceElection.
+  read(): validated read of `np_workspace_election` (T04 session area); valid ->
+  {status:'valid', record}; invalid -> logs WORKSPACE_INVALID_METADATA with key
+  np_workspace_election and returns {status:'invalid'}; absent -> {status:'missing'};
+  never throws.
+  isWriter(record): true only when record is defined AND
+  writerInstanceId === deps.instanceId AND writerType === deps.writerType — identity
+  is never inferred from surface type alone.
+  claim(): reads first. If a valid record exists it is ALWAYS returned as
+  {status:'held'} and is never overwritten, so a valid existing writer is never
+  displaced and a repeated same-instance claim is idempotently held. Only when the
+  record is missing or invalid does it read the committed version via
+  deps.store.readVersion(), build a fresh idle epoch-0 record carrying that committed
+  version and deps.now(), write it through the validated adapter, and return
+  {status:'acquired', record, recovered} where recovered is true iff the prior record
+  was invalid (stale/invalid recovery). There is no silent writer pick: acquisition
+  always writes and returns an explicit record.
+  relinquish(): removes `np_workspace_election` then `np_workspace_handoff` through
+  the validated adapter.
+  Both keys are T04 `session`-area keys (DESIGN.md Section 9); no direct chrome.*, no
+  IndexedDB/network, no background broker, no new dependency.
+
+Step 4 — GREEN (focused, explicit path):
+  command: pnpm exec vitest run --project unit tests/core/workspace/workspaceElection.test.ts
+  exit status: 0
+  output: Test Files 1 passed (1); Tests 7 passed (7), 0 failed, 0 skipped (T13-only).
+    - acquires the writer role when no valid writer exists
+    - preserves the committed version when acquiring
+    - does not displace a valid writer held by another instance
+    - treats a repeated claim by the same instance as held
+    - recovers from invalid election metadata by claiming a fresh epoch
+    - relinquishes both election and handoff records
+    - reports whether a record belongs to this instance
+
+Focused verification (sequential):
+  pnpm run test -- tests/core/workspace/workspaceElection.test.ts => exit 0
+    (unit project: 16 files, 89 tests passed)
+  pnpm run typecheck                                  => exit 0 (tsc --noEmit clean)
+  pnpm run lint                                       => exit 0 (eslint . clean)
+  pnpm exec prettier --check .                        => exit 0 after formatting only
+    the two T13 files (src/core/workspace/WorkspaceElection.ts and
+    tests/core/workspace/workspaceElection.test.ts). Formatting changed whitespace/
+    line wrapping only; the type members, interface names, literals, and assertions
+    are unchanged. No other file was reformatted.
+
+Phase 01 verification applicable now:
+  command: pnpm run typecheck && pnpm run lint && pnpm run test
+  exit status: 0
+  output: typecheck clean; lint clean; unit project 16 files, 89 tests passed.
+
+Test counts:
+  T13 test file: 1 passed, 7 tests passed, 0 failed, 0 skipped.
+  Unit project total after T13: 16 files, 89 passed.
+
+Specification-compliance checklist (verbatim from the brief):
+  - interfaces exact: WorkspaceElectionDependencies; ElectionReadResult;
+    ElectionClaimResult; WorkspaceElection; createWorkspaceElection: yes
+  - single live writer: a valid existing record is always returned as held and is
+    never overwritten by any code path: yes
+  - a first eligible surface may claim only when no valid writer exists (the record is
+    missing or invalid): yes
+  - writer identity is never inferred from surface type alone: isWriter requires BOTH
+    writerInstanceId === deps.instanceId AND writerType === deps.writerType: yes
+  - session storage only for election (`np_workspace_election`, T04 session mapping);
+    handoff record (`np_workspace_handoff`) relinquished from the same session area: yes
+  - committed version preserved on claim via deps.store.readVersion(): yes
+  - invalid election metadata fails closed and logs the canonical T03
+    WORKSPACE_INVALID_METADATA code (fixed key label); no silent writer pick: yes
+  - no handoff transitions (T14), no mutations (T15), no background broker, owner is
+    always a UI surface (sidepanel|standalone): yes
+  - no IndexedDB/network/new dependency; no direct chrome.* (injected T04 validated
+    storage only): yes
+  - only WorkspaceElection.ts and the one new test file changed (plus .planning
+    evidence/STATUS): yes
+
+Code-quality and security checklist:
+  - reads never throw on malformed data (invalid -> canonical result, absent ->
+    missing): yes
+  - `claim` returns before writing whenever a valid record exists, so no concurrent or
+    repeated path can authorise a second writer: yes
+  - no raw stored value, instance id, or payload is logged; only the canonical error
+    code and a fixed key label, passed through the T03 redaction sink: yes
+  - writes are schema-validated by the T04 adapter before persistence: yes
+  - no catch blocks; no empty catch; no swallowed rejection: yes
+  - no secrets, tokens, passwords, or page content read/logged/persisted: yes
+
+Limitations / observations (non-blocking, no deviation from the approved brief):
+  - The `isWriter` implementation is used verbatim as supplied by the brief
+    (`record?.writerInstanceId === deps.instanceId && record.writerType === deps.writerType`).
+    It typechecks under the pinned strict TypeScript with no error at that line; the
+    STOP/ BLOCKED condition did not trigger.
+  - `claim` contains an explicit `if (this.isWriter(current.record))` ownership check
+    whose both branches return the same `held` result; this is the brief-prescribed,
+    intentional documentation of the ownership check and was kept verbatim. It is not
+    a defect: no second write path exists.
+  - Epoch is initialised to 0 for a fresh acquisition exactly as the brief specifies;
+    epoch advance/transition semantics are owned by later tasks (T14/T16).
+
+Completion criteria: election test green; typecheck and lint pass; phase-applicable
+chain exit 0; one atomic task commit exists; working tree clean; status recorded.
