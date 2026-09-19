@@ -7,20 +7,20 @@ rewrite or delete prior history.
 ## Current state
 
 - **Current phase:** Phase 01 — Runtime, Shells, and Workspace
-- **Design status:** Approved
-- **Plan status:** Approved
-- **Implementation status:** In progress — T01 accepted; T02 accepted; T03 accepted; T04 accepted; T05 accepted; T06 accepted; T07 accepted; T08 accepted; T09 accepted; T10 accepted; T11 accepted; T12 accepted; T13 BLOCKED (implemented and committed but NOT accepted pending operator decision)
+- **Design status:** Approved; ADR-0001 approved by the operator (2026-09-19) with mandatory clarifications incorporated; amendment ready to commit
+- **Plan status:** Approved; T13C corrective task and affected-task amendments, including the idempotency, listener, and sender/target clarifications, ready to commit
+- **Implementation status:** In progress — T01–T12 accepted; T13 implemented and committed but NOT accepted until T13C; T13C defined and not started; amendment uncommitted
 - **Planning baseline branch:** `phoenix`
 - **Implementation branch:** `phoenix`
 - **Historical approved planning baseline commit:** `bd6ac44d6f562722c18f0d07e6910634e549c713`
-- **Approved planning baseline commit:** `3fb619730c8032d4aa121c5b8aa9649901b45f5f`
-- **Current task:** T13 — Writer Election (BLOCKED: Critical ownership-race review finding)
-- **Last commit:** `7633615` (`feat(phase-01): elect a single workspace writer`) plus this blocker-record commit
-- **Verification result:** Automated verification Pass (T13 focused 7/7, `typecheck`/`lint`/`prettier`/phase chain exit 0) but controller review FAIL — Critical: non-atomic `claim()` read-then-write can elect two live writers (T13's own STOP condition) and conflicts with DESIGN.md §6 "never two authorised writers". T13 is not accepted.
-- **Next task:** T14 — blocked pending the operator decision on the T13 ownership race (T14–T28 not started)
-- **Blockers:** Critical T13 ownership race; requires an operator decision because the mode of atomicity is unspecified and the approved design forbids a background broker (AGENTS.md §2/Section 18/Section 19)
-- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 13 sections incl. blocker)
-- **Evidence status:** Task 13 verification, review, and blocker recorded
+- **Approved planning baseline commit:** `3fb619730c8032d4aa121c5b8aa9649901b45f5f` (pending refresh to the amendment commit per the operator-approved sequence)
+- **Current task:** T13C — Corrective: Background-Serialised Workspace Election (ADR-0001), defined and not started
+- **Last commit:** `88fbdb6` (`docs(phase-01): record task 13 ownership-race blocker`); the amendment is prepared but uncommitted
+- **Verification result:** Documentation-only amendment; no production verification applies. T13 automated verification passed but T13 is not accepted (Critical review finding).
+- **Next task:** commit the amendment as `docs(phase-01): serialise workspace election in background`; capture its SHA; commit the baseline refresh as `docs(phase-01): record election amendment baseline`; then implement T13C
+- **Blockers:** None for planning; T14–T28 remain not started until T13C is accepted
+- **Evidence path:** `.planning/architecture/decisions/ADR-0001-background-serialised-workspace-election.md`; `.planning/evidence/phase-01/review.md` and `verification.txt` (Task 13 blocker sections)
+- **Evidence status:** Task 13 blocker and the ADR-0001 amendment (with operator clarifications) recorded
 
 ## History
 
@@ -495,3 +495,57 @@ rewrite or delete prior history.
 - Note: T13's own phase evidence (`review.md`/`verification.txt`) recorded a self-review
   PASS before the controller review; that self-review is superseded by the controller
   finding and is retained for traceability only.
+- Operator decision (2026-09-19): Option C selected — background-serialised
+  workspace election, with a narrowly scoped architecture amendment. The
+  direct multi-context election write model is recorded as superseded (retained
+  as decision history in `DECISIONS.md` decision 6 and `DESIGN.md` decision 6).
+  The background becomes the narrow serialisation authority for operations that
+  change the elected workspace writer, while remaining not a workspace owner,
+  workspace writer, ordinary mutation broker, content owner, provider/MCP
+  runtime, IndexedDB owner, or long-lived source of truth.
+- Planning amendment prepared (not committed, pending operator approval):
+  `AGENTS.md` (Section 4 locked decision, Section 9 isolation rule),
+  `.planning/architecture/ARCHITECTURE.md` (contexts, single-writer rule,
+  accepted decisions), new
+  `.planning/architecture/decisions/ADR-0001-background-serialised-workspace-election.md`,
+  `.planning/DECISIONS.md` (ADR index; decision 6 amended; decision 26 added),
+  `DESIGN.md` (Sections 2, 6, 13, 14, resolved decisions, design completeness),
+  and `PLAN.md` (Global Constraint 7, Interpretation 2 amendment, new corrective
+  task T13C, and amendment notes on T14/T16/T22/T24/T25/T26/T28 plus the
+  dependency graph and coverage matrix). No production code was modified.
+- Next steps on approval: commit the amendment as
+  `docs(phase-01): serialise workspace election in background`, implement T13C,
+  verify and review it, then continue to T14. Commits `7633615` and `88fbdb6`
+  are retained unchanged as historical checkpoints.
+- Operator approval (2026-09-19, second decision): ADR-0001 approved subject to six
+  mandatory clarifications, all incorporated into the same uncommitted planning
+  amendment: (1) durable `requestId` idempotency persisted inside
+  `np_workspace_election` via the bounded `recentCompletedRequests` ledger
+  (retention limit 32);
+  (2) Chrome-style background listener returning literal `true` and using
+  `sendResponse` (no Promise-returning `onMessage`); (3) exact sender/target
+  restrictions and correlationId = request envelope id; (4) FIFO queue lifetime
+  limited to the current service-worker lifetime with restart correctness from
+  persisted state; (5) baseline refresh sequence; (6) unchanged T13 commits and a
+  separate T13C corrective commit. Amended files: `AGENTS.md`,
+  `ARCHITECTURE.md`, `DECISIONS.md`, `ADR-0001`, `DESIGN.md`, `PLAN.md`, and this
+  `STATUS.md`. No production code was modified; the amendment remains uncommitted.
+- Next actions on operator instruction: commit the amendment
+  (`docs(phase-01): serialise workspace election in background`), capture its SHA,
+  commit the baseline refresh (`docs(phase-01): record election amendment baseline`),
+  then implement T13C. Commits `7633615` and `88fbdb6` remain unchanged.
+- Operator correction (2026-09-19, third decision): the single-entry
+  idempotency field did not satisfy the general duplicate-request guarantee
+  (request A completing, then being replaced by B, then A retried). The retention
+  policy is corrected to a bounded recent-request ledger
+  `ElectionRecord.recentCompletedRequests: ElectionIdempotencyRecord[]` with a
+  retention limit of exactly **32** entries, ordered oldest to newest, with
+  remove-by-requestId-then-append-then-trim-to-newest-32 on completion, and
+  order-independent named-field fingerprint equality (no `JSON.stringify`).
+  Duplicate recognition is guaranteed only for the 32 most recently completed
+  election-changing requests within the browser session; unlimited historical
+  deduplication is not claimed. Amended: `ADR-0001`, `DESIGN.md`, `PLAN.md`, and
+  this `STATUS.md`; `AGENTS.md`, `ARCHITECTURE.md`, and `DECISIONS.md` did not
+  name the single-entry field and required no correction. No production code was
+  modified; the amendment remains uncommitted. Commits `7633615` and `88fbdb6`
+  remain unchanged.

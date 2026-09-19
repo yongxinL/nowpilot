@@ -2,7 +2,7 @@
 
 ## Canonical contexts
 
-- `background`: routing, lifecycle, alarms, permissions, cookies, bounded proxy requests.
+- `background`: routing, lifecycle, alarms, permissions, cookies, bounded proxy requests, and the narrow serialisation authority for operations that change the elected workspace writer (ADR-0001).
 - `sidepanel`: Chat UI, AI runtime, IndexedDB access, context and memory clients.
 - `standalone`: full workspace, options, diagnostics, notes, and AI runtime.
 - `content`: read-only extraction and navigation observation.
@@ -33,6 +33,8 @@ Use `standalone` for paths, runtime surface values, messages, registries, shells
 ## Single-writer rule
 
 One extension-owned surface is the primary writer for conversation bodies, memory, notes, and workspace mutations. Secondary surfaces mirror versioned state. Side effects use idempotency keys and, where multi-store consistency is involved, the write journal.
+
+Side Panel and Standalone are the only eligible workspace writers. Operations that change the elected workspace writer (initial claim, handoff commit, relinquish, stale recovery, fallback claim) are serialised through one background election arbiter with a FIFO promise queue, per ADR-0001. The background is not a workspace owner, workspace writer, ordinary mutation broker, content owner, provider/MCP runtime, IndexedDB owner, or long-lived source of truth; ordinary workspace mutations never pass through the background.
 
 ## AI pipeline
 
@@ -71,3 +73,4 @@ All extracted material is untrusted data and has no instruction authority.
 - No browser automation in v0.1.
 - Side Panel is Chat-only.
 - Standalone view owns deep-work and administration surfaces.
+- Background-serialised workspace election: the background is the narrow serialisation authority for operations that change the elected workspace writer only (ADR-0001).

@@ -47,8 +47,10 @@ automation.
 
 `standalone` stem only (no `app`); Side Panel Chat-only; deep-work/admin in
 Standalone only; content scripts extraction-only (none in Phase 01);
-provider/MCP streams only in UI surfaces; background does no AI/MCP/IndexedDB;
-Zod-validated boundaries; notes/memory local-first; no invented identifiers.
+provider/MCP streams only in UI surfaces; background does no AI/MCP/IndexedDB and
+is the narrow serialisation authority for operations that change the elected
+workspace writer (ADR-0001); Zod-validated boundaries; notes/memory local-first;
+no invented identifiers.
 
 ## 3. Toolchain and pinned versions
 
@@ -230,7 +232,9 @@ necessary).
 Implements the approved protocol verbatim:
 
 - **Ownership:** one live writer; Standalone preferred after handoff, else Side
-  Panel; background is not owner/broker.
+  Panel; background is not a workspace owner or ordinary mutation broker. The
+  background is the narrow serialisation authority for operations that change the
+  elected workspace writer (ADR-0001).
 - **Storage ownership:** `local` → metadata + committed version; `sync` →
   appearance only; `session` → election, instance IDs, handoff intent, singleton
   tab ID.
@@ -260,6 +264,80 @@ Implements the approved protocol verbatim:
 - **Failure:** fail closed, stop mutations, preserve committed state, attempt
   designed recovery, surface canonical error, never silently pick a writer or
   drop a mutation.
+- **Election serialisation (ADR-0001):** all operations that change the elected
+  workspace writer — initial claim, `workspace.handoff.commit`, relinquish,
+  stale-writer recovery, fallback claim after Standalone close, and any other
+  writer-identity or epoch change — are serialised by one background
+  `WorkspaceElectionArbiter` using a single FIFO promise executor
+  (`ElectionSerialExecutor.runExclusive`). The arbiter validates the sender and
+  envelope, reads the latest `np_workspace_election` record only after earlier
+  queued operations complete, evaluates the request against the latest writer
+  identity/epoch/committed version/handoff state, rejects stale, unauthorised,
+  conflicting, or non-idempotent-duplicate requests with
+  `WORKSPACE_ELECTION_REJECTED`, persists exactly one complete next record,
+  increments the epoch monotonically on ownership change, reads the record back,
+  and returns success only after persistence verification (otherwise
+  `WORKSPACE_ELECTION_FAILED`). `chrome.storage.session` remains authoritative;
+  the queue is not durable state; every decision is reconstructed from persisted
+  session state after a service-worker restart. Side Panel and Standalone remain
+  the only eligible writers; ordinary workspace mutations never pass through the
+  arbiter. Canonical request/response contracts, identifiers, and the full test
+  matrix are defined in
+  [ADR-0001](../../architecture/decisions/ADR-0001-background-serialised-workspace-election.md).
+- **Election-record idempotency metadata (ADR-0001):** the existing
+  `np_workspace_election` record (`ElectionRecordSchema`) gains exactly one
+  bounded field, `recentCompletedRequests: ElectionIdempotencyRecord[]`:
+  - `ElectionRequestFingerprint` = `{ requestId, operation,
+    requesterInstanceId, requesterWriterType, committedVersion, reason?,
+    expectedEpoch?, targetInstanceId?, targetWriterType? }`.
+  - `ElectionIdempotencyRecord` = `{ request: ElectionRequestFingerprint;
+    accepted: boolean; code?: ErrorCode; epoch: number; completedAt: number }`
+    (non-recursive; it does not embed a full `ElectionRecord`).
+  - **Retention limit: exactly 32 entries**, ordered oldest to newest. After
+    completing a request the arbiter removes any existing entry with the same
+    `requestId`, appends the authoritative completed result, and retains only
+    the newest 32 entries. Accepted ownership changes and rejected operations are
+    both recorded; a persistence failure or read-back mismatch records nothing.
+  - Retention algorithm: on completion, `next = ledger.filter(e =>
+    e.request.requestId !== request.requestId)`; `next.push(completed)`;
+    if `next.length > 32`, keep `next.slice(next.length - 32)`. The ledger is
+    never unbounded.
+  - **Fingerprint equality:** compare every operation-defining field by name
+    (`requestId`, `operation`, `requesterInstanceId`, `requesterWriterType`,
+    `committedVersion`, and the optional `reason`/`expectedEpoch`/
+    `targetInstanceId`/`targetWriterType` with absent normalised to `undefined`);
+    it must not depend on property ordering and must not use
+    `JSON.stringify`. Duplicate recognition is guaranteed only for the 32 most
+    recently completed election-changing requests within the browser session;
+    older requests are not guaranteed to be recognised, and the design does not
+    claim unlimited historical deduplication.
+  - The ledger is schema-validated and survives service-worker restart. A retry
+    with the same `requestId` and an identical fingerprint returns the persisted
+    authoritative result (creating no new epoch, no relinquish replay, no
+    handoff-commit replay, no writer-identity change, and an identical result).
+    A same-`requestId` request with a different fingerprint fails closed with
+    `WORKSPACE_ELECTION_REJECTED`. A malformed or oversized persisted ledger is
+    normalised to the newest 32 valid entries, or fails closed with
+    `WORKSPACE_INVALID_METADATA` when it cannot be normalised.
+  - UI clients must not intentionally reuse an expired `requestId`; ordinary
+    transient retries reuse the original `requestId`, and a new logical
+    operation always receives a new `requestId`.
+- **Election response contract (ADR-0001):**
+  `WorkspaceElectionResponsePayload` = `{ requestId; accepted: boolean;
+  record?: ElectionRecord; code?: ErrorCode }`. `record` is present and
+  authoritative when `accepted` is true; `code` is present
+  (`WORKSPACE_ELECTION_REJECTED` or `WORKSPACE_ELECTION_FAILED`) when `accepted`
+  is false. The response envelope sets `source: 'background'`, `target` to the
+  requesting surface only, and `correlationId` equal to the request envelope
+  `id`.
+- **Background listener contract (ADR-0001):** the background registers the
+  election listener synchronously at module evaluation with the Chrome signature
+  `(message, sender, sendResponse) => boolean | void`. For a valid election
+  request it calls the arbiter, delivers the result through `sendResponse` after
+  the queued operation completes, and returns literal `true`. Persistence
+  failure or an unexpected exception produces exactly one canonical failure
+  response. An untrusted sender or schema-invalid envelope receives no response.
+  A Promise-returning `onMessage` listener is not used.
 
 ## 7. Standalone deduplication
 
@@ -381,7 +459,9 @@ controls.
   `sidePanel`/`storage`, absence of the rest, and no content-script declaration.
 - **Post-build bundle-isolation inspection** asserts the background bundle
   imports no React/antd/IndexedDB/provider; the Side Panel bundle imports no
-  Standalone pages/registry/admin; no content-script bundle exists.
+  Standalone pages/registry/admin; no content-script bundle exists. The
+  background election arbiter (ADR-0001) is a permitted background import and
+  requires no additional permission.
 - Side-effect/ownership failures never render as success.
 
 ## 14. Testing scope (explicitly separated)
@@ -389,7 +469,11 @@ controls.
 1. **Unit tests** — schemas, election, handoff, mutation/version/idempotency,
    dedup, theme validation, registry.
 2. **Integration tests (mocked Chrome APIs)** — single-writer convergence,
-   mirror ordering, gap rehydration, restart durability, theme propagation.
+   mirror ordering, gap rehydration, restart durability, theme propagation, and
+   background-serialised election (concurrent claim, epoch monotonicity,
+   non-writer relinquish rejection, idempotent duplicates, handoff-commit versus
+   fallback-claim exclusion, persistence/read-back failure, restart
+   reconstruction, and ordinary mutations bypassing the arbiter).
 3. **Generated-manifest inspection** — parses
    `.output/chrome-mv3/manifest.json` after build. A config unit test is **not**
    accepted as proof of the generated manifest.
@@ -522,7 +606,7 @@ requirements derived from it are restated directly in this document.
 | 3 | Governance: separate pre-planning commit before writing-plans |
 | 4 | Skeleton scope: 7-entry core registry + minimal Options/Appearance |
 | 5 | Permissions: `sidePanel` + `storage` only; dedup via stored tab ID |
-| 6 | Coordination: elected single writer with prepare/ack/commit handoff |
+| 6 | Coordination: elected single writer with prepare/ack/commit handoff (amended by ADR-0001 / decision 26: background-serialised election) |
 | 7 | WXT 0.21.4 (Node ≥22), explicit `vite` 8.3.0 peer |
 | 8 | TypeScript 5.9.3 (typescript-eslint peer `<6.1.0`); not TS 7 |
 | 9 | Composer: no interactive or disabled control in Phase 01 |
@@ -541,10 +625,16 @@ requirements derived from it are restated directly in this document.
 | 22 | Side Panel actions via one canonical `StandaloneNavigation` service; typed destination |
 | 23 | Registries: `ErrorCode` and `DiagnosticEvent` are separate closed schemas |
 | 24 | `approvedPlanningBaselineCommit` is the immutable approved-plan commit, recorded by a later status commit |
+| 26 | Background-serialised workspace election (ADR-0001): the background is the narrow serialisation authority for operations that change the elected workspace writer; it is not a workspace owner or ordinary mutation broker; Side Panel and Standalone remain the only writers and ordinary mutations bypass the background | Proposed — awaiting operator approval |
 
 ## Design completeness
 
-Zero unresolved design decisions remain. Future generated values,
-including the approved planning baseline commit SHA, are governed by
-the deterministic sequence in Section 17 and are not design
-decisions.
+Zero unresolved design decisions remain for the original approval. The only
+outstanding item is the operator-approval status of the ADR-0001 amendment and
+of resolved decision 26 (background-serialised workspace election); until that
+approval and the planning commit
+`docs(phase-01): serialise workspace election in background`, the direct
+multi-context election write model remains the approved baseline and Phase 01
+stays stopped at T13. Future generated values, including the approved planning
+baseline commit SHA, are governed by the deterministic sequence in Section 17
+and are not design decisions.

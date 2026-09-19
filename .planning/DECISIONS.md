@@ -7,7 +7,8 @@ ADR content.
 ## Accepted ADRs
 
 - ADR directory: [architecture/decisions/](architecture/decisions/)
-- Currently no accepted ADRs are recorded.
+- [ADR-0001 — Background-serialised workspace election](architecture/decisions/ADR-0001-background-serialised-workspace-election.md)
+  (status: Proposed — awaiting operator approval, 2026-09-19).
 
 ## Locked repository decisions
 
@@ -29,7 +30,7 @@ This index records identifiers and status only.
 | 3 | Governance: separate pre-planning commit before writing-plans | Approved |
 | 4 | Skeleton scope: 7-entry core registry + minimal Options/Appearance | Approved |
 | 5 | Permissions: `sidePanel` + `storage` only; dedup via stored tab ID | Approved |
-| 6 | Coordination: elected single writer with prepare/ack/commit handoff | Approved |
+| 6 | Coordination: elected single writer with prepare/ack/commit handoff | Amended by decision 26 / ADR-0001 (background-serialised election) |
 | 7 | WXT 0.21.4 (Node ≥22), explicit `vite` 8.3.0 peer | Approved |
 | 8 | TypeScript 5.9.3 (typescript-eslint peer `<6.1.0`); not TS 7 | Approved |
 | 9 | Composer: no interactive or disabled control in Phase 01 | Approved |
@@ -49,3 +50,4 @@ This index records identifiers and status only.
 | 23 | Registries: `ErrorCode` and `DiagnosticEvent` are separate closed schemas | Approved |
 | 24 | `approvedPlanningBaselineCommit` is the immutable approved-plan commit, recorded by a later status commit | Approved |
 | 25 | Direct-branch model: implementation occurs directly on `phoenix`; implementation is sequential; only one implementation agent may modify the repository at a time; every `PLAN.md` task receives one verified atomic commit; parallel implementation is prohibited; no push, merge, rebase, squash, amend, reset, force-push, or history rewriting; recovery uses a corrective commit or operator-approved `git revert` | Approved |
+| 26 | Background-serialised workspace election: the background service worker is the narrow serialisation authority for operations that change the elected workspace writer (initial claim, handoff commit, relinquish, stale recovery, fallback claim). It remains not a workspace owner, workspace writer, ordinary mutation broker, content owner, provider/MCP runtime, IndexedDB owner, or long-lived source of truth. Side Panel and Standalone remain the only eligible writers; ordinary mutations bypass the background. Implemented by ADR-0001 and Phase 01 corrective task T13C | Proposed — awaiting operator approval |

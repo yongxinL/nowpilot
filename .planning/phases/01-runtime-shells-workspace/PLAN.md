@@ -5,7 +5,7 @@
 
 **Goal:** Deliver a deterministic WXT / Chrome MV3 baseline with a Chat-only Side Panel, a Standalone workspace, one canonical `RuntimeEnvelope`, one elected single-writer workspace, a theme foundation, and the canonical 7-entry Standalone registry with skeleton pages.
 
-**Architecture:** Two extension-owned UI surfaces (`sidepanel`, `standalone`) communicate through one Zod-validated `RuntimeEnvelope`; the background service worker is the only caller of `chrome.tabs` and owns singleton-tab routing; workspace writes are serialised by an elected single writer with prepare → acknowledge → commit handoff and versioned idempotent mutations; theme is independent of election and propagates through `chrome.storage.sync` + `chrome.storage.onChanged`.
+**Architecture:** Two extension-owned UI surfaces (`sidepanel`, `standalone`) communicate through one Zod-validated `RuntimeEnvelope`; the background service worker is the only caller of `chrome.tabs`, owns singleton-tab routing, and (per ADR-0001) is the narrow serialisation authority for operations that change the elected workspace writer; workspace writes are serialised by an elected single writer with prepare → acknowledge → commit handoff and versioned idempotent mutations; theme is independent of election and propagates through `chrome.storage.sync` + `chrome.storage.onChanged`.
 
 **Tech Stack:** pnpm 12.4.2, WXT 0.21.4, Vite 8.3.0, React 19.3.0, Ant Design 6.6.4, Zod 4.6.5, Zustand 5.0.15, Vitest 5.0.1, jsdom 30.1.0, TypeScript 5.9.3, ESLint 10.11.0 + typescript-eslint 8.70.0, Prettier 3.9.8.
 
@@ -23,7 +23,7 @@ These apply to every task. Every task's requirements implicitly include this sec
 4. **Exact dependency pins** (no `^`, `~`, `latest`, or wildcards). Runtime: `react@19.3.0`, `react-dom@19.3.0`, `antd@6.6.4`, `@ant-design/icons@6.3.4`, `zustand@5.0.15`, `zod@4.6.5`. Dev: `wxt@0.21.4`, `@wxt-dev/module-react@1.2.2`, `vite@8.3.0`, `typescript@5.9.3`, `@types/react@19.3.0`, `@types/react-dom@19.3.0`, `@types/node@24.13.6`, `@types/chrome@0.3.0`, `eslint@10.11.0`, `typescript-eslint@8.70.0`, `prettier@3.9.8`, `vitest@5.0.1`, `jsdom@30.1.0`, `@testing-library/react@16.3.3`, `@testing-library/dom@10.4.2`, `@testing-library/jest-dom@7.0.1`.
 5. **Excluded dependencies** (must not be added as direct `package.json` dependencies in Phase 01; transitive dependencies of an approved package are permitted): `@ant-design/x`, `@ant-design/x-markdown`, `ai`, `@ai-sdk/*`, `@modelcontextprotocol/sdk`, `defuddle`, `@mozilla/readability`, `minisearch`, `d3-force`, `jszip`, `turndown`, `yaml`, `jsonrepair`, `web-ext`, `@types/wicg-file-system-access`, `vitest-chrome`, `@eslint/js`, `globals`.
 6. **Only `pnpm-lock.yaml` is authoritative.** `package-lock.json` must not exist after Task 01.
-7. **Locked decisions:** `standalone` stem only; Side Panel is Chat-only; content scripts are extraction-only and **no content script exists in Phase 01**; manifest permissions are exactly `["sidePanel","storage"]`; background is the only caller of `chrome.tabs`; UI components use `StandaloneNavigation`; hash routing `#/<StandaloneRouteId>` with `history.replaceState` and no browser-history traversal; elected single writer; prepare/ack/commit handoff; theme independent of election; no IndexedDB, provider, MCP, extraction, notes, memory, diagnostics functionality, or later-phase work; no HTML text input, send button, attachment button, model selector, disabled controls, or speculative chat state in the Side Panel.
+7. **Locked decisions:** `standalone` stem only; Side Panel is Chat-only; content scripts are extraction-only and **no content script exists in Phase 01**; manifest permissions are exactly `["sidePanel","storage"]`; background is the only caller of `chrome.tabs`; the background is also the narrow serialisation authority for operations that change the elected workspace writer (ADR-0001) and remains not a workspace owner, workspace writer, ordinary mutation broker, content owner, provider/MCP runtime, IndexedDB owner, or long-lived source of truth; UI components use `StandaloneNavigation`; hash routing `#/<StandaloneRouteId>` with `history.replaceState` and no browser-history traversal; elected single writer; prepare/ack/commit handoff; theme independent of election; no IndexedDB, provider, MCP, extraction, notes, memory, diagnostics functionality, or later-phase work; no HTML text input, send button, attachment button, model selector, disabled controls, or speculative chat state in the Side Panel.
 8. **Canonical identifiers** are fixed by `DESIGN.md` Section 5 and Section 9. Do not rename, add, or alias: `RuntimeSurface`, `OperationId`, `MessageType`, `RuntimeEnvelope`, payload schema names, `ErrorCode` values, `DiagnosticEvent` value, `StandaloneRouteId` values, storage keys. PLAN-defined internal helper names are listed in each task's **Interfaces produced** block and must be used exactly as written.
 9. **TDD rule:** every production-code task starts with a failing test (RED), then minimal implementation (GREEN), then refactor. Tasks explicitly marked **configuration exception** (T01, T02, and the build-artifact inspection scripts in T23/T24 when they only run after a build) are the only exceptions permitted by `AGENTS.md` Section 11.
 10. **Every task ends with:** focused verification, the Phase 01 verification command applicable at that point, specification-compliance review, code-quality + security review, evidence append, `STATUS.md` update, and one atomic commit in the format `<type>(phase-01): <task outcome>`.
@@ -54,7 +54,7 @@ These four interpretations were approved by the operator and are authoritative f
 - `WorkspaceRehydrateRequestPayload` carries `instanceId` and `writerType` (T07).
 - `createWorkspaceCoordinator` (T16) is the Phase 01 orchestration boundary for the existing prepare, acknowledge, commit, relinquish, mutation, and rehydration contracts.
 - It uses only existing canonical message types, storage keys, error codes, and runtime surfaces; it adds no persistence mechanism.
-- The background service worker stays outside workspace ownership and mutation coordination; the coordinator runs only in the Side Panel and Standalone surfaces.
+- **Amendment (ADR-0001):** the background service worker is the narrow serialisation authority for election-changing operations only. It remains outside workspace ownership, workspace content, and ordinary workspace mutation coordination; the coordinator runs only in the Side Panel and Standalone surfaces, and ordinary `workspace.mutation` envelopes never pass through the background election arbiter.
 - The elected single-writer protocol is preserved: the coordinator prepares or commits only when the local surface is the current writer.
 - Coordinator behaviour is fully testable through injected boundaries (`bus`, `storage`, `election`, `handoff`, `store`); every handler is exposed and tested directly in addition to the bus-driven handshake test.
 - The coordinator is a narrow orchestration boundary, not a service locator: it exposes only `start`, `announce`, and the named message handlers.
@@ -152,9 +152,11 @@ T01 bootstrap
        T08 + T09
             └─ T10 navigation request contract
                  └─ T11 singleton tab controller
-       T12 + T13 + T14
-            └─ T15 mutations
-                 └─ T16 sync
+       T12 + T13
+            └─ T13C background-serialised election (ADR-0001)
+                 └─ T14 handoff
+                      └─ T15 mutations
+                           └─ T16 sync
        T05 + T18
             └─ T19 shell/router/sider
                  ├─ T20 options appearance
@@ -188,7 +190,7 @@ Dependencies are also stated per task in **Depends on**. A task may start only w
 | 10 | Standalone navigation request contract | T10 |
 | 11 | singleton Standalone tab create/focus/stale-ID recovery/close | T11 |
 | 12 | workspace types and durable metadata | T06 (types/schemas), T12 (durable store) |
-| 13 | writer election | T13 |
+| 13 | writer election | T13 (direct), T13C (background-serialised, ADR-0001) |
 | 14 | prepare, acknowledge, commit handoff | T14 |
 | 15 | mutation versioning and idempotency | T15 |
 | 16 | mirror ordering and rehydration | T16 |
@@ -201,6 +203,7 @@ Dependencies are also stated per task in **Depends on**. A task may start only w
 | 23 | complete build and isolation gate | T23, T24, T26 |
 | 24 | manual unpacked-extension acceptance and evidence | T27 |
 | 25 | final Phase 01 verification and acceptance preparation | T28 |
+| 26 | background-serialised workspace election (ADR-0001): FIFO arbiter, monotonic epochs, fail-closed persistence/read-back, concurrency and restart tests | T13C |
 
 ---
 
@@ -3484,6 +3487,13 @@ git commit -m "feat(phase-01): persist workspace metadata and version"
 
 ### Task 13 — Writer Election
 
+> **Superseded (ADR-0001):** the direct multi-context election write path
+> implemented and committed by this task (`claim()`, `relinquish()` writing
+> `np_workspace_election` directly) is superseded by corrective task **T13C**.
+> This section is retained as the historical baseline that T13C corrects; it is
+> not the final election contract. `WorkspaceElection.isWriter`/`read` remain
+> valid and are reused by T13C.
+
 **Implementation tier:** advanced (ownership correctness)
 **Depends on:** T12
 **Files created:** `src/core/workspace/WorkspaceElection.ts`, `tests/core/workspace/workspaceElection.test.ts`
@@ -3731,7 +3741,275 @@ git commit -m "feat(phase-01): elect a single workspace writer"
 
 ---
 
+### Task 13C — Corrective: Background-Serialised Workspace Election (ADR-0001)
+
+**Implementation tier:** advanced (ownership correctness, trust boundary, background serialisation)
+**Depends on:** T13, T08, T09, T12
+**Classification:** corrective production task; TDD required.
+**Supersedes:** the direct multi-context election write path implemented by T13.
+**Files created:** `src/core/workspace/WorkspaceElectionArbiter.ts`, `tests/core/workspace/workspaceElectionArbiter.test.ts`
+**Files modified:** `src/core/error/errorCodes.ts`, `tests/core/error/errorCodes.test.ts`, `src/core/runtime/MessageType.ts`, `src/core/runtime/messageSchemas.ts`, `tests/core/runtime/messageSchemas.test.ts`, `tests/core/runtime/boundaryValidation.test.ts`, `src/core/workspace/workspaceTypes.ts`, `tests/core/workspace/workspaceTypes.test.ts`, `src/core/workspace/WorkspaceElection.ts`, `tests/core/workspace/workspaceElection.test.ts`, `.planning/evidence/phase-01/verification.txt`, `.planning/evidence/phase-01/review.md`, `.planning/STATUS.md`
+**Files that must not be modified:** `DESIGN.md`, `PLAN.md`, `AGENTS.md`, `ARCHITECTURE.md`, `wxt.config.ts`, `tsconfig.json`, `package.json`, `tests/setup.ts`, `src/core/runtime/BroadcastBus.ts`, `src/core/runtime/RuntimeEnvelope.ts`, `src/core/runtime/MessageType.ts` (only additive registry changes below), `src/core/workspace/WorkspaceStore.ts`, and every not-yet-created file owned by T14+.
+**Interfaces produced:**
+- `WorkspaceElectionOperation` (`'claim' | 'relinquish' | 'handoff-commit'`), `WorkspaceElectionClaimReason` (`'initial' | 'stale-recovery' | 'fallback'`)
+- `WorkspaceElectionRequestPayload`, `WorkspaceElectionResponsePayload` (schemas in `messageSchemas.ts`)
+- `ElectionRequestFingerprint`, `ElectionIdempotencyRecord`; `ElectionRecord` gains `recentCompletedRequests: ElectionIdempotencyRecord[]` (bounded to 32, oldest to newest)
+- `ElectionSerialExecutor`, `createElectionSerialExecutor()`
+- `WorkspaceElectionArbiterDependencies`, `WorkspaceElectionArbiter`, `createWorkspaceElectionArbiter(deps)`
+- `BackgroundElectionMessageListener` (`(message, sender, sendResponse) => boolean | void`)
+- Error codes `WORKSPACE_ELECTION_REJECTED`, `WORKSPACE_ELECTION_FAILED`
+- Refactored `WorkspaceElection` client: `read()`, `isWriter(record)`, `claim(reason)`, `relinquish()`, and request/response handling; no direct write of `np_workspace_election`
+
+**Canonical contract:** exactly as defined in
+`.planning/architecture/decisions/ADR-0001-background-serialised-workspace-election.md`
+and `DESIGN.md` Section 6. In particular:
+
+- Request payload: `{ requestId: OperationId; operation; requesterInstanceId;
+  requesterWriterType; committedVersion; reason?; expectedEpoch?;
+  targetInstanceId?; targetWriterType? }`. `requestId` is stable across retries
+  of the same logical operation; a retry must not mint a new `requestId`.
+- Response payload: `{ requestId: OperationId; accepted: boolean;
+  record?: ElectionRecord; code?: ErrorCode }`. `record` is present and
+  authoritative when accepted; `code` is present when not accepted.
+- Response envelope: `source: 'background'`, `target` = requesting surface only,
+  `correlationId` = the request envelope `id`.
+- Election record idempotency: `ElectionRecord.recentCompletedRequests` is a
+  bounded ledger (retention limit exactly **32**, oldest to newest) of
+  `ElectionIdempotencyRecord` entries (request fingerprint, accepted, code,
+  resulting epoch, completedAt). On completion the arbiter removes any entry with
+  the same `requestId`, appends the authoritative completed result, and keeps only
+  the newest 32. Fingerprint equality compares named operation-defining fields
+  (order-independent, no `JSON.stringify`). Duplicate recognition is guaranteed
+  only for the 32 most recently completed requests within the browser session;
+  older requests are not guaranteed to be recognised and unlimited historical
+  deduplication is not claimed. Ledger entries never embed an `ElectionRecord`.
+- Queue lifecycle: `ElectionSerialExecutor` FIFO applies only within the current
+  service-worker lifetime; cross-restart correctness comes from the persisted
+  record, the persisted idempotency metadata, monotonic epoch validation,
+  storage-derived decisions, and persistence read-back.
+
+**Files created/modified rationale:** the two new message types extend the closed
+registry in `MessageType.ts` (11 → 13 entries) and `RUNTIME_PAYLOAD_SCHEMAS` in
+`messageSchemas.ts`; the closed `MESSAGE_TYPE_ALLOWED_SOURCES` gains:
+`workspace.election.request` → `['sidepanel','standalone']` and
+`workspace.election.response` → `['background']`. `boundaryValidation.test.ts`
+and `messageSchemas.test.ts` completeness assertions must be updated to the
+13-entry registry. `errorCodes.test.ts` must be updated to the 15-code registry.
+
+- [ ] **Step 1: Write the failing tests (RED)**
+
+Create `tests/core/workspace/workspaceElectionArbiter.test.ts` and update the
+four existing test files named above. The arbiter suite must prove, at minimum:
+
+1. two simultaneous valid initial claims produce exactly one successful writer
+   (drive both `handle()` promises through the injected executor and assert one
+   `accepted: true` and one `accepted: false` with `WORKSPACE_ELECTION_REJECTED`);
+2. the losing claimant never receives `accepted: true`, and the persisted record
+   names the winner;
+3. the winner is persisted before `accepted: true` is returned (read-back assertion);
+4. two successful ownership changes never receive the same epoch;
+5. epochs increase monotonically across claim → handoff-commit → recovery;
+6. a stale claim (`expectedEpoch` behind the persisted epoch) cannot overwrite a
+   newer writer and returns `accepted: false`;
+7. a non-writer `relinquish` returns `accepted: false` and leaves the record
+   unchanged;
+8. duplicate requests with the same `requestId` and identical fingerprint are
+   idempotent: a repeated identical claim/commit returns the persisted
+   authoritative result with the same epoch and no record change, no relinquish
+   replay, no handoff-commit replay, and no writer-identity change;
+9. idempotency survives a simulated service-worker restart: a fresh arbiter over
+   the same session storage returns the same persisted result for the duplicate;
+10. reuse of a `requestId` with different operation data fails closed with
+    `WORKSPACE_ELECTION_REJECTED`;
+11. `handoff-commit` and `fallback` claim cannot both succeed (whichever is
+    evaluated second is rejected/idempotent-no-change, never a second epoch);
+12. stale Standalone recovery is serialised against a live handoff (a recovery
+    claim queued behind a handoff-commit evaluates the committed record);
+13. persistence failure produces no successful writer (`accepted: false` +
+    `WORKSPACE_ELECTION_FAILED`, record unchanged/absent);
+14. persisted-record read-back mismatch fails closed (`accepted: false`);
+15. a fresh arbiter instance over the same session storage reconstructs the same
+    decision after restart;
+16. the arbiter handles only `workspace.election.request`; ordinary
+    `workspace.mutation` never changes the election record or epoch (asserted
+    again end-to-end in T25).
+
+The idempotency-ledger suite must also prove:
+
+- duplicate request A remains idempotent after request B completes;
+- the newest 32 completed requests are retained;
+- the oldest request is evicted when a 33rd request completes;
+- replay within the retained window returns the prior result;
+- replay does not increment the epoch;
+- the same `requestId` with a different fingerprint is rejected;
+- ledger ordering is deterministic (oldest to newest) with no duplicate
+  `requestId`;
+- replacement of an existing `requestId` does not create a duplicate entry;
+- a service-worker restart preserves the 32-entry ledger;
+- a malformed or oversized persisted ledger is normalised to the newest 32 valid
+  entries, or fails closed exactly as defined in DESIGN §6.
+
+The background listener suite (in `tests/core/runtime/backgroundRuntime.test.ts`
+or the T13C arbiter suite as the amended T22 specifies) must prove:
+
+17. the listener returns literal `true` synchronously for an election request;
+18. the response is sent only after the queued operation completes;
+19. persistence failure produces exactly one `accepted: false` response;
+20. an unexpected exception produces exactly one canonical failure response;
+21. no response is sent twice for one request;
+22. an untrusted sender or schema-invalid envelope receives no response;
+23. the response `correlationId` equals the request envelope `id`, and the
+    response `target` is the requesting surface only;
+24. wildcard-election requests, background-originated election requests,
+    wildcard responses, and responses targeted at a different surface are
+    rejected.
+
+Also update the completeness/boundary tests to the 13-type registry and the
+15-code registry, and rewrite the `WorkspaceElection.ts` client tests to use an
+injected request transport instead of direct storage writes.
+
+Run:
+
+```bash
+pnpm run test -- tests/core/workspace/workspaceElectionArbiter.test.ts
+pnpm run test -- tests/core/workspace/workspaceElection.test.ts
+pnpm run test -- tests/core/runtime
+pnpm run test -- tests/core/error
+```
+
+Expected: FAIL — `WorkspaceElectionArbiter` does not resolve; the new message
+types and error codes are absent from the closed registries.
+
+- [ ] **Step 2: Implement the corrected election**
+
+1. Add `WORKSPACE_ELECTION_REJECTED` and `WORKSPACE_ELECTION_FAILED` to
+   `ERROR_CODES` (append after `THEME_PERSIST_FAILED`; the sealed order is the
+   approved list from DESIGN §5 followed by these two).
+2. Add the two message types, both payload schemas, and the allowed sources. The
+   request payload includes a stable `requestId: OperationId`; the response
+   payload is `{ requestId; accepted: boolean; record?: ElectionRecord;
+   code?: ErrorCode }`. Enforce the sender/target matrix (request source
+   `sidepanel`/`standalone`, target `background`; response source `background`,
+   target the requesting surface only; response `correlationId` equals the
+   request envelope `id`). Reject wildcard/background-originated requests and
+   mis-targeted responses.
+3. Extend `ElectionRecordSchema` with
+   `recentCompletedRequests: ElectionIdempotencyRecord[]` and add
+   `ElectionRequestFingerprint`/`ElectionIdempotencyRecord` (bounded to the newest
+   32 entries, oldest to newest; no unbounded growth; no recursive
+   `ElectionRecord`). No new storage key.
+4. Implement `ElectionSerialExecutor` and `createElectionSerialExecutor` with a
+   FIFO promise chain: `runExclusive` appends the operation and chains it after
+   the previous tail, propagating the tail regardless of rejection. Document that
+   FIFO applies only within the current service-worker lifetime.
+5. Implement `WorkspaceElectionArbiter`:
+   - wrap the whole of `handle()` in `executor.runExclusive`;
+   - read and schema-validate `np_workspace_election` after acquiring exclusivity;
+   - evaluate `claim` / `relinquish` / `handoff-commit` against the latest
+     writer identity, epoch, committed version, and handoff state;
+   - search `recentCompletedRequests` by `requestId`: if an entry matches with an
+     equal fingerprint, return the persisted authoritative result without
+     changing epoch, repeating relinquish, replaying handoff commit, or changing
+     writer identity; if the `requestId` matches with a different fingerprint,
+     reject with `WORKSPACE_ELECTION_REJECTED`; if `requestId` is absent, evaluate
+     it as a new request;
+   - fingerprint equality compares the named operation-defining fields directly
+     (`requestId`, `operation`, `requesterInstanceId`, `requesterWriterType`,
+     `committedVersion`, and optional `reason`/`expectedEpoch`/`targetInstanceId`/
+     `targetWriterType` with absent normalised to `undefined`); it is
+     order-independent and never uses `JSON.stringify`;
+   - build exactly one next record; increment epoch monotonically on ownership
+     change (initial no-record claim → `0`; every later ownership change,
+     including recovery, → `priorEpoch + 1`, where `priorEpoch` is the numeric
+     `epoch` of the persisted record, or the numeric `epoch` field of an invalid
+     raw value when finite and non-negative; if no numeric prior epoch exists,
+     recovery uses `1`, never a bare `0`);
+   - apply the ledger retention algorithm to the next record: remove any existing
+     entry with the same `requestId`, append the authoritative completed result
+     (accepted or rejected), then keep only the newest 32 entries;
+   - persist the complete record (including `recentCompletedRequests`), read it
+     back, and validate equality before returning `accepted: true`;
+   - on write failure or read-back mismatch return `accepted: false` with
+     `WORKSPACE_ELECTION_FAILED`, record no ledger entry, and never report
+     success;
+   - normalise a malformed or oversized persisted ledger to the newest 32 valid
+     entries, or fail closed with `WORKSPACE_INVALID_METADATA` when it cannot be
+     normalised;
+   - reject stale (`expectedEpoch` mismatch), unauthorised (non-writer
+     relinquish/commit), conflicting, and non-idempotent requests with
+     `accepted: false` + `WORKSPACE_ELECTION_REJECTED`;
+   - make duplicate requests state-derived idempotent (no in-memory cache that
+     would not survive restart).
+6. Wire the background election listener with the Chrome signature
+   `(message, sender, sendResponse) => boolean | void`: register synchronously at
+   module evaluation; for a validated `workspace.election.request` return literal
+   `true`, call `arbiter.handle(request)`, and call `sendResponse` exactly once
+   with the schema-valid response envelope (`correlationId` = request envelope
+   `id`, `target` = requester) after the queued operation completes; on
+   persistence failure or unexpected exception send exactly one `accepted: false`
+   response with the canonical failure code; send no response for an untrusted
+   sender or schema-invalid envelope; never respond twice.
+7. Refactor `WorkspaceElection.ts` into a read/request client:
+   `read()` and `isWriter()` unchanged; `claim(reason)` and `relinquish()` send a
+   `workspace.election.request` envelope through the canonical bus and resolve the
+   matching `workspace.election.response` by `correlationId`, retaining the
+   payload `requestId` across retries; never write `np_workspace_election`
+   directly. Keep the legacy `ElectionClaimResult` vocabulary only where the
+   client translates `accepted`/`code`.
+8. Do not change `BroadcastBus`, `RuntimeEnvelope` (other than registry-driven
+   schema additions), `WorkspaceStore`, or the toolchain. Do not add a storage
+   key, permission, or third message type.
+
+- [ ] **Step 3: Run the focused and cumulative verification**
+
+```bash
+pnpm run test -- tests/core/workspace/workspaceElectionArbiter.test.ts
+pnpm run test -- tests/core/workspace/workspaceElection.test.ts
+pnpm run typecheck
+pnpm run lint
+pnpm exec prettier --check .
+pnpm run typecheck && pnpm run lint && pnpm run test
+```
+
+Expected: all exit 0; the new message-type and error-code completeness tests pass
+at 13 and 15 entries.
+
+- [ ] **Step 4: Record evidence, update status, and commit**
+
+Append the T13C section (commands, exit statuses, the 15-case arbiter matrix, and
+the corrected T13 acceptance) to `.planning/evidence/phase-01/verification.txt`
+and `.planning/evidence/phase-01/review.md`, and update `.planning/STATUS.md`
+(T13 accepted after correction; next task T14).
+
+```bash
+git add src tests .planning
+git commit -m "fix(phase-01): serialise workspace election through the background arbiter"
+```
+
+**Constraints and non-goals:** no new permission; no IndexedDB; no provider/MCP;
+ordinary mutations never route through the arbiter; no background in-memory
+source of truth; no change to `chrome.storage` areas or keys; no new
+`DiagnosticEvent`; no amendment to `DESIGN.md`/`PLAN.md` in this task.
+**Focused verification:** the Step 3 focused commands.
+**Phase 01 verification applicable now:** `pnpm run typecheck && pnpm run lint && pnpm run test`.
+**Evidence:** `verification.txt` and `review.md` T13C sections.
+**Atomic commit:** `fix(phase-01): serialise workspace election through the background arbiter`
+**Completion criteria:** all Step 1 obligations pass; typecheck/lint/prettier/phase chain exit 0; one corrective commit; corrected T13 recorded as accepted.
+**Stop conditions:** two live writers can still be authorised; epochs can repeat; persistence failure can report success; the correction requires a new dependency or permission; the correction cannot avoid touching a forbidden file.
+
+---
+
 ### Task 14 — Prepare, Acknowledge, and Commit Handoff
+
+> **Amendment (ADR-0001):** T14 now depends on **T13C**, not T13. The handoff
+> `commit(epoch, committedVersion)` step no longer writes `np_workspace_election`
+> directly. Instead, the current writer submits a
+> `workspace.election.request` with `operation: 'handoff-commit'` (including
+> `targetInstanceId`, `targetWriterType`, and `expectedEpoch`) through the
+> arbiter, and transitions ownership only when the arbiter returns `granted`
+> with the new epoch. `prepare` and `acknowledge` remain local handoff-record
+> transitions. The T14 dependency set becomes `T13C`. Update its RED and GREEN
+> steps and interface notes accordingly; no other behavioural change.
 
 **Implementation tier:** advanced (ownership transition)
 **Depends on:** T13
@@ -4271,6 +4549,17 @@ git commit -m "feat(phase-01): version and idempotently apply workspace mutation
 ---
 
 ### Task 16 — Mirror Ordering, Gap Rehydration, and Writer Coordination
+
+> **Amendment (ADR-0001):** T16 depends on **T13C**. The coordinator no longer
+> writes the election record directly. `start()` must not auto-claim by writing
+> `np_workspace_election` (the background arbiter owns claims). `handleHandoffAck`
+> commits ownership by submitting a `workspace.election.request`
+> (`operation: 'handoff-commit'`, with `targetInstanceId`, `targetWriterType`,
+> `expectedEpoch`, `committedVersion`) and proceeds only on `granted`;
+> `handleRelinquish` submits `operation: 'relinquish'` and acts only on
+> `granted`. Add a `workspace.election.response` subscription and correlate
+> request/response by `requestId`. Ordinary `workspace.mutation` handling is
+> unchanged and must never route through the background arbiter.
 
 **Implementation tier:** advanced (convergence and ownership coordination)
 **Depends on:** T15, T13, T14
@@ -6429,6 +6718,28 @@ git commit -m "feat(phase-01): add chat-only side panel shell and actions"
 
 ### Task 22 — WXT Entrypoints and Background Listener Wiring
 
+> **Amendment (ADR-0001):** `Depends on` gains **T13C**. The background runtime
+> registers an election listener synchronously at module evaluation with the
+> Chrome signature `BackgroundElectionMessageListener = (message, sender,
+> sendResponse) => boolean | void`. For a validated `workspace.election.request`
+> it returns literal `true` synchronously, calls `arbiter.handle(request)`, and
+> calls `sendResponse` exactly once with the schema-valid
+> `workspace.election.response` envelope (`source: 'background'`, `target` =
+> requesting surface only, `correlationId` = request envelope `id`) only after
+> the queued operation completes. Persistence failure or an unexpected exception
+> produces exactly one `accepted: false` response with the canonical failure
+> code; an untrusted sender or schema-invalid envelope receives no response; no
+> response is ever sent twice. Enforce the sender/target matrix. The arbiter
+> reads/writes only the `np_workspace_election`/`np_workspace_handoff` session
+> records and performs no ordinary workspace mutation, provider/MCP, or
+> IndexedDB work. Also wire the UI-side `WorkspaceElection` request transport.
+> Add `backgroundRuntime.test.ts` cases for: listener returns literal `true`;
+> response sent only after the queued operation completes; exactly one response
+> on accepted, rejected, persistence-failure, and unexpected-exception paths; no
+> double response; untrusted sender / invalid envelope receives no response;
+> `correlationId`/target correctness; and rejection of wildcard or
+> background-originated requests and mis-targeted responses.
+
 **Implementation tier:** advanced (context wiring and isolation)
 **Depends on:** T11, T16, T17, T19, T20, T21
 **Files created:** `src/entrypoints/sidepanel/index.html`, `src/entrypoints/sidepanel/main.tsx`, `src/entrypoints/sidepanel/App.tsx`, `src/entrypoints/standalone/index.html`, `src/entrypoints/standalone/main.tsx`, `src/entrypoints/standalone/App.tsx`, `tests/core/runtime/backgroundRuntime.test.ts`
@@ -7109,6 +7420,11 @@ git commit -m "test(phase-01): inspect generated manifest"
 
 ### Task 24 — Post-Build Bundle-Isolation Inspection
 
+> **Amendment (ADR-0001):** the background bundle now imports the election
+> arbiter. Re-run isolation and confirm the background forbidden-marker set is
+> unchanged and still passes: the arbiter imports no React/Ant Design, provider
+> SDK, MCP SDK, or IndexedDB. No marker change is expected.
+
 **Implementation tier:** balanced
 **Depends on:** T22, T23
 **Files created:** `tests/build/isolationChecks.ts`, `tests/build/isolation.test.ts`, `tests/build/isolationAssertions.test.ts`
@@ -7376,6 +7692,14 @@ git commit -m "test(phase-01): inspect built bundle isolation"
 
 ### Task 25 — Cross-Module Integration Tests
 
+> **Amendment (ADR-0001):** add cross-module integration tests for
+> background-serialised election — concurrent initial claims, epoch monotonicity
+> across claim/handoff/recovery, handoff-commit versus fallback-claim exclusion,
+> service-worker restart reconstruction from session storage, and an
+> end-to-end assertion that ordinary `workspace.mutation` never changes the
+> election record/epoch and never routes through the background election
+> arbiter.
+
 **Implementation tier:** balanced
 **Depends on:** T22, T23, T24
 **Files created:** `tests/integration/workspaceIntegration.test.ts`
@@ -7527,6 +7851,10 @@ git commit -m "test(phase-01): add cross-module integration tests"
 
 ### Task 26 — Complete Build and Isolation Gate
 
+> **Amendment (ADR-0001):** the complete build/isolation gate runs after T13C and
+> includes the background-serialised election tests and the 13-type / 15-code
+> registry completeness tests.
+
 **Implementation tier:** balanced
 **Depends on:** T23, T24, T25
 **Files created:** none
@@ -7649,6 +7977,11 @@ git commit -m "docs(phase-01): record manual unpacked extension acceptance"
 ---
 
 ### Task 28 — Final Phase 01 Verification and Acceptance Preparation
+
+> **Amendment (ADR-0001):** the final acceptance matrix must include the
+> ADR-0001 election-serialisation acceptance items and the corrected T13/T13C
+> evidence, and must confirm the background remains free of ordinary mutation,
+> provider/MCP, and IndexedDB work.
 
 **Implementation tier:** balanced
 **Depends on:** T27

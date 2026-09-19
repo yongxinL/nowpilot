@@ -79,6 +79,7 @@ The following decisions are locked unless an approved ADR explicitly changes the
 - Do not render host-page UI or write into host-page fields in v0.1.
 - AI-provider calls and MCP streams run only in extension-owned Side Panel or Standalone contexts.
 - The background service worker does not run AI-provider streams, MCP streams, or IndexedDB operations.
+- The background service worker is the narrow serialisation authority for operations that change the elected workspace writer (initial claim, handoff commit, relinquish, stale recovery, fallback claim), per ADR-0001. It is not a workspace owner, workspace writer, ordinary mutation broker, content owner, provider/MCP runtime, IndexedDB owner, or long-lived source of truth. Side Panel and Standalone remain the only eligible workspace writers, and ordinary workspace mutations must not pass through the background.
 - The model may request tools, but only deterministic application code validates and executes them.
 - Side-effect completion requires matching verification evidence.
 - Notes and memory are local-first. Optional filesystem storage is a backup target, not the primary store.
@@ -198,6 +199,7 @@ If any required field is absent or ambiguous, stop and record a blocking plan de
 - Do not use `setInterval` in the background service worker.
 - Do not access IndexedDB from the background service worker.
 - Do not call AI providers or MCP servers from the background service worker.
+- The background service worker may host the workspace election arbiter (ADR-0001), which serialises election-changing operations and reads/writes only the `np_workspace_election` and `np_workspace_handoff` session records. It must not perform ordinary workspace mutations, AI-provider/MCP streaming, or IndexedDB access.
 - Content scripts must not import React, React DOM, Ant Design, Ant Design X, Defuddle, YAML, Turndown, Temml, MathML conversion packages, or filesystem APIs.
 - Content scripts must not render UI, create UI shadow roots, inject styles, or modify host-page fields.
 - Cross-context messages must use the canonical runtime envelope and message registry.
