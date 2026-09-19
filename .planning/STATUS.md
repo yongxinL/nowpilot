@@ -9,18 +9,18 @@ rewrite or delete prior history.
 - **Current phase:** Phase 01 — Runtime, Shells, and Workspace
 - **Design status:** Approved
 - **Plan status:** Approved
-- **Implementation status:** In progress — T01 accepted; T02 accepted; T03 accepted; T04 accepted; T05 accepted; T06 accepted; T07 accepted; T08 accepted; T09 accepted; T10 accepted; T11 accepted; T12 accepted; T13 accepted
+- **Implementation status:** In progress — T01 accepted; T02 accepted; T03 accepted; T04 accepted; T05 accepted; T06 accepted; T07 accepted; T08 accepted; T09 accepted; T10 accepted; T11 accepted; T12 accepted; T13 BLOCKED (implemented and committed but NOT accepted pending operator decision)
 - **Planning baseline branch:** `phoenix`
 - **Implementation branch:** `phoenix`
 - **Historical approved planning baseline commit:** `bd6ac44d6f562722c18f0d07e6910634e549c713`
 - **Approved planning baseline commit:** `3fb619730c8032d4aa121c5b8aa9649901b45f5f`
-- **Current task:** T13 — Writer Election (accepted)
-- **Last commit:** `feat(phase-01): elect a single workspace writer` (SHA captured post-commit in `.superpowers/sdd/PLAN/task-13-report.md`)
-- **Verification result:** Pass — T13 focused test exit 0 (1 file, 7 tests), `typecheck` exit 0, `lint` exit 0, `prettier --check .` exit 0; phase chain `typecheck && lint && test` exit 0 (16 files, 89 tests)
-- **Next task:** T14 — (per approved Phase 01 `PLAN.md`)
-- **Blockers:** None
-- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 13 sections)
-- **Evidence status:** Task 13 verification and review recorded
+- **Current task:** T13 — Writer Election (BLOCKED: Critical ownership-race review finding)
+- **Last commit:** `7633615` (`feat(phase-01): elect a single workspace writer`) plus this blocker-record commit
+- **Verification result:** Automated verification Pass (T13 focused 7/7, `typecheck`/`lint`/`prettier`/phase chain exit 0) but controller review FAIL — Critical: non-atomic `claim()` read-then-write can elect two live writers (T13's own STOP condition) and conflicts with DESIGN.md §6 "never two authorised writers". T13 is not accepted.
+- **Next task:** T14 — blocked pending the operator decision on the T13 ownership race (T14–T28 not started)
+- **Blockers:** Critical T13 ownership race; requires an operator decision because the mode of atomicity is unspecified and the approved design forbids a background broker (AGENTS.md §2/Section 18/Section 19)
+- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 13 sections incl. blocker)
+- **Evidence status:** Task 13 verification, review, and blocker recorded
 
 ## History
 
@@ -475,3 +475,23 @@ rewrite or delete prior history.
   `.planning/evidence/phase-01/review.md` (Task 13 sections). Task commit
   `feat(phase-01): elect a single workspace writer`. Current task T13 accepted;
   next task T14 — per approved Phase 01 `PLAN.md`.
+- Task 13 (Writer Election) implemented and committed as `7633615`
+  (`feat(phase-01): elect a single workspace writer`) after T01–T12 were accepted.
+  RED/GREEN focused tests (7/7), `typecheck`, `lint`, and `prettier --check .` all passed.
+- Task 13 controller review FAILED with one Critical finding: `claim()` performs a
+  non-atomic read-then-write (`WorkspaceElection.ts:61-71`). Two surfaces that both
+  observe `missing`/`invalid` can both build and persist an election record and both
+  receive `status: 'acquired'`, authorising two live writers. This meets the task's own
+  STOP condition ("TWO live writers can be authorised by any code path") and conflicts
+  with `DESIGN.md` Section 6 ("never two authorised writers"). Two further Important
+  findings: `relinquish()` is not owner-guarded in the module (T16's planned coordinator
+  guards it, but T16 is not yet implemented), and stale/invalid recovery always writes
+  epoch `0` rather than a fresh epoch.
+- Per `AGENTS.md` Section 2 (authoritative-document conflict), Section 18 (locked/unspecified
+  architecture), and Section 19 (stop conditions), Phase 01 execution is STOPPED at T13,
+  BLOCKED pending an operator decision. T14–T28 have not been started. No file has been
+  modified beyond recording this blocker. Recommended resolution options are recorded in
+  `.planning/evidence/phase-01/review.md` (Task 13 controller-review section).
+- Note: T13's own phase evidence (`review.md`/`verification.txt`) recorded a self-review
+  PASS before the controller review; that self-review is superseded by the controller
+  finding and is retained for traceability only.

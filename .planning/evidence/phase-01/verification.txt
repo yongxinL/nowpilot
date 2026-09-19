@@ -1426,3 +1426,20 @@ Limitations / observations (non-blocking, no deviation from the approved brief):
 
 Completion criteria: election test green; typecheck and lint pass; phase-applicable
 chain exit 0; one atomic task commit exists; working tree clean; status recorded.
+
+=== Task 13 — controller review outcome / execution stop (2026-09-19) ===
+
+Task: T13 (Writer Election)
+Commit under review: 7633615 (feat(phase-01): elect a single workspace writer)
+Automated verification: PASS (focused 7/7; typecheck, lint, prettier, phase chain exit 0)
+Controller task review: FAIL — 1 Critical, 2 Important
+
+Critical: non-atomic claim() read-then-write can authorise two live writers
+(WorkspaceElection.ts:61-71); meets the task STOP condition and conflicts with
+DESIGN.md Section 6.
+
+Result: Phase 01 execution STOPPED at T13 (BLOCKED) pending an operator decision.
+T14–T28 not started. No production file changed during the stop; this section and the
+matching STATUS.md/review.md entries are the blocker record. Reproduction: two concurrent
+claim() calls both observing a missing/invalid election record each persist and return
+'acquired'; there is no CAS or verify-after-write.

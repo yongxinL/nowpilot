@@ -1153,3 +1153,51 @@ chain `typecheck && lint && test` exit 0. Full output is recorded in `verificati
 requirements; the only finding is a Low-severity formatting correction and no blocking
 finding remains. The brief's `isWriter` implementation was accepted verbatim and
 typechecked under the pinned strict configuration.
+
+## Task 13 — Controller review (BLOCKER, supersedes the self-review PASS above)
+
+Reviewer: controller-dispatched task review; diff range `ba13aef..7633615`; verdict
+**Needs fixes**; one Critical and two Important findings.
+
+### Critical (Must Fix)
+
+`claim()` is a non-atomic read-then-write (`src/core/workspace/WorkspaceElection.ts:61-71`).
+`read()` then `storage.write()` has no compare-and-swap, claim lock, or verify-after-write
+read-back. Two extension contexts (for example two Side Panels, or a Side Panel and a
+Standalone) can both observe `missing`/`invalid`, both build and persist an election record,
+and both return `status: 'acquired'`. This authorises two live writers.
+
+- Meets the task's own STOP condition: "TWO live writers can be authorised by any code path".
+- Conflicts with `DESIGN.md` Section 6: "never two authorised writers".
+- The code is inherited verbatim from approved `PLAN.md`, so this is a plan/design conflict,
+  not an implementer deviation.
+
+### Important (Should Fix)
+
+1. `relinquish()` (`src/core/workspace/WorkspaceElection.ts:73-76`) unconditionally removes
+   `np_workspace_election` and `np_workspace_handoff`; it is not owner-guarded in the module.
+   The planned T16 `handleRelinquish` guards with `isWriter`, but T16 is not yet implemented,
+   so no implemented caller enforces the guard today.
+2. Stale/invalid recovery always writes epoch `0` (`:69`); the brief's specification-compliance
+   checklist says invalid metadata is recovered by claiming a "fresh epoch", but no prior
+   epoch is derived and the test only asserts `recovered: true`.
+
+### Recommended resolution options for the operator
+
+- **Option A (recommended):** Record an explicit Phase 01 design decision/ADR that the
+  elected single writer is best-effort under concurrent multi-context startup, because
+  `chrome.storage` offers no atomic compare-and-swap and `DESIGN.md` Section 6 forbids the
+  background service worker from acting as owner/broker. Keep T13 as implemented, fix the
+  `relinquish` guard wording and the "fresh epoch" checklist in a plan/design note, and
+  defer strict atomic election to Phase 2 (indexedDB/transactions/write journal). Effect:
+  smallest change; Phase 01 ships a baseline that is not strictly race-free.
+- **Option B:** Amend T13 to add a claim-token lease and a settle-then-verify read-back,
+  with an interleaving test, accepting a residual narrow race. Requires new identifiers not
+  present in `DESIGN.md` (claim token/lease) and an operator-approved plan amendment. Effect:
+  reduces the window but does not make election strictly atomic.
+- **Option C:** Introduce a background-serialised election claim. This changes a locked
+  decision ("the background is not owner/broker") and requires an approved ADR plus plan
+  amendment. Effect: strongest guarantee; violates a locked decision unless explicitly changed.
+
+Per `AGENTS.md` Section 2/18/19, execution is stopped and no further task is started until the
+operator decides.
