@@ -9,18 +9,18 @@ rewrite or delete prior history.
 - **Current phase:** Phase 01 — Runtime, Shells, and Workspace
 - **Design status:** Approved and amended by ADR-0001 (background-serialised workspace election)
 - **Plan status:** Approved and amended (corrective task T13C; T14/T16/T22/T24/T25/T26/T28 amendment notes)
-- **Implementation status:** Blocked pending T13C correction — T01–T12 accepted; T13 implemented and committed but NOT accepted until T13C; T13C not started
+- **Implementation status:** T01–T12 accepted; T13 implemented and corrected by T13C; T13C complete and verified; T14–T28 not started
 - **Planning baseline branch:** `phoenix`
 - **Implementation branch:** `phoenix`
 - **Historical approved planning baseline commit:** `bd6ac44d6f562722c18f0d07e6910634e549c713`
 - **Approved planning baseline commit:** `b2c6ef289bc1abebbeccfad81d7034ced81f4eb7`
-- **Current task:** T13C — Corrective: Background-Serialised Workspace Election (ADR-0001)
-- **Last commit:** `b2c6ef289bc1abebbeccfad81d7034ced81f4eb7` (`docs(phase-01): serialise workspace election in background`), plus this baseline status record
-- **Verification result:** The planning amendment is documentation-only; no production verification applies. T13 automated verification passed but T13 is not accepted (Critical review finding addressed by T13C).
-- **Next action:** implement and verify T13C
-- **Blockers:** None after baseline refresh; T14–T28 remain not started until T13C is accepted
-- **Evidence path:** `.planning/architecture/decisions/ADR-0001-background-serialised-workspace-election.md`; `.planning/evidence/phase-01/review.md` and `verification.txt` (Task 13 blocker sections)
-- **Evidence status:** T13 blocker recorded; T13C pending
+- **Current task:** T13C complete; next task T14 — Prepare, Acknowledge, and Commit Handoff
+- **Last commit:** the T13C corrective commit `fix(phase-01): serialise workspace election through the background arbiter`, on top of `c608708` (`docs(phase-01): record election amendment baseline`)
+- **Verification result:** T13C arbiter suite 41/41; corrected client suite 14/14; full unit suite 145/145 (17 files); `typecheck`, `lint`, `prettier --check .`, and the phase chain `typecheck && lint && test` all exit 0. Simultaneous claims produce exactly one writer; epochs are monotonic; persistence failure/mismatch never reports success.
+- **Next action:** implement T14 (Prepare, Acknowledge, and Commit Handoff) per approved Phase 01 `PLAN.md`, routing the handoff commit through the arbiter `handoff-commit`
+- **Blockers:** None; T13 and T13C are accepted
+- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 13C sections)
+- **Evidence status:** T13C verified; corrected T13 accepted
 
 ## History
 
@@ -561,9 +561,38 @@ rewrite or delete prior history.
   task T13C, and T14/T16/T22/T24/T25/T26/T28 amendment notes), and the prior
   `STATUS.md`. The previous `3fb619730c8032d4aa121c5b8aa9649901b45f5f` is retained
   as the historical pre-amendment approved-plan baseline. Implementation branch
-  `phoenix`; implementation status blocked pending the T13C correction; current
+  `phoenix`;   implementation status blocked pending the T13C correction; current
   task T13C; next action implement and verify T13C; blockers none; evidence status:
   T13 blocker recorded, T13C pending. This status record is committed separately
   from the amendment commit so the pre-implementation gate's status-record
   assertion is satisfied. No production code changed; commits `7633615` and
   `88fbdb6` remain unchanged.
+- Task 13C (Corrective: Background-Serialised Workspace Election, ADR-0001) executed
+  on `phoenix` in the repository root. RED confirmed before implementation on six
+  suites (arbiter module unresolved; idempotency schemas, election payload schemas,
+  the 13-type registry, and the 15-code registry absent; the client still wrote
+  storage directly): Test Files 6 failed | 11 passed; Tests 20 failed | 84 passed.
+  GREEN: `tests/core/workspace/workspaceElectionArbiter.test.ts` 41/41,
+  `tests/core/workspace/workspaceElection.test.ts` 14/14, full unit suite 145/145
+  (17 files), `typecheck` exit 0, `lint` exit 0, `prettier --check .` exit 0, and the
+  phase chain `typecheck && lint && test` exit 0. Implemented
+  `src/core/workspace/WorkspaceElectionArbiter.ts` (FIFO `ElectionSerialExecutor`;
+  storage-derived idempotent arbiter with a bounded 32-entry
+  `recentCompletedRequests` ledger; monotonic epochs; fail-closed persistence and
+  read-back; Chrome-style `BackgroundElectionMessageListener` returning literal
+  `true`) and refactored `WorkspaceElection.ts` into a read/request client that
+  never writes `np_workspace_election` directly. Added error codes
+  `WORKSPACE_ELECTION_REJECTED`/`WORKSPACE_ELECTION_FAILED` (ERROR_CODES 13 -> 15)
+  and message types `workspace.election.request`/`workspace.election.response`
+  (MESSAGE_TYPES 11 -> 13, with the allowed-source matrix and two `RuntimeEnvelope`
+  arms). No new storage key, permission, dependency, `DiagnosticEvent`, IndexedDB,
+  provider/MCP, or direct `chrome.*` usage. `runtimePrimitives.test.ts` was updated
+  from the eleven- to the thirteen-entry closed-registry assertion (test-only
+  completeness consequence, disclosed in `review.md`). T13C self-review PASS; the
+  T13 Critical two-writer finding is remediated (simultaneous claims elect exactly
+  one writer and the loser receives `WORKSPACE_ELECTION_REJECTED`), so corrected T13
+  is accepted. Evidence recorded in `.planning/evidence/phase-01/verification.txt`
+  and `.planning/evidence/phase-01/review.md` (Task 13C sections). Task commit
+  `fix(phase-01): serialise workspace election through the background arbiter`.
+  Current task T13C accepted; next task T14 — per approved Phase 01 `PLAN.md`.
+  Commits `7633615` and `88fbdb6` remain unchanged.

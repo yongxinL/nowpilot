@@ -13,6 +13,8 @@ export const MESSAGE_TYPES = [
   'standalone.focus',
   'standalone.closed',
   'runtime.error',
+  'workspace.election.request',
+  'workspace.election.response',
 ] as const;
 
 export type MessageType = (typeof MESSAGE_TYPES)[number];
@@ -33,4 +35,6 @@ export const MESSAGE_TYPE_ALLOWED_SOURCES: Readonly<
   'standalone.focus': ['background', 'sidepanel', 'standalone'],
   'standalone.closed': ['standalone'],
   'runtime.error': ['background', 'sidepanel', 'standalone'],
+  'workspace.election.request': ['sidepanel', 'standalone'],
+  'workspace.election.response': ['background'],
 };

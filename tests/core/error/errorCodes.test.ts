@@ -22,6 +22,8 @@ describe('error code registry', () => {
       'STANDALONE_OPEN_FAILED',
       'THEME_INVALID_VALUE',
       'THEME_PERSIST_FAILED',
+      'WORKSPACE_ELECTION_REJECTED',
+      'WORKSPACE_ELECTION_FAILED',
     ]);
   });
 

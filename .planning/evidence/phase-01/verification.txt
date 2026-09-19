@@ -1443,3 +1443,85 @@ T14–T28 not started. No production file changed during the stop; this section 
 matching STATUS.md/review.md entries are the blocker record. Reproduction: two concurrent
 claim() calls both observing a missing/invalid election record each persist and return
 'acquired'; there is no CAS or verify-after-write.
+
+=== Task 13C — corrective background-serialised election (ADR-0001) — 2026-09-19 ===
+
+Task: T13C (corrective; supersedes the T13 direct multi-context election write path).
+Branch: phoenix. Repository root: /Users/george.li/Documents/workspaces/nowpilot.
+Base commit at task start: c608708 (docs(phase-01): record election amendment baseline).
+
+RED (before implementation), focused suites:
+  - tests/core/workspace/workspaceElectionArbiter.test.ts failed to resolve
+    @/core/workspace/WorkspaceElectionArbiter (module absent).
+  - tests/core/workspace/workspaceTypes.test.ts failed: new idempotency schemas absent.
+  - tests/core/runtime/messageSchemas.test.ts failed: election payload schemas absent.
+  - tests/core/runtime/boundaryValidation.test.ts failed: 13-type registry assertion.
+  - tests/core/error/errorCodes.test.ts failed: 15-code list (WORKSPACE_ELECTION_* absent).
+  - tests/core/workspace/workspaceElection.test.ts failed: client still wrote storage directly.
+  Aggregate RED: Test Files 6 failed | 11 passed; Tests 20 failed | 84 passed.
+
+GREEN (after implementation), fresh output:
+  $ pnpm exec vitest run --project unit tests/core/workspace/workspaceElectionArbiter.test.ts
+    Test Files 1 passed (1); Tests 41 passed (41)   exit 0
+  $ pnpm exec vitest run --project unit tests/core/workspace/workspaceElection.test.ts
+    Test Files 1 passed (1); Tests 14 passed (14)   exit 0
+  $ pnpm run typecheck                                      exit 0
+  $ pnpm run lint                                            exit 0
+  $ pnpm exec prettier --check .                             exit 0 (All matched files use Prettier)
+  $ pnpm run test                                            exit 0 (17 files, 145 tests passed)
+  $ pnpm run typecheck && pnpm run lint && pnpm run test     exit 0
+
+Registry completeness: MESSAGE_TYPES = 13 (runtimePrimitives, boundaryValidation,
+messageSchemas); ERROR_CODES = 15 (errorCodes).
+
+Obligation-to-test mapping (PLAN T13C Step 1 items 1-24 + ledger bullets):
+  1  two simultaneous claims -> exactly one accepted: 'elects exactly one writer for two simultaneous initial claims'
+  2  loser never accepted, persisted names winner: same test
+  3  winner persisted before accepted (read-back): 'persists the winning record before returning accepted'
+  4  two ownership changes never share an epoch: 'never issues the same epoch...'
+  5  monotonic claim -> handoff -> recovery: 'increases the epoch monotonically...'
+  6  stale expectedEpoch behind -> rejected: 'rejects a stale claim whose expectedEpoch is behind...'
+  7  non-writer relinquish rejected, record unchanged: 'rejects a non-writer relinquish...'
+  8  duplicate idempotency, no relinquish/handoff replay: 'returns the persisted authoritative result...',
+     'does not replay a handoff-commit...', 'does not replay relinquish and rejects a duplicate relinquish'
+  9  idempotency survives restart: 'preserves duplicate-request idempotency across a simulated worker restart'
+  10 same requestId different data fails closed: 'fails closed when a requestId is reused with different operation data'
+  11 handoff-commit and fallback cannot both succeed: 'never lets a handoff-commit and a fallback claim both succeed'
+  12 recovery serialised behind handoff: 'serialises a stale recovery behind a live handoff-commit'
+  13 persistence failure -> no writer: 'fails closed without a writer when persistence fails',
+     'leaves the existing record unchanged when an ownership change cannot be persisted'
+  14 read-back mismatch fails closed: 'fails closed when the persisted-record read-back does not match'
+  15 fresh arbiter reconstructs decision: 'reconstructs a fresh decision from persisted state after restart'
+  16 only election requests handled; mutation never touches record: listener
+     'ignores ordinary workspace.mutation messages...'
+  17 listener returns literal true synchronously
+  18 response only after queued completion
+  19 persistence failure -> exactly one failure response
+  20 unexpected exception -> exactly one canonical failure response
+  21 never responds twice
+  22 untrusted sender / schema-invalid -> no response
+  23 correlationId = request envelope id; target = requester only
+  24 wildcard/background requests rejected (listener); wildcard/mis-targeted responses ignored (client)
+  ledger: newest 32 retained; oldest evicted on 33rd; deterministic oldest->newest, unique requestId;
+          duplicate A after B; replay does not increment epoch; restart preserves 32;
+          malformed/oversized normalised; non-array ledger recovery.
+  invalid-recovery epochs: 'recovers an invalid record to a monotonically higher epoch' (5 -> 6),
+          'recovers an invalid record without a numeric prior epoch at epoch one' (-> 1)
+  read failure: 'fails closed when the persisted record cannot be read'
+
+Files changed: src/core/error/errorCodes.ts, src/core/runtime/MessageType.ts,
+  src/core/runtime/messageSchemas.ts, src/core/runtime/RuntimeEnvelope.ts,
+  src/core/workspace/workspaceTypes.ts, src/core/workspace/WorkspaceElection.ts,
+  src/core/workspace/WorkspaceElectionArbiter.ts (new),
+  tests/core/error/errorCodes.test.ts, tests/core/runtime/messageSchemas.test.ts,
+  tests/core/runtime/boundaryValidation.test.ts, tests/core/runtime/runtimePrimitives.test.ts,
+  tests/core/workspace/workspaceTypes.test.ts, tests/core/workspace/workspaceElection.test.ts,
+  tests/core/workspace/workspaceElectionArbiter.test.ts (new).
+
+No new storage key, permission, dependency, DiagnosticEvent, or message type beyond the two named.
+No IndexedDB, provider/MCP, or direct chrome.* in core modules. Ordinary workspace.mutation never
+routes through the arbiter. No forbidden file was modified.
+
+Corrected T13 acceptance: the T13 direct read-then-write critical finding is remediated by the
+single FIFO arbiter executor; simultaneous claims produce exactly one writer; corrected T13 is
+accepted.

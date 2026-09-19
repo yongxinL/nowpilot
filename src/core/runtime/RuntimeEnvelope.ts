@@ -4,6 +4,8 @@ import {
   StandaloneClosedPayload,
   StandaloneFocusPayload,
   StandaloneOpenPayload,
+  WorkspaceElectionRequestPayload,
+  WorkspaceElectionResponsePayload,
   WorkspaceHandoffAckPayload,
   WorkspaceHandoffCommitPayload,
   WorkspaceHandoffPreparePayload,
@@ -81,6 +83,16 @@ export const RuntimeEnvelopeSchema = z.discriminatedUnion('type', [
     ...envelopeBaseFields,
     type: z.literal('runtime.error'),
     payload: RuntimeErrorPayload,
+  }),
+  z.object({
+    ...envelopeBaseFields,
+    type: z.literal('workspace.election.request'),
+    payload: WorkspaceElectionRequestPayload,
+  }),
+  z.object({
+    ...envelopeBaseFields,
+    type: z.literal('workspace.election.response'),
+    payload: WorkspaceElectionResponsePayload,
   }),
 ]);
 

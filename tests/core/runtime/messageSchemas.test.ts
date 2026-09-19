@@ -2,9 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   RuntimeErrorPayload,
   StandaloneOpenPayload,
+  WorkspaceElectionRequestPayload,
+  WorkspaceElectionResponsePayload,
   WorkspaceMutationPayload,
   WorkspaceRehydrateRequestPayload,
 } from '@/core/runtime/messageSchemas';
+import { createOperationId } from '@/core/runtime/OperationId';
 
 const VALID_MUTATION = {
   mutationId: '00000000-0000-4000-8000-000000000000',
@@ -52,6 +55,64 @@ describe('payload schemas', () => {
     );
     expect(RuntimeErrorPayload.safeParse({ code: 'NOT_A_CODE' }).success).toBe(false);
   });
+
+  it('validates an election request payload including the stable requestId', () => {
+    const request = {
+      requestId: createOperationId(),
+      operation: 'claim',
+      requesterInstanceId: 'sidepanel-instance',
+      requesterWriterType: 'sidepanel',
+      committedVersion: 0,
+      reason: 'initial',
+    };
+    expect(WorkspaceElectionRequestPayload.safeParse(request).success).toBe(true);
+    expect(
+      WorkspaceElectionRequestPayload.safeParse({ ...request, operation: 'seize' }).success,
+    ).toBe(false);
+    expect(
+      WorkspaceElectionRequestPayload.safeParse({ ...request, committedVersion: -1 }).success,
+    ).toBe(false);
+    expect(WorkspaceElectionRequestPayload.safeParse({ ...request, reason: 'seize' }).success).toBe(
+      false,
+    );
+  });
+
+  it('validates an election response payload with accepted, record and code', () => {
+    const requestId = createOperationId();
+    expect(WorkspaceElectionResponsePayload.safeParse({ requestId, accepted: false }).success).toBe(
+      true,
+    );
+    expect(
+      WorkspaceElectionResponsePayload.safeParse({
+        requestId,
+        accepted: false,
+        code: 'WORKSPACE_ELECTION_REJECTED',
+      }).success,
+    ).toBe(true);
+    expect(
+      WorkspaceElectionResponsePayload.safeParse({
+        requestId,
+        accepted: false,
+        code: 'NOT_A_CODE',
+      }).success,
+    ).toBe(false);
+    expect(
+      WorkspaceElectionResponsePayload.safeParse({
+        requestId,
+        accepted: true,
+        record: {
+          writerType: 'sidepanel',
+          writerInstanceId: 'sidepanel-instance',
+          epoch: 0,
+          committedVersion: 0,
+          handoffPhase: 'idle',
+          handoffTargetInstanceId: null,
+          updatedAt: 1,
+          recentCompletedRequests: [],
+        },
+      }).success,
+    ).toBe(true);
+  });
 });
 
 import { MESSAGE_TYPES } from '@/core/runtime/MessageType';
@@ -59,4 +120,10 @@ import { RUNTIME_PAYLOAD_SCHEMAS } from '@/core/runtime/messageSchemas';
 
 it('maps every message type to exactly one payload schema', () => {
   expect(Object.keys(RUNTIME_PAYLOAD_SCHEMAS).sort()).toEqual([...MESSAGE_TYPES].sort());
+});
+
+it('registers exactly thirteen message types including the election pair', () => {
+  expect([...MESSAGE_TYPES]).toHaveLength(13);
+  expect(MESSAGE_TYPES).toContain('workspace.election.request');
+  expect(MESSAGE_TYPES).toContain('workspace.election.response');
 });

@@ -45,6 +45,18 @@ function payloadFor(type: MessageType): unknown {
     'standalone.focus': { destination: 'chat' },
     'standalone.closed': {},
     'runtime.error': { code: 'RUNTIME_ENVELOPE_INVALID' },
+    'workspace.election.request': {
+      requestId: createOperationId(),
+      operation: 'claim',
+      requesterInstanceId: 'sidepanel-instance',
+      requesterWriterType: 'sidepanel',
+      committedVersion: 0,
+    },
+    'workspace.election.response': {
+      requestId: createOperationId(),
+      accepted: false,
+      code: 'WORKSPACE_ELECTION_REJECTED',
+    },
   };
   return payloads[type];
 }
@@ -131,6 +143,28 @@ describe('boundary validation', () => {
       EXTENSION_ID,
     );
     expect(result.ok).toBe(true);
+  });
+
+  it('registers the thirteen-type registry with the election source matrix', () => {
+    expect([...MESSAGE_TYPES]).toHaveLength(13);
+    expect(MESSAGE_TYPE_ALLOWED_SOURCES['workspace.election.request']).toEqual([
+      'sidepanel',
+      'standalone',
+    ]);
+    expect(MESSAGE_TYPE_ALLOWED_SOURCES['workspace.election.response']).toEqual(['background']);
+  });
+
+  it('rejects a background-originated election request', () => {
+    const result = validateInboundEnvelope(
+      envelope({
+        type: 'workspace.election.request',
+        source: 'background',
+        payload: payloadFor('workspace.election.request'),
+      }),
+      { id: EXTENSION_ID, url: `chrome-extension://${EXTENSION_ID}/background.js` },
+      EXTENSION_ID,
+    );
+    expect(result).toEqual({ ok: false, code: 'RUNTIME_SENDER_REJECTED' });
   });
 
   it('declares exactly one explicit non-empty allowed-source list per message type', () => {

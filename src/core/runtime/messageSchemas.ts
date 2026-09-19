@@ -2,12 +2,16 @@ import { z } from 'zod';
 import { ErrorCodeSchema } from '../error/errorCodes';
 import { StandaloneRouteIdSchema } from '../registry/standaloneRoutes';
 import {
+  ElectionRecordSchema,
   InstanceIdSchema,
+  WorkspaceElectionClaimReasonSchema,
+  WorkspaceElectionOperationSchema,
   WorkspaceMetadataSchema,
   WorkspaceMutationSchema,
   WorkspaceWriterTypeSchema,
 } from '../workspace/workspaceTypes';
 import { MESSAGE_TYPES, type MessageType } from './MessageType';
+import { OperationIdSchema } from './OperationId';
 
 export const WorkspaceMutationPayload = WorkspaceMutationSchema;
 
@@ -61,6 +65,27 @@ export const RuntimeErrorPayload = z.object({
   message: z.string().max(280).optional(),
 });
 
+export const WorkspaceElectionRequestPayload = z.object({
+  requestId: OperationIdSchema,
+  operation: WorkspaceElectionOperationSchema,
+  requesterInstanceId: InstanceIdSchema,
+  requesterWriterType: WorkspaceWriterTypeSchema,
+  committedVersion: z.number().int().nonnegative(),
+  reason: WorkspaceElectionClaimReasonSchema.optional(),
+  expectedEpoch: z.number().int().nonnegative().optional(),
+  targetInstanceId: InstanceIdSchema.optional(),
+  targetWriterType: WorkspaceWriterTypeSchema.optional(),
+});
+export type WorkspaceElectionRequestPayload = z.infer<typeof WorkspaceElectionRequestPayload>;
+
+export const WorkspaceElectionResponsePayload = z.object({
+  requestId: OperationIdSchema,
+  accepted: z.boolean(),
+  record: ElectionRecordSchema.optional(),
+  code: ErrorCodeSchema.optional(),
+});
+export type WorkspaceElectionResponsePayload = z.infer<typeof WorkspaceElectionResponsePayload>;
+
 export const RUNTIME_PAYLOAD_SCHEMAS: Readonly<Record<MessageType, z.ZodType>> = {
   'workspace.mutation': WorkspaceMutationPayload,
   'workspace.handoff.prepare': WorkspaceHandoffPreparePayload,
@@ -73,6 +98,8 @@ export const RUNTIME_PAYLOAD_SCHEMAS: Readonly<Record<MessageType, z.ZodType>> =
   'standalone.focus': StandaloneFocusPayload,
   'standalone.closed': StandaloneClosedPayload,
   'runtime.error': RuntimeErrorPayload,
+  'workspace.election.request': WorkspaceElectionRequestPayload,
+  'workspace.election.response': WorkspaceElectionResponsePayload,
 };
 
 export const RuntimeMessageSchema = z.discriminatedUnion('type', [
@@ -96,6 +123,14 @@ export const RuntimeMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('standalone.focus'), payload: StandaloneFocusPayload }),
   z.object({ type: z.literal('standalone.closed'), payload: StandaloneClosedPayload }),
   z.object({ type: z.literal('runtime.error'), payload: RuntimeErrorPayload }),
+  z.object({
+    type: z.literal('workspace.election.request'),
+    payload: WorkspaceElectionRequestPayload,
+  }),
+  z.object({
+    type: z.literal('workspace.election.response'),
+    payload: WorkspaceElectionResponsePayload,
+  }),
 ]);
 
 export { MESSAGE_TYPES };

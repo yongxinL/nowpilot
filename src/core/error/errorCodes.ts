@@ -14,6 +14,8 @@ export const ERROR_CODES = [
   'STANDALONE_OPEN_FAILED',
   'THEME_INVALID_VALUE',
   'THEME_PERSIST_FAILED',
+  'WORKSPACE_ELECTION_REJECTED',
+  'WORKSPACE_ELECTION_FAILED',
 ] as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[number];

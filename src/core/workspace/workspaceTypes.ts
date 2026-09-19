@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { ErrorCodeSchema } from '../error/errorCodes';
+import { OperationIdSchema } from '../runtime/OperationId';
 
 export const WORKSPACE_SCHEMA_VERSION = 1 as const;
 
@@ -28,6 +30,34 @@ export const WorkspaceVersionRecordSchema = z.object({
 });
 export type WorkspaceVersionRecord = z.infer<typeof WorkspaceVersionRecordSchema>;
 
+export const WorkspaceElectionOperationSchema = z.enum(['claim', 'relinquish', 'handoff-commit']);
+export type WorkspaceElectionOperation = z.infer<typeof WorkspaceElectionOperationSchema>;
+
+export const WorkspaceElectionClaimReasonSchema = z.enum(['initial', 'stale-recovery', 'fallback']);
+export type WorkspaceElectionClaimReason = z.infer<typeof WorkspaceElectionClaimReasonSchema>;
+
+export const ElectionRequestFingerprintSchema = z.object({
+  requestId: OperationIdSchema,
+  operation: WorkspaceElectionOperationSchema,
+  requesterInstanceId: InstanceIdSchema,
+  requesterWriterType: WorkspaceWriterTypeSchema,
+  committedVersion: z.number().int().nonnegative(),
+  reason: WorkspaceElectionClaimReasonSchema.optional(),
+  expectedEpoch: z.number().int().nonnegative().optional(),
+  targetInstanceId: InstanceIdSchema.optional(),
+  targetWriterType: WorkspaceWriterTypeSchema.optional(),
+});
+export type ElectionRequestFingerprint = z.infer<typeof ElectionRequestFingerprintSchema>;
+
+export const ElectionIdempotencyRecordSchema = z.object({
+  request: ElectionRequestFingerprintSchema,
+  accepted: z.boolean(),
+  code: ErrorCodeSchema.optional(),
+  epoch: z.number().int().nonnegative(),
+  completedAt: z.number().int().nonnegative(),
+});
+export type ElectionIdempotencyRecord = z.infer<typeof ElectionIdempotencyRecordSchema>;
+
 export const ElectionRecordSchema = z.object({
   writerType: WorkspaceWriterTypeSchema,
   writerInstanceId: InstanceIdSchema,
@@ -36,6 +66,7 @@ export const ElectionRecordSchema = z.object({
   handoffPhase: HandoffPhaseSchema,
   handoffTargetInstanceId: InstanceIdSchema.nullable(),
   updatedAt: z.number().int().nonnegative(),
+  recentCompletedRequests: z.array(ElectionIdempotencyRecordSchema).default([]),
 });
 export type ElectionRecord = z.infer<typeof ElectionRecordSchema>;
 

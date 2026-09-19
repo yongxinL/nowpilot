@@ -1201,3 +1201,83 @@ and both return `status: 'acquired'`. This authorises two live writers.
 
 Per `AGENTS.md` Section 2/18/19, execution is stopped and no further task is started until the
 operator decides.
+
+## Task 13C — Corrective background-serialised election (ADR-0001) self-review (2026-09-19)
+
+Scope: `WorkspaceElectionArbiter.ts` + arbiter suite (new); `errorCodes`, `MessageType`,
+`messageSchemas`, `RuntimeEnvelope` (two discriminated-union arms only), `workspaceTypes`,
+`WorkspaceElection` client, and their tests. Branch `phoenix`.
+
+### Specification compliance
+
+- Canonical contract followed: request/response payloads, FIFO `ElectionSerialExecutor`,
+  `WorkspaceElectionArbiter`/`createWorkspaceElectionArbiter`, `BackgroundElectionMessageListener`
+  factory, and the two new error codes match ADR-0001 and DESIGN.md Section 6.
+- Registry growth is exactly additive: `MESSAGE_TYPES` 11 -> 13 (request sources
+  `sidepanel`/`standalone`; response source `background`); `ERROR_CODES` 13 -> 15, appended after
+  `THEME_PERSIST_FAILED`. No third message type, storage key, permission, dependency, or
+  `DiagnosticEvent`.
+- Idempotency ledger: `ElectionRecord.recentCompletedRequests` (`ElectionIdempotencyRecord[]`,
+  output-required, input-tolerant via `.default([])`), retention limit exactly 32, oldest to
+  newest, remove-by-`requestId` then append then `slice(-32)`, order-independent named-field
+  fingerprint equality with no `JSON.stringify`, no recursive `ElectionRecord`.
+- Epoch discipline verified: missing-record initial claim is the only path to epoch 0; every
+  later ownership change (handoff, stale/fallback takeover, invalid recovery) is `prior + 1`;
+  rejected/idempotent paths never change the epoch; invalid recovery uses the raw numeric
+  `epoch` when finite/non-negative, else 1 (never a bare 0).
+- Fail-closed persistence: write throw, read-back mismatch, or read throw returns
+  `accepted:false` + `WORKSPACE_ELECTION_FAILED`; success is returned only after a full-record
+  read-back deep-equality check; no ledger entry is recorded on failure.
+- Listener: validates the T08 inbound boundary first (no response for untrusted
+  sender/schema-invalid/background-originated/disallowed source), ignores non-election types,
+  rejects non-`background` targets, returns literal `true`, delivers exactly one schema-valid
+  response via `sendResponse` with `correlationId` = request envelope `id` and `target` =
+  requesting surface, and never responds twice.
+- Client: `read()`/`isWriter()` unchanged; `claim(reason)`/`relinquish()` send
+  `workspace.election.request` through the injected bus and resolve the matching response by
+  `correlationId`; the client never writes `np_workspace_election` directly (asserted).
+  `ElectionClaimResult` gained the `{ status: 'rejected'; code }` arm. Wildcard/mis-targeted
+  responses are ignored.
+
+### Code quality
+
+- `handle()` wraps the whole evaluation in `executor.runExclusive`; the executor tail is
+  rejection-safe, so a rejected operation does not break FIFO ordering of later operations.
+- Duplicate/conflict recognition is state-derived from the persisted ledger only; no in-memory
+  cache, so it survives a worker restart.
+- Read-back equality compares every record field and every ledger entry field directly.
+- Errors and rejections are returned as data; `handle()` rejects only on truly unexpected
+  programmer errors, which the listener catches into a single canonical failure response.
+- Types are clean under the pinned strict toolchain (`noUncheckedIndexedAccess`); no `any`,
+  no non-null assertions in production code, no empty catch blocks, no comments.
+
+### Security and privacy
+
+- No secret, prompt, payload, record, or sender content is logged; only canonical error codes
+  with fixed labels (`key`/`reason`) pass through the redacting `debugLog`.
+- No direct `chrome.*`, IndexedDB, provider/MCP, or network access in the arbiter/client.
+- The arbiter is background-only; it does not own workspace content or perform ordinary
+  mutations.
+
+### Findings and dispositions
+
+- Low/None. `runtimePrimitives.test.ts` was added to the changed set: it asserts the closed
+  `MESSAGE_TYPES` list and therefore had to move from the eleven to the thirteen-entry registry
+  for the closed-registry completeness invariant to hold. It is a test-only completeness
+  consequence of the mandated registry growth and is disclosed here.
+- Tension recorded (resolved by the binding T13C rulings R2.3/R5): DESIGN.md Section 6 mentions
+  failing closed with `WORKSPACE_INVALID_METADATA` "when [a malformed ledger] cannot be
+  normalised". R5 defines the permissive read schema so that a non-array ledger is an invalid
+  base record, which R2.3 recovers with a fresh epoch; malformed *entries* are dropped and the
+  ledger trimmed to the newest 32. The implementation follows the binding rulings; the canonical
+  `WORKSPACE_INVALID_METADATA` code is still logged (with a fixed label) for an invalid base
+  record. No behaviour contradicts PLAN.md/ADR-0001.
+- The rulings R1-R13 were checked against PLAN.md/DESIGN.md Section 6/ADR-0001; no blocking
+  contradiction was found.
+
+### Acceptance decision
+
+**PASS** — all T13C Step 1 obligations are covered by passing tests; `typecheck`, `lint`,
+`prettier --check .`, and the phase chain all exit 0; no blocking finding remains. The T13
+Critical two-writer finding is remediated: simultaneous claims produce exactly one writer and
+the loser receives `WORKSPACE_ELECTION_REJECTED`. Corrected T13 is accepted; next task T14.

@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ElectionIdempotencyRecordSchema,
   ElectionRecordSchema,
+  ElectionRequestFingerprintSchema,
   HandoffRecordSchema,
   StandaloneTabRecordSchema,
   WORKSPACE_SCHEMA_VERSION,
+  WorkspaceElectionClaimReasonSchema,
+  WorkspaceElectionOperationSchema,
   WorkspaceMetadataSchema,
   WorkspaceMutationSchema,
   createEmptyWorkspaceMetadata,
@@ -89,6 +93,63 @@ describe('workspace types', () => {
   it('validates a standalone tab record', () => {
     expect(StandaloneTabRecordSchema.safeParse({ tabId: 7, openedAt: 1 }).success).toBe(true);
     expect(StandaloneTabRecordSchema.safeParse({ tabId: -1, openedAt: 1 }).success).toBe(false);
+  });
+
+  it('defaults the bounded recent-completed-requests ledger on an election record', () => {
+    const parsed = ElectionRecordSchema.safeParse({
+      writerType: 'sidepanel',
+      writerInstanceId: 'instance-1',
+      epoch: 0,
+      committedVersion: 0,
+      handoffPhase: 'idle',
+      handoffTargetInstanceId: null,
+      updatedAt: 10,
+    });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) expect(parsed.data.recentCompletedRequests).toEqual([]);
+  });
+
+  it('closes the election operation and claim-reason vocabularies', () => {
+    expect(WorkspaceElectionOperationSchema.safeParse('claim').success).toBe(true);
+    expect(WorkspaceElectionOperationSchema.safeParse('relinquish').success).toBe(true);
+    expect(WorkspaceElectionOperationSchema.safeParse('handoff-commit').success).toBe(true);
+    expect(WorkspaceElectionOperationSchema.safeParse('seize').success).toBe(false);
+    expect(WorkspaceElectionClaimReasonSchema.safeParse('initial').success).toBe(true);
+    expect(WorkspaceElectionClaimReasonSchema.safeParse('stale-recovery').success).toBe(true);
+    expect(WorkspaceElectionClaimReasonSchema.safeParse('fallback').success).toBe(true);
+    expect(WorkspaceElectionClaimReasonSchema.safeParse('recovered').success).toBe(false);
+  });
+
+  it('validates an election request fingerprint and idempotency record without embedding a record', () => {
+    const fingerprint = {
+      requestId: '00000000-0000-4000-8000-000000000000',
+      operation: 'claim',
+      requesterInstanceId: 'instance-1',
+      requesterWriterType: 'sidepanel',
+      committedVersion: 0,
+      reason: 'initial',
+    };
+    expect(ElectionRequestFingerprintSchema.safeParse(fingerprint).success).toBe(true);
+    expect(
+      ElectionRequestFingerprintSchema.safeParse({ ...fingerprint, expectedEpoch: -1 }).success,
+    ).toBe(false);
+    expect(
+      ElectionIdempotencyRecordSchema.safeParse({
+        request: fingerprint,
+        accepted: false,
+        code: 'WORKSPACE_ELECTION_REJECTED',
+        epoch: 0,
+        completedAt: 1,
+      }).success,
+    ).toBe(true);
+    expect(
+      ElectionIdempotencyRecordSchema.safeParse({
+        request: fingerprint,
+        accepted: true,
+        epoch: 0,
+        completedAt: 1,
+      }).success,
+    ).toBe(true);
   });
 
   it('accepts exactly one mutation kind with a schema-valid metadata payload', () => {

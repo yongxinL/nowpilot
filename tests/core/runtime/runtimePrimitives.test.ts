@@ -15,7 +15,7 @@ describe('runtime primitives', () => {
     expect(OperationIdSchema.safeParse('not-a-uuid').success).toBe(false);
   });
 
-  it('declares the eleven canonical message types in order', () => {
+  it('declares the thirteen canonical message types in order', () => {
     expect(MESSAGE_TYPES).toEqual([
       'workspace.mutation',
       'workspace.handoff.prepare',
@@ -28,6 +28,8 @@ describe('runtime primitives', () => {
       'standalone.focus',
       'standalone.closed',
       'runtime.error',
+      'workspace.election.request',
+      'workspace.election.response',
     ]);
     expect(MessageTypeSchema.safeParse('workspace.mutation').success).toBe(true);
     expect(MessageTypeSchema.safeParse('workspace.unknown').success).toBe(false);
