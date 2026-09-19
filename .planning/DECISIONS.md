@@ -43,8 +43,9 @@ This index records identifiers and status only.
 | 17 | Standalone close: unload best-effort; `tabs.onRemoved` authoritative | Approved |
 | 18 | Testing categories separated (unit / integration / manifest / bundle / manual) | Approved |
 | 19 | Exact dependency set pinned from registry metadata; later-phase deps excluded | Approved |
-| 20 | Branch model: `phoenix` planning baseline; `phase/01-phoenix` implementation | Approved |
+| 20 | Branch model (prior): `phoenix` planning baseline; `phase/01-phoenix` implementation branch; linked implementation worktree | Superseded by operator decision 2026-09-19 |
 | 21 | Route model: hash route format `#/` plus a validated `StandaloneRouteId`; default `chat`; `replaceState`; no history routing | Approved |
 | 22 | Side Panel actions via one canonical `StandaloneNavigation` service; typed destination | Approved |
 | 23 | Registries: `ErrorCode` and `DiagnosticEvent` are separate closed schemas | Approved |
 | 24 | `approvedPlanningBaselineCommit` is the immutable approved-plan commit, recorded by a later status commit | Approved |
+| 25 | Direct-branch model: implementation occurs directly on `phoenix`; implementation is sequential; only one implementation agent may modify the repository at a time; every `PLAN.md` task receives one verified atomic commit; parallel implementation is prohibited; no push, merge, rebase, squash, amend, reset, force-push, or history rewriting; recovery uses a corrective commit or operator-approved `git revert` | Approved |

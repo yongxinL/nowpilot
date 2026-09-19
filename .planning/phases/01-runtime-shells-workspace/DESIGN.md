@@ -5,7 +5,7 @@
 **Status:** Approved
 **Approval date:** 2026-09-19
 **Planning baseline branch:** `phoenix`
-**Implementation branch (planned):** `phase/01-phoenix`
+**Implementation branch:** `phoenix`
 **Package manager:** pnpm
 
 ## 0. Document status
@@ -18,13 +18,14 @@ known without a future commit SHA.
   skill after the governance baseline commit.
 - **Implementation status:** Not started.
 - **Planning baseline branch:** `phoenix`.
-- **Implementation branch:** `phase/01-phoenix` (not yet created).
+- **Implementation branch:** `phoenix` (single sequential branch; no separate
+  implementation branch or linked worktree).
 - **Governance baseline commit:** Not yet created.
 - **Approved planning baseline commit:** `approvedPlanningBaselineCommit` is not
   yet recorded; it is read from `.planning/STATUS.md` after the approved-plan
   commit exists.
-- **SHA-dependent fields:** None recorded in this document. No absolute worktree
-  path is stored in this document.
+- **SHA-dependent fields:** None recorded in this document. No absolute
+  filesystem path is stored in this document.
 
 ---
 
@@ -407,28 +408,28 @@ PLAN.md must name every exact test file and command.
 Git/filesystem only; the design states the required assertions, and PLAN.md
 contains the exact executable commands. The approved planning baseline commit is
 read from `.planning/STATUS.md` after the approved-plan commit exists. No
-absolute worktree path is stored in this design.
+absolute filesystem path is stored in this design.
 
 Required assertions:
 
-1. the current directory is the root of a valid Git worktree
+1. the current directory is the repository root
    (`git rev-parse --is-inside-work-tree` is `true` and
    `git rev-parse --show-toplevel` equals the resolved current directory);
-2. the current branch is exactly `phase/01-phoenix`;
+2. the current branch is exactly `phoenix`;
 3. the working tree is clean (`git status --porcelain` is empty);
 4. `.planning/README.md`, `.planning/STATUS.md`, and `.planning/DECISIONS.md`
    exist;
 5. the approved `DESIGN.md` and `PLAN.md` exist;
 6. `package-lock.json` and `pnpm-lock.yaml` do not coexist;
-7. the `approvedPlanningBaselineCommit` value recorded in `.planning/STATUS.md`
-   exists as a commit,
+7. `HEAD` contains the approved planning commit and the status commit that
+   records it: the `approvedPlanningBaselineCommit` value recorded in
+   `.planning/STATUS.md` exists as a commit,
    `git merge-base --is-ancestor "$approvedPlanningBaselineCommit" HEAD`
-   succeeds, and the implementation worktree contains the later status-record
-   commit that names that value.
+   succeeds, and `HEAD` contains the later status-record commit that names that
+   value.
 
 `approvedPlanningBaselineCommit` refers to the immutable **approved-plan
-commit**, not to the later status-record commit and not to the implementation
-branch HEAD.
+commit**, not to the later status-record commit and not to the branch HEAD.
 
 **Lockfile state transition:** before the package-bootstrap task, the orphan
 `package-lock.json` may exist alone; after that task, `package-lock.json` must be
@@ -462,12 +463,14 @@ reviews, manual checks with screenshots, and operator acceptance.
 
 ## 17. Governance sequencing and branch model
 
-**Branch/worktree model (locked):** the planning baseline branch is `phoenix`;
-the Phase 01 implementation branch is `phase/01-phoenix`; implementation occurs
-in an isolated worktree created from the approved `phoenix` planning commit;
-prior historical branches remain read-only references; no production
-implementation occurs directly on `phoenix`. The exact worktree filesystem path
-is not hard-coded in this document.
+**Branch model (locked, operator decision 2026-09-19):** the single sequential
+branch for Phase 01 is `phoenix`; planning and implementation share it.
+Implementation occurs directly on `phoenix` in the repository root. Prior
+historical branches remain read-only references. A separate implementation
+branch and a linked worktree are not used. The earlier decision to use a
+`phase/01-phoenix` implementation branch and an isolated worktree is superseded
+and retained as decision history only. The exact filesystem path is not
+hard-coded in this document.
 
 **Deterministic sequence:**
 
@@ -483,19 +486,19 @@ is not hard-coded in this document.
 7. Update `.planning/STATUS.md` with:
    - approved planning baseline commit: `approvedPlanningBaselineCommit` (the
      exact SHA captured in step 6);
-   - implementation branch: `phase/01-phoenix`;
+   - implementation branch: `phoenix`;
    - implementation status: not started;
    - next task: the first task from `PLAN.md`.
 8. Commit that status record separately:
    `docs(phase-01): record approved planning baseline`.
-9. Create `phase/01-phoenix` from the new status-record commit.
-10. During implementation baseline verification, require the assertions in
-    Section 15.1.
+9. During implementation baseline verification, require the assertions in
+   Section 15.1. The status-record commit from step 8 remains part of `HEAD`
+   history.
 
 `approvedPlanningBaselineCommit` is the immutable **approved-plan commit**
 recorded in `.planning/STATUS.md`; it is not the later status-record commit and
-not the implementation branch HEAD. A governance commit cannot record its own
-SHA, so the value is captured only after the approved-plan commit exists.
+not the branch HEAD. A governance commit cannot record its own SHA, so the value
+is captured only after the approved-plan commit exists.
 
 `.planning/DESIGN_SYSTEM.md` is a non-authoritative design companion; functional
 requirements derived from it are restated directly in this document.
@@ -533,7 +536,7 @@ requirements derived from it are restated directly in this document.
 | 17 | Standalone close: unload best-effort; `tabs.onRemoved` authoritative |
 | 18 | Testing categories separated (unit / integration / manifest / bundle / manual) |
 | 19 | Exact dependency set pinned from registry metadata; later-phase deps excluded |
-| 20 | Branch model: `phoenix` planning baseline; `phase/01-phoenix` implementation |
+| 20 | Branch model: `phoenix` is the single sequential branch for planning and implementation; the earlier `phase/01-phoenix` implementation branch and linked worktree are superseded (operator decision 2026-09-19) |
 | 21 | Route model: hash route format `#/` plus a validated `StandaloneRouteId` (examples `#/chat`, `#/options`); default `chat`; `replaceState`; no history routing |
 | 22 | Side Panel actions via one canonical `StandaloneNavigation` service; typed destination |
 | 23 | Registries: `ErrorCode` and `DiagnosticEvent` are separate closed schemas |

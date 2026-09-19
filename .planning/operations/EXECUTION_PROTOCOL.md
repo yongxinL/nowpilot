@@ -63,19 +63,20 @@ Save it to:
 
 A task must not depend on model inference. Split any task that cannot be completed and verified in one small test-first cycle.
 
-### Gate C: isolated execution
+### Gate C: sequential execution on `phoenix`
 
-Use an isolated Git worktree and a dedicated phase branch.
+Implementation proceeds directly on the single sequential `phoenix` branch in
+the repository root. Do not create a separate implementation branch or a linked
+worktree. Only one implementation agent may modify the repository at a time.
 
 ```bash
 git status --short
-git worktree add ../nowpilot-phase-<NN> -b phase/<NN>-<name>
-cd ../nowpilot-phase-<NN>
+test "$(git branch --show-current)" = "phoenix"
 pnpm install --frozen-lockfile
 pnpm run verify:phase-<previous>
 ```
 
-If the repository has no previous phase, run the baseline command defined in the Phase 1 plan.
+If the repository has no previous phase, run the baseline command defined in the Phase 1 plan. That baseline verifies the assertions in `DESIGN.md` Section 15.1, including that `HEAD` contains the approved planning commit and the status commit that records `approvedPlanningBaselineCommit`.
 
 ### Gate D: task implementation
 

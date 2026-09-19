@@ -17,7 +17,7 @@
 
 These apply to every task. Every task's requirements implicitly include this section.
 
-1. **Planning baseline branch:** `phoenix`. **Implementation branch:** `phase/01-phoenix`. No production implementation on `phoenix`. The exact worktree path is never hard-coded.
+1. **Branch:** `phoenix` is the single sequential branch for planning and implementation. Implementation occurs directly on `phoenix` in the repository root; no separate implementation branch and no linked worktree is used. The exact filesystem path is never hard-coded.
 2. **Package manager:** pnpm `12.4.2` (`packageManager: "pnpm@12.4.2"`). Single-package repo — do not add `pnpm-workspace.yaml`. `.npmrc` contains exactly `engine-strict=true` and `save-exact=true`.
 3. **Node engines:** `"^22.22.2 || ^24.15.0 || >=26.0.0"` (exact string from DESIGN.md Section 3).
 4. **Exact dependency pins** (no `^`, `~`, `latest`, or wildcards). Runtime: `react@19.3.0`, `react-dom@19.3.0`, `antd@6.6.4`, `@ant-design/icons@6.3.4`, `zustand@5.0.15`, `zod@4.6.5`. Dev: `wxt@0.21.4`, `@wxt-dev/module-react@1.2.2`, `vite@8.3.0`, `typescript@5.9.3`, `@types/react@19.3.0`, `@types/react-dom@19.3.0`, `@types/node@24.13.6`, `@types/chrome@0.3.0`, `eslint@10.11.0`, `typescript-eslint@8.70.0`, `prettier@3.9.8`, `vitest@5.0.1`, `jsdom@30.1.0`, `@testing-library/react@16.3.3`, `@testing-library/dom@10.4.2`, `@testing-library/jest-dom@7.0.1`.
@@ -33,6 +33,7 @@ These apply to every task. Every task's requirements implicitly include this sec
 14. **Fail closed:** unknown message types, invalid envelopes, untrusted senders, invalid metadata, and stale mutations produce canonical structured behaviour, never silent success. Side-effect or ownership failures never render as success.
 15. **Security:** never log, persist, display, or export raw API keys, tokens, cookies, prompts, tool bodies, clipboard content, case content, password values, or sensitive paths. All logging goes through `debugLog` with redaction.
 16. Do not modify `DESIGN.md`. Do not create CI workflow files. Do not add `.codex/`. Do not add `chromePolyfill.ts` unless a task proves it necessary and stops for approval.
+17. **Direct-branch safeguards:** implementation is sequential and only one implementation agent may modify the repository at a time; parallel task execution is prohibited; every subagent uses the same repository root and the same `phoenix` branch; verify the commit branch is exactly `phoenix` before and after every task; never push, force-push, merge, rebase, squash, amend, reset, or rewrite history; recover with a new corrective commit or an operator-approved `git revert`.
 
 ---
 
@@ -74,19 +75,19 @@ These four interpretations were approved by the operator and are authoritative f
 
 ## Pre-implementation Baseline Verification (gate, no commit)
 
-Run **once** at the start of the first implementation session, from the implementation worktree root, before any file is modified. Record the exact output in `.planning/evidence/phase-01/verification.txt` (create the file with this first real record — see Task 01 evidence step for the directory policy).
+Run **once** at the start of the first implementation session, from the repository root, before any file is modified. Record the exact output in `.planning/evidence/phase-01/verification.txt` (create the file with this first real record — see Task 01 evidence step for the directory policy).
 
-The block below is executable as-is with `bash -euo pipefail`. It uses no absolute worktree path and no unresolved placeholder. `approvedPlanningBaselineCommit` is read from `.planning/STATUS.md`; it refers to the immutable **approved-plan commit**, not the later status-record commit and not `HEAD`.
+The block below is executable as-is with `bash -euo pipefail`. It uses no absolute filesystem path and no unresolved placeholder. `approvedPlanningBaselineCommit` is read from `.planning/STATUS.md`; it refers to the immutable **approved-plan commit**, not the later status-record commit and not `HEAD`.
 
 ```bash
 set -euo pipefail
 
-# 1. Current directory is the root of a valid Git worktree.
+# 1. Current directory is the repository root.
 test "$(git rev-parse --is-inside-work-tree)" = "true"
 test "$(git rev-parse --show-toplevel)" = "$(pwd -P)"
 
-# 2. Current branch is exactly the Phase 01 implementation branch.
-test "$(git branch --show-current)" = "phase/01-phoenix"
+# 2. Current branch is exactly the single sequential phase branch.
+test "$(git branch --show-current)" = "phoenix"
 
 # 3. Working tree is clean.
 test -z "$(git status --porcelain)"
@@ -447,7 +448,7 @@ Expected: `.output/` and `.wxt/` are absent from the list (ignored by `.gitignor
 
 - [ ] **Step 12: Record evidence, update status, and commit**
 
-Append a dated Task 01 section to `.planning/evidence/phase-01/verification.txt` containing: task ID, branch (`phase/01-phoenix`), commit range placeholder filled after commit, the exact commands from Step 10, exit statuses, the WXT version output, and the lockfile state. Create `.planning/evidence/phase-01/` only now, with this first real file; do not create empty siblings (`review.md`, `manual-checks.md`, `screenshots/` are created only when they gain real content).
+Append a dated Task 01 section to `.planning/evidence/phase-01/verification.txt` containing: task ID, branch (`phoenix`), commit range placeholder filled after commit, the exact commands from Step 10, exit statuses, the WXT version output, and the lockfile state. Create `.planning/evidence/phase-01/` only now, with this first real file; do not create empty siblings (`review.md`, `manual-checks.md`, `screenshots/` are created only when they gain real content).
 
 Update the "Current state" section and History of `.planning/STATUS.md` (current task T01, last commit, verification result, next task T02, evidence path).
 

@@ -83,6 +83,7 @@ The following decisions are locked unless an approved ADR explicitly changes the
 - Side-effect completion requires matching verification evidence.
 - Notes and memory are local-first. Optional filesystem storage is a backup target, not the primary store.
 - Build-agent model selection is operator-configured and must not be hard-coded in product code or specifications.
+- Phase 01 implementation occurs directly on the single sequential `phoenix` branch; no separate implementation branch and no linked worktree is used.
 
 Do not reopen these decisions during routine implementation.
 
@@ -96,18 +97,39 @@ Before implementation, use the relevant Superpowers workflow.
 2. Save the approved design to `.planning/phases/<phase>/DESIGN.md`.
 3. Use `writing-plans` to create the executable phase plan.
 4. Save the approved plan to `.planning/phases/<phase>/PLAN.md`.
-5. Use `using-git-worktrees` before implementation when the worktree does not already exist.
-6. Use `subagent-driven-development` when reliable subagents are available. Otherwise use `executing-plans`.
+5. Implement directly on the `phoenix` branch in the repository root. Do not create a separate implementation branch or a linked worktree.
+6. Use `subagent-driven-development` when reliable subagents are available. Otherwise use `executing-plans`. Subagents run sequentially, in the same repository root, on the same `phoenix` branch.
 7. Use `test-driven-development` for implementation tasks.
 8. Use `requesting-code-review` after each task.
 9. Use `verification-before-completion` before any completion claim.
-10. Use `finishing-a-development-branch` after the complete phase passes its gates.
+10. Use `finishing-a-development-branch` after the complete phase passes its gates, to confirm the gates. Because the work is already committed on `phoenix`, do not merge, rebase, or rewrite history.
 
 ### Bugs and unexpected failures
 
 Use `systematic-debugging` before proposing or applying a fix when the root cause is not already proven by a focused failing test.
 
 Do not bypass a mandatory Superpowers workflow merely because the task appears small.
+
+### Direct-branch implementation safeguards
+
+Phase 01 implementation runs directly on the single `phoenix` branch in the
+repository root. These safeguards are mandatory:
+
+- implementation is sequential;
+- only one implementation agent may modify the repository at a time;
+- parallel task execution is prohibited;
+- every subagent must use the same repository root and the same `phoenix`
+  branch; a subagent must not create a branch, worktree, or clone;
+- the commit branch must be verified as exactly `phoenix` before and after every
+  task;
+- no push, force-push, merge, rebase, squash, amend, reset, or history
+  rewriting;
+- recovery must use a new corrective commit or an operator-approved
+  `git revert`, never a destructive rollback.
+
+The earlier decision to use a separate `phase/01-phoenix` implementation branch
+and a linked worktree is superseded by an explicit operator decision
+(2026-09-19) and is retained as decision history only.
 
 ## 6. Session start procedure
 
@@ -119,11 +141,14 @@ At the start of every implementation session:
 4. Identify the current phase and current task from `STATUS.md`.
 5. Read only the current phase `DESIGN.md`, `PLAN.md`, and directly referenced contracts.
 6. Confirm that the design and plan are approved and contain no unresolved blocking question.
-7. Confirm the current Git branch and worktree.
+7. Confirm the current Git branch is exactly `phoenix`.
 8. Confirm the working tree is clean before starting a new task.
-9. Run the baseline verification command defined by the current plan.
-10. Confirm the baseline passes before modifying files.
-11. Implement exactly one plan task.
+9. Confirm that `HEAD` contains the approved planning commit and the status
+   commit that records `approvedPlanningBaselineCommit`, and that
+   `approvedPlanningBaselineCommit` remains an ancestor of `HEAD`.
+10. Run the baseline verification command defined by the current plan.
+11. Confirm the baseline passes before modifying files.
+12. Implement exactly one plan task.
 
 If `STATUS.md`, the current design, or the current plan is missing, stop. Do not infer the active phase or create an implementation plan during execution.
 
@@ -232,7 +257,7 @@ Do not change a test merely to make an incorrect implementation pass.
 
 ## 12. Verification discipline
 
-Verification must use fresh command output from the current worktree and commit state.
+Verification must use fresh command output from the current checkout and commit state.
 
 For each task, run:
 
@@ -272,7 +297,7 @@ Required records:
 Evidence must identify:
 
 - phase and task ID;
-- branch and worktree;
+- branch (`phoenix`) and repository root;
 - commit or commit range;
 - commands executed;
 - pass or fail result;
@@ -342,7 +367,8 @@ Rules:
 - One plan task equals one atomic commit.
 - Do not combine unrelated tasks.
 - Do not mix broad formatting or cleanup with functional changes.
-- Do not amend, rebase, reset, squash, force-push, or rewrite shared history without explicit operator approval.
+- Never push, force-push, merge, rebase, squash, amend, reset, or otherwise rewrite history.
+- Recover from a bad change with a new corrective commit or an operator-approved `git revert`; never use destructive rollback.
 - Do not commit generated secrets, local environment files, browser profiles, test credentials, or raw evidence containing sensitive data.
 - Update `.planning/STATUS.md` after the task is verified and committed.
 
@@ -456,7 +482,7 @@ Never say that a task, phase, fix, or release is complete without fresh evidence
 - migration, isolation, security, and performance gates pass where applicable;
 - `.planning/phases/<phase>/ACCEPTANCE.md` records the result;
 - the operator accepts the phase;
-- the finishing-a-development-branch workflow is completed.
+- the finishing-a-development-branch workflow is completed, without merging, rebasing, or rewriting history.
 
 ### Release completion requires
 
