@@ -8,13 +8,13 @@ rewrite or delete prior history.
 
 - **Current phase:** Phase 01 — Runtime, Shells, and Workspace
 - **Design status:** Approved
-- **Plan status:** Not created
+- **Plan status:** Approved
 - **Implementation status:** Not started
 - **Planning baseline branch:** `phoenix`
 - **Planned implementation branch:** `phase/01-phoenix`
-- **Approved planning baseline commit:** Not yet available
+- **Approved planning baseline commit:** Not yet recorded
 - **Current task:** None
-- **Next action:** Create the Phase 01 `PLAN.md` using the writing-plans skill
+- **Next action:** Commit the approved plan and status
 - **Blockers:** None
 - **Evidence status:** Not started
 
@@ -25,3 +25,15 @@ rewrite or delete prior history.
 - Governance baseline initialised.
 - Phase 01 design approved at `phases/01-runtime-shells-workspace/DESIGN.md`.
 - No implementation tasks executed. No plan created. No evidence recorded.
+- Phase 01 `PLAN.md` drafted using the writing-plans skill at
+  `phases/01-runtime-shells-workspace/PLAN.md` (28 tasks; T01–T28). Plan is
+  awaiting operator approval. No production code, worktree, branch, dependency
+  install, or evidence directory was created. No commit was made.
+- Operator approved the four planning interpretations: (1) closed typed
+  `MESSAGE_TYPE_ALLOWED_SOURCES` registry validated at every runtime boundary;
+  (2) `instanceId`/`writerType` on `WorkspaceRehydrateRequestPayload` and
+  `createWorkspaceCoordinator` as the Phase 01 orchestration boundary;
+  (3) single closed mutation kind `workspace.metadata.set`; (4) separate
+  `unit`/`manifest`/`isolation` Vitest projects with the approved aggregate
+  order. Phase 01 `PLAN.md` is approved as authoritative and the interpretations
+  are recorded in `PLAN.md`. No commit was made; no implementation started.
