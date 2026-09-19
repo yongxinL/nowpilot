@@ -561,7 +561,7 @@ rewrite or delete prior history.
   task T13C, and T14/T16/T22/T24/T25/T26/T28 amendment notes), and the prior
   `STATUS.md`. The previous `3fb619730c8032d4aa121c5b8aa9649901b45f5f` is retained
   as the historical pre-amendment approved-plan baseline. Implementation branch
-  `phoenix`;   implementation status blocked pending the T13C correction; current
+  `phoenix`; implementation status blocked pending the T13C correction; current
   task T13C; next action implement and verify T13C; blockers none; evidence status:
   T13 blocker recorded, T13C pending. This status record is committed separately
   from the amendment commit so the pre-implementation gate's status-record
