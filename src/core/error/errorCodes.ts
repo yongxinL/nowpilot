@@ -1,0 +1,27 @@
+import { z } from 'zod';
+
+export const ERROR_CODES = [
+  'RUNTIME_ENVELOPE_INVALID',
+  'RUNTIME_SENDER_REJECTED',
+  'WORKSPACE_INVALID_METADATA',
+  'WORKSPACE_OWNERSHIP_AMBIGUOUS',
+  'WORKSPACE_EPOCH_MISMATCH',
+  'WORKSPACE_VERSION_CONFLICT',
+  'WORKSPACE_STALE_MUTATION',
+  'WORKSPACE_REHYDRATION_REQUIRED',
+  'WORKSPACE_HANDOFF_FAILED',
+  'STANDALONE_TAB_INVALID',
+  'STANDALONE_OPEN_FAILED',
+  'THEME_INVALID_VALUE',
+  'THEME_PERSIST_FAILED',
+] as const;
+
+export type ErrorCode = (typeof ERROR_CODES)[number];
+
+export const ErrorCodeSchema = z.enum(ERROR_CODES);
+
+export const DIAGNOSTIC_EVENTS = ['STANDALONE_ROUTE_FALLBACK'] as const;
+
+export type DiagnosticEvent = (typeof DIAGNOSTIC_EVENTS)[number];
+
+export const DiagnosticEventSchema = z.enum(DIAGNOSTIC_EVENTS);

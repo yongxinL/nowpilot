@@ -9,18 +9,18 @@ rewrite or delete prior history.
 - **Current phase:** Phase 01 — Runtime, Shells, and Workspace
 - **Design status:** Approved
 - **Plan status:** Approved
-- **Implementation status:** In progress — T01 accepted; T02 accepted
+- **Implementation status:** In progress — T01 accepted; T02 accepted; T03 accepted
 - **Planning baseline branch:** `phoenix`
 - **Implementation branch:** `phoenix`
 - **Historical approved planning baseline commit:** `bd6ac44d6f562722c18f0d07e6910634e549c713`
 - **Approved planning baseline commit:** `3fb619730c8032d4aa121c5b8aa9649901b45f5f`
-- **Current task:** T02 — Test, Lint, Type-Check, Formatting, and Build Configuration (accepted)
-- **Last commit:** T02 atomic commit `chore(phase-01): configure test lint typecheck format and build` (SHA captured post-commit in `.superpowers/sdd/PLAN/task-02-report.md`)
-- **Verification result:** Pass — T02 Step 8 all exit 0 (`test` 4/4, `typecheck`, `lint`, `prettier --check .`, `build`); phase chain `typecheck && lint && test` exit 0
-- **Next task:** T03
+- **Current task:** T03 — Operational Error and Diagnostic Registries with `debugLog` (accepted)
+- **Last commit:** T03 atomic commit `feat(phase-01): add error and diagnostic registries` (SHA captured post-commit in `.superpowers/sdd/PLAN/task-03-report.md`)
+- **Verification result:** Pass — T03 focused test exit 0 (3 files, 11 tests; T03-only 2 files, 7 tests), `typecheck` exit 0, `lint` exit 0, `prettier --check .` exit 0; phase chain `typecheck && lint && test` exit 0
+- **Next task:** T04
 - **Blockers:** None
-- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 02 sections)
-- **Evidence status:** Task 02 verification and review recorded
+- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 03 sections)
+- **Evidence status:** Task 03 verification and review recorded
 
 ## History
 
@@ -124,3 +124,25 @@ rewrite or delete prior history.
   `.planning/evidence/phase-01/review.md` (Task 02 sections). Task commit
   `chore(phase-01): configure test lint typecheck format and build`. Current task
   T02 accepted; next task T03.
+- Task 03 (Operational Error and Diagnostic Registries with `debugLog`) executed on
+  `phoenix` in the repository root. RED confirmed at
+  `pnpm run test -- tests/core/error` (exit 1; "Failed to resolve import
+  `@/core/error/errorCodes`" and `@/core/error/debugLog`). Created
+  `src/core/error/errorCodes.ts` (exactly the 13 DESIGN.md Section 5 `ErrorCode`
+  values in approved order; the single `DiagnosticEvent`
+  `STANDALONE_ROUTE_FALLBACK`; two separate closed `z.enum` schemas, no union) and
+  `src/core/error/debugLog.ts` (exact 12-key `REDACTED_CONTEXT_KEYS`; key-based
+  redaction plus non-primitive replacement; every record passes through
+  `redactContext`; no network/storage/side effects). Tests created at
+  `tests/core/error/errorCodes.test.ts` (3 tests) and
+  `tests/core/error/debugLog.test.ts` (4 tests). One type-only adaptation (B5):
+  the verbatim `sink.debug.mock.calls[0][0]` is TS2532 under the T02-pinned
+  `noUncheckedIndexedAccess: true`, so `sink.debug.mock.calls[0]![0]` was used in the
+  test file; all values and assertions are unchanged and `tsconfig.json` was not
+  modified. GREEN: focused test exit 0 (3 files, 11 tests; T03-only 2 files, 7
+  tests), `typecheck` exit 0, `lint` exit 0, `prettier --check .` exit 0; phase
+  chain `typecheck && lint && test` exit 0. Evidence recorded in
+  `.planning/evidence/phase-01/verification.txt` and
+  `.planning/evidence/phase-01/review.md` (Task 03 sections). Task commit
+  `feat(phase-01): add error and diagnostic registries`. Current task T03 accepted;
+  next task T04.

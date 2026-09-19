@@ -184,3 +184,96 @@ Code-quality and security checklist:
 
 Completion criteria: Step 8 exit 0 for all five commands; phase-applicable chain exit 0;
 unit test green; one atomic commit.
+
+=== Task 03 — Operational Error and Diagnostic Registries with debugLog (2026-09-19) ===
+
+task ID: T03
+branch: phoenix
+repository root: /Users/george.li/Documents/workspaces/nowpilot
+classification: code task; TDD RED→GREEN applied
+base commit: 986fd64 (T02 atomic commit `chore(phase-01): configure test lint typecheck format and build`)
+Files created: src/core/error/errorCodes.ts, src/core/error/debugLog.ts,
+  tests/core/error/errorCodes.test.ts, tests/core/error/debugLog.test.ts
+Files modified: none (production); test files typed per the pinned tsconfig (see Note B5)
+
+Step 2 — RED:
+  command: pnpm run test -- tests/core/error
+  exit status: 1
+  observed: Test Files 2 failed | 1 passed (3); Tests 4 passed (4)
+    FAIL |unit| tests/core/error/debugLog.test.ts
+      Error: Failed to resolve import "@/core/error/debugLog" from
+      "tests/core/error/debugLog.test.ts". Does the file exist?
+      Plugin: vite:import-analysis
+    FAIL |unit| tests/core/error/errorCodes.test.ts
+      Error: Failed to resolve import "@/core/error/errorCodes" from
+      "tests/core/error/errorCodes.test.ts". Does the file exist?
+      Plugin: vite:import-analysis
+  Expected failure reason confirmed: both registry/logger modules were absent, so Vite
+  could not resolve the `@` imports. The single passing file was the pre-existing
+  tests/config/toolchain.test.ts (Vitest 5 does not restrict `--` positionals to the
+  requested subdirectory under `--project unit`), 4 passed.
+  No canonical code/event was missing.
+
+Step 3 — src/core/error/errorCodes.ts implemented verbatim:
+  ERROR_CODES has exactly the 13 DESIGN.md Section 5 operational codes in the approved
+  order: RUNTIME_ENVELOPE_INVALID, RUNTIME_SENDER_REJECTED, WORKSPACE_INVALID_METADATA,
+  WORKSPACE_OWNERSHIP_AMBIGUOUS, WORKSPACE_EPOCH_MISMATCH, WORKSPACE_VERSION_CONFLICT,
+  WORKSPACE_STALE_MUTATION, WORKSPACE_REHYDRATION_REQUIRED, WORKSPACE_HANDOFF_FAILED,
+  STANDALONE_TAB_INVALID, STANDALONE_OPEN_FAILED, THEME_INVALID_VALUE,
+  THEME_PERSIST_FAILED.
+  DIAGNOSTIC_EVENTS has exactly the 1 value STANDALONE_ROUTE_FALLBACK.
+  ErrorCodeSchema and DiagnosticEventSchema are two separate closed z.enum schemas; no
+  `ErrorCode | DiagnosticEvent` union and no arbitrary-string overloads.
+
+Step 4 — src/core/error/debugLog.ts implemented verbatim:
+  REDACTED_CONTEXT_KEYS is the exact 12-key list (apiKey, api_key, authorization, body,
+  caseContent, clipboard, content, cookie, password, path, prompt, token); key-based
+  redaction plus non-primitive replacement with `[REDACTED]`. Every emitted record passes
+  through redactContext; non-primitive values are never serialised. No network, storage,
+  or side effects. No new dependency (zod only).
+
+Note B5 (type-only test adaptation, no behaviour change):
+  Under the T02-pinned `.wxt/tsconfig.json` `noUncheckedIndexedAccess: true`, the verbatim
+  test expression `sink.debug.mock.calls[0][0]` is TS2532 (Object is possibly
+  'undefined'). `sink.debug.mock.calls[0]![0]` was used in both occurrences in
+  tests/core/error/debugLog.test.ts. All assertion values, canonical strings, and
+  behaviour are unchanged. tsconfig.json was not modified (out of scope). First
+  `pnpm run typecheck` (before the adaptation) exited 2 with the two TS2532 errors at
+  lines 35 and 44; after it, exit 0.
+
+Step 5 — focused verification (sequential):
+  pnpm run test -- tests/core/error              => exit 0  (3 files, 11 passed)
+  pnpm exec vitest run --project unit tests/core/error/errorCodes.test.ts tests/core/error/debugLog.test.ts
+                                                 => exit 0  (2 files, 7 passed — T03 tests only)
+  pnpm run typecheck                             => exit 0  (tsc --noEmit clean)
+  pnpm run lint                                  => exit 0  (eslint . clean)
+  pnpm exec prettier --check .                   => exit 0  (All matched files use Prettier code style)
+
+Phase 01 verification applicable now:
+  command: pnpm run typecheck && pnpm run lint && pnpm run test
+  exit status: 0
+  output: typecheck clean; lint clean; unit project 3 files, 11 tests passed.
+
+Test counts:
+  T03 test files: 2 passed, 7 tests passed (3 errorCodes + 4 debugLog), 0 failed, 0 skipped.
+  Unit project total after T03: 3 files, 11 passed.
+
+Specification-compliance checklist:
+  - exactly the 13 ErrorCode values in the approved order: yes
+  - exactly the 1 DiagnosticEvent value: yes
+  - two separate closed schemas, not one union: yes
+  - no arbitrary-string overload: yes
+  - no invented, renamed, or added codes/events: yes
+  - every logged record passes through redactContext: yes
+  - non-primitive values never serialised: yes
+
+Code-quality and security checklist:
+  - key-based redaction only; exact REDACTED_CONTEXT_KEYS list: yes
+  - no raw sensitive content logged or persisted: yes
+  - no empty catch blocks (no catch blocks): yes
+  - no network, storage, or filesystem side effects: yes
+  - no new dependency: yes
+  - only the four task files created; nothing else modified: yes
+
+Completion criteria: both test files green; typecheck and lint pass; phase-applicable
+chain exit 0; one atomic task commit exists; working tree clean; status recorded.
