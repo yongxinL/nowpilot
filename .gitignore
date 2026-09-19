@@ -186,3 +186,22 @@ dist/
 .wxt/
 # Playwright CLI output (may contain credentials)
 .playwright-cli/
+
+# ---> NowPilot local and sensitive artefacts
+# Playwright and test artefacts (may contain session state or credentials)
+.playwright/
+playwright-report/
+test-results/
+storage-state*.json
+auth.json
+
+# Local environment files
+*.local
+
+# Explicitly keep tracked planning evidence and skills
+!.planning/evidence/
+!.planning/evidence/**
+!.agents/skills/
+!.agents/skills/**
+!.opencode/skills/
+!.opencode/skills/**
