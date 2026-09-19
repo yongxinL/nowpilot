@@ -816,3 +816,118 @@ GREEN: focused run exit 0 (13 files, 71 tests); `pnpm run typecheck` exit 0;
 **PASS** — Task 10 meets specification-compliance, code-quality, and security/privacy
 requirements; the only findings are Low-severity type-only and formatting corrections,
 and no blocking finding remains.
+
+---
+
+## Task 11 — Singleton Standalone Tab Controller
+
+**Phase:** Phase 01 — Runtime, Shells, and Workspace
+**Branch:** `phoenix`
+**Repository root:** /Users/george.li/Documents/workspaces/nowpilot
+**Base commit:** `9578e5a613bf38b93ca6b9c02c4eea1ac349314f` (T10 atomic commit)
+**Classification:** code task (TDD RED→GREEN); implementation tier advanced (tab identity
+and recovery)
+
+### Scope reviewed
+
+- `src/core/runtime/StandaloneNavigation.ts` (T11 controller appended; T10 contract untouched)
+- `tests/core/runtime/standaloneTabController.test.ts` (created)
+
+### 1. Specification-compliance review
+
+- Interfaces and types match the brief exactly: `StandaloneTabApi`
+  (`get`/`create`/`update`/`focusWindow`), `StandaloneTabControllerDependencies`
+  (`tabs`/`storage`/`buildStandaloneUrl`/`sendFocus`/`now`), `StandaloneOpenResult`
+  (`created`/`focused` with `tabId`, or `failed` with `STANDALONE_OPEN_FAILED` /
+  `STANDALONE_TAB_INVALID`), `StandaloneTabController` (`open`/`handleTabRemoved`/
+  `readRecord`), and `createStandaloneTabController(deps)`. PASS
+- Singleton identity is the stored Standalone tab ID in session storage:
+  `STANDALONE_TAB_KEY = 'np_standalone_tab'`, which the T04 adapter maps to the
+  `session` area. PASS
+- `open` reads the stored ID, validates the live tab with the non-sensitive
+  `tabs.get(record.tabId)` and compares only the returned `id` (no URL/title read); when
+  live it calls `tabs.update(tabId, { active: true })`, `tabs.focusWindow(tabId)`, and
+  forwards a schema-valid `standalone.focus` envelope (`createStandaloneFocusEnvelope`
+  from T10) before returning `focused`. PASS
+- Stale handling: a rejected `get` or an id-less tab clears the stored record and
+  `tabs.create(buildStandaloneUrl(destination))`, then persists `{ tabId, openedAt }`.
+  No duplicate tab is created while a live stored tab exists. PASS
+- The controller uses only the injected `StandaloneTabApi` and contains no direct
+  `chrome.*`, no `tabs.query`, and no active-page URL/title/favicon/content read. The
+  `chrome.tabs` implementation is wired only in the background entrypoint (T22). PASS
+- Close recovery is authoritative via stored-ID validation in `handleTabRemoved`
+  (`tabs.onRemoved` is wired by T22); the non-authoritative `standalone.closed` message
+  is not used. PASS
+- Destination is the canonical typed `StandaloneRouteId`; no invented route, message
+  type, storage key, or error code. Canonical error codes `STANDALONE_TAB_INVALID` /
+  `STANDALONE_OPEN_FAILED` come from the T03 registry; the malformed-record and
+  stale/create/missing-id paths log only a fixed `reason` label. PASS
+- No dependency change; no IndexedDB; no network. Only `StandaloneNavigation.ts` and the
+  new test file changed, plus `.planning` evidence/STATUS. PASS
+- Scope note: the global "preserve committed version / never authorise two writers /
+  stale-writer recovery" constraint belongs to the workspace coordinator (T12+); the tab
+  controller owns singleton tab identity, and its stale-identity recovery is tested. PASS
+
+### 2. Code-quality review
+
+- The controller is a small closure over injected dependencies; `readRecord` is shared by
+  `open` and `handleTabRemoved`, so malformed/missing/stale handling is single-sourced.
+- Fail-closed handling is explicit: create failure and a missing returned id both return
+  `{ status: 'failed', code: 'STANDALONE_OPEN_FAILED' }` with a canonical error record.
+  Both `catch` blocks set a closed outcome and log; there are no empty catches.
+- Deterministic stale recovery: an absent/rejected tab is removed before creation, so a
+  later open cannot observe a partially-cleared record.
+- No overlap or ambiguity with T10: the existing envelope builders and
+  `openStandalone`/`focusStandalone` exports are unchanged; the controller composes the
+  T10 `createStandaloneFocusEnvelope` rather than duplicating envelope logic.
+- Test quality: 7 focused tests cover create-and-store, focus-and-forward (including the
+  forwarded `standalone.focus` envelope and destination), stale-ID recovery, malformed
+  record treated as absent, fail-closed missing id, removal of the singleton, and
+  ignoring an unrelated removal. Storage is the real T04 validated adapter over the T04
+  mocked chrome storage; only the tab API, URL builder, focus sender, and clock are
+  injected doubles (necessary boundaries).
+- No mutable module state; no timers; no I/O beyond the injected storage/tabs; no `any`.
+  PASS
+
+### 3. Security and privacy review (assets and trust boundaries)
+
+- No URL, title, favicon, page content, prompt, clipboard, password, token, or customer
+  content is read or logged. The only tab-surface observation is the returned numeric
+  `id` from `tabs.get`; the stored record holds only `{ tabId, openedAt }`.
+- The controller never calls `chrome.*`; the sole tab surface is the injected
+  `StandaloneTabApi`, which is provided by the background context. Tab identity is
+  session-scoped ephemeral state (`np_standalone_tab`), never durable.
+- Failure paths log only the canonical error code plus a fixed reason label
+  (`record` / `stale` / `create` / `missing-id`); no sender, page, or message body is
+  logged. `debugLog` still applies key-based redaction before the sink.
+- No side effects beyond the intended tab focus/create and session record write; no
+  network, IndexedDB, filesystem, or content-script access. Content-script isolation,
+  manifest permissions, and password handling are unaffected.
+- No secrets or sensitive data embedded in production code or evidence. PASS
+
+### 4. Findings and dispositions
+
+| ID | Severity | Finding | Disposition |
+|----|----------|---------|-------------|
+| — | Low (type-only) | The brief's `sendFocus = vi.fn(async () => undefined)` infers an empty args tuple, so `sendFocus.mock.calls[0][0]` is TS2532/TS2493 under `noUncheckedIndexedAccess`. | Mock parameter typed `_envelope: RuntimeEnvelope` and indices changed to `mock.calls[0]![0]`; assertions/values unchanged; tsconfig unmodified. |
+| — | Low (type-only) | The brief's `tabs.create = vi.fn(async () => ({ id: 42 }))` infers `{ id: number }`, so `mockResolvedValueOnce({})` is TS2345. | Mock annotated `async (): Promise<{ id?: number }> => ({ id: 42 })`, matching `StandaloneTabApi.create`; the test still supplies `{}`; values/assertions unchanged. |
+| — | Low (formatting) | `pnpm exec prettier --check .` flagged only the T11 test file (line wrapping at printWidth 100). | Formatted the T11 test file only; identifiers, values, and assertions unchanged; `StandaloneNavigation.ts` and no other file reformatted. |
+| — | Info | `pnpm run test -- tests/core/runtime/standaloneTabController.test.ts` also runs the pre-existing unit tests under Vitest 5; T11-only count confirmed with an explicit path (1 file, 7 tests). | Recorded; not a defect. |
+
+No Critical, High, or Medium finding remains unresolved.
+
+### 5. Verification evidence
+
+RED: `pnpm run test -- tests/core/runtime/standaloneTabController.test.ts` exit 1 — 7
+failures, all `TypeError: createStandaloneTabController is not a function`; the 71
+pre-existing unit tests still passed. GREEN: explicit focused path exit 0 (1 file, 7
+tests), `pnpm run test` exit 0 (14 files, 78 tests), `pnpm run typecheck` exit 0,
+`pnpm run lint` exit 0, `pnpm exec prettier --check .` exit 0, and the phase-applicable
+chain `typecheck && lint && test` exit 0. Full output is recorded in `verification.txt`
+(Task 11 section).
+
+### Acceptance decision
+
+**PASS** — Task 11 meets specification-compliance, code-quality, and security/privacy
+requirements; the only findings are two Low-severity type-only adaptations (disclosed)
+and a Low-severity formatting correction, and no blocking finding remains.

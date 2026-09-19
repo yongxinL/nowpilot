@@ -1043,3 +1043,134 @@ Code-quality and security checklist:
 
 Completion criteria: navigation test green; typecheck and lint pass; phase-applicable
 chain exit 0; one atomic task commit exists; working tree clean; status recorded.
+
+================================================================================
+Task 11 — Singleton Standalone Tab Controller (Create, Focus, Stale-ID Recovery, Close)
+================================================================================
+
+Date: 2026-09-19T11:02:07Z
+Task ID: T11
+Branch: phoenix
+Repository root: /Users/george.li/Documents/workspaces/nowpilot
+Classification: code task; TDD RED->GREEN applied
+Implementation tier: advanced (tab identity and recovery)
+Base commit: 9578e5a613bf38b93ca6b9c02c4eea1ac349314f (T10 atomic commit
+  `feat(phase-01): add standalone navigation request contract`)
+Files modified: src/core/runtime/StandaloneNavigation.ts (controller appended)
+Files created: tests/core/runtime/standaloneTabController.test.ts
+Atomic commit: feat(phase-01): add singleton standalone tab controller
+  (SHA captured post-commit in .superpowers/sdd/PLAN/task-11-report.md; a commit
+   cannot embed its own SHA, so the subject is recorded here and the exact SHA is
+   recorded in the task report and the current-state STATUS entry.)
+
+Step 1 — test file created verbatim from the brief at
+tests/core/runtime/standaloneTabController.test.ts (7 tests).
+
+Step 2 — RED (focused, brief command):
+  command: pnpm run test -- tests/core/runtime/standaloneTabController.test.ts
+  exit status: 1
+  output: |unit| tests/core/runtime/standaloneTabController.test.ts (7 tests | 7 failed)
+    TypeError: createStandaloneTabController is not a function
+    Test Files 1 failed | 13 passed (14); Tests 7 failed | 71 passed (78).
+  Expected failure reason confirmed: the T11 controller export did not yet exist on
+  StandaloneNavigation.ts, so every `setup()` call reached an undefined
+  `createStandaloneTabController`. The 71 pre-existing tests still passed. No canonical
+  identifier, storage key, error code, or message type was missing.
+
+Step 3 — src/core/runtime/StandaloneNavigation.ts appended verbatim per the brief:
+  Four imports added to the existing top import block (no self-import, no duplicate
+  StandaloneNavigation import): createErrorRecord/debugLog (T03), ValidatedStorage,
+  StorageKey, and StandaloneTabRecordSchema/StandaloneTabRecord (T06).
+  Interfaces/types exactly as specified: StandaloneTabApi (get/create/update/focusWindow),
+  StandaloneTabControllerDependencies (tabs/storage/buildStandaloneUrl/sendFocus/now),
+  StandaloneOpenResult (created|focused with tabId, or failed with
+  STANDALONE_OPEN_FAILED|STANDALONE_TAB_INVALID), StandaloneTabController
+  (open/handleTabRemoved/readRecord), and createStandaloneTabController(deps).
+  STANDALONE_TAB_KEY = 'np_standalone_tab' (T04 session-area key).
+  open(): reads the stored record; when present validates the stored tab ID with
+  `tabs.get` (non-sensitive: compares the returned `id` only, no URL/title read); if live,
+  `tabs.update(tabId,{active:true})` + `tabs.focusWindow(tabId)` + a schema-valid
+  `standalone.focus` envelope via `sendFocus` and returns focused; if the tab is gone
+  (rejected `get`) or has no id, it logs STANDALONE_TAB_INVALID (reason stale), removes the
+  stale record, and creates the Standalone entrypoint at
+  `buildStandaloneUrl(destination)`. create failure or a missing returned id fails closed
+  with STANDALONE_OPEN_FAILED (reasons create / missing-id); a created id is persisted as
+  { tabId, openedAt: now() }.
+  handleTabRemoved(tabId): reads the record and returns false for an unrelated tab or no
+  record; when the stored id matches it removes the record and returns true (authoritative
+  close recovery via stored-ID validation; `standalone.closed` is not used).
+  No direct chrome.* reference, no chrome.tabs.query, no URL/title/favicon/content read,
+  no IndexedDB/network, no dependency change.
+
+Step 4 — GREEN (focused, explicit path):
+  command: pnpm exec vitest run --project unit tests/core/runtime/standaloneTabController.test.ts
+  exit status: 0
+  output: Test Files 1 passed (1); Tests 7 passed (7), 0 failed, 0 skipped (T11-only).
+
+Focused verification (sequential):
+  pnpm run test -- tests/core/runtime/standaloneTabController.test.ts => exit 0
+    (unit project: 14 files, 78 tests passed)
+  pnpm run typecheck                                  => exit 0 (tsc --noEmit clean)
+  pnpm run lint                                       => exit 0 (eslint . clean)
+  pnpm exec prettier --check .                        => exit 0 after formatting only the
+    T11 test file (line wrapping at printWidth 100). Formatting changed whitespace/line
+    wrapping only; identifiers, values, and assertions are unchanged. StandaloneNavigation.ts
+    was already clean; no other file was reformatted.
+
+Phase 01 verification applicable now:
+  command: pnpm run typecheck && pnpm run lint && pnpm run test
+  exit status: 0
+  output: typecheck clean; lint clean; unit project 14 files, 78 tests passed.
+
+Test counts:
+  T11 test file: 1 passed, 7 tests passed, 0 failed, 0 skipped.
+  Unit project total after T11: 14 files, 78 passed.
+
+Type-only adaptations (Low; same class as T03 B5 / T09 / T10; no behaviour change):
+  (1) The brief's `sendFocus = vi.fn(async () => undefined)` infers an empty args tuple, so
+      `sendFocus.mock.calls[0][0]` is TS2532/TS2493 under the pinned
+      `noUncheckedIndexedAccess: true`. The mock parameter is typed
+      `_envelope: RuntimeEnvelope` (new type-only import) and the two indices use
+      `sendFocus.mock.calls[0]![0]`. Assertions and values are unchanged.
+  (2) The brief's `tabs.create = vi.fn(async () => ({ id: 42 }))` infers a return type
+      `{ id: number }`, so the fail-closed case `tabs.create.mockResolvedValueOnce({})` is
+      TS2345. The mock is annotated `async (): Promise<{ id?: number }> => ({ id: 42 })`,
+      matching the production StandaloneTabApi.create signature; the test still supplies
+      `{}` with no id. Values and assertions are unchanged.
+  tsconfig.json was not modified in either case.
+
+Specification-compliance checklist (verbatim from the brief):
+  - interfaces exact: StandaloneTabApi; StandaloneTabControllerDependencies;
+    StandaloneOpenResult; createStandaloneTabController: yes
+  - singleton identity is the stored tab ID in session storage np_standalone_tab: yes
+  - open validates via get (NO URL/title read), focuses via update + focusWindow, clears
+    the stale id, and creates the entrypoint at the requested canonical hash route: yes
+  - background is the only caller of chrome.tabs; the controller uses the injected
+    StandaloneTabApi and contains no direct chrome.*: yes
+  - no query-by-URL; no active-page URL/title/favicon/content reads: yes
+  - authoritative close recovery uses the stored tab-ID validation (onRemoved); the
+    non-authoritative standalone.closed message is not used here: yes
+  - destination is the canonical typed StandaloneRouteId; no invented identifiers or
+    message types: yes
+  - preserve committed version / never authorise two writers / stale-writer recovery:
+    out of scope for the tab-identity controller (the T12+ workspace coordinator owns
+    writer authorisation); stale-identity recovery is tested: yes
+  - no dependency change; no IndexedDB; no network: yes
+  - only StandaloneNavigation.ts and the one new test file changed (plus .planning
+    evidence/STATUS): yes
+
+Code-quality and security checklist:
+  - create failure and missing id both fail closed with the canonical
+    STANDALONE_OPEN_FAILED code; no silent success: yes
+  - stale recovery is deterministic (rejected/absent id -> remove then create): yes
+  - no duplicate tab: a live stored tab is focused and never re-created: yes
+  - malformed stored record is treated as absent and logged only as
+    STANDALONE_TAB_INVALID with a fixed reason label: yes
+  - no URL/title/page content is read, logged, or persisted; only the extension-internal
+    built URL string is passed to create: yes
+  - both catch blocks set a fail-closed outcome and log a canonical code; no empty catch:
+    yes
+  - no raw sensitive content, secrets, tokens, or sender values logged/persisted: yes
+
+Completion criteria: controller test green; typecheck and lint pass; phase-applicable
+chain exit 0; one atomic task commit exists; working tree clean; status recorded.

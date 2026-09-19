@@ -9,18 +9,18 @@ rewrite or delete prior history.
 - **Current phase:** Phase 01 — Runtime, Shells, and Workspace
 - **Design status:** Approved
 - **Plan status:** Approved
-- **Implementation status:** In progress — T01 accepted; T02 accepted; T03 accepted; T04 accepted; T05 accepted; T06 accepted; T07 accepted; T08 accepted; T09 accepted; T10 accepted
+- **Implementation status:** In progress — T01 accepted; T02 accepted; T03 accepted; T04 accepted; T05 accepted; T06 accepted; T07 accepted; T08 accepted; T09 accepted; T10 accepted; T11 accepted
 - **Planning baseline branch:** `phoenix`
 - **Implementation branch:** `phoenix`
 - **Historical approved planning baseline commit:** `bd6ac44d6f562722c18f0d07e6910634e549c713`
 - **Approved planning baseline commit:** `3fb619730c8032d4aa121c5b8aa9649901b45f5f`
-- **Current task:** T10 — Standalone Navigation Request Contract (accepted)
-- **Last commit:** `feat(phase-01): add standalone navigation request contract` (SHA captured post-commit in `.superpowers/sdd/PLAN/task-10-report.md`)
-- **Verification result:** Pass — T10 focused test exit 0 (13 files, 71 tests), `typecheck` exit 0, `lint` exit 0, `prettier --check .` exit 0; phase chain `typecheck && lint && test` exit 0 (13 files, 71 tests)
-- **Next task:** T11 — (per approved Phase 01 `PLAN.md`)
+- **Current task:** T11 — Singleton Standalone Tab Controller (accepted)
+- **Last commit:** `feat(phase-01): add singleton standalone tab controller` (SHA captured post-commit in `.superpowers/sdd/PLAN/task-11-report.md`)
+- **Verification result:** Pass — T11 focused test exit 0 (1 file, 7 tests), `typecheck` exit 0, `lint` exit 0, `prettier --check .` exit 0; phase chain `typecheck && lint && test` exit 0 (14 files, 78 tests)
+- **Next task:** T12 — (per approved Phase 01 `PLAN.md`)
 - **Blockers:** None
-- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 10 sections)
-- **Evidence status:** Task 10 verification and review recorded
+- **Evidence path:** `.planning/evidence/phase-01/verification.txt` and `.planning/evidence/phase-01/review.md` (Task 11 sections)
+- **Evidence status:** Task 11 verification and review recorded
 
 ## History
 
@@ -373,3 +373,38 @@ rewrite or delete prior history.
   `.planning/evidence/phase-01/review.md` (Task 10 sections). Task commit
   `feat(phase-01): add standalone navigation request contract`. Current task T10 accepted;
   next task T11 — per approved Phase 01 `PLAN.md`.
+- Task 11 (Singleton Standalone Tab Controller) executed on `phoenix` in the repository
+  root. Implementation tier advanced (tab identity and recovery). RED confirmed at
+  `pnpm run test -- tests/core/runtime/standaloneTabController.test.ts` (exit 1; 7
+  failures, all `TypeError: createStandaloneTabController is not a function`; the 71
+  pre-existing unit tests still passed). Appended to
+  `src/core/runtime/StandaloneNavigation.ts`: the exact brief interfaces `StandaloneTabApi`
+  (get/create/update/focusWindow), `StandaloneTabControllerDependencies`
+  (tabs/storage/buildStandaloneUrl/sendFocus/now), `StandaloneOpenResult`
+  (created|focused+tabId, or failed with STANDALONE_OPEN_FAILED|STANDALONE_TAB_INVALID),
+  `StandaloneTabController` (open/handleTabRemoved/readRecord), and
+  `createStandaloneTabController(deps)` with `STANDALONE_TAB_KEY = 'np_standalone_tab'`
+  (T04 session area). `open` reads the stored tab ID, validates only the numeric `id` from
+  the injected non-sensitive `tabs.get` (no URL/title read), and on a live tab calls
+  `tabs.update({active:true})` + `tabs.focusWindow` + a T10 `standalone.focus` envelope;
+  on a stale/missing tab it logs STANDALONE_TAB_INVALID, removes the record, and creates
+  the entrypoint at `buildStandaloneUrl(destination)`, persisting `{ tabId, openedAt }`.
+  Create failure or a missing id fails closed with STANDALONE_OPEN_FAILED.
+  `handleTabRemoved` clears the record only when the stored tab ID matches (authoritative
+  close recovery; `standalone.closed` not used). No direct `chrome.*`/`tabs.query`, no
+  URL/title/favicon/content read, no IndexedDB/network, no dependency change. Created
+  `tests/core/runtime/standaloneTabController.test.ts` (7 tests). Two Low-severity
+  type-only adaptations (disclosed): the `sendFocus` mock parameter is typed
+  `_envelope: RuntimeEnvelope` with `mock.calls[0]![0]` (TS2532/TS2493 under
+  `noUncheckedIndexedAccess`), and the `tabs.create` mock is annotated
+  `async (): Promise<{ id?: number }> => ({ id: 42 })` so the fail-closed
+  `mockResolvedValueOnce({})` typechecks (TS2345); values and assertions unchanged and
+  `tsconfig.json` unmodified. `pnpm exec prettier --check .` flagged only the T11 test
+  file; it was formatted with values and assertions unchanged. GREEN: explicit focused
+  path exit 0 (1 file, 7 tests), `pnpm run test` exit 0 (14 files, 78 tests),
+  `typecheck` exit 0, `lint` exit 0, `prettier --check .` exit 0; phase chain
+  `typecheck && lint && test` exit 0 (14 files, 78 tests). Evidence recorded in
+  `.planning/evidence/phase-01/verification.txt` and
+  `.planning/evidence/phase-01/review.md` (Task 11 sections). Task commit
+  `feat(phase-01): add singleton standalone tab controller`. Current task T11 accepted;
+  next task T12 — per approved Phase 01 `PLAN.md`.
