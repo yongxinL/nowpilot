@@ -1,12 +1,19 @@
 ---
-gsd_state_version: '1.0'  # placeholder; syncStateFrontmatter overwrites on first state.* call
+gsd_state_version: "1.0"
+milestone: v0.2
+current_phase: 1
+current_phase_name: MV3/WXT Runtime + AntD Shells + Workspace
 status: planning
+stopped_at: Phase 1 context gathered
+last_updated: "2026-09-20T22:55:02.627Z"
+last_activity: 2026-09-20
+last_activity_desc: "Ingest bootstrap: PROJECT.md / REQUIREMENTS.md / ROADMAP.md / STATE.md created from PRODUCT_SPEC v0.2 (+ DESIGN_SYSTEM v0.2, UI-seed guide; W1–W6 resolutions applied)"
+state_head: cbba10c6f7050fa0575f73e3f621424ff1214e1d
 progress:
   total_phases: 19
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
-  percent: 0
 ---
 
 # Project State
@@ -30,6 +37,7 @@ Progress: [░░░░░░░░░░] 0%
 ## Performance Metrics
 
 **Velocity:**
+
 - Total plans completed: 0
 - Average duration: —
 - Total execution time: —
@@ -41,6 +49,7 @@ Progress: [░░░░░░░░░░] 0%
 | - | - | - | - |
 
 **Recent Trend:**
+
 - Last 5 plans: —
 - Trend: —
 
@@ -79,6 +88,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-20 23:00
-Stopped at: Ingest bootstrap complete — four planning artifacts written (left uncommitted per operator instruction)
-Resume file: None
+Last session: 2026-09-20T22:55:02.614Z
+Stopped at: Phase 1 context gathered
+Resume file: .planning/phases/01-mv3-wxt-runtime-antd-shells-workspace/01-CONTEXT.md
