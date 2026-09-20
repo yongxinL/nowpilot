@@ -1,0 +1,87 @@
+<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>NowPilot Detailed UI/UX Layout and GSD Guide</title><style>body{font:15px/1.6 Inter,system-ui;margin:0;background:#f5f7fb;color:#172033}header{background:linear-gradient(135deg,#0f172a,#1e40af);color:white;padding:42px 24px}header div,main{max-width:1150px;margin:auto}main{padding:0 18px 50px}h1{margin:0;font-size:34px}h2{margin-top:40px;border-bottom:1px solid #dbe3ee;padding-bottom:8px}h3{margin-top:26px}.lead{font-size:18px;color:#dbeafe}.card{background:white;border:1px solid #dbe3ee;border-radius:14px;padding:20px;margin:18px 0;box-shadow:0 2px 9px #0f172a0d}.callout{background:#eff6ff;border-left:4px solid #2563eb;padding:14px 16px;border-radius:8px}.ok{background:#ecfdf5;border-color:#059669}.warn{background:#fff7ed;border-color:#d97706}pre{background:#0f172a;color:#e5e7eb;padding:18px;border-radius:10px;overflow:auto;white-space:pre;font-size:13px;line-height:1.35}code{background:#edf1f6;padding:2px 5px;border-radius:4px}table{width:100%;border-collapse:collapse;background:white}th,td{border:1px solid #dbe3ee;padding:10px;vertical-align:top;text-align:left}th{background:#eef2ff}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}.tag{display:inline-block;padding:2px 9px;border-radius:999px;background:#eef2ff;color:#1d4ed8;margin:2px}nav a{color:#bfdbfe;margin-right:14px}footer{text-align:center;color:#64748b;padding:30px}@media(max-width:700px){h1{font-size:28px}pre{font-size:11px}}</style></head><body>
+<header><div><h1>NowPilot Detailed UI/UX Layout and GSD Guide</h1><p class="lead">Concrete screen blueprints, workflow-based model routing, Google AI Studio instructions, and autonomous OpenCode + GSD execution guidance.</p><nav><a href="#decision">Model selector decision</a><a href="#layouts">Layouts</a><a href="#options">Options</a><a href="#handoff">Implementation</a></nav></div></header><main>
+<section id="decision" class="card"><h2>Decision: remove the raw model selector from Chat</h2><div class="callout ok"><strong>Recommended:</strong> show a Workflow selector, not a model selector. Each workflow defines its capability tier, tools, context and confirmation behaviour; <code>TierResolver</code> chooses the concrete provider/model.</div><p>A model selector would let the user override workflow requirements and could select a model that lacks the required tools or context. It also exposes infrastructure detail during a task-focused conversation.</p><h3>What the user sees</h3><ul><li><strong>Workflow:</strong> Auto, Ask, Write, Research, Summarise page, ServiceNow case analysis.</li><li><strong>Read-only transparency:</strong> resolved provider/model in Activity details and Diagnostics.</li><li><strong>Configuration:</strong> provider/model enablement and workflow-to-tier mapping in Standalone Options.</li><li><strong>Failure:</strong> a typed “No compatible model configured” result with a direct Options action.</li></ul><p><span class="tag">Intent visible</span><span class="tag">Model automatic</span><span class="tag">Cost governed</span><span class="tag">Fallback deterministic</span></p></section>
+
+<section id="layouts"><h2>Example UI/UX layouts</h2><h3>1. Side Panel: Chat only</h3><pre>┌─────────────────────────────────────────────┐
+│ (N) NowPilot                    ⚙   ⤢        │  HEADER 52
+├─────────────────────────────────────────────┤
+│                              ┌──────────┐   │
+│                              │    Hi    │   │  CONVERSATION
+│                              └──────────┘   │
+│  🐙 NowPilot                                 │
+│  ┌ ✦ Activity: Completed              › ┐  │
+│  │ Assistant markdown streams here …    │  │
+│  └──────────────────────────────────────┘  │
+│  ⧉  🗒  👍  👎  ↻  ⤴  🔊                    │
+│  [ Suggested follow-up question          ] │
+├─────────────────────────────────────────────┤
+│ ◈ Auto workflow ▾             📎  🕘  ▢     │  TOOLBAR 44
+│ ┌─────────────────────────────────────────┐ │
+│ │ Ask anything, choose workflow…      ▷  │ │  INPUT ≥60
+│ └─────────────────────────────────────────┘ │
+│ Auto · Ready                       ⓘ   ✉   │  STATUS 28
+└─────────────────────────────────────────────┘</pre><div class="grid"><div class="card"><strong>Header</strong><p>Brand, Options and Switch to Full chat only.</p></div><div class="card"><strong>Conversation</strong><p>Stable bubbles, safe Activity details, citations and message actions.</p></div><div class="card"><strong>Composer</strong><p>Workflow, Attach, History, New chat, multiline Sender and Send/Stop.</p></div><div class="card"><strong>Status</strong><p>Workflow readiness, help and feedback. Provider/model is not directly selectable.</p></div></div>
+<h3>2. Standalone Chat</h3><pre>┌──────────────┬───────────────────────────────────────────────────────────────┐
+│ (N) NowPilot │ ‹  Search chats, notes, tools…  ⌘K                 🕘   ⋮    │
+│──────────────│───────────────────────────────────────────────────────────────│
+│ ● Chat       │ Chat                                                          │
+│   Agent      │ ┌───────────────────────────────────────────────────────────┐ │
+│   Note       │ │ Conversation                                              │ │
+│   Write      │ │ Assistant responses use the wider canvas.                │ │
+│   Tools      │ │ Activity and evidence remain collapsible.                │ │
+│──────────────│ └───────────────────────────────────────────────────────────┘ │
+│ Add-ons      │ [ Follow-up ] [ Save to note ] [ Open context ]             │
+│   TeamGQM    │                                                               │
+│              │ ◈ Auto workflow ▾                              📎  🕘  ▢     │
+│──────────────│ ┌───────────────────────────────────────────────────────────┐ │
+│ (G) George ▾ │ │ Ask anything, choose a workflow, or use / prompts…   ▷  │ │
+│ ⚙ Settings  │ └───────────────────────────────────────────────────────────┘ │
+└──────────────┴───────────────────────────────────────────────────────────────┘</pre><p>Standalone uses the same conversation and workflow model at default density. The larger canvas may add context panes, notes and tool details without changing routing authority.</p>
+<h3>3. Notes workspace</h3><pre>┌──────────────┬────────────────┬───────────────────────────┬────────────────┐
+│ DIRECTORY    │ NOTES          │ CONTENT                   │ INSPECTOR      │
+│ All Notes 28 │ Incident flow  │ # Incident lifecycle     │ AI Summary    │
+│ Recent       │ Upgrade plan   │                           │ Regenerate    │
+│ Favourites   │ Auth issue     │ Markdown editor/viewer    │ Details       │
+│ Work KB      │                │ Wikilinks and callouts    │ Links 8       │
+│  ServiceNow  │                │                           │ Backlinks 12  │
+│ Tags         │                │                           │ Export/Move   │
+├──────────────┴────────────────┴───────────────────────────┴────────────────┤
+│ 28 notes                      1,234 words · Saved 2 min ago · Auto-saved ● │
+└────────────────────────────────────────────────────────────────────────────┘</pre><ul><li>Content is persistent; Directory, Notes and Inspector are collapsible.</li><li>At narrower widths, collapse Directory first and Inspector second.</li><li>Status uses words as well as colour.</li></ul></section>
+
+<section id="options"><h2>Options page layout and design</h2><pre>┌──────────────────┬───────────────────────────────────────────────────────────┐
+│ ● General        │ General                                                   │
+│   Account        │ [ Account / local profile                              ] │
+│   AI access      │                                                           │
+│   Appearance     │ [ AI access                                             ] │
+│                  │ Providers: OpenAI ✓  Gemini ✓  Ollama ○                  │
+│ ▤ Notes          │ Default workflow  [ Auto ▾ ]                             │
+│   Behaviour      │ Fast tier         [ configured model ▾ ]                 │
+│   Backup         │ Balanced tier     [ configured model ▾ ]                 │
+│                  │ [Manage providers] [Workflow routing] [Test routing]      │
+│ ⚙ Advanced      │                                                           │
+│   Providers      │ [ Appearance                                            ] │
+│   Models         │ Theme pack [Default ▾]  Display [Auto ▾]                 │
+│   Workflows      │ Language [English (UK) ▾]  Message size [Auto ▾]         │
+│   Diagnostics    │                                             Saved ✓       │
+└──────────────────┴───────────────────────────────────────────────────────────┘</pre><h3>Options information architecture</h3><table><tr><th>Group</th><th>Sections</th><th>Purpose</th></tr><tr><td>General</td><td>Account, AI access, Appearance</td><td>Common user-facing settings.</td></tr><tr><td>Notes</td><td>Behaviour, AI enrichment, Backup/Restore</td><td>Knowledge and filesystem settings.</td></tr><tr><td>Advanced</td><td>Providers, Models, Workflows, MCP servers, Memory, Diagnostics, Import/Export</td><td>Operator controls and troubleshooting.</td></tr></table>
+<h3>Workflow routing page</h3><table><tr><th>Column</th><th>Meaning</th></tr><tr><td>Workflow</td><td>Stable workflow ID and user-facing label.</td></tr><tr><td>Capability tier</td><td>Fast or Balanced.</td></tr><tr><td>Tools</td><td>Allowed tool group and confirmation policy.</td></tr><tr><td>Resolved provider/model</td><td>Read-only preview based on current enabled configuration.</td></tr><tr><td>Fallback</td><td>Allowed ordered fallback or local-only restriction.</td></tr><tr><td>Status</td><td>Valid, no compatible model, missing permission, or disabled.</td></tr></table>
+<h3>Provider configuration modal</h3><pre>┌────────────────────────────────────────────────────────────────────┐
+│ Configure provider: OpenAI                                    ✕    │
+│ API key                 [ Configured •••••••••••••••       👁 ]    │
+│ Custom endpoint         [ Off ]                                  │
+│ Connection              [ Check ]  Connected ✓                   │
+│──────────────────────────────────────────────────────────────────│
+│ Enabled models                                   [Update] [+ Add]│
+│ Model             Type     Context     Source      Tier use   On │
+│ model-fast        Chat     128K        Provider    Fast       ●  │
+│ model-balanced    Chat     200K        Provider    Balanced   ●  │
+│──────────────────────────────────────────────────────────────────│
+│ Routing impact: Auto, Write and Summarise remain valid.          │
+│                                              [Cancel] [Save]      │
+└────────────────────────────────────────────────────────────────────┘</pre><div class="callout warn"><strong>Save validation:</strong> show which workflows become invalid before disabling a provider or model. Never silently remap a locked workflow to an incompatible model.</div></section>
+
+<section><h2>Interaction and state standards</h2><table><tr><th>State</th><th>Required presentation</th></tr><tr><td>Loading</td><td>Skeleton approximating final geometry, plus text for long operations.</td></tr><tr><td>Empty</td><td>One explanation, one primary action, optional examples.</td></tr><tr><td>Error</td><td>Human-readable message, typed detail, Retry, and the relevant settings action.</td></tr><tr><td>Streaming</td><td>Stable assistant container, Stop control, no typewriter animation.</td></tr><tr><td>Permission</td><td>Describe action, target and impact; Allow once, Allow always where safe, and Deny.</td></tr><tr><td>Saved</td><td>Text plus icon/colour. Never colour alone.</td></tr></table><h3>Accessibility</h3><ul><li>WCAG AA contrast in every theme pack and colour mode.</li><li>Visible focus and complete keyboard operation.</li><li>Icon-only buttons require tooltip and accessible name.</li><li>Sheets, drawers and modals trap focus and restore it on close.</li><li>Honour reduced motion and reduced transparency.</li></ul></section>
+
+<section id="handoff"><h2>Google AI Studio and OpenCode + GSD hand-off</h2><h3>Google AI Studio prompt addition</h3><pre>Implement the exact example layouts in NOWPILOT_DETAILED_UI_UX_LAYOUT_GSD_GUIDE.html. The composer uses a Workflow selector, not a raw model selector. Provide working fixture-backed routes for Side Panel Chat, Standalone Chat, Notes, Options General, Workflow Routing, Providers and the Provider modal. Do not implement Chrome APIs, provider calls, persistence or a Node backend. Produce reference screenshots and a state matrix for all layouts.</pre><h3>OpenCode + GSD instruction</h3><pre>Treat PRODUCT_SPEC_v0_2.md, DESIGN_SYSTEM_v0_2.md and NOWPILOT_DETAILED_UI_UX_LAYOUT_GSD_GUIDE.html as the approved baseline. Do not repeat product planning or architecture design. Validate consistency, map the imported UI seed, create the minimum WXT conversion plan, and execute automatically. Ask only when a genuine unresolved product decision remains. The raw model selector is prohibited in Chat; implement workflow selection and automatic TierResolver routing instead.</pre><h3>Cost-effective model execution</h3><p>Use GSD's <code>inherit</code> profile and the best cost-effective model available in OpenCode. Keep tasks small, IDs closed, TypeScript strict, verification executable, repairs limited to two, and commits atomic.</p></section>
+</main><footer>NowPilot UI/UX layout and autonomous GSD guide · 20 September 2026</footer></body></html>
