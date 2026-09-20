@@ -4,11 +4,11 @@ milestone: v0.2
 current_phase: 1
 current_phase_name: MV3/WXT Runtime + AntD Shells + Workspace
 status: planning
-stopped_at: Phase 1 context gathered
-last_updated: "2026-09-20T22:55:02.627Z"
+stopped_at: Phase 1 UI-SPEC approved
+last_updated: "2026-09-20T23:42:23.247Z"
 last_activity: 2026-09-20
 last_activity_desc: "Ingest bootstrap: PROJECT.md / REQUIREMENTS.md / ROADMAP.md / STATE.md created from PRODUCT_SPEC v0.2 (+ DESIGN_SYSTEM v0.2, UI-seed guide; W1–W6 resolutions applied)"
-state_head: cbba10c6f7050fa0575f73e3f621424ff1214e1d
+state_head: 43f21af3d9fb81fe84e984fdcb3fb1f9bce908b3
 progress:
   total_phases: 19
   completed_phases: 0
@@ -88,6 +88,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-20T22:55:02.614Z
-Stopped at: Phase 1 context gathered
-Resume file: .planning/phases/01-mv3-wxt-runtime-antd-shells-workspace/01-CONTEXT.md
+Last session: 2026-09-20T23:42:23.230Z
+Stopped at: Phase 1 UI-SPEC approved
+Resume file: .planning/phases/01-mv3-wxt-runtime-antd-shells-workspace/01-UI-SPEC.md
