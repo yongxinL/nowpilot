@@ -15,6 +15,8 @@ created: "2026-09-21"
 
 **Precedence.** On any conflict: `PRODUCT_SPEC.md` wins for functional rules → `DESIGN_SYSTEM.md` §8 written metrics win over a stale annotated image → this document wins over prototype behaviour (`01-CONTEXT.md` D-01).
 
+**Revision 1 (2026-09-21).** Closed a Copywriting gap: the theme-sync failure toast and its re-try action are now pinned (`theme.syncFailed` / `theme.syncRetry`), the destructive confirmation pins its `okText`/`cancelText` labels (`Continue` / `Not now`), every icon-only control's accessible name is pinned, AntD's locale defaults are explicitly overridden, and the `## UI Considerations` count was corrected to match its rows. No design decision changed.
+
 ---
 
 ## Design System
@@ -64,7 +66,7 @@ This table is a **non-exhaustive** list of known-good components, never a closed
 | `Tooltip` | `antd` | Mandatory companion to every icon-only control; deferred reasons |
 | `Modal` | `antd` | Command palette (560 px, centred); onboarding modal (`E3`, radius 16) |
 | `Alert` | `antd` | Standalone <1024 px notice; whole-page deferred notice |
-| `Result` | `antd` | `ErrorBoundary` fallback (`status="500"` + `[Reload]`) |
+| `Result` | `antd` | `ErrorBoundary` fallback — `status="500"` with the pinned `shell.errorTitle` / `shell.errorBody` / `shell.errorReload` strings, never AntD locale defaults |
 | `Skeleton` | `antd` | **Required** for content-area loading; spinners are not used for content |
 | `Spin` | `antd` | Inline/in-button loading only |
 | `Empty` | `antd` | Not used bare — empty states are mascot + copy per DESIGN_SYSTEM §9 |
@@ -131,11 +133,11 @@ Declared values (must be multiples of 4). Source: `DESIGN_SYSTEM.md` §7 (`sizeU
 | 2xl | 48px | Major section breaks (Standalone page headers) |
 | 3xl | 64px | Page-level spacing (Standalone onboarding centring) |
 
-Exceptions (all deliberate, all multiples of 4):
+Exceptions — the two **layout** exceptions are multiples of 4; the third is not layout spacing at all:
 
-- **12px** — compact-density intermediate step. Permitted **only** inside the Side Panel (compact) tree for stacked-control spacing; never in Standalone default density.
-- **20px** — Standalone settings-card internal padding and row gaps (DESIGN_SYSTEM §8.6 / §9). Permitted only inside `Card` bodies.
-- **2px** — hairline/border and focus-ring width. This is a **border width, not layout spacing**, and is always token-derived (`colorBorderSecondary`, `colorPrimary`) — never used as a margin/padding value.
+- **12px** — compact-density intermediate step (multiple of 4). Permitted **only** inside the Side Panel (compact) tree for stacked-control spacing; never in Standalone default density.
+- **20px** — Standalone settings-card internal padding and row gaps (multiple of 4; DESIGN_SYSTEM §8.6 / §9). Permitted only inside `Card` bodies.
+- **2px** — hairline/border and focus-ring width. **Not a spacing value and not a multiple of 4**: this is a *border width*, always token-derived (`colorBorderSecondary`, `colorPrimary`) and never used as a margin or padding value.
 
 Non-spacing metrics that are fixed by contract (not part of the scale): Side Panel width 400px · Side Panel header 52px · composer toolbar 44px · composer input min-height 60px · status bar 28px · Standalone Sider 240px expanded / 72px collapsed · Standalone top bar 56px · right drawer 320px · chat-history bottom sheet ≤ ~70% of panel height · options content max-width 1200px · minimum Standalone viewport 1024px.
 
@@ -174,11 +176,11 @@ Source: `DESIGN_SYSTEM.md` §6.2 seed tokens. **Token-first, golden rule:** ever
 
 **Accent reserved for — explicit, closed list:**
 
-1. Primary buttons (`Continue`, `Connect Provider`, `Finish setup`, `Retry`) and their hover/active states.
+1. Primary buttons (`Continue`, `Check connection`, `Finish setup`, `Retry`) and their hover/active states.
 2. The 2px focus ring on every interactive element (`colorPrimary`).
 3. Standalone Sider **active item**: `colorPrimaryBg` pill background + `colorPrimary` icon/text (fill **and** weight carry the state — never colour alone).
 4. Command palette selected row background (`colorPrimaryBg`).
-5. Inline text links (`Set up`, `Configure`, `Retry`, `Back`, `Skip`).
+5. Inline text links and secondary actions: `Retry sync`, `Edit key`, `Retry`, `Back`, `Skip`, `Switch to Full setup`, `Dismiss`, `Set up`, `Configure`.
 6. The "N" app mark gradient and the optional two-tone wordmark lockup ("Pilot").
 7. Composer send button when the draft is non-empty — **Phase 1 renders it disabled**, so this accent never appears in Phase 1.
 8. Active `Segmented` selection for the theme mode control (Phase 15, when mounted).
@@ -211,26 +213,89 @@ All copy is **verbatim canonical** where `PRODUCT_SPEC` Appendix B (`STR`) defin
 | Primary CTA | **Open Standalone view** — the header `Switch to Full chat` control and the palette command that triggers the Phase-1 headline action (success criterion 2) |
 | Empty state heading | `Start a conversation` (`STR.chat.empty`) |
 | Empty state body | `Chat is not available in this release. Press ⌘K for available commands.` — Phase-1 string; replaced by RICH-I-01 welcome cards in Phase 15. It names exactly one next step and never implies a working send path |
-| Error state | `Failed to open Standalone view` (`STR.standalone.openFailed`) + a `[Retry]` action. Typed code `WORKSPACE_HANDOFF_FAILED` or `STANDALONE_OPEN_FAILED` |
-| Destructive confirmation | `Reload extension: this restarts the extension and discards unsaved state. Continue?` — dev-only (`import.meta.env.DEV`), explicit exact-match selection only, never auto-run on a partial match |
+| Error state | **Every** Phase-1 error path names its problem *and* its next step, with the next step's action label pinned: handoff/open failure → `Failed to open Standalone view` (`STR.standalone.openFailed`) + `Retry`; theme sync write failure → `Theme sync failed — your display mode is still applied.` + `Retry sync`; onboarding validation failure → `Connection failed: [error]` (`STR.onboarding.failed`) + `Retry` + `Edit key`; shell render failure → `Something went wrong` + `Reload NowPilot to continue.` + `Reload` |
+| Destructive confirmation | Prompt: `Reload extension: this restarts the extension and discards unsaved state. Continue?` (`command.reloadExtension.confirm`) · Confirm action label: **`Continue`** (`common.continue`) · Cancel action label: **`Not now`** (`common.notNow`) — dev-only (`import.meta.env.DEV`), explicit exact-match selection only, never auto-run on a partial match |
 
-### Phase 1 canonical string map (use verbatim)
+**Bracket convention.** In canonical `STR` values, a bracketed token (`[Retry]`, `[Switch Provider]`, `[Reload]`, `[Configure]`) is an **action label**, rendered as an inline link or button carrying that exact word — never as literal brackets in the UI, and never replaced by a generic label.
 
-| Surface / element | String | Source |
+**No framework-default action labels.** AntD's locale defaults (`OK`, `Cancel`, `Please select`, `Close`) are never reachable in Phase 1. Every confirmation, picker and dialog that AntD would default sets its labels explicitly; the pinned values are in the tables below.
+
+### Phase 1 canonical string map — shells, states and errors (use verbatim)
+
+Every user-visible string reachable in Phase 1 is pinned below. New keys are added to `src/core/i18n/strings.ts` and resolved through `t('…')`; canonical Appendix B strings keep their canonical values.
+
+| Element | `t()` key | String | Source |
+|---|---|---|---|
+| Side Panel / Standalone empty chat | `chat.empty` | `Start a conversation` | `STR.chat.empty` |
+| No provider resolved (status bar caption) | `chat.noProvider` | `Configure an AI provider in Settings first.` | `STR.chat.noProvider` |
+| Handoff pending | `workspace.handoffPending` | `Opening workspace in standalone view...` | `STR.workspace.handoffPending` |
+| Handoff success (toast) | `workspace.handoffComplete` | `Workspace opened in standalone view.` | `STR.workspace.handoffComplete` |
+| Handoff / open failure | `standalone.openFailed` | `Failed to open Standalone view` | `STR.standalone.openFailed` |
+| Standalone below 1024 px | `standalone.minWidth` | `This view is optimized for wider screens; open the side panel for narrow layouts.` | `STR.standalone.minWidth` |
+| **Theme sync write failure (toast)** | `theme.syncFailed` | `Theme sync failed — your display mode is still applied.` | Phase-1 string — names the problem **and** states the local outcome |
+| **Theme sync write failure (action link)** | `theme.syncRetry` | `Retry sync` | Phase-1 string — the next step, re-invokes the failed write |
+| Shell render failure — title | `shell.errorTitle` | `Something went wrong` | §17.4 (`Result status="500"`) |
+| Shell render failure — body | `shell.errorBody` | `Reload NowPilot to continue.` | §17.4 |
+| Shell render failure — action | `shell.errorReload` | `Reload` | §17.4 |
+| Legacy plaintext credential cleanup notice | `provider.credentialsCleared` | `Provider credentials must be configured again after secure credential storage is available.` | `01-CONTEXT.md` D-07 (verbatim) |
+| Legacy cleanup notice — dismiss | `provider.credentialsClearedDismiss` | `Dismiss` | Phase-1 string |
+| Palette search placeholder | `commands.placeholder` | `Search commands…` | prototype (canonical-compatible) |
+| Palette zero results | `commands.noResults` | `No matching commands — try a different search term` | prototype (canonical-compatible) |
+| Global search field (disabled) placeholder | `standalone.globalSearchPlaceholder` | `Search notes, tags, or content…` | DESIGN_SYSTEM §8.2 |
+
+### Phase 1 canonical string map — onboarding
+
+| Element | `t()` key | String | Source |
+|---|---|---|---|
+| Step 1 title | `onboarding.step1Title` | `Meet NowPilot` | Flow 9 |
+| Step 2 title | `onboarding.step2Title` | `Pick a provider` | Flow 9 |
+| Step 3 title | `onboarding.step3Title` | `Enter your API key` | Flow 9 |
+| Step 4 title | `onboarding.step4Title` | `Validate connection` | Flow 9 |
+| Step indicator | `onboarding.stepIndicator` | `Step {n} of 4` | Phase-1 string |
+| Provider picker placeholder | `onboarding.providerPlaceholder` | `Select an AI provider` | Phase-1 string — **overrides AntD's locale default `Please select`** |
+| Validation in flight | `onboarding.testing` | `Testing connection...` | `STR.onboarding.testing` |
+| Validation trigger (step 4 idle) | `onboarding.validate` | `Check connection` | Phase-1 string — the fixture-backed check. **Never** `Connect Provider`: no connection is established in Phase 1 |
+| Validation success | `onboarding.connected` | `Connected` | `STR.onboarding.connected` |
+| Validation failure | `onboarding.failed` | `Connection failed: [error]` | `STR.onboarding.failed` |
+| Failure — retry action | `onboarding.retry` | `Retry` | Phase-1 string |
+| Failure — edit-key action | `onboarding.editKey` | `Edit key` | Phase-1 string |
+| Success — final CTA | `onboarding.finish` | `Finish setup` | Phase-1 string |
+| Step advance | `onboarding.continue` | `Continue` | Phase-1 string |
+| Step retreat | `onboarding.back` | `Back` | Phase-1 string |
+| Exit affordance | `onboarding.skip` | `Skip` | Phase-1 string |
+| Side Panel exit affordance | `onboarding.switchToFullSetup` | `Switch to Full setup` | D-06 |
+| API-key reveal toggle | `onboarding.showKey` / `onboarding.hideKey` | `Show API key` / `Hide API key` | Phase-1 string — accessible name **and** tooltip |
+| API-key field placeholder | `onboarding.keyPlaceholder` | `Paste your API key` | Phase-1 string — never an example key shape, never a real or sentinel value |
+
+### Phase 1 canonical string map — actions and accessible names
+
+Every icon-only control carries an `aria-label` **and** a tooltip with the same string (DESIGN_SYSTEM §12).
+
+| Element | `t()` key | String |
 |---|---|---|
-| Side Panel / Standalone empty chat | `Start a conversation` | `STR.chat.empty` |
-| No provider resolved (status bar caption) | `Configure an AI provider in Settings first.` | `STR.chat.noProvider` |
-| Onboarding validation in flight | `Testing connection...` | `STR.onboarding.testing` |
-| Onboarding validation success | `Connected` | `STR.onboarding.connected` |
-| Onboarding validation failure | `Connection failed: [error]` | `STR.onboarding.failed` |
-| Handoff pending | `Opening workspace in standalone view...` | `STR.workspace.handoffPending` |
-| Handoff success | `Workspace opened in standalone view.` | `STR.workspace.handoffComplete` |
-| Handoff / open failure | `Failed to open Standalone view` | `STR.standalone.openFailed` |
-| Standalone below 1024 px | `This view is optimized for wider screens; open the side panel for narrow layouts.` | `STR.standalone.minWidth` |
-| Palette search placeholder | `Search commands…` | prototype `commands.placeholder` (canonical-compatible) |
-| Palette zero results | `No matching commands — try a different search term` | prototype `commands.noResults` (canonical-compatible) |
-| Legacy plaintext credential cleanup notice | `Provider credentials must be configured again after secure credential storage is available.` | `01-CONTEXT.md` D-07 (verbatim) |
-| Shell render failure | `ErrorBoundary` → `Result status="500"` + `[Reload]` | §17.4 |
+| Side Panel header — Options | `a11y.options` | `Options` |
+| Side Panel header — Switch to Full chat | `a11y.switchToFullChat` | `Switch to Full chat` |
+| Composer — Attach | `a11y.attach` | `Attach` |
+| Composer — Chat history | `a11y.chatHistory` | `Chat history` |
+| Composer — New chat | `a11y.newChat` | `New chat` |
+| Composer — Send | `a11y.send` | `Send message` |
+| Status bar — Help | `a11y.help` | `Help` |
+| Status bar — Feedback | `a11y.feedback` | `Feedback` |
+| Standalone top bar — global search | `a11y.globalSearch` | `Global search` |
+| Standalone top bar — More | `a11y.moreActions` | `More actions` |
+| Standalone Sider — collapse / expand | `a11y.collapseSidebar` / `a11y.expandSidebar` | `Collapse sidebar` / `Expand sidebar` |
+| Any dialog close control | `a11y.closeDialog` | `Close` — **overrides AntD's locale default `Close`** so the value is explicit and translatable |
+
+### AntD default-chrome overrides (no framework default is reachable)
+
+| AntD surface | Default it would render | Pinned override |
+|---|---|---|
+| `Popconfirm` / `Modal.confirm` (destructive confirmation) | `OK` / `Cancel` | `okText={t('common.continue')}` = `Continue`; `cancelText={t('common.notNow')}` = `Not now` |
+| `Select` (onboarding provider picker) | `Please select` | `placeholder={t('onboarding.providerPlaceholder')}` = `Select an AI provider` |
+| `Modal` close control (palette, onboarding) | locale `Close` | `t('a11y.closeDialog')` = `Close`, set explicitly |
+| `Result` (ErrorBoundary, `status="500"`) | locale title/subtitle, no action | explicit `title` / `subTitle` / `extra` from the shell error keys above |
+| `Input.Password` visibility toggle | locale-generated accessible name | `t('onboarding.showKey')` / `t('onboarding.hideKey')` as the toggle's accessible name |
+| `Select` / `List` / `Skeleton` / `Alert` / `Tag` / `Tooltip` | no default strings | nothing to override — do not add placeholder copy |
 
 **Strings that must NOT appear in Phase 1.** `STR.workspace.mirroringNotice` (`Standalone view is now the primary surface for this workspace.`) and `STR.workspace.electionFailed` are Phase-2 state; showing them in Phase 1 would claim a writer-election outcome that did not occur (D-12).
 
@@ -253,8 +318,15 @@ Palette chrome (placeholder, zero-results, category labels) resolves through `t(
 | `'Connected!'` | `Connected` | onboarding success |
 | `'Failed to open Standalone view tab'` | `Failed to open Standalone view` | handoff failure |
 | `'Provider error.'` + separate `'Retry'`/`'Switch Provider'` keys | `Provider error. [Retry] [Switch Provider]` (single canonical string) | chat error (Phase 15, but the key shape is fixed now) |
-| `'openboarding.failed'` missing | `Connection failed: [error]` | onboarding failure |
+| `'onboarding.failed'` key missing | `Connection failed: [error]` | onboarding failure |
+| `'Connect Provider'` | `Check connection` | onboarding step 4 idle action — no connection is established in Phase 1 |
+| `'Skip for now'` | `Skip` | onboarding exit affordance |
+| `'Try again'` | `Retry` | onboarding failure action |
+| `'Finish setup'` present, `'Continue'`/`'Back'` hard-coded | resolved through `t('onboarding.continue')` / `t('onboarding.back')` | onboarding step navigation |
+| `'Open in Full Tab'` (`sidepanel.footer`) | `Switch to Full chat` | Side Panel header control label / accessible name |
+| `'Something went wrong. Please reload the extension.'` (`shell.error`) | `Something went wrong` + `Reload NowPilot to continue.` + `Reload` | ErrorBoundary (`Result status="500"`) |
 | Category literal `'Theme'` / `'Extension'` | `t('commands.category.theme')` = `Appearance`, `t('commands.category.system')` = `System` | palette |
+| `'Couldn't apply theme to other surface'` (inline literal) | `theme.syncFailed` + `theme.syncRetry` | theme sync failure |
 
 ---
 
@@ -262,7 +334,7 @@ Palette chrome (placeholder, zero-results, category labels) resolves through `t(
 
 > Shape-rooted UI *state* coverage (empty / loading / error / populated / partial / overflow / zero-one-many / long-text). Empty-state and error-state **copy** lives in `## Copywriting Contract` above; this section covers state coverage and references those rows.
 
-Applicable state considerations resolved: 15 covered, 1 backstop, 1 unresolved.
+Applicable state considerations resolved: 17 covered, 1 backstop, 1 unresolved.
 
 | Category | Element(s) | Status | Resolution / Reason |
 |----------|------------|--------|---------------------|
@@ -274,10 +346,10 @@ Applicable state considerations resolved: 15 covered, 1 backstop, 1 unresolved.
 | loading | Onboarding validation (`testing`) | ✅ covered | Primary button enters `loading` + `disabled` with label `Testing connection...`; the step stays keyboard-reachable and no auto-advance timer exists |
 | loading | Handoff pending | ✅ covered | Pending caption `Opening workspace in standalone view...`; success is claimed **only** after a validated acknowledgement (D-13); the composer draft stays in place |
 | loading | Standalone content-area shells | ✅ covered | AntD `Skeleton` for content areas (§17.4) — never `Spin` for content |
-| error | Onboarding validation failure | ✅ covered | `Connection failed: [error]` + `[Retry]` and an "edit key" path; the typed fixture code is one of the canonical codes below; the key value is never echoed |
-| error | Handoff / open failure | ✅ covered | `Failed to open Standalone view` + `[Retry]`; typed `WORKSPACE_HANDOFF_FAILED` / `STANDALONE_OPEN_FAILED`; Side Panel stays writable and the local draft is preserved |
-| error | Shell render failure | ✅ covered | `ErrorBoundary` → AntD `Result status="500"` + `[Reload]` (§17.4) |
-| error | Theme sync write failure | ✅ covered | The local mode is **not** rolled back (local-first); an actionable toast with a re-try link is shown; this is real behaviour and carries no deferred marker |
+| error | Onboarding validation failure | ✅ covered | `Connection failed: [error]` + the pinned `Retry` and `Edit key` actions (see `## Copywriting Contract`); the typed fixture code is one of the canonical codes below; the key value is never echoed |
+| error | Handoff / open failure | ✅ covered | `Failed to open Standalone view` + the pinned `Retry` action; typed `WORKSPACE_HANDOFF_FAILED` / `STANDALONE_OPEN_FAILED`; Side Panel stays writable and the local draft is preserved |
+| error | Shell render failure | ✅ covered | `ErrorBoundary` → AntD `Result status="500"` with the pinned `Something went wrong` / `Reload NowPilot to continue.` / `Reload` strings (§17.4) — never AntD's locale defaults |
+| error | Theme sync write failure | ✅ covered | The local mode is **not** rolled back (local-first). Toast `Theme sync failed — your display mode is still applied.` + the pinned `Retry sync` action (`theme.syncFailed` / `theme.syncRetry`). Real behaviour — carries no deferred marker |
 | partial | Standalone viewport below 1024 px | ✅ covered | AntD `Alert` with the canonical min-width string; the shell stays usable and nothing is hidden destructively |
 | overflow | Standalone Sider collapsed (72 px) | ✅ covered | Labels hidden; icon-only items keep `aria-label` + hover tooltip; active state remains visible via fill + weight |
 | overflow | Command list longer than the modal body | ✅ covered | The list scrolls inside the modal body; keyboard selection is kept scrolled into view; the input stays pinned |
@@ -427,19 +499,23 @@ Flow 9 / SA-08 / FLOW-9. Fixture-backed per D-05; one shared presentation + flow
 | 1 | `Meet NowPilot` | Persona card placeholder (RICH-R-03 ships in Phase 15). `data-np-backing="fixture"` — the card is a preview, not the persona runtime |
 | 2 | `Pick a provider` | `Select` over exactly the four canonical provider IDs `'openai' \| 'anthropic' \| 'gemini' \| 'ollama'`. The prototype's `'claude'` id is a defect and must become `'anthropic'`. Persists non-secret metadata only |
 | 3 | `Enter your API key` | `Input.Password` with eye toggle (`EyeOutlined`/`EyeInvisibleOutlined`). **Component memory only.** `data-np-backing="fixture"` |
-| 4 | `Validate connection` | Fixture-backed validation with the state matrix below. `data-np-backing="fixture"` + block `DeferredNotice` carrying `deferred.reasonFixture` |
+| 4 | `Validate connection` | Fixture-backed validation with the state matrix below. Idle action = `Check connection`. `data-np-backing="fixture"` + block `DeferredNotice` carrying `deferred.reasonFixture` |
 
-A `Step N of 4` caption is always visible. Step 4 is the only step that may auto-advance, and only on a validated fixture success.
+A `Step N of 4` caption is always visible (`onboarding.stepIndicator`). Step 4 is the only step that may auto-advance, and only on a validated fixture success.
 
 ### Validation state matrix (deterministic fixtures, D-05)
 
+All action labels below are pinned in `## Copywriting Contract` — the executor invents none of them.
+
 | Fixture | Typed result | UI |
 |---|---|---|
-| Success | `{ ok: true }` | `Connected` (canonical) + `Finish setup` primary CTA |
-| Invalid credential | `PROVIDER_AUTH` | `Connection failed: [error]` + `[Retry]` + edit-key path |
+| Idle | — | `Check connection` primary action (`onboarding.validate`) |
+| In flight | — | `Testing connection...` (`STR.onboarding.testing`) with the action `loading` + `disabled` |
+| Success | `{ ok: true }` | `Connected` (canonical) + `Finish setup` primary CTA (`onboarding.finish`) |
+| Invalid credential | `PROVIDER_AUTH` | `Connection failed: [error]` + `Retry` (`onboarding.retry`) + `Edit key` (`onboarding.editKey`) |
 | Provider unavailable | `PROVIDER_5XX` | same error treatment, typed code differs |
 | Network unavailable | `NETWORK` | same error treatment, typed code differs |
-| Cancelled validation | no error code | Returns to the idle state; **no** error, **no** success claim |
+| Cancelled validation | no error code | Returns to the idle state with `Check connection` restored; **no** error, **no** success claim |
 | Unexpected failure | `PROVIDER_CHECK_FAILED` | same error treatment |
 
 All codes are canonical (Appendix C.2 / §21.6). Phase 1 **does not invent** a new error identifier. The *fixture* disclosure is carried by the `DeferredNotice` copy, not by the error code. No `testProviderConnection`, no provider endpoint, no provider SDK, no generated backend, no MCP server is ever contacted.
@@ -502,7 +578,7 @@ APPR-03 / APPR-04 / APPR-05 / SP-08. Carried forward from D-15 with no open ques
   - The Phase 1 Options shell ships **no** Appearance section (APPR-01/APPR-02 are Phase 15) and **no** pack selector (APPR-06 is Phase 15).
   - `ThemeToggle` (the `Segmented` mode control) is preserved as an **unmounted, typed component** for Phase 15 — the same treatment D-12 gives `MirrorBanner`. It keeps deterministic fixtures for visual/a11y testing and must not depend on Chrome APIs beyond the theme store.
 - **Pack-ready, not pack-shipping.** `getAntdConfig` accepts and merges `pack`; Phase 1 always resolves `pack: 'default'` and never renders a pack selector.
-- **Local-first on write failure:** if the `sync` write fails, the in-memory mode is **not** rolled back and an actionable toast offers a re-try. A failed sync never silently reverts the visible theme.
+- **Local-first on write failure:** if the `sync` write fails, the in-memory mode is **not** rolled back and a failed sync never silently reverts the visible theme. The toast and its re-try action use the pinned strings `theme.syncFailed` = `Theme sync failed — your display mode is still applied.` and `theme.syncRetry` = `Retry sync` (see `## Copywriting Contract`) — the executor invents no copy here.
 - **Token discipline:** no component hard-codes a colour, radius or elevation. Everything reads from `theme.useToken()` / `getAntdConfig()`.
 
 ---
@@ -518,7 +594,7 @@ FLOW-11 / SP-02 / SA-10 / D-13.
 | Idle | `Switch to Full chat` in the Side Panel header is enabled |
 | Pending | Caption `Opening workspace in standalone view...`; success is **not** claimed until a validated acknowledgement arrives |
 | Complete | Non-blocking success toast `Workspace opened in standalone view.`; the Side Panel **remains writable** |
-| Failed / timeout | `Failed to open Standalone view` + `[Retry]`; typed `WORKSPACE_HANDOFF_FAILED` or `STANDALONE_OPEN_FAILED`; Side Panel stays writable; the local composer draft is preserved |
+| Failed / timeout | `Failed to open Standalone view` + the pinned `Retry` action (`standalone.openFailed`); typed `WORKSPACE_HANDOFF_FAILED` or `STANDALONE_OPEN_FAILED`; Side Panel stays writable; the local composer draft is preserved |
 
 ### Payload boundaries
 
