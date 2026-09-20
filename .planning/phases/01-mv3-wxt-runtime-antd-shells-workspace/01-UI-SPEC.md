@@ -1,10 +1,11 @@
 ---
 phase: "1"
 slug: "mv3-wxt-runtime-antd-shells-workspace"
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: "2026-09-21"
+reviewed_at: "2026-09-21T09:24:05+1000"
 ---
 
 # Phase 1 — UI Design Contract
@@ -16,6 +17,8 @@ created: "2026-09-21"
 **Precedence.** On any conflict: `PRODUCT_SPEC.md` wins for functional rules → `DESIGN_SYSTEM.md` §8 written metrics win over a stale annotated image → this document wins over prototype behaviour (`01-CONTEXT.md` D-01).
 
 **Revision 1 (2026-09-21).** Closed a Copywriting gap: the theme-sync failure toast and its re-try action are now pinned (`theme.syncFailed` / `theme.syncRetry`), the destructive confirmation pins its `okText`/`cancelText` labels (`Continue` / `Not now`), every icon-only control's accessible name is pinned, AntD's locale defaults are explicitly overridden, and the `## UI Considerations` count was corrected to match its rows. No design decision changed.
+
+**Revision 2 (2026-09-21).** Post-approval UI-consideration probe write-back (ui-phase step 9.5): all probe-derived state categories resolved from this contract (0 unresolved), and the previously-open preserved-presentation row is replaced by the deterministic **non-Phase-1 page disposition rule** (D-16, recorded in `01-CONTEXT.md`). No design decision changed beyond that rule; checker sign-off preserved.
 
 ---
 
@@ -332,31 +335,67 @@ Palette chrome (placeholder, zero-results, category labels) resolves through `t(
 
 ## UI Considerations
 
-> Shape-rooted UI *state* coverage (empty / loading / error / populated / partial / overflow / zero-one-many / long-text). Empty-state and error-state **copy** lives in `## Copywriting Contract` above; this section covers state coverage and references those rows.
+> Shape-rooted UI *state* coverage (empty / loading / error / populated / partial / overflow / zero-one-many / long-text). Empty-state and error-state **copy** lives in `## Copywriting Contract` above; this section covers state coverage and references those rows. Resolved post-approval via the ui-phase step-9.5 probe (Revision 2).
 
-Applicable state considerations resolved: 17 covered, 1 backstop, 1 unresolved.
+Applicable state considerations resolved: **32 covered · 2 backstop · 21 dismissed (reason given) · 0 unresolved.**
 
 | Category | Element(s) | Status | Resolution / Reason |
 |----------|------------|--------|---------------------|
 | empty | Side Panel conversation area | ✅ covered | Centred Q-Octo (empty artboard) + `Start a conversation` + the Phase-1 body copy from `## Copywriting Contract`; zero fabricated messages |
 | empty | Command palette result list | ✅ covered | Zero matches renders the documented no-results copy; the list region keeps its height so the modal does not jump |
-| empty | Standalone content pages (Chat / Agent / Note / Options shells) | ✅ covered | Each renders a visible `DeferredNotice`; no fabricated content, no empty container that looks broken |
+| empty | Standalone page shells | ✅ covered | Each renders a visible `DeferredNotice` per D-16 disposition; no fabricated content, no empty container that looks broken |
 | empty | Standalone Sider "Add-ons" group | ✅ covered | With zero registered add-ons the group label **and** its separator are not rendered — an empty group header is never shown |
-| empty | Standalone Sider account block | ✅ covered | No identity available in Phase 1 → the avatar/name/dropdown block is not rendered; the Settings entry remains. Absent elements need no marker (absence makes no claim) |
+| empty | Standalone Sider account block | ✅ covered | No identity available in Phase 1 → the avatar/name/dropdown block is not rendered; the Settings entry remains. Absent elements need no marker |
+| empty | Onboarding modal | ⛔ dismissed | A step is always rendered; a 4-step modal has no zero-data state |
 | loading | Onboarding validation (`testing`) | ✅ covered | Primary button enters `loading` + `disabled` with label `Testing connection...`; the step stays keyboard-reachable and no auto-advance timer exists |
 | loading | Handoff pending | ✅ covered | Pending caption `Opening workspace in standalone view...`; success is claimed **only** after a validated acknowledgement (D-13); the composer draft stays in place |
 | loading | Standalone content-area shells | ✅ covered | AntD `Skeleton` for content areas (§17.4) — never `Spin` for content |
-| error | Onboarding validation failure | ✅ covered | `Connection failed: [error]` + the pinned `Retry` and `Edit key` actions (see `## Copywriting Contract`); the typed fixture code is one of the canonical codes below; the key value is never echoed |
+| loading | Skeleton / Spin (E10) | ✅ covered | This *is* the loading state: `Skeleton` for content areas, `Spin` inline/in-button only |
+| loading | Side Panel conversation content | ⛔ dismissed | No async content load exists in Phase 1 — the panel renders the empty state only; content states land Phase 15 |
+| loading | Command palette | ⛔ dismissed | Commands are registry-local; no async load exists |
+| loading | Theme | ⛔ dismissed | Writes are optimistic and local-first; there is no loading state |
+| loading | DeferredNotice | ⛔ dismissed | A static presentation marker is never a loading surface |
+| loading | ErrorBoundary fallback | ⛔ dismissed | The fallback is terminal and static — it replaces content, it does not load |
+| error | Onboarding validation failure | ✅ covered | `Connection failed: [error]` + the pinned `Retry` and `Edit key` actions; the typed fixture code is one of the canonical codes; the key value is never echoed |
 | error | Handoff / open failure | ✅ covered | `Failed to open Standalone view` + the pinned `Retry` action; typed `WORKSPACE_HANDOFF_FAILED` / `STANDALONE_OPEN_FAILED`; Side Panel stays writable and the local draft is preserved |
 | error | Shell render failure | ✅ covered | `ErrorBoundary` → AntD `Result status="500"` with the pinned `Something went wrong` / `Reload NowPilot to continue.` / `Reload` strings (§17.4) — never AntD's locale defaults |
 | error | Theme sync write failure | ✅ covered | The local mode is **not** rolled back (local-first). Toast `Theme sync failed — your display mode is still applied.` + the pinned `Retry sync` action (`theme.syncFailed` / `theme.syncRetry`). Real behaviour — carries no deferred marker |
+| error | Side Panel conversation content | ⛔ dismissed | No content load or submit exists in Phase 1; errors route to the handoff, theme and shell-render paths |
+| error | Command palette | ⛔ dismissed | No async failure path; `KeymapRegistry` conflicts throw at registration (development-time), not as a UI state |
+| error | DeferredNotice | ⛔ dismissed | A marker is not a failure surface |
+| error | Skeleton / Spin (E10) | ⛔ dismissed | Skeletons do not error; failures route to the handoff / theme / `ErrorBoundary` paths |
+| populated | Onboarding success state | ✅ covered | `Connected` (canonical) + `Finish setup` primary CTA; focus moves to the composer after completion |
+| populated | Command palette result list | ✅ covered | Rows = label (`strong`) + 12px description + 12px category; the Phase-1 set is the five pinned commands |
+| populated | Standalone Sider + page shells | ✅ covered | Fixed canonical Sider set; each page renders per its D-16 disposition (`fixture-preview` or `deferred-shell`) |
+| populated | Side Panel conversation | ⛔ dismissed | Phase 1 renders the empty state only; populated messages land Phase 15 |
+| populated | ErrorBoundary fallback | ⛔ dismissed | Terminal static fallback — no data-volume state |
 | partial | Standalone viewport below 1024 px | ✅ covered | AntD `Alert` with the canonical min-width string; the shell stays usable and nothing is hidden destructively |
+| partial | Onboarding — key entered, validation not run | ✅ covered | Returns to the step-4 idle state (`Check connection`); the component-memory value survives Back/Continue within the attempt and clears on terminal boundaries (D-08) |
+| partial | Standalone Sider optional groups | ✅ covered | Add-ons group appears only at ≥1 registered add-on; account block appears only at ≥1 identity; both absent in Phase 1 |
+| partial | Non-Phase-1 page shells | ✅ covered | Deterministic D-16 disposition rule: every page is `fixture-preview` (`data-np-backing="fixture"` + `DeferredNotice`) or `deferred-shell` (`data-np-backing="deferred"` + intentional deferred panel naming the owning phase) — never ambiguous, never a perpetual skeleton |
+| partial | Side Panel conversation content | ⛔ dismissed | No data-driven content in Phase 1 |
+| partial | Command palette | ⛔ dismissed | Registry registration is all-or-nothing; no partial result state |
+| partial | ErrorBoundary fallback | ⛔ dismissed | Terminal static fallback |
 | overflow | Standalone Sider collapsed (72 px) | ✅ covered | Labels hidden; icon-only items keep `aria-label` + hover tooltip; active state remains visible via fill + weight |
 | overflow | Command list longer than the modal body | ✅ covered | The list scrolls inside the modal body; keyboard selection is kept scrolled into view; the input stays pinned |
+| overflow | Side Panel composer + status bar | ✅ covered | Composer input grows to a bounded max then scrolls internally; the status-bar caption ellipsizes at 400 px |
+| overflow | Onboarding modal content at 400 px | 🧪 backstop | Held-out visual check: no horizontal scroll at 400 px panel width; body scrolls within the modal |
+| overflow | Handoff | ⛔ dismissed | Payload is bounded (bootstrap identifiers + composer draft) and not rendered as layout in the target |
+| overflow | ErrorBoundary fallback | ⛔ dismissed | Terminal static fallback |
 | long-text | Command label / description | ✅ covered | Label is single-line with ellipsis; description wraps to a maximum of 2 lines then ellipsizes |
+| long-text | Side Panel composer draft + status caption | ✅ covered | Composer wraps and scrolls internally; caption ellipsizes — never clipped mid-glyph |
+| long-text | Standalone Sider labels + breadcrumb | ✅ covered | Single-line ellipsis; collapsed items keep `aria-label` + tooltip; breadcrumb truncates |
+| long-text | DeferredNotice copy | ✅ covered | `Tag` is single-line with tooltip; `Alert` body wraps; `aria-label` always holds the full sentence |
+| long-text | Shell error fallback | ✅ covered | Pinned body wraps inside `Result`; no truncation, no clipping |
+| long-text | Handoff caption and toast | ✅ covered | Pinned fixed strings; toast wraps at panel width |
 | long-text | Onboarding step copy at 400 px | 🧪 backstop | Held-out visual check that every step's body wraps without clipping or horizontal scroll at 400 px panel width |
+| long-text | Theme toast | ⛔ dismissed | Pinned fixed strings; `message.config({ maxCount: 3, duration: 5 })` wraps them |
+| long-text | Skeleton / Spin (E10) | ⛔ dismissed | No text content |
 | zero-one-many | Standalone Sider navigation items | ✅ covered | Fixed canonical set (Chat · Agent · Note · Write · Tools); the Add-ons group appears only at ≥1 registered add-on; the account block appears only at ≥1 identity |
-| partial | Preserved non-Phase-1 page presentation | ⚠ unresolved | The planner chooses per the migration inventory: render the preserved presentation (`data-np-backing="fixture"`, deterministic, non-persistent) **or** a skeleton (`data-np-backing="deferred"`). Both satisfy the marker rule; the choice is a planner assumption and must be recorded in the plan |
+| zero-one-many | Command palette registry size | ✅ covered | 5 commands in Phase 1; later phases register more with no palette redesign; the list scrolls and keeps selection visible |
+| zero-one-many | Onboarding | ⛔ dismissed | One modal instance per attempt; concurrent-surface suppression is behavioural (D-06), not a layout state |
+| zero-one-many | ErrorBoundary fallback | ⛔ dismissed | Terminal static fallback |
+| unclassified | Legacy plaintext credential cleanup notice | ✅ covered | Manual review: rendered once, dismissible (`Dismiss`), neutral copy; never reveals whether a value was found; no other states |
 
 ---
 
@@ -478,6 +517,20 @@ Every instance carries an `aria-label` holding the **full sentence**, and a `Too
 4. **No fixture data reaches a persistent store** — not `chrome.storage` (local/sync/managed/session), not IndexedDB, not `localStorage`/`sessionStorage`, not the URL, not `BroadcastBus`, not `RuntimeEnvelope`, not logs, diagnostics, exports, snapshots or screenshot fixtures. (Extends D-08 and D-14 to all fixture content.)
 5. **Markers are removed, not weakened,** when a later phase makes the behaviour live. A stale marker is a defect.
 6. The marker is **not** a substitute for the shell's real states: a live control still needs its own loading/error/disabled treatment.
+
+### Non-Phase-1 page disposition (D-16 — deterministic, not a planner choice)
+
+Every non-Phase-1 page is assigned exactly one disposition in `01-MIGRATION-INVENTORY.md`:
+
+| Disposition | When | Requirements |
+|---|---|---|
+| `fixture-preview` | Approved reusable presentation already exists | Render the preserved presentation with **deterministic local fixtures only**; mark the page root `data-np-backing="fixture"`; show a subtle `DeferredNotice` identifying that production data and operations are not connected; disable or replace actions that would require later-phase services; **never** simulate successful destructive, external, persistent, provider, MCP, filesystem, memory or tool operations; no secrets, no network requests. Must stay keyboard-accessible and support the required empty, populated, overflow and long-text states; fixture-only state is excluded from production diagnostics and exports. |
+| `deferred-shell` | Only the route or workspace shell is required | Canonical shell and navigation structure plus an **intentional deferred-state panel** — **never a perpetual loading skeleton**. Mark the page root `data-np-backing="deferred"`; state which roadmap phase owns the functionality; provide navigation back to an active Phase 1 surface where useful; no fake controls, no dead interactive elements, no loading indicators unless a real Phase 1 async operation is occurring; meet focus, contrast, responsive and screen-reader requirements. |
+| `remove` | Obsolete, duplicated, conflicts with the canonical information architecture, or generated server/web-app infrastructure | Removed via the migration inventory; no participation in production builds. |
+
+A skeleton communicates that content is actively loading and expected shortly; deferred functionality is **not** loading, so it uses a clear deferred/unavailable state.
+
+**Verification.** Every preserved approved page is marked `fixture`; every incomplete page shell is marked `deferred`; no page remains ambiguous; no perpetual skeleton represents deferred functionality; no fixture page invokes later-phase services; no deferred page contains misleading enabled actions; screenshots and DOM checks distinguish fixture-backed from deferred pages; each deferred page names its future roadmap owner.
 
 ---
 
@@ -666,15 +719,15 @@ The `themes/stylesheet.css` case is the highest-risk divergence: it is valid-loo
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS
-- [ ] Dimension 2 Visuals: PASS
-- [ ] Dimension 3 Color: PASS
-- [ ] Dimension 4 Typography: PASS
-- [ ] Dimension 5 Spacing: PASS
-- [ ] Dimension 6 Registry Safety: PASS
-- [ ] Dimension 7 Inventory Provenance: PASS
+- [x] Dimension 1 Copywriting: PASS
+- [x] Dimension 2 Visuals: PASS
+- [x] Dimension 3 Color: PASS
+- [x] Dimension 4 Typography: PASS
+- [x] Dimension 5 Spacing: PASS
+- [x] Dimension 6 Registry Safety: PASS
+- [x] Dimension 7 Inventory Provenance: PASS
 
-**Approval:** pending
+**Approval:** approved — 2026-09-21T09:24:05+1000 (gsd-ui-checker re-verification; Revision 2 write-back preserves sign-off)
 
 ---
 
