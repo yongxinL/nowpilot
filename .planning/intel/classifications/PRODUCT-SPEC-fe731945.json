@@ -1,0 +1,34 @@
+{
+  "source_path": "/Users/george.li/Documents/workspaces/nowpilot/.planning/product/PRODUCT_SPEC.md",
+  "type": "SPEC",
+  "confidence": "medium",
+  "manifest_override": false,
+  "title": "NowPilot — Product Specification v0.2",
+  "summary": "Canonical, standalone implementation specification for the NowPilot v0.2 Chrome MV3 AI assistant covering architecture, data models, features, UI/UX, security, storage, and phased implementation.",
+  "scope": [
+    "NowPilot",
+    "Chrome MV3 extension",
+    "WXT",
+    "Side Panel",
+    "Standalone view",
+    "AI providers (OpenAI, Anthropic, Gemini, Ollama)",
+    "MCP integration",
+    "persistent memory architecture",
+    "storage architecture",
+    "UI/UX requirements",
+    "security",
+    "implementation phases"
+  ],
+  "cross_refs": [
+    "RESEARCH-RECONCILIATION.md",
+    "STACK.md",
+    "DESIGN_SYSTEM.md",
+    "DESIGN_SYSTEM_v0_2.md",
+    "DECISIONS.md",
+    "DESIGN.md",
+    "NOWPILOT_ADDITIONAL_REQUIREMENTS_AGENT_HARNESS.md"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": "No YAML frontmatter type field; classification from content signals only. Product-level material (features, P0-P2 priorities, user flows) competes with technical contracts, but dominant signals are implementation contracts: TypeScript interfaces/types, endpoint tables, data models, component state matrix, storage/security rules, implementation phases, verification commands, and appendices with reference implementations → SPEC (ambiguity resolved by precedence SPEC > PRD)."
+}

@@ -3,7 +3,7 @@
 > **Document ID:** `NOWPILOT_DESIGN_SYSTEM.md`
 > **Status:** Design companion to `PRODUCT_SPEC_v0_2.md` (the implementation contract). This document owns **visual language, brand, layout blueprints, and theming aesthetics**. Where the two ever disagree on a *functional rule*, the product spec wins.
 > **Date:** 2026-09-20
-> **Changelog (rev 2026-08-12):** Reconciled §8 blueprints with the annotated mockups — Side Panel exact heights (composer 44 px, input min 60 px, status bar 28 px) + composer icons (Attach · History · New chat) + **Thought process** collapsible + assistant hover-action set; Standalone Sider 240/72 px + **Add-ons** group + sider-bottom profile + top-bar global search; Notes = **four** header column toggles (incl. persistent Content) + ⋮ More + Inspector Duplicate/Print + per-column shortcuts + bottom status bar; chat-history bottom sheet ≤ ~70 % height; right drawer **320 px** + More-menu (Export/Edit title/Delete); Options menu General · Notes · Advance + Help Center, top bar 56 px, provider cards get edit + enable toggle, theme-pack preview swatch; **provider dialog model list is now a 6-column table** (Model name · Type · Context window · Source · Recommended · Enabled). Added **§8.8 Message action sets** and **§8.9 State indicators**. **(rev 2026-08-12b)** Wired the annotated mockups in `.planning/mockup/` as the §8 visual acceptance reference (new **§8.0** mockup-reference table + precedence rule); `PRODUCT_SPEC` Phase 7/7a now point here for visual acceptance.
+> **Changelog (rev 2026-08-12):** Reconciled §8 blueprints with the annotated mockups — Side Panel exact heights (composer 44 px, input min 60 px, status bar 28 px) + composer icons (Attach · History · New chat) + **Thought process** collapsible + assistant hover-action set; Standalone Sider 240/72 px + **Add-ons** group + sider-bottom profile + top-bar global search; Notes = **four** header column toggles (incl. persistent Content) + ⋮ More + Inspector Duplicate/Print + per-column shortcuts + bottom status bar; chat-history bottom sheet ≤ ~70 % height; right drawer **320 px** + More-menu (Export/Edit title/Delete); Options menu General · Notes · Advance + Help Center, top bar 56 px, provider cards get edit + enable toggle, theme-pack preview swatch; **provider dialog model list is now a 6-column table** (Model name · Type · Context window · Source · Recommended · Enabled). Added **§8.8 Message action sets** and **§8.9 State indicators**. **(rev 2026-08-12b)** Wired the annotated references in `.planning/design/references/` as the §8 visual acceptance reference (new **§8.0** reference table + precedence rule); `PRODUCT_SPEC` §18 Phase 15/16 point here for visual acceptance.
 > **Applies to:** WXT + React 19 + Ant Design v6 (pure CSS-variable theming) + Ant Design X 2.x.
 > **RICH alignment:** Responsive · Intuitive · Consistent · Human-centric (the visual expression of the RICH requirements in spec §17.7).
 
@@ -36,7 +36,7 @@ NowPilot has two surfaces sharing one workspace. **The Side Panel is deliberatel
 | Chat history | ✅ bottom sheet (§8.4) | ✅ right drawer (§8.5) |
 
 - **Side Panel = Chat only.** No left nav rail, no mode switcher, no Note/Write/Tools. It is a single focused conversation surface (Ask-Gemini style, §8.1). Anything heavier hands off to the Standalone view via **Switch to Full chat**.
-- **Standalone view = workspace.** A persistent left **Sider** lists **Chat · Note · Write · Tools** (and **TeamGQM** when enabled). This is where notes, writing, tools, options, and deep work live (§8.2).
+- **Standalone view = workspace.** A persistent left **Sider** lists **Chat · Agent · Note · Write · Tools**, an **Add-ons** group (**TeamGQM** when enabled), and bottom **Settings**. This is where notes, writing, tools, options, and deep work live (§8.2).
 
 > This supersedes the earlier "relocate modes into a New-chat switcher" idea: modes are **not** in the Side Panel at all — they live in the Standalone Sider.
 
@@ -157,23 +157,23 @@ Warmer, paper-like reading mode (best on Notes / "Ask your notes").
 
 Two surfaces, one workspace. This section gives the visual grid; the spec owns behaviour.
 
-### 8.0 Mockup reference (visual source of truth)
+### 8.0 Visual reference art (source of truth)
 
-The annotated mockups in **`.planning/mockup/`** are the pinned visual ground-truth for the §8 blueprints. They are a **review + acceptance artifact**, not a model input: the text in §8 is self-sufficient for text-first implementers (Haiku / DeepSeek-Flash / Gemini-Flash), and the mockups are used at UI review/QA gates (Phase 7 / 7a) and by human reviewers.
+The annotated references in **`.planning/design/references/`** are the pinned visual ground-truth for the §8 blueprints. They are a **review + acceptance artifact**, not a model input: the text in §8 is self-sufficient for text-first implementers (Haiku / DeepSeek-Flash / Gemini-Flash), and the references are used at UI review/QA gates (spec §18 Phase 15/16) and by human reviewers.
 
-| Blueprint | Mockup file (`.planning/mockup/`) | Key anchors |
-|-----------|-----------------------------------|-------------|
-| §8.1 Side Panel — Focused Chat | `00-sidepanel-chat.png` | header 52 / composer 44 / input 60 / status 28 px; Thought-process; assistant hover set (6) |
-| §8.2 + §8.5 Standalone Chat | `01-standalone-chat.png` | Sider 240/72 + Add-ons group; right drawer 320 px; assistant(8)/user(4) action sets; More menu |
-| §8.3 Notes — 4-column workspace | `02-standalone-note.png` | 4 column toggles (Content persistent); Inspector Duplicate/Print; status bar; ⌘1–4 |
-| §8.6 + §8.7 Options + Provider modal | `03-options-general.png` | menu General·Notes·Advance; provider card edit+toggle; 6-column model table |
+| Blueprint | Reference file (`.planning/design/references/`) | Key anchors |
+|-----------|-----------------------------------------------|-------------|
+| §8.1 Side Panel — Focused Chat | `sidepanel/sidepanel-chatPage.png` | header 52 / composer 44 / input 60 / status 28 px; Thought-process; assistant hover set (7) |
+| §8.2 + §8.5 Standalone Chat | `standalone/standalone-chatPage.png` | Sider 240/72 + Add-ons group; right drawer 320 px; assistant(8)/user(4) action sets; More menu |
+| §8.3 Notes — 4-column workspace | `notes/standalone-notePage.png` | 4 column toggles (Content persistent); Inspector Duplicate/Print; status bar; ⌘1–4 |
+| §8.6 + §8.7 Options + Provider modal | `options/options-general.png` | menu General·Notes·Advance; provider card edit+toggle; 6-column model table |
 
 **Precedence (on conflict):**
 - A **functional rule** always defers to `PRODUCT_SPEC_v0_2.md` (the implementation contract).
-- **Visual layout intent** defers to the mockup.
-- A **written measurement/description** in §8 supersedes a stale image — if they disagree, update the mockup and bump its rev.
+- **Visual layout intent** defers to the annotated reference.
+- A **written measurement/description** in §8 supersedes a stale image — if they disagree, update the reference and bump its rev.
 
-**Frozen baseline:** mockups are versioned with this document's rev date. Re-exporting a mockup requires a design-changelog line + a rev bump; otherwise §8 text remains the acceptance baseline. *(Current uploads use a mixed `00/01` prefix; the table above uses the normalized `00–03` names — rename in `.planning/mockup/` to match, or adjust the filenames here.)*
+**Frozen baseline:** references are versioned with this document's rev date. Re-exporting a reference requires a design-changelog line + a rev bump; otherwise §8 text remains the acceptance baseline. Canonical paths are `.planning/design/references/{sidepanel,standalone,notes,options,themes}/` as listed above; do not create or use `.planning/mockup/`.
 
 ### 8.1 Side Panel — "Focused Chat" (Ask-Gemini style, **400 px**, compact)
 
@@ -233,7 +233,8 @@ Persistent left Sider is the surface switcher; a top bar hosts global search; co
 │ ‹ (N)NowPilot │ 🔎 Search notes, tags, or content…   ⌘K      ⋮   │  TOP BAR (56px): back · logo · global search · more
 │  ─────────  ├──────────────────────────────────────────────────────┤
 │  💬 Chat    │                                                      │  Sider items — MAIN group
-│  ▤ Note     │            <active page content>                    │  (Chat · Note · Write · Tools)
+│  🤖 Agent   │            <active page content>                    │  (Chat · Agent · Note · Write · Tools)
+│  ▤ Note     │                                                      │
 │  ✎ Write    │                                                      │
 │  🧰 Tools    │                                                      │
 │  ─ Add-ons ─│                                                      │  separator + group label
@@ -245,7 +246,7 @@ Persistent left Sider is the surface switcher; a top bar hosts global search; co
 ```
 
 - **Sider width:** **expanded 240 px / collapsed 72 px** (icons only), toggled by the collapse chevron; collapsed state shows tooltips on hover. Active item uses `colorPrimaryBg` pill + `colorPrimary` text/icon.
-- **Grouped items:** a **Main group** (Chat · Note · Write · Tools) and a **Secondary "Add-ons" group** (e.g. **TeamGQM**, optional/flag-gated, may carry a `New` badge), separated by a labelled divider.
+- **Grouped items:** a **Main group** (Chat · Agent · Note · Write · Tools) and a **Secondary "Add-ons" group** (e.g. **TeamGQM**, optional/flag-gated, may carry a `New` badge), separated by a labelled divider.
 - **Sider bottom area:** **user avatar + name** with a dropdown chevron (account menu), and **Settings/Options** below it. *(No user info is shown in the Side Panel; it lives only here.)*
 - **Standalone top bar (56 px):** a back chevron `‹` + "N" mark/NowPilot, a **centred global search** ("Search notes, tags, or content…", `⌘K`), and a **⋮ More** menu on the right.
 - **Chat page** in Standalone view reuses the §8.1 composer/bubble recipes at default density (incl. the **Thought process** collapsible, whose header shows the model chip); **Chat history** opens as a **right drawer** here (§8.5), not a bottom sheet. Assistant/user hover-action sets per §8.8.
@@ -462,11 +463,11 @@ Per-message actions appear **on hover**, 16 px icons, `colorTextSecondary` → h
 
 | Context | Position | Actions (left → right) |
 |---|---|---|
-| **Side Panel — assistant** | below the message | **Copy · Like · Dislike · Regenerate · Share · Read aloud** (6) |
-| **Standalone — assistant** | bottom-left of response | **Copy · Save to note · Regenerate · Quote · Share · Like · Dislike · Read aloud** (8) |
+| **Side Panel — assistant** | below the message | **Copy · Save to note · Like · Dislike · Regenerate · Share · Read aloud** (7) |
+| **Standalone — assistant** | bottom-left of response | **Copy · Save to note · Like · Dislike · Regenerate · Quote · Share · Read aloud** (8) |
 | **Standalone — user** | right of the user message | **Edit · Copy · Share · Read aloud** (4) |
 
-- **Why the Side Panel set is smaller:** the Side Panel is chat-only (no Notes surface), so **Save to note** and **Quote** are omitted there; they appear only in the Standalone assistant set.
+- **Side Panel vs Standalone:** the Side Panel assistant set includes **Save to note** (a lightweight hand-off) but omits **Quote**, which appears only in the Standalone assistant set. **Expand** is not a message action anywhere — Activity expansion is controlled by the Activity disclosure itself. RICH-C-09 follow-up/closure controls stay separate from per-message actions.
 - **Tooltips (verbatim):** Copy "Copy" (copy content to clipboard) · Save to note "Save response to a note" · Regenerate "Regenerate response" · Quote "Insert as quote in input" · Share "Share this response" · Like "Mark as useful" · Dislike "Mark as not useful" · Read aloud "Listen to this response" · Edit "Edit your message".
 
 ### 8.9 State & status indicators
@@ -491,7 +492,7 @@ Styled via AntD tokens + `XProvider` config (spec §5.5). Never inline hex.
 - **Standalone Sider:** items 40 px, radius 8; active = `colorPrimaryBg` pill + `colorPrimary` icon/text; collapse chevron top-right; footer avatar/gear/`⌘K`.
 - **Side-panel header:** hairline bar, `colorBgContainer`, no shadow; left mark+wordmark; right two 20 px icon buttons (Options, Switch to Full chat).
 - **Bubble (X):** radius 12, `variant="filled"`; assistant prefixed by ⚡ model label; code blocks JetBrains Mono on `colorFillTertiary` with inline **Copy** / **Save as macro** (RICH-H-04, clipboard-only insert in v0.2).
-- **Per-message toolbar:** 16 px icons, `colorTextSecondary`→hover `colorPrimary`, 8 px gaps; **on-hover**. The set is surface/author-specific (§8.8): Side-Panel assistant = Copy · Like · Dislike · Regenerate · Share · Read-aloud; Standalone assistant = Copy · Save-to-note · Regenerate · Quote · Share · Like · Dislike · Read-aloud; Standalone user = Edit · Copy · Share · Read-aloud.
+- **Per-message toolbar:** 16 px icons, `colorTextSecondary`→hover `colorPrimary`, 8 px gaps; **on-hover**. The set is surface/author-specific (§8.8): Side-Panel assistant = Copy · Save to note · Like · Dislike · Regenerate · Share · Read aloud (7); Standalone assistant = Copy · Save to note · Like · Dislike · Regenerate · Quote · Share · Read aloud (8); Standalone user = Edit · Copy · Share · Read aloud (4).
 - **Thought process (collapsible):** bordered section with a chevron header at the top of the assistant card, collapsed by default; in Standalone the header shows the **model chip** (e.g. `gemma-4-2b-it`). Expands to reveal model + reasoning/tool steps (§8.1f). `colorBgContainer`, radius 12, hairline border; no motion during streaming.
 - **Workflow selector:** left-aligned pill, ⚡ + truncated id + chevron; opens searchable `Select`/`Dropdown` of provider→models (`colorBgElevated`, `E2`); full id in tooltip.
 - **Composer toolbar icons (44 px bar):** 18 px, right-aligned, space-between vs the workflow selector — **Attach · Chat history · New chat** (no snip icon).
@@ -509,7 +510,7 @@ Styled via AntD tokens + `XProvider` config (spec §5.5). Never inline hex.
 
 ## 10. Iconography
 
-- **Base set:** Ant Design Icons v6 (match `antd` major); no second icon library. Canonical map: Options `SettingOutlined` · Switch-to-Full `ExpandAltOutlined` · Snip `ScissorOutlined` · Attach `PaperClipOutlined` · History `HistoryOutlined` · New chat `FormOutlined` · Help `QuestionCircleOutlined` · Feedback `MailOutlined` · Copy `CopyOutlined` · Regenerate `ReloadOutlined` · Quote/save-note `HighlightOutlined` · Share `ShareAltOutlined` · Read-aloud `SoundOutlined` · New Note `PlusOutlined` · Import `ImportOutlined` · Backup `CloudUploadOutlined` · Collapse `DoubleLeftOutlined`/`DoubleRightOutlined` · Filter `FilterOutlined` · Sort `SortAscendingOutlined` · Grid `AppstoreOutlined` · Password reveal `EyeOutlined`/`EyeInvisibleOutlined` · Update list `ReloadOutlined` · Add custom `PlusOutlined` · Delete/clear `DeleteOutlined` · Star `StarOutlined`/`StarFilled` · Overflow `MoreOutlined` · **Like `LikeOutlined` · Dislike `DislikeOutlined` · Save-to-note `FileAddOutlined` · Edit `EditOutlined` · Quote `HighlightOutlined` · Duplicate `BlockOutlined` · Print `PrinterOutlined` · Move-to `FolderOpenOutlined` · Back `LeftOutlined` · Enable toggle `Switch` · Content-column toggle `FileTextOutlined` · Provider check `CheckCircleOutlined`**. *(Per the mockups the composer has no snip icon; `ScissorOutlined` is retained in the set for future use but is not placed in the composer toolbar.)*
+- **Base set:** Ant Design Icons v6 (match `antd` major); no second icon library. Canonical map: Options `SettingOutlined` · Switch-to-Full `ExpandAltOutlined` · Attach `PaperClipOutlined` · History `HistoryOutlined` · New chat `FormOutlined` · Help `QuestionCircleOutlined` · Feedback `MailOutlined` · Copy `CopyOutlined` · Regenerate `ReloadOutlined` · Quote/save-note `HighlightOutlined` · Share `ShareAltOutlined` · Read-aloud `SoundOutlined` · New Note `PlusOutlined` · Import `ImportOutlined` · Backup `CloudUploadOutlined` · Collapse `DoubleLeftOutlined`/`DoubleRightOutlined` · Filter `FilterOutlined` · Sort `SortAscendingOutlined` · Grid `AppstoreOutlined` · Password reveal `EyeOutlined`/`EyeInvisibleOutlined` · Update list `ReloadOutlined` · Add custom `PlusOutlined` · Delete/clear `DeleteOutlined` · Star `StarOutlined`/`StarFilled` · Overflow `MoreOutlined` · **Like `LikeOutlined` · Dislike `DislikeOutlined` · Save-to-note `FileAddOutlined` · Edit `EditOutlined` · Quote `HighlightOutlined` · Duplicate `BlockOutlined` · Print `PrinterOutlined` · Move-to `FolderOpenOutlined` · Back `LeftOutlined` · Enable toggle `Switch` · Content-column toggle `FileTextOutlined` · Provider check `CheckCircleOutlined`**. *(The composer has no snip icon; screenshot/region-capture is deferred beyond the current v0.2 milestone.)*
 - **Brand/custom:** mascot marks (§4.3) + NowPilot glyphs (pinned-tab, note, wiki-link, macro). **SVG**, `currentColor` fills so they theme automatically.
 - **Sizes:** 16/20/24/32 px optical; per-message toolbar 16, composer 18, header 20, Sider 20, mascot head 24–28, app icon 16/32/48/128.
 - **Style:** rounded joins, 1.75–2 px stroke @24 px; no filled/outlined mixing in one context. **Transparent** backgrounds for all assets.
@@ -542,7 +543,7 @@ Respect `prefers-reduced-motion`: drop slides/scales, keep opacity.
 
 - **Contrast:** WCAG **AA** minimum in **every** pack × light/dark. Verify text on `colorBgContainer` and on user-bubble fills before shipping a pack.
 - **Focus:** visible 2 px `colorPrimary` ring on all interactive elements.
-- **Icon-only controls need labels:** every header/composer/status-bar/notes-toolbar/dialog icon carries an `aria-label` + tooltip (Options, Switch to Full chat, Snip, Attach, History, New chat, Help, Feedback, column toggles, password reveal, model toggles).
+- **Icon-only controls need labels:** every header/composer/status-bar/notes-toolbar/dialog icon carries an `aria-label` + tooltip (Options, Switch to Full chat, Attach, History, New chat, Help, Feedback, column toggles, password reveal, model toggles).
 - **Overlays:** bottom sheet + right drawer trap focus, restore focus on close, dismiss on Escape, and announce open/close; scrim is click-to-close but never the only affordance.
 - **Colour is never the only signal:** unresolved wikilinks dashed + muted; provider-error state colour + tooltip; active nav pill uses fill + weight, not colour alone.
 - **Hit targets:** ≥ 32 px (compact) / 36 px (standalone view); space composer/notes icons so touch targets don't overlap at 400 px.
@@ -587,13 +588,13 @@ export const NOWPILOT_PACK_OVERLAYS: Record<ThemePack, { token?: object; compone
 
 ## 14. Layout Change Log (design intent)
 
-1. **Surface split (authoritative, §2):** Side Panel = **Chat only** (no rail, no modes). Standalone Sider hosts a **Main group** (Chat · Note · Write · Tools) + an **Add-ons group** (TeamGQM optional), separator between; Sider **240 px expanded / 72 px collapsed**; sider-bottom profile + Settings.
+1. **Surface split (authoritative, §2):** Side Panel = **Chat only** (no rail, no modes). Standalone Sider hosts a **Main group** (Chat · Agent · Note · Write · Tools) + an **Add-ons group** (TeamGQM optional), separator between; Sider **240 px expanded / 72 px collapsed**; sider-bottom profile + Settings.
 2. **Side Panel (§8.1):** exact metrics — width 400 · header 52 · composer 44 · input min 60 · status bar 28 px; three-element header (name · Options · Switch to Full chat); composer toolbar above input (workflow selector + **Attach · History · New chat**, no snip); **Thought process** collapsible on assistant turns; status bar below input (provider ● · Help · Feedback).
 3. **Notes page (§8.3):** 4 columns — **Directory · Notes · Note content · Inspector** — show/hide via **four** header toggles (Content persistent) + column chevrons; header actions **+ New Note · Import · Backup · ⋮ More**; Inspector Quick Actions add **Duplicate · Print**; bottom status bar (word count · last saved · save-state); per-column keyboard shortcuts.
 4. **Chat history:** **bottom sheet** (≤ ~70 % height + drag handle) in Side Panel (§8.4), **right drawer 320 px** in Standalone (§8.5); shared All/Starred + search + Delete-all + day-grouped items; per-item More menu = Export · Edit title · Delete (confirm).
 5. **Options (§8.6):** 56 px top bar (global search + Help); left menu **General · Notes · Advance + Help Center** (240/72 px); card content — Account · Service provider (2×2 grid, each card = **edit + enable toggle + Set up**) · Appearance (**Theme pack + preview swatch**, Display mode, language, font, side-panel-position); content max-width 1200 px; `⌘,` opens Options.
 6. **Provider dialog (§8.7):** modal with API key (eye toggle), optional proxy switch + URL, Check connection (inline ✓), and a **6-column model table** (Model name · Type · Context window · Source · Recommended · Enabled) + Update list + Add custom model; Cancel/Save; how-it-works flow.
-7. **New references:** **§8.8** message action sets (Side-Panel assistant 6 · Standalone assistant 8 · Standalone user 4) and **§8.9** save/sync state indicators.
+7. **New references:** **§8.8** message action sets (Side-Panel assistant 7 · Standalone assistant 8 · Standalone user 4) and **§8.9** save/sync state indicators.
 
 ---
 

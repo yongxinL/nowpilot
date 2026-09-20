@@ -4,9 +4,9 @@
 **Status:** Canonical, standalone implementation reference
 **Date:** 2026-09-20
 **Version:** v0.2
-**Scope:** NowPilot v0.2 — Chrome MV3 AI Assistant using Side Panel + Standalone view. Add-on architecture preserved. Page injection deferred to v0.2+.
+**Scope:** NowPilot v0.2 — Chrome MV3 AI Assistant using Side Panel + Standalone view. Add-on architecture preserved. Page injection deferred to a later release.
 
-**Purpose:** This document is the single, self-contained product specification for NowPilot v0.1. It does not reference any prior document. Any AI coding agent implementing this spec must treat this file as authoritative and complete.
+**Purpose:** This document is the single, self-contained product specification for NowPilot v0.2. It does not reference any prior document. Any AI coding agent implementing this spec must treat this file as authoritative and complete.
 
 **Target implementation agents:** any cost-effective coding model of the operator's choice — **operator's choice per GSD stage**. This spec mandates **no** specific build-agent model; a small number of high-complexity modules carry a vendor-neutral `@implementation-tier: advanced` marker the operator may stub or route to a stronger agent (see §0.3a).
 **Target runtime providers:** OpenAI, Anthropic, Gemini, Ollama (the product's runtime tier→model mapping is operator-configured; Appendix D).
@@ -95,17 +95,17 @@ These rules apply to every phase, every module, and every AI coding agent.
 - **DO NOT** store conversation message bodies in chrome.storage.local. Bodies live in IndexedDB MemoryDB.
 - **DO NOT** log raw prompt bodies, raw tool inputs/outputs, cookies, clipboard text, ServiceNow raw case body, or API keys by default. All logging goes through TraceRedactor.
 
-**UI / DOM (v0.1):**
+**UI / DOM (v0.2):**
 
-- **DO NOT** render UI from content scripts in v0.1. Content scripts are extraction-only.
-- **DO NOT** use Shadow DOM UI in v0.1. Shadow DOM UI is deferred to v0.2+ (see §25).
+- **DO NOT** render UI from content scripts in v0.2. Content scripts are extraction-only.
+- **DO NOT** use Shadow DOM UI in v0.2. Shadow DOM UI is deferred to a later release (see §25).
 - **DO NOT** manipulate host page DOM for UI purposes. Content scripts may only read.
-- **DO NOT** write back into host-page fields, editors, or textareas in v0.1. RICH-H-04 ("Insert into page") and RICH-H-07 ("Fill this field") degrade to **clipboard-only** in v0.1 (reconciliation R1, §17.7.5). Host-page write-back is deferred to v0.2+ page injection (§25). Retained: "Copy code", "Save as macro", "Save to note".
+- **DO NOT** write back into host-page fields, editors, or textareas in v0.2. RICH-H-04 ("Insert into page") and RICH-H-07 ("Fill this field") degrade to **clipboard-only** in v0.2 (reconciliation R1, §17.7.5). Host-page write-back is deferred to page injection in a later release (§25). Retained: "Copy code", "Save as macro", "Save to note".
 - **DO NOT** import antd components into content scripts or the background service worker.
 - **DO NOT** put heavy admin/configuration screens in the Side Panel. Those belong in the Standalone view under Options.
 - **DO NOT** use innerHTML, dangerouslySetInnerHTML, or document.write.
 - **DO NOT** use setTimeout/setInterval for DOM polling in content scripts. Use MutationObserver.
-- **DO NOT** install tailwindcss, @tailwindcss/vite, shadcn/ui, @radix-ui/react-*, class-variance-authority, clsx, or tailwind-merge. Removed in v0.1.
+- **DO NOT** install tailwindcss, @tailwindcss/vite, shadcn/ui, @radix-ui/react-*, class-variance-authority, clsx, or tailwind-merge. Removed in v0.2.
 
 **Filesystem:**
 
@@ -135,7 +135,7 @@ These rules apply to every phase, every module, and every AI coding agent.
 - **DO NOT** install framer-motion. The correct package is motion (Framer Motion v12); import from motion/react.
 - **DO NOT** use ulid or uuid. Use native crypto.randomUUID().
 - **DO NOT** install @ant-design/x-sdk, or use its useXChat, useXConversations, ChatProvider, OpenAIChatProvider, or DeepSeekChatProvider exports. These duplicate ProviderRouter/AgentOrchestrator/ContextOptimizer and would let UI code call providers directly, violating the rule above and §2.3. @ant-design/x **presentation** components (Bubble, Sender, Conversations, ThoughtChain, etc.) and @ant-design/x-markdown are approved — see §7.2 and §23.
-- **DO NOT** install or use @ant-design/x-card. A2UI dynamic-surface generation is deferred to v0.2+ (§25.6).
+- **DO NOT** install or use @ant-design/x-card. A2UI dynamic-surface generation is deferred beyond the current v0.2 milestone (§25.6).
 
 **Layering:**
 
@@ -197,7 +197,6 @@ This spec deliberately separates two things that are often confused. **Neither m
 | IndexedDBMigrator | src/core/storage/IndexedDBMigrator.ts | Versioned migrations |
 | WorkspaceStore (NEW) | src/core/workspace/WorkspaceStore.ts | Shared workspace across Side Panel and Standalone view (Appendix M) |
 | WorkspaceRouter (NEW) | src/core/workspace/WorkspaceRouter.ts | Handoff URL parse/build + cross-surface sync |
-| SidePanelPageRegistry | src/core/registry/SidePanelPageRegistry.ts | Add-on registration of Side Panel pages |
 | StandalonePageRegistry (NEW) | src/core/registry/StandalonePageRegistry.ts | Add-on registration of Standalone pages |
 | PageContentService | src/core/extraction/PageContentService.ts | Core layered page extraction (§26) |
 | NoteTagger | src/core/notes/NoteTagger.ts | LLM: tags + category + summary + memory facts (§27) |
@@ -232,7 +231,7 @@ This section keeps a cheap/fast implementer (a cost-effective `fast`/`balanced`-
 | **R-2** | Wraps retries so calls multiply (N×N×N cost blow-up) | One retry per layer; three layers max; all under tier caps | §1.6.1 |
 | **R-3** | Calls a provider/EventSource/IndexedDB from the background SW | AI + IndexedDB live in Side Panel/Standalone only; SW does PROXY_FETCH/alarms | §0.2, §5.2 |
 | **R-4** | Lets the LLM execute tools directly | Planner *requests*; ExecutorService *validates + runs* | §1.2 |
-| **R-5** | Renders host-page UI or writes back to page fields in v0.1 | Content scripts are extraction-only; RICH-H-04/07 = clipboard-only | §0.2, R1 |
+| **R-5** | Renders host-page UI or writes back to page fields in v0.2 | Content scripts are extraction-only; RICH-H-04/07 = clipboard-only | §0.2, R1 |
 | **R-6** | Treats a `deferred`/`proposed` evolution candidate as active | `CandidateProposer` only proposes; activation is human-gated | §28.7a |
 | **R-7** | Puts persona config in the fact store | Persona = user config in PreferenceMemoryStore (`np_persona`), not UserMemoryStore | R2, §3.5 |
 | **R-8** | Skips the verifier and marks a write "done" | Postcondition verifier + `CompletionEvidence` required | §28.2 |
@@ -419,7 +418,7 @@ Invariants across **both** modes, enforced by the same modules:
 Three orchestration rules keep the coordinator predictable and cheap. They are **internal contracts**, not a runtime engine — NowPilot deliberately does **not** ship an event bus/emitter or the (deprecated) LlamaIndex Workflows engine.
 
 - **Typed stage events (L1).** Each stage's input/output is a member of a **discriminated `StageEvent` union** (Appendix C.1), so a stage's shape is compile-time checked for cost-effective `fast`/`balanced`-tier implementers. This is a *type*, not an event system: the coordinator still calls stages directly in §18/§30 order.
-- **Within-turn human input (L2).** A stage may emit an `input-required` `StageEvent` to pause **inside the current turn** for a clarification or a permission decision — surfaced as the `waiting-for-permission` / `ask_clarification` trajectory states (AGT-01). This is **within-turn only**; durable cross-session suspend/resume/rewind is explicitly **out of scope for v0.1** (§17.7.7) and deferred to v0.2+.
+- **Within-turn human input (L2).** A stage may emit an `input-required` `StageEvent` to pause **inside the current turn** for a clarification or a permission decision — surfaced as the `waiting-for-permission` / `ask_clarification` trajectory states (AGT-01). This is **within-turn only**; durable cross-session suspend/resume/rewind is explicitly **out of scope for v0.2** (§17.7.7) and deferred to a later release.
 - **Bounded, non-multiplying retry (L3).** NowPilot has exactly **three** retry layers and they **must not multiply**:
   1. `ProviderRouter` — pre-first-token provider retry + circuit breaker (§1.5);
   2. Agent loop replan — the deterministic AGT-04 policy (§28.2);
@@ -478,8 +477,8 @@ export interface ContextOptimizerInput {
   modelContextWindow: number;
   userInput: string;
   conversationId: string;
-  workspaceId: string;                     // NEW in v0.1
-  activeSurface: 'sidepanel' | 'standalone'; // NEW in v0.1
+  workspaceId: string;                     // NEW in v0.2
+  activeSurface: 'sidepanel' | 'standalone'; // NEW in v0.2
   pageContext?: PageContext;
   selectedToolSchemas: ToolSchemaRef[];
   memoryHints: RetrievedMemory[];
@@ -547,8 +546,8 @@ export interface ContextProvenanceManifest {
   }>;
   totalTokens: number;
   minimalMode: boolean;
-  workspaceId: string;         // NEW in v0.1
-  activeSurface: 'sidepanel' | 'standalone'; // NEW in v0.1
+  workspaceId: string;         // NEW in v0.2
+  activeSurface: 'sidepanel' | 'standalone'; // NEW in v0.2
 }
 ```
 
@@ -575,7 +574,7 @@ MiniSearch    → local full-text retrieval
 MemoryEngine  → orchestration, scoring, summarisation, injection
 ```
 
-Do **not** use LangChain, LlamaIndex, MemGPT, remote vector DBs, or embedding downloads in v0.1.
+Do **not** use LangChain, LlamaIndex, MemGPT, remote vector DBs, or embedding downloads in v0.2.
 
 ### §3.3 Conversation Memory
 
@@ -655,7 +654,7 @@ export interface UserPreferences {
   allowCloudFallbackFromLocal: boolean;
   defaultProviderId?: ProviderId;
   toolAutonomy: 'ask_every_time' | 'allow_safe_tools' | 'manual_only';
-  defaultSurface: 'sidepanel' | 'standalone';  // NEW in v0.1
+  defaultSurface: 'sidepanel' | 'standalone';  // NEW in v0.2
   // NOTE: theme is NOT a preference field. Display mode (np_theme) and theme pack
   // (np_theme_pack) are the single source of truth in chrome.storage.sync,
   // surfaced via ThemeStore + getAntdConfig() and synced across surfaces by
@@ -724,8 +723,8 @@ export interface AITransaction {
   id: string;
   sessionId?: string;
   conversationId?: string;
-  workspaceId?: string;                    // NEW in v0.1
-  activeSurface?: 'sidepanel' | 'standalone'; // NEW in v0.1
+  workspaceId?: string;                    // NEW in v0.2
+  activeSurface?: 'sidepanel' | 'standalone'; // NEW in v0.2
   userTurnId?: string;
   type: 'chat' | 'planner' | 'renderer' | 'structured_output'
       | 'mcp_tool' | 'builtin_tool' | 'skill' | 'proxy_fetch';
@@ -872,7 +871,7 @@ Side Panel owns: AI streaming, MCP runtime, ProviderRouter, PromptCacheManager, 
 
 Standalone view owns: All Options screens, full-page Chat/Agent/Notes workspaces, TeamGQM full workspace, **LLM-Wiki + Filesystem Sync (§27)**, WorkspaceStore (standalone instance).
 
-Content Scripts own: Page context extraction, SPA navigation detection, ServiceNow token/case extraction. **No UI rendering** in v0.1.
+Content Scripts own: Page context extraction, SPA navigation detection, ServiceNow token/case extraction. **No UI rendering** in v0.2.
 
 Canonical WXT background entrypoint (mandatory shape):
 
@@ -900,7 +899,7 @@ export default defineContentScript({
   world: 'ISOLATED',
   async main(ctx) {
     ctx.addEventListener(window, 'wxt:locationchange', onSpaNav);
-    // v0.1: extraction only. No UI rendering, no Shadow DOM.
+    // v0.2: extraction only. No UI rendering, no Shadow DOM.
     await ContentScriptHost.mountExtractionOnly(ctx);
   },
 });
@@ -933,7 +932,7 @@ Complete wxt.config.ts — see **Appendix G**.
 
 - Use `chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })` in LifecycleManager.onInstalled and onStartup.
 - Use `chrome.sidePanel.open({ tabId })` **only inside a user gesture** — action click or contextMenus.onClicked.
-- The Side Panel is global per browser window; URL-specific navigation is filtered by SidePanelPageRegistry.
+- The Side Panel is global per browser window; it is Chat-only and hosts no add-on pages.
 
 ### §5.4 Standalone view Opening
 
@@ -1010,7 +1009,7 @@ Rules:
 
 ### §5.6 Content Script Rules (extraction-only)
 
-Content scripts in v0.1:
+Content scripts in v0.2:
 
 - MAY extract page context, DOM text, selected text, ServiceNow session cookies, and SPA navigation events.
 - MAY communicate with the Side Panel, Standalone view, or Background via RuntimeEnvelope<T>.
@@ -1041,7 +1040,7 @@ Everything runs locally against user-configured AI providers. No data leaves the
 
 ### §6.2 Two UI Surfaces
 
-NowPilot v0.1 exposes **two extension-owned UI surfaces**. There is no page-injected UI in v0.1.
+NowPilot v0.2 exposes **two extension-owned UI surfaces**. There is no page-injected UI in v0.2.
 
 #### Side Panel — Lightweight Daily Workflow
 
@@ -1052,7 +1051,7 @@ The side panel contains **only Chat** (Ask-Gemini style, §17.1) — there is no
 - Chat (the only Side Panel surface)
 - Switch to Full chat (workspace handoff to the Standalone view, Flow 11)
 
-Plus RICH welcome/quick-action/clarification/follow-up surfaces (§17.7), the composer toolbar (workflow selector · screenshot · attach · chat history · new chat), the status bar (provider · help · feedback), and quick "Save to note".
+Plus RICH welcome/quick-action/clarification/follow-up surfaces (§17.7), the composer toolbar (workflow selector · attach · chat history · new chat), the status bar (provider · help · feedback), and quick "Save to note".
 
 Agent, Note, Write, Tools, and TeamGQM are **not** in the Side Panel — they live in the Standalone Sider (§8.3, §17.2). Do NOT put heavy admin, diagnostics, provider management, prompt management, note-graph workflows, **LLM-Wiki management, or Filesystem Sync config** in the side panel.
 
@@ -1068,14 +1067,16 @@ The Standalone view contains:
 
 - Chat (full-screen)
 - Agent (full-screen, shares workspace with Chat)
-- Notes (full workspace: list, editor, backlinks, graph, **+ LLM-Wiki + Filesystem Sync**)
-- TeamGQM (add-on, full-page)
-- Options (all configuration and diagnostics)
+- Note (full workspace: list, editor, backlinks, graph, **+ LLM-Wiki + Filesystem Sync**)
+- Write (first-party add-on, full-page)
+- Tools
+- Add-ons group — TeamGQM (first-party add-on, feature-flag-gated) and future approved add-ons
+- Settings (all configuration and diagnostics; Diagnostics is reached from Settings, not a primary Sider item)
 
 ### §6.3 Architecture Separation
 
 - **Core layer** — AI providers, storage, messaging, context pipeline, agent orchestration, MCP client, memory, transaction logging, workspace store, **page-content extraction (PageContentService)**, **LLM-Wiki services (NoteTagger/NoteQA/NoteChatConverter/NoteFileSync/NoteMaintenance)**, and **persona (PersonaProfile/PersonaInjector)**.
-- **Add-on layer** — site-specific context extraction, skills, side-panel pages, standalone pages. ServiceNow ships as first-party add-on. Write and TeamGQM are first-party add-ons.
+- **Add-on layer** — site-specific context extraction, skills, and Standalone pages. ServiceNow ships as first-party add-on. Write and TeamGQM are first-party add-ons. Add-ons register Standalone pages only; the Side Panel is Chat-only, so add-ons contribute chat-safe entry actions there, never pages.
 
 Core never knows about specific websites. Add-ons never bypass core APIs.
 
@@ -1083,7 +1084,7 @@ Core never knows about specific websites. Add-ons never bypass core APIs.
 
 - **Privacy by default:** local providers (Ollama, LM Studio) are first-class.
 - **Two surfaces, one workspace:** side panel and standalone view share a WorkspaceStore.
-- **Extensible via add-ons:** add-ons register pages on either surface (never inject into host pages in v0.1).
+- **Extensible via add-ons:** add-ons register Standalone pages and chat-safe Side Panel entry actions (never Side Panel pages and never inject into host pages in v0.2).
 - **Cost-effective by design:** every prompt goes through ContextOptimizer and the Planner → Executor → Renderer pipeline.
 - **Offline-capable:** the extension works with local models only.
 - **Knowledge-first:** the product data-flow is acquire → store → understand → display → extend; PageContentService, Notes, and LLM-Wiki are the core, not late add-ons.
@@ -1091,18 +1092,18 @@ Core never knows about specific websites. Add-ons never bypass core APIs.
 
 ### §6.5 Scope Fences
 
-**In scope for v0.1:**
+**In scope for v0.2:**
 
-- Side panel shell (Chat, Agent, Write, TeamGQM, Open Standalone view)
-- Full app shell (Chat, Agent, Notes, TeamGQM, Options)
+- Side Panel shell (Chat only; Options action; Switch to Full chat; quick Save to note)
+- Standalone shell (Chat, Agent, Note, Write, Tools, Add-ons/TeamGQM, Settings/Options)
 - Shared WorkspaceStore across both surfaces
 - 4 provider adapters (OpenAI, Anthropic, Gemini, Ollama)
 - PageContentService (core) — layered page extraction (Defuddle → APC-lite DOM walk), feeding ContextOptimizerInput.pageContext, indexed by MiniSearch.
 - Persistent memory (conversation + user + preference)
 - 12 built-in MCP tools + external MCP client
-- ServiceNow add-on (data extraction + side-panel/standalone UI only)
-- Write add-on (side-panel primary; optional standalone page)
-- TeamGQM add-on (both surfaces)
+- ServiceNow add-on (data extraction + Standalone page + chat-safe Side Panel entry actions)
+- Write add-on (Standalone page)
+- TeamGQM add-on (Standalone Add-ons group; feature-gated)
 - Data export/import
 - Prompt inspector and diagnostics (in Options)
 - First-run onboarding
@@ -1110,7 +1111,7 @@ Core never knows about specific websites. Add-ons never bypass core APIs.
 - **RICH Design R/I/C/H requirements (§17.7)**
 - **Persona profile + injector (RICH-R)**
 
-**Out of scope for v0.1 (deferred to v0.2+):**
+**Out of scope for v0.2 (deferred to a later release):**
 
 - Page injection (Shadow DOM UI, floating widgets, CaseInsightBox, injected page enhancements, **host-page write-back for RICH-H-04/H-07 — reconciliation R1**)
 - PDF chat
@@ -1143,9 +1144,9 @@ See §25 for the future page-injection reintroduction plan.
 | @ant-design/x-markdown | ^2 | Streaming-aware Markdown renderer with built-in LaTeX, mermaid, and code-highlight plugins. Replaces react-markdown/remark-gfm/rehype-highlight/highlight.js/katex. |
 | motion | ^12 | Framer Motion (import from `motion/react`). **Do not install framer-motion.** **Rev 2026-08-12:** current latest is v13 (framer-motion 13.x); v12 remains fully React-19-compatible, so `^12` is retained as a conservative pin. Optionally move to `^13` for the newest features — the `motion/react` import surface is unchanged. |
 
-**Explicitly removed from v0.1:** tailwindcss, @tailwindcss/vite, shadcn/ui, @radix-ui/react-*, class-variance-authority, clsx, tailwind-merge, react-markdown, remark-gfm, rehype-highlight, highlight.js, katex (superseded by @ant-design/x-markdown).
+**Explicitly removed from v0.2:** tailwindcss, @tailwindcss/vite, shadcn/ui, @radix-ui/react-*, class-variance-authority, clsx, tailwind-merge, react-markdown, remark-gfm, rehype-highlight, highlight.js, katex (superseded by @ant-design/x-markdown).
 
-**Explicitly not adopted in v0.1 (see §0.2, §23, §25.6):** @ant-design/x-sdk, @ant-design/x-card.
+**Explicitly not adopted in v0.2 (see §0.2, §23, §25.6):** @ant-design/x-sdk, @ant-design/x-card.
 
 ### §7.3 State
 
@@ -1164,7 +1165,7 @@ See §25 for the future page-injection reintroduction plan.
 | @ai-sdk/google | current major (≈ 3.x) | Google Gemini (see note above — independent major). |
 | @modelcontextprotocol/sdk | ^1 (≥ 1.30) | MCP client — StreamableHTTP transport. ✓ current (caret resolves to 1.30.x). Note: the SDK now imports `zod/v4` internally but stays back-compatible with Zod v3.25+ — consistent with the Zod 4 bump below. |
 | zod | ^4 (≥ 4.4) | Boundary validation. **Rev 2026-08-12:** bumped from `^3` — **Zod 4 is stable** (root `zod` export), ~14× faster parsing, and is the version the MCP SDK and AI SDK 5+ already target. Existing `z.object(...)` schemas are source-compatible; review the [migration guide](https://zod.dev/v4) for edge cases (error `.issues` shape, `.email()` → `z.email()`). Confirmed authoritative 2026-08-19 (RESEARCH-RECONCILIATION.md §F); STACK.md "keep 3.24" superseded (below the 3.25+ floor). Appendix L zod-to-json-schema unchanged. |
-| zod-to-json-schema | `^3` — **KEEP in v0.1** | Zod → JSON Schema for tool definitions. **Rev 2026-08-12 (definitive for implementers):** **v0.1 keeps `zod-to-json-schema` exactly as written in Appendix L** — do **not** change that code. Zod 4 also ships native `z.toJSONSchema()`, but migrating to it is a **v0.2 cleanup** (tracked, not in scope for any v0.1 phase). This avoids ambiguity: a Phase-implementer uses `zodToJsonSchema(schema)` per Appendix L and nothing else. |
+| zod-to-json-schema | `^3` — **KEEP in v0.2** | Zod → JSON Schema for tool definitions. **Rev 2026-08-12 (definitive for implementers):** **v0.2 keeps `zod-to-json-schema` exactly as written in Appendix L** — do **not** change that code. Zod 4 also ships native `z.toJSONSchema()`, but migrating to it is a **post-v0.2 cleanup** (tracked, not in scope for any v0.2 phase). This avoids ambiguity: a Phase-implementer uses `zodToJsonSchema(schema)` per Appendix L and nothing else. |
 
 ### §7.5 Storage
 
@@ -1231,14 +1232,14 @@ Chrome Browser
 │   ├── StorageLayer (ChatHistoryDB, NotesDB, MemoryDB, ErrorStore, WriteJournal)
 │   ├── WorkspaceStore (Zustand) + WorkspaceSync (BroadcastBus)
 │   ├── MessageBus (cross-context), EventBus (in-panel), BroadcastBus (cross-surface)
-│   └── UI: Chat / Agent / Write (add-on) / TeamGQM (add-on) / Open Standalone view + RICH surfaces
+│   └── UI: Chat only + Open Standalone view + RICH surfaces
 │
 ├── Standalone view (app/main.tsx)                               [persistent tab]
 │   ├── AntD ConfigProvider (default density) + AntdApp
 │   ├── StandaloneShell + StandaloneRouter (AntD Layout w/ Sider)
 │   ├── Same core services as Side Panel (single-writer coordination via WorkspaceStore)
 │   ├── LLM-Wiki services (NoteTagger/NoteQA/NoteChatConverter/NoteFileSync/NoteMaintenance)
-│   └── UI: Chat / Agent / Notes (+LLM-Wiki) / TeamGQM / Options
+│   └── UI: Chat / Agent / Note (+LLM-Wiki) / Write / Tools / TeamGQM / Settings
 │
 ├── Content Scripts (extraction-only)
 │   ├── ContentScriptHost         message bridge only, no UI mount
@@ -1262,7 +1263,7 @@ Core owns:
 - Shared UI (ErrorBoundary, PortableMarkdown)
 - Prompt/template/slash engines
 - Telemetry, redaction
-- Registries (AddonRegistry, EndpointRegistry, KeymapRegistry, SidePanelPageRegistry, StandalonePageRegistry)
+- Registries (AddonRegistry, EndpointRegistry, KeymapRegistry, StandalonePageRegistry)
 - **WorkspaceStore** and cross-surface coordination
 - Content-script message bridge (extraction-only)
 - PageContentService + extraction strategies (DefuddleStrategy, ApcLiteStrategy) + PageIndexBuilder (MiniSearch over extracted content)
@@ -1273,8 +1274,7 @@ Core owns:
 Add-ons own:
 
 - Site-specific context extraction
-- Side-panel pages
-- Full-app pages
+- Standalone pages
 - Site-specific skills, prompts, endpoints, session semantics
 - Add-on settings, keymaps
 
@@ -1282,7 +1282,8 @@ Rules:
 
 - Core MUST NOT import from src/addons/**.
 - Add-ons MUST NOT bypass Core registries or WorkspaceStore.
-- Add-ons MUST NOT render UI into host pages in v0.1.
+- Add-ons MUST NOT register Side Panel pages; Side Panel entry points are chat-safe actions only.
+- Add-ons MUST NOT render UI into host pages in v0.2.
 - ServiceNow-specific selectors/token names live **only** in src/addons/servicenow/**.
 
 ### §8.3 Two UI Surfaces — Comparison
@@ -1292,7 +1293,7 @@ Rules:
 | Width | ~400 px (Chrome default) | Full browser viewport |
 | Density | AntD **compact** algorithm | AntD default density |
 | Purpose | Fast, context-adjacent workflows | Deep work, config, diagnostics |
-| Pages | Chat, Agent, Write, TeamGQM, Open Standalone view | Chat, Agent, Notes (+LLM-Wiki), TeamGQM, Options |
+| Pages | Chat only (no nav rail, no pages) | Chat, Agent, Note (+LLM-Wiki), Write, Tools, Add-ons/TeamGQM, Settings/Options |
 | Persistence | Persistent while open | Persistent tab |
 | Opened by | Chrome action button, keyboard shortcut, context menu | "Open Standalone view" action, command palette, options link |
 | Notes management | ❌ (view/quick-save only) | ✅ full workspace + LLM-Wiki + Filesystem Sync |
@@ -1379,7 +1380,7 @@ nowpilot/
 │   │   ├── data/DataPortability.ts
 │   │   ├── insights/InsightEngine.ts
 │   │   ├── http/Requester.ts
-│   │   ├── registry/{AddonRegistry, Registry, AddonSettingsStore, SidePanelPageRegistry, StandalonePageRegistry}.ts
+│   │   ├── registry/{AddonRegistry, Registry, AddonSettingsStore, StandalonePageRegistry}.ts
 │   │   ├── input/KeymapRegistry.ts
 │   │   ├── speech/SpeechSynthesisService.ts
 │   │   ├── utils/RateLimiter.ts
@@ -1392,7 +1393,7 @@ nowpilot/
 │   │   ├── global/{SelectionContextMenu, ResearchSkill}.ts
 │   │   ├── write/                                     # first-party add-on
 │   │   ├── teamgqm/                                   # first-party add-on
-│   │   └── servicenow/  (no injected UI in v0.1)
+│   │   └── servicenow/  (no injected UI in v0.2)
 │   │
 │   ├── components/
 │   │   ├── sidepanel/{SidePanelShell, SidePanelRouter}.tsx
@@ -1416,10 +1417,7 @@ nowpilot/
 
 | Feature | Priority | Notes |
 |---|---|---|
-| Chat | P0 | Streaming, abort, slash commands, quick context |
-| Agent | P0 | AgentOrchestrator with tier caps + permission prompts |
-| Write add-on page | P0 | Draft/rewrite/summarize/customer-update workflows |
-| TeamGQM add-on page | P0 | Quick TeamGQM summary/actions |
+| Chat | P0 | Streaming, abort, slash commands, quick context — the only Side Panel surface |
 | Open Standalone view action | P0 | Opens standalone.html with workspace handoff (Flow 11) |
 | Workflow selector | P0 | Selects Auto or an approved workflow; provider/model resolution is automatic and configured in Options |
 | Quick save to note | P1 | "Save this response as note" quick action (lightweight, non-LLM) |
@@ -1432,7 +1430,7 @@ nowpilot/
 
 **RICH additions:** Persona header (RICH-H-01), Welcome cards (RICH-I-01), Context-aware quick-action chips (RICH-I-05/06), Clarification chips (RICH-C-01), Follow-up chips (RICH-C-05), Streaming stage indicators (RICH-H-08).
 
-The side panel intentionally does NOT include: Notes editor, DiagnosticsPanel, PromptManager, ProvidersEditor, MCP servers editor, Feature flag editor, Import/Export, **LLM-Wiki management, Filesystem Sync config**.
+The Side Panel intentionally does NOT include any navigation rail, add-on page, or surface switcher: Agent, Notes editor, Write, Tools, TeamGQM, DiagnosticsPanel, PromptManager, ProvidersEditor, MCP servers editor, Feature flag editor, Import/Export, **LLM-Wiki management, Filesystem Sync config**. Those are Standalone-only surfaces.
 
 ### §9.2 Standalone view Features
 
@@ -1440,9 +1438,11 @@ The side panel intentionally does NOT include: Notes editor, DiagnosticsPanel, P
 |---|---|---|
 | Chat (full-screen) | P0 | Shares WorkspaceStore + conversation with side panel |
 | Agent (full-screen) | P0 | Shares WorkspaceStore + conversation with Chat |
-| Notes | P0 | List, editor, wikilinks, backlinks, graph, search, **+ LLM-Wiki + Filesystem Sync (§27)** |
-| TeamGQM add-on (full-page) | P0 | Full workspace for TeamGQM add-on |
-| Options | P0 | See §9.3 |
+| Note | P0 | List, editor, wikilinks, backlinks, graph, search, **+ LLM-Wiki + Filesystem Sync (§27)** |
+| Write | P0 | First-party add-on page: draft/rewrite/summarize/customer-update workflows |
+| Tools | P0 | Tool registry surface (main Sider group) |
+| TeamGQM add-on (Add-ons group, flag-gated) | P0 | Full workspace for TeamGQM add-on |
+| Settings (Options) | P0 | See §9.3; Diagnostics reached from Settings |
 | First-run onboarding entry point | P0 | If user opens Standalone view without provider configured (+ RICH-R-03 persona card) |
 | Cmd+K palette | P1 | Same command set as side panel + Standalone-only commands |
 | Command "Focus Side Panel" | P1 | Programmatically opens side panel for current tab |
@@ -1496,7 +1496,6 @@ export interface Addon {
   contextExtractor?: IContextExtractor;
   skills?: ISkill[];
   prompts?: PromptTemplate[];
-  sidePanelPages?: SidePanelPageRegistration[];
   standalonePages?: StandalonePageRegistration[];
   addonSettings?: z.ZodSchema<unknown>;
   keymap?: KeymapRegistration[];
@@ -1509,18 +1508,18 @@ Rules:
 
 - Each add-on MUST declare a Zod addonSettings schema (may be z.object({})).
 - Standalone pages MUST live under src/addons/<id>/pages/Standalone*.tsx.
-- Side-Panel pages MUST live under src/addons/<id>/pages/SidePanel*.tsx.
+- Side Panel entry points are chat-safe actions only; add-ons MUST NOT register Side Panel pages (the Side Panel is Chat-only).
 - Add-ons MUST NOT import from src/components/pages/** or from other add-ons.
 
 ### §9.5 Write Add-on
 
 **Location:** src/addons/write/ · **Scope:** global
 
-**Side Panel Page:** SidePanelWritePage — quick actions: Rewrite professionally · Summarize · Draft customer update · Draft internal note · Explain technical issue · Create action plan · Generate concise status update.
+**Standalone page:** StandaloneWritePage — primary Standalone Sider item; quick actions: Rewrite professionally · Summarize · Draft customer update · Draft internal note · Explain technical issue · Create action plan · Generate concise status update.
 
 **Skills:** DraftSkill, RewriteSkill, SummarizeSkill, CustomerUpdateSkill.
 
-**Standalone view Page:** Not required in v0.1 (side-panel-only). If added later, it must live in src/addons/write/pages/StandaloneWritePage.tsx.
+**Standalone view Page:** StandaloneWritePage MUST live at src/addons/write/pages/StandaloneWritePage.tsx. Write has no Side Panel page.
 
 **Input source:** current clipboard, selected text (via SelectionContextMenu), pinned tab context, or free-form text area.
 
@@ -1528,11 +1527,9 @@ Rules:
 
 ### §9.6 TeamGQM Add-on
 
-**Location:** src/addons/teamgqm/ · **Scope:** global (v0.1)
+**Location:** src/addons/teamgqm/ · **Scope:** global (v0.2)
 
-**Side Panel Page:** SidePanelTeamGQMPage — compact quick view: Latest TeamGQM digest · Quick action buttons · Link to full page.
-
-**Standalone view Page:** StandaloneTeamGQMPage — full workspace: History · Reports · Detailed views · Shared workspace context (same conversationId as Chat/Agent).
+**Standalone page (Add-ons group, feature-flag-gated):** StandaloneTeamGQMPage — full workspace: History · Reports · Detailed views · Shared workspace context (same conversationId as Chat/Agent). TeamGQM has no Side Panel page; Side Panel exposure is chat-safe entry actions only.
 
 **Skills:** TeamGQMSummarySkill — implementation-specific; this spec defines only the integration shell.
 
@@ -1552,10 +1549,10 @@ Rules:
 | CatchUpSkill | P0 | 24 h activity digest |
 | SentimentSkill | P1 | Case communication sentiment |
 | CodeSearchSkill | P1 | Map-reduce over scripts; needs ≥ 16K context (§14.4) |
-| Side-panel page | P0 | Quick case-context view + skill launcher |
-| Full-app page | P1 | Detailed case workspace (case table, comments, work notes, skill results) |
+| Side Panel integration | P0 | Case context available to chat; skills launch from chat (no Side Panel page) |
+| Standalone page | P1 | Detailed case workspace (case table, comments, work notes, skill results) |
 
-**Out of scope (v0.1):** CaseInsightBox (page-injected UI), serviceNowInjection.ts (Shadow DOM mount), scoped page UI enhancements. ServiceNow value is delivered inside the side panel and Standalone view only.
+**Out of scope (v0.2):** CaseInsightBox (page-injected UI), serviceNowInjection.ts (Shadow DOM mount), scoped page UI enhancements. ServiceNow value is delivered inside the side panel and Standalone view only.
 
 ### §9.8 Research Global Tool
 
@@ -1803,9 +1800,9 @@ Every page must render these states with these exact strings (from STR in Append
 | Component | Surface | Loading | Empty | Error | Success |
 |---|---|---|---|---|---|
 | ChatPage | Side Panel + Standalone view | "Connecting to provider..." | "Start a conversation" | "Provider error. [Retry] [Switch Provider]" | Message stream visible |
-| AgentPage | Side Panel + Standalone view | "Preparing agent..." | "Describe a task and the agent will plan steps" | "Agent error: [message]. [Retry]" | Step progress visible |
-| WritePage | Side Panel | "Preparing..." | "Choose an action or paste text" | "Write skill failed: [message]. [Retry]" | Streamed output visible |
-| TeamGQMPage (side panel) | Side Panel | "Loading..." | "No TeamGQM context available" | "Failed to load. [Retry]" | Summary + actions |
+| AgentPage | Standalone view | "Preparing agent..." | "Describe a task and the agent will plan steps" | "Agent error: [message]. [Retry]" | Step progress visible |
+| WritePage | Standalone view | "Preparing..." | "Choose an action or paste text" | "Write skill failed: [message]. [Retry]" | Streamed output visible |
+| TeamGQMPage (Standalone Add-ons group) | Standalone view | "Loading..." | "No TeamGQM context available" | "Failed to load. [Retry]" | Summary + actions |
 | NotesPage | Standalone view | "Loading notes..." | "No notes yet. Press + to create one." | "Failed to load notes. [Retry]" | Note list |
 | NoteEditor | Standalone view | "Loading note..." | — | "Failed to save note. [Retry]" | Editor visible |
 | NoteGraph | Standalone view | "Building graph..." | "Create at least 3 notes to see the graph" | "Failed to render graph. [Retry]" | Graph visible |
@@ -2080,7 +2077,7 @@ optional_host_permissions: [
 
 Rules:
 
-- `declarativeNetRequest` is **not** declared: v0.1 ships no DNR ruleset, so requesting the permission would be flagged in review. Add it back only alongside a concrete header-strip ruleset.
+- `declarativeNetRequest` is **not** declared: v0.2 ships no DNR ruleset, so requesting the permission would be flagged in review. Add it back only alongside a concrete header-strip ruleset.
 - The File System Access API (§27) requires **no new manifest permission** — the user-gesture `showDirectoryPicker()` grants the handle.
 - Webhook targets (§ WebhookManager) and user-configured MCP/proxy hosts are **not** in the static `host_permissions`. Because they are reached through the background `PROXY_FETCH`, the target host must be granted at configure time via `chrome.permissions.request({ origins: [host] })` against `optional_host_permissions`; an ungranted host returns `HOST_NOT_PERMITTED` with a "Grant access" action. This prevents silent webhook/MCP failures while keeping the default install least-privilege.
 - LLM-Wiki note content passes through TraceRedactor before indexing/logging/backup. Password field values are never written to .md files.
@@ -2113,8 +2110,8 @@ Side panel is 400 px wide (Chrome default). All UI must work at this width. **Th
 **Structure (using AntD compact algorithm):**
 
 - **Header (~52 px)** — left: app mark ("N" avatar) + "NowPilot" wordmark. Right: **exactly two** icon buttons — **Options** (`SettingOutlined`, opens Standalone view → Options) and **Switch to Full chat** (`ExpandAltOutlined`, workspace handoff, Flow 11). **No provider chip** (provider moved to the status bar), **no nav rail**.
-- **Conversation area** — fills/scrolls; user bubbles right (`colorPrimaryBg`), assistant bubbles left prefixed by a small ⚡ model-id label, body via `PortableMarkdown`. Per-message action toolbar (Copy · Expand · Regenerate · Quote/save-note · Share · Read-aloud). Follow-up chips below (RICH-C-05). Empty state = mascot + Welcome cards (RICH-I-01).
-- **Composer toolbar (above the input, space-between)** — left: **workflow selector** (`⚡ model-id ▾`, the only model control in the Side Panel). Right: **Screenshot/snip** (`ScissorOutlined`) · **Attach** (`PaperClipOutlined`) · **Chat history** (`HistoryOutlined`, opens the bottom sheet, §17.1b) · **New chat** (`FormOutlined`).
+- **Conversation area** — fills/scrolls; user bubbles right (`colorPrimaryBg`), assistant bubbles left prefixed by a small ⚡ model-id label, body via `PortableMarkdown`. Per-message action toolbar (Copy · Save to note · Like · Dislike · Regenerate · Share · Read aloud). Follow-up chips below (RICH-C-05). Empty state = mascot + Welcome cards (RICH-I-01).
+- **Composer toolbar (above the input, space-between)** — left: **workflow selector** (`⚡ model-id ▾`, the only model control in the Side Panel). Right: **Attach** (`PaperClipOutlined`) · **Chat history** (`HistoryOutlined`, opens the bottom sheet, §17.1b) · **New chat** (`FormOutlined`).
 - **Input** — rounded (radius 12), placeholder "Ask anything, choose a workflow, or use / prompts", **send button inside** bottom-right; slash suggestion overlay.
 - **Status bar (below the input)** — left: active **provider name** (e.g. "OpenAI"; turns `colorError` on provider failure). Right: **Help** (`QuestionCircleOutlined`) + **Feedback** (`MailOutlined`) icons.
 - **Global overlays** — Cmd+K palette (AntD Modal), toasts via App.useApp().message, permission dialogs via App.useApp().modal.confirm, chat-history bottom sheet (§17.1b).
@@ -2128,7 +2125,7 @@ Rules:
 - Use overflow-anchor: none for the streaming tail.
 - CLS target <= 0.05.
 - The "Switch to Full chat" button lives in the header and is always visible.
-- Every icon-only control carries an `aria-label` + tooltip (Options, Switch to Full chat, Snip, Attach, History, New chat, Help, Feedback).
+- Every icon-only control carries an `aria-label` + tooltip (Options, Switch to Full chat, Attach, History, New chat, Help, Feedback).
 
 #
 #### §17.1c Workflow control and model transparency
@@ -2153,8 +2150,8 @@ The theme *engine* is specified in §5.5 and Appendix F; this section defines th
 - **APPR-02 — Control.** A single `Segmented` (or `Radio.Group`) with three options — **Light · Dark · Auto** — bound to `ThemeMode`. "Auto" follows `prefers-color-scheme`. Default is **Auto**.
 - **APPR-03 — Single source of truth.** The selection writes **only** to `chrome.storage.sync.np_theme` (§15.1). A thin `chrome.storage`-backed Zustand `ThemeStore` (Appendix F) mirrors it, and `chrome.storage.onChanged` propagates the change to **both** surfaces immediately (no reload, no per-surface copy). There is **no** `themeMode` field on `UserPreferences` — that would create a second source of truth.
 - **APPR-04 — Application.** On change, each surface re-derives its AntD config via `getAntdConfig({ mode, pack, compact })` and switches `theme.darkAlgorithm`/`defaultAlgorithm` plus the selected pack's token overlay. Because antd v6 uses pure CSS variables, the switch is real-time — no component remount, no `.dark` class manipulation.
-- **APPR-05 — Density is not user-configurable in v0.1.** Compact vs default density is fixed per surface (Side Panel = compact, Standalone view = default). Appearance controls colour scheme only; a density toggle is out of scope.
-- **APPR-06 — Theme pack (user-facing in v0.1).** In addition to the Light/Dark/Auto **display mode**, a **Theme pack** selector ships in v0.1: a `Select` with **Default · Liquid Glass · Claude Warm**, bound to `chrome.storage.sync.np_theme_pack` (§15.1). Display mode and theme pack are **orthogonal** (3 modes × 3 packs = 9 valid appearances). Both write only to `chrome.storage.sync` and propagate to both surfaces via `chrome.storage.onChanged`; each surface re-derives config via `getAntdConfig({ mode, pack, compact })` (Appendix F). A pack is a token overlay merged on the seed tokens; every pack must pass WCAG AA (§17.6) in **both** light and dark before shipping. Liquid Glass keeps message text on a solid surface for legibility and provides a non-glass fallback when `backdrop-filter` is unsupported. Visual definitions of each pack live in the companion `DESIGN_SYSTEM.md` (§6.4); this spec owns only the wiring.
+- **APPR-05 — Density is not user-configurable in v0.2.** Compact vs default density is fixed per surface (Side Panel = compact, Standalone view = default). Appearance controls colour scheme only; a density toggle is out of scope.
+- **APPR-06 — Theme pack (user-facing in v0.2).** In addition to the Light/Dark/Auto **display mode**, a **Theme pack** selector ships in v0.2: a `Select` with **Default · Liquid Glass · Claude Warm**, bound to `chrome.storage.sync.np_theme_pack` (§15.1). Display mode and theme pack are **orthogonal** (3 modes × 3 packs = 9 valid appearances). Both write only to `chrome.storage.sync` and propagate to both surfaces via `chrome.storage.onChanged`; each surface re-derives config via `getAntdConfig({ mode, pack, compact })` (Appendix F). A pack is a token overlay merged on the seed tokens; every pack must pass WCAG AA (§17.6) in **both** light and dark before shipping. Liquid Glass keeps message text on a solid surface for legibility and provides a non-glass fallback when `backdrop-filter` is unsupported. Visual definitions of each pack live in the companion `DESIGN_SYSTEM.md` (§6.4); this spec owns only the wiring.
 
 ### §17.2 Standalone view Layout
 
@@ -2168,13 +2165,16 @@ Standalone view is served from standalone.html in a normal browser tab. Uses Ant
 |          |                                                 |
 |  Sider   |            Content Area                         |
 |  (240px) |                                                 |
-|          |   Chat / Agent / Notes / TeamGQM / Options      |
-|  Menu:   |                                                 |
+|          |   Chat / Agent / Note / Write / Tools /          |
+|  Menu:   |   Add-ons (TeamGQM) · Settings (Options)         |
 |  - Chat  |                                                 |
 |  - Agent |                                                 |
-|  - Notes |                                                 |
+|  - Note  |                                                 |
+|  - Write |                                                 |
+|  - Tools |                                                 |
+|  Add-ons |                                                 |
 |  - TeamGQM|                                                |
-|  - Options|                                                |
+|  - Settings|                                               |
 +----------+-------------------------------------------------+
 ```
 
@@ -2186,11 +2186,11 @@ Rules:
 - The Options page uses AntD Menu (secondary vertical) inside the Content Area to switch between sub-sections.
 - Minimum supported viewport width: 1024 px. Below → show AntD Alert "This view is optimized for wider screens; open the side panel for narrow layouts."
 
-The Standalone Sider is the surface switcher: **Chat · Note · Write · Tools · [TeamGQM optional] · Options**. Active item = `colorPrimaryBg` pill + `colorPrimary`. Footer holds profile avatar, settings gear, and a `⌘K` hint. The Standalone view **Chat** page reuses the Side Panel composer/bubble recipes at default density.
+The Standalone Sider is the surface switcher: primary items **Chat · Agent · Note · Write · Tools**, an **Add-ons** group (**TeamGQM**, feature-flag-gated, plus future approved add-ons), and bottom **Settings** (opens the Options workspace; Diagnostics is reached from Settings, not a primary Sider item). Active item = `colorPrimaryBg` pill + `colorPrimary`. Footer holds profile avatar, settings gear, and a `⌘K` hint. The Standalone view **Chat** page reuses the Side Panel composer/bubble recipes at default density.
 
 #### §17.2b Chat History — Right Drawer (Standalone view)
 
-In the Standalone view, the **Chat history** control opens a **right-side drawer** (~360–400 px) that slides in over a dimmed content area (the Sider stays visible; `E3` elevation; scrim over content only). Identical content model to the Side Panel bottom sheet (§17.1b): title + count, **All / Starred** tabs, clear/delete, search, day-grouped items with `…` overflow + star. `useChatHistory` backs both surfaces; only the entry animation differs (bottom-sheet vs right-drawer).
+In the Standalone view, the **Chat history** control opens a **right-side drawer** (320 px) that slides in over a dimmed content area (the Sider stays visible; `E3` elevation; scrim over content only). Identical content model to the Side Panel bottom sheet (§17.1b): title + count, **All / Starred** tabs, clear/delete, search, day-grouped items with `…` overflow + star. `useChatHistory` backs both surfaces; only the entry animation differs (bottom-sheet vs right-drawer).
 
 #### §17.2c Notes Page — 4-Column Workspace (Standalone view only)
 
@@ -2198,7 +2198,7 @@ The Notes page is a **four-column workspace** with a top header. Each side colum
 
 ```
 ┌───────────────────────────────────────────────────────────────────────────────┐
-│ 🔎 Search notes, tags, content…  ⌘K   [▢ Directory][≣ Notes][ⓘ Inspector]      │  HEADER
+│ 🔎 Search notes, tags, content…  ⌘K   [▢ Directory][≣ Notes][▤ Content][ⓘ Inspector] │  HEADER
 │                                                        + New Note  Import  Backup │
 ├───────────────┬───────────────────┬───────────────────────────┬───────────────┤
 │ DIRECTORY   « │ ServiceNow/Inc. ▾ │ INC Lifecycle Flow …      │ INSPECTOR   » │
@@ -2221,7 +2221,7 @@ The Notes page is a **four-column workspace** with a top header. Each side colum
 
 Column show/hide behaviour:
 
-- **NOTES-COL-01** The header has three segmented **toggle buttons — Directory · Notes · Inspector** (`colorPrimary` when active) that show/hide columns 1, 2, and 4. Column 3 is the persistent centre and cannot be hidden.
+- **NOTES-COL-01** The header has four segmented **toggle buttons — Directory · Notes · Content · Inspector** (`colorPrimary` when active). Directory / Notes / Inspector show/hide columns 1, 2, and 4; **Content** (col 3) is the persistent centre — its toggle is present for parity but is always-on and cannot be hidden.
 - **NOTES-COL-02** Each collapsible column also has an inline collapse chevron in its own header (`«` left columns, `»` Inspector), kept in sync with the header toggles.
 - **NOTES-COL-03** Collapsed columns animate width→0 (150–200 ms) and the centre editor reflows to fill. State persists per surface. At narrow Standalone widths, auto-collapse Directory first, then Inspector, keeping Notes + content.
 
@@ -2258,7 +2258,7 @@ Full theme details in Appendix F.
 - Loading uses AntD Skeleton, not spinners, for content areas.
 - Toasts: max 3 visible via message.config({ maxCount: 3, duration: 5 }); errors persist until dismissed (notification.error({ duration: 0 })).
 - All AI text rendered through <PortableMarkdown>.
-- English only in v0.1; t('key') abstraction in src/core/i18n/strings.ts for future i18n; AntD locale set via ConfigProvider locale={enUS} for now.
+- English only in v0.2; t('key') abstraction in src/core/i18n/strings.ts for future i18n; AntD locale set via ConfigProvider locale={enUS} for now.
 
 ### §17.5 Cross-Surface UX Consistency
 
@@ -2383,10 +2383,10 @@ Full theme details in Appendix F.
 
 **[H-02] Result Application Actions — 反馈**
 
-- **RICH-H-04 (P0, L)** — Code-block inline actions: **"Copy code"**; **"Insert into page" = CLIPBOARD-ONLY in v0.1 (reconciliation R1)**; **"Save as macro"**.
+- **RICH-H-04 (P0, L)** — Code-block inline actions: **"Copy code"**; **"Insert into page" = CLIPBOARD-ONLY in v0.2 (reconciliation R1)**; **"Save as macro"**.
 - **RICH-H-05 (P1, M)** — Structured outputs get "Export as CSV" / "Copy as table".
 - **RICH-H-06 (P1, S)** — "Save to note" promoted to a first-class button on every assistant message.
-- **RICH-H-07 (P2, L)** — "Fill this field…" (page write-back) — **DEFERRED to v0.2+ (reconciliation R1).**
+- **RICH-H-07 (P2, L)** — "Fill this field…" (page write-back) — **DEFERRED beyond the current v0.2 milestone (reconciliation R1).**
 
 **[H-03] Rich Generation Process — 确认**
 
@@ -2415,14 +2415,14 @@ Full theme details in Appendix F.
 
 #### §17.7.5 — Reconciliations (MANDATORY)
 
-- **R1 — No host-page write-back in v0.1.** RICH-H-04 "Insert into page" → clipboard-only; RICH-H-07 "Fill this field" → deferred. Content scripts extraction-only (§0.2, §5.6). Write-back requires v0.2+ page injection (§25). Retained: Copy code, Save as macro, Save to note.
+- **R1 — No host-page write-back in v0.2.** RICH-H-04 "Insert into page" → clipboard-only; RICH-H-07 "Fill this field" → deferred. Content scripts extraction-only (§0.2, §5.6). Write-back requires page injection in a later release (§25). Retained: Copy code, Save as macro, Save to note.
 - **R2 — Persona is user config, not an inferred fact.** RICH-R-05 persona persistence in PreferenceMemoryStore (`np_persona`) / `UserPreferences.personaId` — never UserMemoryStore. Honors system-owned, single-writer memory rules (§3.1, §3.5, §13).
 
 #### §17.7.6 — Coverage & Priority Summary
 
 Role 11 · Intention 14 · Conversation 15 · Hybrid UI 20 = **60**. P0 17 · P1 22 · P2 21.
 
-#### §17.7.7 — Out of Scope (v0.1)
+#### §17.7.7 — Out of Scope (v0.2)
 
 | Feature | Reason |
 |---|---|
@@ -2430,13 +2430,13 @@ Role 11 · Intention 14 · Conversation 15 · Hybrid UI 20 = **60**. P0 17 · P1
 | Separate sentiment-analysis LLM call | In-scope framing uses persona prompt |
 | Full NLP intent-parsing pipeline | URL/hostname + keyword heuristics sufficient (I-08) |
 | Voice output (TTS) | Input (H-17) in scope; output deferred |
-| Drag-and-drop GUI macro builder | Not in v0.1 |
-| Cross-session conversation resumption w/ full replay | Deferred; v0.1 stateless between sessions |
+| Drag-and-drop GUI macro builder | Not in v0.2 |
+| Cross-session conversation resumption w/ full replay | Deferred; v0.2 stateless between sessions |
 | Shadow DOM injection / host-page write-back | Deferred per §0.2 (R1) |
 
 ## §18 — Master Implementation Phases
 
-> **Single authoritative roadmap.** §18 is the sole source of implementation sequencing for NowPilot v0.1. All implementation phases, sub-phases, dependencies, verification gates, and release ordering are defined here. Sections §28–§30 provide requirement detail and supporting contracts, but they do not define a separate implementation order.
+> **Single authoritative roadmap.** §18 is the sole source of implementation sequencing for NowPilot v0.2. All implementation phases, sub-phases, dependencies, verification gates, and release ordering are defined here. Sections §28–§30 provide requirement detail and supporting contracts, but they do not define a separate implementation order.
 
 **Canonical order:**
 
@@ -2483,7 +2483,7 @@ src/core/events/EventBus.ts
 src/core/log/debugLog.ts
 src/core/i18n/strings.ts                            # Appendix B
 src/core/prompts/index.ts                           # Appendix A
-src/core/registry/{AddonRegistry, Registry, AddonSettingsStore, SidePanelPageRegistry, StandalonePageRegistry}.ts
+src/core/registry/{AddonRegistry, Registry, AddonSettingsStore, StandalonePageRegistry}.ts
 src/core/input/KeymapRegistry.ts
 src/core/components/{ErrorBoundary, PortableMarkdown}.tsx
 src/components/sidepanel/{SidePanelShell, SidePanelRouter}.tsx
@@ -2757,7 +2757,7 @@ Implements the full §27 requirement set: CAT-01…05, LLM-WIKI-01…10, SYNC-01
 - **OKF-WIKI-01 (P1)** NoteFileSync emits OKF-required `type` (default `Note`) + recommended `description` (= `Note.summary` when present).
 - **OKF-WIKI-02 (P1)** NoteFileSync emits the OKF trust/lifecycle families `generated: { by, at }` (ISO 8601) and `status` (`draft`|`stable`, default `stable`).
 - **OKF-WIKI-03 (P1)** `Note.id` (UUID) is emitted and parsed as an OKF **extension key**; a write→restore round-trip preserves it and every wikilink edge (WIKI-ID-01/04 unchanged).
-- **OKF-WIKI-04 (P0 boundary)** v0.1 does **not** emit OKF standard-markdown-link edges and does **not** adopt path-as-identity; wikilinks + UUID identity remain authoritative. Strict-OKF link/identity conformance (and `sources`/`verified` families) is deferred to v0.2+ behind a dedicated ADR.
+- **OKF-WIKI-04 (P0 boundary)** v0.2 does **not** emit OKF standard-markdown-link edges and does **not** adopt path-as-identity; wikilinks + UUID identity remain authoritative. Strict-OKF link/identity conformance (and `sources`/`verified` families) is deferred to a later release behind a dedicated ADR.
 
 **Required tests:**
 
@@ -2918,7 +2918,7 @@ This phase exposes capabilities built in Phases 3–9 as polished surfaces, then
 - DiagnosticsPanel renders in Standalone view → Options → Diagnostics.
 - LLM-Wiki UI functional (Ask notes, category tree, backup status, SaveToNoteDialog).
 - RICH P0 (15.3) complete: persona header, welcome cards, quick-action chips, clarification + follow-up chips (max 2 rounds; graceful timeout), code-block Copy/Save-as-macro (Insert=clipboard-only), streaming stage indicators.
-- **Visual acceptance (rev 2026-08-12):** the delivered Side Panel, Standalone chat, Notes 4-column workspace, and Options/provider-modal surfaces match the annotated mockups in `.planning/mockup/` (indexed in **DESIGN_SYSTEM §8.0**), within the precedence rule (a *functional rule* defers to this spec; *visual layout intent* defers to the mockup). Mockup-vs-build deltas are logged as UI-review findings. Exact metrics to verify: Side Panel width 400 / header 52 / composer 44 / input 60 / status 28 px (§8.1); Standalone Sider 240/72 px + Add-ons group (§8.2); Notes four column toggles with persistent Content + bottom status bar (§8.3); chat-history bottom sheet ≤ ~70 % vs right drawer 320 px (§8.4/§8.5); Options menu General·Notes·Advance (§8.6); provider dialog 6-column model table (§8.7); message action sets 6/8/4 (§8.8).
+- **Visual acceptance (rev 2026-08-12):** the delivered Side Panel, Standalone chat, Notes 4-column workspace, and Options/provider-modal surfaces match the annotated references in `.planning/design/references/` (indexed in **DESIGN_SYSTEM §8.0**), within the precedence rule (a *functional rule* defers to this spec; *visual layout intent* defers to the annotated reference). Reference-vs-build deltas are logged as UI-review findings. Exact metrics to verify: Side Panel width 400 / header 52 / composer 44 / input 60 / status 28 px (§8.1); Standalone Sider 240/72 px + Add-ons group (§8.2); Notes four column toggles with persistent Content + bottom status bar (§8.3); chat-history bottom sheet ≤ ~70 % vs right drawer 320 px (§8.4/§8.5); Options menu General·Notes·Advance (§8.6); provider dialog 6-column model table (§8.7); message action sets 7/8/4 (§8.8).
 - pnpm run verify:phase-15 passes.
 
 ### Phase 16 — Multimodal Input Foundation
@@ -2929,7 +2929,7 @@ This phase exposes capabilities built in Phases 3–9 as polished surfaces, then
 **Verification:** `pnpm run verify:phase-16`  
 **Requirements (from §29.2):** MM-01 (P1) ModalityInput (no inline binary) · MM-02 (P1) ModalityObservation with confidence/sensitivity · MM-03 (P1) image paste/upload via vision model · MM-04 (P1) voice → editable Sender, explicit send · MM-05 (P2) later fast/slow split · MM-06 (P1) AbortSignal across transcribe/plan/tool/render · MM-07 (P0 boundary) APC-lite ≠ browser automation.  
 **Types:** `ModalityInput`, `ModalityObservation` (Appendix C.1).  
-**Visual reference:** the multimodal input UI (image paste/upload, voice → editable Sender) follows DESIGN_SYSTEM §8.1 (composer **Attach**) and the `.planning/mockup/00-sidepanel-chat.png` composer annotations (indexed in DESIGN_SYSTEM §8.0).  
+**Visual reference:** the multimodal input UI (image paste/upload, voice → editable Sender) follows DESIGN_SYSTEM §8.1 (composer **Attach**) and the `.planning/design/references/sidepanel/sidepanel-chatPage.png` composer annotations (indexed in DESIGN_SYSTEM §8.0).
 **DONE when:** image and audio inputs become redacted ContextItems, unsupported providers fail safely, and abort works.
 
 ### Phase 17 — Add-ons and Content Script Runtime (Extraction-Only)
@@ -2966,8 +2966,9 @@ tests/isolation/no-content-script-ui.test.ts
 - ServiceNow API calls use PROXY_FETCH only.
 - Right-click selection → "Ask AI" opens Side Panel with selection prefilled.
 - /research runs via ResearchSkill.
-- Write add-on renders in Side Panel with all quick actions.
-- TeamGQM add-on renders in Side Panel and Standalone view.
+- Write add-on renders as a primary Standalone Sider page with all quick actions.
+- TeamGQM add-on renders in the Standalone Add-ons group (feature-flag-gated).
+- Phase 17 adds Standalone add-on pages and chat-safe Side Panel entry actions only — no Side Panel pages.
 - Add-ons can consume PageContentService + Memory + Notes + LLM-Wiki.
 
 ### Phase 18 — Tool Governance and Active Discovery
@@ -3354,7 +3355,7 @@ export interface Note {
 
 > **Knowledge model:** atomic note (unit) + `links[]` (wikilink web) + `tags[]` (many-to-many labels) + `categoryPath` (single hierarchy → folder). Categories and tags are deliberately separate (D-03, §27).
 
-> **OKF v0.2 alignment (rev 2026-08-12).** The on-disk `.md` file is **OKF v0.2-compatible**: a directory of Markdown files with YAML frontmatter and a free-form body — exactly OKF's container. The `type` field satisfies OKF's only always-required key (default `Note`); `summary` is additionally emitted as OKF's recommended `description`; and the trust-lifecycle families `generated`/`status` are added by the serializer (see §27.3 SYNC-04). NowPilot's immutable UUID `id` is retained and written as an OKF **extension key** — legal because OKF consumers "MUST NOT reject documents with unrecognized fields." Wikilinks remain the body edge syntax (WIKI-ID-01…04); NowPilot does **not** emit OKF standard-markdown-link edges or adopt path-as-identity in v0.1 (those conflict with the UUID-identity/wikilink model and are deferred to v0.2+). The `type` field is **declared here in Phase 8** (type only) and **populated/serialized in Phase 9** — mirroring how `categoryPath` is declared in Phase 8 and populated by LLM-Wiki in Phase 9.
+> **OKF v0.2 alignment (rev 2026-08-12).** The on-disk `.md` file is **OKF v0.2-compatible**: a directory of Markdown files with YAML frontmatter and a free-form body — exactly OKF's container. The `type` field satisfies OKF's only always-required key (default `Note`); `summary` is additionally emitted as OKF's recommended `description`; and the trust-lifecycle families `generated`/`status` are added by the serializer (see §27.3 SYNC-04). NowPilot's immutable UUID `id` is retained and written as an OKF **extension key** — legal because OKF consumers "MUST NOT reject documents with unrecognized fields." Wikilinks remain the body edge syntax (WIKI-ID-01…04); NowPilot does **not** emit OKF standard-markdown-link edges or adopt path-as-identity in v0.2 (those conflict with the UUID-identity/wikilink model and are deferred to a later release). The `type` field is **declared here in Phase 8** (type only) and **populated/serialized in Phase 9** — mirroring how `categoryPath` is declared in Phase 8 and populated by LLM-Wiki in Phase 9.
 
 ### §21.3 Conversation Metadata + Memory Bodies
 
@@ -3550,7 +3551,7 @@ topKSimilar(note, k = 5) — bag-of-words cosine, no library.
 
 ### §22.4 InsightEngine Analyses
 
-Runs nightly via Scheduler. v0.1 produces exactly three Insight values: tag-trend, activity, skill-usage.
+Runs nightly via Scheduler. v0.2 produces exactly three Insight values: tag-trend, activity, skill-usage.
 
 ## §23 — Key Technology Decisions (ADRs)
 
@@ -3562,23 +3563,23 @@ Runs nightly via Scheduler. v0.1 produces exactly three Insight values: tag-tren
 | **AI chat components** | **Ant Design X 2.x** (presentation only) | Bubble, Sender, Conversations, ThoughtChain, Think, Attachments, Suggestion, Sources, FileCard map onto Chat/Agent needs. X 2.x targets antd v6 and is the actively developed line; X 1.x pairs with antd v5 (1-year bugfix-only window from Nov 2025) |
 | **Markdown/streaming rendering** | **@ant-design/x-markdown** | Purpose-built for incremental/streaming; built-in LaTeX/mermaid/code-highlight replace 5 packages |
 | **AI chat data flow** | **NOT @ant-design/x-sdk** — kept AgentOrchestrator/ProviderRouter/ContextOptimizer | x-sdk's useXChat/ChatProvider calls providers directly from the UI, bypassing Planner→Executor→Renderer, ContextOptimizer, MemoryEngine, AITransactionLog |
-| **Dynamic agent-generated UI (A2UI)** | **Deferred to v0.2+** — not @ant-design/x-card in v0.1 | A2UI's createSurface/updateComponents command stream is a harder JSON target than the 3-action PlannerDecisionSchema; unsafe for `fast`/`balanced`-tier models today (§25.6) |
+| **Dynamic agent-generated UI (A2UI)** | **Deferred beyond the current v0.2 milestone** — not @ant-design/x-card in v0.2 | A2UI's createSurface/updateComponents command stream is a harder JSON target than the 3-action PlannerDecisionSchema; unsafe for `fast`/`balanced`-tier models today (§25.6) |
 | **Theming** | AntD ConfigProvider + XProvider + Zustand ThemeStore | Centralized token system, dark mode via darkAlgorithm, per-surface compact toggle |
 | **Two UI surfaces** | Side Panel + Standalone view | Side Panel = daily workflow, Standalone view = deep work / config / diagnostics |
 | **Shared workspace** | WorkspaceStore (Zustand) + BroadcastBus | Single source of truth across surfaces; cross-surface handoff |
-| **Content scripts** | Extraction-only in v0.1 | No UI in host pages; simpler bundle; page injection deferred |
-| **Page injection** | **Deferred to v0.2+** | Reduces v0.1 complexity; add-on architecture preserved |
+| **Content scripts** | Extraction-only in v0.2 | No UI in host pages; simpler bundle; page injection deferred |
+| **Page injection** | **Deferred to a later release** | Reduces v0.2 complexity; add-on architecture preserved |
 | **Page-content extraction placement** | **Core PageContentService**, not a tool | Shared infra for Chat/Agent/Summarize/research/add-ons; central cache, concurrency, redaction |
 | **Main-content extraction** | **Defuddle `^0.19` (≥ 0.19.2)** — full bundle, sync `parse()`, `useAsync:false` | Purpose-built Readability successor; preserves footnotes/math/code; clean Markdown; MIT; runs in side panel/standalone view. Pinned to `0.19.x` (superseding the draft `^0.6`) for the CVE-2026-30830 XSS fix + `data:`/`blob:` rejection + iframe-`sandbox` retention + non-mutating `parse()`. `useAsync:false` + synchronous `parse()` disable third-party API extractors (privacy). `defuddle/full` bundle for reliable Markdown/math; math deps stay out of the content bundle (rev 2026-08-12; §7.6, §26.4) |
 | **Extraction model** | **Layered strategy** (Defuddle → APC-lite → ServiceNow API) | Right tool per page type |
 | **Page-content retrieval** | **MiniSearch over extracted content** (ephemeral, per-tab) | Keeps large pages within the 2,000-token budget; reuses core engine; never persisted |
-| **Browser automation** | **Deferred to v2** (chrome.debugger + CDP Input) | Trusted-event automation needs the debugger; out of scope for read-only v0.1 |
+| **Browser automation** | **Deferred to v2** (chrome.debugger + CDP Input) | Trusted-event automation needs the debugger; out of scope for read-only v0.2 |
 | State | Zustand | 1 KB, no boilerplate, works outside React |
 | AI SDK | Vercel AI SDK + custom orchestrator | Streaming/abort/tools; lighter than LangChain |
 | **AI SDK version** (rev 2026-08-12) | **`ai ^5`+ (min modern; latest 7.x)** — pin current major at implementation | v4 was three majors stale. v5+ is the unified modern API; the `ILLMProvider` abstraction (§10.1) insulates the app from the `parameters`→`inputSchema` / `maxTokens`→`maxOutputTokens` / `maxSteps`→`stopWhen` breaking changes, so only the provider adapters (§10.2) touch the SDK surface directly |
 | **AI provider packages** (rev 2026-08-12) | **Pin each `@ai-sdk/*` to its own current major** (openai ≈4.x, google ≈3.x, anthropic ≈3.x) | The provider packages version **independently** — a shared `^1` is incorrect; match each to the chosen `ai` core version |
 | AI providers | @ai-sdk/* only | Single codepath for 4 providers (OpenAI uses custom baseURL for compatible endpoints) |
-| **Validation library** (rev 2026-08-12) | **`zod ^4`**; **keep `zod-to-json-schema` in v0.1** | Zod 4 is stable, ~14× faster, and is what MCP SDK + AI SDK 5+ already target. Existing `z.object(...)` schemas are source-compatible. **v0.1 keeps `zod-to-json-schema` (Appendix L unchanged)**; migrating to native `z.toJSONSchema()` is a deferred **v0.2 cleanup** so no v0.1 phase has to touch it |
+| **Validation library** (rev 2026-08-12) | **`zod ^4`**; **keep `zod-to-json-schema` in v0.2** | Zod 4 is stable, ~14× faster, and is what MCP SDK + AI SDK 5+ already target. Existing `z.object(...)` schemas are source-compatible. **v0.2 keeps `zod-to-json-schema` (Appendix L unchanged)**; migrating to native `z.toJSONSchema()` is a deferred **post-v0.2 cleanup** so no v0.2 phase has to touch it |
 | Runtime orchestration | Planner → Executor → Renderer | Cheap models cannot drive maxSteps=15 loops safely |
 | Tier resolution | TierResolver (Appendix D) | Prevents hallucinated model names |
 | Animation | motion | Do not install framer-motion — v12 is published under motion |
@@ -3610,19 +3611,19 @@ Runs nightly via Scheduler. v0.1 produces exactly three Insight values: tag-tren
 | **LLM-Wiki phase** | **Phase 9** (LLM enrichment + RAG + filesystem sync together) | Single shared save pipeline; depends on Phases 6/8 |
 | **Note enrichment** | **Single fast call** (tags+category+summary+memory facts) | Cheaper/faster than separate calls (D-01) |
 | **Notes dual-friendly** | **Markdown body + YAML frontmatter** | Human reads body; LLM/machine reads frontmatter (D-02) |
-| **Note file format** | **OKF v0.2-aligned — OKF-compatible, not OKF-constrained** (rev 2026-08-12) | The `.md` + YAML-frontmatter + folder-tree container already matches OKF v0.2. Frontmatter adds OKF-required `type`, recommended `description`, and the `generated`/`status` trust-lifecycle families so a generic OKF consumer can read a NowPilot note. NowPilot's immutable UUID `id` (WIKI-ID-01) is retained as an OKF **extension key** (OKF §11: consumers must not reject unknown fields), and wikilinks stay the body edge syntax. Full-OKF markdown-link edges + path-as-identity + `sources`/`verified` provenance families conflict with the UUID-identity/wikilink model and are **deferred to v0.2+** behind a dedicated ADR (§21.2, §27.3 SYNC-04, §18 Phase 8/9) |
+| **Note file format** | **OKF v0.2-aligned — OKF-compatible, not OKF-constrained** (rev 2026-08-12) | The `.md` + YAML-frontmatter + folder-tree container already matches OKF v0.2. Frontmatter adds OKF-required `type`, recommended `description`, and the `generated`/`status` trust-lifecycle families so a generic OKF consumer can read a NowPilot note. NowPilot's immutable UUID `id` (WIKI-ID-01) is retained as an OKF **extension key** (OKF §11: consumers must not reject unknown fields), and wikilinks stay the body edge syntax. Full-OKF markdown-link edges + path-as-identity + `sources`/`verified` provenance families conflict with the UUID-identity/wikilink model and are **deferred to a later release** behind a dedicated ADR (§21.2, §27.3 SYNC-04, §18 Phase 8/9) |
 | **Category model** | **Path-based `categoryPath` → folders**, separate from tags | 1:1 filesystem mapping; tags stay many-to-many (D-03) |
 | **Notes↔Memory direction** | **Notes → Memory only** | Notes are user-owned; memory is system-owned (D-05) |
-| **Semantic search** | **LLM-routed reranking over MiniSearch** (no embeddings) | No model download; sufficient for v0.1 |
+| **Semantic search** | **LLM-routed reranking over MiniSearch** (no embeddings) | No model download; sufficient for v0.2 |
 | **Filesystem sync** | **One-way app→FS + import-for-restore** | Backup use case; bidirectional deferred |
 | **Backup handle storage** | **`notes_backup_config` IndexedDB store** | FileSystemDirectoryHandle non-serializable (D-08) |
 | **Persona** | **PersonaProfile + PersonaInjector in Phase 3; config in PreferenceMemoryStore** | Persona-aware prompts from day one; user config ≠ inferred fact (R2) |
 | **RICH implementation** | **On Ant Design X presentation components, phased 15.3/15.4/15.5** | Reuses adopted stack; no new UI framework |
-| **Host-page write-back** | **Deferred (clipboard-only in v0.1)** | Extraction-only rule (§0.2); write-back needs v0.2+ injection (R1) |
+| **Host-page write-back** | **Deferred (clipboard-only in v0.2)** | Extraction-only rule (§0.2); write-back needs page injection in a later release (R1) |
 | **Agent architecture** | **Coordinator platform; single-agent = one-role plan** | One runtime, tool-governance, memory, evaluation & security model for both modes; multi-role added as data (roles + plans), not a second architecture (§1.6, §30) |
 | **Self-learning model** | **Human-verified continual evolution — NOT autonomous self-modification** | Live orchestration is deterministic; learning is a gated candidate pipeline (§28.6/§28.7/§28.7a). `CandidateProposer` only *proposes*; nothing activates without sandbox eval + human approval (EVO-01/04/05, PROP-05). Fits privacy/cost/safety posture |
 | **Stage typing** | **Discriminated `StageEvent` union (type only), not an event engine** | Compile-time-checked stage I/O for cheap models (L1); avoids importing the deprecated LlamaIndex Workflows engine (§1.6.1) |
-| **Human-in-the-loop** | **Within-turn `input-required` only** | Maps to `waiting-for-permission`/`ask_clarification` (AGT-01); durable cross-session suspend/resume/rewind deferred to v0.2+ (L2, §17.7.7) |
+| **Human-in-the-loop** | **Within-turn `input-required` only** | Maps to `waiting-for-permission`/`ask_clarification` (AGT-01); durable cross-session suspend/resume/rewind deferred to a later release (L2, §17.7.7) |
 | **Retry layering** | **Three bounded, non-multiplying layers** | ProviderRouter (§1.5) + AGT-04 replan + one per-stage retry, all under §1.4 tier caps; prevents N×N×N cost blow-up on cheap models (L3, §1.6.1) |
 | **Working memory** | **Markdown block in `UserMemoryStore`, budget-capped** | Cheap always-on user profile for tiny models (Mastra M1); kept distinct from persona config (R2); single-writer, redacted (§3.6) |
 | **Per-call tool approval** | **Dynamic, escalate-only, coordinator-owned** | Risk scales with actual arguments (TOL-02); workers never self-approve (COLLAB-06); baseline from `toolAutonomy` (Mastra M3, §14.5) |
@@ -3669,13 +3670,13 @@ Each phase must define a real script. Minimum expected commands in package.json:
 
 ### §25.1 Why Deferred
 
-Page injection was removed from v0.1 to reduce complexity, keep the content-script bundle small, and let cost-effective coding agents focus on the core AI runtime and two clean UI surfaces. It will be reintroduced in v0.2+ once the v0.1 baseline is stable.
+Page injection was removed from v0.2 to reduce complexity, keep the content-script bundle small, and let cost-effective coding agents focus on the core AI runtime and two clean UI surfaces. It will be reintroduced in a later release once the v0.2 baseline is stable.
 
 ### §25.2 What Was Intentionally Preserved
 
 Add-on architecture (Addon, AddonRegistry, AddonSettingsStore); add-on lifecycle (IContextExtractor, ISkill, PromptTemplate, KeymapRegistration); content-script infra (ContentScriptHost extraction-only, SPANavigationWatcher, PageContextBridge, IContentStrategy, DefaultWebPageStrategy); ServiceNow add-on; global add-ons; cross-context messaging; CSP/permissions; test isolation harness.
 
-### §25.3 What Would Be Required in v0.2+
+### §25.3 What Would Be Required in a Later Release
 
 - Shadow DOM UI runtime (mountShadow.ts, adoptedStyleSheets).
 - Shared stylesheet loader; theme sheet builder.
@@ -3690,19 +3691,19 @@ Add-on architecture (Addon, AddonRegistry, AddonSettingsStore); add-on lifecycle
 
 ### §25.4 Recommended Reintroduction Plan
 
-v0.2.0 planning (Shadow DOM addendum spec); Phase 10 (dual-bundle config, Tailwind, mountShadow); Phase 11 (Radix + PortalHostContext); Phase 12 (CaseInsightBox); Phase 13 (style-bleed tests + perf). Ship v0.2.0.
+Reintroduction-release planning (Shadow DOM addendum spec); Phase 10 (dual-bundle config, Tailwind, mountShadow); Phase 11 (Radix + PortalHostContext); Phase 12 (CaseInsightBox); Phase 13 (style-bleed tests + perf). Ship the reintroduction release.
 
 ### §25.5 Hybrid Rule for Future
 
 Side Panel + Standalone view continue to use AntD. Injected UI uses Tailwind + Radix, never AntD. ESLint rule: no-restricted-imports patterns ['antd','@ant-design/*'] for src/addons/** and src/components/ui-shadow/**.
 
-### §25.6 @ant-design/x-card / A2UI — Deferred to v0.2+
+### §25.6 @ant-design/x-card / A2UI — Deferred to a Later Release
 
 **Why deferred:** JSON-generation difficulty mismatch — NowPilot's runtime keeps the JSON a `fast`/`balanced`-tier model must emit small (PlannerDecisionSchema is a 3-branch union; StructuredOutput budgets one repair). A2UI's adjacency-list component trees + JSON-Pointer bindings are a much larger, error-prone target. New canonical types (Catalog, Surface, ActionPayload) would need Appendix C additions. Overlaps existing SkillResult card/table/checklist rendering.
 
 **Preserved for future:** RendererService's structured-output rule (§1.2) and SkillResult.type 'card-grid'|'list' (§14.1) are stepping stones. @ant-design/x-card is antd/@ant-design/x-adjacent (same tokens, same XProvider), so only new Zod schemas + capability gate needed later.
 
-**Reintroduction trigger:** v0.1 baseline stable AND a concrete feature need plain card/table rendering can't satisfy.
+**Reintroduction trigger:** v0.2 baseline stable AND a concrete feature need plain card/table rendering can't satisfy.
 
 ## §26 — PageContentService (Layered Page Extraction)
 
@@ -3722,11 +3723,11 @@ extract(tabId, mode)
    │             └─ low confidence? → Readability fallback
    │
    └─ 3. mode = 'actionable' (Agent needs structure/interaction)           [PHASE 6]
-            └─▶ ApcLiteStrategy   → APCLiteNode tree (roles, interaction; geometry omitted in v0.1, §26.6)
+            └─▶ ApcLiteStrategy   → APCLiteNode tree (roles, interaction; geometry omitted in v0.2, §26.6)
 ```
 
 - **DefuddleStrategy** is the default for reading/summarizing. **(Phase 6)**
-- **ApcLiteStrategy** is used when the Agent needs structure (forms, tables, clickable/editable elements, node ids) — the substrate for future v2 automation (§26.7). **(Phase 6; geometry omitted in v0.1 per §26.6.)**
+- **ApcLiteStrategy** is used when the Agent needs structure (forms, tables, clickable/editable elements, node ids) — the substrate for future v2 automation (§26.7). **(Phase 6; geometry omitted in v0.2 per §26.6.)**
 - **ServiceNow** always tries the Table API first (§9.7); extraction is fallback only. **⚠️ Phase 6 does NOT implement this layer** — it only reserves the `servicenow-api` strategy id and ordering; the ServiceNow add-on **registers** the strategy in **Phase 17** (§8.2, F5 note in Appendix C). A Phase-6 implementer builds strategies 2 and 3 only.
 
 ### §26.3 Strategy contract
@@ -3810,8 +3811,8 @@ This subsection is **normative** and fixes the timing/lifecycle rules a Phase-6 
 
 ### §26.6 Reliability & privacy
 
-- **HTML payload (content script → panel):** serialize a **pre-stripped clone** of `document.documentElement` (remove `script`/`style`/`noscript`/`svg`/cross-origin `iframe` markup and `form action` attributes; **keep** text, headings, links, and input controls). Stamp the page's **effective base URL** into the payload so the panel's detached `DOMParser` resolves relative URLs (§26.4). Apply a hard size cap `PAGE_HTML_MAX_BYTES` (default **2 MB**); if still larger, **truncate at an element boundary and set `truncated:true`** — no multi-envelope chunking protocol in v0.1.
-- **APC-lite depth (v0.1):** ship the **full `APCLiteNode` type** (Appendix C) but a **minimal structural walk** — roles + text + hierarchy + interaction flags + links + tables; **geometry omitted** (the optional `geometry?` field stays unset). If ever populated, geometry MUST be read **content-script-side** against live layout, never in the panel's detached doc. The `AxDomWalker` runs **only on a `mode:'actionable'` request** (zero AX cost on the default read/summarize path).
+- **HTML payload (content script → panel):** serialize a **pre-stripped clone** of `document.documentElement` (remove `script`/`style`/`noscript`/`svg`/cross-origin `iframe` markup and `form action` attributes; **keep** text, headings, links, and input controls). Stamp the page's **effective base URL** into the payload so the panel's detached `DOMParser` resolves relative URLs (§26.4). Apply a hard size cap `PAGE_HTML_MAX_BYTES` (default **2 MB**); if still larger, **truncate at an element boundary and set `truncated:true`** — no multi-envelope chunking protocol in v0.2.
+- **APC-lite depth (v0.2):** ship the **full `APCLiteNode` type** (Appendix C) but a **minimal structural walk** — roles + text + hierarchy + interaction flags + links + tables; **geometry omitted** (the optional `geometry?` field stays unset). If ever populated, geometry MUST be read **content-script-side** against live layout, never in the panel's detached doc. The `AxDomWalker` runs **only on a `mode:'actionable'` request** (zero AX cost on the default read/summarize path).
 - **Concurrency guard:** coalesce duplicate extractions per tab; serve the in-flight promise, never a stale entry (§26.4a).
 - **Timeout:** 5 s hard cap (§13) via a single `AbortController` threaded through the round-trip; on failure fall back (Defuddle→Readability, AX→DOM), record source, then surface the typed error `CONTENT_EXTRACT_FAILED` (Appendix C.2) — **never a silent empty result**.
 - **Invalidation:** SPANavigationWatcher (wxt:locationchange) + tabs.onUpdated.
@@ -3821,7 +3822,7 @@ This subsection is **normative** and fixes the timing/lifecycle rules a Phase-6 
 
 ### §26.7 Browser automation — deferred to v2
 
-NowPilot v0.1 is **read-only**: content scripts are extraction-only (§5.6); the Agent acts through tools/APIs (§10.5), never by driving the host-page UI. Genuine automation (click/type/navigate) needs **trusted input events** (event.isTrusted), which only chrome.debugger + CDP Input can produce. v0.1/v0.2: no host-page automation, no "debugger" permission. **v2:** add "debugger", a DebuggerSession manager, and automation tools (clickElement/typeText/navigate) resolving a stable APCLiteNode.id → geometry → Input.dispatchMouseEvent. The APCLiteNode schema (Appendix C) is already automation-ready — no schema rework. A separate v2 Automation addendum spec must be ratified first.
+NowPilot v0.2 is **read-only**: content scripts are extraction-only (§5.6); the Agent acts through tools/APIs (§10.5), never by driving the host-page UI. Genuine automation (click/type/navigate) needs **trusted input events** (event.isTrusted), which only chrome.debugger + CDP Input can produce. v0.2: no host-page automation, no "debugger" permission. **v2:** add "debugger", a DebuggerSession manager, and automation tools (clickElement/typeText/navigate) resolving a stable APCLiteNode.id → geometry → Input.dispatchMouseEvent. The APCLiteNode schema (Appendix C) is already automation-ready — no schema rework. A separate v2 Automation addendum spec must be ratified first.
 
 ### §26.8 Reference projects (informative, non-normative)
 
@@ -3896,7 +3897,7 @@ NowPilot v0.1 is **read-only**: content scripts are extraction-only (§5.6); the
   See [[Problem Lifecycle Flow]] and [[Change Request Flow]] for related processes.
   ```
 
-  **Contract notes.** (a) **Identity stays UUID** - OKF v0.2 treats the file *path* as the Concept ID, but NowPilot intentionally keeps the immutable `id` (WIKI-ID-01) as the source of truth and exposes it as an OKF extension key; a generic OKF consumer ignores it, restore (SYNC-09) keys off it. (b) **Links stay wikilinks** - `[[Title]]` remains inside the body so the atomic-note graph is fully reconstructable on restore (§27.7a); NowPilot does **not** emit OKF standard-markdown-link edges in v0.1. (c) **No secrets** - all frontmatter/body still passes through TraceRedactor before write; password field values are never written (§16.4, §27.6).
+  **Contract notes.** (a) **Identity stays UUID** - OKF v0.2 treats the file *path* as the Concept ID, but NowPilot intentionally keeps the immutable `id` (WIKI-ID-01) as the source of truth and exposes it as an OKF extension key; a generic OKF consumer ignores it, restore (SYNC-09) keys off it. (b) **Links stay wikilinks** - `[[Title]]` remains inside the body so the atomic-note graph is fully reconstructable on restore (§27.7a); NowPilot does **not** emit OKF standard-markdown-link edges in v0.2. (c) **No secrets** - all frontmatter/body still passes through TraceRedactor before write; password field values are never written (§16.4, §27.6).
 - **SYNC-05** Title collision (same title + same category) → numeric suffix: `My Note.md`, `My Note (1).md`, … Scan existing files for highest suffix before writing.
 - **SYNC-06** External-change detection: if file lastModified newer than last sync (2 s tolerance) → confirm "Overwrite with app version? [Overwrite] [Skip]", default Skip.
 - **SYNC-07** No backup folder → all sync ops are no-ops; toolbar indicator "Backup: off [Configure]".
@@ -3927,9 +3928,9 @@ TraceRedactor-style redaction runs **before** indexing, logging, or writing to d
 
 ### §27.7 Note-Taking Method (clarification)
 
-The method is **atomic notes + wikilinks** (the Phase 8 core), *extended* by LLM-Wiki with: `categoryPath` (single hierarchy → folder), `tags` (many-to-many labels), and an LLM `summary` (glanceable context). Wikilinks remain the primary linking mechanism and live inside the markdown body, so the atomic-note graph is fully reconstructable on restore. LLM wikilink *autocomplete* suggestions are **not** in v0.1 (D-04; MiniSearch title matching is sufficient) — but chat/page-to-note conversion (LLM-WIKI-07) still *suggests* wikilinks for the drafted note.
+The method is **atomic notes + wikilinks** (the Phase 8 core), *extended* by LLM-Wiki with: `categoryPath` (single hierarchy → folder), `tags` (many-to-many labels), and an LLM `summary` (glanceable context). Wikilinks remain the primary linking mechanism and live inside the markdown body, so the atomic-note graph is fully reconstructable on restore. LLM wikilink *autocomplete* suggestions are **not** in v0.2 (D-04; MiniSearch title matching is sufficient) — but chat/page-to-note conversion (LLM-WIKI-07) still *suggests* wikilinks for the drafted note.
 
-**OKF v0.2 compatibility (informative, rev 2026-08-12).** The on-disk `.md` format is **OKF v0.2-compatible** (see the [Open Knowledge Format v0.2 spec](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md)): a directory of Markdown files with YAML frontmatter and a free-form body. The serialized frontmatter carries OKF's only always-required key `type` (default `Note`), the recommended `description` (= the LLM `summary`), and the `generated`/`status` trust-lifecycle families (SYNC-04). NowPilot deliberately keeps its **immutable UUID `id`** as the source of truth (written as an OKF *extension key*, which OKF consumers must tolerate) and keeps **wikilinks** — not OKF standard-markdown-link edges — as the body edge syntax, so the atomic-note graph survives rename/move/restore (WIKI-ID-01…04). Strict-OKF conformance (markdown-link edges as graph edges, path-as-Concept-ID, and the `sources`/`verified` provenance families) would break the UUID-identity/wikilink model and is therefore **out of scope for v0.1** — deferred to v0.2+ behind a dedicated ADR. The net posture is **OKF-compatible, not OKF-constrained**: a generic OKF consumer can read a NowPilot note today, while NowPilot's internal identity/link graph stays authoritative.
+**OKF v0.2 compatibility (informative, rev 2026-08-12).** The on-disk `.md` format is **OKF v0.2-compatible** (see the [Open Knowledge Format v0.2 spec](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md)): a directory of Markdown files with YAML frontmatter and a free-form body. The serialized frontmatter carries OKF's only always-required key `type` (default `Note`), the recommended `description` (= the LLM `summary`), and the `generated`/`status` trust-lifecycle families (SYNC-04). NowPilot deliberately keeps its **immutable UUID `id`** as the source of truth (written as an OKF *extension key*, which OKF consumers must tolerate) and keeps **wikilinks** — not OKF standard-markdown-link edges — as the body edge syntax, so the atomic-note graph survives rename/move/restore (WIKI-ID-01…04). Strict-OKF conformance (markdown-link edges as graph edges, path-as-Concept-ID, and the `sources`/`verified` provenance families) would break the UUID-identity/wikilink model and is therefore **out of scope for v0.2** — deferred to a later release behind a dedicated ADR. The net posture is **OKF-compatible, not OKF-constrained**: a generic OKF consumer can read a NowPilot note today, while NowPilot's internal identity/link graph stays authoritative.
 
 ### §27.7a Note Identity, Rename & Unresolved Links (WIKI-ID-01…04)
 
@@ -3944,15 +3945,15 @@ The method is **atomic notes + wikilinks** (the Phase 8 core), *extended* by LLM
 |---|---|---|
 | D-01 | Single LLM call for tags + category + summary | One fast call is cheaper/faster than three; structured JSON returns all three |
 | D-02 | Notes dual-friendly: human body, machine frontmatter | Body is natural markdown; YAML frontmatter is structured metadata; both consumers served by one file |
-| D-02a | **Note frontmatter is OKF v0.2-aligned** (rev 2026-08-12) — OKF-compatible, not OKF-constrained | The `.md` + YAML-frontmatter + folder-tree container already matches OKF v0.2's "directory of markdown files with YAML frontmatter." Adding OKF `type`/`description`/`generated`/`status` makes a note readable by any generic OKF consumer while keeping the immutable UUID `id` as an OKF extension key and wikilinks as body edges. OKF's own value-add (provenance/trust/lifecycle) maps onto the harness `MemoryRecord`/`CompletionEvidence` taxonomy (§28.2/§28.4), avoiding two competing metadata vocabularies. Strict-OKF markdown-link edges + path-as-identity + `sources`/`verified` families conflict with WIKI-ID-01…04 and are deferred to v0.2+ behind a dedicated ADR |
+| D-02a | **Note frontmatter is OKF v0.2-aligned** (rev 2026-08-12) — OKF-compatible, not OKF-constrained | The `.md` + YAML-frontmatter + folder-tree container already matches OKF v0.2's "directory of markdown files with YAML frontmatter." Adding OKF `type`/`description`/`generated`/`status` makes a note readable by any generic OKF consumer while keeping the immutable UUID `id` as an OKF extension key and wikilinks as body edges. OKF's own value-add (provenance/trust/lifecycle) maps onto the harness `MemoryRecord`/`CompletionEvidence` taxonomy (§28.2/§28.4), avoiding two competing metadata vocabularies. Strict-OKF markdown-link edges + path-as-identity + `sources`/`verified` families conflict with WIKI-ID-01…04 and are deferred to a later release behind a dedicated ADR |
 | D-03 | Category path-based, not flat | categoryPath maps 1:1 to folders; flat tags already cover many-to-many |
-| D-04 | LLM wikilink suggestions dropped from v0.1 | MiniSearch covers title-based matching; edge case rare |
+| D-04 | LLM wikilink suggestions dropped from v0.2 | MiniSearch covers title-based matching; edge case rare |
 | D-05 | Notes feed into MemoryEngine, not the reverse | Notes are user-curated; extracting facts enriches chat context without polluting notes |
 | D-06 | Maintenance is user-initiated | No background jobs in MV3; staleness is passive timestamp comparison |
 | D-07 | `fast` tier for analysis, `balanced` tier for synthesis | Tag/category/summary is low-complexity (`fast` tier); RAG synthesis benefits from `balanced` tier |
 | D-08 | Backup handle in IndexedDB | FileSystemDirectoryHandle is non-serializable; dedicated store required |
 
-### §27.9 Out of Scope (v0.1)
+### §27.9 Out of Scope (v0.2)
 
 Bidirectional filesystem sync (requires polling/Native Messaging) · embedding-based vector search · LLM wikilink autocomplete · real-time collaborative editing · filesystem as primary note store · image/file attachments in notes · auto-create notes from chat unprompted.
 
@@ -4048,7 +4049,7 @@ Canonical types are in **Appendix C.1**; a worked implementation is in **Appendi
 
 ### §29.1 Scope
 
-v0.1 adds a bounded multimodal input foundation, not a second agent architecture. Image, audio, and document inputs become normalised observations consumed by the existing ContextOptimizer and agent pipeline.
+v0.2 adds a bounded multimodal input foundation, not a second agent architecture. Image, audio, and document inputs become normalised observations consumed by the existing ContextOptimizer and agent pipeline.
 
 > **Where each requirement is built:** the MM-* IDs below are folded into Phase 16 (§18). Canonical shapes are in Appendix C.1; a worked adapter is in **Appendix O.6**.
 
@@ -4114,7 +4115,7 @@ Canonical Zod-validated shapes live in **Appendix C.1 (Harness-Track & Collabora
 
 **Phase 14 (§18)** is the single source for the collaboration build steps, files, tests, and the `verify:phase-14` command (also in §24). Collaboration error codes live in **Appendix C.2 (Error Code Registry)**.
 
-### §30.6 Future (post-v0.1) — Isolated Parallel Workers
+### §30.6 Future (post-v0.2) — Isolated Parallel Workers
 
 Parallel worker execution is deferred until Phase 14 is stable and evaluated. It requires isolated contexts, bounded concurrency, cancellation, referenced artefacts, deterministic merge/review, and no shared mutable state. Agent-generated tool proposals remain a separate later capability and must not be combined with initial parallel-worker work.
 
@@ -4523,15 +4524,6 @@ export interface KeymapRegistration {
 ```
 
 ```ts
-// src/core/registry/SidePanelPageRegistry.ts
-export interface SidePanelPageRegistration {
-  id: string;
-  label: string;
-  icon: string;
-  urlPatterns?: string[];
-  component: React.ComponentType;
-  order: number;
-}
 // src/core/registry/StandalonePageRegistry.ts
 export interface StandalonePageRegistration {
   id: string;
@@ -4744,7 +4736,6 @@ export interface Addon {
   contextExtractor?: IContextExtractor;
   skills?: ISkill[];
   prompts?: PromptTemplate[];
-  sidePanelPages?: SidePanelPageRegistration[];   //
   standalonePages?: StandalonePageRegistration[];       //
   addonSettings?: z.ZodSchema<unknown>;
   keymap?: KeymapRegistration[];
@@ -5078,7 +5069,7 @@ export type StageEvent =
   | { kind: 'result';         outcome: CollaborationOutcome };
 // input-required maps to the 'waiting-for-permission' / 'ask_clarification'
 // trajectory states (AGT-01). It is WITHIN-TURN ONLY — no durable cross-session
-// suspend/resume/rewind in v0.1 (§17.7.7).
+// suspend/resume/rewind in v0.2 (§17.7.7).
 
 // ---- Candidate Proposer (Phase 13, §28.7a) ----
 export const PROPOSE_MIN_FAILURES     = 3;       // PROP-03: agreeing failing trajectories
@@ -5392,7 +5383,8 @@ export function getAntdConfig(opts: AntdConfigOptions): ConfigProviderProps {
         colorWarning: '#F59E0B',
         colorError: '#EF4444',
         borderRadius: 8,
-        fontFamily: `-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`,
+        fontFamily: `Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif`, // DESIGN_SYSTEM §5
+        fontFamilyCode: `'JetBrains Mono', ui-monospace, SFMono, Menlo, monospace`,
         fontSize: opts.compact ? 13 : 14,
         controlHeight: opts.compact ? 30 : 32,
         ...packToken,                         // §17.1a APPR-06 pack overlay (last-wins)
@@ -5401,7 +5393,7 @@ export function getAntdConfig(opts: AntdConfigOptions): ConfigProviderProps {
         Layout: {
           headerBg: isDark ? '#141414' : '#FFFFFF',
           siderBg:  isDark ? '#141414' : '#FAFAFA',
-          headerHeight: opts.compact ? 44 : 56,
+          headerHeight: opts.compact ? 52 : 56,
         },
         Menu: {
           itemHeight: opts.compact ? 32 : 40,
@@ -5569,9 +5561,9 @@ Rules:
 
 ## Appendix H — Reserved
 
-**Shadow DOM Isolation Kit is deferred to v0.2+.** See §25 for the future page-injection reintroduction plan. When v0.2 reintroduces page injection, this appendix will contain: mountShadow() (adoptedStyleSheets); loadSharedSheet(); buildTokenSheet(); portal-aware Radix wrappers under src/components/ui-shadow/; content-script UI bundle configuration; **host-page write-back helpers that unblock RICH-H-04/H-07 (reconciliation R1)**.
+**Shadow DOM Isolation Kit is deferred to a later release.** See §25 for the future page-injection reintroduction plan. When page injection is reintroduced, this appendix will contain: mountShadow() (adoptedStyleSheets); loadSharedSheet(); buildTokenSheet(); portal-aware Radix wrappers under src/components/ui-shadow/; content-script UI bundle configuration; **host-page write-back helpers that unblock RICH-H-04/H-07 (reconciliation R1)**.
 
-In v0.1, this appendix is intentionally empty to signal the boundary between v0.1 (no injection) and v0.2+ (injection reintroduced).
+In v0.2, this appendix is intentionally empty to signal the boundary between v0.2 (no injection) and later releases (injection reintroduced).
 
 ## Appendix I — AgentOrchestrator Reference Implementation
 
@@ -5864,7 +5856,7 @@ Rules:
 
 ## Appendix L — Structured Output Repair Loop
 
-> **Implementer note (rev 2026-08-12):** v0.1 uses `zod-to-json-schema` exactly as shown below. Do **not** substitute Zod 4's native `z.toJSONSchema()` — that swap is a deferred v0.2 cleanup (§7.4). Implement this file verbatim.
+> **Implementer note (rev 2026-08-12):** v0.2 uses `zod-to-json-schema` exactly as shown below. Do **not** substitute Zod 4's native `z.toJSONSchema()` — that swap is a deferred post-v0.2 cleanup (§7.4). Implement this file verbatim.
 
 ```ts
 // src/core/ai/StructuredOutput.ts
@@ -6789,4 +6781,4 @@ export async function completeTx(
 
 **Rule of thumb:** if you ever pass a prompt, tool input/output, cookie, clipboard text, or case body toward a log/UI/export, it goes through `TraceRedactor.redact()` first (risk R-10). Deep traces store **redacted previews only** and expire fast (§4.2).
 
-**End of NowPilot Product Specification v0.1.**
+**End of NowPilot Product Specification v0.2.**

@@ -1,0 +1,26 @@
+{
+  "source_path": "/Users/george.li/Documents/workspaces/nowpilot/.planning/design/NOWPILOT_DETAILED_UI_UX_LAYOUT_GSD_GUIDE.html",
+  "type": "DOC",
+  "confidence": "medium",
+  "manifest_override": false,
+  "title": "NowPilot Detailed UI/UX Layout and GSD Guide",
+  "summary": "UI/UX guide with screen blueprints, workflow-based model routing, state and accessibility standards, and Google AI Studio plus OpenCode + GSD hand-off instructions.",
+  "scope": [
+    "Side Panel Chat",
+    "Standalone Chat",
+    "Notes workspace",
+    "Options page",
+    "workflow selector",
+    "TierResolver",
+    "provider/model routing",
+    "accessibility",
+    "interaction states"
+  ],
+  "cross_refs": [
+    "PRODUCT_SPEC_v0_2.md",
+    "DESIGN_SYSTEM_v0_2.md"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": "No frontmatter or filename type marker; dominant signals are design guide plus implementation hand-off (example layouts, standards, GSD instructions) → DOC. Contains one embedded decision (remove raw model selector from Chat; use workflow selector + TierResolver) and normative state/accessibility standards that border SPEC. Synthesizer may treat the embedded decision as a locked-decision candidate; ambiguity recorded per rule."
+}

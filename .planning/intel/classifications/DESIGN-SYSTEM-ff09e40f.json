@@ -1,0 +1,34 @@
+{
+  "source_path": "/Users/george.li/Documents/workspaces/nowpilot/.planning/design/DESIGN_SYSTEM.md",
+  "type": "SPEC",
+  "confidence": "medium",
+  "manifest_override": false,
+  "title": "NowPilot — Design System & Visual Language v0.2",
+  "summary": "Design system contract for NowPilot v0.2: brand, color tokens, layout blueprints, component recipes, motion, and accessibility for the Ant Design v6 extension surfaces.",
+  "scope": [
+    "NowPilot design system",
+    "Side Panel",
+    "Standalone view",
+    "Notes page",
+    "Options / Settings",
+    "chat history surfaces",
+    "provider configuration dialog",
+    "theme packs",
+    "Ant Design v6 design tokens",
+    "layout blueprints",
+    "typography",
+    "iconography",
+    "motion",
+    "accessibility"
+  ],
+  "cross_refs": [
+    "PRODUCT_SPEC_v0_2.md",
+    ".planning/design/references/sidepanel/sidepanel-chatPage.png",
+    ".planning/design/references/standalone/standalone-chatPage.png",
+    ".planning/design/references/notes/standalone-notePage.png",
+    ".planning/design/references/options/options-general.png"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": "Resolved SPEC vs DOC ambiguity: content is a prescriptive visual implementation contract (exact px metrics, token values, TypeScript token seed in §13, WCAG AA non-functional requirements) referenced as the visual acceptance baseline for PRODUCT_SPEC §18 Phase 15/16 — not prose-only rationale. SPEC is the higher-precedence signal. Doc defers to PRODUCT_SPEC_v0_2.md on functional rules and to the annotated reference art under .planning/design/references/ for visual layout intent (W6 resolved 2026-09-20)."
+}
