@@ -354,14 +354,20 @@ describe('types — no credential can reach a persisted shape', () => {
     );
   });
 
-  it('keeps the prototype legacy provider types marked for plan 01-11 removal', () => {
+  it('the prototype legacy provider types are gone after plan 01-11', () => {
     const source = typesSource();
 
-    // The legacy types still have importers (aiProvider.ts, OnboardingModal,
-    // useExtensionStore, OptionsPage) which plan `01-11` removes; each is
-    // marked so the temporary coexistence is visible rather than accidental.
-    const legacyRegions = source.match(/LEGACY[^\n]*/g) ?? [];
-    expect(legacyRegions.length).toBeGreaterThanOrEqual(3);
+    // Plan `01-11` deleted the prototype's two provider identifier unions and
+    // the raw model option they fed, together with their last consumers
+    // (`aiProvider.ts`, the prototype onboarding host, the chat host, the raw
+    // model selector and the workflow selector). `ProviderId` is therefore the
+    // only provider identifier union left in the repository, and no prototype
+    // module imports a removed export.
+    expect(source).not.toMatch(/export type ProviderType\b/);
+    expect(source).not.toMatch(/export type CustomProviderId\b/);
+    expect(source).not.toMatch(/export interface ModelOption\b/);
+    expect(source).toContain('export type ProviderId = (typeof PROVIDER_IDS)[number]');
+    // The teardown is recorded in the surviving prototype shapes' provenance.
     expect(source).toContain('01-11');
   });
 });

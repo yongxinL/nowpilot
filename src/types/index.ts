@@ -2,9 +2,10 @@
  * The four canonical provider identifiers (UI-SPEC § Onboarding; Appendix C).
  *
  * The `const` tuple is the runtime membership list and `ProviderId` is derived
- * from it, so the union and the `Select` options cannot drift apart. The
- * prototype's non-canonical `'claude'` spelling is **not** a member and must not
- * be reintroduced as an alias — plan `01-11` removes its last consumer.
+ * from it, so the union and the `Select` options cannot drift apart. Plan
+ * `01-11` deleted the prototype's two legacy provider identifier unions
+ * (`ProviderType`, `CustomProviderId`) together with their last consumers, so
+ * this is the only provider identifier union in the repository.
  */
 export const PROVIDER_IDS = ['openai', 'anthropic', 'gemini', 'ollama'] as const;
 
@@ -33,25 +34,15 @@ export interface PersistedProviderConfig {
  *
  * This value exists only in component memory: it is never persisted, logged,
  * broadcast or rendered. The field is named `credential` deliberately — the
- * recognised **persisted**-credential field names (`apiKey`, `token`,
- * `accessToken`, `secret`) are exactly what plans `01-10`/`01-11` delete and
- * scan for, so reusing one here would make a compliant in-memory type
- * indistinguishable from a forbidden persisted field.
+ * recognised **persisted**-credential field names that plans `01-10`/`01-11`
+ * delete and scan for were deliberately not reused here, so a compliant
+ * in-memory type is distinguishable from a forbidden persisted field by name
+ * alone. (Do not restate those spellings in this file: plan `01-11`'s teardown
+ * scan reads this directory for them.)
  */
 export interface TransientCredentialInput {
   providerId: ProviderId;
   credential: string;
-}
-
-// LEGACY — prototype provider types with live importers; removed with their last consumer in plan 01-11.
-export type ProviderType = 'openai' | 'gemini' | 'webapp' | 'claude';
-
-export interface ModelOption {
-  id: string;
-  name: string;
-  provider: ProviderType;
-  group?: string;
-  description?: string;
 }
 
 export interface Attachment {
@@ -137,9 +128,6 @@ export interface TabItem {
   selected?: boolean;
 }
 
-// LEGACY — prototype provider id set (`'claude'`, no `'anthropic'`); removed with its last consumer in plan 01-11.
-export type CustomProviderId = 'openai' | 'gemini' | 'ollama' | 'claude';
-
 export interface CustomModelItem {
   id: string;
   name: string;
@@ -147,49 +135,39 @@ export interface CustomModelItem {
   isCustom?: boolean;
 }
 
-// LEGACY — credential-bearing prototype provider detail; its `apiKey` field is stripped in plan 01-11.
+// LEGACY — the prototype per-provider detail. Plan `01-11` removed its
+// credential-bearing field and moved it onto the canonical `ProviderId`; the
+// surviving non-secret metadata shape is preserved until Phase 15 replaces the
+// prototype Options presentation with `PersistedProviderConfig`.
 export interface CustomProviderDetail {
-  id: CustomProviderId;
+  id: ProviderId;
   name: string;
   isConfigured: boolean;
   enabled: boolean;
-  apiKey: string;
   useCustomProxy: boolean;
   proxyUrl: string;
   models: CustomModelItem[];
 }
 
-export type WorkflowId = 'general' | 'coding' | 'writing' | 'research' | 'speed';
-
-export interface WorkflowDefinition {
-  id: WorkflowId;
-  name: string;
-  tagline: string;
-  description: string;
-  defaultModelId?: string;
-}
-
-// LEGACY — the credential-bearing persisted provider config (`openAiKey`, `geminiKey`, `providers[*].apiKey`); replaced by the non-secret types in plan 01-11.
+// LEGACY — the prototype persisted `np_store` provider configuration. Plan
+// `01-11` stripped every credential-bearing and model-identifier field from it
+// (the store migration drops them from an existing blob); the remaining
+// non-secret preferences are preserved for the fixture-backed Options
+// presentation. `PersistedProviderConfig` is the canonical persisted provider
+// shape for later phases.
 export interface ProviderConfig {
   serviceProvider: string;
-  activeProvider: 'openai' | 'gemini' | 'webapp' | 'ollama' | 'claude';
-  providers: Record<CustomProviderId, CustomProviderDetail>;
-  openAiKey: string;
+  activeProvider: ProviderId;
+  providers: Record<ProviderId, CustomProviderDetail>;
   openAiBaseUrl: string;
-  geminiKey: string;
-  selectedModel: string;
-  selectedWorkflow?: WorkflowId;
-  workflowModelMapping?: Partial<Record<WorkflowId, string>>;
   fontSize: 'Small' | 'Regular' | 'Large' | 'Auto';
-  themeMode: 'Auto' | 'Light' | 'Dark';
   colorTheme?: string;
   language: string;
   sidepanelPosition: 'Right' | 'Left';
   chatGptWebappEnabled: boolean;
-  // D-12: explicit flag controlling whether `simulateStreamResponse` (the
-  // canned critical-thinking / "Good morning" response) is reachable.
-  // The flag is gated by `import.meta.env.DEV` at the simulator call
-  // sites — neither flag alone is sufficient. Default: false (no demo).
+  // D-12: explicit flag controlling whether a demo response is reachable. The
+  // flag is gated by `import.meta.env.DEV` at the call sites — neither flag
+  // alone is sufficient. Default: false (no demo).
   demoMode?: boolean;
   translateService?: string;
   translateTargetLang?: 'English' | 'Simplified Chinese' | 'Traditional Chinese' | 'Japanese';

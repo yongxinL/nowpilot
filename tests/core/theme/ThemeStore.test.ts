@@ -285,14 +285,15 @@ describe('useExtensionStore — D-10 delete duplicate theme bridge', () => {
     useThemeStore.getState().setMode('auto');
   });
 
-  // D-10 — updateConfig is a plain Object.assign — no theme bridge into useThemeStore.setMode.
-  it('updateConfig({ themeMode }) no longer calls useThemeStore.setMode', () => {
+  // D-10 / D-15 — updateConfig is a plain Object.assign with no theme bridge
+  // into useThemeStore.setMode, and plan `01-11` removed the legacy field
+  // outright: the store is not a second theme source, so there is no
+  // `themeMode` left for a bridge to read back.
+  it('carries no theme mode at all and updateConfig never reaches useThemeStore.setMode', () => {
     const setModeSpy = vi.spyOn(useThemeStore.getState(), 'setMode');
-    useExtensionStore.getState().updateConfig({ themeMode: 'Dark' });
+    useExtensionStore.getState().updateConfig({ fontSize: 'Small' });
     expect(setModeSpy).not.toHaveBeenCalled();
-    // And config.themeMode is still updated in memory (the field stays — only
-    // the bridge is gone, and D-15 keeps it out of the persisted blob).
-    expect(useExtensionStore.getState().config.themeMode).toBe('Dark');
+    expect('themeMode' in (useExtensionStore.getState().config as unknown as object)).toBe(false);
     // The active theme mode in ThemeStore is unchanged — D-10 single source of truth.
     expect(useThemeStore.getState().mode).toBe('auto');
   });

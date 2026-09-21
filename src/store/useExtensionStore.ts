@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import { chromeStorageAdapter } from '../core/theme/chromeStorageAdapter';
-import { useThemeStore, type ThemeMode } from '../core/theme/ThemeStore';
 import { DEFAULT_PROMPTS_LIST } from '../components/options/defaultPromptsData';
 import type {
   ChatSession,
@@ -17,6 +16,15 @@ import type {
 
 const INITIAL_PROMPTS: PromptItem[] = DEFAULT_PROMPTS_LIST;
 
+// D-07 / D-08 / D-15 (plan `01-11`): the default configuration carries no
+// credential field, no model identifier and no theme mode.
+//   - Credentials belong to component memory only (`TransientCredentialInput`),
+//     and the recognised legacy plaintext names are destroyed by the startup
+//     cleanup (`src/core/storage/legacyCredentialCleanup.ts`, plan `01-10`).
+//   - The model catalogue and every raw model selector are gone (DEC-HTML-01);
+//     the surviving Workflow display is read-only and resolved per workflow.
+//   - `np_theme` is the single theme source, so the store carries no theme mode.
+// The provider map is keyed by the canonical `ProviderId` values.
 const DEFAULT_CONFIG: ProviderConfig = {
   serviceProvider: 'Custom API Key',
   activeProvider: 'openai',
@@ -26,7 +34,6 @@ const DEFAULT_CONFIG: ProviderConfig = {
       name: 'OpenAI',
       isConfigured: false,
       enabled: false,
-      apiKey: '',
       useCustomProxy: true,
       proxyUrl: 'http://localhost:12380/v1',
       models: [
@@ -35,12 +42,20 @@ const DEFAULT_CONFIG: ProviderConfig = {
         { id: 'gemma-4-e2b-it-4bit', name: 'gemma-4-e2b-it-4bit', enabled: false },
       ],
     },
+    anthropic: {
+      id: 'anthropic',
+      name: 'Anthropic',
+      isConfigured: false,
+      enabled: false,
+      useCustomProxy: false,
+      proxyUrl: 'https://api.anthropic.com',
+      models: [],
+    },
     gemini: {
       id: 'gemini',
       name: 'Google (Gemini)',
       isConfigured: false,
       enabled: false,
-      apiKey: '',
       useCustomProxy: false,
       proxyUrl: 'https://generativelanguage.googleapis.com',
       models: [],
@@ -50,28 +65,13 @@ const DEFAULT_CONFIG: ProviderConfig = {
       name: 'Ollama',
       isConfigured: false,
       enabled: false,
-      apiKey: '',
       useCustomProxy: true,
       proxyUrl: 'http://localhost:11434',
       models: [],
     },
-    claude: {
-      id: 'claude',
-      name: 'Anthropic (Claude)',
-      isConfigured: false,
-      enabled: false,
-      apiKey: '',
-      useCustomProxy: false,
-      proxyUrl: 'https://api.anthropic.com',
-      models: [],
-    },
   },
-  openAiKey: '',
   openAiBaseUrl: 'http://localhost:12380/v1',
-  geminiKey: '',
-  selectedModel: 'Qwythos-9B-Claude-Mythos-5-1M-mxfp4-mlx',
   fontSize: 'Auto',
-  themeMode: 'Auto',
   language: 'English',
   sidepanelPosition: 'Right',
   chatGptWebappEnabled: true,
@@ -79,10 +79,9 @@ const DEFAULT_CONFIG: ProviderConfig = {
   translateTargetLang: 'English',
   translateDisplayMode: 'Bilingual',
   translateDisplayStyle: 'Underline',
-  // D-12: explicit flag controlling whether `simulateStreamResponse` (the
-  // canned critical-thinking / "Good morning" response) is reachable.
-  // DEMO_MODE is gated by `import.meta.env.DEV` at the simulator call sites —
-  // neither flag alone is sufficient. Default: off (no demo).
+  // D-12: explicit flag controlling whether a demo response is reachable.
+  // The flag is gated by `import.meta.env.DEV` at the call sites — neither
+  // flag alone is sufficient. Default: off (no demo).
   demoMode: false,
 };
 
@@ -140,6 +139,9 @@ interface ExtensionState {
   saveTextAsNote: (text: string, titleHint?: string) => NoteItem;
 }
 
+/** The current `np_store` persist schema version (D-22). */
+export const NP_STORE_SCHEMA_VERSION = 2;
+
 export const useExtensionStore = create<ExtensionState>()(
   persist(
     immer((set, get) => {
@@ -153,10 +155,9 @@ export const useExtensionStore = create<ExtensionState>()(
         // D-11: empty active id — `computeActiveSession(sessions, '')` returns
         // `null` on the freshly-emptied `INITIAL_SESSIONS` (the existing
         // function in this file already handles this gracefully: `find` misses
-        // and `sessions[0]` is `undefined`, which OR-folds to `null`). The
-        // SidepanelChat mount-time `useEffect(() => createNewSession(), [])`
-        // (when `activeSession` is falsy) is the path that produces the
-        // user's first real session.
+        // and `sessions[0]` is `undefined`, which OR-folds to `null`). A mount
+        // effect that calls `createNewSession()` when `activeSession` is falsy
+        // is the path that produces a user's first real session.
         activeSessionId: '',
         prompts: INITIAL_PROMPTS,
         writeHistory: INITIAL_WRITE_HISTORY,
@@ -165,10 +166,10 @@ export const useExtensionStore = create<ExtensionState>()(
         availableTabs: [],
         activeSession: null,
 
+        // D-15 (plan `01-11`): the legacy theme bridge and its field are gone.
+        // ThemeStore is the single source of truth for the active theme; this
+        // store neither reads nor writes one.
         updateConfig: (updates) => {
-          // D-10: duplicate theme-state bridge deleted. ThemeStore is the
-          // single source of truth for the active theme; `config.themeMode`
-          // is now a read-only field, no longer drives `useThemeStore.setMode`.
           set((state) => {
             Object.assign(state.config, updates);
           });
@@ -523,25 +524,25 @@ export const useExtensionStore = create<ExtensionState>()(
       name: 'np_store',
       storage: createJSONStorage(() => chromeStorageAdapter),
       partialize: (state) => {
-        const { activeSession, activeAttachments, availableTabs, config, ...rest } = state;
-        // APPR-03 / D-15: `np_theme` is the single theme source. The legacy
-        // `config.themeMode` field stays in memory for the prototype Options
-        // presentation, but it is never persisted — a persisted second theme
-        // source is exactly what the theme contract forbids.
-        const { themeMode: _legacyThemeMode, ...persistedConfig } = config;
-        return { ...rest, config: persistedConfig };
+        const { activeSession, activeAttachments, availableTabs, ...rest } = state;
+        // APPR-03 / D-15 (plan `01-11`): `np_theme` is the single theme source
+        // and the config carries no theme mode, no credential field and no
+        // model identifier, so the projection is the state minus the transient
+        // UI fields only.
+        return rest;
       },
-      // D-22: schema versioning. v1 IS the current schema — a no-op migrate.
+      // D-22 / plan `01-11`: schema versioning. v2 is the credential-free
+      // schema — the migration rebuilds an older blob from the canonical field
+      // set so a removed field cannot be carried forward.
       // NOTE: this zustand-persist `version` counter is SEPARATE from the
       // IndexedDB `DB_VERSION` (§20.4), which reaches v4 by Phase 9 — do not
       // conflate the two counters when numbering later migrations (A5).
-      version: 1,
+      version: NP_STORE_SCHEMA_VERSION,
       migrate: npStoreMigrate,
       merge: (persisted, current) => {
         const merged = { ...current, ...(persisted as Partial<ExtensionState>) };
-        // The persisted projection omits `config.themeMode`; merge the
-        // persisted config over the in-memory defaults so the typed field is
-        // never left undefined by a projection written without it.
+        // Merge the persisted config over the in-memory defaults so a field
+        // the projection omits can never leave a typed field undefined.
         merged.config = { ...current.config, ...merged.config };
         merged.activeSession = computeActiveSession(merged.sessions, merged.activeSessionId);
         merged.activeAttachments = [];
@@ -552,20 +553,106 @@ export const useExtensionStore = create<ExtensionState>()(
   ),
 );
 
+/** The `np_store` blob's surviving top-level fields. A field outside this list
+ * is dropped rather than carried forward. */
+const PERSISTED_BLOB_FIELDS = [
+  'config',
+  'sessions',
+  'activeSessionId',
+  'prompts',
+  'writeHistory',
+  'notes',
+] as const;
+
+/** The surviving non-secret provider-configuration fields. */
+const PERSISTED_CONFIG_FIELDS = [
+  'serviceProvider',
+  'activeProvider',
+  'providers',
+  'openAiBaseUrl',
+  'fontSize',
+  'colorTheme',
+  'language',
+  'sidepanelPosition',
+  'chatGptWebappEnabled',
+  'demoMode',
+  'translateService',
+  'translateTargetLang',
+  'translateDisplayMode',
+  'translateDisplayStyle',
+] as const;
+
+/** The surviving non-secret per-provider fields. */
+const PERSISTED_PROVIDER_FIELDS = [
+  'id',
+  'name',
+  'isConfigured',
+  'enabled',
+  'useCustomProxy',
+  'proxyUrl',
+  'models',
+] as const;
+
+/** The surviving per-model fields. */
+const PERSISTED_MODEL_FIELDS = ['id', 'name', 'enabled', 'isCustom'] as const;
+
+function pickFields(record: unknown, fields: readonly string[]): Record<string, unknown> {
+  const picked: Record<string, unknown> = {};
+  if (!record || typeof record !== 'object' || Array.isArray(record)) return picked;
+  const source = record as Record<string, unknown>;
+  for (const field of fields) {
+    if (Object.prototype.hasOwnProperty.call(source, field)) {
+      picked[field] = source[field];
+    }
+  }
+  return picked;
+}
+
 /**
- * Pure, throw-free migration for useExtensionStore's persist config (D-22).
- * v1 IS the current schema; a v1 (or unversioned) blob is returned unchanged
- * so existing user data hydrates without disruption.
+ * Pure, throw-free, total migration for `useExtensionStore`'s persist config
+ * (D-22 / plan `01-11`).
+ *
+ * v2 rebuilds the blob **from an allow-list** rather than filtering a deny-list:
+ * only the canonical non-secret field set survives, so a field this schema no
+ * longer models — a prototype credential field, a model identifier or a theme
+ * mode — is dropped from an existing blob instead of being carried forward.
+ * The credential *names* are deliberately not restated here; the D-07 deletion
+ * surface (`src/core/storage/legacyCredentialCleanup.ts`, plan `01-10`) owns
+ * them and sanitises the stored blob before this store reads it.
+ *
+ * The rebuild is idempotent and total: `null`, `undefined`, an array, a string
+ * or a number returns `{}`, so zustand's `merge()` always receives an object
+ * and a malformed blob can never throw during hydration.
  *
  * A5 separation: this zustand-persist version counter is distinct from the
  * IndexedDB `DB_VERSION` (§20.4). IndexedDB migrations will live in a
  * separate adapter path and must NOT be wired through here.
  */
 export function npStoreMigrate(persisted: unknown, version: number): unknown {
-  if (persisted && typeof persisted === 'object') {
-    return persisted;
+  void version; // The rebuild is version-independent: it is total and idempotent.
+  if (!persisted || typeof persisted !== 'object' || Array.isArray(persisted)) {
+    return {};
   }
-  // Unparseable / non-object blob — return {} so zustand's merge() handles
-  // the empty shape against current state without throwing.
-  return {};
+
+  const blob = pickFields(persisted, PERSISTED_BLOB_FIELDS);
+  const config = pickFields(blob.config, PERSISTED_CONFIG_FIELDS);
+
+  if (config.providers && typeof config.providers === 'object' && !Array.isArray(config.providers)) {
+    const providers: Record<string, unknown> = {};
+    for (const [providerKey, detail] of Object.entries(
+      config.providers as Record<string, unknown>,
+    )) {
+      const provider = pickFields(detail, PERSISTED_PROVIDER_FIELDS);
+      if (Array.isArray(provider.models)) {
+        provider.models = (provider.models as unknown[]).map((model) =>
+          pickFields(model, PERSISTED_MODEL_FIELDS),
+        );
+      }
+      providers[providerKey] = provider;
+    }
+    config.providers = providers;
+  }
+
+  blob.config = config;
+  return blob;
 }
