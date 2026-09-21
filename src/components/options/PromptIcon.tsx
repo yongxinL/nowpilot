@@ -1,46 +1,53 @@
 import React from 'react';
 import {
-  Sparkles,
-  Mail,
-  FileText,
-  FileCheck,
-  Languages,
-  Edit3,
-  CheckSquare,
-  HelpCircle,
-  Code,
-  ListCheck,
-  Minimize2,
-  Maximize2,
-  Type,
-  Smile,
-  Lightbulb,
-  List,
-  FilePlus,
-  AlignLeft,
-  MessageSquare,
-  Newspaper,
-  BookOpen,
-  Calendar,
-  Eye,
-  Paperclip,
-  BarChart2,
-  Key,
-  Bell,
-  Sun,
-  Edit,
-  PlaySquare,
-  Zap,
-  Star,
-  Bookmark,
-  Award,
-  Shield,
-  Layers,
-  Search,
-  MessageCircle,
-  File,
-  CheckCircle,
-} from 'lucide-react';
+  HighlightOutlined,
+  MailOutlined,
+  FileTextOutlined,
+  FileDoneOutlined,
+  TranslationOutlined,
+  EditOutlined,
+  FormOutlined,
+  CheckSquareOutlined,
+  QuestionCircleOutlined,
+  CodeOutlined,
+  CarryOutOutlined,
+  CompressOutlined,
+  ExpandOutlined,
+  FontSizeOutlined,
+  SmileOutlined,
+  BulbOutlined,
+  UnorderedListOutlined,
+  FileAddOutlined,
+  AlignLeftOutlined,
+  MessageOutlined,
+  ReadOutlined,
+  BookOutlined,
+  CalendarOutlined,
+  EyeOutlined,
+  PaperClipOutlined,
+  BarChartOutlined,
+  KeyOutlined,
+  BellOutlined,
+  SunOutlined,
+  PlayCircleOutlined,
+  PlaySquareOutlined,
+  ThunderboltOutlined,
+  StarOutlined,
+  TagsOutlined,
+  TrophyOutlined,
+  SafetyOutlined,
+  SearchOutlined,
+  BlockOutlined,
+  FileOutlined,
+} from '@ant-design/icons';
+
+/**
+ * Prompt icon resolver — the single icon system is the approved AntD set
+ * (UI-SPEC § Design System). Plan `01-11` replaced the banned second icon
+ * library that used to back this module: the resolver keeps the same stored
+ * icon **names** (so the preserved prompt fixtures and the icon picker are
+ * unchanged) but every name now resolves to an `@ant-design/icons` glyph.
+ */
 
 interface PromptIconProps {
   name?: string;
@@ -90,124 +97,125 @@ export const PROMPT_ICON_NAMES = [
 ];
 
 export const PromptIcon: React.FC<PromptIconProps> = ({ name = 'Sparkles', className = '', size = 16 }) => {
-  const iconProps = { size, className };
+  const iconProps = { className, style: { fontSize: size } };
 
   switch (name?.toLowerCase()) {
     case 'sparkles':
     case 'sparkle':
     case '✦':
-      return <Sparkles {...iconProps} />;
+      return <HighlightOutlined {...iconProps} />;
     case 'mail':
     case 'envelope':
     case 'sales email...':
-      return <Mail {...iconProps} />;
+      return <MailOutlined {...iconProps} />;
     case 'filetext':
     case 'document':
     case 'explain':
-      return <FileText {...iconProps} />;
+      return <FileTextOutlined {...iconProps} />;
     case 'filecheck':
     case 'summarize':
-      return <FileCheck {...iconProps} />;
+      return <FileDoneOutlined {...iconProps} />;
     case 'languages':
     case 'translate':
-      return <Languages {...iconProps} />;
+      return <TranslationOutlined {...iconProps} />;
     case 'edit3':
     case 'improve writing':
-      return <Edit3 {...iconProps} />;
+      return <EditOutlined {...iconProps} />;
     case 'edit':
     case 'continue writing':
-      return <Edit {...iconProps} />;
+      return <FormOutlined {...iconProps} />;
     case 'checksquare':
     case 'checkcircle':
     case 'fix spelling & grammar':
     case 'to-do list...':
-      return <CheckSquare {...iconProps} />;
+      return <CheckSquareOutlined {...iconProps} />;
     case 'helpcircle':
     case 'answer this question':
-      return <HelpCircle {...iconProps} />;
+      return <QuestionCircleOutlined {...iconProps} />;
     case 'code':
     case 'explain codes':
-      return <Code {...iconProps} />;
+      return <CodeOutlined {...iconProps} />;
     case 'listcheck':
     case 'find action items':
-      return <ListCheck {...iconProps} />;
+      return <CarryOutOutlined {...iconProps} />;
     case 'minimize2':
     case 'make shorter':
-      return <Minimize2 {...iconProps} />;
+      return <CompressOutlined {...iconProps} />;
     case 'maximize2':
     case 'make longer':
-      return <Maximize2 {...iconProps} />;
+      return <ExpandOutlined {...iconProps} />;
     case 'type':
     case 'simplify language':
-      return <Type {...iconProps} />;
+      return <FontSizeOutlined {...iconProps} />;
     case 'smile':
     case 'change tone':
-      return <Smile {...iconProps} />;
+      return <SmileOutlined {...iconProps} />;
     case 'lightbulb':
     case 'brainstorm about...':
-      return <Lightbulb {...iconProps} />;
+      return <BulbOutlined {...iconProps} />;
     case 'list':
     case 'outline...':
-      return <List {...iconProps} />;
+      return <UnorderedListOutlined {...iconProps} />;
     case 'fileplus':
     case 'blog post...':
-      return <FilePlus {...iconProps} />;
+      return <FileAddOutlined {...iconProps} />;
     case 'alignleft':
     case 'paragraph about...':
-      return <AlignLeft {...iconProps} />;
+      return <AlignLeftOutlined {...iconProps} />;
     case 'messagesquare':
     case 'messagecircle':
     case 'social media post...':
-      return <MessageSquare {...iconProps} />;
+      return <MessageOutlined {...iconProps} />;
     case 'newspaper':
     case 'press release':
-      return <Newspaper {...iconProps} />;
+      return <ReadOutlined {...iconProps} />;
     case 'bookopen':
     case 'creative story':
-      return <BookOpen {...iconProps} />;
+      return <BookOutlined {...iconProps} />;
     case 'calendar':
     case 'meeting agenda...':
-      return <Calendar {...iconProps} />;
+      return <CalendarOutlined {...iconProps} />;
     case 'eye':
     case 'glasses':
     case 'more persuasive':
-      return <Eye {...iconProps} />;
+      return <EyeOutlined {...iconProps} />;
     case 'paperclip':
     case 'add details':
-      return <Paperclip {...iconProps} />;
+      return <PaperClipOutlined {...iconProps} />;
     case 'barchart2':
     case 'add statistics':
-      return <BarChart2 {...iconProps} />;
+      return <BarChartOutlined {...iconProps} />;
     case 'key':
     case 'add humor':
-      return <Key {...iconProps} />;
+      return <KeyOutlined {...iconProps} />;
     case 'bell':
     case 'more apologetic':
-      return <Bell {...iconProps} />;
+      return <BellOutlined {...iconProps} />;
     case 'sun':
     case 'more engaging':
-      return <Sun {...iconProps} />;
+      return <SunOutlined {...iconProps} />;
     case 'youtube':
     case 'for youtube':
+      return <PlayCircleOutlined {...iconProps} />;
     case 'playsquare':
-      return <PlaySquare {...iconProps} />;
+      return <PlaySquareOutlined {...iconProps} />;
     case 'zap':
-      return <Zap {...iconProps} />;
+      return <ThunderboltOutlined {...iconProps} />;
     case 'star':
-      return <Star {...iconProps} />;
+      return <StarOutlined {...iconProps} />;
     case 'bookmark':
-      return <Bookmark {...iconProps} />;
+      return <TagsOutlined {...iconProps} />;
     case 'award':
-      return <Award {...iconProps} />;
+      return <TrophyOutlined {...iconProps} />;
     case 'shield':
-      return <Shield {...iconProps} />;
+      return <SafetyOutlined {...iconProps} />;
     case 'search':
-      return <Search {...iconProps} />;
+      return <SearchOutlined {...iconProps} />;
     case 'layers':
-      return <Layers {...iconProps} />;
+      return <BlockOutlined {...iconProps} />;
     case 'file':
-      return <File {...iconProps} />;
+      return <FileOutlined {...iconProps} />;
     default:
-      return <Sparkles {...iconProps} />;
+      return <HighlightOutlined {...iconProps} />;
   }
 };

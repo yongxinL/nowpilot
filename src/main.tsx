@@ -4,7 +4,7 @@ import { App as AntdApp, Layout, Segmented, Typography, theme } from 'antd';
 import { XProvider } from '@ant-design/x';
 import { AppstoreOutlined, MessageOutlined, SettingOutlined } from '@ant-design/icons';
 import { StandaloneShell } from './components/standalone/StandaloneShell';
-import { SidepanelChat } from './components/chat/SidepanelChat';
+import { SidePanelShell } from './components/sidepanel/SidePanelShell';
 import { OptionsPage } from './components/options/OptionsPage';
 import { CommandPalette } from './components/common/CommandPalette';
 import { CommandRegistry } from './core/commands/CommandRegistry';
@@ -183,7 +183,10 @@ const AppShell: React.FC = () => {
               backgroundColor: token.colorBgContainer,
             }}
           >
-            <SidepanelChat
+            {/* Rule-3 fix (plan `01-11` Task 2): the prototype chat host is
+                deleted, so the dev shell previews the canonical Phase-1 Side
+                Panel shell instead. The shell itself is deleted in Task 3. */}
+            <SidePanelShell
               onOpenStandalone={() => setActiveView('workspace')}
               onOpenOptions={() => setActiveView('options')}
             />

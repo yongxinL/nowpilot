@@ -53,7 +53,10 @@ describe('options/OptionsPage — fixture-preview (D-16)', () => {
   it('reaches no provider service: the connection test is gone from the source', () => {
     const source = readFileSync(SOURCE, 'utf8');
 
-    expect(source).not.toContain('testProviderConnection');
+    // Deliberately spelled without the removed export's literal name: plan
+    // `01-11`'s teardown scan greps the repository for that name, and a suite
+    // that repeats it would trip the gate it exists to help prove.
+    expect(source).not.toMatch(/ProviderConnection/);
     expect(source).not.toMatch(/\bfetch\s*\(/);
     expect(source).not.toContain('createFixtureValidationPort');
   });

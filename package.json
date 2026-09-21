@@ -36,7 +36,6 @@
     "@ant-design/x-markdown": "^2.8.0",
     "antd": "^6.5.2",
     "immer": "^11.1.18",
-    "lucide-react": "^1.31.0",
     "motion": "^12.23.24",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",

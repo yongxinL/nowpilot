@@ -132,15 +132,17 @@ export const strings: Readonly<Record<string, string>> = Object.freeze({
   'command.reloadExtension.confirm':
     'Reload extension: this restarts the extension and discards unsaved state. Continue?',
 
-  // LEGACY — prototype-only keys, removed by the plan that deletes their last consumer (01-09 onboarding, 01-10 pages, 01-11 dev shell). Do not add keys here.
-  // Kept only while a live `t(...)` call site still resolves through them: a
-  // deleted key renders its own name on screen. No key here duplicates a
-  // canonical value above.
+  // LEGACY — prototype-only keys. Do not add keys here: this block is a
+  // retirement queue, not a second home for copy. A key leaves it when the
+  // plan that deletes its **last consumer** lands — plan `01-11` pruned
+  // `options.loading` and `notes.empty` with the duplicate page stubs, and the
+  // prototype-host retirement left the three below, each of which still has a
+  // live `t(...)` call site (the two Phase-1 shells and the deferred Agent
+  // page). Deleting a key while a consumer still resolves through it renders
+  // its own name on screen. No key here duplicates a canonical value above.
   'app.name': 'NowPilot',
   'common.back': 'Back',
   'agent.empty': 'Describe a task and the agent will plan steps',
-  'options.loading': 'Loading settings...',
-  'notes.empty': 'No notes yet. Press + to create one.',
 });
 
 /**

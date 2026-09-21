@@ -18,9 +18,10 @@ const INITIAL_PROMPTS: PromptItem[] = DEFAULT_PROMPTS_LIST;
 
 // D-07 / D-08 / D-15 (plan `01-11`): the default configuration carries no
 // credential field, no model identifier and no theme mode.
-//   - Credentials belong to component memory only (`TransientCredentialInput`),
-//     and the recognised legacy plaintext names are destroyed by the startup
-//     cleanup (`src/core/storage/legacyCredentialCleanup.ts`, plan `01-10`).
+//   - Credentials belong to component memory only (the onboarding flow's
+//     in-memory input type), and the recognised legacy plaintext names are
+//     destroyed by the startup cleanup
+//     (`src/core/storage/legacyCredentialCleanup.ts`, plan `01-10`).
 //   - The model catalogue and every raw model selector are gone (DEC-HTML-01);
 //     the surviving Workflow display is read-only and resolved per workflow.
 //   - `np_theme` is the single theme source, so the store carries no theme mode.

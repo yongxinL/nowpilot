@@ -5,11 +5,7 @@ import {
   ReloadOutlined,
   DeleteOutlined,
   EditOutlined,
-  EyeOutlined,
-  EyeInvisibleOutlined,
   LogoutOutlined,
-  CheckOutlined,
-  CloseOutlined,
   ControlOutlined,
   LayoutOutlined,
   MenuOutlined,
@@ -24,13 +20,13 @@ import {
 } from '@ant-design/icons';
 
 import { useExtensionStore } from '../../store/useExtensionStore';
-import { useThemeStore } from '../../core/theme/ThemeStore';
+import { useThemeStore, type ThemeMode } from '../../core/theme/ThemeStore';
 import { COLOR_THEMES } from '../../core/theme/ThemeConfig';
 import { DeferredNotice } from '../common/DeferredNotice';
 import { NowPilotAvatar } from '../common/NowPilotAvatar';
 import { UserAvatar } from '../common/UserAvatar';
 import { PromptsOptionsTab } from './PromptsOptionsTab';
-import { PromptCategory, CustomProviderId, CustomModelItem, CustomProviderDetail } from '../../types';
+import { PromptCategory, ProviderId, CustomModelItem, CustomProviderDetail } from '../../types';
 
 const { Title } = Typography;
 
@@ -77,12 +73,18 @@ const ClaudeIcon: React.FC = () => (
   </svg>
 );
 
-const PROVIDER_INFO: Record<CustomProviderId, { name: string; icon: React.ReactNode; defaultProxy: string; defaultModels: string[] }> = {
+const PROVIDER_INFO: Record<ProviderId, { name: string; icon: React.ReactNode; defaultProxy: string; defaultModels: string[] }> = {
   openai: {
     name: 'OpenAI',
     icon: <OpenAiIcon />,
     defaultProxy: 'http://localhost:12380/v1',
     defaultModels: ['Qwen3.5-9B-OptiQ-4bit', 'Qwythos-9B-Claude-Mythos-5-1M-mxfp4-mlx', 'gemma-4-e2b-it-4bit'],
+  },
+  anthropic: {
+    name: 'Anthropic',
+    icon: <ClaudeIcon />,
+    defaultProxy: 'https://api.anthropic.com',
+    defaultModels: ['claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022', 'claude-3-opus-20240229'],
   },
   gemini: {
     name: 'Google (Gemini)',
@@ -96,12 +98,6 @@ const PROVIDER_INFO: Record<CustomProviderId, { name: string; icon: React.ReactN
     defaultProxy: 'http://localhost:11434',
     defaultModels: ['llama3.2', 'deepseek-r1:8b', 'qwen2.5-coder:7b'],
   },
-  claude: {
-    name: 'Anthropic (Claude)',
-    icon: <ClaudeIcon />,
-    defaultProxy: 'https://api.anthropic.com',
-    defaultModels: ['claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022', 'claude-3-opus-20240229'],
-  },
 };
 
 export const OptionsPage: React.FC = () => {
@@ -110,6 +106,8 @@ export const OptionsPage: React.FC = () => {
   const { config, updateConfig, prompts, addPrompt, updatePrompt, deletePrompt } = useExtensionStore();
   const colorTheme = useThemeStore((s) => s.colorTheme);
   const setColorTheme = useThemeStore((s) => s.setColorTheme);
+  const themeMode = useThemeStore((s) => s.mode);
+  const setThemeMode = useThemeStore((s) => s.setMode);
 
   const [activeTab, setActiveTab] = useState<'General' | 'Translate' | 'Prompts'>('General');
 
@@ -159,20 +157,16 @@ export const OptionsPage: React.FC = () => {
     }
   };
 
-  // Provider Modal state
+  // Provider Modal state. The modal is preserved presentation only: the
+  // credential field is gone (D-07 / D-08), the connection test is a disabled
+  // marked control, and the model list is a read-only fixture view — no
+  // control on this page writes a provider or model identifier (DEC-HTML-01).
   const [providerModalOpen, setProviderModalOpen] = useState(false);
-  const [activeModalProviderId, setActiveModalProviderId] = useState<CustomProviderId | null>(null);
+  const [activeModalProviderId, setActiveModalProviderId] = useState<ProviderId | null>(null);
 
-  const [modalApiKey, setModalApiKey] = useState('');
   const [modalUseCustomProxy, setModalUseCustomProxy] = useState(false);
   const [modalProxyUrl, setModalProxyUrl] = useState('');
   const [modalModels, setModalModels] = useState<CustomModelItem[]>([]);
-  const [addCustomModelOpen, setAddCustomModelOpen] = useState(false);
-  const [newModelNameInput, setNewModelNameInput] = useState('');
-
-  const [listUpdated, setListUpdated] = useState(false);
-  const [editingCustomModelId, setEditingCustomModelId] = useState<string | null>(null);
-  const [editingModelNameInput, setEditingModelNameInput] = useState('');
 
   // Prompts state
   const [promptCategory, setPromptCategory] = useState<PromptCategory>('Writing');
@@ -182,135 +176,33 @@ export const OptionsPage: React.FC = () => {
   const [promptForm] = Form.useForm();
 
   // Handlers for Provider Configuration Modal
-  const handleOpenProviderModal = (providerId: CustomProviderId) => {
+  const handleOpenProviderModal = (providerId: ProviderId) => {
     setActiveModalProviderId(providerId);
     const detail = config.providers?.[providerId] || {
       id: providerId,
       name: PROVIDER_INFO[providerId].name,
       isConfigured: false,
       enabled: false,
-      apiKey: '',
       useCustomProxy: providerId === 'openai' || providerId === 'ollama',
       proxyUrl: PROVIDER_INFO[providerId].defaultProxy,
       models: [],
     };
 
-    setModalApiKey(detail.apiKey || '');
     setModalUseCustomProxy(detail.useCustomProxy ?? (providerId === 'openai' || providerId === 'ollama'));
     setModalProxyUrl(detail.proxyUrl || PROVIDER_INFO[providerId].defaultProxy);
     setModalModels(detail.models || []);
-    setAddCustomModelOpen(false);
-    setNewModelNameInput('');
-    setListUpdated(false);
-    setEditingCustomModelId(null);
     setProviderModalOpen(true);
-  };
-
-  const handleSaveProviderModal = () => {
-    if (!activeModalProviderId) return;
-
-    const currentDetail = config.providers?.[activeModalProviderId];
-    const isConfigured = modalApiKey.trim().length > 0 || modalModels.length > 0;
-
-    const updatedProviders = {
-      ...config.providers,
-      [activeModalProviderId]: {
-        id: activeModalProviderId,
-        name: PROVIDER_INFO[activeModalProviderId].name,
-        isConfigured,
-        enabled: currentDetail ? currentDetail.enabled : isConfigured,
-        apiKey: modalApiKey,
-        useCustomProxy: modalUseCustomProxy,
-        proxyUrl: modalProxyUrl,
-        models: modalModels,
-      },
-    };
-
-    updateConfig({
-      providers: updatedProviders,
-      openAiKey: activeModalProviderId === 'openai' ? modalApiKey : config.openAiKey,
-      openAiBaseUrl: activeModalProviderId === 'openai' ? modalProxyUrl : config.openAiBaseUrl,
-    });
-
-    setProviderModalOpen(false);
-    antMessage.success(`${PROVIDER_INFO[activeModalProviderId].name} settings saved`);
-  };
-
-  const handleToggleProviderEnabled = (providerId: CustomProviderId, enabled: boolean) => {
-    const currentDetail = config.providers?.[providerId];
-    if (!currentDetail) return;
-
-    const updatedProviders = {
-      ...config.providers,
-      [providerId]: {
-        ...currentDetail,
-        enabled,
-      },
-    };
-
-    updateConfig({ providers: updatedProviders });
-    antMessage.info(`${PROVIDER_INFO[providerId].name} ${enabled ? 'enabled' : 'disabled'}`);
   };
 
   // The prototype's connection test called a real provider endpoint. Phase 1
   // performs no network request (the extension CSP is `connect-src 'none'`), and
   // provider validation is a later-phase operation, so the control is disabled
   // and marked and no request path is reachable from this page.
-
-  const handleUpdateList = () => {
-    if (!activeModalProviderId) return;
-    const defaults = PROVIDER_INFO[activeModalProviderId].defaultModels;
-
-    const existingCustoms = modalModels.filter(m => m.isCustom);
-    const newStandards = defaults.map((m, idx) => {
-      const existing = modalModels.find(x => x.id === m);
-      return existing || { id: m, name: m, enabled: idx === 1 };
-    });
-
-    const merged = [...newStandards, ...existingCustoms];
-    setModalModels(merged);
-    setListUpdated(true);
-    antMessage.success(`Updated model list (${merged.length} models available)`);
-  };
-
-  const handleAddCustomModel = () => {
-    if (!newModelNameInput.trim()) return;
-    const newName = newModelNameInput.trim();
-    if (modalModels.some(m => m.id === newName || m.name === newName)) {
-      antMessage.warning('Model already exists in the list');
-      return;
-    }
-
-    const newModelItem: CustomModelItem = {
-      id: newName,
-      name: newName,
-      enabled: true,
-      isCustom: true,
-    };
-
-    setModalModels(prev => [newModelItem, ...prev]);
-    setNewModelNameInput('');
-    setAddCustomModelOpen(false);
-    antMessage.success(`Added model: ${newName}`);
-  };
-
-  const handleSaveEditingCustomModel = () => {
-    if (!editingCustomModelId || !editingModelNameInput.trim()) return;
-    const newName = editingModelNameInput.trim();
-    setModalModels(prev => prev.map(m => m.id === editingCustomModelId ? { ...m, name: newName, id: newName } : m));
-    setEditingCustomModelId(null);
-    setEditingModelNameInput('');
-    antMessage.success('Model updated');
-  };
-
-  const handleToggleModelInModal = (modelId: string, checked: boolean) => {
-    setModalModels(prev => prev.map(m => m.id === modelId ? { ...m, enabled: checked } : m));
-  };
-
-  const handleDeleteCustomModel = (modelId: string) => {
-    setModalModels(prev => prev.filter(m => m.id !== modelId));
-    antMessage.info('Model removed');
-  };
+  //
+  // The modal's save path, the provider enable/disable write and the model-list
+  // mutation paths were removed with the credential strip (plan `01-11`): the
+  // Save control and the per-model controls are disabled and marked, so no
+  // control on this page writes a provider or model identifier to the store.
 
   const handleSavePrompt = async () => {
     try {
@@ -336,7 +228,7 @@ export const OptionsPage: React.FC = () => {
     }
   };
 
-  const providerListKeys: CustomProviderId[] = ['openai', 'gemini', 'ollama', 'claude'];
+  const providerListKeys: ProviderId[] = ['openai', 'anthropic', 'gemini', 'ollama'];
 
   return (
     <div
@@ -553,31 +445,6 @@ export const OptionsPage: React.FC = () => {
             fontWeight: 700,
             color: 'var(--foreground)',
           }}>Account</Title>
-                {listUpdated && (
-                  <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            paddingLeft: 12,
-            paddingRight: 12,
-            paddingTop: 4,
-            paddingBottom: 4,
-            background: '#ecfdf5',
-            borderWidth: 1,
-            borderStyle: 'solid',
-            borderColor: '#a7f3d0',
-            borderRadius: 9999,
-            fontSize: 12,
-            fontWeight: 600,
-            color: '#059669',
-            boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
-          }}>
-                    <CheckOutlined style={{
-            fontSize: 12,
-          }} />
-                    <span>Model updated successfully</span>
-                  </div>
-                )}
               </div>
               <div style={{
             padding: 16,
@@ -699,13 +566,14 @@ export const OptionsPage: React.FC = () => {
             display: 'flex',
             flexDirection: 'column',
           }}>
-                      <Button
-                        onClick={() => {
-                          setListUpdated(true);
-                          antMessage.success('Model updated successfully');
-                          setTimeout(() => setListUpdated(false), 3500);
-                        }}
-                        style={{
+                      {/* Model refresh is a later-phase provider operation, so
+                          the control is disabled and marked rather than
+                          simulating a successful refresh (D-16). */}
+                      <Tooltip title="Model discovery arrives with the AI runtime.">
+                        <Button
+                          data-np-backing="deferred"
+                          disabled
+                          style={{
             borderRadius: 9999,
             paddingLeft: 16,
             paddingRight: 16,
@@ -717,13 +585,14 @@ export const OptionsPage: React.FC = () => {
             alignItems: 'center',
             gap: 6,
           }}
-                      >
-                        <ReloadOutlined style={{
+                        >
+                          <ReloadOutlined style={{
             fontSize: 12,
             color: 'var(--muted-foreground)',
           }} />
-                        <span>Refresh models</span>
-                      </Button>
+                          <span>Refresh models</span>
+                        </Button>
+                      </Tooltip>
 
                       {/* Important Reminders Box */}
                       <div style={{
@@ -792,7 +661,6 @@ export const OptionsPage: React.FC = () => {
                           name: info.name,
                           isConfigured: false,
                           enabled: false,
-                          apiKey: '',
                           useCustomProxy: false,
                           proxyUrl: '',
                           models: [],
@@ -941,11 +809,12 @@ export const OptionsPage: React.FC = () => {
                     </div>
                   </div>
                   <Select
-                    value={config.themeMode || 'Auto'}
+                    value={themeMode === 'light' ? 'Light' : themeMode === 'dark' ? 'Dark' : 'Auto'}
                     onChange={(val) => {
-                      const nextMode = val as 'Auto' | 'Light' | 'Dark';
-                      updateConfig({ themeMode: nextMode });
-                      useThemeStore.getState().setMode(nextMode.toLowerCase() as any);
+                      // D-15 (plan `01-11`): `np_theme` has exactly one writer
+                      // and the store carries no theme mode, so this control
+                      // reads and writes `ThemeStore` only.
+                      setThemeMode(val.toLowerCase() as ThemeMode);
                     }}
                     style={{ width: 144, flexShrink: 0 }}
                     options={[
@@ -1495,27 +1364,11 @@ export const OptionsPage: React.FC = () => {
             paddingBottom: 8,
           }}
         >
-          {/* API key */}
-          <div>
-            <label style={{
-            fontSize: 12,
-            fontWeight: 600,
-            color: 'var(--muted-foreground)',
-            display: 'block',
-            marginBottom: 4,
-          }}>
-              API key
-            </label>
-            <Input.Password
-              placeholder="Enter your API key"
-              value={modalApiKey}
-              onChange={e => setModalApiKey(e.target.value)}
-              iconRender={visible => (visible ? <EyeOutlined /> : <EyeInvisibleOutlined />)}
-              style={{
-            borderRadius: token.borderRadius,
-          }}
-            />
-          </div>
+          {/* The credential field is gone (D-07 / D-08): Phase 1 may hold a
+              provider key only in component memory inside the fixture-backed
+              onboarding flow, never on a preserved page. Saving provider
+              configuration — including a key — is a later-phase operation and
+              the modal's Save control is disabled and marked. */}
 
           {/* API proxy URL (optional) */}
           <div>
@@ -1617,27 +1470,17 @@ export const OptionsPage: React.FC = () => {
                 alignItems: 'center',
                 gap: 8,
               }}>
-                {listUpdated ? (
+                {/* Model-list mutation is a later-phase provider operation:
+                    every control here is disabled and marked, so no model
+                    identifier can be written from this page (DEC-HTML-01 /
+                    D-16 — a fixture page never simulates a provider result). */}
+                <Tooltip title="Model discovery arrives with the AI runtime.">
                   <Button
                     type="link"
                     size="small"
-                    icon={<CheckOutlined style={{ color: '#10b981' }} />}
-                    onClick={handleUpdateList}
-                    style={{
-                      color: '#10b981',
-                      fontWeight: 500,
-                      padding: '0 4px',
-                      height: 'auto',
-                    }}
-                  >
-                    Updated
-                  </Button>
-                ) : (
-                  <Button
-                    type="link"
-                    size="small"
+                    data-np-backing="deferred"
+                    disabled
                     icon={<ReloadOutlined />}
-                    onClick={handleUpdateList}
                     style={{
                       color: token.colorPrimary,
                       padding: '0 4px',
@@ -1646,16 +1489,14 @@ export const OptionsPage: React.FC = () => {
                   >
                     Update list
                   </Button>
-                )}
-                <Tooltip title="Add custom model">
+                </Tooltip>
+                <Tooltip title="Model configuration arrives with the AI runtime.">
                   <Button
                     type="text"
                     size="small"
+                    data-np-backing="deferred"
+                    disabled
                     icon={<PlusOutlined />}
-                    onClick={() => {
-                      setAddCustomModelOpen(true);
-                      setNewModelNameInput('');
-                    }}
                     style={{
                       color: 'var(--muted-foreground)',
                       display: 'flex',
@@ -1667,79 +1508,8 @@ export const OptionsPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Add Custom Model Inline Box matching screenshot */}
-            {addCustomModelOpen && (
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '6px 12px',
-                marginBottom: 10,
-                borderRadius: token.borderRadius,
-                border: `1.5px solid ${token.colorPrimary}`,
-                background: 'var(--card)',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
-                gap: 8,
-              }}>
-                <input
-                  type="text"
-                  placeholder="Enter model name (e.g. test1)"
-                  value={newModelNameInput}
-                  onChange={e => setNewModelNameInput(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') handleAddCustomModel(); }}
-                  style={{
-                    width: '100%',
-                    background: 'transparent',
-                    border: 'none',
-                    outline: 'none',
-                    fontSize: 12,
-                    color: 'var(--foreground)',
-                    fontFamily: 'var(--font-mono)',
-                  }}
-                  autoFocus
-                />
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  flexShrink: 0,
-                }}>
-                  <Button
-                    type="primary"
-                    size="small"
-                    icon={<CheckOutlined />}
-                    onClick={handleAddCustomModel}
-                    style={{
-                      width: 24,
-                      height: 24,
-                      minWidth: 24,
-                      padding: 0,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  />
-                  <Button
-                    type="text"
-                    size="small"
-                    icon={<CloseOutlined />}
-                    onClick={() => { setAddCustomModelOpen(false); setNewModelNameInput(''); }}
-                    style={{
-                      width: 24,
-                      height: 24,
-                      minWidth: 24,
-                      padding: 0,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Model List Rendering */}
-            {modalModels.length === 0 && !addCustomModelOpen ? (
+            {/* Model List Rendering — a read-only fixture view. */}
+            {modalModels.length === 0 ? (
               <div style={{
                 textAlign: 'center',
                 padding: '24px 12px',
@@ -1749,7 +1519,7 @@ export const OptionsPage: React.FC = () => {
                 borderRadius: 12,
                 border: '1px dashed var(--border)',
               }}>
-                No models available. Click 'Update list' or 'Check' to load models, or click '+' to add.
+                No models listed for this provider.
               </div>
             ) : (
               <div style={{
@@ -1760,123 +1530,48 @@ export const OptionsPage: React.FC = () => {
                 overflowY: 'auto',
                 paddingRight: 4,
               }}>
-                {modalModels.map(m => {
-                  if (editingCustomModelId === m.id) {
-                    return (
-                      <div
-                        key={m.id}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: '6px 12px',
-                          borderRadius: token.borderRadius,
-                          border: `1.5px solid ${token.colorPrimary}`,
-                          background: 'var(--card)',
-                          boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
-                          gap: 8,
-                        }}
-                      >
-                        <input
-                          type="text"
-                          value={editingModelNameInput}
-                          onChange={e => setEditingModelNameInput(e.target.value)}
-                          onKeyDown={e => { if (e.key === 'Enter') handleSaveEditingCustomModel(); }}
-                          style={{
-                            width: '100%',
-                            background: 'transparent',
-                            border: 'none',
-                            outline: 'none',
-                            fontSize: 12,
-                            color: 'var(--foreground)',
-                            fontFamily: 'var(--font-mono)',
-                          }}
-                          autoFocus
-                        />
+                {modalModels.map(m => (
+                  <div
+                    key={m.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '8px 12px',
+                      borderRadius: 12,
+                      background: 'var(--muted)',
+                      fontSize: 12,
+                      border: '1px solid var(--border)',
+                    }}
+                  >
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      minWidth: 0,
+                      paddingRight: 8,
+                    }}>
+                      <span style={{
+                        fontFamily: 'var(--font-mono)',
+                        color: 'var(--foreground)',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}>{m.name}</span>
+                      {m.isCustom && (
                         <div style={{
                           display: 'flex',
                           alignItems: 'center',
-                          gap: 4,
-                          flexShrink: 0,
+                          gap: 2,
+                          marginLeft: 4,
                         }}>
-                          <Button
-                            type="primary"
-                            size="small"
-                            icon={<CheckOutlined />}
-                            onClick={handleSaveEditingCustomModel}
-                            style={{
-                              width: 24,
-                              height: 24,
-                              minWidth: 24,
-                              padding: 0,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                            }}
-                          />
-                          <Button
-                            type="text"
-                            size="small"
-                            icon={<CloseOutlined />}
-                            onClick={() => { setEditingCustomModelId(null); setEditingModelNameInput(''); }}
-                            style={{
-                              width: 24,
-                              height: 24,
-                              minWidth: 24,
-                              padding: 0,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                            }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <div
-                      key={m.id}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '8px 12px',
-                        borderRadius: 12,
-                        background: 'var(--muted)',
-                        fontSize: 12,
-                        border: '1px solid var(--border)',
-                      }}
-                    >
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 6,
-                        minWidth: 0,
-                        paddingRight: 8,
-                      }}>
-                        <span style={{
-                          fontFamily: 'var(--font-mono)',
-                          color: 'var(--foreground)',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        }}>{m.name}</span>
-                        {m.isCustom && (
-                          <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 2,
-                            marginLeft: 4,
-                          }}>
+                          <Tooltip title="Model editing arrives with the AI runtime.">
                             <Button
                               type="text"
                               size="small"
+                              data-np-backing="deferred"
+                              disabled
                               icon={<EditOutlined style={{ fontSize: 11 }} />}
-                              onClick={() => {
-                                setEditingCustomModelId(m.id);
-                                setNewModelNameInput(m.name);
-                              }}
                               style={{
                                 width: 20,
                                 height: 20,
@@ -1885,12 +1580,15 @@ export const OptionsPage: React.FC = () => {
                                 color: 'var(--muted-foreground)',
                               }}
                             />
+                          </Tooltip>
+                          <Tooltip title="Model removal arrives with the AI runtime.">
                             <Button
                               type="text"
                               danger
                               size="small"
+                              data-np-backing="deferred"
+                              disabled
                               icon={<DeleteOutlined style={{ fontSize: 11 }} />}
-                              onClick={() => handleDeleteCustomModel(m.id)}
                               style={{
                                 width: 20,
                                 height: 20,
@@ -1898,17 +1596,20 @@ export const OptionsPage: React.FC = () => {
                                 padding: 0,
                               }}
                             />
-                          </div>
-                        )}
-                      </div>
+                          </Tooltip>
+                        </div>
+                      )}
+                    </div>
+                    <Tooltip title="Model configuration arrives with the AI runtime.">
                       <Switch
                         checked={m.enabled}
-                        onChange={(checked) => handleToggleModelInModal(m.id, checked)}
+                        data-np-backing="deferred"
+                        disabled
                         size="small"
                       />
-                    </div>
-                  );
-                })}
+                    </Tooltip>
+                  </div>
+                ))}
               </div>
             )}
           </div>

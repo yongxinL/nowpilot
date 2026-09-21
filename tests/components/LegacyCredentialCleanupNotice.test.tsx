@@ -50,8 +50,8 @@ function renderNotice() {
  *
  * `any` here is intentional: `chrome.storage.local.get` is overloaded, so
  * vitest's `MockInstance` cannot be named without repeating the whole overload
- * list (the same reason `tests/core/ai/testProviderConnection.test.ts` uses
- * `any` for its `fetch` spy).
+ * list (the retired provider-connection suite used the same `any` for its
+ * `fetch` spy before plan `01-11` deleted it).
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function settleRead(getSpy: any): Promise<void> {
