@@ -58,6 +58,7 @@ const getViewFromUrl = (): 'workspace' | 'sidepanel' | 'options' => {
 const AppShell: React.FC = () => {
   const [activeView, setActiveView] = useState<'workspace' | 'sidepanel' | 'options'>(getViewFromUrl);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const mode = useThemeStore((s) => s.mode);
   const { token } = theme.useToken();
 
   useEffect(() => {
@@ -147,7 +148,10 @@ const AppShell: React.FC = () => {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <ThemeToggle />
+          <ThemeToggle
+            mode={mode}
+            onChange={(next) => useThemeStore.getState().setMode(next)}
+          />
           <Segmented
             value={activeView}
             onChange={(val) => setActiveView(val as 'workspace' | 'sidepanel' | 'options')}

@@ -6,8 +6,8 @@ import { StandaloneShell } from '../../components/standalone/StandaloneShell';
 import { CommandPalette } from '../../components/common/CommandPalette';
 import { ErrorBoundary } from '../../core/components/ErrorBoundary';
 import { CommandRegistry } from '../../core/commands/CommandRegistry';
-import { useThemeStore, type ThemeMode } from '../../core/theme/ThemeStore';
-import { useThemeSync, applyThemeToSync } from '../../core/theme/ThemeSync';
+import { useThemeStore, cycleThemeMode, persistThemeNow } from '../../core/theme/ThemeStore';
+import { useThemeSync, showThemeSyncFailure } from '../../core/theme/ThemeSync';
 import { getAntdConfig, resolveThemePack } from '../../core/theme/antdConfig';
 import { registerStandaloneCommands } from '../../core/commands/registerWorkspaceCommands';
 import { openOptions } from '../../core/workspace/WorkspaceRouter';
@@ -28,9 +28,8 @@ const handleOpenSidepanel = async () => {
   }
 };
 
-const MODE_CYCLE: ThemeMode[] = ['auto', 'light', 'dark'];
-
 const StandaloneSurface: React.FC = () => {
+  const { message: antMessage } = AntdApp.useApp();
   const [paletteOpen, setPaletteOpen] = useState(false);
 
   useEffect(() => {
@@ -38,10 +37,10 @@ const StandaloneSurface: React.FC = () => {
       focusSidePanel: handleOpenSidepanel,
       openOptions: handleOpenOptions,
       toggleTheme: () => {
-        const cur = useThemeStore.getState().mode;
-        const next = MODE_CYCLE[(MODE_CYCLE.indexOf(cur) + 1) % MODE_CYCLE.length];
-        useThemeStore.getState().setMode(next);
-        void applyThemeToSync(next, useThemeStore.getState().pack);
+        cycleThemeMode();
+        void persistThemeNow().then((result) => {
+          if (!result.ok) showThemeSyncFailure(antMessage, persistThemeNow);
+        });
         setPaletteOpen(false);
       },
       reloadExtension: () => {

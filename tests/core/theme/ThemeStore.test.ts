@@ -5,6 +5,14 @@ import { chromeStorageAdapter, syncStorageAdapter, flushPendingWrites, __test__ 
 import { getAntdConfig } from '../../../src/core/theme/antdConfig';
 import { useExtensionStore } from '../../../src/store/useExtensionStore';
 
+function themeWritesOf(
+  spy: { mock: { calls: unknown[][] } },
+): Record<string, unknown>[] {
+  return spy.mock.calls
+    .map((call) => call[0] as Record<string, unknown> | undefined)
+    .filter((items): items is Record<string, unknown> => Boolean(items && 'np_theme' in items));
+}
+
 describe('ThemeStore', () => {
   beforeEach(() => {
     useThemeStore.getState().setMode('auto');
@@ -230,7 +238,7 @@ describe('ThemeStore — single writer and idempotent writes (D-15 / T-1-21)', (
     useThemeStore.getState().setMode('light');
     await flushPendingWrites();
 
-    const themeWrites = syncSetSpy.mock.calls.filter(([items]) => items && 'np_theme' in items);
+    const themeWrites = themeWritesOf(syncSetSpy);
     expect(themeWrites).toHaveLength(1);
     expect(useThemeStore.getState().mode).toBe('light');
   });

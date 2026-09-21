@@ -523,8 +523,13 @@ export const useExtensionStore = create<ExtensionState>()(
       name: 'np_store',
       storage: createJSONStorage(() => chromeStorageAdapter),
       partialize: (state) => {
-        const { activeSession, activeAttachments, availableTabs, ...rest } = state;
-        return rest;
+        const { activeSession, activeAttachments, availableTabs, config, ...rest } = state;
+        // APPR-03 / D-15: `np_theme` is the single theme source. The legacy
+        // `config.themeMode` field stays in memory for the prototype Options
+        // presentation, but it is never persisted — a persisted second theme
+        // source is exactly what the theme contract forbids.
+        const { themeMode: _legacyThemeMode, ...persistedConfig } = config;
+        return { ...rest, config: persistedConfig };
       },
       // D-22: schema versioning. v1 IS the current schema — a no-op migrate.
       // NOTE: this zustand-persist `version` counter is SEPARATE from the
@@ -534,6 +539,10 @@ export const useExtensionStore = create<ExtensionState>()(
       migrate: npStoreMigrate,
       merge: (persisted, current) => {
         const merged = { ...current, ...(persisted as Partial<ExtensionState>) };
+        // The persisted projection omits `config.themeMode`; merge the
+        // persisted config over the in-memory defaults so the typed field is
+        // never left undefined by a projection written without it.
+        merged.config = { ...current.config, ...merged.config };
         merged.activeSession = computeActiveSession(merged.sessions, merged.activeSessionId);
         merged.activeAttachments = [];
         merged.availableTabs = [];

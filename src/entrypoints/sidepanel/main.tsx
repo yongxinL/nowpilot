@@ -6,16 +6,14 @@ import { SidePanelRouter } from '../../components/sidepanel/SidePanelRouter';
 import { CommandPalette } from '../../components/common/CommandPalette';
 import { ErrorBoundary } from '../../core/components/ErrorBoundary';
 import { CommandRegistry } from '../../core/commands/CommandRegistry';
-import { useThemeStore, type ThemeMode } from '../../core/theme/ThemeStore';
-import { useThemeSync, applyThemeToSync } from '../../core/theme/ThemeSync';
+import { useThemeStore, cycleThemeMode, persistThemeNow } from '../../core/theme/ThemeStore';
+import { useThemeSync, showThemeSyncFailure } from '../../core/theme/ThemeSync';
 import { getAntdConfig, resolveThemePack } from '../../core/theme/antdConfig';
 import { openStandalone, openOptions } from '../../core/workspace/WorkspaceRouter';
 import { useWorkspaceStore } from '../../core/workspace/WorkspaceStore';
 import { registerSidepanelCommands } from '../../core/commands/registerWorkspaceCommands';
 import { debugLog } from '../../core/log/debugLog';
 import '../../index.css';
-
-const MODE_CYCLE: ThemeMode[] = ['auto', 'light', 'dark'];
 
 const handleOpenOptions = () => {
   openOptions();
@@ -58,10 +56,10 @@ const SidePanelSurface: React.FC = () => {
         setPaletteOpen(false);
       },
       toggleTheme: () => {
-        const cur = useThemeStore.getState().mode;
-        const next = MODE_CYCLE[(MODE_CYCLE.indexOf(cur) + 1) % MODE_CYCLE.length];
-        useThemeStore.getState().setMode(next);
-        void applyThemeToSync(next, useThemeStore.getState().pack);
+        cycleThemeMode();
+        void persistThemeNow().then((result) => {
+          if (!result.ok) showThemeSyncFailure(antMessage, persistThemeNow);
+        });
         setPaletteOpen(false);
       },
       reloadExtension: () => {

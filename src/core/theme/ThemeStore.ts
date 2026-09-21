@@ -1,10 +1,10 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import { syncStorageAdapter } from './chromeStorageAdapter';
-import { publish } from '../runtime/BroadcastBus';
+import { syncStorageAdapter, flushPendingWrites } from './chromeStorageAdapter';
 import { getColorTheme, DEFAULT_COLOR_THEME_ID } from './ThemeConfig';
 import { applyClaudePlusCssVars } from '../../theme/packs/claudePlus';
+import { debugLog } from '../log/debugLog';
 
 export type ThemeMode = 'light' | 'dark' | 'auto';
 
@@ -27,6 +27,8 @@ interface ThemeState extends ThemePersisted {
   resolvedMode: () => 'light' | 'dark';
 }
 
+export type ThemeWriteResult = { ok: true } | { ok: false; error: string };
+
 const THEME_STORAGE_KEY = 'np_theme';
 const THEME_PACK_STORAGE_KEY = 'np_theme_pack';
 
@@ -48,7 +50,15 @@ export function themeMigrate(persisted: unknown, version: number): ThemePersiste
   return defaults;
 }
 
-function applyThemeDom(mode: ThemeMode, colorThemeId: string) {
+/**
+ * Apply the resolved mode to the document root.
+ *
+ * H-3 / OQ2: the `.dark` class stays scoped to the **hand-written** selectors
+ * in `src/index.css`; AntD never reads it (its switch is the CSS-variable
+ * derivation in `getAntdConfig`). This function is the only writer of the
+ * class and the `--np-*` / Claude Plus variables.
+ */
+export function applyThemeDom(mode: ThemeMode, colorThemeId: string): void {
   if (typeof document === 'undefined') return;
   const isDark =
     mode === 'dark' ||
@@ -77,16 +87,16 @@ export const useThemeStore = create<ThemeState>()(
       pack: 'default',
 
       setMode: (mode: ThemeMode) => {
+        // Idempotency (T-1-21): a same-value write produces no state change,
+        // so it schedules no persist write and no cross-surface propagation.
         if (get().mode === mode) return;
         set((state) => {
           state.mode = mode;
         });
 
         applyThemeDom(mode, get().colorTheme);
-
-        if (typeof BroadcastChannel !== 'undefined') {
-          publish('np_theme', { type: 'THEME_CHANGED', mode });
-        }
+        // No BroadcastBus publish: `chrome.storage.onChanged` (sync area) is
+        // the only cross-surface propagation path (D-15 / § Theme Contract).
       },
 
       setColorTheme: (colorTheme: string) => {
@@ -96,10 +106,6 @@ export const useThemeStore = create<ThemeState>()(
         });
 
         applyThemeDom(get().mode, colorTheme);
-
-        if (typeof BroadcastChannel !== 'undefined') {
-          publish('np_theme', { type: 'COLOR_THEME_CHANGED', colorTheme });
-        }
       },
 
       setPack: (pack: string) => {
@@ -138,3 +144,54 @@ export const useThemeStore = create<ThemeState>()(
     },
   ),
 );
+
+/**
+ * Advance the mode through the canonical cycle (`auto → light → dark → auto`),
+ * write it through the single writer (`ThemeStore.setMode`) and return the new
+ * mode. Plan `01-08` wires the `Toggle theme` palette command to this function;
+ * no module registers a command here.
+ */
+const THEME_MODE_CYCLE: readonly ThemeMode[] = ['auto', 'light', 'dark'];
+
+export function cycleThemeMode(): ThemeMode {
+  const current = useThemeStore.getState().mode;
+  const index = THEME_MODE_CYCLE.indexOf(current);
+  const next = THEME_MODE_CYCLE[(index + 1) % THEME_MODE_CYCLE.length];
+  useThemeStore.getState().setMode(next);
+  return next;
+}
+
+/**
+ * Re-issue the canonical `np_theme` write with the store's **own** persist
+ * config (`partialize` + `version`) and settle the debounced adapter, so a
+ * rejected `chrome.storage.sync.set` is observable instead of silently
+ * swallowed.
+ *
+ * Owned by `ThemeStore` because it is the single writer of the key: there is no
+ * second representation here, only an explicit settle of the same write. The
+ * visible mode is never rolled back — the caller surfaces
+ * `theme.syncFailed` / `theme.syncRetry` and leaves the display as-is
+ * (local-first, T-1-21).
+ */
+export async function persistThemeNow(): Promise<ThemeWriteResult> {
+  const options = useThemeStore.persist.getOptions();
+  const partialize = options.partialize;
+  if (!partialize) {
+    return { ok: false, error: 'THEME_PERSIST_CONFIG_MISSING' };
+  }
+
+  const value = JSON.stringify({
+    state: partialize(useThemeStore.getState()),
+    version: options.version,
+  });
+
+  try {
+    await syncStorageAdapter.setItem(THEME_STORAGE_KEY, value);
+    await flushPendingWrites();
+    return { ok: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    debugLog('THEME_SYNC_WRITE_FAILED', message);
+    return { ok: false, error: message };
+  }
+}
