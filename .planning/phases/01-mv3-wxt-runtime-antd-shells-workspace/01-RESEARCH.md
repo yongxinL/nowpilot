@@ -1056,9 +1056,24 @@ it('never lets the sentinel reach storage, messages, logs or the DOM', async () 
 **operator-confirmation items** (contract interpretation or version policy). Items A1, A6, A7,
 A9 and A10 are **implementation checkpoints** that a single focused test or one dev run can settle.
 
-## Open Questions
+## Open Questions (RESOLVED — 2026-09-21)
 
-1. **Which resolution for the content-script entrypoint path?**
+> **Status: all seven resolved.** Each question below carries an inline `RESOLVED` marker naming the decision and
+> the artifact or plan that executes it. The decision ledger is `01-01-PLAN.md` Task 2's
+> `## Resolved hand-off decisions` section, which records the eight Planner-Handoff-Checklist items plus OQ3–OQ7
+> (OQ1 and OQ2 are cross-referenced to checklist items 1 and 3). No question here is carried forward as unresolved.
+
+| # | Question | Resolution | Decided in | Executed by |
+|---|----------|------------|------------|-------------|
+| OQ1 | Content-script entrypoint path | Keep the directory and use `src/entrypoints/content/index.ts`, which matches WXT's `content/index.[jt]s?(x)` glob while preserving §5.1's directory intent; the §5.1 divergence is recorded in the inventory | `01-01` Task 2 item 1; `01-03` Task 2 (operator checkpoint, blocking) | `01-02` Task 1 (relocation), `01-03` Tasks 2–3 (injection scope + assertion) |
+| OQ2 | Scope of the no-`.dark`-class rule | Scoped to AntD: AntD components must never depend on the class; `src/index.css`'s hand-written selectors follow whichever option the inventory records | `01-01` Task 2 item 3 | `01-05` Tasks 2–3 |
+| OQ3 | `schemaVersion` vs `version` vs `updatedAt` | Include all three — `schemaVersion` for the shape, `version` for the Phase-2 monotonic write counter, `updatedAt` for staleness — and document the distinction in the type's JSDoc | `01-01` Task 2 (OQ3 row) | `01-07` Task 1 |
+| OQ4 | Exact-version pinning vs `^` ranges | Pin exactly for `antd`, `@ant-design/x`, `@ant-design/x-markdown` and `@ant-design/icons` for the duration of Phase 1; **no bump is performed in Phase 1**, and any bump needs its own blocking checkpoint | `01-01` Task 2 item 5 and OQ4 row | `01-02` Task 1 (asserts no version change), `01-13` Task 1 (dependency manifest gate) |
+| OQ5 | CSP content for Phase 1 | Narrow to the Phase-1 no-network value `script-src 'self'; object-src 'self'; connect-src 'none'` — no Phase 1 code path performs a network request, so any reachable host is pure attack surface | `01-01` Task 2 item 6 and OQ5 row | `01-02` Task 1 (sets it), `01-03` Task 1 (asserts it by string equality) |
+| OQ6 | Handoff message-type naming and module home | The ready/transfer/acknowledgement messages ride a **separate** `HandoffEnvelope` union on `BroadcastBus` in `src/core/workspace/handoff/protocol.ts` and are **not** added to `MessageType`, because §20.1 scopes the runtime envelope to cross-context `chrome.runtime` traffic | `01-01` Task 2 (OQ6 row) | `01-07` Task 2 |
+| OQ7 | Runtime-envelope literal realignment | Rename to the canonical `OPEN_SIDE_PANEL` / `OPEN_STANDALONE` inside an Appendix-E-shaped `MessageType` const object and move the five scaffold-local literals into a separate `ScaffoldMessageType` export that Phases 6 and 17 claim; the rename moves together with `BackgroundRouter` and `tests/background/**` | `01-01` Task 2 (OQ7 row) | `01-06` Tasks 1–2 |
+
+1. **Which resolution for the content-script entrypoint path?** — **RESOLVED (OQ1):** `src/entrypoints/content/index.ts`; injection scope decided by the operator checkpoint in `01-03`, executed by `01-02` Task 1 and `01-03` Tasks 2–3.
    - *What we know:* §5.1 and §18 Phase 1 both name `src/entrypoints/content/core.content.ts`; WXT
      0.20.27's content-script globs cannot match that path (probe-verified), and the generated manifest
      has no `content_scripts` key today.
@@ -1072,7 +1087,7 @@ A9 and A10 are **implementation checkpoints** that a single focused test or one 
      Phase 1 itself does not depend on the content script running; the point is to stop the silent
      defect and to land the manifest-inspection test.
 
-2. **Does "no `.dark` class manipulation" (UI-SPEC § Theme Contract) apply to `src/index.css`?**
+2. **Does "no `.dark` class manipulation" (UI-SPEC § Theme Contract) apply to `src/index.css`?** — **RESOLVED (OQ2):** scoped to AntD; executed by `01-05` Tasks 2–3 per the inventory's recorded option.
    - *What we know:* `ThemeStore.setMode` toggles `document.documentElement.classList` for `dark`
      `[VERIFIED: src/core/theme/ThemeStore.ts:59]` and `src/index.css` has ~15 `html.dark …` /
      `.dark …` selectors `[VERIFIED: probe]`. UI-SPEC's rule was written about AntD components
@@ -1085,7 +1100,7 @@ A9 and A10 are **implementation checkpoints** that a single focused test or one 
      a real refactor with no Phase-1 acceptance value and can be scheduled when the CSS is next
      touched. **This is a decision, not a preference — make it visible in the plan.**
 
-3. **How is `schemaVersion` reconciled with §21.5's `version` + `updatedAt`?**
+3. **How is `schemaVersion` reconciled with §21.5's `version` + `updatedAt`?** — **RESOLVED (OQ3):** all three fields, distinguished in the type's JSDoc; executed by `01-07` Task 1.
    - *What we know:* D-11 (locked) requires `schemaVersion` in the frozen `WorkspaceState`; §21.5's
      canonical interface has `version: number` and `updatedAt: number` and **no** `schemaVersion`
      `[CITED: PRODUCT_SPEC §21.5]`. §8.4's prose lists neither
@@ -1097,7 +1112,7 @@ A9 and A10 are **implementation checkpoints** that a single focused test or one 
      the three-way distinction in the type's JSDoc. Adding a field the spec already implies is
      cheaper than removing one Phase 2 expects.
 
-4. **Exact-version pinning vs `^` ranges (A8).**
+4. **Exact-version pinning vs `^` ranges (A8).** — **RESOLVED (OQ4):** pin exactly for the four AntD/X packages and perform no bump in Phase 1; recorded by `01-01` Task 2, asserted by `01-02` Task 1 and `01-13` Task 1.
    - *What we know:* `package.json` uses `^`; the UI-SPEC's inventory was enumerated against
      `antd@6.5.2` / `@ant-design/icons@6.3.2`; registry latest is `6.6.5` / `6.3.4`.
    - *What's unclear:* whether the project wants exact pins (CONCERNS recommends it for AntD/X).
@@ -1106,7 +1121,7 @@ A9 and A10 are **implementation checkpoints** that a single focused test or one 
      in the inventory's "package scripts + dependencies" coverage row. Re-visit at Phase 15 when the
      RICH components are actually consumed.
 
-5. **CSP content for Phase 1 (A5).**
+5. **CSP content for Phase 1 (A5).** — **RESOLVED (OQ5):** `script-src 'self'; object-src 'self'; connect-src 'none'`; set by `01-02` Task 1 and pinned by `01-03` Task 1.
    - *What we know:* the current CSP allowlists `http://localhost:*` plus three provider hosts
      `[VERIFIED: wxt.config.ts:60]`; Appendix G specifies `connect-src *`
      `[CITED: PRODUCT_SPEC Appendix G]`.
@@ -1117,7 +1132,7 @@ A9 and A10 are **implementation checkpoints** that a single focused test or one 
      in a phase that never fetches is pure attack surface. Whatever is chosen, add it to the
      manifest-inspection test so it cannot drift silently.
 
-6. **Where does the handoff protocol module live, and how are the new message-type literals named?**
+6. **Where does the handoff protocol module live, and how are the new message-type literals named?** — **RESOLVED (OQ6):** `src/core/workspace/handoff/protocol.ts` with a separate `HandoffEnvelope` union on `BroadcastBus`, deliberately outside `MessageType`; executed by `01-07` Task 2.
    - *What we know:* `01-CONTEXT.md` leaves message-type naming to the agent's discretion and says to
      use existing canonical `MessageTypeValues` literals where defined. Appendix E's registry has
      `WORKSPACE_HANDOFF` and `WORKSPACE_UPDATED` but **no** ready/ack types
@@ -1130,7 +1145,7 @@ A9 and A10 are **implementation checkpoints** that a single focused test or one 
      the envelope to cross-context `chrome.runtime` traffic. Note that D-14 calls `BroadcastBus` a
      "transport adapter" — a separate union matches that framing.
 
-7. **Does the prototype's `RuntimeEnvelope.MessageTypeValues` get realigned to Appendix E in Phase 1?**
+7. **Does the prototype's `RuntimeEnvelope.MessageTypeValues` get realigned to Appendix E in Phase 1?** — **RESOLVED (OQ7):** yes — canonical literals in a `MessageType` const object, scaffold-local five separated; executed by `01-06` Tasks 1–2.
    - *What we know:* Appendix E defines `OPEN_STANDALONE` and `OPEN_SIDE_PANEL`; the prototype has
      `STANDALONE_OPEN` and `SIDE_PANEL_OPEN` `[VERIFIED: src/core/runtime/RuntimeEnvelope.ts:5-6]` vs
      `[CITED: PRODUCT_SPEC Appendix E]`. The prototype also carries five non-canonical literals
