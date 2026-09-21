@@ -1,8 +1,16 @@
 import React from 'react';
-import { DeleteOutlined } from '@ant-design/icons';
+import { DeleteOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { WritePromptList } from './WritePromptList';
-import { ModelSelector } from '../common/ModelSelector';
 import { WriteFormattingPopover } from './WriteFormattingPopover';
+
+/** The canonical non-interactive workflow display label (UI-SPEC § Composer control). */
+const WORKFLOW_DISPLAY_LABEL = 'Auto';
+
+/**
+ * The Write page is `fixture-preview` in Phase 1: generation is a later-phase
+ * provider operation, so the submit control never becomes enabled.
+ */
+const GENERATION_DEFERRED = true;
 
 interface WriteInputPanelProps {
   activeTab: 'write' | 'reply';
@@ -10,8 +18,6 @@ interface WriteInputPanelProps {
   selectedPrompt: string;
   onSelectPrompt: (prompt: string) => void;
   onOpenAddPrompt: () => void;
-  selectedModelId?: string;
-  onSelectModel: (modelId: string) => void;
   tone: string;
   onChangeTone: (val: string) => void;
   length: string;
@@ -25,7 +31,6 @@ interface WriteInputPanelProps {
   replyIdeaText: string;
   onChangeReplyIdeaText: (val: string) => void;
   isGenerating: boolean;
-  onSubmit: () => void;
   onClear: () => void;
 }
 
@@ -35,8 +40,6 @@ export const WriteInputPanel: React.FC<WriteInputPanelProps> = ({
   selectedPrompt,
   onSelectPrompt,
   onOpenAddPrompt,
-  selectedModelId,
-  onSelectModel,
   tone,
   onChangeTone,
   length,
@@ -50,12 +53,16 @@ export const WriteInputPanel: React.FC<WriteInputPanelProps> = ({
   replyIdeaText,
   onChangeReplyIdeaText,
   isGenerating,
-  onSubmit,
   onClear,
 }) => {
   const isWriteEmpty = !writeInput.trim();
   const isReplyEmpty = !replyOriginalText.trim() && !replyIdeaText.trim();
-  const isSubmitDisabled = activeTab === 'write' ? (isWriteEmpty || isGenerating) : (isReplyEmpty || isGenerating);
+  // Generation is a later-phase provider operation on this fixture-preview
+  // page, so the submit control is always disabled and marked: a fixture page
+  // never simulates a successful provider operation, and no control may look
+  // enabled while it cannot work.
+  const isSubmitDisabled =
+    GENERATION_DEFERRED || (activeTab === 'write' ? isWriteEmpty || isGenerating : isReplyEmpty || isGenerating);
 
   return (
     <div
@@ -84,11 +91,29 @@ export const WriteInputPanel: React.FC<WriteInputPanelProps> = ({
           width: '100%',
         }}
       >
-        <ModelSelector
-          selectedModelId={selectedModelId ?? ''}
-          onSelectModel={onSelectModel}
-          variant="pill"
-        />
+        {/* DEC-HTML-01: the workflow control is a non-interactive read-only
+            display of the canonical default. A raw model selector is forbidden,
+            and the workflow registry is a later phase, so this is a label —
+            never a model identifier and never a control. */}
+        <span
+          data-testid="np-write-workflow-display"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            height: 28,
+            paddingLeft: 12,
+            paddingRight: 12,
+            borderRadius: 9999,
+            background: 'var(--muted)',
+            color: 'var(--muted-foreground)',
+            fontSize: 12,
+            fontWeight: 600,
+          }}
+        >
+          <ThunderboltOutlined style={{ fontSize: 12 }} />
+          {WORKFLOW_DISPLAY_LABEL}
+        </span>
 
         <WriteFormattingPopover
           styleValue={tone}
@@ -135,8 +160,8 @@ export const WriteInputPanel: React.FC<WriteInputPanelProps> = ({
             }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                // The keyboard shortcut must not reach a deferred operation.
                 e.preventDefault();
-                onSubmit();
               }
             }}
           />
@@ -177,7 +202,7 @@ export const WriteInputPanel: React.FC<WriteInputPanelProps> = ({
 
             <button
               type="button"
-              onClick={onSubmit}
+              data-np-backing="deferred"
               disabled={isSubmitDisabled}
               style={{
                 height: 36,
@@ -272,8 +297,8 @@ export const WriteInputPanel: React.FC<WriteInputPanelProps> = ({
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                  // The keyboard shortcut must not reach a deferred operation.
                   e.preventDefault();
-                  onSubmit();
                 }
               }}
             />
@@ -314,7 +339,7 @@ export const WriteInputPanel: React.FC<WriteInputPanelProps> = ({
 
               <button
                 type="button"
-                onClick={onSubmit}
+                data-np-backing="deferred"
                 disabled={isSubmitDisabled}
                 style={{
                   height: 36,

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Typography, Tag, Modal, Input, Button, Card, Row, Col, theme, App } from 'antd';
+import { Typography, Tag, Modal, Button, Card, Row, Col, Tooltip, theme } from 'antd';
 import {
   FireFilled,
   FilePdfOutlined,
@@ -9,6 +9,7 @@ import {
   EditOutlined,
 } from '@ant-design/icons';
 import { ToolItem } from '../../types';
+import { DeferredNotice } from '../common/DeferredNotice';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -26,11 +27,8 @@ const TOOLS_LIST: ToolItem[] = [
 ];
 
 export const ToolsGridPanel: React.FC = () => {
-  const { message: antMessage } = App.useApp();
   const { token } = theme.useToken();
   const [selectedTool, setSelectedTool] = useState<ToolItem | null>(null);
-  const [toolPromptInput, setToolPromptInput] = useState('');
-  const [toolResult, setToolResult] = useState('');
 
   const renderToolIcon = (iconName: string) => {
     switch (iconName) {
@@ -43,17 +41,17 @@ export const ToolsGridPanel: React.FC = () => {
     }
   };
 
-  const handleRunTool = () => {
-    if (!toolPromptInput.trim()) return;
-    antMessage.loading({ content: `Running ${selectedTool?.name}...`, key: 'tool_run', duration: 1.5 });
-    setTimeout(() => {
-      setToolResult(`Analysis complete for ${selectedTool?.name}:\n\nKey Insights & Synthesis:\n• ${toolPromptInput}\n• Automated summary processed via AI engine.\n• Exportable to Notes & Workspace.`);
-      antMessage.success({ content: 'Done!', key: 'tool_run' });
-    }, 1500);
-  };
+  // The prototype's "Run Tool" ran a timer, printed a canned paragraph and
+  // reported a "Done!" success — a fabricated signal for a tool operation that
+  // does not exist. Tool execution is a later-phase capability (tool governance
+  // and discovery are Phase 18), so the action is disabled and marked and no
+  // fabricated result is ever rendered.
 
   return (
-    <div style={{
+    <div
+      data-np-backing="fixture"
+      data-testid="np-page-tools"
+      style={{
             height: '100%',
             overflowY: 'auto',
             padding: 24,
@@ -62,6 +60,10 @@ export const ToolsGridPanel: React.FC = () => {
             marginRight: 'auto',
             width: '100%',
           }}>
+      {/* D-16 `fixture-preview` notice: the catalog below is a deterministic
+          local fixture and production operations are not connected. */}
+      <DeferredNotice backing="fixture" variant="block" phase={18} />
+
       <Title level={2} style={{ marginBottom: 8 }}>
         Tools Directory
       </Title>
@@ -82,11 +84,7 @@ export const ToolsGridPanel: React.FC = () => {
                 <Card
                   hoverable
                   size="small"
-                  onClick={() => {
-                    setSelectedTool(tool);
-                    setToolResult('');
-                    setToolPromptInput('');
-                  }}
+                  onClick={() => setSelectedTool(tool)}
                   style={{
                     height: '100%',
                     display: 'flex',
@@ -167,44 +165,34 @@ export const ToolsGridPanel: React.FC = () => {
             {selectedTool.description}
           </Paragraph>
 
-          <Input.TextArea
-            rows={3}
-            placeholder="Provide context, URL, document text, or prompt..."
-            value={toolPromptInput}
-            onChange={(e) => setToolPromptInput(e.target.value)}
-            style={{ marginBottom: 16 }}
-          />
+          <Paragraph type="secondary" style={{ fontSize: 12, marginBottom: 16 }}>
+            Running a tool arrives with tool governance (Phase 18). This preview does not
+            contact a provider and produces no result.
+          </Paragraph>
 
           <div style={{
             display: 'flex',
             justifyContent: 'flex-end',
             marginBottom: 16,
           }}>
-            <Button
-              type="primary"
-              onClick={handleRunTool}
-              disabled={!toolPromptInput.trim()}
-              style={{
-                height: 36,
-                borderRadius: 8,
-                fontWeight: 500,
-                fontSize: 12,
-                paddingLeft: 16,
-                paddingRight: 16,
-                boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-              }}
-            >
-              Run Tool
-            </Button>
+            <Tooltip title="Running tools arrives with tool governance.">
+              <Button
+                type="primary"
+                data-np-backing="deferred"
+                disabled
+                style={{
+                  height: 36,
+                  borderRadius: 8,
+                  fontWeight: 500,
+                  fontSize: 12,
+                  paddingLeft: 16,
+                  paddingRight: 16,
+                }}
+              >
+                Run Tool
+              </Button>
+            </Tooltip>
           </div>
-
-          {toolResult && (
-            <Card size="small" style={{ background: token.colorBgElevated }}>
-              <pre style={{ margin: 0, fontSize: 12, whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>
-                {toolResult}
-              </pre>
-            </Card>
-          )}
         </Modal>
       )}
     </div>

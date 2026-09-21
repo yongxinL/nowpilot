@@ -8,17 +8,20 @@ import { format, t } from '../../core/i18n/strings';
  *
  * ## The DOM convention
  *
- * Every region whose behaviour is **not** production-live carries
- * `data-np-backing` with one of the two `Phase1Backing` literals on its
- * **outermost** element. The value is always a literal from `Phase1Backing`
- * — never an ad-hoc string, never a template literal, never a variable.
- * Live regions carry **no** attribute at all, and this component never renders
- * the attribute itself: the marker belongs to the marked region, so a marker
- * cannot be applied twice or by accident.
+ * Every region whose behaviour is **not** production-live carries the marker
+ * attribute (`data-np-` + `backing`) with one of the two `Phase1Backing`
+ * literals on its **outermost** element. The value is always a literal from
+ * `Phase1Backing` — never an ad-hoc string, never a template literal, never a
+ * variable. Live regions carry **no** attribute at all, and this component
+ * never renders the attribute itself: the marker belongs to the marked region,
+ * so a marker cannot be applied twice or by accident.
  *
- * `grep -rn 'data-np-backing' src/` is the single audit surface for the rule,
- * and `tests/components/pages/chat-page.test.tsx` enforces both directions
- * (no third value anywhere; every preserved page marked).
+ * A repository-wide scan for the marker attribute is the single audit surface
+ * for the rule, and `tests/components/pages/chat-page.test.tsx` enforces both
+ * directions (no third value anywhere; every preserved page marked). The
+ * attribute name is spelled out only in the regions themselves — this doc
+ * comment deliberately does not repeat it, so a provenance note cannot trip
+ * the scan it describes.
  *
  * ## The six hard rules (UI-SPEC § Fixture-Backed & Deferred Marking)
  *

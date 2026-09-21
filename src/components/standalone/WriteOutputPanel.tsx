@@ -27,10 +27,8 @@ interface WriteOutputPanelProps {
   onSaveEdit: () => void;
   onCancelEdit: () => void;
   onCopy: () => void;
-  onRegenerate: () => void;
   isPlayingAudio: boolean;
   onToggleSpeech: () => void;
-  onSaveToNote?: () => void;
 }
 
 export const WriteOutputPanel: React.FC<WriteOutputPanelProps> = ({
@@ -47,7 +45,6 @@ export const WriteOutputPanel: React.FC<WriteOutputPanelProps> = ({
   onSaveEdit,
   onCancelEdit,
   onCopy,
-  onRegenerate,
   isPlayingAudio,
   onToggleSpeech,
 }) => {
@@ -299,11 +296,14 @@ export const WriteOutputPanel: React.FC<WriteOutputPanelProps> = ({
             </button>
           </Tooltip>
 
-          {/* 2. Regenerate */}
-          <Tooltip title="Regenerate">
+          {/* 2. Regenerate — a later-phase provider operation on a fixture page:
+              disabled and marked, never a fabricated regeneration. */}
+          <Tooltip title="Regenerating arrives with the Write add-on.">
             <button
               type="button"
-              onClick={onRegenerate}
+              data-testid="np-write-regenerate"
+              data-np-backing="deferred"
+              disabled
               style={{
                 padding: 4,
                 color: '#8a99a4',
@@ -327,11 +327,13 @@ export const WriteOutputPanel: React.FC<WriteOutputPanelProps> = ({
             </button>
           </Tooltip>
 
-          {/* 3. Redo */}
-          <Tooltip title="Re-run">
+          {/* 3. Redo — same deferred capability as Regenerate. */}
+          <Tooltip title="Re-running arrives with the Write add-on.">
             <button
               type="button"
-              onClick={onRegenerate}
+              data-testid="np-write-rerun"
+              data-np-backing="deferred"
+              disabled
               style={{
                 padding: 4,
                 color: '#8a99a4',

@@ -12,8 +12,8 @@ import {
   CloseOutlined,
   ThunderboltOutlined,
 } from '@ant-design/icons';
-import { useExtensionStore } from '../../store/useExtensionStore';
 import { WriteHistoryItem } from '../../types';
+import { DeferredNotice } from '../common/DeferredNotice';
 
 interface WriteHistoryDrawerProps {
   open: boolean;
@@ -21,13 +21,69 @@ interface WriteHistoryDrawerProps {
   onSelectRecord: (record: WriteHistoryItem) => void;
 }
 
+/**
+ * Deterministic local fixtures for the preserved write-history presentation.
+ * Two records, one per mode, so the populated state is exercised without any
+ * store, network or provider dependency.
+ */
+const FIXTURE_WRITE_HISTORY: WriteHistoryItem[] = [
+  {
+    id: 'fixture-wh-1',
+    type: 'write',
+    title: 'Essay Draft',
+    format: 'Essay',
+    input: 'Why accuracy in documentation matters',
+    output:
+      'Accurate documentation is the difference between a system that can be trusted and one that cannot be audited.',
+    versions: [
+      'Accurate documentation is the difference between a system that can be trusted and one that cannot be audited.',
+    ],
+    currentVersionIndex: 0,
+    model: 'Auto',
+    tone: 'Formal',
+    length: 'Short',
+    language: 'English',
+    createdAt: 0,
+  },
+  {
+    id: 'fixture-wh-2',
+    type: 'reply',
+    title: 'Reply to review note',
+    format: 'Comment',
+    input: 'Thanks, that clarifies the rollout order.',
+    originalText: 'Please confirm the rollout order before we proceed.',
+    responseIdea: 'Confirm the order and the owner',
+    output:
+      'Thanks for the note — the rollout order is confirmed, and the owner is unchanged.',
+    versions: [
+      'Thanks for the note — the rollout order is confirmed, and the owner is unchanged.',
+    ],
+    currentVersionIndex: 0,
+    model: 'Auto',
+    tone: 'Formal',
+    length: 'Short',
+    language: 'English',
+    createdAt: 0,
+  },
+];
+
 export const WriteHistoryDrawer: React.FC<WriteHistoryDrawerProps> = ({
   open,
   onClose,
   onSelectRecord,
 }) => {
   const { message: antMessage } = App.useApp();
-  const { writeHistory, updateWriteHistoryItem, deleteWriteHistoryItem, clearWriteHistory } = useExtensionStore();
+  // D-16 `fixture-preview` (owning roadmap phase 17): the write history renders
+  // from the deterministic local fixture set below, held in component state
+  // only. The prototype bound this list to the persisted `np_store` blob, which
+  // would put fixture content in a persistent store (hard rule 4); the durable
+  // write history arrives with the Write add-on.
+  const [writeHistory, setWriteHistory] = useState<WriteHistoryItem[]>(() => FIXTURE_WRITE_HISTORY);
+  const updateWriteHistoryItem = (id: string, patch: Partial<WriteHistoryItem>) =>
+    setWriteHistory((current) => current.map((h) => (h.id === id ? { ...h, ...patch } : h)));
+  const deleteWriteHistoryItem = (id: string) =>
+    setWriteHistory((current) => current.filter((h) => h.id !== id));
+  const clearWriteHistory = () => setWriteHistory([]);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'write' | 'reply'>('all');
@@ -64,33 +120,22 @@ export const WriteHistoryDrawer: React.FC<WriteHistoryDrawerProps> = ({
     setEditingId(null);
   };
 
-  const handleExport = (item: WriteHistoryItem, format: 'md' | 'txt' | 'copy') => {
-    const textContent = `# ${item.title}\n\n**Type**: ${item.type.toUpperCase()} (${item.format})\n**Model**: ${item.model}\n**Settings**: ${item.tone} - ${item.length} - ${item.language}\n**Created**: ${new Date(item.createdAt).toLocaleString()}\n\n---\n\n### Input\n${item.type === 'reply' ? `**Original Text**:\n${item.originalText || ''}\n\n**Idea**:\n${item.responseIdea || item.input}` : item.input}\n\n---\n\n### Generated Output\n${item.output}\n`;
-
-    if (format === 'copy') {
-      navigator.clipboard.writeText(item.output);
-      antMessage.success('Generated text copied to clipboard');
-      return;
-    }
-
-    const blob = new Blob([format === 'md' ? textContent : `${item.title}\n\n${item.output}`], {
-      type: format === 'md' ? 'text/markdown;charset=utf-8' : 'text/plain;charset=utf-8',
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${item.title.replace(/[^a-z0-9_-]/gi, '_')}.${format}`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    antMessage.success(`Exported as .${format}`);
+  // Only the clipboard copy survives: writing fixture content to a file is a
+  // filesystem operation on fixture data, which the marking convention forbids
+  // (hard rule 4 — no fixture data reaches an export). The two file-export rows
+  // are disabled and carry no handler.
+  const handleCopyOutput = (item: WriteHistoryItem) => {
+    navigator.clipboard.writeText(item.output);
+    antMessage.success('Generated text copied to clipboard');
   };
 
   return (
     <Drawer
       title={
-        <div style={{
+        <div
+          data-np-backing="fixture"
+          data-testid="np-write-history-drawer"
+          style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -165,6 +210,11 @@ export const WriteHistoryDrawer: React.FC<WriteHistoryDrawerProps> = ({
         },
       }}
     >
+      {/* D-16 `fixture-preview` notice: the records below are deterministic local
+          fixtures, production data and operations are not connected, and the
+          owning roadmap phase is named. */}
+      <DeferredNotice backing="fixture" variant="block" phase={17} />
+
       {/* Search and Filters */}
       <div style={{
             rowGap: 12,
@@ -438,19 +488,19 @@ export const WriteHistoryDrawer: React.FC<WriteHistoryDrawerProps> = ({
                           key: 'copy',
                           icon: <CopyOutlined />,
                           label: 'Copy Output',
-                          onClick: () => handleExport(item, 'copy'),
+                          onClick: () => handleCopyOutput(item),
                         },
                         {
                           key: 'md',
                           icon: <FileTextOutlined />,
                           label: 'Export as Markdown (.md)',
-                          onClick: () => handleExport(item, 'md'),
+                          disabled: true,
                         },
                         {
                           key: 'txt',
                           icon: <DownloadOutlined />,
                           label: 'Export as Text (.txt)',
-                          onClick: () => handleExport(item, 'txt'),
+                          disabled: true,
                         },
                       ],
                     }}

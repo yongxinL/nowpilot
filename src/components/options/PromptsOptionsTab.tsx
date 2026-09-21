@@ -12,10 +12,10 @@ import {
   ArrowDownOutlined,
 } from '@ant-design/icons';
 import { PromptItem, PromptCategory } from '../../types';
-import { useExtensionStore } from '../../store/useExtensionStore';
 import { PromptIcon } from './PromptIcon';
 import { PromptModal } from './PromptModal';
 import { DEFAULT_PROMPTS_LIST } from './defaultPromptsData';
+import { DeferredNotice } from '../common/DeferredNotice';
 
 const CATEGORIES: { key: PromptCategory; label: string; description: string }[] = [
   {
@@ -71,7 +71,18 @@ const BookmarkShowIcon: React.FC<{ size?: number }> = ({ size = 15 }) => (
 export const PromptsOptionsTab: React.FC = () => {
   const { message: antMessage } = App.useApp();
   const { token } = theme.useToken();
-  const { prompts, addPrompt, updatePrompt, deletePrompt } = useExtensionStore();
+  // D-16 `fixture-preview` (owning roadmap phase 15): the preserved prompts
+  // presentation renders from the deterministic local fixture set in
+  // `defaultPromptsData.ts`, held in component state only. The prototype bound
+  // every mutation to the persisted `np_store` blob, which put fixture content
+  // in a persistent store (hard rule 4); the durable prompt library arrives with
+  // the workspace experience.
+  const [prompts, setPrompts] = useState<PromptItem[]>(() => DEFAULT_PROMPTS_LIST);
+  const addPrompt = (prompt: PromptItem) => setPrompts((current) => [prompt, ...current]);
+  const updatePrompt = (id: string, patch: Partial<PromptItem>) =>
+    setPrompts((current) => current.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+  const deletePrompt = (id: string) =>
+    setPrompts((current) => current.filter((p) => p.id !== id));
 
   const [activeCategory, setActiveCategory] = useState<PromptCategory>('Chat/Ask');
   const [modalOpen, setModalOpen] = useState(false);
@@ -204,9 +215,7 @@ export const PromptsOptionsTab: React.FC = () => {
   };
 
   const handleResetPrompts = () => {
-    useExtensionStore.setState({
-      prompts: DEFAULT_PROMPTS_LIST,
-    });
+    setPrompts(DEFAULT_PROMPTS_LIST);
     antMessage.success('Prompts reset to standard defaults');
   };
 
@@ -226,7 +235,7 @@ export const PromptsOptionsTab: React.FC = () => {
       const temp = updatedPrompts[idxA];
       updatedPrompts[idxA] = updatedPrompts[idxB];
       updatedPrompts[idxB] = temp;
-      useExtensionStore.setState({ prompts: updatedPrompts });
+      setPrompts(updatedPrompts);
     }
   };
 
@@ -259,7 +268,7 @@ export const PromptsOptionsTab: React.FC = () => {
     if (sourceIndex !== -1 && targetIndex !== -1) {
       const [removed] = updatedPrompts.splice(sourceIndex, 1);
       updatedPrompts.splice(targetIndex, 0, removed);
-      useExtensionStore.setState({ prompts: updatedPrompts });
+      setPrompts(updatedPrompts);
     }
 
     setDraggedPromptId(null);
@@ -269,7 +278,16 @@ export const PromptsOptionsTab: React.FC = () => {
   const currentCategoryMeta = CATEGORIES.find((c) => c.key === activeCategory) || CATEGORIES[0];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', maxWidth: 1000 }}>
+    <div
+      data-np-backing="fixture"
+      data-testid="np-options-prompts-tab"
+      style={{ display: 'flex', flexDirection: 'column', width: '100%', maxWidth: 1000 }}
+    >
+      {/* D-16 `fixture-preview` notice: the prompt library below is rendered from
+          deterministic local fixtures, production data is not connected, and the
+          owning roadmap phase is named. */}
+      <DeferredNotice backing="fixture" variant="block" phase={15} />
+
       {/* Top Header Row */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <h2 style={{ fontSize: 24, fontWeight: 700, margin: 0, color: 'var(--foreground)' }}>

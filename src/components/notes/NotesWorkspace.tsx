@@ -47,7 +47,7 @@ import {
   BarsOutlined,
   LayoutOutlined,
 } from '@ant-design/icons';
-import { useExtensionStore } from '../../store/useExtensionStore';
+import { DeferredNotice } from '../common/DeferredNotice';
 import type { NoteItem } from '../../types';
 
 export type { NoteItem };
@@ -195,8 +195,20 @@ const INITIAL_NOTES: NoteItem[] = [
 export const NotesWorkspace: React.FC = () => {
   const { message: antMessage } = App.useApp();
   const { token } = useToken();
-  const { notes: storeNotes, addNote, deleteNote, toggleFavoriteNote } = useExtensionStore();
-  const notes = storeNotes && storeNotes.length > 0 ? storeNotes : INITIAL_NOTES;
+  // D-16 `fixture-preview` (owning roadmap phase 8): the preserved four-panel
+  // presentation renders from the deterministic local fixture set below, held
+  // in component state only. The prototype bound this list to the persisted
+  // `np_store` blob — fixture content in a persistent store is forbidden by the
+  // marking convention's hard rule 4, and the knowledge base (memory, MiniSearch,
+  // durable notes) is Phase 8. Nothing here reaches storage, the URL, the bus,
+  // the runtime envelope, a log, a diagnostic or an export.
+  const [notes, setNotes] = useState<NoteItem[]>(() => INITIAL_NOTES);
+  const addNote = (note: NoteItem) => setNotes((current) => [note, ...current]);
+  const deleteNote = (id: string) => setNotes((current) => current.filter((n) => n.id !== id));
+  const toggleFavoriteNote = (id: string) =>
+    setNotes((current) =>
+      current.map((n) => (n.id === id ? { ...n, isFavorite: !n.isFavorite } : n)),
+    );
   const [selectedNoteId, setSelectedNoteId] = useState<string>('n1');
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [selectedFolder, setSelectedFolder] = useState<string>('ServiceNow / Incident');
@@ -269,18 +281,17 @@ export const NotesWorkspace: React.FC = () => {
     antMessage.info(selectedNote?.isFavorite ? 'Removed from favorites' : 'Added to favorites');
   };
 
-  const handleRegenerateSummary = () => {
-    antMessage.loading({ content: 'AI analyzing note content and generating summary...', key: 'ai_sum' });
-    setTimeout(() => {
-      antMessage.success({ content: 'AI summary updated!', key: 'ai_sum' });
-    }, 1200);
-  };
+  // The prototype's "Regenerate" ran a timer and reported a fabricated
+  // success. AI summary generation is a later-phase provider operation, so the
+  // control is disabled and marked instead (hard rule 3: no timer-driven
+  // success, no simulated provider operation on a fixture page).
+  const REGENERATE_DEFERRED_REASON = 'Summary generation arrives with the knowledge base.';
 
   const moreMenuProps: MenuProps = {
     items: [
       { key: 'copy', label: 'Copy Note Content', icon: <CopyOutlined /> },
-      { key: 'export_md', label: 'Export as Markdown', icon: <FileMarkdownOutlined /> },
-      { key: 'export_pdf', label: 'Export as PDF', icon: <FilePdfOutlined /> },
+      { key: 'export_md', label: 'Export as Markdown', icon: <FileMarkdownOutlined />, disabled: true },
+      { key: 'export_pdf', label: 'Export as PDF', icon: <FilePdfOutlined />, disabled: true },
       { type: 'divider' },
       { key: 'delete', label: 'Delete Note', danger: true },
     ],
@@ -291,14 +302,18 @@ export const NotesWorkspace: React.FC = () => {
       } else if (key === 'delete') {
         deleteNote(selectedNote.id);
         antMessage.success('Note deleted');
-      } else {
-        antMessage.info(`Action executed: ${key}`);
       }
+      // Exporting is a later-phase operation: the two export rows are disabled
+      // above and carry no handler, so no fabricated "action executed" signal is
+      // reported for them (hard rule 3).
     },
   };
 
   return (
-    <div style={{
+    <div
+      data-np-backing="fixture"
+      data-testid="np-page-notes"
+      style={{
             display: 'flex',
             flexDirection: 'column',
             height: '100%',
@@ -308,6 +323,12 @@ export const NotesWorkspace: React.FC = () => {
             fontFamily: 'var(--font-sans)',
             overflow: 'hidden',
           }}>
+      {/* D-16 `fixture-preview` notice: production data and operations are not
+          connected, and the owning roadmap phase is named. */}
+      <div style={{ padding: token.paddingXS }}>
+        <DeferredNotice backing="fixture" variant="block" phase={8} />
+      </div>
+
       {/* Top Header Bar */}
       <div style={{
             height: 56,
@@ -478,10 +499,12 @@ export const NotesWorkspace: React.FC = () => {
             New Note
           </Button>
 
-          <Button
-            icon={<ImportOutlined />}
-            onClick={() => antMessage.info('Opened Import Dialog')}
-            style={{
+          <Tooltip title="Importing notes arrives with the knowledge base.">
+            <Button
+              icon={<ImportOutlined />}
+              data-np-backing="deferred"
+              disabled
+              style={{
             fontSize: 12,
             borderRadius: 8,
             borderColor: 'var(--border)',
@@ -491,14 +514,17 @@ export const NotesWorkspace: React.FC = () => {
             display: 'inline-flex',
             alignItems: 'center',
           }}
-          >
-            Import
-          </Button>
+            >
+              Import
+            </Button>
+          </Tooltip>
 
-          <Button
-            icon={<CloudUploadOutlined />}
-            onClick={() => antMessage.success('Knowledge Base Backup Complete')}
-            style={{
+          <Tooltip title="Backup arrives with the knowledge base.">
+            <Button
+              icon={<CloudUploadOutlined />}
+              data-np-backing="deferred"
+              disabled
+              style={{
             fontSize: 12,
             borderRadius: 8,
             borderColor: 'var(--border)',
@@ -508,9 +534,10 @@ export const NotesWorkspace: React.FC = () => {
             display: 'inline-flex',
             alignItems: 'center',
           }}
-          >
-            Backup
-          </Button>
+            >
+              Backup
+            </Button>
+          </Tooltip>
         </div>
       </div>
 
@@ -1539,18 +1566,21 @@ export const NotesWorkspace: React.FC = () => {
                 >
                   {isEditing ? 'Save' : 'Edit'}
                 </Button>
-                <Button
-                  icon={<ShareAltOutlined />}
-                  onClick={() => antMessage.success('Share link generated')}
-                  style={{
-                    fontSize: 13,
-                    borderRadius: token.borderRadius,
-                    color: token.colorTextSecondary,
-                    height: 32,
-                  }}
-                >
-                  Share
-                </Button>
+                <Tooltip title="Sharing arrives with collaborative workspaces.">
+                  <Button
+                    icon={<ShareAltOutlined />}
+                    data-np-backing="deferred"
+                    disabled
+                    style={{
+                      fontSize: 13,
+                      borderRadius: token.borderRadius,
+                      color: token.colorTextSecondary,
+                      height: 32,
+                    }}
+                  >
+                    Share
+                  </Button>
+                </Tooltip>
                 <Dropdown menu={moreMenuProps} trigger={['click']}>
                   <Button
                     icon={<MoreOutlined />}
@@ -2315,21 +2345,24 @@ export const NotesWorkspace: React.FC = () => {
               }}>
                 {selectedNote.content.summary}
               </p>
-              <Button
-                size="small"
-                icon={<ReloadOutlined style={{ fontSize: 11 }} />}
-                onClick={handleRegenerateSummary}
-                style={{
-                  width: '100%',
-                  fontSize: 12,
-                  borderRadius: token.borderRadius,
-                  color: token.colorTextSecondary,
-                  fontWeight: 500,
-                  height: 30,
-                }}
-              >
-                Regenerate
-              </Button>
+              <Tooltip title={REGENERATE_DEFERRED_REASON}>
+                <Button
+                  size="small"
+                  data-np-backing="deferred"
+                  disabled
+                  icon={<ReloadOutlined style={{ fontSize: 11 }} />}
+                  style={{
+                    width: '100%',
+                    fontSize: 12,
+                    borderRadius: token.borderRadius,
+                    color: token.colorTextSecondary,
+                    fontWeight: 500,
+                    height: 30,
+                  }}
+                >
+                  Regenerate
+                </Button>
+              </Tooltip>
             </div>
 
             {/* Note Info Panel */}
@@ -2497,62 +2530,71 @@ export const NotesWorkspace: React.FC = () => {
                   Copy Link
                 </Button>
 
-                <Button
-                  type="text"
-                  block
-                  icon={<FileMarkdownOutlined style={{ color: token.colorTextSecondary }} />}
-                  onClick={() => antMessage.info('Exporting Markdown file...')}
-                  style={{
-                    textAlign: 'left',
-                    justifyContent: 'flex-start',
-                    display: 'flex',
-                    alignItems: 'center',
-                    height: 32,
-                    borderRadius: token.borderRadius,
-                    fontSize: 12,
-                    color: token.colorText,
-                  }}
-                >
-                  Export as Markdown
-                </Button>
+                <Tooltip title="Exporting files arrives with the knowledge base.">
+                  <Button
+                    type="text"
+                    block
+                    data-np-backing="deferred"
+                    disabled
+                    icon={<FileMarkdownOutlined style={{ color: token.colorTextSecondary }} />}
+                    style={{
+                      textAlign: 'left',
+                      justifyContent: 'flex-start',
+                      display: 'flex',
+                      alignItems: 'center',
+                      height: 32,
+                      borderRadius: token.borderRadius,
+                      fontSize: 12,
+                      color: token.colorText,
+                    }}
+                  >
+                    Export as Markdown
+                  </Button>
+                </Tooltip>
 
-                <Button
-                  type="text"
-                  block
-                  icon={<FilePdfOutlined style={{ color: token.colorTextSecondary }} />}
-                  onClick={() => antMessage.info('Generating PDF file...')}
-                  style={{
-                    textAlign: 'left',
-                    justifyContent: 'flex-start',
-                    display: 'flex',
-                    alignItems: 'center',
-                    height: 32,
-                    borderRadius: token.borderRadius,
-                    fontSize: 12,
-                    color: token.colorText,
-                  }}
-                >
-                  Export as PDF
-                </Button>
+                <Tooltip title="Exporting files arrives with the knowledge base.">
+                  <Button
+                    type="text"
+                    block
+                    data-np-backing="deferred"
+                    disabled
+                    icon={<FilePdfOutlined style={{ color: token.colorTextSecondary }} />}
+                    style={{
+                      textAlign: 'left',
+                      justifyContent: 'flex-start',
+                      display: 'flex',
+                      alignItems: 'center',
+                      height: 32,
+                      borderRadius: token.borderRadius,
+                      fontSize: 12,
+                      color: token.colorText,
+                    }}
+                  >
+                    Export as PDF
+                  </Button>
+                </Tooltip>
 
-                <Button
-                  type="text"
-                  block
-                  icon={<FolderAddOutlined style={{ color: token.colorTextSecondary }} />}
-                  onClick={() => antMessage.info('Select target folder to move')}
-                  style={{
-                    textAlign: 'left',
-                    justifyContent: 'flex-start',
-                    display: 'flex',
-                    alignItems: 'center',
-                    height: 32,
-                    borderRadius: token.borderRadius,
-                    fontSize: 12,
-                    color: token.colorText,
-                  }}
-                >
-                  Move to...
-                </Button>
+                <Tooltip title="Moving notes arrives with the knowledge base.">
+                  <Button
+                    type="text"
+                    block
+                    data-np-backing="deferred"
+                    disabled
+                    icon={<FolderAddOutlined style={{ color: token.colorTextSecondary }} />}
+                    style={{
+                      textAlign: 'left',
+                      justifyContent: 'flex-start',
+                      display: 'flex',
+                      alignItems: 'center',
+                      height: 32,
+                      borderRadius: token.borderRadius,
+                      fontSize: 12,
+                      color: token.colorText,
+                    }}
+                  >
+                    Move to...
+                  </Button>
+                </Tooltip>
               </div>
             </div>
           </div>

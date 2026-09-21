@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Button, Input, Layout, Tooltip, Typography, theme } from 'antd';
+import { Alert, Button, Divider, Input, Layout, Tooltip, Typography, theme } from 'antd';
 import {
   AppstoreOutlined,
   DoubleLeftOutlined,
@@ -19,6 +19,7 @@ import {
   type StandaloneRoute,
 } from './StandaloneRouter';
 import { hydrateFromURL } from '../../core/workspace/WorkspaceRouter';
+import { AddonRegistry } from '../../core/registry/Registry';
 import { t } from '../../core/i18n/strings';
 
 const SIDER_WIDTH_EXPANDED = 240;
@@ -26,6 +27,14 @@ const SIDER_WIDTH_COLLAPSED = 72;
 const HEADER_HEIGHT = 56;
 const ITEM_HEIGHT = 40;
 const MIN_VIEWPORT_WIDTH = 1024;
+
+/**
+ * The Sider Add-ons group label (UI-SPEC § Standalone: "Labelled divider + group
+ * label, then add-on items"). Phase 1 registers no add-ons, so the label and its
+ * separator are **absent rather than empty** — an empty group header is never
+ * shown and an absent element carries no marker.
+ */
+const SIDER_ADDONS_GROUP_LABEL = 'Add-ons';
 
 const ROUTE_ICONS: Record<StandaloneRoute, React.ReactNode> = {
   Chat: <MessageOutlined />,
@@ -63,8 +72,11 @@ export interface StandaloneShellProps {
  * `Chat · Agent · Note · Write · Tools`; the Add-ons group renders only at
  * one or more registered add-ons and the account block only at one or more
  * identities — Phase 1 has neither, so **both are absent rather than empty**
- * and neither is marked. The prototype chat host and `TeamsPanel` are not
- * mounted.
+ * and neither is marked: at ≥1 registered add-on the group label and its
+ * separator render, and at zero neither does. The prototype `Teams` entry is not
+ * part of the canonical Main set, so `TeamsPanel` and the unmounted
+ * `WorkspaceSidebar` duplicate took the inventory's `remove` disposition rather
+ * than being silently kept (D-02: one live implementation per element).
  */
 export const StandaloneShell: React.FC<StandaloneShellProps> = ({ onOpenOptions }) => {
   const { token } = theme.useToken();
@@ -73,6 +85,12 @@ export const StandaloneShell: React.FC<StandaloneShellProps> = ({ onOpenOptions 
     resolveStandaloneRoute(typeof window === 'undefined' ? '' : window.location.search),
   );
   const viewportWidth = useViewportWidth();
+  // The Add-ons group appears only at one or more registered add-ons. Phase 1
+  // registers none (and installs no later-phase registration path), so the group
+  // is absent in production; the positive control in
+  // `tests/components/StandaloneShell.test.tsx` registers one add-on to prove the
+  // absence assertion is not vacuous.
+  const registeredAddons = AddonRegistry.getAll();
 
   // Hydrate the workspace store from this tab's query string and become the
   // handoff target (D-13): the bootstrap is validated before use, readiness is
@@ -148,6 +166,41 @@ export const StandaloneShell: React.FC<StandaloneShellProps> = ({ onOpenOptions 
               {!collapsed && <span>{item}</span>}
             </button>
           ))}
+
+          {registeredAddons.length > 0 && (
+            <>
+              <Divider data-testid="np-sider-addons-separator" style={{ margin: `${token.marginXS}px 0` }} />
+              <div
+                data-testid="np-sider-addons-group"
+                style={{
+                  paddingInline: token.paddingSM,
+                  paddingBlock: token.paddingXS,
+                  fontSize: token.fontSizeSM,
+                  fontWeight: 600,
+                  color: token.colorTextTertiary,
+                }}
+              >
+                {SIDER_ADDONS_GROUP_LABEL}
+              </div>
+              {registeredAddons.map((addon) => (
+                <Tooltip key={addon.id} title={collapsed ? addon.name : ''} placement="right">
+                  <button
+                    type="button"
+                    aria-label={addon.name}
+                    data-testid={`np-sider-addon-${addon.id}`}
+                    data-np-backing="deferred"
+                    disabled
+                    style={navItemStyle(false)}
+                  >
+                    <span style={{ display: 'inline-flex', fontSize: 20 }}>
+                      <AppstoreOutlined />
+                    </span>
+                    {!collapsed && <span>{addon.name}</span>}
+                  </button>
+                </Tooltip>
+              ))}
+            </>
+          )}
         </nav>
 
         <div

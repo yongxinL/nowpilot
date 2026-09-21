@@ -26,11 +26,11 @@ import {
 import { useExtensionStore } from '../../store/useExtensionStore';
 import { useThemeStore } from '../../core/theme/ThemeStore';
 import { COLOR_THEMES } from '../../core/theme/ThemeConfig';
+import { DeferredNotice } from '../common/DeferredNotice';
 import { NowPilotAvatar } from '../common/NowPilotAvatar';
 import { UserAvatar } from '../common/UserAvatar';
 import { PromptsOptionsTab } from './PromptsOptionsTab';
 import { PromptCategory, CustomProviderId, CustomModelItem, CustomProviderDetail } from '../../types';
-import { testProviderConnection } from '../../services/aiProvider';
 
 const { Title } = Typography;
 
@@ -167,7 +167,6 @@ export const OptionsPage: React.FC = () => {
   const [modalUseCustomProxy, setModalUseCustomProxy] = useState(false);
   const [modalProxyUrl, setModalProxyUrl] = useState('');
   const [modalModels, setModalModels] = useState<CustomModelItem[]>([]);
-  const [modalCheckingConn, setModalCheckingConn] = useState(false);
   const [addCustomModelOpen, setAddCustomModelOpen] = useState(false);
   const [newModelNameInput, setNewModelNameInput] = useState('');
 
@@ -200,7 +199,6 @@ export const OptionsPage: React.FC = () => {
     setModalUseCustomProxy(detail.useCustomProxy ?? (providerId === 'openai' || providerId === 'ollama'));
     setModalProxyUrl(detail.proxyUrl || PROVIDER_INFO[providerId].defaultProxy);
     setModalModels(detail.models || []);
-    setModalCheckingConn(false);
     setAddCustomModelOpen(false);
     setNewModelNameInput('');
     setListUpdated(false);
@@ -254,43 +252,10 @@ export const OptionsPage: React.FC = () => {
     antMessage.info(`${PROVIDER_INFO[providerId].name} ${enabled ? 'enabled' : 'disabled'}`);
   };
 
-  const handleCheckConnection = async () => {
-    if (!activeModalProviderId) return;
-    setModalCheckingConn(true);
-    try {
-      // D-12 / D-03: real connection test. The previous 1s setTimeout
-      // unconditionally reported success and silently populated defaults
-      // — that masked broken credentials / wrong endpoint. testProviderConnection
-      // surfaces the real success / failure; on success we still seed the
-      // model list with defaults if the user hasn't customised it yet.
-      const result = await testProviderConnection(
-        activeModalProviderId,
-        modalApiKey || undefined,
-        modalUseCustomProxy && modalProxyUrl ? modalProxyUrl : undefined,
-      );
-      if (result.ok) {
-        antMessage.success('Connection verified successfully!');
-        if (modalModels.length === 0 && activeModalProviderId) {
-          const defaults = PROVIDER_INFO[activeModalProviderId].defaultModels.map((m, idx) => ({
-            id: m,
-            name: m,
-            enabled: idx === 1 || idx === 0,
-          }));
-          setModalModels(defaults);
-        }
-      } else {
-        antMessage.error(result.error);
-      }
-    } catch (err) {
-      // Defensive — testProviderConnection itself doesn't throw, but any
-      // unforeseen runtime error in the call chain must NOT leave the UI
-      // stuck in a "checking" state.
-      const message = err instanceof Error ? err.message : String(err);
-      antMessage.error(`Connection test failed: ${message}`);
-    } finally {
-      setModalCheckingConn(false);
-    }
-  };
+  // The prototype's connection test called a real provider endpoint. Phase 1
+  // performs no network request (the extension CSP is `connect-src 'none'`), and
+  // provider validation is a later-phase operation, so the control is disabled
+  // and marked and no request path is reachable from this page.
 
   const handleUpdateList = () => {
     if (!activeModalProviderId) return;
@@ -374,7 +339,10 @@ export const OptionsPage: React.FC = () => {
   const providerListKeys: CustomProviderId[] = ['openai', 'gemini', 'ollama', 'claude'];
 
   return (
-    <div style={{
+    <div
+      data-np-backing="fixture"
+      data-testid="np-page-options"
+      style={{
             display: 'flex',
             height: '100vh',
             width: '100vw',
@@ -561,6 +529,11 @@ export const OptionsPage: React.FC = () => {
             maxWidth: 896,
             background: 'transparent',
           }}>
+        {/* D-16 `fixture-preview` notice: the preserved Options presentation is
+            not connected to production data or operations, and the owning
+            roadmap phase is named. */}
+        <DeferredNotice backing="fixture" variant="block" phase={15} />
+
         {activeTab === 'General' && (
           <div style={{
             rowGap: 32,
@@ -890,11 +863,14 @@ export const OptionsPage: React.FC = () => {
             fontSize: 12,
           }} />
                                   </button>
-                                  <Switch
-                                    checked={detail.enabled}
-                                    onChange={(checked) => handleToggleProviderEnabled(key, checked)}
-                                    size="small"
-                                  />
+                                  <Tooltip title="Provider configuration arrives with the AI runtime.">
+                                    <Switch
+                                      checked={detail.enabled}
+                                      data-np-backing="deferred"
+                                      disabled
+                                      size="small"
+                                    />
+                                  </Tooltip>
                                 </>
                               ) : (
                                 <button
@@ -1496,8 +1472,8 @@ export const OptionsPage: React.FC = () => {
       <Modal
         open={providerModalOpen}
         onCancel={() => setProviderModalOpen(false)}
-        onOk={handleSaveProviderModal}
         okText="Save"
+        okButtonProps={{ disabled: true }}
         title={
           <span style={{
             fontWeight: 700,
@@ -1509,13 +1485,16 @@ export const OptionsPage: React.FC = () => {
         }
         width={480}
       >
-        <div style={{
+        <div
+          data-np-backing="fixture"
+          style={{
             rowGap: 20,
             display: 'flex',
             flexDirection: 'column',
             paddingTop: 8,
             paddingBottom: 8,
-          }}>
+          }}
+        >
           {/* API key */}
           <div>
             <label style={{
@@ -1591,16 +1570,21 @@ export const OptionsPage: React.FC = () => {
             fontSize: 12,
             color: 'var(--muted-foreground)',
           }}>Check if your API key and proxy (if used) are valid.</span>
-              <Button
-                type="primary"
-                onClick={handleCheckConnection}
-                loading={modalCheckingConn}
-                style={{ borderRadius: token.borderRadius }}
-                size="small"
-              >
-                Check
-              </Button>
+              <Tooltip title="Provider checks arrive with the AI runtime.">
+                <Button
+                  type="primary"
+                  data-np-backing="deferred"
+                  disabled
+                  style={{ borderRadius: token.borderRadius }}
+                  size="small"
+                >
+                  Check
+                </Button>
+              </Tooltip>
             </div>
+            {/* Saving provider configuration is a later-phase operation, so the
+                modal's Save control is disabled and the region is marked. */}
+            <DeferredNotice backing="deferred" variant="inline" />
           </div>
 
           {/* Model list */}

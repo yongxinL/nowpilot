@@ -1,12 +1,22 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Tooltip, App } from 'antd';
 import { ClockCircleOutlined } from '@ant-design/icons';
-import { useExtensionStore } from '../../store/useExtensionStore';
 import { WriteHistoryDrawer } from './WriteHistoryDrawer';
 import { WriteInputPanel } from './WriteInputPanel';
 import { WriteOutputPanel } from './WriteOutputPanel';
 import { WritePromptModal } from './WritePromptModal';
 import { WriteHistoryItem, PromptItem } from '../../types';
+import { DeferredNotice } from '../common/DeferredNotice';
+import { t } from '../../core/i18n/strings';
+
+/** The canonical non-interactive workflow display (UI-SPEC § Composer control). */
+const WORKFLOW_DISPLAY_LABEL = 'Auto';
+
+/**
+ * Generation is a later-phase provider operation, so this page never reports an
+ * in-flight generation state to the input panel.
+ */
+const IS_GENERATING = false;
 
 interface StandaloneWritePageProps {
   onOpenOptions?: () => void;
@@ -46,7 +56,12 @@ Therefore, acknowledging that a page is incorrect is not merely an observation o
 
 export const StandaloneWritePage: React.FC<StandaloneWritePageProps> = ({ onOpenOptions }) => {
   const { message: antMessage } = App.useApp();
-  const { config, updateConfig, prompts, addPrompt, addWriteHistoryItem, saveTextAsNote } = useExtensionStore();
+  // D-16 `fixture-preview` (owning roadmap phase 17): the preserved Write
+  // presentation renders deterministic local fixtures only. Provider
+  // generation, prompt persistence and the durable write history are
+  // later-phase capabilities, so nothing here reaches a store, a provider or
+  // the network — the custom prompt list lives in component state.
+  const [customPrompts, setCustomPrompts] = useState<PromptItem[]>([]);
 
   // Mode: 'write' | 'reply'
   const [activeTab, setActiveTab] = useState<'write' | 'reply'>('write');
@@ -67,7 +82,6 @@ export const StandaloneWritePage: React.FC<StandaloneWritePageProps> = ({ onOpen
   // Output & Versions
   const [outputVersions, setOutputVersions] = useState<string[]>([INITIAL_WRITE_OUTPUT]);
   const [currentVersionIndex, setCurrentVersionIndex] = useState<number>(0);
-  const [isGenerating, setIsGenerating] = useState<boolean>(false);
 
   // In-place Output Editing
   const [isEditingOutput, setIsEditingOutput] = useState<boolean>(false);
@@ -93,13 +107,13 @@ export const StandaloneWritePage: React.FC<StandaloneWritePageProps> = ({ onOpen
   // Combined prompts list including defaults and any custom prompts
   const activePromptNames = useMemo(() => {
     const defaultList = activeTab === 'write' ? DEFAULT_WRITE_PROMPTS : DEFAULT_REPLY_PROMPTS;
-    const customPrompts = prompts
+    const localPrompts = customPrompts
       .filter((p) => (activeTab === 'write' ? p.category === 'Writing' : p.category === 'Reply') && p.showInList)
       .map((p) => p.formatType || p.title)
       .filter((name) => !defaultList.includes(name));
 
-    return [...defaultList, ...customPrompts];
-  }, [activeTab, prompts]);
+    return [...defaultList, ...localPrompts];
+  }, [activeTab, customPrompts]);
 
   const currentOutput = outputVersions[currentVersionIndex] || '';
 
@@ -131,78 +145,12 @@ export const StandaloneWritePage: React.FC<StandaloneWritePageProps> = ({ onOpen
     antMessage.success('Output copied to clipboard');
   };
 
-  const handleSaveToNote = () => {
-    if (!currentOutput) {
-      antMessage.warning('No output to save');
-      return;
-    }
-    const lines = currentOutput.trim().split('\n');
-    const firstLine = lines[0].replace(/^[#*\-•\s]+/, '').trim();
-    const titleHint = firstLine && firstLine.length < 80 ? firstLine : (activeTab === 'write' ? `${selectedFormat} Draft` : 'Reply Note');
-    saveTextAsNote(currentOutput, titleHint);
-    antMessage.success('Saved to Notes');
-  };
-
-  const handleSubmit = async () => {
-    const promptInput = activeTab === 'write' ? writeInput.trim() : replyIdeaText.trim();
-    if (!promptInput && activeTab === 'write') return;
-    if (!replyOriginalText.trim() && !replyIdeaText.trim() && activeTab === 'reply') return;
-
-    setIsGenerating(true);
-    setIsEditingOutput(false);
-
-    let generatedResponse = '';
-    if (activeTab === 'write') {
-      if (selectedFormat === 'Paragraph') {
-        generatedResponse = `Critical Analysis: ${promptInput}\n\nCritical thinking is the essential cognitive skill involving the objective analysis and evaluation of information. It transcends passive acceptance, requiring individuals to question assumptions, assess the validity of sources, and construct logical arguments. Cultivating this discipline enables sound judgment, allowing for informed decision-making and the discernment between mere opinion and substantiated fact.`;
-      } else if (selectedFormat === 'Essay') {
-        generatedResponse = `The Imperative of Accuracy: Addressing Discrepancy\n\nThe statement, "${promptInput}," transcends a simple declaration of error; it signifies a critical breach in contextual integrity. In any system, whether digital or conceptual, the accurate identification of a resource is fundamental to effective communication and successful navigation. When a page is misidentified, the immediate consequence is a disruption of the intended flow—a failure to deliver the required information or direct the user to the correct solution.\n\nSuch discrepancies introduce friction into the process. They challenge the user's trust in the system's reliability and demand immediate attention toward rectification. The error is not merely a typographical mistake, but a failure in the indexing or routing mechanism, which undermines the coherence of the entire structure. It highlights a vulnerability where the expected pathway diverges from the actual location, creating confusion and inefficiency.\n\nTherefore, acknowledging that a page is incorrect is not merely an observation of failure, but a call for immediate corrective action. It serves as a vital signal that the established parameters have been violated. By promptly recognizing and addressing such errors, we uphold standards of precision and ensure that the intended objective—be it information retrieval, data processing, or user guidance—is achieved without delay or misdirection. The pursuit of accuracy is thus paramount to maintaining functional integrity.`;
-      } else if (selectedFormat === 'Email') {
-        generatedResponse = `Subject: Contextual Resolution regarding ${promptInput.slice(0, 30)}\n\nDear Team,\n\nI am writing to share key observations regarding ${promptInput}. By applying structured analysis and rigorous validation, we can ensure our project milestones are met with precision.\n\nPlease let me know if you would like to review the full brief.\n\nBest regards,\nNowPilot Workspace`;
-      } else if (selectedFormat === 'Outline') {
-        generatedResponse = `Structured Outline: ${promptInput}\n\nI. Fundamental Principles & Definition\n   A. Objective inquiry vs. confirmation bias\n   B. Evidentiary assessment and validity checks\n\nII. Practical Application in Workflows\n   A. Problem decomposition and root cause analysis\n   B. Strategic decision matrices\n\nIII. Synthesis and Continuous Evaluation`;
-      } else {
-        generatedResponse = `Insights: ${promptInput}\n\n1. Structured Analysis: Thoroughly examining the context reveals essential patterns and actionable avenues.\n2. Key Takeaways: Prioritize clarity, verify underlying assumptions, and execute with precision.\n3. Implementation: Establish feedback loops to maintain optimal outcomes.`;
-      }
-    } else {
-      if (selectedFormat === 'Comment') {
-        generatedResponse = `Response Perspective\n\nThank you for sharing this perspective. ${replyIdeaText ? `To expand on that: ${replyIdeaText}. ` : ''}Taking a structured approach helps surface critical considerations while maintaining clear alignment across the board.`;
-      } else if (selectedFormat === 'Email') {
-        generatedResponse = `Subject: Re: Your Inquiry\n\nHi,\n\nThank you for reaching out. In response to your note:\n\n${replyIdeaText || 'We have reviewed the details and are actively working on the resolution.'}\n\nPlease don't hesitate to follow up if you have further questions.\n\nBest,\nNowPilot Team`;
-      } else if (selectedFormat === 'Twitter') {
-        generatedResponse = `Great point! 💡 ${replyIdeaText ? `${replyIdeaText} ` : ''}Focusing on clarity and rapid execution makes all the difference. #Productivity #AI`;
-      } else {
-        generatedResponse = `Reply Summary\n\nRegarding your message: "${replyOriginalText.slice(0, 60)}..."\n\n${replyIdeaText || 'We appreciate your input and will incorporate these points moving forward.'}`;
-      }
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, 600));
-
-    const updatedVersions = [...outputVersions, generatedResponse];
-    setOutputVersions(updatedVersions);
-    setCurrentVersionIndex(updatedVersions.length - 1);
-    setIsGenerating(false);
-
-    const newRecord: WriteHistoryItem = {
-      id: 'wh_' + Date.now(),
-      type: activeTab,
-      title: activeTab === 'write' ? (writeInput.trim() || `${selectedFormat} Draft`) : (replyIdeaText.trim() || `Reply: ${replyOriginalText.slice(0, 30)}...`),
-      format: selectedFormat,
-      input: activeTab === 'write' ? writeInput : replyIdeaText,
-      originalText: activeTab === 'reply' ? replyOriginalText : undefined,
-      responseIdea: activeTab === 'reply' ? replyIdeaText : undefined,
-      output: generatedResponse,
-      versions: [generatedResponse],
-      currentVersionIndex: 0,
-      model: config.selectedModel || 'gemma-4-e2b-it-4bit',
-      tone,
-      length,
-      language,
-      createdAt: Date.now(),
-    };
-    addWriteHistoryItem(newRecord);
-    antMessage.success('Generated and saved to history');
-  };
+  // The prototype generated a canned response from hardcoded templates after a
+  // 600 ms delay, saved it to the persistent write history and reported
+  // "Generated and saved to history" — a simulated successful provider
+  // operation. Generation is a later-phase capability (the Write add-on), so
+  // the submit control is disabled and marked and no response is ever
+  // fabricated here.
 
   const handleSelectRecord = (record: WriteHistoryItem) => {
     setActiveTab(record.type);
@@ -269,16 +217,20 @@ export const StandaloneWritePage: React.FC<StandaloneWritePageProps> = ({ onOpen
       formatType: values.title,
       showInList: true,
     };
-    addPrompt(newPrompt);
+    setCustomPrompts((current) => [...current, newPrompt]);
     setSelectedFormat(values.title);
     setNewPromptModalOpen(false);
     antMessage.success('Prompt created and selected');
   };
 
-  const selectedModelName = config.selectedModel || 'gemma-4-e2b-it-4bit';
+  // DEC-HTML-01: a workflow display, never a model identifier.
+  const selectedModelName = WORKFLOW_DISPLAY_LABEL;
 
   return (
-    <div style={{
+    <div
+      data-np-backing="fixture"
+      data-testid="np-page-write"
+      style={{
             display: 'flex',
             flexDirection: 'column',
             height: '100%',
@@ -288,6 +240,13 @@ export const StandaloneWritePage: React.FC<StandaloneWritePageProps> = ({ onOpen
             position: 'relative',
             fontFamily: 'var(--font-sans)',
           }}>
+      {/* D-16 `fixture-preview` notice: the presentation below is a preview,
+          production data and operations are not connected, and the owning
+          roadmap phase is named. */}
+      <div style={{ paddingLeft: 32, paddingRight: 32, paddingTop: 16 }}>
+        <DeferredNotice backing="fixture" variant="block" phase={17} />
+      </div>
+
       {/* 1. Header Bar: Write / Reply Tabs & Write History Button */}
       <div
         style={{
@@ -413,14 +372,11 @@ export const StandaloneWritePage: React.FC<StandaloneWritePageProps> = ({ onOpen
           replyIdeaText={replyIdeaText}
           onChangeReplyIdeaText={setReplyIdeaText}
           onClear={handleClear}
-          onSubmit={handleSubmit}
-          isGenerating={isGenerating}
+          isGenerating={IS_GENERATING}
           prompts={activePromptNames}
           selectedPrompt={selectedFormat}
           onSelectPrompt={setSelectedFormat}
           onOpenAddPrompt={() => setNewPromptModalOpen(true)}
-          selectedModelId={config.selectedModel}
-          onSelectModel={(m) => updateConfig({ selectedModel: m })}
           tone={tone}
           onChangeTone={setTone}
           length={length}
@@ -444,10 +400,8 @@ export const StandaloneWritePage: React.FC<StandaloneWritePageProps> = ({ onOpen
           onSaveEdit={handleSaveEdit}
           onCancelEdit={() => setIsEditingOutput(false)}
           onCopy={handleCopy}
-          onRegenerate={handleSubmit}
           isPlayingAudio={isPlayingAudio}
           onToggleSpeech={handleToggleSpeech}
-          onSaveToNote={handleSaveToNote}
         />
       </div>
 
@@ -467,7 +421,9 @@ export const StandaloneWritePage: React.FC<StandaloneWritePageProps> = ({ onOpen
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span>{config.serviceProvider || 'Custom API Key'}</span>
+          {/* No provider is resolved in Phase 1: the status bar never names a
+              provider, a model or a health signal (hard rule 3). */}
+          <span>{t('chat.noProvider')}</span>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: '#8a99a4' }}>

@@ -11,6 +11,7 @@ import {
   StarFilled,
 } from '@ant-design/icons';
 import { ChatSession, HistoryGroup } from '../../types';
+import { DeferredNotice } from '../common/DeferredNotice';
 
 interface ChatHistoryModalProps {
   open: boolean;
@@ -157,6 +158,8 @@ export const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
 
         {/* Drawer Header */}
         <div
+          data-np-backing="fixture"
+          data-testid="np-history-modal"
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -206,6 +209,13 @@ export const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
           >
             <DeleteOutlined style={{ fontSize: 14 }} />
           </button>
+        </div>
+
+        {/* D-16 `fixture-preview` notice: the preserved history overlay renders
+            deterministic local fixtures, production data and operations are not
+            connected, and the owning roadmap phase is named. */}
+        <div style={{ flexShrink: 0 }}>
+          <DeferredNotice backing="fixture" variant="block" phase={15} />
         </div>
 
         {/* Filter Tabs */}
@@ -319,16 +329,14 @@ export const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
 
                     const menuItems = [
                       {
+                        // Exporting a session is a later-phase operation (the
+                        // history runtime arrives with the chat experience), so
+                        // the row is disabled and carries no handler: a fixture
+                        // page never simulates an external operation.
                         key: 'export',
                         icon: <ExportOutlined />,
                         label: 'Export',
-                        onClick: (info: any) => {
-                          info?.domEvent?.stopPropagation();
-                          if (onStartExport) {
-                            onStartExport(session.id);
-                            onClose();
-                          }
-                        },
+                        disabled: true,
                       },
                       {
                         key: 'edit',
