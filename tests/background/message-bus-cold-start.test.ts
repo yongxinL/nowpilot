@@ -188,6 +188,37 @@ describe('MessageBus cold-start contract', () => {
     expect(handler).not.toHaveBeenCalled();
   });
 
+  it('two concurrent dispatches do not interleave into a partially-applied envelope', async () => {
+    const bus = await freshMessageBus();
+    const validHandler = vi.fn();
+    const rejectedHandler = vi.fn();
+    bus.register(MessageType.OPEN_STANDALONE, validHandler);
+    bus.register(MessageType.OPEN_SIDE_PANEL, rejectedHandler);
+    bus.init();
+    const valid = createEnvelope(
+      MessageType.OPEN_STANDALONE,
+      { workspaceId: 'w1' },
+      'sidepanel',
+    );
+    const rejected = {
+      type: MessageType.OPEN_SIDE_PANEL,
+      operationId: 'op-1',
+      timestamp: 1,
+      source: 'standalone',
+      payload: { workspaceId: 42 },
+    };
+
+    await Promise.all([
+      bus.dispatch(valid, ownSender()),
+      bus.dispatch(rejected, ownSender()),
+    ]);
+
+    // Each dispatch validates before its handler runs: the rejected envelope
+    // leaves no side effect, and the valid one is applied exactly once.
+    expect(validHandler).toHaveBeenCalledTimes(1);
+    expect(rejectedHandler).not.toHaveBeenCalled();
+  });
+
   it('calling init() twice keeps one listener and preserves handler ordering', async () => {
     const bus = await freshMessageBus();
     const order: string[] = [];
