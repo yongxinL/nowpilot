@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 16
+open_count: 17
 waived_count: 0
 fixed_count: 4
-total_count: 20
-last_updated: 2026-09-21T23:08:31.024Z
+total_count: 21
+last_updated: 2026-09-21T23:26:23.316Z
 ---
 
 # Broken Windows Ledger
@@ -35,6 +35,7 @@ last_updated: 2026-09-21T23:08:31.024Z
 | 18 | 01 | deviation | src/types/index.ts |  | 01-11 scope addition (Rule 2): beyond the plan's enumerated deletions, the prototype's WorkflowId/WorkflowDefinition types and ProviderConfig.selectedWorkflow/workflowModelMapping fields were deleted with their last consumers (WorkflowSelector, ChatComposer) so the persisted provider shape carries no model-identifier mapping. The row's REPLACE classification and target path are unchanged; the phase acceptance review should ratify the wider trim. | open |  | 2026-09-21T23:08:30.367Z |  |
 | 19 | 01 | deviation | package.json |  | 01-11 dependency judgement on the plan's conditional: @vitejs/plugin-react is removed (only vite.config.ts imported it; @wxt-dev/module-react supplies it transitively) but the top-level vite devDependency is RETAINED because vite/client is referenced by tsconfig types and src/vite-env.d.ts and vite is a peer of wxt/vitest — removing it would break the typecheck. pnpm-lock.yaml updated with pnpm install --lockfile-only; --frozen-lockfile passes. motion is retained (unreferenced by src/, permitted by the 01-13 gate). | open |  | 2026-09-21T23:08:30.539Z |  |
 | 20 | 01 | deviation | src/main.tsx |  | 01-11 instrument/blocking fixes required by the plan's own gates: (a) the doomed dev shell's SidepanelChat import was replaced by the canonical SidePanelShell in Task 2 so npx tsc --noEmit stayed clean while the prototype hosts were deleted; (b) tests/components/pages/options-page.test.tsx and tests/components/LegacyCredentialCleanupNotice.test.tsx had to stop naming the removed export and the deleted suite, because the plan's teardown grep over src/ and tests/ reads those literal names and would otherwise fail on the suites that prove the teardown. | open |  | 2026-09-21T23:08:30.704Z |  |
+| 21 | 01 | deviation | package.json |  | 01-13 gate defect (Rule 1): the plan expected a deliberately misspelled path in verify:phase-1 to fail loudly, but vitest silently ignores an unmatched filter whenever another filter matches (observed: npx vitest run tests/core/runtime tests/does-not-exist-xyz -> 2 files passed, exit 0). A self-derived path-resolution preflight was added to the gate (it extracts every tests/... and scripts/... token from the command and exits 1 naming any that does not resolve), observed to fail on tests/servicez and green after restore. Ratify the extra gate step at phase acceptance. | open |  | 2026-09-21T23:26:23.316Z |  |
 
 ````json
 [
@@ -295,6 +296,19 @@ last_updated: 2026-09-21T23:08:31.024Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-09-21T23:08:30.704Z",
+    "resolved_at": null,
+    "milestone": "v0.2"
+  },
+  {
+    "id": 21,
+    "kind": "deviation",
+    "phase": "01",
+    "file": "package.json",
+    "line": null,
+    "description": "01-13 gate defect (Rule 1): the plan expected a deliberately misspelled path in verify:phase-1 to fail loudly, but vitest silently ignores an unmatched filter whenever another filter matches (observed: npx vitest run tests/core/runtime tests/does-not-exist-xyz -> 2 files passed, exit 0). A self-derived path-resolution preflight was added to the gate (it extracts every tests/... and scripts/... token from the command and exits 1 naming any that does not resolve), observed to fail on tests/servicez and green after restore. Ratify the extra gate step at phase acceptance.",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-09-21T23:26:23.316Z",
     "resolved_at": null,
     "milestone": "v0.2"
   }

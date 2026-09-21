@@ -4,11 +4,11 @@ milestone: v0.2
 current_phase: 1
 current_phase_name: MV3/WXT Runtime + AntD Shells + Workspace
 status: executing
-stopped_at: "Completed 01-11-PLAN.md (prototype teardown: credential-free schema + allow-list migration, prototype hosts and dev shell removed, WXT-resolved scripts)"
-last_updated: "2026-09-21T23:12:13.795Z"
+stopped_at: "01-13 Tasks 1-2 complete (three-group banned-import gate; verify:phase-1 composition); Task 3 real-Chrome checkpoint reached — six operator observations pending"
+last_updated: "2026-09-21T23:25:30.546Z"
 last_activity: 2026-09-21
 last_activity_desc: Phase 1 execution started
-state_head: c88cae7e1c977f63787bb4a9d4062b4d8efc715e
+state_head: c3f835280cbe02cf6313eda4ef3b42865653d2fe
 progress:
   total_phases: 19
   completed_phases: 0
@@ -133,6 +133,8 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 1]: 01-11: the Options page's model list is a read-only fixture view (every credential/model write path removed, controls disabled + data-np-backing=deferred) and its display-mode Select reads and writes ThemeStore only, so the preserved presentation keeps one theme source and writes no provider or model identifier.
 - [Phase 1]: 01-11: WXT is the single dev/build/zip runtime (dev -> wxt, build -> wxt build, zip -> wxt zip; preview/start gone); vite.config.ts, index.html and src/main.tsx are deleted and @vitejs/plugin-react is removed, while vite stays a top-level devDependency because vite/client is referenced by tsconfig and src/vite-env.d.ts and it is a peer of wxt/vitest.
 - [Phase 1]: 01-11: D-03 steps 5-8 were discharged against 01-12's recorded step-4 parity artifact (cited, no divergence) with both shell suites green first; a clean build emits only background.js/sidepanel.html/standalone.html and the manifest inspection prints permissions [sidePanel,storage,tabs], no options page and no options key.
+- [Phase 1]: 01-13: the banned-import gate is one suite with three group cases (unsafe HTML injection; tailwind/shadcn/@radix-ui; framer-motion) plus a non-match case asserting the approved motion v12 package is never matched (PATTERNS A9); groups 2-3 also inspect package.json so a declared-but-unimported banned package fails with no source import; every scan case asserts a non-zero scanned-file count and comments are stripped before matching.
+- [Phase 1]: 01-13: verify:phase-1 is an explicit path list (the §24 minimum, the named core-tree suites, the retained tests/core tests/background tests/components tests/isolation directories, and the new tests/services) plus a self-derived path-resolution preflight, because vitest silently ignores an unmatched filter whenever another filter matches (observed: exit 0) — without the preflight a path that stops resolving would leave the gate green.
 
 ### Pending Todos
 
@@ -157,6 +159,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-21T23:12:13.759Z
-Stopped at: Completed 01-11-PLAN.md (prototype teardown: credential-free schema + allow-list migration, prototype hosts and dev shell removed, WXT-resolved scripts)
-Resume file: None
+Last session: 2026-09-21T23:25:30.515Z
+Stopped at: 01-13 Tasks 1-2 complete (three-group banned-import gate; verify:phase-1 composition); Task 3 real-Chrome checkpoint reached — six operator observations pending
+Resume file: .planning/phases/01-mv3-wxt-runtime-antd-shells-workspace/01-13-PLAN.md
