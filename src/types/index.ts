@@ -1,3 +1,16 @@
+/**
+ * The four canonical provider identifiers (UI-SPEC § Onboarding; Appendix C).
+ *
+ * The `const` tuple is the runtime membership list and `ProviderId` is derived
+ * from it, so the union and the `Select` options cannot drift apart. The
+ * prototype's non-canonical `'claude'` spelling is **not** a member and must not
+ * be reintroduced as an alias — plan `01-11` removes its last consumer.
+ */
+export const PROVIDER_IDS = ['openai', 'anthropic', 'gemini', 'ollama'] as const;
+
+export type ProviderId = (typeof PROVIDER_IDS)[number];
+
+// LEGACY — prototype provider types with live importers; removed with their last consumer in plan 01-11.
 export type ProviderType = 'openai' | 'gemini' | 'webapp' | 'claude';
 
 export interface ModelOption {
@@ -91,6 +104,7 @@ export interface TabItem {
   selected?: boolean;
 }
 
+// LEGACY — prototype provider id set (`'claude'`, no `'anthropic'`); removed with its last consumer in plan 01-11.
 export type CustomProviderId = 'openai' | 'gemini' | 'ollama' | 'claude';
 
 export interface CustomModelItem {
@@ -100,6 +114,7 @@ export interface CustomModelItem {
   isCustom?: boolean;
 }
 
+// LEGACY — credential-bearing prototype provider detail; its `apiKey` field is stripped in plan 01-11.
 export interface CustomProviderDetail {
   id: CustomProviderId;
   name: string;
@@ -121,6 +136,7 @@ export interface WorkflowDefinition {
   defaultModelId?: string;
 }
 
+// LEGACY — the credential-bearing persisted provider config (`openAiKey`, `geminiKey`, `providers[*].apiKey`); replaced by the non-secret types in plan 01-11.
 export interface ProviderConfig {
   serviceProvider: string;
   activeProvider: 'openai' | 'gemini' | 'webapp' | 'ollama' | 'claude';
