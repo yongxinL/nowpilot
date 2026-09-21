@@ -4,16 +4,16 @@ milestone: v0.2
 current_phase: 1
 current_phase_name: MV3/WXT Runtime + AntD Shells + Workspace
 status: executing
-stopped_at: Completed 01-08-PLAN.md (keymap repair, D-09 command set, token-clean palette, gesture-correct Focus Side Panel)
-last_updated: "2026-09-21T21:22:36.116Z"
+stopped_at: Completed 01-10-PLAN.md (D-07 in-place legacy credential deletion, background install/startup wiring, one neutral dismissible notice)
+last_updated: "2026-09-21T22:31:42.323Z"
 last_activity: 2026-09-21
 last_activity_desc: Phase 1 execution started
-state_head: 49feb85af7483ff0136cd38c7ec0d91df6113b9d
+state_head: 402c76fa295d32f5d823d53e5919f259147ee677
 progress:
   total_phases: 19
   completed_phases: 0
   total_plans: 13
-  completed_plans: 10
+  completed_plans: 11
 ---
 
 # Project State
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 ## Current Position
 
 Phase: 1 (MV3/WXT Runtime + AntD Shells + Workspace) — EXECUTING
-Plan: 12 of 13
+Plan: 13 of 13
 Status: Ready to execute
 Last activity: 2026-09-21 — Phase 1 execution started
 
@@ -68,6 +68,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P12 | 31min | 3 tasks | 28 files |
 | Phase 01 P03 | 7 | 3 tasks | 6 files |
 | Phase 01 P08 | 21 | 3 tasks | 12 files |
+| Phase 01 P10 | 11min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -125,6 +126,7 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 1]: 01-08: the Standalone's Open Standalone view focuses this surface (chrome.tabs.getCurrent -> activate -> focus window) rather than calling the router handoff, which would re-point this tab and report a false standalone.openFailed after the handshake timeout.
 - [Phase 1]: 01-08: the destructive command's gate is the pinned confirmation (command.reloadExtension.confirm + common.continue/common.notNow), not a query-shape rule, so no match — partial or exact — can auto-run it; and the SA-10 opener is exported from the standalone entrypoint so the ordering case could live in the commands suite (01-12 owns StandaloneShell.test.tsx).
 - [Phase 1]: 01-08: one additive canonical key, sidepanel.openFailed ('Failed to open the side panel'), carries the Focus Side Panel failure path; it is pinned in tests/core/i18n/strings.test.ts and recorded in WINDOWS.md for phase-acceptance ratification.
+- [Phase 1]: D-07 executed as authorised (decision D-01-10-1, Option A): the prototype's plaintext provider credentials are destroyed in place on install and startup; the sanitiser rebuilds the record without ever reading a matched key's value, reports field names only (sorted, deduplicated), stamps plaintextCleanupSchemaVersion for idempotence, and is total and cycle-safe. The only user-visible output is one dismissible neutral notice whose shown-state is a field on the existing np_onboarding record (schema v2 with a v1 upgrader), shown once unconditionally so its appearance discloses nothing about whether a credential existed.
 
 ### Pending Todos
 
@@ -149,6 +151,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-21T21:22:36.085Z
-Stopped at: Completed 01-08-PLAN.md (keymap repair, D-09 command set, token-clean palette, gesture-correct Focus Side Panel)
+Last session: 2026-09-21T22:31:42.297Z
+Stopped at: Completed 01-10-PLAN.md (D-07 in-place legacy credential deletion, background install/startup wiring, one neutral dismissible notice)
 Resume file: None
