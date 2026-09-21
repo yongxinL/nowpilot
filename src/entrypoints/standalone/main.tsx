@@ -13,6 +13,7 @@ import {
   writeOnboardingState,
 } from '../../core/onboarding/onboardingStateStore';
 import { useOnboardingGate } from '../../core/onboarding/useOnboardingGate';
+import { LegacyCredentialCleanupNotice } from '../../components/common/LegacyCredentialCleanupNotice';
 import { CommandPalette } from '../../components/common/CommandPalette';
 import { ErrorBoundary } from '../../core/components/ErrorBoundary';
 import { CommandRegistry } from '../../core/commands/CommandRegistry';
@@ -193,6 +194,14 @@ const StandaloneSurface: React.FC = () => {
           onSkip={handleOnboardingSkip}
         />
       )}
+      {/* D-07: the single user-visible output of the legacy plaintext
+          credential cleanup. It presents once (the shown-state lives on the
+          onboarding record, not on a second key) and only after the gate has
+          settled, so the onboarding flow and the notice never stack. */}
+      {onboardingGate !== 'reading' &&
+        !(onboardingGate === 'present' && !onboardingDismissed) && (
+          <LegacyCredentialCleanupNotice />
+        )}
       <CommandPalette
         commands={CommandRegistry.getAll()}
         open={paletteOpen}

@@ -25,6 +25,13 @@ import { debugLog } from '../log/debugLog';
  *
  * The record is non-secret by construction: there is no field that can carry a
  * credential, a masked fragment, a fingerprint or a derived value.
+ *
+ * The record carries one more non-secret fact added by plan `01-10`:
+ * `legacyCleanupNoticeShown` — whether D-07's neutral plaintext-cleanup notice
+ * has been shown and dismissed. It is a field on this record rather than a
+ * second storage key or a second flag, and it is a plain boolean: it records
+ * that a *notice* was shown, never that a credential existed, so nothing here
+ * can disclose whether the cleanup found anything.
  */
 export const ONBOARDING_STORAGE_KEY = 'np_onboarding';
 
@@ -37,7 +44,19 @@ export const ONBOARDING_STORAGE_KEY = 'np_onboarding';
 export const LEGACY_ONBOARDING_FLAG_KEY = 'onboardingComplete';
 
 /** The record shape version. Bump when the stored fields change. */
-export const ONBOARDING_SCHEMA_VERSION = 1;
+export const ONBOARDING_SCHEMA_VERSION = 2;
+
+/**
+ * The one superseded shape this reader still migrates.
+ *
+ * Version 1 carried the same fields without `legacyCleanupNoticeShown`. Adding
+ * that field is additive and safely defaulted (it defaults to `false`, so the
+ * notice shows once), so a v1 record is read and upgraded rather than rejected:
+ * rejecting it would present the onboarding flow again to a user who has just
+ * completed it, which is the failure the strict version rule exists to prevent,
+ * not to cause. Any other version is still rejected as incompatible.
+ */
+const ONBOARDING_SCHEMA_VERSION_V1 = 1;
 
 export interface OnboardingState {
   /** The user finished the onboarding interaction shell. */
@@ -50,6 +69,12 @@ export interface OnboardingState {
   schemaVersion: number;
   /** How the validation step was backed. Phase 1 is `'fixture'`. */
   validationBacking: 'fixture' | 'provider';
+  /**
+   * Whether D-07's neutral plaintext-cleanup notice has been shown and
+   * dismissed. `false` on a fresh record, so the notice presents once; the
+   * dismissal marks it. Non-secret: it records a presentation, not a value.
+   */
+  legacyCleanupNoticeShown: boolean;
 }
 
 /** Why a read could not produce a usable record. */
@@ -90,6 +115,7 @@ function createInitialOnboardingState(): OnboardingState {
     providerId: null,
     schemaVersion: ONBOARDING_SCHEMA_VERSION,
     validationBacking: 'fixture',
+    legacyCleanupNoticeShown: false,
   };
 }
 
@@ -118,8 +144,14 @@ export function migrateOnboardingState(
     typeof persisted.schemaVersion === 'number' ? persisted.schemaVersion : version;
 
   // An incompatible (or absent) schema version is never silently accepted: the
-  // caller sees `null` and presents the flow.
-  if (recordVersion !== ONBOARDING_SCHEMA_VERSION) return null;
+  // caller sees `null` and presents the flow. The one superseded shape (v1) is
+  // a known version this reader upgrades rather than rejects.
+  if (
+    recordVersion !== ONBOARDING_SCHEMA_VERSION &&
+    recordVersion !== ONBOARDING_SCHEMA_VERSION_V1
+  ) {
+    return null;
+  }
 
   return {
     uiComplete: persisted.uiComplete === true,
@@ -127,6 +159,7 @@ export function migrateOnboardingState(
     providerId: isProviderId(persisted.providerId) ? persisted.providerId : null,
     schemaVersion: ONBOARDING_SCHEMA_VERSION,
     validationBacking: persisted.validationBacking === 'provider' ? 'provider' : 'fixture',
+    legacyCleanupNoticeShown: persisted.legacyCleanupNoticeShown === true,
   };
 }
 

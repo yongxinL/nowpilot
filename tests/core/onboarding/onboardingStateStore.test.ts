@@ -119,8 +119,62 @@ describe('onboarding completion record — one key, one typed shape', () => {
       expect(serialised, `the record must not carry ${forbidden}`).not.toContain(forbidden);
     }
     expect(Object.keys(storedRecord()).sort()).toEqual(
-      ['persona', 'providerId', 'schemaVersion', 'uiComplete', 'validationBacking'].sort(),
+      [
+        'legacyCleanupNoticeShown',
+        'persona',
+        'providerId',
+        'schemaVersion',
+        'uiComplete',
+        'validationBacking',
+      ].sort(),
     );
+  });
+
+  it('defaults the legacy-cleanup notice field to false so the notice presents once', async () => {
+    await writeOnboardingState({ uiComplete: true, providerId: 'openai' });
+
+    // Plan `01-10`: the D-07 notice's shown-state is a field on THIS record —
+    // one key, one writer, no second flag.
+    expect(storedRecord().legacyCleanupNoticeShown).toBe(false);
+    expect(Array.from(storageMap().keys())).toEqual([ONBOARDING_STORAGE_KEY]);
+
+    const result = await readOnboardingState();
+    expect(result.status).toBe('ok');
+    if (result.status === 'ok') expect(result.state.legacyCleanupNoticeShown).toBe(false);
+  });
+
+  it('records the notice dismissal on the same record without a second key', async () => {
+    await writeOnboardingState({ legacyCleanupNoticeShown: true });
+
+    expect(storedRecord().legacyCleanupNoticeShown).toBe(true);
+    expect(Array.from(storageMap().keys())).toEqual([ONBOARDING_STORAGE_KEY]);
+
+    const result = await readOnboardingState();
+    expect(result.status).toBe('ok');
+    if (result.status === 'ok') expect(result.state.legacyCleanupNoticeShown).toBe(true);
+  });
+
+  it('upgrades a schema-v1 record by defaulting the notice field rather than rejecting it', async () => {
+    storageMap().set(ONBOARDING_STORAGE_KEY, {
+      uiComplete: true,
+      persona: 'fixture-persona',
+      providerId: 'openai',
+      schemaVersion: ONBOARDING_SCHEMA_VERSION - 1,
+      validationBacking: 'fixture',
+    });
+
+    const result = await readOnboardingState();
+
+    // An added, safely defaulted field must not push a user who has already
+    // finished onboarding back through the flow.
+    expect(result.status).toBe('ok');
+    if (result.status === 'ok') {
+      expect(result.state.uiComplete).toBe(true);
+      expect(result.state.providerId).toBe('openai');
+      expect(result.state.schemaVersion).toBe(ONBOARDING_SCHEMA_VERSION);
+      expect(result.state.legacyCleanupNoticeShown).toBe(false);
+    }
+    expect(shouldPresentOnboarding(result)).toBe(false);
   });
 
   it('produces the same stored record when the completion write happens twice', async () => {
