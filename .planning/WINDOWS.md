@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 5
+open_count: 7
 waived_count: 0
 fixed_count: 1
-total_count: 6
-last_updated: 2026-09-21T13:41:19.383Z
+total_count: 8
+last_updated: 2026-09-21T14:29:50.187Z
 ---
 
 # Broken Windows Ledger
@@ -21,6 +21,8 @@ last_updated: 2026-09-21T13:41:19.383Z
 | 4 | 01 | deviation | src/core/runtime/RuntimeEnvelope.ts |  | Spec-conformance question for phase acceptance: RuntimeEnvelope keeps operationId/timestamp (the plan requires the constructor and its assertions verbatim) while PRODUCT_SPEC Appendix C declares id/createdAt and an addon source variant. The divergence is one interface wide; decide whether to realign it before the envelope shape is consumed by later phases. | open |  | 2026-09-21T13:08:58.822Z |  |
 | 5 | 01 | unrun-verify | src/components/standalone/StandaloneShell.tsx |  | Cross-surface handoff acceptance check not yet run: the suite proves the ready/transfer/ack contracts, store effects and published envelopes in one realm, but the real observation — a cold Standalone tab announcing readiness before the Side Panel publishes, the pinned pending/complete/failed copy, and no MirrorBanner after a successful open — needs two live Chrome surfaces and the UI wiring owned by 01-08/01-12. Run as a manual browser check at phase acceptance (01-07 coverage D8). | open |  | 2026-09-21T13:41:19.237Z |  |
 | 6 | 01 | deviation | src/core/workspace/handoff/protocol.ts |  | Literal overlap for the acceptance review: the handoff transfer member uses WORKSPACE_HANDOFF, which 01-06 already declared as an Appendix E MessageType literal for the cross-context runtime envelope (payload {workspaceId}). The two are different domains (BroadcastBus channel payload vs chrome.runtime envelope) and this plan adds nothing to MessageType, but decide at acceptance whether the registry literal should be renamed before later phases consume it (01-07 summary, Deviations 7). | open |  | 2026-09-21T13:41:19.383Z |  |
+| 7 | 01 | unrun-verify | src/components/onboarding/OnboardingFlow.tsx |  | 400 px modal-copy backstop not yet run: the must-have requires the onboarding modal content and step copy to hold at 400 px with no horizontal scroll, the body scrolling inside the modal and no mid-glyph clipping, and the step copy to wrap without clipping or horizontal scrolling across all four steps. The suite asserts the structure and the antd v6 modal max-width rule (calc(100vw - 16px) below the SM breakpoint) but the visual check needs a browser (01-09 must-have backstops). | open |  | 2026-09-21T14:29:50.042Z |  |
+| 8 | 01 | unrun-verify | src/entrypoints/standalone/main.tsx |  | Two-live-surface onboarding check not yet run: the store suite proves the completion write propagates through chrome.storage.onChanged without a reload and the flow suite proves the sentinel key stays in component memory, but the real observation — Standalone presenting the same flow when it is opened first, no redirection to the Side Panel, the first surface staying active while the second starts no competing flow, and completion in one surface closing the other's flow — needs two live Chrome surfaces at phase acceptance (01-09 Task 3). | open |  | 2026-09-21T14:29:50.187Z |  |
 
 ````json
 [
@@ -99,6 +101,32 @@ last_updated: 2026-09-21T13:41:19.383Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-09-21T13:41:19.383Z",
+    "resolved_at": null,
+    "milestone": "v0.2"
+  },
+  {
+    "id": 7,
+    "kind": "unrun-verify",
+    "phase": "01",
+    "file": "src/components/onboarding/OnboardingFlow.tsx",
+    "line": null,
+    "description": "400 px modal-copy backstop not yet run: the must-have requires the onboarding modal content and step copy to hold at 400 px with no horizontal scroll, the body scrolling inside the modal and no mid-glyph clipping, and the step copy to wrap without clipping or horizontal scrolling across all four steps. The suite asserts the structure and the antd v6 modal max-width rule (calc(100vw - 16px) below the SM breakpoint) but the visual check needs a browser (01-09 must-have backstops).",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-09-21T14:29:50.042Z",
+    "resolved_at": null,
+    "milestone": "v0.2"
+  },
+  {
+    "id": 8,
+    "kind": "unrun-verify",
+    "phase": "01",
+    "file": "src/entrypoints/standalone/main.tsx",
+    "line": null,
+    "description": "Two-live-surface onboarding check not yet run: the store suite proves the completion write propagates through chrome.storage.onChanged without a reload and the flow suite proves the sentinel key stays in component memory, but the real observation — Standalone presenting the same flow when it is opened first, no redirection to the Side Panel, the first surface staying active while the second starts no competing flow, and completion in one surface closing the other's flow — needs two live Chrome surfaces at phase acceptance (01-09 Task 3).",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-09-21T14:29:50.187Z",
     "resolved_at": null,
     "milestone": "v0.2"
   }

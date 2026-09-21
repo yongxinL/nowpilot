@@ -4,16 +4,16 @@ milestone: v0.2
 current_phase: 1
 current_phase_name: MV3/WXT Runtime + AntD Shells + Workspace
 status: executing
-stopped_at: Completed 01-07-PLAN.md (frozen WorkspaceState, ready/transfer/ack handoff, ack-gated open, no workspace persistence)
-last_updated: "2026-09-21T13:38:38.811Z"
+stopped_at: Completed 01-09-PLAN.md (typed provider ports, deterministic fixtures, shared four-step onboarding flow, one np_onboarding record)
+last_updated: "2026-09-21T14:33:27.782Z"
 last_activity: 2026-09-21
 last_activity_desc: Phase 1 execution started
-state_head: 55a33474ea950c7bc95327417eb36dc0db5bfbf4
+state_head: fb3c7f14d048d7ebfa227461a98980b283eca5c6
 progress:
   total_phases: 19
   completed_phases: 0
   total_plans: 13
-  completed_plans: 6
+  completed_plans: 7
 ---
 
 # Project State
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 ## Current Position
 
 Phase: 1 (MV3/WXT Runtime + AntD Shells + Workspace) — EXECUTING
-Plan: 8 of 13
+Plan: 9 of 13
 Status: Ready to execute
 Last activity: 2026-09-21 — Phase 1 execution started
 
@@ -64,6 +64,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P05 | 17 | 3 tasks | 15 files |
 | Phase 01 P06 | 10 | 2 tasks | 8 files |
 | Phase 01 P07 | 18min | 3 tasks | 14 files |
+| Phase 01 P09 | 37 | 3 tasks | 18 files |
 
 ## Accumulated Context
 
@@ -102,6 +103,12 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 1]: 01-07: `deleteLegacyWorkspaceBlob()` moved to an import-free module after measuring `background.js` graph 73.0 kB → 95.3 kB (zustand + immer); back to 75.3 kB, with `WorkspaceStore` re-exporting the helper.
 - [Phase 1]: 01-07: `openStandalone` keeps its positional signature and adds a typed `code` to the failure arm, so `src/entrypoints/sidepanel/main.tsx` compiles unmodified; the pinned `standalone.openFailed` copy and Retry rendering belong to the UI plans.
 - [Phase 1]: 01-07: `hydrateFromURL` returns the target controller's disposer and `StandaloneShell`'s mount effect returns it — the controller's unsubscribe is the React effect cleanup.
+- [Phase 1]: 01-09: PROVIDER_IDS is a const tuple and ProviderId is derived from it (one source for the union, the Select options and the tests); the prototype's 'claude' is not a member and gets no alias, while the legacy prototype provider types stay resolvable and marked // LEGACY for plan 01-11.
+- [Phase 1]: 01-09: cancellation is its own union member with no error code ({ ok: false; cancelled: true }) plus isValidationCancelled(); a cancelled attempt can never be read as a success or as a coded failure.
+- [Phase 1]: 01-09: the reveal toggle is a plain Input with an explicit type toggle and a named suffix button — antd v6's Input.Password hard-codes aria-label={locale.show|hide} with no override and visibilityToggle={false} freezes type, so the pinned onboarding.showKey/hideKey names are unreachable through it.
+- [Phase 1]: 01-09: the completion record is np_onboarding with validationBacking: 'fixture' | 'provider' (not a boolean marker); writeOnboardingState re-migrates before merging so a skip cannot erase the selected provider, and the legacy boolean is absorbed and deleted.
+- [Phase 1]: 01-09: the surface gate (useOnboardingGate) was split out of onboardingStateStore.ts after measuring the service worker — with the hook in the store the background graph went 75,312 B -> 86,140 B; after the split it is 77,740 B (+2.4 kB) and the content script is unchanged at 4,875 B.
+- [Phase 1]: 01-09: the flow mounts in each entrypoint root (a modal over whichever surface the user opened), not in SidePanelRouter as plan 01-02's note reserved; the router's comment was corrected and the divergence recorded in the inventory.
 
 ### Pending Todos
 
@@ -126,6 +133,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-21T13:38:24.697Z
-Stopped at: Completed 01-07-PLAN.md (frozen WorkspaceState, ready/transfer/ack handoff, ack-gated open, no workspace persistence)
+Last session: 2026-09-21T14:33:27.760Z
+Stopped at: Completed 01-09-PLAN.md (typed provider ports, deterministic fixtures, shared four-step onboarding flow, one np_onboarding record)
 Resume file: None

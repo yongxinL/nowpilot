@@ -44,7 +44,7 @@ Requirements for the v0.2 release. Each maps to exactly one roadmap phase.
 - [ ] **SA-05**: Tools (P0) — tool registry surface (main Sider group; manifests populated by Phase 18) — §9.2
 - [ ] **SA-06**: TeamGQM add-on (P0) — full workspace, Add-ons group, feature-flag-gated — §9.2, §9.6
 - [ ] **SA-07**: Settings (Options) (P0) — Diagnostics reached from Settings — §9.2
-- [ ] **SA-08**: First-run onboarding entry point (P0) — when no provider is configured (+ RICH-R-03 persona card) — §9.2
+- [x] **SA-08**: First-run onboarding entry point (P0) — when no provider is configured (+ RICH-R-03 persona card) — §9.2
 - [ ] **SA-09**: Cmd+K palette (P1) — same command set as Side Panel + Standalone-only commands — §9.2
 - [ ] **SA-10**: Command "Focus Side Panel" (P1) — programmatically opens Side Panel for current tab — §9.2
 
@@ -243,7 +243,7 @@ Requirements for the v0.2 release. Each maps to exactly one roadmap phase.
 - [ ] **FLOW-6**: Data export — Options → Import/Export, sanitised download — §11
 - [ ] **FLOW-7**: Webhook fire — retry queue 30 s / 5 min / 30 min, logged — §11
 - [ ] **FLOW-8**: Keyboard shortcut — KeymapRegistry global keydown → handler → preventDefault — §11
-- [ ] **FLOW-9**: First-run onboarding — persona card → provider → key → validate — §11
+- [x] **FLOW-9**: First-run onboarding — persona card → provider → key → validate — §11
 - [ ] **FLOW-10**: Cmd+K command palette — filtered command list — §11
 - [x] **FLOW-11**: Open Standalone view — persist → dedupe → hydrate → WORKSPACE_HANDOFF → Side Panel mirrors — §11
 - [ ] **FLOW-12**: Save to note (LLM-Wiki) — NoteChatConverter draft → user edits → save pipeline — §11
@@ -327,7 +327,7 @@ Which phases cover which requirements. Each requirement maps to exactly one phas
 | SA-05 | Phase 15 | Pending |
 | SA-06 | Phase 17 | Pending |
 | SA-07 | Phase 15 | Pending |
-| SA-08 | Phase 1 | Pending |
+| SA-08 | Phase 1 | Complete |
 | SA-09 | Phase 1 | Pending |
 | SA-10 | Phase 1 | Pending |
 | OPT-01 | Phase 15 | Pending |
@@ -478,7 +478,7 @@ Which phases cover which requirements. Each requirement maps to exactly one phas
 | FLOW-6 | Phase 17 | Pending |
 | FLOW-7 | Phase 17 | Pending |
 | FLOW-8 | Phase 1 | Pending |
-| FLOW-9 | Phase 1 | Pending |
+| FLOW-9 | Phase 1 | Complete |
 | FLOW-10 | Phase 1 | Pending |
 | FLOW-11 | Phase 1 | Complete |
 | FLOW-12 | Phase 9 | Pending |
