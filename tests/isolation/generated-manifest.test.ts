@@ -20,6 +20,14 @@ import { join } from 'node:path';
  * It FAILS — it never skips — when the artifact is absent or unparseable: a
  * build-inspection test that passes without the build is the very defect it
  * exists to prevent (T-1-14). Every failure message names `pnpm run build:ext`.
+ *
+ * The `content_scripts` cases (9 and 10) pin the injection-scope decision the
+ * operator made in plan `01-03` Task 2 and recorded in
+ * `01-MIGRATION-INVENTORY.md` § Resolved hand-off decisions item 1 (Option C):
+ * the pilot content script is kept but excluded from the Phase-1 build, so the
+ * key must be ABSENT, and its declared host match may never exceed the hosts
+ * the manifest already authorises. The decision records the owning plan
+ * (Phase 6) and the removal condition for both assertions.
  */
 
 const BUILD_COMMAND = 'pnpm run build:ext';
@@ -39,6 +47,18 @@ const AUTHORISED_HOST_PERMISSIONS = [
   '*://support.servicenow.com/*',
 ]; // wxt.config.ts `host_permissions` — T-1-11: no host may be added silently
 const AUTHORISED_CSP = "script-src 'self'; object-src 'self'; connect-src 'none'"; // OQ5 / H-6
+/**
+ * The pilot content-script source, staged under a name no WXT content glob
+ * matches (decision item 1, Option C). Phase 6 restores it as `index.ts` and
+ * flips cases 9 and 10 in the same change.
+ */
+const CONTENT_SCRIPT_SOURCE_PATH = join(
+  process.cwd(),
+  'src',
+  'entrypoints',
+  'content',
+  'core.content.ts',
+);
 
 type GeneratedManifest = Record<string, unknown>;
 
@@ -62,6 +82,19 @@ function loadManifest(): GeneratedManifest {
   } catch (error) {
     throw new Error(
       `generated manifest at ${MANIFEST_RELATIVE_PATH} is not parseable JSON — re-run \`${BUILD_COMMAND}\` (a half-written artifact is not a passing build). ` +
+        `Underlying error: ${(error as Error).message}`,
+    );
+  }
+}
+
+/** Read the staged content-script source; a missing file is a failure, never a skip. */
+function contentScriptSource(): string {
+  try {
+    return readFileSync(CONTENT_SCRIPT_SOURCE_PATH, 'utf8');
+  } catch (error) {
+    throw new Error(
+      'pilot content-script source is missing from its staged path — see `01-MIGRATION-INVENTORY.md` ' +
+        '§ Resolved hand-off decisions item 1 (its owning plan and removal condition are recorded there). ' +
         `Underlying error: ${(error as Error).message}`,
     );
   }
@@ -129,17 +162,29 @@ describe('generated MV3 manifest is the authorised shape (plan 01-03)', () => {
     expect([...hosts].sort()).toEqual([...AUTHORISED_HOST_PERMISSIONS].sort());
   });
 
-  it('9. content_scripts reflects the recorded injection-scope decision (item 1) — completed in Task 3', () => {
+  it('9. carries no content_scripts key — the pilot entrypoint is excluded from the Phase-1 build', () => {
     const manifest = loadManifest();
     // This case encodes the injection-scope decision recorded in
-    // `01-MIGRATION-INVENTORY.md` § Resolved hand-off decisions item 1, and is
-    // finalised by plan `01-03` Task 3 once that decision is applied. As of the
-    // `01-02` build the relocated entrypoint at
-    // `src/entrypoints/content/index.ts` is WXT-discoverable, so the pilot
-    // script is registered here with the prototype's host match.
-    const scripts = manifest.content_scripts as Array<Record<string, unknown>> | undefined;
-    expect(Array.isArray(scripts)).toBe(true);
-    expect(scripts).toHaveLength(1);
-    expect(scripts?.[0]?.matches).toEqual(['<all_urls>']);
+    // `01-MIGRATION-INVENTORY.md` § Resolved hand-off decisions item 1
+    // (Option C): the entrypoint is kept at
+    // `src/entrypoints/content/core.content.ts`, a name no WXT content-script
+    // glob matches, so the build registers nothing for it and Phase 1 requests
+    // no host access. A key appearing here means the discovery switch was
+    // flipped (a rename back to `index.ts`) without the decision's removal
+    // condition being applied.
+    expect('content_scripts' in manifest).toBe(false);
+  });
+});
+
+describe('pilot content-script source is staged for the recorded decision (plan 01-03 Task 3)', () => {
+  it('10. declares no host match wider than the manifest already authorises', () => {
+    const source = contentScriptSource();
+    // The source half of T-1-12: the declared scope may never name a host the
+    // manifest has not already granted, so restoring this file as a WXT
+    // entrypoint cannot silently widen host access — never `<all_urls>` again.
+    const declared = /matches:\s*\[([^\]]*)\]/.exec(source)?.[1] ?? '';
+    const matches = (declared.match(/'[^']*'|"[^"]*"/g) ?? []).map((s) => s.slice(1, -1));
+    expect(matches).not.toContain('<all_urls>');
+    expect([...matches].sort()).toEqual([...AUTHORISED_HOST_PERMISSIONS].sort());
   });
 });

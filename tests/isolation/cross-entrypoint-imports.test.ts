@@ -119,8 +119,10 @@ function componentImportsFrom(surface: string): { file: string; spec: string; di
  * `path:line:`, so the comment-strip has to come AFTER stripping that
  * prefix — otherwise an indented `//` comment is misread as code and
  * slips through. This avoids the false-positive on the
- * `src/entrypoints/content/index.ts` instruction comment ("Do NOT
- * add a fetch(.)").
+ * content script's instruction comment ("Do NOT add a fetch(.)") — the file
+ * is staged at `src/entrypoints/content/core.content.ts` under plan `01-03`'s
+ * Option C build exclusion; the grep targets the directory, so it follows the
+ * rename.
  */
 function grepForViolations(cmd: string): string[] {
   const result = execSync(cmd, { encoding: 'utf8' });
@@ -156,8 +158,8 @@ describe('cross-entrypoint import isolation (D-17, REQ-R02)', () => {
 
   it('content-script entrypoint contains zero fetch() calls (Pitfall P3)', () => {
     // Filter comment lines so the instructional comment "Do NOT add a
-    // fetch(.)" in src/entrypoints/content/index.ts does not produce a
-    // false positive.
+    // fetch(.)" in the staged content script (src/entrypoints/content/,
+    // `core.content.ts` per plan 01-03) does not produce a false positive.
     const lines = grepForViolations(
       `grep -rEn "fetch\\(" src/entrypoints/content/ 2>/dev/null || true`,
     );
