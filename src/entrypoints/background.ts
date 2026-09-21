@@ -2,6 +2,7 @@ import { defineBackground } from 'wxt/utils/define-background';
 import * as BackgroundRouter from '../core/messaging/BackgroundRouter';
 import { deleteLegacyWorkspaceBlob } from '../core/workspace/legacyWorkspaceBlob';
 import { migrateLegacyOnboardingFlag } from '../core/onboarding/onboardingStateStore';
+import { runLegacyCredentialCleanup } from '../core/storage/legacyCredentialCleanup';
 
 export default defineBackground({
   type: 'module',
@@ -15,7 +16,11 @@ export default defineBackground({
     //       symbol (internally calls MessageBus.init() + pre-registers the
     //       CONTENT_SCRIPT_READY / SPA_NAVIGATION advisory handlers);
     //   (2) chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
-    //   (3) the onboarding completion record migration on install and startup.
+    //   (3) the install/startup migrations: the onboarding completion record
+    //       migration (D-06) and the legacy plaintext credential cleanup (D-07).
+    //       The cleanup is NOT a fourth registration — it runs inside the two
+    //       handlers (3) already owns, and it runs FIRST so no later read in the
+    //       same wake can observe the prototype's plaintext provider keys.
     //
     // Plus one removal-only step, not a registration (D-14): the stale
     // prototype workspace blob is deleted on every wake so Phase 2 does not
@@ -50,15 +55,22 @@ export default defineBackground({
 
     chrome.runtime.onStartup.addListener(() => {
       chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
-      // (3) Absorb an installed prototype's onboarding flag on startup.
+      // (3a) D-07: destroy the prototype's plaintext provider credentials in
+      // place before anything reads the provider configuration. Idempotent and
+      // version-stamped, so every wake is cheap; it reports a soft success when
+      // no chrome storage is available and never throws.
+      void runLegacyCredentialCleanup();
+      // (3b) Absorb an installed prototype's onboarding flag on startup.
       void migrateLegacyOnboardingFlag();
     });
 
-    // (3) Onboarding record migration — the prototype seeded a bare legacy
-    // boolean here; the canonical completion record (D-06) is now the single
-    // source, so install and update only run the idempotent migration that
-    // absorbs the legacy value and removes its key.
+    // (3) Install/update migrations — the prototype seeded a bare legacy
+    // boolean and plaintext provider keys; the canonical completion record
+    // (D-06) and D-07's cleaned provider configuration are now the single
+    // source, so install and update run only the idempotent migrations that
+    // absorb the legacy value and destroy the legacy secrets in place.
     chrome.runtime.onInstalled.addListener(() => {
+      void runLegacyCredentialCleanup();
       void migrateLegacyOnboardingFlag();
       chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
     });
