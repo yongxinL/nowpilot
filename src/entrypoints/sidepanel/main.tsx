@@ -90,8 +90,9 @@ const SidePanelSurface: React.FC = () => {
 /**
  * The Side Panel's single provider chain (§5.5): exactly one `XProvider` fed
  * by `getAntdConfig`, then `AntdApp`, then the mounted `ErrorBoundary`, then
- * the shell. No separately-mounted `ConfigProvider`, which would double-wrap
- * theme and locale context.
+ * the shell. No second AntD provider is mounted anywhere in `src/entrypoints`
+ * or `src/components` — a separate one would double-wrap theme and locale
+ * context.
  */
 const SidePanelRoot: React.FC = () => {
   const mode = useThemeStore((state) => state.mode);

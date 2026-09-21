@@ -1,8 +1,7 @@
 import { theme, type MappingAlgorithm, type ThemeConfig } from 'antd';
 import enUS from 'antd/locale/en_US';
-import type { ThemeMode } from './ThemeStore';
 import { claudePlusLight, claudePlusDark } from '../../theme/packs/claudePlus';
-import { getThemePack, type ThemePackId } from './ThemeConfig';
+import { getThemePack, type ThemeMode, type ThemePackId } from './ThemeConfig';
 
 /**
  * The canonical theme-pack identifiers (APPR-06 / D-15). Re-exported from

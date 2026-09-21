@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App as AntdApp, Layout, Segmented, Typography, theme } from 'antd';
+import { XProvider } from '@ant-design/x';
 import { AppstoreOutlined, MessageOutlined, SettingOutlined } from '@ant-design/icons';
 import { StandaloneShell } from './components/standalone/StandaloneShell';
 import { SidepanelChat } from './components/chat/SidepanelChat';
 import { OptionsPage } from './components/options/OptionsPage';
 import { CommandPalette } from './components/common/CommandPalette';
-import { ThemeToggle } from './components/common/ThemeToggle';
 import { CommandRegistry } from './core/commands/CommandRegistry';
-import { useThemeStore, type ThemeMode } from './core/theme/ThemeStore';
-import { ThemeProvider } from './components/ThemeProvider';
+import { useThemeStore, cycleThemeMode } from './core/theme/ThemeStore';
+import { useThemeSync } from './core/theme/ThemeSync';
+import { getAntdConfig, resolveThemePack } from './core/theme/antdConfig';
 import { NowPilotAvatar } from './components/common/NowPilotAvatar';
 import './index.css';
 
@@ -37,8 +38,6 @@ if (typeof window !== 'undefined') {
 const { Header, Content } = Layout;
 const { Text } = Typography;
 
-const MODE_CYCLE: ThemeMode[] = ['light', 'dark', 'auto'];
-
 const getViewFromUrl = (): 'workspace' | 'sidepanel' | 'options' => {
   if (typeof window === 'undefined') return 'workspace';
   const path = window.location.pathname.toLowerCase();
@@ -58,7 +57,6 @@ const getViewFromUrl = (): 'workspace' | 'sidepanel' | 'options' => {
 const AppShell: React.FC = () => {
   const [activeView, setActiveView] = useState<'workspace' | 'sidepanel' | 'options'>(getViewFromUrl);
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const mode = useThemeStore((s) => s.mode);
   const { token } = theme.useToken();
 
   useEffect(() => {
@@ -68,9 +66,7 @@ const AppShell: React.FC = () => {
       description: 'Cycle between light, dark, and auto theme modes',
       category: 'Appearance',
       action: () => {
-        const cur = useThemeStore.getState().mode;
-        const next = MODE_CYCLE[(MODE_CYCLE.indexOf(cur) + 1) % MODE_CYCLE.length];
-        useThemeStore.getState().setMode(next);
+        cycleThemeMode();
         setPaletteOpen(false);
       },
     });
@@ -148,10 +144,6 @@ const AppShell: React.FC = () => {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <ThemeToggle
-            mode={mode}
-            onChange={(next) => useThemeStore.getState().setMode(next)}
-          />
           <Segmented
             value={activeView}
             onChange={(val) => setActiveView(val as 'workspace' | 'sidepanel' | 'options')}
@@ -209,13 +201,28 @@ const AppShell: React.FC = () => {
   );
 };
 
+/**
+ * The dev shell's provider root. The superseded nested AntD provider component
+ * is gone: one `XProvider` fed by `getAntdConfig`, exactly like the two
+ * extension surfaces (§5.5 / D-02). This shell is retired by plan `01-11`;
+ * until then it keeps the same single-provider shape so the typecheck and the
+ * theme behaviour stay honest. Theme mode is reachable through the palette's
+ * `toggle-theme` command, matching Phase 1's single theme UI surface (D-15).
+ */
 const MainApp = () => {
+  const mode = useThemeStore((state) => state.mode);
+  const pack = useThemeStore((state) => state.pack);
+
+  useThemeSync();
+
+  const config = getAntdConfig({ mode, pack: resolveThemePack(pack), compact: false });
+
   return (
-    <ThemeProvider>
+    <XProvider {...config}>
       <AntdApp style={{ height: '100vh', width: '100vw', overflow: 'hidden' }}>
         <AppShell />
       </AntdApp>
-    </ThemeProvider>
+    </XProvider>
   );
 };
 

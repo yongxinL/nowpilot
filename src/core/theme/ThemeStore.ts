@@ -2,11 +2,13 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import { syncStorageAdapter, flushPendingWrites } from './chromeStorageAdapter';
-import { getColorTheme, DEFAULT_COLOR_THEME_ID } from './ThemeConfig';
+import { getColorTheme, DEFAULT_COLOR_THEME_ID, type ThemeMode } from './ThemeConfig';
 import { applyClaudePlusCssVars } from '../../theme/packs/claudePlus';
 import { debugLog } from '../log/debugLog';
 
-export type ThemeMode = 'light' | 'dark' | 'auto';
+// `ThemeMode` lives in `ThemeConfig.ts` (the pure module); re-exported here so
+// the store stays the familiar import site for consumers and tests.
+export type { ThemeMode };
 
 /**
  * Persisted shape written to chrome.storage.sync under the `np_theme` key.

@@ -1,17 +1,18 @@
 import React from 'react';
 import { Segmented, theme } from 'antd';
-import type { ThemeMode } from '../../core/theme/ThemeStore';
-import { isThemeMode } from '../../core/theme/ThemeConfig';
+import { isThemeMode, type ThemeMode } from '../../core/theme/ThemeConfig';
+import { t } from '../../core/i18n/strings';
 
 export interface ThemeToggleProps {
   mode: ThemeMode;
   onChange: (mode: ThemeMode) => void;
 }
 
-const THEME_OPTIONS: { label: string; value: ThemeMode }[] = [
-  { label: 'Auto', value: 'auto' },
-  { label: 'Light', value: 'light' },
-  { label: 'Dark', value: 'dark' },
+/** Label → mode, resolved from the canonical string map (no inline copy). */
+export const THEME_TOGGLE_OPTIONS: { label: string; value: ThemeMode }[] = [
+  { label: t('theme.auto'), value: 'auto' },
+  { label: t('theme.light'), value: 'light' },
+  { label: t('theme.dark'), value: 'dark' },
 ];
 
 /**
@@ -43,10 +44,10 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({ mode, onChange }) => {
       }}
     >
       <Segmented
-        aria-label="Theme mode"
+        aria-label={t('a11y.themeMode')}
         value={mode}
         onChange={handleChange}
-        options={THEME_OPTIONS}
+        options={THEME_TOGGLE_OPTIONS}
         size="small"
         style={{
           background: token.colorFillTertiary,

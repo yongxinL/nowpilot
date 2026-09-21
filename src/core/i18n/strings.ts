@@ -36,6 +36,10 @@ export const strings: Readonly<Record<string, string>> = Object.freeze({
   'standalone.globalSearchPlaceholder': 'Search notes, tags, or content…',
   'theme.syncFailed': 'Theme sync failed — your display mode is still applied.',
   'theme.syncRetry': 'Retry sync',
+  // The preserved (unmounted) ThemeToggle's mode labels and accessible name.
+  'theme.auto': 'Auto',
+  'theme.light': 'Light',
+  'theme.dark': 'Dark',
   'shell.errorTitle': 'Something went wrong',
   'shell.errorBody': 'Reload NowPilot to continue.',
   'shell.errorReload': 'Reload',
@@ -92,6 +96,7 @@ export const strings: Readonly<Record<string, string>> = Object.freeze({
   'a11y.collapseSidebar': 'Collapse sidebar',
   'a11y.expandSidebar': 'Expand sidebar',
   'a11y.closeDialog': 'Close',
+  'a11y.themeMode': 'Theme mode',
 
   // ── Command palette chrome ───────────────────────────────────────────────
   // Command label/description metadata is registry data (plan 01-08), not copy.

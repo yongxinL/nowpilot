@@ -1,5 +1,15 @@
 import type { ThemeConfig } from 'antd';
-import type { ThemeMode } from './ThemeStore';
+
+/**
+ * The canonical theme-mode union (APPR-03 / D-15).
+ *
+ * Defined here — in the pure theme-configuration module — so presentation
+ * components and derivation helpers can narrow a mode without importing the
+ * store module (which owns Chrome-backed persistence). `ThemeStore` re-exports
+ * it, so every existing `import { type ThemeMode } from './ThemeStore'` keeps
+ * working.
+ */
+export type ThemeMode = 'light' | 'dark' | 'auto';
 
 export interface ColorThemeOption {
   id: string;
