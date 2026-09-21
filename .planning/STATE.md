@@ -4,16 +4,16 @@ milestone: v0.2
 current_phase: 1
 current_phase_name: MV3/WXT Runtime + AntD Shells + Workspace
 status: executing
-stopped_at: Completed 01-02-PLAN.md (WXT srcDir relocation, provider root + shells, three non-vacuous gates)
-last_updated: "2026-09-21T12:15:06.625Z"
+stopped_at: Completed 01-04-PLAN.md (canonical Phase-1 string map + format(), 16-case copy-exactness gate)
+last_updated: "2026-09-21T12:24:31.220Z"
 last_activity: 2026-09-21
 last_activity_desc: Phase 1 execution started
-state_head: 9af8f41d8f65287487fb75ccfa280c9b8b248c8b
+state_head: 3a81a1c052e25e9ecb6de72bd74ab50507050a6a
 progress:
   total_phases: 19
   completed_phases: 0
   total_plans: 13
-  completed_plans: 2
+  completed_plans: 3
 ---
 
 # Project State
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 ## Current Position
 
 Phase: 1 (MV3/WXT Runtime + AntD Shells + Workspace) — EXECUTING
-Plan: 3 of 13
+Plan: 4 of 13
 Status: Ready to execute
 Last activity: 2026-09-21 — Phase 1 execution started
 
@@ -60,6 +60,7 @@ Progress: [░░░░░░░░░░] 0%
 |------|----------|-------|-------|
 | Phase 01 P01 | 10 | 3 tasks | 1 files |
 | Phase 01 P02 | 24 | 3 tasks | 34 files |
+| Phase 01 P04 | 5 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -79,6 +80,11 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 1]: The isolation gate matrix was corrected: standalone -> options is authorised by §5.4/§8.6 (Options renders inside the Standalone shell), options -> surface stays forbidden, and the pattern now catches bare relative sibling hops.
 - [Phase 1]: The canonical Sider renders inside StandaloneShell.tsx; WorkspaceSidebar.tsx is unmounted and plan 01-12 owns its remount-or-remove disposition (inventory row updated).
 - [Phase 1]: WXT dev-mode HMR observed as a real js-update for a component edit with @wxt-dev/module-react alone; browser-side application remains a manual check.
+- [Phase 1]: Phase 1: The canonical string map is live with 68 canonical keys plus format(); the LEGACY block carries only the five prototype keys with a live t() consumer (app.name, common.back, agent.empty, options.loading, notes.empty) because the files the plan named as consumers render inline literals instead. The legacy-prune step moved out of 01-11; app.name/common.back belong to 01-12's shell disposition.
+- [Phase 1]: Phase 1: src/core/i18n/strings.ts exports the frozen strings record (not just t/format) so the credential-shape and mutation-safety gates scan the whole map rather than a sample; Object.freeze makes the immutability claim assertable via Object.isFrozen and Reflect.set.
+- [Phase 1]: Phase 1: chat.error is one canonical key (Provider error. [Retry] [Switch Provider]) and chat.retry/chat.switchProvider are deleted; the suite proves deletion by asserting each retired key resolves to its own name.
+- [Phase 1]: Phase 1: a11y.closeDialog is asserted by explicit presence (t(key) !== key), not inequality, because the UI-SPEC pins Close — the same word AntD enUS ships; the three overrides that genuinely differ (OK, Cancel, Please select) are asserted as inequalities.
+- [Phase 1]: Phase 1: onboarding.failed and deferred.phaseBody carry {token} interpolation slots rather than the UI-SPEC's bracketed [error] form, because the same UI-SPEC defines [...] as an action label rendered as a link or button.
 
 ### Pending Todos
 
@@ -103,6 +109,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-21T12:15:06.606Z
-Stopped at: Completed 01-02-PLAN.md (WXT srcDir relocation, provider root + shells, three non-vacuous gates)
+Last session: 2026-09-21T12:24:31.198Z
+Stopped at: Completed 01-04-PLAN.md (canonical Phase-1 string map + format(), 16-case copy-exactness gate)
 Resume file: None
