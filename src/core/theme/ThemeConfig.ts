@@ -73,9 +73,9 @@ export interface ThemePackDefinition {
 export const THEME_PACKS: ThemePackDefinition[] = [
   { id: 'default' },
   // UI-SPEC § Color. Phase 1 declares both overlays but only `default` is
-  // reachable (APPR-06 is Phase 15); nothing here imports or copies
-  // `.planning/design/references/themes/` — the overlays are AntD tokens only
-  // (T-1-23).
+  // reachable (APPR-06 is Phase 15); the overlays are AntD token objects only —
+  // nothing here imports, copies or references the annotated theme reference
+  // stylesheet (UI-SPEC § Reference Divergences, T-1-23).
   {
     id: 'liquid-glass',
     token: { colorBgContainer: 'rgba(255,255,255,0.68)' },
