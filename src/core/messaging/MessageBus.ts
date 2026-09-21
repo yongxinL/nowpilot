@@ -1,8 +1,5 @@
-import {
-  validateEnvelope,
-  type EnvelopeType,
-  type RuntimeEnvelope,
-} from '../runtime/RuntimeEnvelope';
+import type { EnvelopeType, RuntimeEnvelope } from '../runtime/RuntimeEnvelope';
+import { validateEnvelope } from '../runtime/RuntimeEnvelopeValidation';
 
 type MessageHandler<T = unknown> = (
   envelope: RuntimeEnvelope<T>,

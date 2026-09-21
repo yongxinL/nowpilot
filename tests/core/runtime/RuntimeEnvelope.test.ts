@@ -1,13 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import {
   createEnvelope,
-  isEnvelope,
-  validateEnvelope,
   MessageType,
   MessageTypeValues,
   ScaffoldMessageType,
   ScaffoldMessageTypeValues,
 } from '../../../src/core/runtime/RuntimeEnvelope';
+import {
+  isEnvelope,
+  validateEnvelope,
+} from '../../../src/core/runtime/RuntimeEnvelopeValidation';
 
 type CanonicalType = (typeof MessageType)[keyof typeof MessageType];
 type ScaffoldType = (typeof ScaffoldMessageType)[keyof typeof ScaffoldMessageType];
