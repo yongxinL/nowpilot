@@ -90,6 +90,22 @@ describe('registerSidepanelCommands — the D-09 Side Panel set', () => {
     expect(CommandRegistry.get('reload-extension')).toBeUndefined();
   });
 
+  it('writes the dev gate inline so a production build folds the branch away', () => {
+    // Verified end-to-end with `pnpm run build:ext`: the gate is written
+    // inline so esbuild folds `false === true` and drops both the branch and
+    // the command definition — the built bundle carries zero occurrences of
+    // `reload-extension`. Routing the gate through a helper function defeats
+    // that folding and ships the destructive command's definition, so this
+    // case pins the inline shape (T-1-37).
+    const source = readFileSync(
+      join(process.cwd(), 'src', 'core', 'commands', 'registerWorkspaceCommands.ts'),
+      'utf8',
+    );
+
+    expect(source.match(/if \(import\.meta\.env\.DEV === true\)/g) ?? []).toHaveLength(2);
+    expect(source).not.toMatch(/function isDevelopmentBuild/);
+  });
+
   it('carries the UI-SPEC label, description and resolved category for every command', () => {
     const { deps } = makeSidepanelDeps();
     registerSidepanelCommands(deps);

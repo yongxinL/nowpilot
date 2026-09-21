@@ -64,11 +64,6 @@ function command(definition: Omit<Command, 'action'>, action: () => void): Comma
   return { ...definition, action };
 }
 
-/** The development-only gate for the destructive reload command (D-10). */
-function isDevelopmentBuild(): boolean {
-  return import.meta.env.DEV === true;
-}
-
 export interface SidepanelCommandDeps {
   openStandalone: () => void;
   openOptions: () => void;
@@ -86,7 +81,10 @@ export function registerSidepanelCommands(deps: SidepanelCommandDeps): () => voi
   register(command(OPEN_STANDALONE_VIEW, () => deps.openStandalone()));
   register(command(OPEN_OPTIONS, () => deps.openOptions()));
   register(command(TOGGLE_THEME, () => deps.toggleTheme()));
-  if (isDevelopmentBuild()) {
+  // D-10: the destructive reload command is a development-only registration.
+  // The condition is written inline so a production build folds it to `false`
+  // and drops both the branch and the command definition.
+  if (import.meta.env.DEV === true) {
     register(command(RELOAD_EXTENSION, () => deps.reloadExtension()));
   }
 
@@ -116,7 +114,10 @@ export function registerStandaloneCommands(deps: StandaloneCommandDeps): () => v
   register(command(OPEN_STANDALONE_VIEW, () => deps.openStandalone()));
   register(command(OPEN_OPTIONS, () => deps.openOptions()));
   register(command(TOGGLE_THEME, () => deps.toggleTheme()));
-  if (isDevelopmentBuild()) {
+  // D-10: the destructive reload command is a development-only registration.
+  // The condition is written inline so a production build folds it to `false`
+  // and drops both the branch and the command definition.
+  if (import.meta.env.DEV === true) {
     register(command(RELOAD_EXTENSION, () => deps.reloadExtension()));
   }
 
