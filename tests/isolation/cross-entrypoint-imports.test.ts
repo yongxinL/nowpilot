@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { execSync } from 'child_process';
-import { existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { join, relative, resolve, sep } from 'node:path';
 
 /**
  * D-17 / REQ-R02: real (non-vacuous) isolation gate.
@@ -50,6 +50,67 @@ const CROSS_IMPORT_RE = new RegExp(`${SURFACE_IMPORT_PREFIX}(chat|standalone|opt
 /** Build the shell grep for `sourceDir` importing any of `forbidden`. */
 function grepCrossImports(sourceDir: string, forbidden: string): string {
   return `grep -rEn "${SURFACE_IMPORT_PREFIX}(${forbidden})/" ${sourceDir} 2>/dev/null || true`;
+}
+
+/**
+ * Shared presentation homes any surface may import. Everything outside
+ * `src/components/**` (`src/core/**`, `src/types/**`, `src/services/**`) is
+ * shared infra by construction and needs no allowlisting here.
+ */
+const SHARED_COMPONENT_HOMES = ['common', 'onboarding'];
+
+/**
+ * Page trees the Standalone workspace owns the routes for. §5.4 / §8.6 make
+ * the Options workspace a route **inside** the Standalone shell rather than a
+ * surface of its own, so the Standalone router reaches these trees directly;
+ * they are neither shared homes nor surfaces.
+ */
+const SURFACE_OWNED_COMPONENT_DIRS: Record<string, string[]> = {
+  standalone: ['pages', 'notes', 'options', 'history'],
+};
+
+const COMPONENTS_ROOT = join(process.cwd(), 'src', 'components');
+
+function walkSourceFiles(dir: string): string[] {
+  const found: string[] = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) found.push(...walkSourceFiles(full));
+    else if (/\.tsx?$/.test(entry.name)) found.push(full);
+  }
+  return found;
+}
+
+const IMPORT_SPEC_RE = /from\s+['"]([^'"]+)['"]/g;
+
+/**
+ * Every `src/components/<dir>` a surface's files import, resolved against the
+ * importing file (so bare relative hops are seen exactly like `components/`
+ * paths). Returns one row per offending import.
+ */
+function componentImportsFrom(surface: string): { file: string; spec: string; dir: string }[] {
+  const surfaceDir = join(COMPONENTS_ROOT, surface);
+  const rows: { file: string; spec: string; dir: string }[] = [];
+
+  for (const file of walkSourceFiles(surfaceDir)) {
+    const source = readFileSync(file, 'utf8');
+    IMPORT_SPEC_RE.lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = IMPORT_SPEC_RE.exec(source)) !== null) {
+      const spec = match[1];
+      if (!spec.startsWith('.')) continue;
+      const resolved = resolve(join(file, '..'), spec);
+      const rel = relative(COMPONENTS_ROOT, resolved);
+      if (rel.startsWith('..')) continue;
+      rows.push({
+        file: relative(process.cwd(), file),
+        spec,
+        dir: rel.split(sep)[0],
+      });
+    }
+  }
+
+  return rows;
 }
 
 /**
@@ -104,6 +165,69 @@ describe('cross-entrypoint import isolation (D-17, REQ-R02)', () => {
   });
 });
 
+describe('surface component-import allowlist (shared code lives in the shared homes)', () => {
+  it('the scanner reads real surface files (positive control)', () => {
+    // Without this, an empty allowlist result could simply mean the scanner
+    // read nothing at all.
+    expect(componentImportsFrom('sidepanel').length).toBeGreaterThan(0);
+    expect(componentImportsFrom('standalone').length).toBeGreaterThan(0);
+  });
+
+  it('sidepanel/ and standalone/ never import each other', () => {
+    expect(
+      componentImportsFrom('sidepanel').filter((row) => row.dir === 'standalone'),
+    ).toEqual([]);
+    expect(
+      componentImportsFrom('standalone').filter((row) => row.dir === 'sidepanel'),
+    ).toEqual([]);
+  });
+
+  it('sidepanel/ imports only its own surface dir and the shared homes', () => {
+    const allowed = ['sidepanel', ...SHARED_COMPONENT_HOMES];
+    const offenders = componentImportsFrom('sidepanel').filter(
+      (row) => !allowed.includes(row.dir),
+    );
+    expect(offenders.map((row) => `${row.file} -> ${row.spec}`)).toEqual([]);
+  });
+
+  it('standalone/ imports only its own surface, the shared homes, or its owned page trees', () => {
+    const allowed = [
+      'standalone',
+      ...SHARED_COMPONENT_HOMES,
+      ...SURFACE_OWNED_COMPONENT_DIRS.standalone,
+    ];
+    const offenders = componentImportsFrom('standalone').filter(
+      (row) => !allowed.includes(row.dir),
+    );
+    expect(offenders.map((row) => `${row.file} -> ${row.spec}`)).toEqual([]);
+  });
+
+  it('no extension source imports the retired Vite dev shell (src/main.tsx)', () => {
+    // Plan `01-02` prohibition: relocated extension code must not import the
+    // standalone Vite browser shell. The dev shell is removed in `01-11`;
+    // until then nothing under `src/` may depend on it.
+    const devShell = resolve(process.cwd(), 'src', 'main.tsx');
+    const offenders: string[] = [];
+
+    for (const file of walkSourceFiles(join(process.cwd(), 'src'))) {
+      if (file === devShell) continue;
+      const source = readFileSync(file, 'utf8');
+      IMPORT_SPEC_RE.lastIndex = 0;
+      let match: RegExpExecArray | null;
+      while ((match = IMPORT_SPEC_RE.exec(source)) !== null) {
+        const spec = match[1];
+        if (!spec.startsWith('.')) continue;
+        const resolved = resolve(join(file, '..'), spec);
+        if (resolved === devShell || `${resolved}.tsx` === devShell) {
+          offenders.push(`${relative(process.cwd(), file)} -> ${spec}`);
+        }
+      }
+    }
+
+    expect(offenders).toEqual([]);
+  });
+});
+
 describe('isolation-gate self-test (proves the gate is not vacuous)', () => {
   // This block exercises the same pattern the file-scan uses, so a future
   // refactor that quietly weakens the regex trips the self-test rather than
@@ -120,6 +244,7 @@ describe('isolation-gate self-test (proves the gate is not vacuous)', () => {
       'src/components/chat',
       'src/components/standalone',
       'src/components/options',
+      'src/components/sidepanel',
       'src/entrypoints/content',
     ];
     for (const target of targets) {
