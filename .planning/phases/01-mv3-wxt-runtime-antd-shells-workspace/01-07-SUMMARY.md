@@ -23,9 +23,9 @@ provides:
 affects: [01-08, 01-09, 01-11, 01-12, 01-13, 02, 15]
 
 actuals:
-  tokens: 34004    # chars/4 over the realized diff (git diff -U0 2f97bff..HEAD -- src tests = 136,016 chars)
+  tokens: 35616    # chars/4 over the realized diff (git diff -U0 2f97bff..HEAD -- src tests = 142,465 chars)
   tasks: 3
-  commits: 11      # measured: git rev-list --count 2f97bff..HEAD (5 task commits + the warm-path fix + 4 documentation/ledger commits)
+  commits: 12      # measured: git rev-list --count 2f97bff..HEAD (5 task commits + the warm-path fix + 5 documentation/ledger/metrics commits)
   plan_head_before: 2f97bffa8b6f8487c866c859397af95c37f3881b
 
 tech-stack:
@@ -184,7 +184,7 @@ status: complete
 - **Started:** 2026-09-21T13:15:21Z
 - **Completed:** 2026-09-21T13:33:25Z
 - **Tasks:** 3
-- **Files modified:** 14 tracked paths across 5 commits (2,850 insertions / 469 deletions), one file removed and the inventory rows reconciled
+- **Files modified:** 14 tracked paths (2,990 insertions / 466 deletions), one file removed and the inventory rows reconciled
 
 ## Accomplishments
 
