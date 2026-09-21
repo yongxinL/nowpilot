@@ -25,7 +25,7 @@ affects: [01-08, 01-09, 01-11, 01-12, 01-13, 02, 15]
 actuals:
   tokens: 34004    # chars/4 over the realized diff (git diff -U0 2f97bff..HEAD -- src tests = 136,016 chars)
   tasks: 3
-  commits: 5       # measured: git rev-list --count 2f97bff..HEAD
+  commits: 8       # measured: git rev-list --count 2f97bff..HEAD (5 task commits + 1 doc reconciliation + the summary commit + the metadata commit)
   plan_head_before: 2f97bffa8b6f8487c866c859397af95c37f3881b
 
 tech-stack:
@@ -206,8 +206,9 @@ Each task was committed atomically; both TDD tasks carry their RED then GREEN co
 3. **Task 2 RED: failing handoff protocol and URL bootstrap suite** — `29ba753` (test)
 4. **Task 2 GREEN: the ready/transfer/ack protocol** — `30d9170` (feat)
 5. **Task 3: non-persisted store, ack-gated router, handoff controllers** — `17f9fe3` (feat)
+6. **MessageType-overlap documentation and inventory reconciliation** — `55a3347` (docs)
 
-**Plan metadata:** committed separately as `docs(01-07): complete … plan`.
+**Plan metadata:** committed separately as `docs(01-07): complete … plan` (`18abd5b6`, including this SUMMARY).
 
 ## Files Created/Modified
 
