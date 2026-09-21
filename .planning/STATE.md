@@ -4,16 +4,16 @@ milestone: v0.2
 current_phase: 1
 current_phase_name: MV3/WXT Runtime + AntD Shells + Workspace
 status: executing
-stopped_at: Completed 01-10-PLAN.md (D-07 in-place legacy credential deletion, background install/startup wiring, one neutral dismissible notice)
-last_updated: "2026-09-21T22:31:42.323Z"
+stopped_at: "Completed 01-11-PLAN.md (prototype teardown: credential-free schema + allow-list migration, prototype hosts and dev shell removed, WXT-resolved scripts)"
+last_updated: "2026-09-21T23:12:13.795Z"
 last_activity: 2026-09-21
 last_activity_desc: Phase 1 execution started
-state_head: 402c76fa295d32f5d823d53e5919f259147ee677
+state_head: c88cae7e1c977f63787bb4a9d4062b4d8efc715e
 progress:
   total_phases: 19
   completed_phases: 0
   total_plans: 13
-  completed_plans: 11
+  completed_plans: 12
 ---
 
 # Project State
@@ -69,6 +69,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P03 | 7 | 3 tasks | 6 files |
 | Phase 01 P08 | 21 | 3 tasks | 12 files |
 | Phase 01 P10 | 11min | 3 tasks | 10 files |
+| Phase 01 P11 | 32 | 3 tasks | 32 files |
 
 ## Accumulated Context
 
@@ -127,6 +128,11 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 1]: 01-08: the destructive command's gate is the pinned confirmation (command.reloadExtension.confirm + common.continue/common.notNow), not a query-shape rule, so no match — partial or exact — can auto-run it; and the SA-10 opener is exported from the standalone entrypoint so the ordering case could live in the commands suite (01-12 owns StandaloneShell.test.tsx).
 - [Phase 1]: 01-08: one additive canonical key, sidepanel.openFailed ('Failed to open the side panel'), carries the Focus Side Panel failure path; it is pinned in tests/core/i18n/strings.test.ts and recorded in WINDOWS.md for phase-acceptance ratification.
 - [Phase 1]: D-07 executed as authorised (decision D-01-10-1, Option A): the prototype's plaintext provider credentials are destroyed in place on install and startup; the sanitiser rebuilds the record without ever reading a matched key's value, reports field names only (sorted, deduplicated), stamps plaintextCleanupSchemaVersion for idempotence, and is total and cycle-safe. The only user-visible output is one dismissible neutral notice whose shown-state is a field on the existing np_onboarding record (schema v2 with a v1 upgrader), shown once unconditionally so its appearance discloses nothing about whether a credential existed.
+- [Phase 1]: 01-11: the np_store migration is an allow-list rebuild (NP_STORE_SCHEMA_VERSION 2) — it enumerates the surviving top-level/config/provider/model fields and drops everything else, so the credential spellings stay owned by 01-10's LEGACY_SECRET_FIELDS and a removed credential, model-identifier or theme-mode field cannot be carried forward. Total for non-objects, throw-free, idempotent.
+- [Phase 1]: 01-11: src/services/aiProvider.ts is deleted rather than stubbed (nothing non-secret remained once the connection test, streaming client and model catalogue were gone); ProviderId is the only provider identifier union (ProviderType/CustomProviderId/ModelOption and the prototype Workflow types deleted with their last consumers) and DEFAULT_CONFIG.providers is keyed by the canonical ids (claude -> anthropic).
+- [Phase 1]: 01-11: the Options page's model list is a read-only fixture view (every credential/model write path removed, controls disabled + data-np-backing=deferred) and its display-mode Select reads and writes ThemeStore only, so the preserved presentation keeps one theme source and writes no provider or model identifier.
+- [Phase 1]: 01-11: WXT is the single dev/build/zip runtime (dev -> wxt, build -> wxt build, zip -> wxt zip; preview/start gone); vite.config.ts, index.html and src/main.tsx are deleted and @vitejs/plugin-react is removed, while vite stays a top-level devDependency because vite/client is referenced by tsconfig and src/vite-env.d.ts and it is a peer of wxt/vitest.
+- [Phase 1]: 01-11: D-03 steps 5-8 were discharged against 01-12's recorded step-4 parity artifact (cited, no divergence) with both shell suites green first; a clean build emits only background.js/sidepanel.html/standalone.html and the manifest inspection prints permissions [sidePanel,storage,tabs], no options page and no options key.
 
 ### Pending Todos
 
@@ -151,6 +157,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-21T22:31:42.297Z
-Stopped at: Completed 01-10-PLAN.md (D-07 in-place legacy credential deletion, background install/startup wiring, one neutral dismissible notice)
+Last session: 2026-09-21T23:12:13.759Z
+Stopped at: Completed 01-11-PLAN.md (prototype teardown: credential-free schema + allow-list migration, prototype hosts and dev shell removed, WXT-resolved scripts)
 Resume file: None
