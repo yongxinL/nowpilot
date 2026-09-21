@@ -247,15 +247,24 @@ describe('legacyCredentialCleanup — sanitizeLegacyProviderConfig', () => {
   });
 
   it('is total — null, undefined, an empty object, an array, a string and a number never throw', () => {
-    const raws: unknown[] = [null, undefined, {}, [], 'nonsense', 42];
+    // Not a provider record at all: returned untouched, with an empty report.
+    const nonRecords: unknown[] = [null, undefined, [], 'nonsense', 42];
 
-    for (const raw of raws) {
+    for (const raw of nonRecords) {
       expect(() => sanitizeLegacyProviderConfig(raw), `raw ${JSON.stringify(raw)}`).not.toThrow();
       const report = sanitizeLegacyProviderConfig(raw);
       expect(report.found, `raw ${JSON.stringify(raw)}`).toBe(false);
       expect(report.removedFields, `raw ${JSON.stringify(raw)}`).toEqual([]);
       expect(report.value, `raw ${JSON.stringify(raw)}`).toBe(raw);
     }
+
+    // An empty record is a record: it is sanitised (empty removal list) and
+    // stamped, so the next run can skip the walk.
+    expect(() => sanitizeLegacyProviderConfig({})).not.toThrow();
+    const empty = sanitizeLegacyProviderConfig({});
+    expect(empty.found).toBe(false);
+    expect(empty.removedFields).toEqual([]);
+    expect(empty.value).toEqual({ [CLEANUP_VERSION_FIELD]: CLEANUP_SCHEMA_VERSION });
   });
 
   it('returns a serialisable report even for a cyclic input — no cycle survives', () => {
