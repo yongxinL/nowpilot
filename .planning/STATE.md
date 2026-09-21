@@ -4,16 +4,16 @@ milestone: v0.2
 current_phase: 1
 current_phase_name: MV3/WXT Runtime + AntD Shells + Workspace
 status: executing
-stopped_at: "Completed 01-05-PLAN.md (single-source theme contract: one np_theme writer, shape-detecting onChanged reader, pack-ready getAntdConfig, pinned local-first failure toast)"
-last_updated: "2026-09-21T12:51:13.155Z"
+stopped_at: "Completed 01-06-PLAN.md (canonical runtime envelope: Appendix E registry, strict Zod payload validation, sender-guarded dispatch, cold-start-proven router)"
+last_updated: "2026-09-21T13:09:28.272Z"
 last_activity: 2026-09-21
 last_activity_desc: Phase 1 execution started
-state_head: 6fb5e1267877f543f82dbbca5c4fa5e267bf18e0
+state_head: 55716ae577c056c6d8437973c85820d9046c2f4e
 progress:
   total_phases: 19
   completed_phases: 0
   total_plans: 13
-  completed_plans: 4
+  completed_plans: 5
 ---
 
 # Project State
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 ## Current Position
 
 Phase: 1 (MV3/WXT Runtime + AntD Shells + Workspace) — EXECUTING
-Plan: 6 of 13
+Plan: 7 of 13
 Status: Ready to execute
 Last activity: 2026-09-21 — Phase 1 execution started
 
@@ -62,6 +62,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P02 | 24 | 3 tasks | 34 files |
 | Phase 01 P04 | 5 | 2 tasks | 2 files |
 | Phase 01 P05 | 17 | 3 tasks | 15 files |
+| Phase 01 P06 | 10 | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -91,6 +92,10 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 1]: Phase 1: readThemeValue() accepts the persist envelope (object or JSON string) and the legacy bare mode string and returns null for every other shape; startThemeOnChangedSync never casts. A rejected sync write is local-first with the pinned theme.syncFailed / theme.syncRetry toast via persistThemeNow() + flushPendingWrites().
 - [Phase 1]: Phase 1: ThemeMode moved to the pure ThemeConfig.ts (re-exported by ThemeStore) so ThemeToggle keeps no store/Chrome import; src/components/ThemeProvider.tsx is deleted and ThemeToggle stays unmounted and typed (mode/onChange) with map-resolved labels.
 - [Phase 1]: Phase 1: the np_store persisted projection no longer carries config.themeMode (D-15); merge re-seats the in-memory field from the defaults. Recorded on the inventory row for 01-09/01-11.
+- [Phase 1]: Phase 1: MessageType is the full Appendix E const object with MessageTypeValues derived from it; OPEN_SIDE_PANEL/OPEN_STANDALONE replace the prototype spellings and the five scaffold-local literals live in ScaffoldMessageType with strict bounded schemas, validated but unhandled (T-1-29).
+- [Phase 1]: Phase 1: payload validation is a strict per-type Zod parse in src/core/runtime/RuntimeEnvelopeValidation.ts, split out of RuntimeEnvelope.ts because declaring the schemas there put zod in the content bundle (4.07 kB -> 73.76 kB; after the split content.js is 4.88 kB and background.js carries zod).
+- [Phase 1]: Phase 1: the chrome.runtime.onMessage listener rejects any sender whose sender.id is not chrome.runtime.id (absent sender and absent id included) and validates the envelope before dispatch; BackgroundRouter registers only the canonical literals, the scaffold handlers are gone, and synchronous cold-start attachment is proven by test.
+- [Phase 1]: Phase 1: the envelope keeps operationId/timestamp (plan-verbatim) although Appendix C declares id/createdAt and an addon source; recorded in .planning/WINDOWS.md for the phase acceptance review.
 
 ### Pending Todos
 
@@ -115,6 +120,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-21T12:51:13.134Z
-Stopped at: Completed 01-05-PLAN.md (single-source theme contract: one np_theme writer, shape-detecting onChanged reader, pack-ready getAntdConfig, pinned local-first failure toast)
+Last session: 2026-09-21T13:09:28.250Z
+Stopped at: Completed 01-06-PLAN.md (canonical runtime envelope: Appendix E registry, strict Zod payload validation, sender-guarded dispatch, cold-start-proven router)
 Resume file: None
