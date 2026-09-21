@@ -1,13 +1,20 @@
-import { isEnvelope, type RuntimeEnvelope } from '../runtime/RuntimeEnvelope';
+import {
+  validateEnvelope,
+  type EnvelopeType,
+  type RuntimeEnvelope,
+} from '../runtime/RuntimeEnvelope';
 
 type MessageHandler<T = unknown> = (
   envelope: RuntimeEnvelope<T>,
   sender: chrome.runtime.MessageSender,
 ) => void | Promise<void>;
 
-const handlers = new Map<string, Set<MessageHandler>>();
+const handlers = new Map<EnvelopeType, Set<MessageHandler>>();
 
-export function register<T = unknown>(type: string, handler: MessageHandler<T>): () => void {
+export function register<T = unknown>(
+  type: EnvelopeType,
+  handler: MessageHandler<T>,
+): () => void {
   if (!handlers.has(type)) {
     handlers.set(type, new Set());
   }
@@ -21,13 +28,16 @@ export function register<T = unknown>(type: string, handler: MessageHandler<T>):
   };
 }
 
-export async function dispatch(
-  message: unknown,
+/**
+ * Dispatch an already-validated envelope to every handler registered for its
+ * type. Module-private: the listener validates once and calls this directly,
+ * while the exported `dispatch` validates for any other caller.
+ */
+async function dispatchEnvelope(
+  envelope: RuntimeEnvelope,
   sender: chrome.runtime.MessageSender,
-): Promise<unknown> {
-  if (!isEnvelope(message)) return;
-
-  const set = handlers.get(message.type);
+): Promise<void> {
+  const set = handlers.get(envelope.type);
   if (!set || set.size === 0) return;
 
   // Wrap each handler invocation in try/catch so a synchronous throw from
@@ -40,7 +50,7 @@ export async function dispatch(
   const results = await Promise.allSettled(
     Array.from(set).map((handler) => {
       try {
-        return handler(message as RuntimeEnvelope, sender);
+        return handler(envelope, sender);
       } catch (error) {
         return Promise.reject(error);
       }
@@ -57,12 +67,46 @@ export async function dispatch(
   }
 }
 
+/**
+ * Validate, then dispatch. An envelope that fails `validateEnvelope` — wrong
+ * type, missing field, extra field, wrong payload shape or oversized payload —
+ * is rejected before any handler runs, so no handler can observe unvalidated
+ * attacker-controlled data (T-1-26).
+ */
+export async function dispatch(
+  message: unknown,
+  sender: chrome.runtime.MessageSender,
+): Promise<unknown> {
+  const validation = validateEnvelope(message);
+  if (!validation.ok) return;
+  return dispatchEnvelope(validation.envelope, sender);
+}
+
 let initialized = false;
 
 export function init(): void {
   if (initialized) return;
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    dispatch(message, sender)
+    // T-1-25: `sender.id` is the only trustworthy identity field on this
+    // boundary — any context that can call sendMessage reaches this listener.
+    // A foreign id, an absent sender and an absent sender.id are all
+    // rejections; the envelope's declared `source` is never consulted as
+    // identity (T-1-27). Fail closed with no response.
+    if (
+      !sender ||
+      typeof sender.id !== 'string' ||
+      sender.id.length === 0 ||
+      sender.id !== chrome.runtime.id
+    ) {
+      return false;
+    }
+
+    // Reject an invalid envelope before dispatch so a malformed message is
+    // never half-applied and never answered as if it were accepted.
+    const validation = validateEnvelope(message);
+    if (!validation.ok) return false;
+
+    dispatchEnvelope(validation.envelope, sender)
       .then((result) => {
         sendResponse(result ?? { ok: true });
       })
