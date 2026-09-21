@@ -2,6 +2,12 @@
 # Phase 1b gate — fail if any Tailwind utility class string has crept back into
 # a className= JSX attribute. Spec §0.2 forbids tailwind/shadcn/@radix-ui/framer-motion.
 #
+# Scope: `src/` only. Under `srcDir: 'src'` every entrypoint lives under `src/`,
+# so the old repository-root entrypoint directory no longer exists — and a
+# missing grep target makes grep emit "No such file or directory" on stderr,
+# which `2>&1 | wc -l` counts, turning the gate into a false failure. The gate
+# must also never claim to cover a path it does not read.
+#
 # Allowed exceptions (legitimate non-Tailwind CSS classes defined in
 # src/index.css or imported CSS):
 #   - message-font-small / message-font-regular / message-font-large
@@ -17,10 +23,10 @@ set -e
 cd "$(dirname "$0")/.."
 
 LEAK_COUNT=$(grep -rE 'className="[^"]*\b(flex |grid |w-[0-9]|h-[0-9]|p-[0-9]|m-[0-9]|rounded-(none|sm|md|lg|xl|2xl|3xl|full)|text-(xs|sm|base|lg|xl|2xl)|bg-(white|black|zinc-|slate-|blue-|red-|emerald-|amber-)|border-(zinc-|slate-|blue-)|shadow-(xs|sm|md|lg|xl|2xl))' \
-  --include="*.tsx" src/ entrypoints/ 2>&1 | wc -l | tr -d ' ')
+  --include="*.tsx" src/ 2>&1 | wc -l | tr -d ' ')
 
 LEAK_DYNAMIC=$(grep -rEn 'className=\{[^}]*\b(flex |grid |w-[0-9]|h-[0-9]|p-[0-9]|m-[0-9]|rounded-(none|sm|md|lg|xl|2xl|3xl|full))' \
-  --include="*.tsx" src/ entrypoints/ 2>&1 | wc -l | tr -d ' ')
+  --include="*.tsx" src/ 2>&1 | wc -l | tr -d ' ')
 
 TOTAL=$((LEAK_COUNT + LEAK_DYNAMIC))
 
@@ -29,12 +35,12 @@ if [ "$TOTAL" -gt 0 ]; then
   echo ""
   echo "=== Static className strings ==="
   grep -rE 'className="[^"]*\b(flex |grid |w-[0-9]|h-[0-9]|p-[0-9]|m-[0-9]|rounded-(none|sm|md|lg|xl|2xl|3xl|full)|text-(xs|sm|base|lg|xl|2xl)|bg-(white|black|zinc-|slate-|blue-|red-|emerald-|amber-)|border-(zinc-|slate-|blue-)|shadow-(xs|sm|md|lg|xl|2xl))' \
-    --include="*.tsx" src/ entrypoints/ 2>&1
+    --include="*.tsx" src/ 2>&1
   echo ""
   echo "=== Dynamic className={...} strings ==="
   grep -rEn 'className=\{[^}]*\b(flex |grid |w-[0-9]|h-[0-9]|p-[0-9]|m-[0-9]|rounded-(none|sm|md|lg|xl|2xl|3xl|full))' \
-    --include="*.tsx" src/ entrypoints/ 2>&1
+    --include="*.tsx" src/ 2>&1
   exit 1
 fi
 
-echo "✓ verify-no-tailwind: 0 Tailwind className strings in src/ and entrypoints/"
+echo "✓ verify-no-tailwind: 0 Tailwind className strings in src/"

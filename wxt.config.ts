@@ -1,6 +1,13 @@
 import { defineConfig } from 'wxt';
 
 export default defineConfig({
+  // D-02: canonical WXT layout — every entrypoint lives under `src/`.
+  // `publicDir` and `modulesDir` resolve against the repository root, not
+  // `srcDir`, so `public/` needs no change here.
+  srcDir: 'src',
+  // D-03/RESEARCH Pattern 1: the React module is the sole React integration
+  // for WXT. A second React plugin in this file would double-transform JSX.
+  modules: ['@wxt-dev/module-react'],
   webExt: {
     disabled: true,
   },
@@ -51,13 +58,17 @@ export default defineConfig({
     side_panel: {
       default_path: 'sidepanel.html',
     },
-    options_ui: {
-      page: 'options.html',
-      open_in_tab: true,
-    },
-    options_page: 'options.html',
+    // `options_ui` / `options_page` are deliberately absent: an `options_ui`
+    // key silently forces `"open_in_tab": false` into the generated manifest,
+    // and §5.1 lists no options entrypoint. Options renders inside the
+    // Standalone shell at `standalone.html?page=options`.
     content_security_policy: {
-      extension_pages: "script-src 'self'; object-src 'self'; connect-src http://localhost:* https://generativelanguage.googleapis.com https://api.anthropic.com https://api.openai.com",
+      // Phase-1 CSP (OQ5 / H-6): no Phase-1 code path performs a network
+      // request (D-05 forbids provider calls; D-08 keeps secrets in component
+      // memory), so any reachable host is pure attack surface. `connect-src
+      // 'none'` is asserted by the manifest gate in plan `01-03`; a later
+      // phase widens this deliberately.
+      extension_pages: "script-src 'self'; object-src 'self'; connect-src 'none'",
     },
   },
 });

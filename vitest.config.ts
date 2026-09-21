@@ -9,7 +9,9 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, '.'),
+      // D-02: `@` resolves to `src/` in all three resolvers — WXT's generated
+      // alias, tsconfig `paths` and this alias.
+      '@': path.resolve(__dirname, 'src'),
     },
   },
 });

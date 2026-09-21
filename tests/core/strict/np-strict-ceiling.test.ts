@@ -10,13 +10,13 @@
  *
  * The single source of truth for the ceiling is `package.json.NP_STRICT_CEILING`
  * (M6 in the plan). This test reads that constant and fails if the live count
- * of NP-STRICT- markers across `src/` + `entrypoints/` exceeds it. Phase 2–3
+ * of NP-STRICT- markers across `src/` exceeds it. Phase 2–3
  * reduce the ceiling to 0 (STATE.md watch-item).
  *
  * Sweep semantics:
  *   - `find` argument is the regex to match.
- *   - We look for `NP-STRICT-` anywhere in `src/` and `entrypoints/` (the
- *     scope the strict sweep targeted).
+ *   - We look for `NP-STRICT-` anywhere in `src/` (the scope the strict sweep
+ *     targeted; under `srcDir: 'src'` the entrypoints are inside it).
  *   - Count is computed at test time, not cached, so PRs that add a new
  *     suppression without raising the ceiling fail the gate.
  */
@@ -46,21 +46,22 @@ function readCeiling(): number {
 
 function countMarkers(): number {
   // Use git grep to scope to tracked files (matches the plan's
-  // "src/ + entrypoints/" intent); fall back to a directory scan if git is
-  // not available.
+  // "src/" intent); fall back to a directory scan if git is not
+  // available. Under `srcDir: 'src'` every entrypoint lives under `src/`,
+  // so there is no root `entrypoints/` tree left to scan.
   let output = '';
   try {
     output = execSync(
-      'git grep -nE "NP-STRICT-" -- src entrypoints || true',
+      'git grep -nE "NP-STRICT-" -- src || true',
       { cwd: REPO_ROOT, encoding: 'utf-8' },
     );
   } catch {
     output = '';
   }
   if (!output) {
-    // Fallback: list src + entrypoints and grep each file individually.
+    // Fallback: list src and grep each file individually.
     output = execSync(
-      'find src entrypoints -type f \\( -name "*.ts" -o -name "*.tsx" \\) ' +
+      'find src -type f \\( -name "*.ts" -o -name "*.tsx" \\) ' +
         '| xargs grep -nE "NP-STRICT-" || true',
       { cwd: REPO_ROOT, encoding: 'utf-8' },
     );
@@ -82,7 +83,7 @@ describe('NP-STRICT ceiling (D-21)', () => {
     const offenders: string[] = [];
     try {
       const output = execSync(
-        'git grep -nE "NP-STRICT-" -- src entrypoints || true',
+        'git grep -nE "NP-STRICT-" -- src || true',
         { cwd: REPO_ROOT, encoding: 'utf-8' },
       );
       for (const line of output.split('\n').filter(Boolean)) {

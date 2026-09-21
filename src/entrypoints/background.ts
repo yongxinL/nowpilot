@@ -1,5 +1,5 @@
 import { defineBackground } from 'wxt/utils/define-background';
-import * as BackgroundRouter from '../src/core/messaging/BackgroundRouter';
+import * as BackgroundRouter from '../core/messaging/BackgroundRouter';
 
 export default defineBackground({
   type: 'module',

@@ -174,10 +174,7 @@ const AppShell: React.FC = () => {
 
       <Content style={{ height: 'calc(100vh - 48px)', overflow: 'hidden', position: 'relative' }}>
         {activeView === 'workspace' && (
-          <StandaloneShell
-            onOpenOptions={() => setActiveView('options')}
-            onOpenSidepanel={() => setActiveView('sidepanel')}
-          />
+          <StandaloneShell onOpenOptions={() => setActiveView('options')} />
         )}
         {activeView === 'sidepanel' && (
           <div

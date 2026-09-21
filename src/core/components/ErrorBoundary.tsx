@@ -11,6 +11,18 @@ interface ErrorBoundaryState {
   error: Error | null;
 }
 
+/**
+ * Surface render-failure boundary (§17.4 / UI-SPEC "error | Shell render
+ * failure"). Mounted at each surface root inside `AntdApp`, so a render
+ * failure replaces the shell with an explicit, actionable fallback instead of
+ * a blank panel. Context-free by design: the fallback must render even when
+ * every provider below it failed.
+ *
+ * Copy is resolved through `t()` from the pinned Phase-1 keys
+ * `shell.errorTitle` / `shell.errorBody` / `shell.errorReload` — never AntD's
+ * locale defaults, which are unreachable because the strings are set
+ * explicitly here.
+ */
 export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
@@ -22,6 +34,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   }
 
   handleReload = (): void => {
+    // Re-mount the subtree; the surface is re-rendered from scratch.
     this.setState({ hasError: false, error: null });
   };
 
@@ -30,11 +43,11 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
       return (
         <Result
           status="500"
-          title={t('common.error')}
-          subTitle={t('shell.error')}
+          title={t('shell.errorTitle')}
+          subTitle={t('shell.errorBody')}
           extra={
             <Button type="primary" onClick={this.handleReload}>
-              {t('common.retry')}
+              {t('shell.errorReload')}
             </Button>
           }
         />

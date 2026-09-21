@@ -19,14 +19,17 @@
     "useDefineForClassFields": false,
     "allowImportingTsExtensions": true,
     "types": ["chrome", "node", "vite/client"],
+    // D-02: `srcDir: 'src'`, so both aliases resolve into `src/`. WXT's
+    // generated `.wxt/tsconfig.json` alias map and `vitest.config.ts`
+    // `resolve.alias` must agree with this block — a mismatch silently
+    // resolves `@/core/...` to two different files.
     "paths": {
-      "@/*": ["./*"],
-      "~/*": ["./*"]
+      "@/*": ["./src/*"],
+      "~/*": ["./src/*"]
     }
   },
   "include": [
     "src/**/*",
-    "entrypoints/**/*",
     "tests/**/*",
     "vite.config.ts",
     "vitest.config.ts",

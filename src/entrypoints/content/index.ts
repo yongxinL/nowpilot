@@ -1,5 +1,5 @@
 import { defineContentScript } from 'wxt/utils/define-content-script';
-import { createEnvelope } from '../../src/core/runtime/RuntimeEnvelope';
+import { createEnvelope } from '../../core/runtime/RuntimeEnvelope';
 
 export default defineContentScript({
   matches: ['<all_urls>'],
@@ -8,10 +8,12 @@ export default defineContentScript({
   main() {
     // v0.1: extraction only — no UI rendering, no Shadow DOM.
 
-    // Note: the content script's adjacent `entrypoints/` and `src/` paths are
-    // and must stay adjacent (D-07a: entrypoints/ at repo root). WXT does not
-    // typecheck content scripts through tsconfig.json (matches are handled by
-    // the build), so a runtime-only import is fine here. Do NOT add a fetch(.)
+    // D-02: this file lives at `src/entrypoints/content/index.ts` so WXT's
+    // `content/index.[jt]s?(x)` glob discovers it — the prototype spelling
+    // `content/core.content.ts` matched no WXT content glob and was silently
+    // never built. WXT does not typecheck content scripts through
+    // tsconfig.json (matches are handled by the build), so a runtime-only
+    // import is fine here. Do NOT add a fetch(.)
     // call in this file (Pitfall P3 / Plan 01-05 isolation gate).
 
     if (!document.body) return;
