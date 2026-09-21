@@ -20,6 +20,9 @@ import { useThemeStore, cycleThemeMode, persistThemeNow } from '../../core/theme
 import { useThemeSync, showThemeSyncFailure } from '../../core/theme/ThemeSync';
 import { getAntdConfig, resolveThemePack } from '../../core/theme/antdConfig';
 import { registerStandaloneCommands } from '../../core/commands/registerWorkspaceCommands';
+import { KeymapRegistry } from '../../core/input/KeymapRegistry';
+import { t } from '../../core/i18n/strings';
+import { debugLog } from '../../core/log/debugLog';
 import { openOptions } from '../../core/workspace/WorkspaceRouter';
 import '../../index.css';
 
@@ -42,6 +45,23 @@ const handleOpenSidepanel = async () => {
   } catch {
     // side panel may not be available
   }
+};
+
+/**
+ * D-09: on the Standalone surface, `Open Standalone view` resolves to the
+ * idempotent focus-existing-tab path. This surface *is* the existing
+ * Standalone view, so the command focuses this tab and its window rather than
+ * starting a handoff that would re-point this very tab and then report a
+ * false failure.
+ */
+const focusStandaloneSurface = (): void => {
+  chrome.tabs.getCurrent((tab) => {
+    if (chrome.runtime.lastError || !tab?.id) return;
+    chrome.tabs.update(tab.id, { active: true });
+    if (tab.windowId !== undefined) {
+      chrome.windows.update(tab.windowId, { focused: true });
+    }
+  });
 };
 
 const StandaloneSurface: React.FC = () => {
@@ -68,26 +88,37 @@ const StandaloneSurface: React.FC = () => {
   };
 
   useEffect(() => {
-    const cleanup = registerStandaloneCommands({
+    const cleanupCommands = registerStandaloneCommands({
       focusSidePanel: handleOpenSidepanel,
+      openStandalone: focusStandaloneSurface,
       openOptions: handleOpenOptions,
       toggleTheme: () => {
         cycleThemeMode();
         void persistThemeNow().then((result) => {
           if (!result.ok) showThemeSyncFailure(antMessage, persistThemeNow);
         });
-        setPaletteOpen(false);
       },
       reloadExtension: () => {
         chrome.runtime.reload();
       },
     });
-    return cleanup;
+
+    // FLOW-8: the palette binding is the registry's. This surface registers no
+    // global keyboard listener of its own — `KeymapRegistry` owns the single
+    // document `keydown` listener and toggles the palette on the chord.
+    KeymapRegistry.register({
+      id: 'open-command-palette',
+      keys: 'Cmd+K',
+      description: 'Open the command palette',
+      handler: () => setPaletteOpen((isOpen) => !isOpen),
+    });
+
+    return () => {
+      cleanupCommands();
+      KeymapRegistry.unregister('open-command-palette');
+    };
   }, []);
 
-  // FLOW-8: no global keyboard listener is registered here. The palette
-  // binding moves to `KeymapRegistry` in plan `01-08`; until then the palette
-  // is mounted by the surface and has no ad-hoc `window` listener.
   return (
     <>
       <StandaloneShell onOpenOptions={handleOpenOptions} />

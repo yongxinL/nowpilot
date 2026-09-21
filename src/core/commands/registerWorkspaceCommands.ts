@@ -1,25 +1,73 @@
-import { CommandRegistry } from './CommandRegistry';
+import { CommandRegistry, type Command } from './CommandRegistry';
 
 /**
- * Side-Panel Flow-10 base command set (D-08, REQ-F05, REQ-F12).
+ * The Phase-1 command set (D-09 / D-10, UI-SPEC § Command palette copy).
  *
- * Exactly 4 commands in this fixed registration order:
- *   1. open-standalone-view — delegates to deps.openStandalone (which calls
- *                              WorkspaceRouter.openStandalone with toasts).
- *   2. open-options          — chrome.tabs.create/update chrome-extension://.../options.html.
- *   3. toggle-theme          — cycles Auto/Light/Dark via ThemeStore.setMode.
- *   4. reload-extension      — chrome.runtime.reload() (DESTRUCTIVE — explicit
- *                              only, no partial-match auto-run per REQ-F12
- *                              prohibition).
+ * Both surfaces register **shell/navigation commands only**; the palette
+ * renders whatever `CommandRegistry` holds, so a later phase registers chat,
+ * notes, tools or diagnostics commands with no palette change.
  *
- * Intentionally does NOT include `focus-side-panel` (the user is already
- * inside the Side Panel — that command is Standalone-only, see
- * registerStandaloneCommands below).
+ * Registration order is the palette's render order:
+ *   Side Panel : open-standalone-view, open-options, toggle-theme
+ *   Standalone : focus-side-panel, open-standalone-view, open-options,
+ *                toggle-theme
+ * followed — in a development build only — by the destructive
+ * `reload-extension`.
  *
- * The set is never empty (REQ-F12 edge), and CommandRegistry.register throws
- * on duplicate id (REQ-F12 edge) — remounting without first calling the
- * returned cleanup throws, which is the intended strict behavior.
+ * `reload-extension` is dev-only (D-10): it is registered behind
+ * `import.meta.env.DEV`, it is marked `destructive` so the palette demands an
+ * explicit confirmation, and it can never auto-run on a partial match. A
+ * production build never reaches it.
+ *
+ * The deps-injection shape and the per-id unregister list in the returned
+ * cleanup closure are the contract: a remount without calling the cleanup
+ * throws on the duplicate id, which is the intended strict behaviour.
  */
+
+const OPEN_STANDALONE_VIEW: Omit<Command, 'action'> = {
+  id: 'open-standalone-view',
+  name: 'Open Standalone view',
+  description: 'Open the Standalone view in a new tab, or focus the existing one',
+  category: 'navigation',
+};
+
+const OPEN_OPTIONS: Omit<Command, 'action'> = {
+  id: 'open-options',
+  name: 'Open Options',
+  description: 'Open NowPilot settings in the Standalone view',
+  category: 'navigation',
+};
+
+const TOGGLE_THEME: Omit<Command, 'action'> = {
+  id: 'toggle-theme',
+  name: 'Toggle theme',
+  description: 'Cycle the display mode: Auto, Light, Dark',
+  category: 'theme',
+};
+
+const FOCUS_SIDE_PANEL: Omit<Command, 'action'> = {
+  id: 'focus-side-panel',
+  name: 'Focus Side Panel',
+  description: 'Open the side panel for the current tab',
+  category: 'navigation',
+};
+
+const RELOAD_EXTENSION: Omit<Command, 'action'> = {
+  id: 'reload-extension',
+  name: 'Reload extension',
+  description: 'Reload the extension to apply development changes',
+  category: 'system',
+  destructive: true,
+};
+
+function command(definition: Omit<Command, 'action'>, action: () => void): Command {
+  return { ...definition, action };
+}
+
+/** The development-only gate for the destructive reload command (D-10). */
+function isDevelopmentBuild(): boolean {
+  return import.meta.env.DEV === true;
+}
 
 export interface SidepanelCommandDeps {
   openStandalone: () => void;
@@ -29,125 +77,52 @@ export interface SidepanelCommandDeps {
 }
 
 export function registerSidepanelCommands(deps: SidepanelCommandDeps): () => void {
-  CommandRegistry.register({
-    id: 'open-standalone-view',
-    name: 'Open Standalone view',
-    description: 'Open the Standalone view in a new tab (or focus the existing one)',
-    category: 'Navigation',
-    action: () => {
-      deps.openStandalone();
-    },
-  });
+  const ids: string[] = [];
+  const register = (entry: Command): void => {
+    CommandRegistry.register(entry);
+    ids.push(entry.id);
+  };
 
-  CommandRegistry.register({
-    id: 'open-options',
-    name: 'Open Options',
-    description: 'Open the options page in a new tab',
-    category: 'Navigation',
-    action: () => {
-      deps.openOptions();
-    },
-  });
-
-  CommandRegistry.register({
-    id: 'toggle-theme',
-    name: 'Toggle theme',
-    description: 'Cycle between auto, light, and dark theme modes',
-    category: 'Theme',
-    action: () => {
-      deps.toggleTheme();
-    },
-  });
-
-  CommandRegistry.register({
-    id: 'reload-extension',
-    name: 'Reload extension',
-    description: 'Reload the extension to apply changes',
-    category: 'Extension',
-    action: () => {
-      deps.reloadExtension();
-    },
-  });
+  register(command(OPEN_STANDALONE_VIEW, () => deps.openStandalone()));
+  register(command(OPEN_OPTIONS, () => deps.openOptions()));
+  register(command(TOGGLE_THEME, () => deps.toggleTheme()));
+  if (isDevelopmentBuild()) {
+    register(command(RELOAD_EXTENSION, () => deps.reloadExtension()));
+  }
 
   return () => {
-    CommandRegistry.unregister('open-standalone-view');
-    CommandRegistry.unregister('open-options');
-    CommandRegistry.unregister('toggle-theme');
-    CommandRegistry.unregister('reload-extension');
+    for (const id of ids) {
+      CommandRegistry.unregister(id);
+    }
   };
 }
 
-/**
- * Standalone-side Flow-10 base command set (D-08, REQ-F20).
- *
- * Exactly 4 commands in this fixed registration order:
- *   1. focus-side-panel — gesture-safe chrome.sidePanel.open (T-01-18)
- *   2. open-options      — chrome.tabs.create/update chrome-extension://.../options.html
- *   3. toggle-theme      — cycles Auto/Light/Dark via ThemeStore.setMode
- *   4. reload-extension  — chrome.runtime.reload() (DESTRUCTIVE — explicit only,
- *                          no partial-match auto-run per REQ-F20 prohibition)
- *
- * The set is never empty (REQ-F20 edge), and CommandRegistry.register throws
- * on duplicate id (REQ-F20 edge) — remounting without first calling the
- * returned cleanup throws, which is the intended strict behavior.
- *
- * The Side Panel command set (open-standalone-view, focus-side-panel,
- * toggle-theme, reload-extension, open-options) lands in Plan 01-07 via
- * the sibling `registerSidepanelCommands` exported here.
- */
-
 export interface StandaloneCommandDeps {
   focusSidePanel: () => void;
+  openStandalone: () => void;
   openOptions: () => void;
   toggleTheme: () => void;
   reloadExtension: () => void;
 }
 
 export function registerStandaloneCommands(deps: StandaloneCommandDeps): () => void {
-  CommandRegistry.register({
-    id: 'focus-side-panel',
-    name: 'Focus Side Panel',
-    description: 'Open the side panel for the current tab',
-    category: 'Navigation',
-    action: () => {
-      deps.focusSidePanel();
-    },
-  });
+  const ids: string[] = [];
+  const register = (entry: Command): void => {
+    CommandRegistry.register(entry);
+    ids.push(entry.id);
+  };
 
-  CommandRegistry.register({
-    id: 'open-options',
-    name: 'Open Options',
-    description: 'Open the options page in a new tab',
-    category: 'Navigation',
-    action: () => {
-      deps.openOptions();
-    },
-  });
-
-  CommandRegistry.register({
-    id: 'toggle-theme',
-    name: 'Toggle theme',
-    description: 'Cycle between auto, light, and dark theme modes',
-    category: 'Theme',
-    action: () => {
-      deps.toggleTheme();
-    },
-  });
-
-  CommandRegistry.register({
-    id: 'reload-extension',
-    name: 'Reload extension',
-    description: 'Reload the extension to apply changes',
-    category: 'Extension',
-    action: () => {
-      deps.reloadExtension();
-    },
-  });
+  register(command(FOCUS_SIDE_PANEL, () => deps.focusSidePanel()));
+  register(command(OPEN_STANDALONE_VIEW, () => deps.openStandalone()));
+  register(command(OPEN_OPTIONS, () => deps.openOptions()));
+  register(command(TOGGLE_THEME, () => deps.toggleTheme()));
+  if (isDevelopmentBuild()) {
+    register(command(RELOAD_EXTENSION, () => deps.reloadExtension()));
+  }
 
   return () => {
-    CommandRegistry.unregister('focus-side-panel');
-    CommandRegistry.unregister('open-options');
-    CommandRegistry.unregister('toggle-theme');
-    CommandRegistry.unregister('reload-extension');
+    for (const id of ids) {
+      CommandRegistry.unregister(id);
+    }
   };
 }

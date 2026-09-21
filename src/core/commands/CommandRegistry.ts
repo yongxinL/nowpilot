@@ -1,8 +1,22 @@
+/**
+ * The canonical Phase-1 palette categories. The palette resolves each value
+ * through `t('commands.category.<value>')`, so the registry — not the palette —
+ * is the single place a command (and its category) is added.
+ */
+export const COMMAND_CATEGORIES = ['navigation', 'theme', 'system'] as const;
+
+export type CommandCategory = (typeof COMMAND_CATEGORIES)[number];
+
 export interface Command {
   id: string;
   name: string;
   description: string;
   category: string;
+  /**
+   * A destructive command never runs on selection: the palette requires an
+   * explicit confirmation before its action is invoked (D-10).
+   */
+  destructive?: boolean;
   action: () => void;
 }
 

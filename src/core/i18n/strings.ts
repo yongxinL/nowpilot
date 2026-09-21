@@ -31,6 +31,10 @@ export const strings: Readonly<Record<string, string>> = Object.freeze({
   'workspace.handoffPending': 'Opening workspace in standalone view...',
   'workspace.handoffComplete': 'Workspace opened in standalone view.',
   'standalone.openFailed': 'Failed to open Standalone view',
+  // SA-10: the `Focus Side Panel` command's failure path (plan 01-08). The
+  // side-panel API is gesture-gated; when it is unavailable or refuses the
+  // call the Standalone surface says so instead of failing silently.
+  'sidepanel.openFailed': 'Failed to open the side panel',
   'standalone.minWidth':
     'This view is optimized for wider screens; open the side panel for narrow layouts.',
   'standalone.globalSearchPlaceholder': 'Search notes, tags, or content…',

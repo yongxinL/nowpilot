@@ -39,6 +39,7 @@ const CANONICAL_STRINGS: Record<string, string> = {
   'workspace.handoffPending': 'Opening workspace in standalone view...',
   'workspace.handoffComplete': 'Workspace opened in standalone view.',
   'standalone.openFailed': 'Failed to open Standalone view',
+  'sidepanel.openFailed': 'Failed to open the side panel',
   'standalone.minWidth':
     'This view is optimized for wider screens; open the side panel for narrow layouts.',
   'standalone.globalSearchPlaceholder': 'Search notes, tags, or content…',

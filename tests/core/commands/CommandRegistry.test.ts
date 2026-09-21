@@ -7,7 +7,7 @@ describe('CommandRegistry', () => {
     id: 'test-1',
     name: 'Test Command',
     description: 'A test command description',
-    category: 'System',
+    category: 'system',
     action: () => {},
     ...overrides,
   });
@@ -30,7 +30,7 @@ describe('CommandRegistry', () => {
       expect(result?.id).toBe('test-1');
       expect(result?.name).toBe('Test Command');
       expect(result?.description).toBe('A test command description');
-      expect(result?.category).toBe('System');
+      expect(result?.category).toBe('system');
     });
 
     it('get("unknown") returns undefined', () => {
@@ -135,6 +135,43 @@ describe('CommandRegistry', () => {
     it('getAll() returns empty array when no commands registered', () => {
       const all = CommandRegistry.getAll();
       expect(all).toEqual([]);
+    });
+  });
+
+  /**
+   * D-09: the palette renders whatever `CommandRegistry` holds. A later phase
+   * (chat, notes, tools, diagnostics) registers its commands here and they
+   * appear with no palette change — so the registry, not the palette, is the
+   * single place a command is added.
+   */
+  describe('palette-renders-registry contract', () => {
+    it('a newly registered command appears in getAll() and search() with no other change', () => {
+      CommandRegistry.register(
+        createCmd({
+          id: 'chat-history',
+          name: 'Chat history',
+          description: 'Open the chat history',
+          category: 'navigation',
+        }),
+      );
+
+      expect(CommandRegistry.getAll().map((c) => c.id)).toContain('chat-history');
+      expect(CommandRegistry.search('history').map((c) => c.id)).toEqual(['chat-history']);
+    });
+
+    it('carries the optional destructive marker without requiring it', () => {
+      CommandRegistry.register(createCmd({ id: 'safe' }));
+      CommandRegistry.register(createCmd({ id: 'danger', destructive: true }));
+
+      expect(CommandRegistry.get('safe')?.destructive).toBeUndefined();
+      expect(CommandRegistry.get('danger')?.destructive).toBe(true);
+    });
+
+    it('unregistering a later-phase command removes it from the registry the palette reads', () => {
+      CommandRegistry.register(createCmd({ id: 'chat-history' }));
+      CommandRegistry.unregister('chat-history');
+
+      expect(CommandRegistry.getAll().map((c) => c.id)).not.toContain('chat-history');
     });
   });
 });
