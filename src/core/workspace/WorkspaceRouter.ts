@@ -2,6 +2,7 @@ import { debugLog } from '../log/debugLog';
 import { useWorkspaceStore } from './WorkspaceStore';
 import {
   buildHandoffUrl,
+  createHandoffRequestId,
   parseHandoffUrl,
   type HandoffResult,
 } from './handoff/protocol';
@@ -28,67 +29,112 @@ export interface OpenStandaloneOptions {
   composerDraft?: string;
 }
 
+interface StandaloneTargetPlan {
+  /** The correlation id this attempt introduces and every message carries. */
+  requestId: string;
+  /** Focuses the existing tab (re-establishing it) or creates the one tab. */
+  open: () => Promise<void>;
+}
+
+function activateTab(
+  tabId: number,
+  windowId: number | undefined,
+  update: chrome.tabs.UpdateProperties,
+): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    chrome.tabs.update(tabId, update, () => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(String(chrome.runtime.lastError.message)));
+        return;
+      }
+      useWorkspaceStore.getState().setOpenedStandaloneTabId(tabId);
+      if (windowId === undefined) {
+        resolve();
+        return;
+      }
+      chrome.windows.update(windowId, { focused: true }, () => {
+        resolve();
+      });
+    });
+  });
+}
+
+function createStandaloneTab(url: string): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    chrome.tabs.create({ url }, (tab) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(String(chrome.runtime.lastError.message)));
+        return;
+      }
+      if (tab.id) {
+        useWorkspaceStore.getState().setOpenedStandaloneTabId(tab.id);
+      }
+      resolve();
+    });
+  });
+}
+
 /**
- * Resolve the Standalone tab: focus it when it exists, create exactly one when
- * it does not. Callback-style to match the file's established convention, with
- * every `chrome.runtime.lastError` branch preserved (01-PATTERNS.md); the
- * cross-window focus case covers re-opening from another browser window.
+ * Resolve the single Standalone surface for this handoff (D-12, D-13).
+ *
+ * The callback-style `chrome.tabs.query` → `chrome.tabs.update` /
+ * `chrome.windows.update` focus path and the `chrome.tabs.create` fallback are
+ * preserved verbatim, including every `chrome.runtime.lastError` branch, and
+ * the cross-window focus case covers re-opening from another browser window.
+ *
+ * Warm path: when a Standalone tab already exists it is focused and
+ * **re-pointed at this attempt's bootstrap** rather than left listening on a
+ * correlation id whose readiness announcement has already passed —
+ * `BroadcastBus` has no replay, so a stale tab can never answer a new request.
+ * The same tab is reused (never duplicated), and the target re-establishes
+ * itself under the fresh correlation id and announces readiness on load. This
+ * is `01-07`'s reading of D-13's warm-path rule "focus it, use the same
+ * protocol, verify workspace ID and supported schema before transferring": the
+ * verification happens on the target side, where the projection is matched
+ * against the bootstrap before anything is applied (T-1-30).
  *
  * The URL carries only the approved bootstrap identifiers, built by
  * `buildHandoffUrl` — never a draft, a credential or the workspace state.
  */
-function focusOrCreateStandaloneTab(args: {
-  requestId: string;
+function planStandaloneTarget(args: {
   workspaceId: string;
   conversationId: string | null;
   page: string | null;
-}): Promise<void> {
-  const url = chrome.runtime.getURL(
-    buildHandoffUrl({
-      workspaceId: args.workspaceId,
-      requestId: args.requestId,
-      conversationId: args.conversationId,
-      route: args.page,
-      sourceSurface: 'sidepanel',
-      targetSurface: 'standalone',
-    }),
-  );
-
-  return new Promise<void>((resolve, reject) => {
+}): Promise<StandaloneTargetPlan> {
+  return new Promise<StandaloneTargetPlan>((resolve, reject) => {
     chrome.tabs.query({ url: chrome.runtime.getURL('standalone.html*') }, (tabs) => {
       if (chrome.runtime.lastError) {
         reject(new Error(String(chrome.runtime.lastError.message)));
         return;
       }
-      if (tabs.length > 0 && tabs[0].id) {
-        const tabId = tabs[0].id;
-        const windowId = tabs[0].windowId;
-        chrome.tabs.update(tabId, { active: true }, () => {
-          if (chrome.runtime.lastError) {
-            reject(new Error(String(chrome.runtime.lastError.message)));
-            return;
-          }
-          useWorkspaceStore.getState().setOpenedStandaloneTabId(tabId);
-          if (windowId !== undefined) {
-            chrome.windows.update(windowId, { focused: true }, () => {
-              resolve();
-            });
-          } else {
-            resolve();
-          }
+
+      const requestId = createHandoffRequestId();
+      const url = chrome.runtime.getURL(
+        buildHandoffUrl({
+          workspaceId: args.workspaceId,
+          requestId,
+          conversationId: args.conversationId,
+          route: args.page,
+          sourceSurface: 'sidepanel',
+          targetSurface: 'standalone',
+        }),
+      );
+
+      const existing = tabs.length > 0 ? tabs[0] : undefined;
+      if (existing?.id) {
+        const tabId = existing.id;
+        const windowId = existing.windowId;
+        resolve({
+          requestId,
+          open: () => activateTab(tabId, windowId, { url, active: true }),
         });
-      } else {
-        chrome.tabs.create({ url }, (tab) => {
-          if (chrome.runtime.lastError) {
-            reject(new Error(String(chrome.runtime.lastError.message)));
-            return;
-          }
-          if (tab.id) {
-            useWorkspaceStore.getState().setOpenedStandaloneTabId(tab.id);
-          }
-          resolve();
-        });
+        return;
       }
+
+      resolve({
+        requestId,
+        open: () => createStandaloneTab(url),
+      });
     });
   });
 }
@@ -110,41 +156,47 @@ export function openStandalone(
   page?: string,
   opts?: OpenStandaloneOptions,
 ): void {
-  const source = createWorkspaceHandoffSource({
-    openTarget: ({ requestId, workspaceId: targetWorkspaceId, page: targetPage }) =>
-      focusOrCreateStandaloneTab({
-        requestId,
-        workspaceId: targetWorkspaceId,
-        // The bootstrap identifier only — never the draft, which travels
-        // through the validated ephemeral projection instead.
-        conversationId: conversationId ?? null,
-        page: targetPage,
-      }),
-    sourceSurface: 'sidepanel',
-    targetSurface: 'standalone',
-  });
+  planStandaloneTarget({
+    workspaceId,
+    conversationId: conversationId ?? null,
+    page: page ?? null,
+  }).then(
+    (plan) => {
+      const source = createWorkspaceHandoffSource({
+        requestId: plan.requestId,
+        openTarget: () => plan.open(),
+        sourceSurface: 'sidepanel',
+        targetSurface: 'standalone',
+      });
 
-  void source
-    .start({
-      workspaceId,
-      conversationId: conversationId ?? null,
-      page: page ?? null,
-      composerDraft: opts?.composerDraft ?? '',
-    })
-    .then(
-      (result) => {
-        opts?.onSettled?.(result);
-        source.dispose();
-      },
-      (error: unknown) => {
-        opts?.onSettled?.({
-          ok: false,
-          code: 'WORKSPACE_HANDOFF_FAILED',
-          error: error instanceof Error && error.message ? error.message : String(error),
-        });
-        source.dispose();
-      },
-    );
+      void source.start({
+        workspaceId,
+        conversationId: conversationId ?? null,
+        page: page ?? null,
+        composerDraft: opts?.composerDraft ?? '',
+      }).then(
+        (result) => {
+          opts?.onSettled?.(result);
+          source.dispose();
+        },
+        (error: unknown) => {
+          opts?.onSettled?.({
+            ok: false,
+            code: 'WORKSPACE_HANDOFF_FAILED',
+            error: error instanceof Error && error.message ? error.message : String(error),
+          });
+          source.dispose();
+        },
+      );
+    },
+    (error: unknown) => {
+      opts?.onSettled?.({
+        ok: false,
+        code: 'STANDALONE_OPEN_FAILED',
+        error: error instanceof Error && error.message ? error.message : String(error),
+      });
+    },
+  );
 }
 
 /**

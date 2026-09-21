@@ -231,6 +231,16 @@ export const handoffTransport: HandoffTransport = {
   },
 };
 
+/**
+ * A fresh correlation id for one handoff attempt. Request ids are never reused
+ * across attempts: a warm target's earlier readiness announcement cannot be
+ * replayed, so each attempt introduces its own identity and the target
+ * re-establishes readiness under it.
+ */
+export function createHandoffRequestId(): string {
+  return generateOperationId();
+}
+
 /* -------------------------------------------------------------------------- */
 /* URL bootstrap                                                              */
 /* -------------------------------------------------------------------------- */
@@ -451,7 +461,7 @@ function messageOf(error: unknown): string {
  */
 export function createHandoffInitiator(deps: HandoffInitiatorDeps): HandoffInitiator {
   const transport = deps.transport ?? handoffTransport;
-  const requestId = deps.requestId ?? generateOperationId();
+  const requestId = deps.requestId ?? createHandoffRequestId();
   const timeoutMs = deps.timeoutMs ?? HANDOFF_TIMEOUT_MS;
   const maxRetries = Math.max(0, deps.maxRetries ?? HANDOFF_MAX_RETRIES);
 

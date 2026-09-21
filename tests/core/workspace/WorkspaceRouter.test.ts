@@ -9,6 +9,7 @@ import {
   HANDOFF_SCHEMA_VERSION,
   HANDOFF_TIMEOUT_MS,
   HANDOFF_MAX_RETRIES,
+  buildHandoffUrl,
   type HandoffEnvelope,
 } from '../../../src/core/workspace/handoff/protocol';
 
@@ -111,7 +112,21 @@ function stubCreatePath(tabId = 99): void {
   );
 }
 
-function stubExistingTab(tab: chrome.tabs.Tab = { id: 123, windowId: 5 } as chrome.tabs.Tab): void {
+function standaloneTabUrl(params: { workspaceId?: string; requestId?: string } = {}): string {
+  return (
+    'chrome-extension://test-id/' +
+    buildHandoffUrl({
+      workspaceId: params.workspaceId ?? 'ws1',
+      requestId: params.requestId ?? 'req-existing',
+      sourceSurface: 'sidepanel',
+      targetSurface: 'standalone',
+    })
+  );
+}
+
+function stubExistingTab(
+  tab: chrome.tabs.Tab = { id: 123, windowId: 5, url: standaloneTabUrl() } as chrome.tabs.Tab,
+): void {
   chromeApi.tabs.query.mockImplementation((_q: unknown, cb: (tabs: chrome.tabs.Tab[]) => void) => cb([tab]));
   chromeApi.tabs.update.mockImplementation(
     (_id: number, _props: chrome.tabs.UpdateProperties, cb?: () => void) => cb?.(),
@@ -120,6 +135,11 @@ function stubExistingTab(tab: chrome.tabs.Tab = { id: 123, windowId: 5 } as chro
     (_id: number, _props: chrome.windows.UpdateInfo, cb?: (w: chrome.windows.Window) => void) =>
       cb?.({} as chrome.windows.Window),
   );
+}
+
+/** The request id the router minted for the tab it just focused or created. */
+function plannedRequestId(url: string): string {
+  return queryOf(url).get('requestId') ?? '';
 }
 
 describe('WorkspaceRouter', () => {
@@ -151,10 +171,11 @@ describe('WorkspaceRouter', () => {
       expect(queryArg.url).not.toContain('app.html');
     });
 
-    it('creates exactly one tab whose URL carries only the approved bootstrap identifiers', () => {
+    it('creates exactly one tab whose URL carries only the approved bootstrap identifiers', async () => {
       stubCreatePath();
 
       openStandalone('ws1', 'c1', 'chat');
+      await flush();
 
       expect(chromeApi.tabs.create).toHaveBeenCalledTimes(1);
       const params = queryOf(createdUrl());
@@ -173,33 +194,87 @@ describe('WorkspaceRouter', () => {
       expect(chromeApi.windows.update).not.toHaveBeenCalled();
     });
 
-    it('focuses the existing tab (no duplicate create) and cross-window focuses when found', () => {
+    it('focuses and re-establishes the existing tab (no duplicate create) with cross-window focus', async () => {
       stubExistingTab();
 
       openStandalone('ws1');
+      await flush();
 
-      expect(chromeApi.tabs.update).toHaveBeenCalledWith(123, { active: true }, expect.any(Function));
+      const focusUpdate = chromeApi.tabs.update.mock.calls[0]?.[1] as { url?: string; active?: boolean };
+      expect(focusUpdate.active).toBe(true);
+      expect(focusUpdate.url).toContain('standalone.html?');
+      expect(focusUpdate.url).toContain('workspaceId=ws1');
+      expect(focusUpdate.url).not.toContain('draft');
       expect(chromeApi.windows.update).toHaveBeenCalledWith(5, { focused: true }, expect.any(Function));
       expect(chromeApi.tabs.create).not.toHaveBeenCalled();
     });
 
-    it('records openedStandaloneTabId on the store', () => {
+    it('warm path: the re-established tab announces readiness under the new request id and the handshake completes', async () => {
+      stubExistingTab();
+      const onSettled = vi.fn();
+
+      openStandalone('ws1', 'c1', undefined, { onSettled });
+      await flush();
+
+      const requestId = plannedRequestId(chromeApi.tabs.update.mock.calls[0]?.[1]?.url as string);
+      expect(requestId).toBeTruthy();
+      expect(publishedOf('WORKSPACE_HANDOFF')).toHaveLength(0);
+
+      broadcast(ready(requestId));
+      await flush();
+      expect(publishedOf('WORKSPACE_HANDOFF')).toHaveLength(1);
+
+      broadcast(ack(requestId));
+      await flush();
+
+      expect(onSettled).toHaveBeenCalledTimes(1);
+      expect(onSettled.mock.calls[0]?.[0]).toEqual({ ok: true });
+      expect(chromeApi.tabs.create).not.toHaveBeenCalled();
+    });
+
+    it('reports STANDALONE_OPEN_FAILED when tabs.update surfaces chrome.runtime.lastError', async () => {
+      stubExistingTab();
+      chromeApi.tabs.update.mockImplementation(
+        (_id: number, _props: chrome.tabs.UpdateProperties, cb?: () => void) => {
+          chromeApi.runtime.lastError = { message: 'fake update error' };
+          cb?.();
+          chromeApi.runtime.lastError = undefined;
+        },
+      );
+      const onSettled = vi.fn();
+
+      openStandalone('ws1', undefined, undefined, { onSettled });
+      await flush();
+
+      expect(onSettled.mock.calls[0]?.[0]).toEqual({
+        ok: false,
+        code: 'STANDALONE_OPEN_FAILED',
+        error: 'fake update error',
+      });
+    });
+
+    it('records openedStandaloneTabId on the store', async () => {
       stubCreatePath(77);
 
       openStandalone('ws1');
+      await flush();
 
       const state = useWorkspaceStore.getState() as unknown as Record<string, unknown>;
       expect(state.openedStandaloneTabId).toBe(77);
     });
 
-    it('does not create a second Standalone tab for a repeated open', () => {
+    it('does not create a second Standalone tab for a repeated open', async () => {
       stubExistingTab();
 
       openStandalone('ws1');
+      await flush();
       openStandalone('ws1');
+      await flush();
 
       expect(chromeApi.tabs.create).not.toHaveBeenCalled();
+      // One focus + re-establish per open, on the same tab id both times.
       expect(chromeApi.tabs.update).toHaveBeenCalledTimes(2);
+      expect(chromeApi.tabs.update.mock.calls.every(([tabId]) => tabId === 123)).toBe(true);
     });
 
     it('reports STANDALONE_OPEN_FAILED when tabs.query surfaces chrome.runtime.lastError', async () => {
