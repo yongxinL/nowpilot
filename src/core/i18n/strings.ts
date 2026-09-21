@@ -75,6 +75,13 @@ export const strings: Readonly<Record<string, string>> = Object.freeze({
     'Paste your provider key. It stays in this screen and is not saved in this release.',
   'onboarding.step4Body': 'Check the connection before finishing setup.',
 
+  // Provider display names for the onboarding provider step (the option
+  // labels of the four canonical identifiers). Brand names, not paraphrases.
+  'provider.name.openai': 'OpenAI',
+  'provider.name.anthropic': 'Anthropic',
+  'provider.name.gemini': 'Google Gemini',
+  'provider.name.ollama': 'Ollama (local)',
+
   // Typed validation-failure labels — the `{error}` slot values. Each label
   // describes the FAILURE, never the credential that caused it (T-1-16).
   'provider.error.PROVIDER_AUTH': 'the provider rejected this key',

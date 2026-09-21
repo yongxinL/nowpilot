@@ -85,6 +85,12 @@ const CANONICAL_STRINGS: Record<string, string> = {
   'provider.error.NETWORK': 'the network is unavailable',
   'provider.error.PROVIDER_CHECK_FAILED': 'the connection could not be verified',
 
+  // Provider display names (onboarding provider step option labels)
+  'provider.name.openai': 'OpenAI',
+  'provider.name.anthropic': 'Anthropic',
+  'provider.name.gemini': 'Google Gemini',
+  'provider.name.ollama': 'Ollama (local)',
+
   // Accessible names
   'a11y.options': 'Options',
   'a11y.switchToFullChat': 'Switch to Full chat',
