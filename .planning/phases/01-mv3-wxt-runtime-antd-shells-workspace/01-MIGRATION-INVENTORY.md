@@ -189,11 +189,10 @@ Generated mirrors — never pattern origins, analogs or target paths, and never 
 | `.output/**` (including `.output/chrome-mv3/**`) | generated mirror — WXT build output, gitignored. |
 | `dist` (symlink to `.output/chrome-mv3`) | generated mirror — local convenience symlink, gitignored. |
 | `node_modules/**` | generated mirror — package-manager install tree, gitignored. |
-| `pnpm-lock.yaml` | generated mirror — lockfile produced by the package manager; classified with `package.json`, not enumerated as prototype infrastructure. |
-| `README.md`, `LICENSE` | out of the D-04 audit universe — not prototype infrastructure. |
-| `.planning/**`, `.opencode/**`, `.gsd/**` | planning and agent configuration, outside the conversion scope. |
 
-**Coverage-check record (freeze date 2026-09-21):** re-running `git ls-files src entrypoints tests scripts` returns 114 paths; every path is present as a `Current path` in the conversion map, and nothing outside the generated mirrors above is excluded. The only new-file targets in the map are paths under `src/**` and `tests/**` that the named plans create.
+**Paths outside the audit universe** — never enumerated as rows and not carried as exclusions: `README.md`, `LICENSE`, `pnpm-lock.yaml`, `.planning/**`, `.opencode/**`, `.gsd/**`. They are documentation, lockfile and planning or agent configuration rather than prototype runtime infrastructure.
+
+**Coverage-check record (freeze date 2026-09-21):** re-running `git ls-files src entrypoints tests scripts` returns 114 paths; every path is present as a `Current path` in the conversion map, and the only exclusions of the audit universe are the four generated mirrors above. The only new-file targets in the map are paths under `src/**` and `tests/**` that the named plans create.
 
 ---
 
