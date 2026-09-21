@@ -25,7 +25,7 @@ affects: [01-08, 01-09, 01-11, 01-12, 01-13, 02, 15]
 actuals:
   tokens: 34004    # chars/4 over the realized diff (git diff -U0 2f97bff..HEAD -- src tests = 136,016 chars)
   tasks: 3
-  commits: 8       # measured: git rev-list --count 2f97bff..HEAD (5 task commits + 1 doc reconciliation + the summary commit + the metadata commit)
+  commits: 9       # measured: git rev-list --count 2f97bff..HEAD (5 task commits + 3 documentation/ledger commits + the plan metadata commit)
   plan_head_before: 2f97bffa8b6f8487c866c859397af95c37f3881b
 
 tech-stack:
@@ -314,6 +314,8 @@ Each task was committed atomically; both TDD tasks carry their RED then GREEN co
 ## Known Stubs
 
 None — no placeholder value, empty collection or unwired data source was introduced. The later-phase fields (`activeProvider`, `selectedModel`, `pinnedTabs`, `currentPageContext`, `selectedNotes`, `activeAddonContext`, `activeSkillRun`) are deliberately inert with no producer, which D-11 mandates rather than stubs: `composerDraft` defaults to `''` because the Phase-1 composer has no draft to hand over (an absent draft is defined as an empty one), and the target controller's `apply` adapter writes the canonical store fields rather than mock data.
+
+**Broken-windows ledger:** two entries were appended for the phase acceptance review — `WINDOWS.md` id 5 (`unrun-verify`: the two-live-surface browser handoff check, coverage D8) and id 6 (`deviation`: the `WORKSPACE_HANDOFF` literal overlap with `01-06`'s Appendix E registry entry, Deviations 7). No stub, skipped test, TODO or FIXME was left behind.
 
 ## Threat Flags
 
