@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 15
+open_count: 16
 waived_count: 0
-fixed_count: 2
-total_count: 17
-last_updated: 2026-09-21T22:28:48.171Z
+fixed_count: 4
+total_count: 20
+last_updated: 2026-09-21T23:08:31.024Z
 ---
 
 # Broken Windows Ledger
@@ -25,13 +25,16 @@ last_updated: 2026-09-21T22:28:48.171Z
 | 8 | 01 | unrun-verify | src/entrypoints/standalone/main.tsx |  | Two-live-surface onboarding check not yet run: the store suite proves the completion write propagates through chrome.storage.onChanged without a reload and the flow suite proves the sentinel key stays in component memory, but the real observation — Standalone presenting the same flow when it is opened first, no redirection to the Side Panel, the first surface staying active while the second starts no competing flow, and completion in one surface closing the other's flow — needs two live Chrome surfaces at phase acceptance (01-09 Task 3). | open |  | 2026-09-21T14:29:50.187Z |  |
 | 9 | 01 | unrun-verify | src/components/standalone/StandaloneWritePage.tsx |  | Fixture/deferred page visual parity not yet browser-observed: the D-03 step-4 parity record compares the rendered shells against the UI-SPEC surface-contract metrics, but jsdom cannot observe layout, contrast, focus rings, container queries, scroll behaviour or the annotated references under .planning/design/references/. Plan 01-13 item 6 (real Chrome) is the browser-observed owner of every not-observable row. | open |  | 2026-09-21T15:05:48.830Z |  |
 | 10 | 01 | deviation | src/components/standalone/WorkspaceSidebar.tsx |  | Inventory change-control C-01-12-A: WorkspaceSidebar.tsx changed ADAPT -> REMOVE. Plan 01-02 had already shipped the canonical Sider inside StandaloneShell.tsx, so the file had zero importers and remounting it would have created the parallel implementation D-02 forbids. Recorded with all six change-control fields in 01-MIGRATION-INVENTORY.md; the phase acceptance review should confirm the deletion rather than a remount. | open |  | 2026-09-21T15:05:54.819Z |  |
-| 11 | 01 | deviation | src/components/common/ModelSelector.tsx |  | Inventory change-control C-01-12-B: ModelSelector removal timing corrected. The Write-page import site is replaced (read-only Auto workflow display) but the file itself cannot be deleted in 01-12 - its last importer is src/components/chat/ChatComposer.tsx, a 01-11 REMOVE row, so the deletion must land with that file's removal or the typecheck breaks. 01-11's teardown must take grep -rn 'ModelSelector' src/ to zero. | open |  | 2026-09-21T15:06:01.545Z |  |
-| 12 | 01 | deviation | src/components/options/OptionsPage.tsx |  | Declared hand-off for phase acceptance: 01-12 removed the connection test and its provider-service import and disabled every store-writing control (Save, provider Switch), but the preserved Options page still reads useExtensionStore for its non-secret display state and still renders credential input fields. Plan 01-11 Task 1 owns the credential-field strip, the store REPLACE and the model paths on this file; the verifier must confirm that an unreachable disabled control, not a live path, is what remains. | open |  | 2026-09-21T15:06:14.006Z |  |
+| 11 | 01 | deviation | src/components/common/ModelSelector.tsx |  | Inventory change-control C-01-12-B: ModelSelector removal timing corrected. The Write-page import site is replaced (read-only Auto workflow display) but the file itself cannot be deleted in 01-12 - its last importer is src/components/chat/ChatComposer.tsx, a 01-11 REMOVE row, so the deletion must land with that file's removal or the typecheck breaks. 01-11's teardown must take grep -rn 'ModelSelector' src/ to zero. | fixed |  | 2026-09-21T15:06:01.545Z | 2026-09-21T23:08:30.875Z |
+| 12 | 01 | deviation | src/components/options/OptionsPage.tsx |  | Declared hand-off for phase acceptance: 01-12 removed the connection test and its provider-service import and disabled every store-writing control (Save, provider Switch), but the preserved Options page still reads useExtensionStore for its non-secret display state and still renders credential input fields. Plan 01-11 Task 1 owns the credential-field strip, the store REPLACE and the model paths on this file; the verifier must confirm that an unreachable disabled control, not a live path, is what remains. | fixed |  | 2026-09-21T15:06:14.006Z | 2026-09-21T23:08:31.024Z |
 | 13 | 01 | unrun-verify | src/entrypoints/standalone/main.tsx |  | SA-10 real Chrome gesture evidence not yet run: the suite proves the open call is issued synchronously from the chrome.tabs.query callback with no awaited boundary before it, but chrome.sidePanel.open's gesture semantics are runtime-only (jsdom mocks the API). In a real Chrome MV3 build, open Standalone and run Focus Side Panel from the palette, then record the observed result; owned by the phase acceptance plan (01-VALIDATION manual row for SA-10). | open |  | 2026-09-21T21:18:51.278Z |  |
 | 14 | 01 | deviation | src/core/i18n/strings.ts |  | New canonical key added by 01-08: sidepanel.openFailed ('Failed to open the side panel'). The UI-SPEC Copywriting Contract pins no copy for the Focus Side Panel failure path, but the task requires a typed, logged, user-visible failure rather than a silent one. The key is additive, resolves through t(), and is pinned in tests/core/i18n/strings.test.ts; the phase acceptance review should ratify the wording. | open |  | 2026-09-21T21:19:00.150Z |  |
 | 15 | 01 | unrun-verify | src/components/common/LegacyCredentialCleanupNotice.tsx |  | D-07 neutral notice not yet observed in a real Chrome session: the suite proves the pinned copy, the pinned Dismiss label as the only exit and the shown-once behaviour in jsdom, but whether the notice actually presents once in the built extension is operator evidence. Seed a legacy apiKey into chrome.storage.local.np_store, reload the extension, confirm the neutral notice appears once and is dismissible, the field is gone and no second reload shows it; owned by the 01-VALIDATION manual row for D-07 (plan 01-13 item 5). | open |  | 2026-09-21T22:28:40.648Z |  |
 | 16 | 01 | deviation | src/core/onboarding/onboardingStateStore.ts |  | 01-10 scope addition (Rule 2): the plan's Task 3 acceptance criteria require the neutral notice to render and its shown-state to live on the onboarding record, but neither the record field, the notice component, nor the two surface-root mounts appear in the plan's files_modified list. Added: legacyCleanupNoticeShown on the onboarding record (schema v2 with a v1 upgrader so a defaulted field never re-presents a completed flow), src/components/common/LegacyCredentialCleanupNotice.tsx, and the mounts in both surface roots. The phase acceptance review should ratify the scope and the record-shape change. | open |  | 2026-09-21T22:28:48.126Z |  |
 | 17 | 01 | deviation | src/core/storage/legacyCredentialCleanup.ts |  | 01-10 instrument correction: the plan's Task 2 derived-value probe is syntactically invalid as written (its '\\.slice(0,' pattern reaches new RegExp with an unescaped '(' and throws SyntaxError before printing anything), so its fails_when condition can never be satisfied by the literal command. The corrected probe reads substring presence for the same seven tokens and prints ABSENT on the committed module; the verifier should not read the plan's literal command failure as a derived-value path. | open |  | 2026-09-21T22:28:48.171Z |  |
+| 18 | 01 | deviation | src/types/index.ts |  | 01-11 scope addition (Rule 2): beyond the plan's enumerated deletions, the prototype's WorkflowId/WorkflowDefinition types and ProviderConfig.selectedWorkflow/workflowModelMapping fields were deleted with their last consumers (WorkflowSelector, ChatComposer) so the persisted provider shape carries no model-identifier mapping. The row's REPLACE classification and target path are unchanged; the phase acceptance review should ratify the wider trim. | open |  | 2026-09-21T23:08:30.367Z |  |
+| 19 | 01 | deviation | package.json |  | 01-11 dependency judgement on the plan's conditional: @vitejs/plugin-react is removed (only vite.config.ts imported it; @wxt-dev/module-react supplies it transitively) but the top-level vite devDependency is RETAINED because vite/client is referenced by tsconfig types and src/vite-env.d.ts and vite is a peer of wxt/vitest — removing it would break the typecheck. pnpm-lock.yaml updated with pnpm install --lockfile-only; --frozen-lockfile passes. motion is retained (unreferenced by src/, permitted by the 01-13 gate). | open |  | 2026-09-21T23:08:30.539Z |  |
+| 20 | 01 | deviation | src/main.tsx |  | 01-11 instrument/blocking fixes required by the plan's own gates: (a) the doomed dev shell's SidepanelChat import was replaced by the canonical SidePanelShell in Task 2 so npx tsc --noEmit stayed clean while the prototype hosts were deleted; (b) tests/components/pages/options-page.test.tsx and tests/components/LegacyCredentialCleanupNotice.test.tsx had to stop naming the removed export and the deleted suite, because the plan's teardown grep over src/ and tests/ reads those literal names and would otherwise fail on the suites that prove the teardown. | open |  | 2026-09-21T23:08:30.704Z |  |
 
 ````json
 [
@@ -172,10 +175,10 @@ last_updated: 2026-09-21T22:28:48.171Z
     "file": "src/components/common/ModelSelector.tsx",
     "line": null,
     "description": "Inventory change-control C-01-12-B: ModelSelector removal timing corrected. The Write-page import site is replaced (read-only Auto workflow display) but the file itself cannot be deleted in 01-12 - its last importer is src/components/chat/ChatComposer.tsx, a 01-11 REMOVE row, so the deletion must land with that file's removal or the typecheck breaks. 01-11's teardown must take grep -rn 'ModelSelector' src/ to zero.",
-    "status": "open",
+    "status": "fixed",
     "reason": "",
     "recorded_at": "2026-09-21T15:06:01.545Z",
-    "resolved_at": null,
+    "resolved_at": "2026-09-21T23:08:30.875Z",
     "milestone": "v0.2"
   },
   {
@@ -185,10 +188,10 @@ last_updated: 2026-09-21T22:28:48.171Z
     "file": "src/components/options/OptionsPage.tsx",
     "line": null,
     "description": "Declared hand-off for phase acceptance: 01-12 removed the connection test and its provider-service import and disabled every store-writing control (Save, provider Switch), but the preserved Options page still reads useExtensionStore for its non-secret display state and still renders credential input fields. Plan 01-11 Task 1 owns the credential-field strip, the store REPLACE and the model paths on this file; the verifier must confirm that an unreachable disabled control, not a live path, is what remains.",
-    "status": "open",
+    "status": "fixed",
     "reason": "",
     "recorded_at": "2026-09-21T15:06:14.006Z",
-    "resolved_at": null,
+    "resolved_at": "2026-09-21T23:08:31.024Z",
     "milestone": "v0.2"
   },
   {
@@ -253,6 +256,45 @@ last_updated: 2026-09-21T22:28:48.171Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-09-21T22:28:48.171Z",
+    "resolved_at": null,
+    "milestone": "v0.2"
+  },
+  {
+    "id": 18,
+    "kind": "deviation",
+    "phase": "01",
+    "file": "src/types/index.ts",
+    "line": null,
+    "description": "01-11 scope addition (Rule 2): beyond the plan's enumerated deletions, the prototype's WorkflowId/WorkflowDefinition types and ProviderConfig.selectedWorkflow/workflowModelMapping fields were deleted with their last consumers (WorkflowSelector, ChatComposer) so the persisted provider shape carries no model-identifier mapping. The row's REPLACE classification and target path are unchanged; the phase acceptance review should ratify the wider trim.",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-09-21T23:08:30.367Z",
+    "resolved_at": null,
+    "milestone": "v0.2"
+  },
+  {
+    "id": 19,
+    "kind": "deviation",
+    "phase": "01",
+    "file": "package.json",
+    "line": null,
+    "description": "01-11 dependency judgement on the plan's conditional: @vitejs/plugin-react is removed (only vite.config.ts imported it; @wxt-dev/module-react supplies it transitively) but the top-level vite devDependency is RETAINED because vite/client is referenced by tsconfig types and src/vite-env.d.ts and vite is a peer of wxt/vitest — removing it would break the typecheck. pnpm-lock.yaml updated with pnpm install --lockfile-only; --frozen-lockfile passes. motion is retained (unreferenced by src/, permitted by the 01-13 gate).",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-09-21T23:08:30.539Z",
+    "resolved_at": null,
+    "milestone": "v0.2"
+  },
+  {
+    "id": 20,
+    "kind": "deviation",
+    "phase": "01",
+    "file": "src/main.tsx",
+    "line": null,
+    "description": "01-11 instrument/blocking fixes required by the plan's own gates: (a) the doomed dev shell's SidepanelChat import was replaced by the canonical SidePanelShell in Task 2 so npx tsc --noEmit stayed clean while the prototype hosts were deleted; (b) tests/components/pages/options-page.test.tsx and tests/components/LegacyCredentialCleanupNotice.test.tsx had to stop naming the removed export and the deleted suite, because the plan's teardown grep over src/ and tests/ reads those literal names and would otherwise fail on the suites that prove the teardown.",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-09-21T23:08:30.704Z",
     "resolved_at": null,
     "milestone": "v0.2"
   }
