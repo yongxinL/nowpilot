@@ -4,16 +4,16 @@ milestone: v0.2
 current_phase: 1
 current_phase_name: MV3/WXT Runtime + AntD Shells + Workspace
 status: executing
-stopped_at: Completed 01-12-PLAN.md (fixture/deferred marker convention, deterministic page disposition, seven page suites, D-03 step-4 parity record)
-last_updated: "2026-09-21T15:09:22.048Z"
+stopped_at: Completed 01-03-PLAN.md (generated-manifest inspection gate, Option C content-script build exclusion, inventory decision record)
+last_updated: "2026-09-21T20:52:34.366Z"
 last_activity: 2026-09-21
 last_activity_desc: Phase 1 execution started
-state_head: 56325f65bb98a5986fd8e24758963d5bbf5130b0
+state_head: 17ed16d154d1f9a91594a40568cbd13153d0e6e1
 progress:
   total_phases: 19
   completed_phases: 0
   total_plans: 13
-  completed_plans: 8
+  completed_plans: 9
 ---
 
 # Project State
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 ## Current Position
 
 Phase: 1 (MV3/WXT Runtime + AntD Shells + Workspace) — EXECUTING
-Plan: 10 of 13
+Plan: 11 of 13
 Status: Ready to execute
 Last activity: 2026-09-21 — Phase 1 execution started
 
@@ -66,6 +66,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P07 | 18min | 3 tasks | 14 files |
 | Phase 01 P09 | 37 | 3 tasks | 18 files |
 | Phase 01 P12 | 31min | 3 tasks | 28 files |
+| Phase 01 P03 | 7 | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -114,6 +115,10 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 1]: WorkspaceSidebar.tsx took the remove disposition (ADAPT -> REMOVE, inventory change-control C-01-12-A): 01-02 had already shipped the canonical Sider inside StandaloneShell.tsx, so remounting the unmounted file would have created the parallel implementation D-02 forbids.
 - [Phase 1]: ModelSelector.tsx keeps REMOVE but its file deletion moves to 01-11 (change-control C-01-12-B): 01-12 replaced the Write-page import site with the read-only Auto workflow display, but the last importer is chat/ChatComposer.tsx, a 01-11 REMOVE row.
 - [Phase 1]: options/OptionsPage.tsx loses the real connection test and its provider-service import, and its Save and provider Switch are disabled and marked; the credential-field strip stays 01-11's declared work.
+- [Phase 1]: 01-03: Option C was applied by renaming the content entrypoint to a non-glob-matching path (src/entrypoints/content/core.content.ts) rather than a WXT build hook: the exclusion is structural, the manifest carries no content_scripts key, and the build emits no content-scripts/ artifact.
+- [Phase 1]: 01-03: the staged content script's declared matches was narrowed from the prototype's <all_urls> to the already-authorised ServiceNow host set, so the Phase 6 restore cannot silently widen host access; the manifest gate pins the declared array (case 10).
+- [Phase 1]: 01-03: the manifest gate pins the decision twice — case 9 asserts the content_scripts key's ABSENCE and case 10 the staged source's declared scope; the removal condition is Phase 6's rename back to index.ts plus the assertion flip in one change.
+- [Phase 1]: 01-03: the content-script row's Target canonical path stays src/entrypoints/content/index.ts; the Phase-1 staged path is recorded in the row's status note and in H-1, because the canonical intent is unchanged and only the Phase-1 realisation is excluded.
 
 ### Pending Todos
 
@@ -138,6 +143,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-21T15:09:22.024Z
-Stopped at: Completed 01-12-PLAN.md (fixture/deferred marker convention, deterministic page disposition, seven page suites, D-03 step-4 parity record)
+Last session: 2026-09-21T20:52:34.341Z
+Stopped at: Completed 01-03-PLAN.md (generated-manifest inspection gate, Option C content-script build exclusion, inventory decision record)
 Resume file: None
