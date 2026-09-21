@@ -1,7 +1,21 @@
 import { describe, it, expect, vi } from 'vitest';
-import { theme } from 'antd';
+import { theme, type MappingAlgorithm } from 'antd';
 import enUS from 'antd/locale/en_US';
-import { getAntdConfig } from '../../../src/core/theme/antdConfig';
+import { getAntdConfig, resolveSystem } from '../../../src/core/theme/antdConfig';
+import { getThemePack } from '../../../src/core/theme/ThemeConfig';
+
+/**
+ * `ThemeConfig['algorithm']` is typed `MappingAlgorithm | MappingAlgorithm[]`
+ * (v6 accepts both), while this contract requires the array form. Narrow it
+ * once here rather than casting at each assertion.
+ */
+function algorithms(cfg: ReturnType<typeof getAntdConfig>): MappingAlgorithm[] {
+  const value = cfg.theme.algorithm;
+  if (!Array.isArray(value)) {
+    throw new Error('getAntdConfig must compose `algorithm` as an array');
+  }
+  return value;
+}
 
 /**
  * Wave 0 suite for `getAntdConfig` — the single theme derivation point
@@ -30,33 +44,33 @@ describe('getAntdConfig — the single theme derivation point (APPR-04/APPR-05)'
     expect(typeof cfg).toBe('object');
     expect(cfg).not.toBeUndefined();
     expect(Array.isArray(cfg.theme.algorithm)).toBe(true);
-    expect(cfg.theme.algorithm).toHaveLength(1);
-    expect(cfg.theme.algorithm?.[0]).toBe(theme.defaultAlgorithm);
+    expect(algorithms(cfg)).toHaveLength(1);
+    expect(algorithms(cfg)[0]).toBe(theme.defaultAlgorithm);
   });
 
   it('returns [darkAlgorithm, compactAlgorithm] for dark + compact (compact is always second)', () => {
     const cfg = getAntdConfig({ mode: 'dark', pack: 'default', compact: true });
 
-    expect(cfg.theme.algorithm).toHaveLength(2);
-    expect(cfg.theme.algorithm?.[0]).toBe(theme.darkAlgorithm);
+    expect(algorithms(cfg)).toHaveLength(2);
+    expect(algorithms(cfg)[0]).toBe(theme.darkAlgorithm);
     // Identity, not a string name: the compact split must be AntD's own
     // algorithm instance so the provider merge order is unambiguous.
-    expect(cfg.theme.algorithm?.[1]).toBe(theme.compactAlgorithm);
+    expect(algorithms(cfg)[1]).toBe(theme.compactAlgorithm);
   });
 
   it('returns [defaultAlgorithm, compactAlgorithm] for light + compact', () => {
     const cfg = getAntdConfig({ mode: 'light', pack: 'default', compact: true });
 
-    expect(cfg.theme.algorithm).toHaveLength(2);
-    expect(cfg.theme.algorithm?.[0]).toBe(theme.defaultAlgorithm);
-    expect(cfg.theme.algorithm?.[1]).toBe(theme.compactAlgorithm);
+    expect(algorithms(cfg)).toHaveLength(2);
+    expect(algorithms(cfg)[0]).toBe(theme.defaultAlgorithm);
+    expect(algorithms(cfg)[1]).toBe(theme.compactAlgorithm);
   });
 
   it('omits compactAlgorithm for dark + default density', () => {
     const cfg = getAntdConfig({ mode: 'dark', pack: 'default', compact: false });
 
-    expect(cfg.theme.algorithm).toHaveLength(1);
-    expect(cfg.theme.algorithm).not.toContain(theme.compactAlgorithm);
+    expect(algorithms(cfg)).toHaveLength(1);
+    expect(algorithms(cfg)).not.toContain(theme.compactAlgorithm);
   });
 
   it("resolves 'auto' through the system preference and persists nothing", () => {
@@ -66,8 +80,8 @@ describe('getAntdConfig — the single theme derivation point (APPR-04/APPR-05)'
 
     const cfg = getAntdConfig({ mode: 'auto', pack: 'default', compact: false });
 
-    expect(cfg.theme.algorithm).toHaveLength(1);
-    expect(cfg.theme.algorithm?.[0]).toBe(theme.defaultAlgorithm);
+    expect(algorithms(cfg)).toHaveLength(1);
+    expect(algorithms(cfg)[0]).toBe(theme.defaultAlgorithm);
     // APPR-03: a derivation reads the mode; it never writes the single source.
     expect(syncSetSpy).not.toHaveBeenCalled();
     expect(localSetSpy).not.toHaveBeenCalled();
@@ -77,15 +91,15 @@ describe('getAntdConfig — the single theme derivation point (APPR-04/APPR-05)'
   });
 
   it('resolves an unknown pack id to the default pack instead of throwing', () => {
-    let cfg: ReturnType<typeof getAntdConfig> | undefined;
-    expect(() => {
-      cfg = getAntdConfig({ mode: 'dark', pack: 'not-a-pack' as never, compact: false });
-    }).not.toThrow();
+    expect(() =>
+      getAntdConfig({ mode: 'dark', pack: 'not-a-pack' as never, compact: false }),
+    ).not.toThrow();
 
-    expect(cfg).not.toBeUndefined();
-    expect(cfg?.theme.token).toBeDefined();
-    expect(cfg?.theme.components).toBeDefined();
-    expect(cfg?.theme.algorithm).toHaveLength(1);
+    const cfg = getAntdConfig({ mode: 'dark', pack: 'not-a-pack' as never, compact: false });
+    expect(cfg).toBeDefined();
+    expect(cfg.theme.token).toBeDefined();
+    expect(cfg.theme.components).toBeDefined();
+    expect(algorithms(cfg)).toHaveLength(1);
   });
 
   it("merges the claude-warm pack overlay over the seed tokens and stays complete", () => {
@@ -144,5 +158,40 @@ describe('getAntdConfig — the single theme derivation point (APPR-04/APPR-05)'
     expect(withClass.theme.token).toEqual(withoutClass.theme.token);
 
     document.documentElement.classList.remove('dark');
+  });
+
+  it('getThemePack stays total: an unknown id resolves to the default pack and never throws', () => {
+    expect(getThemePack('not-a-pack').id).toBe('default');
+    expect(getThemePack(undefined).id).toBe('default');
+    expect(getThemePack('').id).toBe('default');
+    expect(getThemePack('claude-warm').id).toBe('claude-warm');
+    expect(getThemePack('liquid-glass').id).toBe('liquid-glass');
+    expect(getThemePack('default').id).toBe('default');
+  });
+
+  it("resolveSystem() reads the media query and defaults to 'light' without a DOM preference", () => {
+    const original = window.matchMedia;
+
+    (window as { matchMedia: typeof window.matchMedia }).matchMedia = vi.fn(
+      () => ({ matches: true }) as unknown as MediaQueryList,
+    ) as unknown as typeof window.matchMedia;
+    expect(resolveSystem()).toBe('dark');
+
+    (window as { matchMedia: typeof window.matchMedia }).matchMedia = vi.fn(
+      () => ({ matches: false }) as unknown as MediaQueryList,
+    ) as unknown as typeof window.matchMedia;
+    expect(resolveSystem()).toBe('light');
+
+    (window as { matchMedia: typeof window.matchMedia }).matchMedia = original;
+  });
+
+  it('resolveSystem() is guarded for a non-DOM environment (service worker) and returns light', () => {
+    const originalWindow = globalThis.window;
+    vi.stubGlobal('window', undefined);
+    try {
+      expect(resolveSystem()).toBe('light');
+    } finally {
+      vi.stubGlobal('window', originalWindow);
+    }
   });
 });
