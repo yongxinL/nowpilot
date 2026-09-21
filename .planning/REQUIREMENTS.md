@@ -31,7 +31,7 @@ Requirements for the v0.2 release. Each maps to exactly one roadmap phase.
 - [ ] **SP-05**: Slash commands (P1) — /write, /ask, /research, etc. — §9.1
 - [ ] **SP-06**: Tab pinning (P1) — max 10 pinned — §9.1
 - [ ] **SP-07**: Selection → Ask AI (P0) — right-click context menu opens Side Panel with selection prefilled; assert in Phase 17 acceptance — §9.1
-- [ ] **SP-08**: Theme toggle (P1) — light/dark/auto via `chrome.storage.sync.np_theme` — §9.1, APPR-03
+- [x] **SP-08**: Theme toggle (P1) — light/dark/auto via `chrome.storage.sync.np_theme` — §9.1, APPR-03
 - [ ] **SP-09**: Cmd+K palette (P1) — includes "Open Standalone view" — §9.1
 - [ ] **SP-10**: Error toast + "Open Diagnostics" link (P1) — Diagnostics lives in Standalone → Options — §9.1
 
@@ -224,9 +224,9 @@ Requirements for the v0.2 release. Each maps to exactly one roadmap phase.
 
 - [ ] **APPR-01**: Theme controls live in Options → General → Appearance (Standalone only); Side Panel follows live — §17.1a
 - [ ] **APPR-02**: Single Segmented Light · Dark · Auto bound to ThemeMode; default Auto — §17.1a
-- [ ] **APPR-03**: Single source of truth `chrome.storage.sync.np_theme`; no `themeMode` on UserPreferences; `chrome.storage.onChanged` propagates to both surfaces — §17.1a
-- [ ] **APPR-04**: On change, each surface re-derives `getAntdConfig({ mode, pack, compact })`; real-time via antd v6 CSS variables, no remount — §17.1a
-- [ ] **APPR-05**: Density is not user-configurable in v0.2 (Side Panel compact; Standalone default) — §17.1a
+- [x] **APPR-03**: Single source of truth `chrome.storage.sync.np_theme`; no `themeMode` on UserPreferences; `chrome.storage.onChanged` propagates to both surfaces — §17.1a
+- [x] **APPR-04**: On change, each surface re-derives `getAntdConfig({ mode, pack, compact })`; real-time via antd v6 CSS variables, no remount — §17.1a
+- [x] **APPR-05**: Density is not user-configurable in v0.2 (Side Panel compact; Standalone default) — §17.1a
 - [ ] **APPR-06**: Theme pack selector Default · Liquid Glass · Claude Warm bound to `np_theme_pack`; orthogonal to mode; each pack passes WCAG AA in both modes — §17.1a
 - [ ] **NOTES-COL-01**: Four segmented toggles — Directory · Notes · Content · Inspector; Content (col 3) persistent/always-on — §17.2c
 - [ ] **NOTES-COL-02**: Inline collapse chevrons per collapsible column, synced with header toggles — §17.2c
@@ -317,7 +317,7 @@ Which phases cover which requirements. Each requirement maps to exactly one phas
 | SP-05 | Phase 15 | Pending |
 | SP-06 | Phase 17 | Pending |
 | SP-07 | Phase 17 | Pending |
-| SP-08 | Phase 1 | Pending |
+| SP-08 | Phase 1 | Complete |
 | SP-09 | Phase 1 | Pending |
 | SP-10 | Phase 11 | Pending |
 | SA-01 | Phase 15 | Pending |
@@ -462,9 +462,9 @@ Which phases cover which requirements. Each requirement maps to exactly one phas
 | RICH-P2 | Phase 15 | Pending |
 | APPR-01 | Phase 15 | Pending |
 | APPR-02 | Phase 15 | Pending |
-| APPR-03 | Phase 1 | Pending |
-| APPR-04 | Phase 1 | Pending |
-| APPR-05 | Phase 1 | Pending |
+| APPR-03 | Phase 1 | Complete |
+| APPR-04 | Phase 1 | Complete |
+| APPR-05 | Phase 1 | Complete |
 | APPR-06 | Phase 15 | Pending |
 | NOTES-COL-01 | Phase 15 | Pending |
 | NOTES-COL-02 | Phase 15 | Pending |

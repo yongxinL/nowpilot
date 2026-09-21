@@ -4,16 +4,16 @@ milestone: v0.2
 current_phase: 1
 current_phase_name: MV3/WXT Runtime + AntD Shells + Workspace
 status: executing
-stopped_at: Completed 01-04-PLAN.md (canonical Phase-1 string map + format(), 16-case copy-exactness gate)
-last_updated: "2026-09-21T12:24:31.220Z"
+stopped_at: "Completed 01-05-PLAN.md (single-source theme contract: one np_theme writer, shape-detecting onChanged reader, pack-ready getAntdConfig, pinned local-first failure toast)"
+last_updated: "2026-09-21T12:51:13.155Z"
 last_activity: 2026-09-21
 last_activity_desc: Phase 1 execution started
-state_head: 3a81a1c052e25e9ecb6de72bd74ab50507050a6a
+state_head: 6fb5e1267877f543f82dbbca5c4fa5e267bf18e0
 progress:
   total_phases: 19
   completed_phases: 0
   total_plans: 13
-  completed_plans: 3
+  completed_plans: 4
 ---
 
 # Project State
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 ## Current Position
 
 Phase: 1 (MV3/WXT Runtime + AntD Shells + Workspace) — EXECUTING
-Plan: 4 of 13
+Plan: 6 of 13
 Status: Ready to execute
 Last activity: 2026-09-21 — Phase 1 execution started
 
@@ -61,6 +61,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P01 | 10 | 3 tasks | 1 files |
 | Phase 01 P02 | 24 | 3 tasks | 34 files |
 | Phase 01 P04 | 5 | 2 tasks | 2 files |
+| Phase 01 P05 | 17 | 3 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -85,6 +86,11 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 1]: Phase 1: chat.error is one canonical key (Provider error. [Retry] [Switch Provider]) and chat.retry/chat.switchProvider are deleted; the suite proves deletion by asserting each retired key resolves to its own name.
 - [Phase 1]: Phase 1: a11y.closeDialog is asserted by explicit presence (t(key) !== key), not inequality, because the UI-SPEC pins Close — the same word AntD enUS ships; the three overrides that genuinely differ (OK, Cancel, Please select) are asserted as inequalities.
 - [Phase 1]: Phase 1: onboarding.failed and deferred.phaseBody carry {token} interpolation slots rather than the UI-SPEC's bracketed [error] form, because the same UI-SPEC defines [...] as an action label rendered as a link or button.
+- [Phase 1]: Phase 1: np_theme has exactly one writer — ThemeStore's persist envelope. applyThemeToSync (the bare-string second writer) and the BroadcastBus theme channel are deleted; chrome.storage.onChanged is the only propagation path and both surface roots install it through useThemeSync().
+- [Phase 1]: Phase 1: getAntdConfig is the only derivation point — pack overlays merge over the seed token blob through the total getThemePack(id), algorithm is always an array with compactAlgorithm second only when compact, and an unknown pack id resolves to default rather than returning a partial config (T-1-22).
+- [Phase 1]: Phase 1: readThemeValue() accepts the persist envelope (object or JSON string) and the legacy bare mode string and returns null for every other shape; startThemeOnChangedSync never casts. A rejected sync write is local-first with the pinned theme.syncFailed / theme.syncRetry toast via persistThemeNow() + flushPendingWrites().
+- [Phase 1]: Phase 1: ThemeMode moved to the pure ThemeConfig.ts (re-exported by ThemeStore) so ThemeToggle keeps no store/Chrome import; src/components/ThemeProvider.tsx is deleted and ThemeToggle stays unmounted and typed (mode/onChange) with map-resolved labels.
+- [Phase 1]: Phase 1: the np_store persisted projection no longer carries config.themeMode (D-15); merge re-seats the in-memory field from the defaults. Recorded on the inventory row for 01-09/01-11.
 
 ### Pending Todos
 
@@ -109,6 +115,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-21T12:24:31.198Z
-Stopped at: Completed 01-04-PLAN.md (canonical Phase-1 string map + format(), 16-case copy-exactness gate)
+Last session: 2026-09-21T12:51:13.134Z
+Stopped at: Completed 01-05-PLAN.md (single-source theme contract: one np_theme writer, shape-detecting onChanged reader, pack-ready getAntdConfig, pinned local-first failure toast)
 Resume file: None
