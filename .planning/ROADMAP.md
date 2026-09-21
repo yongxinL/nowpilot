@@ -48,7 +48,7 @@ NowPilot v0.2 ships as a Chrome MV3 extension built in 19 phases. The sequence i
   4. Background router registers listeners synchronously; RuntimeEnvelope fixtures parse; EventBus/WorkspaceStore/WorkspaceRouter/ThemeStore suites pass.
   5. `pnpm run verify:phase-1` passes and banned-import greps are zero (`innerHTML`/`dangerouslySetInnerHTML`; `tailwind`/`shadcn`/`@radix-ui`; `framer-motion`).
 
-**Plans**: 7/13 plans executed
+**Plans**: 8/13 plans executed
 Plans:
 **Wave 1**
 
@@ -71,7 +71,7 @@ Plans:
 
 - [ ] 01-08-PLAN.md — `KeymapRegistry` repair, Phase-1 command set, palette contract
 - [ ] 01-10-PLAN.md — Legacy plaintext credential cleanup (one-way; operator decision gate)
-- [ ] 01-12-PLAN.md — `DeferredNotice` + `data-np-backing` convention + per-page D-16 dispositions
+- [x] 01-12-PLAN.md — `DeferredNotice` + `data-np-backing` convention + per-page D-16 dispositions
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
@@ -353,7 +353,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. MV3/WXT Runtime + AntD Shells + Workspace | 7/13 | In Progress|  |
+| 1. MV3/WXT Runtime + AntD Shells + Workspace | 8/13 | In Progress|  |
 | 2. Storage, Security, WriteJournal, Workspace Persistence | 0/TBD | Not started | - |
 | 3. Cost-Effective AI Runtime (+ Persona seed) | 0/TBD | Not started | - |
 | 4. Agent Reliability and Evidence | 0/TBD | Not started | - |

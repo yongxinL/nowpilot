@@ -4,16 +4,16 @@ milestone: v0.2
 current_phase: 1
 current_phase_name: MV3/WXT Runtime + AntD Shells + Workspace
 status: executing
-stopped_at: Completed 01-09-PLAN.md (typed provider ports, deterministic fixtures, shared four-step onboarding flow, one np_onboarding record)
-last_updated: "2026-09-21T14:33:27.782Z"
+stopped_at: Completed 01-12-PLAN.md (fixture/deferred marker convention, deterministic page disposition, seven page suites, D-03 step-4 parity record)
+last_updated: "2026-09-21T15:09:22.048Z"
 last_activity: 2026-09-21
 last_activity_desc: Phase 1 execution started
-state_head: fb3c7f14d048d7ebfa227461a98980b283eca5c6
+state_head: 56325f65bb98a5986fd8e24758963d5bbf5130b0
 progress:
   total_phases: 19
   completed_phases: 0
   total_plans: 13
-  completed_plans: 7
+  completed_plans: 8
 ---
 
 # Project State
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 ## Current Position
 
 Phase: 1 (MV3/WXT Runtime + AntD Shells + Workspace) — EXECUTING
-Plan: 9 of 13
+Plan: 10 of 13
 Status: Ready to execute
 Last activity: 2026-09-21 — Phase 1 execution started
 
@@ -65,6 +65,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P06 | 10 | 2 tasks | 8 files |
 | Phase 01 P07 | 18min | 3 tasks | 14 files |
 | Phase 01 P09 | 37 | 3 tasks | 18 files |
+| Phase 01 P12 | 29min | 3 tasks | 28 files |
 
 ## Accumulated Context
 
@@ -109,6 +110,10 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 1]: 01-09: the completion record is np_onboarding with validationBacking: 'fixture' | 'provider' (not a boolean marker); writeOnboardingState re-migrates before merging so a skip cannot erase the selected provider, and the legacy boolean is absorbed and deleted.
 - [Phase 1]: 01-09: the surface gate (useOnboardingGate) was split out of onboardingStateStore.ts after measuring the service worker — with the hook in the store the background graph went 75,312 B -> 86,140 B; after the split it is 77,740 B (+2.4 kB) and the content script is unchanged at 4,875 B.
 - [Phase 1]: 01-09: the flow mounts in each entrypoint root (a modal over whichever surface the user opened), not in SidePanelRouter as plan 01-02's note reserved; the router's comment was corrected and the divergence recorded in the inventory.
+- [Phase 1]: The marker attribute belongs to the marked region, never to DeferredNotice: every data-np-backing occurrence in src/ is a literal on a region, so a double or accidental marker is structurally impossible and the repo-wide scan is the audit surface.
+- [Phase 1]: WorkspaceSidebar.tsx took the remove disposition (ADAPT -> REMOVE, inventory change-control C-01-12-A): 01-02 had already shipped the canonical Sider inside StandaloneShell.tsx, so remounting the unmounted file would have created the parallel implementation D-02 forbids.
+- [Phase 1]: ModelSelector.tsx keeps REMOVE but its file deletion moves to 01-11 (change-control C-01-12-B): 01-12 replaced the Write-page import site with the read-only Auto workflow display, but the last importer is chat/ChatComposer.tsx, a 01-11 REMOVE row.
+- [Phase 1]: options/OptionsPage.tsx loses the real connection test and its provider-service import, and its Save and provider Switch are disabled and marked; the credential-field strip stays 01-11's declared work.
 
 ### Pending Todos
 
@@ -133,6 +138,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-21T14:33:27.760Z
-Stopped at: Completed 01-09-PLAN.md (typed provider ports, deterministic fixtures, shared four-step onboarding flow, one np_onboarding record)
+Last session: 2026-09-21T15:09:22.024Z
+Stopped at: Completed 01-12-PLAN.md (fixture/deferred marker convention, deterministic page disposition, seven page suites, D-03 step-4 parity record)
 Resume file: None
