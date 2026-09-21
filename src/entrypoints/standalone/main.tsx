@@ -36,16 +36,71 @@ const handleOpenOptions = () => {
  */
 const onboardingValidationPort = createFixtureValidationPort('success');
 
-const handleOpenSidepanel = async () => {
-  try {
-    const win = await chrome.windows.getCurrent();
-    if (win?.id !== undefined) {
-      await chrome.sidePanel.open({ windowId: win.id });
-    }
-  } catch {
-    // side panel may not be available
+export type SidePanelOpenFailureCode =
+  | 'SIDE_PANEL_UNAVAILABLE'
+  | 'SIDE_PANEL_NO_ACTIVE_TAB'
+  | 'SIDE_PANEL_OPEN_FAILED';
+
+export interface SidePanelOpenFailure {
+  code: SidePanelOpenFailureCode;
+  error: string;
+}
+
+function reportSidePanelFailure(
+  onFailure: (failure: SidePanelOpenFailure) => void,
+  failure: SidePanelOpenFailure,
+): void {
+  debugLog(failure.code, failure.error);
+  onFailure(failure);
+}
+
+/**
+ * SA-10 / RESEARCH Pitfall 4 — `chrome.sidePanel.open()` is gesture-gated.
+ *
+ * The open call is issued as early as the gesture stack allows: the tab id
+ * arrives through the `chrome.tabs.query` callback, so **no `await` sits
+ * between the user gesture and `open()`**. The prototype awaited
+ * `chrome.windows.getCurrent()` first, which loses the gesture and makes the
+ * call fail intermittently with "may only be called in response to a user
+ * action".
+ *
+ * Every failure path is typed, logged with a `SCREAMING_SNAKE` code and handed
+ * to `onFailure` — an unavailable API or a rejected promise never surfaces as
+ * an unhandled rejection.
+ *
+ * A green jsdom test proves the ordering only; the real gesture stack is
+ * operator-observed Chrome evidence owned by the phase acceptance plan.
+ */
+export function openSidePanelForCurrentTab(
+  onFailure: (failure: SidePanelOpenFailure) => void = () => {},
+): void {
+  const sidePanel = chrome.sidePanel;
+  if (!sidePanel || typeof sidePanel.open !== 'function') {
+    reportSidePanelFailure(onFailure, {
+      code: 'SIDE_PANEL_UNAVAILABLE',
+      error: 'chrome.sidePanel.open is not available',
+    });
+    return;
   }
-};
+
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    const tabId = tabs[0]?.id;
+    if (tabId === undefined) {
+      reportSidePanelFailure(onFailure, {
+        code: 'SIDE_PANEL_NO_ACTIVE_TAB',
+        error: 'No active tab in the current window',
+      });
+      return;
+    }
+
+    void Promise.resolve(sidePanel.open({ tabId })).catch((error: unknown) => {
+      reportSidePanelFailure(onFailure, {
+        code: 'SIDE_PANEL_OPEN_FAILED',
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
+  });
+}
 
 /**
  * D-09: on the Standalone surface, `Open Standalone view` resolves to the
@@ -89,7 +144,11 @@ const StandaloneSurface: React.FC = () => {
 
   useEffect(() => {
     const cleanupCommands = registerStandaloneCommands({
-      focusSidePanel: handleOpenSidepanel,
+      focusSidePanel: () => {
+        openSidePanelForCurrentTab(() => {
+          antMessage.error({ content: t('sidepanel.openFailed'), duration: 4 });
+        });
+      },
       openStandalone: focusStandaloneSurface,
       openOptions: handleOpenOptions,
       toggleTheme: () => {

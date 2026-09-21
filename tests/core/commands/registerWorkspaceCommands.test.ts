@@ -10,6 +10,7 @@ import {
 } from '../../../src/core/commands/registerWorkspaceCommands';
 import { useThemeStore, cycleThemeMode } from '../../../src/core/theme/ThemeStore';
 import { t } from '../../../src/core/i18n/strings';
+import { openSidePanelForCurrentTab } from '../../../src/entrypoints/standalone/main';
 
 /**
  * D-09 / D-10 — the Phase-1 command set, and the dev-only destructive command.
@@ -252,3 +253,113 @@ describe('toggle-theme — one theme write path (D-15)', () => {
   });
 });
 
+describe('openSidePanelForCurrentTab — SA-10 gesture ordering (Pitfall 4)', () => {
+  type ChromeLike = {
+    sidePanel?: { open?: (options: { tabId: number }) => Promise<void> | void };
+    tabs?: {
+      query?: (
+        queryInfo: unknown,
+        callback: (tabs: Array<{ id?: number }>) => void,
+      ) => void;
+    };
+  };
+
+  const g = globalThis as unknown as { chrome: ChromeLike };
+  const originalSidePanel = g.chrome.sidePanel;
+  const originalTabs = g.chrome.tabs;
+
+  afterEach(() => {
+    if (originalSidePanel === undefined) delete g.chrome.sidePanel;
+    else g.chrome.sidePanel = originalSidePanel;
+    if (originalTabs === undefined) delete g.chrome.tabs;
+    else g.chrome.tabs = originalTabs;
+  });
+
+  function installQueryCallbackStyle(): {
+    open: ReturnType<typeof vi.fn>;
+    deliver: (tabs: Array<{ id?: number }>) => void;
+  } {
+    const open = vi.fn(() => Promise.resolve());
+    let callback: ((tabs: Array<{ id?: number }>) => void) | undefined;
+    g.chrome.sidePanel = { open };
+    g.chrome.tabs = {
+      query: (_queryInfo, cb) => {
+        callback = cb;
+      },
+    };
+    return {
+      open,
+      deliver: (tabs) => {
+        if (!callback) throw new Error('chrome.tabs.query was never called');
+        callback(tabs);
+      },
+    };
+  }
+
+  it('issues the tabId-variant open synchronously — no awaited boundary before the call', () => {
+    const { open, deliver } = installQueryCallbackStyle();
+    const failures: unknown[] = [];
+
+    openSidePanelForCurrentTab((failure) => failures.push(failure));
+    deliver([{ id: 42 }]);
+
+    // Synchronous assertions: the open call already happened, so nothing
+    // between the gesture and `open()` awaited a window lookup.
+    expect(open).toHaveBeenCalledWith({ tabId: 42 });
+    expect(failures).toEqual([]);
+  });
+
+  it('degrades an unavailable side-panel API to a typed, logged failure (never a rejection)', () => {
+    g.chrome.sidePanel = undefined;
+    g.chrome.tabs = { query: vi.fn() };
+    const failures: Array<{ code: string; error: string }> = [];
+
+    expect(() => openSidePanelForCurrentTab((failure) => failures.push(failure))).not.toThrow();
+
+    expect(failures).toHaveLength(1);
+    expect(failures[0].code).toBe('SIDE_PANEL_UNAVAILABLE');
+    expect(g.chrome.tabs.query).not.toHaveBeenCalled();
+  });
+
+  it('reports a missing active tab with its own typed code', () => {
+    const { open, deliver } = installQueryCallbackStyle();
+    const failures: Array<{ code: string }> = [];
+
+    openSidePanelForCurrentTab((failure) => failures.push(failure));
+    deliver([]);
+
+    expect(failures.map((failure) => failure.code)).toEqual(['SIDE_PANEL_NO_ACTIVE_TAB']);
+    expect(open).not.toHaveBeenCalled();
+  });
+
+  it('turns a rejected sidePanel.open promise into a typed failure, not an unhandled rejection', async () => {
+    const open = vi.fn(() => Promise.reject(new Error('gesture required')));
+    g.chrome.sidePanel = { open };
+    g.chrome.tabs = { query: (_q, cb) => cb([{ id: 7 }]) };
+    const failures: Array<{ code: string; error: string }> = [];
+
+    openSidePanelForCurrentTab((failure) => failures.push(failure));
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(open).toHaveBeenCalledWith({ tabId: 7 });
+    expect(failures.map((failure) => failure.code)).toEqual(['SIDE_PANEL_OPEN_FAILED']);
+    expect(failures[0].error).toContain('gesture required');
+  });
+
+  it('carries no await between the handler body and the open call (source scan)', () => {
+    const source = readFileSync(
+      join(process.cwd(), 'src', 'entrypoints', 'standalone', 'main.tsx'),
+      'utf8',
+    );
+    const start = source.indexOf('export function openSidePanelForCurrentTab');
+    expect(start).toBeGreaterThan(-1);
+
+    const body = source.slice(start);
+    const openIndex = body.indexOf('sidePanel.open(');
+    expect(openIndex).toBeGreaterThan(-1);
+    expect(body.slice(0, openIndex)).not.toMatch(/\bawait\b/);
+    // The prototype's awaited window lookup must not come back.
+    expect(source).not.toMatch(/await\s+chrome\.windows\.getCurrent/);
+  });
+});
