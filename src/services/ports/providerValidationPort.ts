@@ -35,6 +35,17 @@ export type ProviderValidationResult =
   | { ok: false; code: ProviderValidationErrorCode }
   | { ok: false; cancelled: true };
 
+/**
+ * The cancellation guard. A cancelled attempt is neither a success nor a typed
+ * failure, so callers must branch on this predicate rather than reading `code`
+ * from a union member that does not carry one.
+ */
+export function isValidationCancelled(
+  result: ProviderValidationResult,
+): result is { ok: false; cancelled: true } {
+  return !result.ok && 'cancelled' in result;
+}
+
 /** The validation input. The credential exists here and nowhere persisted (D-08). */
 export interface ProviderValidationInput {
   providerId: ProviderId;
