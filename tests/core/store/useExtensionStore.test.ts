@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { npStoreMigrate } from '../../../src/store/useExtensionStore';
+import { describe, it, expect, vi } from 'vitest';
+import { npStoreMigrate, useExtensionStore } from '../../../src/store/useExtensionStore';
+import { useThemeStore } from '../../../src/core/theme/ThemeStore';
 
 describe('useExtensionStore persist — D-22 version/migrate scaffold', () => {
   // D-22: persist config exposes version: 1. A v1 blob migrates as a no-op
@@ -74,5 +75,37 @@ describe('useExtensionStore persist — D-22 version/migrate scaffold', () => {
       .filter((line) => !line.trim().startsWith('*') && !line.trim().startsWith('//'))
       .join('\n');
     expect(codeOnly).not.toMatch(/\bDB_VERSION\b/);
+  });
+});
+
+describe('useExtensionStore persisted preference projection — D-15 (no second theme source)', () => {
+  // APPR-03 / D-15: `np_theme` is the single theme source. The persisted
+  // preference blob (`np_store`) must therefore carry no theme-mode field —
+  // persisted next to the theme store it would be a second source.
+  it('the persisted np_store projection carries no theme-mode field anywhere', () => {
+    const options = useExtensionStore.persist.getOptions();
+    const persisted = options.partialize?.(useExtensionStore.getState()) as unknown as
+      | Record<string, unknown>
+      | undefined;
+
+    expect(persisted).toBeDefined();
+    expect(JSON.stringify(persisted)).not.toContain('themeMode');
+  });
+
+  it('updateConfig({ themeMode }) writes no theme state and never calls ThemeStore.setMode', () => {
+    const syncSetSpy = vi.spyOn(chrome.storage.sync, 'set');
+    const setModeSpy = vi.spyOn(useThemeStore.getState(), 'setMode');
+    const before = useThemeStore.getState().mode;
+
+    useExtensionStore.getState().updateConfig({ themeMode: 'Dark' });
+
+    expect(setModeSpy).not.toHaveBeenCalled();
+    expect(useThemeStore.getState().mode).toBe(before);
+    expect(syncSetSpy).not.toHaveBeenCalledWith(
+      expect.objectContaining({ np_theme: expect.anything() }),
+    );
+
+    setModeSpy.mockRestore();
+    syncSetSpy.mockRestore();
   });
 });

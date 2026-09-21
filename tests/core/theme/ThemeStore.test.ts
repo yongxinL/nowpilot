@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { theme } from 'antd';
 import { useThemeStore, themeMigrate } from '../../../src/core/theme/ThemeStore';
 import { chromeStorageAdapter, syncStorageAdapter, flushPendingWrites, __test__ } from '../../../src/core/theme/chromeStorageAdapter';
+import { getAntdConfig } from '../../../src/core/theme/antdConfig';
 import { useExtensionStore } from '../../../src/store/useExtensionStore';
 
 describe('ThemeStore', () => {
@@ -211,6 +213,62 @@ describe('ThemeStore persist — D-10 storage key + version/migrate', () => {
   });
 });
 
+describe('ThemeStore — single writer and idempotent writes (D-15 / T-1-21)', () => {
+  beforeEach(() => {
+    const map = (globalThis as any).__chromeStorageMap;
+    if (map) map.clear();
+    vi.clearAllMocks();
+    __test__.resetPendingState();
+    useThemeStore.getState().setMode('auto');
+  });
+
+  it('writing the same mode twice produces one np_theme write and no second propagation', async () => {
+    const syncSetSpy = vi.spyOn(chrome.storage.sync, 'set');
+
+    useThemeStore.getState().setMode('light');
+    await flushPendingWrites();
+    useThemeStore.getState().setMode('light');
+    await flushPendingWrites();
+
+    const themeWrites = syncSetSpy.mock.calls.filter(([items]) => items && 'np_theme' in items);
+    expect(themeWrites).toHaveLength(1);
+    expect(useThemeStore.getState().mode).toBe('light');
+  });
+
+  it('stores one canonical representation under np_theme (the persist envelope, never a bare string)', async () => {
+    useThemeStore.getState().setMode('dark');
+    await flushPendingWrites();
+
+    const stored = (globalThis as any).__chromeStorageMap?.get('np_theme') as string | undefined;
+    expect(stored).toBeDefined();
+    const parsed = JSON.parse(stored as string) as { state?: { mode?: string }; version?: number };
+    expect(parsed.state?.mode).toBe('dark');
+    expect(parsed.version).toBe(1);
+  });
+
+  it('AntD config follows the store mode with the `.dark` class absent (H-3 / OQ2)', () => {
+    useThemeStore.getState().setMode('light');
+    document.documentElement.classList.remove('dark');
+    const lightCfg = getAntdConfig({
+      mode: useThemeStore.getState().mode,
+      pack: 'default',
+      compact: true,
+    });
+
+    useThemeStore.getState().setMode('dark');
+    // The class is deliberately removed: the AntD derivation must not read it.
+    document.documentElement.classList.remove('dark');
+    const darkCfg = getAntdConfig({
+      mode: useThemeStore.getState().mode,
+      pack: 'default',
+      compact: true,
+    });
+
+    expect(lightCfg.theme.algorithm).toEqual([theme.defaultAlgorithm, theme.compactAlgorithm]);
+    expect(darkCfg.theme.algorithm).toEqual([theme.darkAlgorithm, theme.compactAlgorithm]);
+  });
+});
+
 describe('useExtensionStore — D-10 delete duplicate theme bridge', () => {
   beforeEach(() => {
     const map = (globalThis as any).__chromeStorageMap;
@@ -224,7 +282,8 @@ describe('useExtensionStore — D-10 delete duplicate theme bridge', () => {
     const setModeSpy = vi.spyOn(useThemeStore.getState(), 'setMode');
     useExtensionStore.getState().updateConfig({ themeMode: 'Dark' });
     expect(setModeSpy).not.toHaveBeenCalled();
-    // And config.themeMode is still updated (the field stays — only the bridge is gone).
+    // And config.themeMode is still updated in memory (the field stays — only
+    // the bridge is gone, and D-15 keeps it out of the persisted blob).
     expect(useExtensionStore.getState().config.themeMode).toBe('Dark');
     // The active theme mode in ThemeStore is unchanged — D-10 single source of truth.
     expect(useThemeStore.getState().mode).toBe('auto');
