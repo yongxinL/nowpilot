@@ -3,6 +3,16 @@ import { createRoot } from 'react-dom/client';
 import { App as AntdApp } from 'antd';
 import { XProvider } from '@ant-design/x';
 import { StandaloneShell } from '../../components/standalone/StandaloneShell';
+import {
+  OnboardingFlow,
+  type OnboardingCompletionSelection,
+} from '../../components/onboarding/OnboardingFlow';
+import { createFixtureValidationPort } from '../../services/fixtures/providerValidationFixtures';
+import {
+  readOnboardingState,
+  writeOnboardingState,
+} from '../../core/onboarding/onboardingStateStore';
+import { useOnboardingGate } from '../../core/onboarding/useOnboardingGate';
 import { CommandPalette } from '../../components/common/CommandPalette';
 import { ErrorBoundary } from '../../core/components/ErrorBoundary';
 import { CommandRegistry } from '../../core/commands/CommandRegistry';
@@ -16,6 +26,12 @@ import '../../index.css';
 const handleOpenOptions = () => {
   openOptions();
 };
+
+/**
+ * Phase 1's validation port is the deterministic fixture adapter (D-05); Phase
+ * 3 swaps this one argument for the real implementation.
+ */
+const onboardingValidationPort = createFixtureValidationPort('success');
 
 const handleOpenSidepanel = async () => {
   try {
@@ -31,6 +47,25 @@ const handleOpenSidepanel = async () => {
 const StandaloneSurface: React.FC = () => {
   const { message: antMessage } = AntdApp.useApp();
   const [paletteOpen, setPaletteOpen] = useState(false);
+  // D-06: the Standalone surface presents the same flow when it is the surface
+  // the user opened — it is never redirected to the Side Panel.
+  const onboardingGate = useOnboardingGate();
+  const [onboardingDismissed, setOnboardingDismissed] = useState(false);
+
+  const handleOnboardingComplete = (selection: OnboardingCompletionSelection) => {
+    setOnboardingDismissed(true);
+    void writeOnboardingState({
+      uiComplete: true,
+      persona: selection.persona,
+      providerId: selection.providerId,
+      validationBacking: 'fixture',
+    });
+  };
+
+  const handleOnboardingSkip = () => {
+    setOnboardingDismissed(true);
+    void writeOnboardingState({ uiComplete: false });
+  };
 
   useEffect(() => {
     const cleanup = registerStandaloneCommands({
@@ -56,6 +91,18 @@ const StandaloneSurface: React.FC = () => {
   return (
     <>
       <StandaloneShell onOpenOptions={handleOpenOptions} />
+      {/* Same flow, same state machine, same copy — presented on the larger
+          canvas. The exit affordance is Skip, which returns to the shell. */}
+      {onboardingGate === 'present' && !onboardingDismissed && (
+        <OnboardingFlow
+          open
+          surface="standalone"
+          validationPort={onboardingValidationPort}
+          readOnboardingState={readOnboardingState}
+          onComplete={handleOnboardingComplete}
+          onSkip={handleOnboardingSkip}
+        />
+      )}
       <CommandPalette
         commands={CommandRegistry.getAll()}
         open={paletteOpen}

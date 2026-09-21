@@ -260,46 +260,85 @@ describe('onboarding completion record — cross-surface propagation', () => {
 });
 
 describe('onboarding completion record — no second source of truth', () => {
-  it('never reads or writes the legacy per-origin storage fallback flag', () => {
-    const offenders: string[] = [];
+  /**
+   * Strip `//` and block comments before scanning, so a provenance note naming
+   * the removed path cannot trip the gate (the same instrument correction plans
+   * `01-04`/`01-06` recorded).
+   */
+  const stripComments = (source: string): string =>
+    source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
 
+  const sourceFiles = (): { file: string; code: string }[] => {
+    const files: { file: string; code: string }[] = [];
     const walk = (dir: string) => {
       for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
         const full = path.join(dir, entry.name);
         if (entry.isDirectory()) {
           walk(full);
         } else if (/\.tsx?$/.test(entry.name)) {
-          const text = fs.readFileSync(full, 'utf8');
-          // The prototype fell back to `localStorage` when Chrome storage was
-          // absent; a per-origin copy of the completion flag is forbidden.
-          if (text.includes('onboardingComplete') && text.includes('localStorage')) {
-            offenders.push(path.relative(REPO_ROOT, full));
-          }
+          files.push({
+            file: path.relative(REPO_ROOT, full),
+            code: stripComments(fs.readFileSync(full, 'utf8')),
+          });
         }
       }
     };
     walk(path.join(REPO_ROOT, 'src'));
+    return files;
+  };
+
+  it('never reads or writes the legacy per-origin storage fallback flag', () => {
+    // The prototype fell back to `localStorage` when Chrome storage was absent;
+    // a per-origin copy of the completion flag is a second source of truth.
+    const fallbackRe =
+      /localStorage[\s\S]{0,120}(?:onboardingComplete|LEGACY_ONBOARDING_FLAG_KEY)|(?:onboardingComplete|LEGACY_ONBOARDING_FLAG_KEY)[\s\S]{0,120}localStorage/;
+
+    const offenders = sourceFiles()
+      .filter(({ code }) => fallbackRe.test(code))
+      .map(({ file }) => file);
 
     expect(offenders).toEqual([]);
   });
 
-  it('names the legacy key literal in exactly one module', () => {
-    const offenders: string[] = [];
-    const legacyLiteral = `'${LEGACY_ONBOARDING_FLAG_KEY}'`;
+  it('mounts the shared flow on both surfaces and never surface-to-surface', () => {
+    const roots = [
+      path.join('src', 'entrypoints', 'sidepanel', 'main.tsx'),
+      path.join('src', 'entrypoints', 'standalone', 'main.tsx'),
+    ];
 
-    const walk = (dir: string) => {
-      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-        const full = path.join(dir, entry.name);
-        if (entry.isDirectory()) {
-          walk(full);
-        } else if (/\.tsx?$/.test(entry.name) && !full.endsWith('onboardingStateStore.ts')) {
-          if (fs.readFileSync(full, 'utf8').includes(legacyLiteral)) {
-            offenders.push(path.relative(REPO_ROOT, full));
-          }
-        }
-      }
-    };
-    walk(path.join(REPO_ROOT, 'src'));
+    for (const root of roots) {
+      const code = stripComments(fs.readFileSync(path.join(REPO_ROOT, root), 'utf8'));
+      expect(code, `${root} must render the shared flow`).toContain('OnboardingFlow');
+      // The gate is the completion record — never a surface-specific copy.
+      expect(code, `${root} must gate on the completion record`).toContain('useOnboardingGate');
+      expect(code, `${root} must read the record through the store`).toContain(
+        'readOnboardingState',
+      );
+      // Neither surface reaches the other: each supplies its own adapters.
+      expect(code, `${root} must not import the other surface`).not.toMatch(
+        /from\s+'\.\.\/\.\.\/entrypoints\//,
+      );
+    }
+
+    // The shared module is one presentation: no second onboarding flow exists.
+    const flowModules = sourceFiles().filter(({ code }) =>
+      code.includes('OnboardingFlowProps'),
+    );
+    expect(flowModules.map(({ file }) => file)).toEqual([
+      path.join('src', 'components', 'onboarding', 'OnboardingFlow.tsx'),
+    ]);
+  });
+
+  it('names the new storage key in exactly one module', () => {
+    // One key, one owner: the record is read and written only by the store
+    // module, so no second writer can invent a parallel representation.
+    const offenders = sourceFiles()
+      .filter(
+        ({ file, code }) =>
+          file !== path.join('src', 'core', 'onboarding', 'onboardingStateStore.ts') &&
+          code.includes(ONBOARDING_STORAGE_KEY),
+      )
+      .map(({ file }) => file);
 
     expect(offenders).toEqual([]);
   });

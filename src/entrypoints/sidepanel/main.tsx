@@ -3,6 +3,16 @@ import { createRoot } from 'react-dom/client';
 import { App as AntdApp } from 'antd';
 import { XProvider } from '@ant-design/x';
 import { SidePanelRouter } from '../../components/sidepanel/SidePanelRouter';
+import {
+  OnboardingFlow,
+  type OnboardingCompletionSelection,
+} from '../../components/onboarding/OnboardingFlow';
+import { createFixtureValidationPort } from '../../services/fixtures/providerValidationFixtures';
+import {
+  readOnboardingState,
+  writeOnboardingState,
+} from '../../core/onboarding/onboardingStateStore';
+import { useOnboardingGate } from '../../core/onboarding/useOnboardingGate';
 import { CommandPalette } from '../../components/common/CommandPalette';
 import { ErrorBoundary } from '../../core/components/ErrorBoundary';
 import { CommandRegistry } from '../../core/commands/CommandRegistry';
@@ -19,9 +29,39 @@ const handleOpenOptions = () => {
   openOptions();
 };
 
+/**
+ * Phase 1's validation port is the deterministic fixture adapter (D-05): it
+ * performs no network request, and the flow discloses the fixture backing
+ * through its marked `deferred.reasonFixture` notice. Phase 3 swaps this one
+ * argument for the real implementation.
+ */
+const onboardingValidationPort = createFixtureValidationPort('success');
+
 const SidePanelSurface: React.FC = () => {
   const { message: antMessage } = AntdApp.useApp();
   const [paletteOpen, setPaletteOpen] = useState(false);
+  // D-06: the completion record gates the flow; the dismissal flag only closes
+  // this surface's presentation (nothing persisted).
+  const onboardingGate = useOnboardingGate();
+  const [onboardingDismissed, setOnboardingDismissed] = useState(false);
+
+  const handleOnboardingComplete = (selection: OnboardingCompletionSelection) => {
+    setOnboardingDismissed(true);
+    // Non-secret state only: the UI-complete flag, the persona and the
+    // provider identifier. The credential never leaves the flow.
+    void writeOnboardingState({
+      uiComplete: true,
+      persona: selection.persona,
+      providerId: selection.providerId,
+      validationBacking: 'fixture',
+    });
+  };
+
+  const handleOnboardingSkip = () => {
+    setOnboardingDismissed(true);
+    // An explicit incomplete state: the flow re-presents on the next open.
+    void writeOnboardingState({ uiComplete: false });
+  };
 
   const openStandaloneWithToasts = () => {
     antMessage.loading({ content: 'Opening standalone view…', key: 'open-standalone', duration: 0 });
@@ -78,6 +118,23 @@ const SidePanelSurface: React.FC = () => {
         onOpenStandalone={openStandaloneWithToasts}
         onOpenOptions={handleOpenOptions}
       />
+      {/* The shared flow presents in the surface the user actually opened
+          (D-06) — the Side Panel is never redirected, and no surface is opened
+          automatically. */}
+      {onboardingGate === 'present' && !onboardingDismissed && (
+        <OnboardingFlow
+          open
+          surface="sidepanel"
+          validationPort={onboardingValidationPort}
+          readOnboardingState={readOnboardingState}
+          onComplete={handleOnboardingComplete}
+          onSkip={handleOnboardingSkip}
+          onSwitchToFullSetup={() => {
+            setPaletteOpen(false);
+            openStandaloneWithToasts();
+          }}
+        />
+      )}
       <CommandPalette
         commands={CommandRegistry.getAll()}
         open={paletteOpen}

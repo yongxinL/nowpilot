@@ -1,6 +1,7 @@
 import { defineBackground } from 'wxt/utils/define-background';
 import * as BackgroundRouter from '../core/messaging/BackgroundRouter';
 import { deleteLegacyWorkspaceBlob } from '../core/workspace/legacyWorkspaceBlob';
+import { migrateLegacyOnboardingFlag } from '../core/onboarding/onboardingStateStore';
 
 export default defineBackground({
   type: 'module',
@@ -14,11 +15,15 @@ export default defineBackground({
     //       symbol (internally calls MessageBus.init() + pre-registers the
     //       CONTENT_SCRIPT_READY / SPA_NAVIGATION advisory handlers);
     //   (2) chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
-    //   (3) the onboardingComplete flag init inside chrome.runtime.onInstalled.
+    //   (3) the onboarding completion record migration on install and startup.
     //
     // Plus one removal-only step, not a registration (D-14): the stale
     // prototype workspace blob is deleted on every wake so Phase 2 does not
     // inherit a zombie key. It reads nothing back and writes nothing.
+    //
+    // No install or startup path opens a surface (D-06): nothing here creates
+    // a tab or opens the panel. Opening the Side Panel or a Standalone tab
+    // results only from an approved user action.
     //
     // What this file does NOT yet register (later-phase TODOs):
     //   - Phase 2+:  WorkspaceStore.isPrimaryWriter() election (CAS + heartbeat).
@@ -45,15 +50,16 @@ export default defineBackground({
 
     chrome.runtime.onStartup.addListener(() => {
       chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
+      // (3) Absorb an installed prototype's onboarding flag on startup.
+      void migrateLegacyOnboardingFlag();
     });
 
-    // (3) Onboarding flag init — kept verbatim from the scaffold.
-    chrome.runtime.onInstalled.addListener((details) => {
-      if (details.reason === chrome.runtime.OnInstalledReason.INSTALL) {
-        chrome.storage.local.set({ onboardingComplete: false });
-      } else if (details.reason === chrome.runtime.OnInstalledReason.UPDATE) {
-        chrome.storage.local.set({ onboardingComplete: true });
-      }
+    // (3) Onboarding record migration — the prototype seeded a bare legacy
+    // boolean here; the canonical completion record (D-06) is now the single
+    // source, so install and update only run the idempotent migration that
+    // absorbs the legacy value and removes its key.
+    chrome.runtime.onInstalled.addListener(() => {
+      void migrateLegacyOnboardingFlag();
       chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
     });
   },

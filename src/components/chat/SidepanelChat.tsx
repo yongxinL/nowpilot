@@ -158,6 +158,10 @@ export const SidepanelChat: React.FC<SidepanelChatProps> = ({
   };
 
   useEffect(() => {
+    // Plan `01-09`: the per-origin `localStorage` fallback for the onboarding
+    // flag is removed from the extension build — a per-origin copy of the
+    // completion flag is a second source of truth. This host is removed in
+    // `01-11`; until then it reads only the legacy Chrome-storage boolean.
     if (typeof chrome !== 'undefined' && chrome?.storage?.local) {
       chrome.storage.local.get('onboardingComplete').then((result) => {
         const isComplete = result.onboardingComplete === true;
@@ -166,21 +170,12 @@ export const SidepanelChat: React.FC<SidepanelChatProps> = ({
           setOnboardingOpen(true);
         }
       });
-    } else {
-      const val = localStorage.getItem('onboardingComplete');
-      const isComplete = val === 'true';
-      setOnboardingComplete(isComplete);
-      if (!isComplete) {
-        setOnboardingOpen(true);
-      }
     }
   }, []);
 
   const handleOnboardingComplete = () => {
     if (typeof chrome !== 'undefined' && chrome?.storage?.local) {
       chrome.storage.local.set({ onboardingComplete: true });
-    } else {
-      localStorage.setItem('onboardingComplete', 'true');
     }
     setOnboardingComplete(true);
     setOnboardingOpen(false);
