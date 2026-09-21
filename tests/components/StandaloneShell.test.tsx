@@ -7,6 +7,7 @@ import {
   type StandaloneShellProps,
 } from '../../src/components/standalone/StandaloneShell';
 import { ErrorBoundary } from '../../src/core/components/ErrorBoundary';
+import { AddonRegistry } from '../../src/core/registry/Registry';
 import { t } from '../../src/core/i18n/strings';
 
 /**
@@ -36,6 +37,8 @@ beforeEach(() => {
 
 afterEach(() => {
   window.innerWidth = originalInnerWidth;
+  // The add-on registry is process-global: leave no fixture registration behind.
+  for (const addon of AddonRegistry.getAll()) AddonRegistry.unregister(addon.id);
 });
 
 describe('StandaloneShell — canonical Sider', () => {
@@ -58,9 +61,33 @@ describe('StandaloneShell — canonical Sider', () => {
     renderShell();
 
     // An empty group header is never shown: the label AND its separator are
-    // absent, not empty.
+    // absent, not empty — and an absent element carries no marker.
     expect(screen.queryByText(/add-ons/i)).toBeNull();
+    expect(screen.queryByTestId('np-sider-addons-group')).toBeNull();
+    expect(screen.queryByTestId('np-sider-addons-separator')).toBeNull();
     expect(document.querySelectorAll('.ant-divider').length).toBe(0);
+  });
+
+  it('renders the Add-ons group at one registered add-on (positive control)', () => {
+    // The positive control that proves the absence assertion above is not
+    // vacuous: with one add-on registered the label and its separator appear.
+    AddonRegistry.register({ id: 'fixture-addon', name: 'Fixture Add-on' });
+    renderShell();
+
+    expect(screen.getByTestId('np-sider-addons-group').textContent).toContain('Add-ons');
+    expect(screen.getByTestId('np-sider-addons-separator')).toBeTruthy();
+    expect(document.querySelectorAll('.ant-divider').length).toBe(1);
+  });
+
+  it('renders no add-on page as a live route in Phase 1', () => {
+    AddonRegistry.register({ id: 'fixture-addon-2', name: 'Another Add-on' });
+    renderShell();
+
+    const item = screen.getByTestId('np-sider-addon-fixture-addon-2') as HTMLButtonElement;
+    expect(item.getAttribute('aria-label')).toBe('Another Add-on');
+    // No add-on page exists in Phase 1, so the entry is inert and marked.
+    expect(item.disabled).toBe(true);
+    expect(item.getAttribute('data-np-backing')).toBe('deferred');
   });
 
   it('renders no account block and keeps the Settings entry', () => {
@@ -144,17 +171,28 @@ describe('StandaloneShell — minimum viewport', () => {
 });
 
 describe('StandaloneShell — marking discipline', () => {
-  it('marks only the disabled global search field and no live region', () => {
+  it('marks the disabled global search field and the routed page root, and no live shell region', () => {
     const { container } = renderShell();
 
     const marked = Array.from(container.querySelectorAll('[data-np-backing]'));
-    expect(marked).toHaveLength(1);
-    expect(marked[0].getAttribute('data-testid')).toBe('np-global-search');
-    expect(marked[0].getAttribute('data-np-backing')).toBe('deferred');
-    expect((marked[0] as HTMLInputElement).disabled).toBe(true);
+
+    // Two marked regions: the shell's own disabled global search field, and the
+    // deferred page shell the router renders into the content area.
+    expect(marked.map((el) => el.getAttribute('data-np-backing'))).toEqual([
+      'deferred',
+      'deferred',
+    ]);
+
+    const search = screen.getByTestId('np-global-search');
+    expect(search.getAttribute('data-np-backing')).toBe('deferred');
+    expect((search as HTMLInputElement).disabled).toBe(true);
+
+    const pageRoot = screen.getByTestId('np-page-chat');
+    expect(pageRoot.getAttribute('data-np-backing')).toBe('deferred');
+    expect(pageRoot.hasAttribute('data-testid')).toBe(true);
 
     // A false marker is as much a defect as a missing one: the live Sider and
-    // top bar carry none.
+    // the live top bar carry none.
     for (const testId of ['np-sider', 'np-standalone-content']) {
       expect(screen.getByTestId(testId).hasAttribute('data-np-backing')).toBe(false);
     }
@@ -163,6 +201,49 @@ describe('StandaloneShell — marking discipline', () => {
         false,
       );
     }
+  });
+
+  it('leaves the Sider group absent and unmarked at zero registrations', () => {
+    renderShell();
+
+    expect(screen.queryByTestId('np-sider-addons-group')).toBeNull();
+    expect(screen.queryByTestId('np-sider-addons-separator')).toBeNull();
+    expect(screen.queryByText(/user account/i)).toBeNull();
+  });
+});
+
+describe('StandaloneShell — UI-SPEC surface metric parity (D-03 step 4)', () => {
+  it('renders the Sider at 240 px expanded and 72 px collapsed', () => {
+    renderShell();
+
+    const sider = screen.getByTestId('np-sider');
+    expect(sider.style.width).toBe('240px');
+
+    fireEvent.click(screen.getByRole('button', { name: t('a11y.collapseSidebar') }));
+    expect(screen.getByTestId('np-sider').style.width).toBe('72px');
+  });
+
+  it('renders the 56 px top bar and the 40 px Sider item geometry', () => {
+    const { container } = renderShell();
+
+    const header = container.querySelector('.ant-layout-header') as HTMLElement;
+    expect(header.style.height).toBe('56px');
+    expect(header.style.minHeight).toBe('56px');
+
+    const item = screen.getByTestId('np-sider-item-Chat');
+    expect(item.style.height).toBe('40px');
+  });
+
+  it('keeps the neutral no-provider caption in the content area, never a health signal', () => {
+    const { container } = renderShell();
+
+    const content = screen.getByTestId('np-standalone-content');
+    expect(content).toBeTruthy();
+    // jsdom cannot compute layout, so the metric asserted here is the absence of
+    // a fabricated signal — the visual parity of the content area is observed in
+    // the browser (plan `01-13`, item 6).
+    expect(container.querySelector('.ant-badge-status-success')).toBeNull();
+    expect(container.textContent).not.toMatch(/Connected to|provider healthy/i);
   });
 });
 
