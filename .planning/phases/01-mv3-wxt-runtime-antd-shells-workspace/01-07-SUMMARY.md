@@ -25,7 +25,7 @@ affects: [01-08, 01-09, 01-11, 01-12, 01-13, 02, 15]
 actuals:
   tokens: 34004    # chars/4 over the realized diff (git diff -U0 2f97bff..HEAD -- src tests = 136,016 chars)
   tasks: 3
-  commits: 9       # measured: git rev-list --count 2f97bff..HEAD (5 task commits + 3 documentation/ledger commits + the plan metadata commit)
+  commits: 11      # measured: git rev-list --count 2f97bff..HEAD (5 task commits + the warm-path fix + 4 documentation/ledger commits)
   plan_head_before: 2f97bffa8b6f8487c866c859397af95c37f3881b
 
 tech-stack:
@@ -145,11 +145,11 @@ coverage:
         status: pass
     human_judgment: false
   - id: D7
-    description: "Opening Standalone dedupes and focuses an existing tab (cross-window), creates exactly one when none exists, records its id, never duplicates on a repeated open, and reports typed `STANDALONE_OPEN_FAILED` / `WORKSPACE_HANDOFF_FAILED` instead of success when the open or the handshake fails."
+    description: "Opening Standalone dedupes and reuses the single existing tab (focused cross-window and re-established under the attempt's correlation id), creates exactly one when none exists, records its id, never duplicates on a repeated open, and reports typed `STANDALONE_OPEN_FAILED` / `WORKSPACE_HANDOFF_FAILED` instead of success when the open or the handshake fails."
     requirement: "FLOW-11"
     verification:
       - kind: unit
-        ref: "tests/core/workspace/WorkspaceRouter.test.ts (18 cases: dedupe/focus, create-once, cross-window focus, openedStandaloneTabId, repeated-open no-duplicate, query/create lastError, ack-gated success, timeout-and-retry, bounded-attempt failure, fail-closed hydrate, foreign-workspace rejection)"
+        ref: "tests/core/workspace/WorkspaceRouter.test.ts (20 cases: dedupe/focus+re-establish, warm-path ready/transfer/ack, create-once, cross-window focus, openedStandaloneTabId, repeated-open no-duplicate, query/create/update lastError, ack-gated success, timeout-and-retry, bounded-attempt failure, fail-closed hydrate, foreign-workspace rejection)"
         status: pass
       - kind: other
         ref: "grep -rn \"WorkspaceSync\" src/ tests/ | wc -l → 0; test ! -f src/core/workspace/WorkspaceSync.ts → absent"
@@ -195,7 +195,7 @@ status: complete
 - **The URL is an identifier channel with one typed rejection path.** `buildHandoffUrl` sets each parameter explicitly from the allowlist (never spreading its input), so an over-wide caller object cannot leak a draft or a credential; `parseHandoffUrl` rejects unknown, malformed, oversized (never truncated) and unsupported-version parameters plus non-canonical surfaces, and treats an empty `conversationId` as a valid `null`.
 - **Phase 1 writes no workspace state.** The persist middleware and `np_workspace_store` block are gone, `setActiveProvider`/`setSelectedModel` no longer exist, only the four authorised mutators (plus `reset`) remain, and a source-scan test fails if any Phase 1 module names a workspace key for writing. The stale prototype key is deleted on startup from an import-free module — measured to keep the background graph at 75.3 kB instead of 95.3 kB.
 - **The Phase-1 writer adapter claims nothing it cannot prove.** `PHASE1_WRITER_STATE = 'primary'` with the frozen six-value vocabulary and `isMirrorState`; no code path transitions into `mirror`, and no election result, epoch, writer identity, persistence acknowledgement or demotion is fabricated.
-- **Standalone opens dedupe, validate and gate.** `openStandalone` keeps the callback-style `tabs.query`/`update`/`create` shape with every `chrome.runtime.lastError` branch and cross-window focus, records `openedStandaloneTabId`, creates exactly one tab for a repeated request, and reports `STANDALONE_OPEN_FAILED` / `WORKSPACE_HANDOFF_FAILED` instead of success. `openOptions` now targets the Standalone options route rather than the removed `options.html`.
+- **Standalone opens dedupe, validate and gate — cold and warm.** `openStandalone` keeps the callback-style `tabs.query`/`update`/`create` shape with every `chrome.runtime.lastError` branch and cross-window focus, records `openedStandaloneTabId`, and never duplicates: with no tab it creates one, and with an existing tab it focuses that tab and re-points it at the attempt's bootstrap so the same ready → transfer → ack handshake completes (a warm tab's earlier readiness cannot be replayed). Success is claimed only on the ack; `STANDALONE_OPEN_FAILED` / `WORKSPACE_HANDOFF_FAILED` otherwise. `openOptions` targets the Standalone options route rather than the removed `options.html`.
 
 ## Task Commits
 
@@ -206,7 +206,8 @@ Each task was committed atomically; both TDD tasks carry their RED then GREEN co
 3. **Task 2 RED: failing handoff protocol and URL bootstrap suite** — `29ba753` (test)
 4. **Task 2 GREEN: the ready/transfer/ack protocol** — `30d9170` (feat)
 5. **Task 3: non-persisted store, ack-gated router, handoff controllers** — `17f9fe3` (feat)
-6. **MessageType-overlap documentation and inventory reconciliation** — `55a3347` (docs)
+6. **Warm-path completion fix: re-establish the existing tab under a fresh correlation id** — `af26593` (fix)
+7. **MessageType-overlap documentation and inventory reconciliation** — `55a3347` (docs)
 
 **Plan metadata:** committed separately as `docs(01-07): complete … plan` (`18abd5b6`, including this SUMMARY).
 
@@ -291,7 +292,15 @@ Each task was committed atomically; both TDD tasks carry their RED then GREEN co
 - **Verification:** `tests/core/workspace` 81 passed.
 - **Committed in:** `17f9fe3`
 
-**7. [Rule 1 - Gate defect] The plan's "none of its literals appears in `MessageType`" acceptance cannot be literally true**
+**7. [Rule 1 - Bug] The warm path could never complete the handshake**
+- **Found during:** Task 3 verification, writing the explicit warm-path case the acceptance criteria require
+- **Issue:** the suite proved that an existing Standalone tab was focused and not duplicated, but nothing proved the handshake could finish on that path. It could not: `BroadcastBus` has no replay, so the warm tab's readiness announcement (sent when it mounted) had already passed by the time the new source subscribed, and the source's fresh `requestId` could never be answered — every warm open would have timed out with a typed failure. D-13's warm-path rule ("focus it, use the same protocol, no new tab, verify workspace ID and supported schema before transferring") and the must-have "cold and warm handoffs use the same protocol" both require a completable warm path.
+- **Fix:** the router now plans the target before the source starts: it mints the request id (`createHandoffRequestId()`, exported from the protocol so the router and the initiator share one source), focuses the existing tab, and re-points that same tab at the attempt's bootstrap so the target re-establishes itself under the fresh correlation id and announces readiness on load. The verify-before-apply of the workspace id and supported schema remains where the trust boundary is — on the target, which matches the projection against its bootstrap before anything is applied (T-1-30). No second tab is ever created.
+- **Files modified:** `src/core/workspace/WorkspaceRouter.ts`, `src/core/workspace/handoff/protocol.ts`, `tests/core/workspace/WorkspaceRouter.test.ts`
+- **Verification:** the new warm-path case drives ready → transfer → ack on an existing tab to `{ ok: true }` with `tabs.create` never called; the focus case asserts the re-point URL carries the source's workspace id and no draft; `tabs.update`'s `lastError` branch is covered; `npx vitest run tests/core/workspace` 83 passed; full suite 329 passed.
+- **Committed in:** `af26593`
+
+**8. [Rule 1 - Gate defect] The plan's "none of its literals appears in `MessageType`" acceptance cannot be literally true**
 - **Found during:** Plan self-check, grepping the registry against the handoff union
 - **Issue:** `MessageType` already carries `WORKSPACE_HANDOFF: 'WORKSPACE_HANDOFF'` — added by `01-06` as part of the complete Appendix E registry (15 types), with its own strict `{ workspaceId }` payload schema in `RuntimeEnvelopeValidation.ts` and a fixture in that plan's suite. The handoff protocol's transfer member necessarily uses the same literal, so the acceptance reads as a collision. `HANDOFF_READY` and `HANDOFF_ACK` are absent from the registry, and this plan adds nothing to it: `git diff 2f97bff..HEAD -- src/core/runtime` is empty.
 - **Why the registry was not edited:** removing the literal would revert a landed, spec-owned decision (Appendix E) and break `01-06`'s per-type fixtures — the same class of gate correction that plan recorded for its own prototype-literal grep. The plan's intent ("do not put the handoff protocol on `MessageType`; `BroadcastBus` payloads are not runtime envelopes") is honoured: the channel union lives in `handoff/protocol.ts` and nothing was added to the registry.
@@ -302,8 +311,8 @@ Each task was committed atomically; both TDD tasks carry their RED then GREEN co
 
 ---
 
-**Total deviations:** 7 (5 auto-fixed for blocking/critical reasons, 1 test-fixture correction, 1 gate-instrument correction)
-**Impact on plan:** Deviations 1-5 were required for the plan's own gates (a zero-count grep, a green typecheck, a bounded retry budget, a reachable controller, a lean service worker). Deviation 7 is a verification-instrument correction with the raw and scoped readings both recorded. No dependency was added or bumped (`zod@4.4.3` untouched), no later-phase capability was implemented, no file outside this plan's ownership was changed beyond the four additive wiring edits recorded above, and the only structural departure from the plan's file list is `legacyWorkspaceBlob.ts`, which exists solely to avoid a measured 22 kB service-worker regression.
+**Total deviations:** 8 (5 auto-fixed for blocking/critical reasons, 1 warm-path bug, 1 test-fixture correction, 1 gate-instrument correction)
+**Impact on plan:** Deviations 1-5 were required for the plan's own gates (a zero-count grep, a green typecheck, a bounded retry budget, a reachable controller, a lean service worker). Deviation 7 is a real functional fix without which the warm path could never report success; Deviation 8 is a verification-instrument correction with the raw and scoped readings both recorded. No dependency was added or bumped (`zod@4.4.3` untouched), no later-phase capability was implemented, no file outside this plan's ownership was changed beyond the three additive wiring edits recorded above (`SidepanelChat.tsx`'s importer fix, `background.ts`'s startup deletion, `StandaloneShell.tsx`'s disposer return), and the only structural departure from the plan's file list is `legacyWorkspaceBlob.ts`, which exists solely to avoid a measured 22 kB service-worker regression.
 
 ## Issues Encountered
 
@@ -347,5 +356,5 @@ None — no external service configuration, no dependency installed or bumped.
 
 - Files created (6 of 6): `src/core/workspace/WorkspaceState.ts`, `src/core/workspace/handoff/protocol.ts`, `src/core/workspace/handoff/useWorkspaceHandoff.ts`, `src/core/workspace/legacyWorkspaceBlob.ts`, `tests/core/workspace/WorkspaceState.test.ts`, `tests/core/workspace/WorkspaceHandoff.test.ts`.
 - Files modified present (6 of 6): `src/core/workspace/{WorkspaceStore,WorkspaceRouter}.ts`, `src/components/chat/SidepanelChat.tsx`, `src/entrypoints/background.ts`, `src/components/standalone/StandaloneShell.tsx`, `tests/core/workspace/WorkspaceRouter.test.ts`, `tests/core/workspace/WorkspaceStore.test.ts`; removal applied: `src/core/workspace/WorkspaceSync.ts` no longer exists.
-- Commits present: `80c26d9`, `c2c1a22`, `29ba753`, `30d9170`, `17f9fe3` (5 of 5, measured with `git rev-list --count 2f97bff..HEAD`).
-- Fresh verification on the committed tree: `npx tsc --noEmit` exit 0; `npx vitest run` 24 files / 327 tests passed; `npx vitest run tests/core/workspace` 81 passed; `npx vitest run tests/core/workspace tests/core/theme tests/background` 164 passed; `grep -rn "np_workspace" src/ | grep -v "np_workspace'" | grep -vi "legacy" | wc -l` → 0; `grep -rn "WorkspaceSync" src/ tests/` → 0; `grep -rn "setSelectedModel\|setActiveProvider" src/ tests/` → 0; `grep -rn "composerDraft" src/core/workspace/handoff/protocol.ts | grep -c "searchParams\|URLSearchParams"` → 0; `grep -c "'HANDOFF_READY'" src/core/runtime/RuntimeEnvelope.ts` → 0 and `"'HANDOFF_ACK'"` → 0 (the `WORKSPACE_HANDOFF` overlap is Deviation 7); `git diff 2f97bff..HEAD -- src/core/runtime` → empty; `pnpm run build:ext` emits `content-scripts/content.js` 4.88 kB and a 75.3 kB background graph; `bash scripts/verify-no-tailwind.sh` exit 0.
+- Commits present: `80c26d9`, `c2c1a22`, `29ba753`, `30d9170`, `17f9fe3`, `af26593`, `55a3347`, `18abd5b6`, `3b46223`, `0061227` (the task commits plus the fix and documentation commits, measured with `git rev-list --count 2f97bff..HEAD`).
+- Fresh verification on the committed tree: `npx tsc --noEmit` exit 0; `npx vitest run` 24 files / 329 tests passed; `npx vitest run tests/core/workspace` 83 passed; `npx vitest run tests/core/workspace tests/core/theme tests/background` 166 passed; `grep -rn "np_workspace" src/ | grep -v "np_workspace'" | grep -vi "legacy" | wc -l` → 0; `grep -rn "WorkspaceSync" src/ tests/` → 0; `grep -rn "setSelectedModel\|setActiveProvider" src/ tests/` → 0; `grep -rn "composerDraft" src/core/workspace/handoff/protocol.ts | grep -c "searchParams\|URLSearchParams"` → 0; `grep -c "'HANDOFF_READY'" src/core/runtime/RuntimeEnvelope.ts` → 0 and `"'HANDOFF_ACK'"` → 0 (the `WORKSPACE_HANDOFF` overlap is Deviation 7); `git diff 2f97bff..HEAD -- src/core/runtime` → empty; `pnpm run build:ext` emits `content-scripts/content.js` 4.88 kB and a 75.3 kB background graph; `bash scripts/verify-no-tailwind.sh` exit 0.
