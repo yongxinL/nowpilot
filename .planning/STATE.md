@@ -4,16 +4,16 @@ milestone: v0.2
 current_phase: 1
 current_phase_name: MV3/WXT Runtime + AntD Shells + Workspace
 status: executing
-stopped_at: Completed 01-01-PLAN.md (D-04 migration inventory frozen)
-last_updated: "2026-09-21T11:40:54.871Z"
+stopped_at: Completed 01-02-PLAN.md (WXT srcDir relocation, provider root + shells, three non-vacuous gates)
+last_updated: "2026-09-21T12:15:06.625Z"
 last_activity: 2026-09-21
 last_activity_desc: Phase 1 execution started
-state_head: 8c7b727935e2aa857f1205da9318d7047056c8c0
+state_head: 9af8f41d8f65287487fb75ccfa280c9b8b248c8b
 progress:
   total_phases: 19
   completed_phases: 0
   total_plans: 13
-  completed_plans: 1
+  completed_plans: 2
 ---
 
 # Project State
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 ## Current Position
 
 Phase: 1 (MV3/WXT Runtime + AntD Shells + Workspace) — EXECUTING
-Plan: 2 of 13
+Plan: 3 of 13
 Status: Ready to execute
 Last activity: 2026-09-21 — Phase 1 execution started
 
@@ -59,6 +59,7 @@ Progress: [░░░░░░░░░░] 0%
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
 | Phase 01 P01 | 10 | 3 tasks | 1 files |
+| Phase 01 P02 | 24 | 3 tasks | 34 files |
 
 ## Accumulated Context
 
@@ -72,6 +73,12 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 1]: Inventory D-04 gate frozen: 140 prototype files classified (KEEP 47 / ADAPT 69 / REPLACE 5 / REMOVE 19); every non-KEEP row names one owning plan 01-02..01-13; plans cite rows by Current path.
 - [Phase 1]: Content-script entrypoint resolves to src/entrypoints/content/index.ts (WXT content/index glob; §5.1 directory intent preserved) with the operator checkpoint in 01-03 (H-1/OQ1).
 - [Phase 1]: Theme: .dark class scoped to AntD only (src/index.css keeps its selectors) and AntD/X packages stay exactly pinned with no Phase 1 bump (OQ2/OQ4).
+- [Phase 1]: WXT srcDir:'src' is live — every entrypoint under src/entrypoints/**, @ resolves to src in all three resolvers, and the content script is now at a WXT-discoverable path (build emits content-scripts/content.js).
+- [Phase 1]: AntD v6 removed the cssVar boolean — ThemeConfig.cssVar is {prefix,key} and CSS variables are always on; getAntdConfig passes the pack's {key:'antd'} through instead of the v5-era cssVar:true.
+- [Phase 1]: One provider chain per surface (XProvider > AntdApp > ErrorBoundary > shell); ErrorBoundary is mounted for the first time and pinned to shell.errorTitle/Body/Reload.
+- [Phase 1]: The isolation gate matrix was corrected: standalone -> options is authorised by §5.4/§8.6 (Options renders inside the Standalone shell), options -> surface stays forbidden, and the pattern now catches bare relative sibling hops.
+- [Phase 1]: The canonical Sider renders inside StandaloneShell.tsx; WorkspaceSidebar.tsx is unmounted and plan 01-12 owns its remount-or-remove disposition (inventory row updated).
+- [Phase 1]: WXT dev-mode HMR observed as a real js-update for a component edit with @wxt-dev/module-react alone; browser-side application remains a manual check.
 
 ### Pending Todos
 
@@ -96,6 +103,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-21T11:40:54.851Z
-Stopped at: Completed 01-01-PLAN.md (D-04 migration inventory frozen)
+Last session: 2026-09-21T12:15:06.606Z
+Stopped at: Completed 01-02-PLAN.md (WXT srcDir relocation, provider root + shells, three non-vacuous gates)
 Resume file: None
