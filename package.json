@@ -14,7 +14,7 @@
     "lint": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "verify:phase-1": "tsc --noEmit && vitest run tests/core tests/background tests/components tests/isolation && bash scripts/verify-no-tailwind.sh",
+    "verify:phase-1": "tsc --noEmit && node -e 'const s=require(\"./package.json\").scripts[\"verify:phase-1\"];const paths=[...new Set(s.match(/(?:tests\\/[\\w./-]+|scripts\\/[\\w.-]+)/g)||[])];const fs=require(\"fs\");const missing=paths.filter(p=>!fs.existsSync(p));if(missing.length){console.error(\"verify:phase-1: unresolved declared path(s): \"+missing.join(\", \"));process.exit(1)}console.log(\"verify:phase-1: \"+paths.length+\" declared path(s) resolve\")' && vitest run tests/core/runtime tests/core/events tests/core/workspace tests/core/theme tests/core/commands tests/core/input tests/core/onboarding tests/core/storage tests/core/strict tests/core tests/background tests/components tests/isolation tests/services && bash scripts/verify-no-tailwind.sh",
     "verify:phase-2": "tsc --noEmit && vitest run tests/core/storage tests/core/security tests/core/utils tests/core/workspace/WorkspacePersistence.test.ts",
     "verify:phase-3": "tsc --noEmit && vitest run tests/core/ai tests/core/ai/persona",
     "verify:phase-4": "tsc --noEmit && vitest run tests/core/context",
