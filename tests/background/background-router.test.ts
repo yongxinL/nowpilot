@@ -1,23 +1,56 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
+import { createEnvelope, MessageType } from '../../src/core/runtime/RuntimeEnvelope';
+
 // These tests pin the public surface of BackgroundRouter:
 //   1) register() initializes MessageBus (attaches the chrome.runtime listener);
 //   2) register() is idempotent across multiple calls in the same module instance;
-//   3) register() pre-registers advisory handlers for CONTENT_SCRIPT_READY
-//      and SPA_NAVIGATION that delegate to MessageBus.dispatch.
+//   3) register() pre-registers advisory handlers bound to the canonical
+//      MessageType literals (OPEN_SIDE_PANEL / OPEN_STANDALONE) — never a
+//      prototype spelling and never a scaffold-local capability no Phase-1
+//      requirement owns;
+//   4) registration is synchronous, so a service-worker wake that has no
+//      prior module state still has its handlers before any async work;
+//   5) a foreign sender cannot reach a registered handler.
 //
 // We use vi.resetModules + dynamic re-import so each test gets a fresh
 // BackgroundRouter module instance with its own `registered` flag reset.
 
-async function freshModules() {
-  vi.resetModules();
-  // setup.ts has chrome.runtime stubbed at globalThis; ensure addListener is a vi.fn.
+const EXTENSION_ID = 'np-test-extension-id';
+
+type CapturedListener = (
+  message: unknown,
+  sender: chrome.runtime.MessageSender | undefined,
+  sendResponse: (response?: unknown) => void,
+) => boolean;
+
+function installChromeMock(): void {
   const g = globalThis as any;
   if (!g.chrome) g.chrome = {};
   if (!g.chrome.runtime) g.chrome.runtime = {};
+  g.chrome.runtime.id = EXTENSION_ID;
   if (!g.chrome.runtime.onMessage) g.chrome.runtime.onMessage = {};
   g.chrome.runtime.onMessage.addListener = vi.fn();
   g.chrome.runtime.onMessage.removeListener = vi.fn();
+}
+
+function addListenerMock(): ReturnType<typeof vi.fn> {
+  return (globalThis as any).chrome.runtime.onMessage.addListener;
+}
+
+function capturedListener(): CapturedListener {
+  const calls = addListenerMock().mock.calls;
+  expect(calls).toHaveLength(1);
+  return calls[0][0] as CapturedListener;
+}
+
+function ownSender(): chrome.runtime.MessageSender {
+  return { id: EXTENSION_ID } as chrome.runtime.MessageSender;
+}
+
+async function freshModules() {
+  vi.resetModules();
+  installChromeMock();
   const [router, bus, runtime] = await Promise.all([
     import('../../src/core/messaging/BackgroundRouter'),
     import('../../src/core/messaging/MessageBus'),
@@ -28,12 +61,7 @@ async function freshModules() {
 
 describe('BackgroundRouter', () => {
   beforeEach(() => {
-    const g = globalThis as any;
-    if (!g.chrome) g.chrome = {};
-    if (!g.chrome.runtime) g.chrome.runtime = {};
-    if (!g.chrome.runtime.onMessage) g.chrome.runtime.onMessage = {};
-    g.chrome.runtime.onMessage.addListener = vi.fn();
-    g.chrome.runtime.onMessage.removeListener = vi.fn();
+    installChromeMock();
   });
 
   it('register() attaches exactly one chrome.runtime.onMessage listener (initializes MessageBus)', async () => {
@@ -41,7 +69,7 @@ describe('BackgroundRouter', () => {
     expect(bus.isInitialized()).toBe(false);
     router.register();
     expect(bus.isInitialized()).toBe(true);
-    expect((globalThis as any).chrome.runtime.onMessage.addListener).toHaveBeenCalledTimes(1);
+    expect(addListenerMock()).toHaveBeenCalledTimes(1);
   });
 
   it('register() called twice in a row does NOT re-attach the chrome.runtime.onMessage listener', async () => {
@@ -49,49 +77,57 @@ describe('BackgroundRouter', () => {
     router.register();
     router.register();
     router.register();
-    expect((globalThis as any).chrome.runtime.onMessage.addListener).toHaveBeenCalledTimes(1);
+    expect(addListenerMock()).toHaveBeenCalledTimes(1);
     expect(bus.isInitialized()).toBe(true);
   });
 
-  it('register() pre-registers the CONTENT_SCRIPT_READY handler (dispatch invokes it)', async () => {
+  it('register() attaches its listeners synchronously, before any asynchronous work', async () => {
+    const { router, bus } = await freshModules();
+    expect(bus.isInitialized()).toBe(false);
+    router.register();
+    // No await between register() and these assertions: a service-worker wake
+    // must have its handlers attached in the same tick.
+    expect(bus.isInitialized()).toBe(true);
+    expect(addListenerMock()).toHaveBeenCalledTimes(1);
+  });
+
+  it('register() pre-registers the OPEN_SIDE_PANEL handler (dispatch invokes it)', async () => {
     const { router, runtime } = await freshModules();
     const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
     try {
       router.register();
       const envelope = runtime.createEnvelope(
-        'CONTENT_SCRIPT_READY',
-        { url: 'https://example.com' },
-        'content',
+        MessageType.OPEN_SIDE_PANEL,
+        { workspaceId: 'w1' },
+        'standalone',
       );
-      const sender = { id: 'self', tab: { id: 11 } } as chrome.runtime.MessageSender;
-      // Use bus.dispatch via a fresh import path so we test the public surface.
+      const sender = ownSender();
       const { dispatch } = await import('../../src/core/messaging/MessageBus');
       await dispatch(envelope, sender);
       expect(debugSpy).toHaveBeenCalledWith(
-        '[BG] Content script ready:',
-        11,
-        'https://example.com',
+        '[BG] Open side panel requested:',
+        envelope.operationId,
       );
     } finally {
       debugSpy.mockRestore();
     }
   });
 
-  it('register() pre-registers the SPA_NAVIGATION handler (dispatch invokes it)', async () => {
+  it('register() pre-registers the OPEN_STANDALONE handler (dispatch invokes it)', async () => {
     const { router, runtime } = await freshModules();
     const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
     try {
       router.register();
-      const { dispatch } = await import('../../src/core/messaging/MessageBus');
       const envelope = runtime.createEnvelope(
-        'SPA_NAVIGATION',
-        { url: 'https://example.com/new' },
-        'content',
+        MessageType.OPEN_STANDALONE,
+        { workspaceId: 'w1' },
+        'sidepanel',
       );
-      await dispatch(envelope, {} as chrome.runtime.MessageSender);
+      const { dispatch } = await import('../../src/core/messaging/MessageBus');
+      await dispatch(envelope, ownSender());
       expect(debugSpy).toHaveBeenCalledWith(
-        '[BG] SPA navigation:',
-        'https://example.com/new',
+        '[BG] Open standalone requested:',
+        envelope.operationId,
       );
     } finally {
       debugSpy.mockRestore();
@@ -106,40 +142,98 @@ describe('BackgroundRouter', () => {
       router.register(); // should be a no-op for handler attachment
       const { dispatch } = await import('../../src/core/messaging/MessageBus');
       const envelope = runtime.createEnvelope(
-        'CONTENT_SCRIPT_READY',
-        { url: 'https://example.com' },
-        'content',
+        MessageType.OPEN_SIDE_PANEL,
+        { workspaceId: 'w1' },
+        'standalone',
       );
-      await dispatch(envelope, {} as chrome.runtime.MessageSender);
-      const contentReadyCalls = debugSpy.mock.calls.filter(
-        (call) => call[0] === '[BG] Content script ready:',
+      await dispatch(envelope, ownSender());
+      const openSidePanelCalls = debugSpy.mock.calls.filter(
+        (call) => call[0] === '[BG] Open side panel requested:',
       );
-      expect(contentReadyCalls).toHaveLength(1);
+      expect(openSidePanelCalls).toHaveLength(1);
     } finally {
       debugSpy.mockRestore();
     }
   });
 
-  it('handler resolves `url` from envelope.payload (not from a raw message.url field)', async () => {
+  it('a handler for OPEN_SIDE_PANEL is not invoked by an OPEN_STANDALONE message', async () => {
+    const { router, runtime } = await freshModules();
+    const probe = vi.fn();
+    router.register();
+    const { register, dispatch } = await import('../../src/core/messaging/MessageBus');
+    register(MessageType.OPEN_SIDE_PANEL, probe);
+
+    await dispatch(
+      runtime.createEnvelope(MessageType.OPEN_STANDALONE, { workspaceId: 'w1' }, 'sidepanel'),
+      ownSender(),
+    );
+    expect(probe).not.toHaveBeenCalled();
+
+    const sidePanel = runtime.createEnvelope(
+      MessageType.OPEN_SIDE_PANEL,
+      { workspaceId: 'w1' },
+      'standalone',
+    );
+    await dispatch(sidePanel, ownSender());
+    expect(probe).toHaveBeenCalledTimes(1);
+    expect(probe).toHaveBeenCalledWith(sidePanel, ownSender());
+  });
+
+  it('register() leaves the scaffold-local literals unhandled (no Phase-1 capability claim)', async () => {
     const { router, runtime } = await freshModules();
     const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
     try {
       router.register();
       const { dispatch } = await import('../../src/core/messaging/MessageBus');
-      // envelope.payload.url is the only source the new handler reads from.
-      const envelope = runtime.createEnvelope(
-        'SPA_NAVIGATION',
-        { url: 'https://payload-only.example/path' },
+      const ready = runtime.createEnvelope(
+        'CONTENT_SCRIPT_READY',
+        { url: 'https://example.com' },
         'content',
       );
-      await dispatch(envelope, {} as chrome.runtime.MessageSender);
-      const navCalls = debugSpy.mock.calls.filter(
-        (call) => call[0] === '[BG] SPA navigation:',
+      const navigation = runtime.createEnvelope(
+        'SPA_NAVIGATION',
+        { url: 'https://example.com/next' },
+        'content',
       );
-      expect(navCalls).toHaveLength(1);
-      expect(navCalls[0]?.[1]).toBe('https://payload-only.example/path');
+      await dispatch(ready, ownSender());
+      await dispatch(navigation, ownSender());
+      expect(debugSpy).not.toHaveBeenCalledWith(
+        '[BG] Content script ready:',
+        expect.anything(),
+        expect.anything(),
+      );
+      expect(debugSpy).not.toHaveBeenCalledWith(
+        '[BG] SPA navigation:',
+        expect.anything(),
+      );
     } finally {
       debugSpy.mockRestore();
     }
+  });
+
+  it('a foreign sender cannot reach a registered handler through the listener', async () => {
+    const { router, runtime } = await freshModules();
+    const probe = vi.fn();
+    router.register();
+    const { register } = await import('../../src/core/messaging/MessageBus');
+    register(MessageType.OPEN_SIDE_PANEL, probe);
+    const listener = capturedListener();
+    const sendResponse = vi.fn();
+    const envelope = createEnvelope(
+      MessageType.OPEN_SIDE_PANEL,
+      { workspaceId: 'w1' },
+      'standalone',
+    );
+
+    const handled = listener(
+      envelope,
+      { id: 'foreign-extension' } as chrome.runtime.MessageSender,
+      sendResponse,
+    );
+
+    expect(handled).toBe(false);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(probe).not.toHaveBeenCalled();
+    expect(sendResponse).not.toHaveBeenCalled();
   });
 });
