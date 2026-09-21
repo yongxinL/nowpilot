@@ -12,6 +12,12 @@ import { generateOperationId } from '../../runtime/OperationId';
  * arrives — never immediately after the tab is created — because
  * `BroadcastBus.publish` has no delivery receipt and no replay.
  *
+ * Note on the shared literal: `WORKSPACE_HANDOFF` is also one of the Appendix E
+ * `MessageType` entries `01-06` declared for the cross-context runtime envelope
+ * (that registry entry carries a `{ workspaceId }` payload). The two are
+ * different domains — this union is a channel payload, that one is a
+ * `chrome.runtime` envelope — and this module adds no literal to `MessageType`.
+ *
  * The URL is an identifier/bootstrap channel, not a workspace-state transport.
  * `buildHandoffUrl` constructs its parameter set from explicitly allowlisted
  * fields (never by spreading its input), and `parseHandoffUrl` normalises then
