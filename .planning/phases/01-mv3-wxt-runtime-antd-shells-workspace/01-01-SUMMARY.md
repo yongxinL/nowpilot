@@ -124,7 +124,7 @@ Each task was committed atomically:
 2. **Task 2: Assign every row to a plan, assign D-16 dispositions, resolve the eight hand-off decisions** — `2f02610` (docs)
 3. **Task 3: Freeze-validate the inventory against the plan set and commit it as the D-04 gate** — `aa6dcd9` (docs), plus the in-scope tightening commit `8c7b727` (docs: restrict `## Explicitly excluded` to the four permitted generated-mirror entries)
 
-**Plan metadata:** `_pending_` (docs: complete plan)
+**Plan metadata:** `a5cb926` (docs: complete plan — captured this SUMMARY, STATE.md, ROADMAP.md and REQUIREMENTS.md)
 
 ## Files Created/Modified
 
