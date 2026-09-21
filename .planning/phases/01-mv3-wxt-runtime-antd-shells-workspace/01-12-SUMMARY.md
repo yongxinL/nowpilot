@@ -156,7 +156,7 @@ coverage:
     rationale: "jsdom cannot compute layout, so the visual-parity half of D-03 step 4 is explicitly deferred to the real-Chrome plan and recorded rather than claimed."
 
 # Metrics
-duration: 29min
+duration: 31min
 completed: 2026-09-21
 status: complete
 ---
@@ -167,9 +167,9 @@ status: complete
 
 ## Performance
 
-- **Duration:** 29 min
+- **Duration:** 31 min
 - **Started:** 2026-09-21T14:38:24Z
-- **Completed:** 2026-09-21T15:07:24Z
+- **Completed:** 2026-09-21T15:09:59Z
 - **Tasks:** 3 (plus the plan-level verification sweep)
 - **Files modified:** 28 tracked paths across 5 commits (1,301 insertions / 1,148 deletions); the inventory and broken-windows ledger are reconciled separately
 
