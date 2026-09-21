@@ -10,6 +10,39 @@ export const PROVIDER_IDS = ['openai', 'anthropic', 'gemini', 'ollama'] as const
 
 export type ProviderId = (typeof PROVIDER_IDS)[number];
 
+/**
+ * The non-secret persisted provider configuration (D-07).
+ *
+ * Phase 1 may persist provider **metadata** only: identifier, display name,
+ * enabled/configured state, a non-secret proxy URL and the model list. There is
+ * deliberately no field that can carry a credential, a masked fragment, a
+ * fingerprint or a derived value — the persisted schema has nowhere to put one.
+ */
+export interface PersistedProviderConfig {
+  id: ProviderId;
+  name: string;
+  enabled: boolean;
+  isConfigured: boolean;
+  useCustomProxy: boolean;
+  proxyUrl: string;
+  models: CustomModelItem[];
+}
+
+/**
+ * The in-memory onboarding credential input (D-08).
+ *
+ * This value exists only in component memory: it is never persisted, logged,
+ * broadcast or rendered. The field is named `credential` deliberately — the
+ * recognised **persisted**-credential field names (`apiKey`, `token`,
+ * `accessToken`, `secret`) are exactly what plans `01-10`/`01-11` delete and
+ * scan for, so reusing one here would make a compliant in-memory type
+ * indistinguishable from a forbidden persisted field.
+ */
+export interface TransientCredentialInput {
+  providerId: ProviderId;
+  credential: string;
+}
+
 // LEGACY — prototype provider types with live importers; removed with their last consumer in plan 01-11.
 export type ProviderType = 'openai' | 'gemini' | 'webapp' | 'claude';
 
