@@ -12,7 +12,7 @@ Requirements for the v0.2 release. Each maps to exactly one roadmap phase.
 
 ### Foundation & Verification Anchors (CORE)
 
-- [ ] **CORE-01**: MV3/WXT runtime + two surfaces (Chat-only Side Panel; Standalone workspace) + shared WorkspaceStore handoff + theme store + RuntimeEnvelope/EventBus/registries/shells — §5, §6.2–§6.5, §8.3–§8.4; §18 Phase 1 DONE-when
+- [x] **CORE-01**: MV3/WXT runtime + two surfaces (Chat-only Side Panel; Standalone workspace) + shared WorkspaceStore handoff + theme store + RuntimeEnvelope/EventBus/registries/shells — §5, §6.2–§6.5, §8.3–§8.4; §18 Phase 1 DONE-when
 - [ ] **CORE-02**: Storage/security foundation — encrypted keys, IndexedDB stores, WriteJournal, idempotent migrations, workspace persistence — §15, §16, §20; §18 Phase 2 DONE-when
 - [ ] **CORE-03**: Cost-effective runtime AI — Planner→Executor→Renderer, TierResolver (Appendix D), ProviderRouter fallback/circuit breaker, prompt caching, structured output one-repair, persona seed — §1, §10, §23
 - [ ] **CORE-04**: Context-adaptive execution — model tiers, token budgets, ContextOptimizer, degradation order, minimal mode, ContextProvenanceManifest — §2
@@ -260,12 +260,14 @@ Requirements for the v0.2 release. Each maps to exactly one roadmap phase.
 Acknowledged and deferred; not in the current roadmap.
 
 ### Page Injection & Capture
+
 - Page injection architecture (Shadow DOM runtime, Tailwind+Radix injected UI, portal isolation, style-bleed tests) — §25
 - Screenshot / region capture in the Side Panel composer — DEC-OP-02
 - Browser automation (chrome.debugger + CDP) — §26 (v2)
 - CaseInsightBox / host-page UI enhancements — §9.7
 
 ### Knowledge & Notes
+
 - Strict-OKF conformance (markdown-link edges, path-as-identity, `sources`/`verified`) — OKF-WIKI-04, behind a dedicated ADR
 - Bidirectional filesystem sync — §27
 - Embeddings / vector stores — §27 (LLM reranking instead)
@@ -273,6 +275,7 @@ Acknowledged and deferred; not in the current roadmap.
 - RICH-H-07 "Fill this field" (host-page write-back) — DEC-SPEC-11 R1
 
 ### Experience
+
 - `@ant-design/x-card` / A2UI dynamic surfaces — DEC-SPEC-02
 - Animated 3D avatar; separate sentiment LLM call; full NLP intent pipeline; TTS output; drag-and-drop macro builder; cross-session replay — §17.7 out of scope
 - Resumable long-running tool contract — TOL-07
@@ -298,7 +301,7 @@ Which phases cover which requirements. Each requirement maps to exactly one phas
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CORE-01 | Phase 1 | Pending |
+| CORE-01 | Phase 1 | Complete |
 | CORE-02 | Phase 2 | Pending |
 | CORE-03 | Phase 3 | Pending |
 | CORE-04 | Phase 5 | Pending |
@@ -488,6 +491,7 @@ Which phases cover which requirements. Each requirement maps to exactly one phas
 | FLOW-19 | Phase 15 | Pending |
 
 **Coverage:**
+
 - v1 requirements: 188 total (RICH counted as 3 §18 waves covering 60 items; FLOW-1a included)
 - Mapped to phases: 188
 - Unmapped: 0 ✓

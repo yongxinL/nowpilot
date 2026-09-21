@@ -1,19 +1,19 @@
 ---
 gsd_state_version: "1.0"
 milestone: v0.2
-current_phase: 01
+current_phase: 1
 current_phase_name: MV3/WXT Runtime + AntD Shells + Workspace
 status: executing
-stopped_at: Phase 1 UI-SPEC approved
-last_updated: "2026-09-21T00:51:06.460Z"
-last_activity: 2026-09-20
-last_activity_desc: "Ingest bootstrap: PROJECT.md / REQUIREMENTS.md / ROADMAP.md / STATE.md created from PRODUCT_SPEC v0.2 (+ DESIGN_SYSTEM v0.2, UI-seed guide; W1–W6 resolutions applied)"
-state_head: 75511e42f7ba4050186d1c6757ba6ffb3f3f1ac9
+stopped_at: Completed 01-01-PLAN.md (D-04 migration inventory frozen)
+last_updated: "2026-09-21T11:40:54.871Z"
+last_activity: 2026-09-21
+last_activity_desc: Phase 1 execution started
+state_head: 8c7b727935e2aa857f1205da9318d7047056c8c0
 progress:
   total_phases: 19
   completed_phases: 0
   total_plans: 13
-  completed_plans: 0
+  completed_plans: 1
 ---
 
 # Project State
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 
 ## Current Position
 
-Phase: 01 (MV3/WXT Runtime + AntD Shells + Workspace) — READY TO EXECUTE
-Plan: 0 of TBD in current phase
+Phase: 1 (MV3/WXT Runtime + AntD Shells + Workspace) — EXECUTING
+Plan: 2 of 13
 Status: Ready to execute
-Last activity: 2026-09-20 — Ingest bootstrap: PROJECT.md / REQUIREMENTS.md / ROADMAP.md / STATE.md created from PRODUCT_SPEC v0.2 (+ DESIGN_SYSTEM v0.2, UI-seed guide; W1–W6 resolutions applied)
+Last activity: 2026-09-21 — Phase 1 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -54,6 +54,11 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: —
 
 *Updated after each plan completion*
+**Per-Plan Metrics:**
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| Phase 01 P01 | 10 | 3 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -64,6 +69,9 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - **Locked (operator, 2026-09-20):** DEC-OP-01 Side Panel is Chat-only · DEC-OP-02 no snip control · DEC-OP-03 Standalone Sider set · DEC-OP-04 message actions 7/8/4 · DEC-OP-05 release label v0.2 · DEC-OP-06 reference paths under `.planning/design/references/`.
 - **Proposed (spec-embedded, not ADR-locked):** DEC-SPEC-01…11 + DEC-HTML-01 — see `.planning/intel/decisions.md`.
 - Phase structure is operator-locked to PRODUCT_SPEC §18 Phases 1–19 (names + order); changes go through `/gsd-phase` + operator approval.
+- [Phase 1]: Inventory D-04 gate frozen: 140 prototype files classified (KEEP 47 / ADAPT 69 / REPLACE 5 / REMOVE 19); every non-KEEP row names one owning plan 01-02..01-13; plans cite rows by Current path.
+- [Phase 1]: Content-script entrypoint resolves to src/entrypoints/content/index.ts (WXT content/index glob; §5.1 directory intent preserved) with the operator checkpoint in 01-03 (H-1/OQ1).
+- [Phase 1]: Theme: .dark class scoped to AntD only (src/index.css keeps its selectors) and AntD/X packages stay exactly pinned with no Phase 1 bump (OQ2/OQ4).
 
 ### Pending Todos
 
@@ -88,6 +96,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-20T23:42:23.230Z
-Stopped at: Phase 1 UI-SPEC approved
-Resume file: .planning/phases/01-mv3-wxt-runtime-antd-shells-workspace/01-UI-SPEC.md
+Last session: 2026-09-21T11:40:54.851Z
+Stopped at: Completed 01-01-PLAN.md (D-04 migration inventory frozen)
+Resume file: None
