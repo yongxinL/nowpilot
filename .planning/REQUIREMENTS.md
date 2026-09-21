@@ -25,7 +25,7 @@ Requirements for the v0.2 release. Each maps to exactly one roadmap phase.
 ### Side Panel Features (§9.1)
 
 - [ ] **SP-01**: Chat (P0) — streaming, abort, slash commands, quick context; the only Side Panel surface — §9.1
-- [ ] **SP-02**: Open Standalone view action (P0) — opens standalone.html with workspace handoff — §9.1, Flow 11
+- [x] **SP-02**: Open Standalone view action (P0) — opens standalone.html with workspace handoff — §9.1, Flow 11
 - [ ] **SP-03**: Workflow selector (P0) — Auto or an approved workflow; provider/model resolution automatic and configured in Options — §9.1
 - [ ] **SP-04**: Quick save to note (P1) — lightweight, non-LLM quick action — §9.1
 - [ ] **SP-05**: Slash commands (P1) — /write, /ask, /research, etc. — §9.1
@@ -245,7 +245,7 @@ Requirements for the v0.2 release. Each maps to exactly one roadmap phase.
 - [ ] **FLOW-8**: Keyboard shortcut — KeymapRegistry global keydown → handler → preventDefault — §11
 - [ ] **FLOW-9**: First-run onboarding — persona card → provider → key → validate — §11
 - [ ] **FLOW-10**: Cmd+K command palette — filtered command list — §11
-- [ ] **FLOW-11**: Open Standalone view — persist → dedupe → hydrate → WORKSPACE_HANDOFF → Side Panel mirrors — §11
+- [x] **FLOW-11**: Open Standalone view — persist → dedupe → hydrate → WORKSPACE_HANDOFF → Side Panel mirrors — §11
 - [ ] **FLOW-12**: Save to note (LLM-Wiki) — NoteChatConverter draft → user edits → save pipeline — §11
 - [ ] **FLOW-13**: Ask your notes (RAG) — MiniSearch top-5 + memory → balanced synthesis with citations; tiny falls back — §11
 - [ ] **FLOW-14**: Set/change backup folder — showDirectoryPicker (Standalone only) → handle in IndexedDB — §11
@@ -311,7 +311,7 @@ Which phases cover which requirements. Each requirement maps to exactly one phas
 | CORE-08 | Phase 8 | Pending |
 | CORE-09 | Phase 19 | Pending |
 | SP-01 | Phase 15 | Pending |
-| SP-02 | Phase 1 | Pending |
+| SP-02 | Phase 1 | Complete |
 | SP-03 | Phase 15 | Pending |
 | SP-04 | Phase 15 | Pending |
 | SP-05 | Phase 15 | Pending |
@@ -480,7 +480,7 @@ Which phases cover which requirements. Each requirement maps to exactly one phas
 | FLOW-8 | Phase 1 | Pending |
 | FLOW-9 | Phase 1 | Pending |
 | FLOW-10 | Phase 1 | Pending |
-| FLOW-11 | Phase 1 | Pending |
+| FLOW-11 | Phase 1 | Complete |
 | FLOW-12 | Phase 9 | Pending |
 | FLOW-13 | Phase 9 | Pending |
 | FLOW-14 | Phase 9 | Pending |

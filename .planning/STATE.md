@@ -4,16 +4,16 @@ milestone: v0.2
 current_phase: 1
 current_phase_name: MV3/WXT Runtime + AntD Shells + Workspace
 status: executing
-stopped_at: "Completed 01-06-PLAN.md (canonical runtime envelope: Appendix E registry, strict Zod payload validation, sender-guarded dispatch, cold-start-proven router)"
-last_updated: "2026-09-21T13:09:28.272Z"
+stopped_at: Completed 01-07-PLAN.md (frozen WorkspaceState, ready/transfer/ack handoff, ack-gated open, no workspace persistence)
+last_updated: "2026-09-21T13:38:38.811Z"
 last_activity: 2026-09-21
 last_activity_desc: Phase 1 execution started
-state_head: 55716ae577c056c6d8437973c85820d9046c2f4e
+state_head: 55a33474ea950c7bc95327417eb36dc0db5bfbf4
 progress:
   total_phases: 19
   completed_phases: 0
   total_plans: 13
-  completed_plans: 5
+  completed_plans: 6
 ---
 
 # Project State
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 ## Current Position
 
 Phase: 1 (MV3/WXT Runtime + AntD Shells + Workspace) — EXECUTING
-Plan: 7 of 13
+Plan: 8 of 13
 Status: Ready to execute
 Last activity: 2026-09-21 — Phase 1 execution started
 
@@ -63,6 +63,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P04 | 5 | 2 tasks | 2 files |
 | Phase 01 P05 | 17 | 3 tasks | 15 files |
 | Phase 01 P06 | 10 | 2 tasks | 8 files |
+| Phase 01 P07 | 18min | 3 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -96,6 +97,11 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 1]: Phase 1: payload validation is a strict per-type Zod parse in src/core/runtime/RuntimeEnvelopeValidation.ts, split out of RuntimeEnvelope.ts because declaring the schemas there put zod in the content bundle (4.07 kB -> 73.76 kB; after the split content.js is 4.88 kB and background.js carries zod).
 - [Phase 1]: Phase 1: the chrome.runtime.onMessage listener rejects any sender whose sender.id is not chrome.runtime.id (absent sender and absent id included) and validates the envelope before dispatch; BackgroundRouter registers only the canonical literals, the scaffold handlers are gone, and synchronous cold-start attachment is proven by test.
 - [Phase 1]: Phase 1: the envelope keeps operationId/timestamp (plan-verbatim) although Appendix C declares id/createdAt and an addon source; recorded in .planning/WINDOWS.md for the phase acceptance review.
+- [Phase 1]: 01-07: the migration base pins `updatedAt` to 0 (never reads the clock) and mints one workspace id per process, so migrating the same input twice is deep-equal — the plan's determinism requirement rules out `Date.now()`.
+- [Phase 1]: 01-07: the handoff state machines live in `handoff/protocol.ts` and the surface controllers in `handoff/useWorkspaceHandoff.ts`; Task 2's suite owns the cold-start/timeout/retry/ack-gate cases, so the correlator had to exist at Task 2's module boundary.
+- [Phase 1]: 01-07: `deleteLegacyWorkspaceBlob()` moved to an import-free module after measuring `background.js` graph 73.0 kB → 95.3 kB (zustand + immer); back to 75.3 kB, with `WorkspaceStore` re-exporting the helper.
+- [Phase 1]: 01-07: `openStandalone` keeps its positional signature and adds a typed `code` to the failure arm, so `src/entrypoints/sidepanel/main.tsx` compiles unmodified; the pinned `standalone.openFailed` copy and Retry rendering belong to the UI plans.
+- [Phase 1]: 01-07: `hydrateFromURL` returns the target controller's disposer and `StandaloneShell`'s mount effect returns it — the controller's unsubscribe is the React effect cleanup.
 
 ### Pending Todos
 
@@ -120,6 +126,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-21T13:09:28.250Z
-Stopped at: Completed 01-06-PLAN.md (canonical runtime envelope: Appendix E registry, strict Zod payload validation, sender-guarded dispatch, cold-start-proven router)
+Last session: 2026-09-21T13:38:24.697Z
+Stopped at: Completed 01-07-PLAN.md (frozen WorkspaceState, ready/transfer/ack handoff, ack-gated open, no workspace persistence)
 Resume file: None
