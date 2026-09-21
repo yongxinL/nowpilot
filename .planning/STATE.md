@@ -4,16 +4,16 @@ milestone: v0.2
 current_phase: 1
 current_phase_name: MV3/WXT Runtime + AntD Shells + Workspace
 status: executing
-stopped_at: Completed 01-03-PLAN.md (generated-manifest inspection gate, Option C content-script build exclusion, inventory decision record)
-last_updated: "2026-09-21T20:52:34.366Z"
+stopped_at: Completed 01-08-PLAN.md (keymap repair, D-09 command set, token-clean palette, gesture-correct Focus Side Panel)
+last_updated: "2026-09-21T21:22:36.116Z"
 last_activity: 2026-09-21
 last_activity_desc: Phase 1 execution started
-state_head: 17ed16d154d1f9a91594a40568cbd13153d0e6e1
+state_head: 49feb85af7483ff0136cd38c7ec0d91df6113b9d
 progress:
   total_phases: 19
   completed_phases: 0
   total_plans: 13
-  completed_plans: 9
+  completed_plans: 10
 ---
 
 # Project State
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 ## Current Position
 
 Phase: 1 (MV3/WXT Runtime + AntD Shells + Workspace) — EXECUTING
-Plan: 11 of 13
+Plan: 12 of 13
 Status: Ready to execute
 Last activity: 2026-09-21 — Phase 1 execution started
 
@@ -67,6 +67,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P09 | 37 | 3 tasks | 18 files |
 | Phase 01 P12 | 31min | 3 tasks | 28 files |
 | Phase 01 P03 | 7 | 3 tasks | 6 files |
+| Phase 01 P08 | 21 | 3 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -119,6 +120,11 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 1]: 01-03: the staged content script's declared matches was narrowed from the prototype's <all_urls> to the already-authorised ServiceNow host set, so the Phase 6 restore cannot silently widen host access; the manifest gate pins the declared array (case 10).
 - [Phase 1]: 01-03: the manifest gate pins the decision twice — case 9 asserts the content_scripts key's ABSENCE and case 10 the staged source's declared scope; the removal condition is Phase 6's rename back to index.ts plus the assertion flip in one change.
 - [Phase 1]: 01-03: the content-script row's Target canonical path stays src/entrypoints/content/index.ts; the Phase-1 staged path is recorded in the row's status note and in H-1, because the canonical intent is unchanged and only the Phase-1 realisation is excluded.
+- [Phase 1]: 01-08: the command `category` is a canonical id (navigation | theme | system) that the palette resolves through t('commands.category.<id>'); storing a display label would put an untranslated string in the DOM and storing a t() key in the registry would make the registry own presentation.
+- [Phase 1]: 01-08: the dev-only reload gate is written inline (if (import.meta.env.DEV === true)) so esbuild folds it and drops the command definition — grep -ro reload-extension .output/chrome-mv3/ reads 0 after pnpm run build:ext; a helper-function gate had shipped one dead constant.
+- [Phase 1]: 01-08: the Standalone's Open Standalone view focuses this surface (chrome.tabs.getCurrent -> activate -> focus window) rather than calling the router handoff, which would re-point this tab and report a false standalone.openFailed after the handshake timeout.
+- [Phase 1]: 01-08: the destructive command's gate is the pinned confirmation (command.reloadExtension.confirm + common.continue/common.notNow), not a query-shape rule, so no match — partial or exact — can auto-run it; and the SA-10 opener is exported from the standalone entrypoint so the ordering case could live in the commands suite (01-12 owns StandaloneShell.test.tsx).
+- [Phase 1]: 01-08: one additive canonical key, sidepanel.openFailed ('Failed to open the side panel'), carries the Focus Side Panel failure path; it is pinned in tests/core/i18n/strings.test.ts and recorded in WINDOWS.md for phase-acceptance ratification.
 
 ### Pending Todos
 
@@ -143,6 +149,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-21T20:52:34.341Z
-Stopped at: Completed 01-03-PLAN.md (generated-manifest inspection gate, Option C content-script build exclusion, inventory decision record)
+Last session: 2026-09-21T21:22:36.085Z
+Stopped at: Completed 01-08-PLAN.md (keymap repair, D-09 command set, token-clean palette, gesture-correct Focus Side Panel)
 Resume file: None

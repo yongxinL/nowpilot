@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 10
+open_count: 12
 waived_count: 0
 fixed_count: 2
-total_count: 12
-last_updated: 2026-09-21T20:48:47.055Z
+total_count: 14
+last_updated: 2026-09-21T21:19:00.150Z
 ---
 
 # Broken Windows Ledger
@@ -27,6 +27,8 @@ last_updated: 2026-09-21T20:48:47.055Z
 | 10 | 01 | deviation | src/components/standalone/WorkspaceSidebar.tsx |  | Inventory change-control C-01-12-A: WorkspaceSidebar.tsx changed ADAPT -> REMOVE. Plan 01-02 had already shipped the canonical Sider inside StandaloneShell.tsx, so the file had zero importers and remounting it would have created the parallel implementation D-02 forbids. Recorded with all six change-control fields in 01-MIGRATION-INVENTORY.md; the phase acceptance review should confirm the deletion rather than a remount. | open |  | 2026-09-21T15:05:54.819Z |  |
 | 11 | 01 | deviation | src/components/common/ModelSelector.tsx |  | Inventory change-control C-01-12-B: ModelSelector removal timing corrected. The Write-page import site is replaced (read-only Auto workflow display) but the file itself cannot be deleted in 01-12 - its last importer is src/components/chat/ChatComposer.tsx, a 01-11 REMOVE row, so the deletion must land with that file's removal or the typecheck breaks. 01-11's teardown must take grep -rn 'ModelSelector' src/ to zero. | open |  | 2026-09-21T15:06:01.545Z |  |
 | 12 | 01 | deviation | src/components/options/OptionsPage.tsx |  | Declared hand-off for phase acceptance: 01-12 removed the connection test and its provider-service import and disabled every store-writing control (Save, provider Switch), but the preserved Options page still reads useExtensionStore for its non-secret display state and still renders credential input fields. Plan 01-11 Task 1 owns the credential-field strip, the store REPLACE and the model paths on this file; the verifier must confirm that an unreachable disabled control, not a live path, is what remains. | open |  | 2026-09-21T15:06:14.006Z |  |
+| 13 | 01 | unrun-verify | src/entrypoints/standalone/main.tsx |  | SA-10 real Chrome gesture evidence not yet run: the suite proves the open call is issued synchronously from the chrome.tabs.query callback with no awaited boundary before it, but chrome.sidePanel.open's gesture semantics are runtime-only (jsdom mocks the API). In a real Chrome MV3 build, open Standalone and run Focus Side Panel from the palette, then record the observed result; owned by the phase acceptance plan (01-VALIDATION manual row for SA-10). | open |  | 2026-09-21T21:18:51.278Z |  |
+| 14 | 01 | deviation | src/core/i18n/strings.ts |  | New canonical key added by 01-08: sidepanel.openFailed ('Failed to open the side panel'). The UI-SPEC Copywriting Contract pins no copy for the Focus Side Panel failure path, but the task requires a typed, logged, user-visible failure rather than a silent one. The key is additive, resolves through t(), and is pinned in tests/core/i18n/strings.test.ts; the phase acceptance review should ratify the wording. | open |  | 2026-09-21T21:19:00.150Z |  |
 
 ````json
 [
@@ -183,6 +185,32 @@ last_updated: 2026-09-21T20:48:47.055Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-09-21T15:06:14.006Z",
+    "resolved_at": null,
+    "milestone": "v0.2"
+  },
+  {
+    "id": 13,
+    "kind": "unrun-verify",
+    "phase": "01",
+    "file": "src/entrypoints/standalone/main.tsx",
+    "line": null,
+    "description": "SA-10 real Chrome gesture evidence not yet run: the suite proves the open call is issued synchronously from the chrome.tabs.query callback with no awaited boundary before it, but chrome.sidePanel.open's gesture semantics are runtime-only (jsdom mocks the API). In a real Chrome MV3 build, open Standalone and run Focus Side Panel from the palette, then record the observed result; owned by the phase acceptance plan (01-VALIDATION manual row for SA-10).",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-09-21T21:18:51.278Z",
+    "resolved_at": null,
+    "milestone": "v0.2"
+  },
+  {
+    "id": 14,
+    "kind": "deviation",
+    "phase": "01",
+    "file": "src/core/i18n/strings.ts",
+    "line": null,
+    "description": "New canonical key added by 01-08: sidepanel.openFailed ('Failed to open the side panel'). The UI-SPEC Copywriting Contract pins no copy for the Focus Side Panel failure path, but the task requires a typed, logged, user-visible failure rather than a silent one. The key is additive, resolves through t(), and is pinned in tests/core/i18n/strings.test.ts; the phase acceptance review should ratify the wording.",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-09-21T21:19:00.150Z",
     "resolved_at": null,
     "milestone": "v0.2"
   }
