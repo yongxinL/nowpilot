@@ -1,173 +1,130 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import { chromeStorageAdapter } from '../theme/chromeStorageAdapter';
+import { createInitialWorkspaceState, type ActiveSurface, type WorkspaceState } from './WorkspaceState';
 
-export type ActiveSurface = 'sidepanel' | 'standalone';
+export type { ActiveSurface, TabContext, WorkspaceState } from './WorkspaceState';
 
 /**
- * Single-writer election predicate (D-16 / REQ-R05).
- *
- * Phase 1: always `true` (interface frozen, no election yet).
- * Phase 2 implements real election semantics (background-SW
- * authoritative vs. tabs.query highest-id vs. BroadcastBus subscriber)
- * before MemoryEngine write paths gate on this — do NOT assume this
- * always returns true past Phase 2. SWAP POINT (Phase 2): replace with
- * leader-election over `np_workspace_primary` channel (CAS + heartbeat).
+ * The stale prototype workspace key and its removal-only helper live in an
+ * import-free module so the background service worker can delete the blob
+ * without pulling this store's zustand/immer/zod graph into its bundle.
  */
+export { LEGACY_WORKSPACE_STORAGE_KEY, deleteLegacyWorkspaceBlob } from './legacyWorkspaceBlob';
+
+/**
+ * The canonical D-12 writer states, using the frozen vocabulary — Phase 2's
+ * election populates them. Phase 1 never leaves `primary`.
+ *
+ * `mirror | election-pending | handoff-pending | handoff-failed |
+ * writer-unavailable` are the mirror-side states: they describe a surface that
+ * is not the authoritative writer. Nothing in Phase 1 transitions into any of
+ * them.
+ */
+export type WorkspaceMirrorState =
+  | 'mirror'
+  | 'election-pending'
+  | 'handoff-pending'
+  | 'handoff-failed'
+  | 'writer-unavailable';
+
+export type WorkspaceWriterState = 'primary' | WorkspaceMirrorState;
+
+/** Runtime membership of the writer-state contract. */
+export const WORKSPACE_WRITER_STATES: readonly WorkspaceWriterState[] = [
+  'primary',
+  'mirror',
+  'election-pending',
+  'handoff-pending',
+  'handoff-failed',
+  'writer-unavailable',
+];
+
+/**
+ * The **Phase-1 writer adapter** (D-12).
+ *
+ * This is the surface reporting that it is writable — it is NOT a completed
+ * writer election. It reports no election result, no writer epoch, no
+ * authoritative writer identity, no persistence acknowledgement and no
+ * successful demotion, and Phase 1 has no code path that transitions into
+ * `mirror`. Phase 2 replaces this adapter with authoritative election state
+ * (CAS + heartbeat over the writer channel) and only then may a surface render
+ * read-only mirroring.
+ */
+export const PHASE1_WRITER_STATE: WorkspaceWriterState = 'primary';
+
+/** Phase-1 adapter: the current surface is writable. Not an election result. */
 export function isPrimaryWriter(): boolean {
-  return true;
+  return PHASE1_WRITER_STATE === 'primary';
 }
 
-export interface TabContext {
-  tabId: number;
-  title: string;
-  url: string;
-  pinned: boolean;
-}
-
-export interface WorkspaceStateData {
-  workspaceId: string;
-  conversationId: string | null;
-  activeProvider: string | null;
-  selectedModel: string | null;
-  pinnedTabs: TabContext[];
-  activeSurface: ActiveSurface;
-  openedStandaloneTabId: number | null;
-  version: number;
+/** True for every mirror-side state; Phase 1 always reports `false`. */
+export function isMirrorState(state: WorkspaceWriterState): state is WorkspaceMirrorState {
+  return state !== 'primary';
 }
 
 interface WorkspaceActions {
   setWorkspaceId: (id: string) => void;
-  setConversationId: (id: string) => void;
-  setActiveProvider: (provider: string) => void;
-  setSelectedModel: (model: string) => void;
-  pinTab: (tab: TabContext) => void;
-  unpinTab: (tabId: number) => void;
+  setConversationId: (id: string | null) => void;
   setActiveSurface: (surface: ActiveSurface) => void;
   setOpenedStandaloneTabId: (tabId: number | null) => void;
-  bumpVersion: () => void;
   reset: () => void;
 }
 
-type WorkspaceStore = WorkspaceStateData & WorkspaceActions;
-
-const initialState: WorkspaceStateData = {
-  workspaceId: crypto.randomUUID(),
-  conversationId: null,
-  activeProvider: null,
-  selectedModel: null,
-  pinnedTabs: [],
-  activeSurface: 'sidepanel' as ActiveSurface,
-  openedStandaloneTabId: null,
-  version: 0,
-};
+type WorkspaceStore = WorkspaceState & WorkspaceActions;
 
 /**
- * D-22 / H1: throw-free no-op migration for the WorkspaceStore persist
- * config. v1 IS the current schema — a v1 blob (or an unversioned legacy
- * blob from before Plan 01-04 adopted chromeStorageAdapter) is returned
- * unchanged so existing user data hydrates without disruption.
+ * The workspace store (D-11, D-14).
  *
- * This is the third and final persisted store to gain the
- * version/migrate scaffold (`useExtensionStore` and `ThemeStore` landed
- * it in Plan 01-01). The shape of `WorkspaceStateData` is unchanged, so
- * the no-op is genuinely a no-op.
+ * **No persistence.** Phase 1 writes no workspace state to chrome.storage.*,
+ * IndexedDB, `localStorage` or `sessionStorage`: there is no persist middleware
+ * here, no storage key and no temporary Phase-1 key. Only the authorised Phase-1
+ * producers are exposed as mutators — `workspaceId`, `conversationId`,
+ * `activeSurface` and `openedStandaloneTabId` (plus the shape version and the
+ * write counter those writes bump). The later-phase fields
+ * (`activeProvider`, `selectedModel`, `pinnedTabs`, `currentPageContext`,
+ * `selectedNotes`, `activeAddonContext`, `activeSkillRun`) have no authoring
+ * API at all: a raw model selector must not be reintroduced (DEC-HTML-01), and
+ * `pinnedTabs` / `selectedNotes` stay empty rather than being filled with
+ * synthetic data.
+ *
+ * Every mutator bumps `version` (the monotonic write counter Phase 2's
+ * election reads) and `updatedAt` (staleness).
  */
-export function workspaceMigrate(persisted: unknown, version: number): unknown {
-  if (persisted && typeof persisted === 'object') {
-    return persisted;
-  }
-  return {};
-}
-
 export const useWorkspaceStore = create<WorkspaceStore>()(
-  persist(
-    immer((set) => ({
-      ...initialState,
+  immer((set) => ({
+    ...createInitialWorkspaceState(),
 
-      setWorkspaceId: (id: string) =>
-        set((state) => {
-          state.workspaceId = id;
-          state.version++;
-        }),
-
-      setConversationId: (id: string) =>
-        set((state) => {
-          state.conversationId = id;
-          state.version++;
-        }),
-
-      setActiveProvider: (provider: string) =>
-        set((state) => {
-          state.activeProvider = provider;
-        }),
-
-      setSelectedModel: (model: string) =>
-        set((state) => {
-          state.selectedModel = model;
-        }),
-
-      pinTab: (tab: TabContext) =>
-        set((state) => {
-          const existing = state.pinnedTabs.find((t) => t.tabId === tab.tabId);
-          if (!existing && state.pinnedTabs.length < 10) {
-            state.pinnedTabs.push({ ...tab, pinned: true });
-          }
-          if (existing) {
-            existing.pinned = true;
-          }
-        }),
-
-      unpinTab: (tabId: number) =>
-        set((state) => {
-          state.pinnedTabs = state.pinnedTabs.filter((t) => t.tabId !== tabId);
-        }),
-
-      setActiveSurface: (surface: ActiveSurface) =>
-        set((state) => {
-          state.activeSurface = surface;
-        }),
-
-      setOpenedStandaloneTabId: (tabId: number | null) =>
-        set((state) => {
-          state.openedStandaloneTabId = tabId;
-        }),
-
-      bumpVersion: () =>
-        set((state) => {
-          state.version++;
-        }),
-
-      reset: () =>
-        set((state) => {
-          Object.assign(state, { ...initialState, workspaceId: crypto.randomUUID() });
-        }),
-    })),
-    {
-      name: 'np_workspace_store',
-      // H1: WorkspaceStore previously had NO `storage:` key — zustand's
-      // implicit default is a `localStorage`-backed adapter, which is
-      // wrong for an extension: it (a) loses data when the service worker
-      // is the only context writing, (b) bypasses the debounced
-      // chromeStorageAdapter that useExtensionStore + ThemeStore now
-      // share. This line puts WorkspaceStore on the same choke point.
-      storage: createJSONStorage(() => chromeStorageAdapter),
-      partialize: (state) => ({
-        workspaceId: state.workspaceId,
-        conversationId: state.conversationId,
-        activeProvider: state.activeProvider,
-        selectedModel: state.selectedModel,
-        pinnedTabs: state.pinnedTabs,
-        activeSurface: state.activeSurface,
-        openedStandaloneTabId: state.openedStandaloneTabId,
-        version: state.version,
+    setWorkspaceId: (id: string) =>
+      set((state) => {
+        state.workspaceId = id;
+        state.version += 1;
+        state.updatedAt = Date.now();
       }),
-      // D-22: zustand-persist schema version. SEPARATE axis from
-      // IndexedDB `DB_VERSION` (§20.4) — do not conflate when numbering
-      // later migrations (A5).
-      version: 1,
-      migrate: workspaceMigrate,
-    },
-  ),
+
+    setConversationId: (id: string | null) =>
+      set((state) => {
+        state.conversationId = id;
+        state.version += 1;
+        state.updatedAt = Date.now();
+      }),
+
+    setActiveSurface: (surface: ActiveSurface) =>
+      set((state) => {
+        state.activeSurface = surface;
+        state.version += 1;
+        state.updatedAt = Date.now();
+      }),
+
+    setOpenedStandaloneTabId: (tabId: number | null) =>
+      set((state) => {
+        state.openedStandaloneTabId = tabId;
+        state.version += 1;
+        state.updatedAt = Date.now();
+      }),
+
+    reset: () =>
+      set(() => ({
+        ...createInitialWorkspaceState(),
+      })),
+  })),
 );

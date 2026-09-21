@@ -1,85 +1,235 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
 import {
-  useWorkspaceStore,
+  LEGACY_WORKSPACE_STORAGE_KEY,
+  PHASE1_WRITER_STATE,
+  WORKSPACE_WRITER_STATES,
+  deleteLegacyWorkspaceBlob,
+  isMirrorState,
   isPrimaryWriter,
+  useWorkspaceStore,
   type ActiveSurface,
 } from '../../../src/core/workspace/WorkspaceStore';
+import {
+  WORKSPACE_STATE_SCHEMA_VERSION,
+  parseWorkspaceState,
+} from '../../../src/core/workspace/WorkspaceState';
 
-describe('WorkspaceStore', () => {
+const CANONICAL_FIELDS = [
+  'activeAddonContext',
+  'activeProvider',
+  'activeSkillRun',
+  'activeSurface',
+  'conversationId',
+  'currentPageContext',
+  'openedStandaloneTabId',
+  'pinnedTabs',
+  'schemaVersion',
+  'selectedModel',
+  'selectedNotes',
+  'updatedAt',
+  'version',
+  'workspaceId',
+] as const;
+
+/** The store carries actions alongside the state; the schema boundary sees the state only. */
+function toWorkspaceState(state: Record<string, unknown>): Record<string, unknown> {
+  const projected: Record<string, unknown> = {};
+  for (const field of CANONICAL_FIELDS) projected[field] = state[field];
+  return projected;
+}
+
+function sourceFiles(dir: string): { file: string; text: string }[] {
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  const files: { file: string; text: string }[] = [];
+  for (const entry of entries) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...sourceFiles(full));
+    } else if (/\.(ts|tsx)$/.test(entry.name)) {
+      files.push({ file: full, text: fs.readFileSync(full, 'utf8') });
+    }
+  }
+  return files;
+}
+
+describe('WorkspaceStore — canonical shape, no persistence (D-11, D-14)', () => {
   beforeEach(() => {
     useWorkspaceStore.getState().reset();
   });
 
-  it('initializes with default state', () => {
+  it('initializes with the canonical defaults and no synthetic production data', () => {
     const state = useWorkspaceStore.getState();
+
+    expect(state.schemaVersion).toBe(WORKSPACE_STATE_SCHEMA_VERSION);
     expect(state.workspaceId).toBeTruthy();
     expect(state.conversationId).toBeNull();
     expect(state.activeProvider).toBeNull();
     expect(state.selectedModel).toBeNull();
     expect(state.pinnedTabs).toEqual([]);
+    expect(state.currentPageContext).toBeNull();
+    expect(state.selectedNotes).toEqual([]);
+    expect(state.activeAddonContext).toBeNull();
+    expect(state.activeSkillRun).toBeNull();
     expect(state.activeSurface).toBe('sidepanel');
+    expect(state.openedStandaloneTabId).toBeNull();
     expect(state.version).toBe(0);
+    expect(typeof state.updatedAt).toBe('number');
   });
 
-  it('sets conversation ID', () => {
-    const store = useWorkspaceStore.getState();
-    store.setConversationId('conv-1');
-    expect(useWorkspaceStore.getState().conversationId).toBe('conv-1');
-    expect(useWorkspaceStore.getState().version).toBe(1);
+  it('satisfies the strict schema at the store boundary', () => {
+    const parsed = parseWorkspaceState(toWorkspaceState(useWorkspaceStore.getState() as unknown as Record<string, unknown>));
+
+    expect(parsed.ok).toBe(true);
   });
 
-  it('pins and unpins tabs', () => {
-    const store = useWorkspaceStore.getState();
-    store.pinTab({ tabId: 1, title: 'Test', url: 'https://test.com', pinned: true });
-    expect(useWorkspaceStore.getState().pinnedTabs).toHaveLength(1);
+  it('exposes only the authorised Phase-1 mutators', () => {
+    const state = useWorkspaceStore.getState() as unknown as Record<string, unknown>;
+    const actions = Object.keys(state)
+      .filter((key) => typeof state[key] === 'function')
+      .sort();
 
-    store.unpinTab(1);
-    expect(useWorkspaceStore.getState().pinnedTabs).toHaveLength(0);
+    expect(actions).toEqual([
+      'reset',
+      'setActiveSurface',
+      'setConversationId',
+      'setOpenedStandaloneTabId',
+      'setWorkspaceId',
+    ]);
   });
 
-  it('enforces max 10 pinned tabs', () => {
-    const store = useWorkspaceStore.getState();
-    for (let i = 0; i < 12; i++) {
-      store.pinTab({ tabId: i, title: `Tab ${i}`, url: `https://tab${i}.com`, pinned: true });
-    }
-    expect(useWorkspaceStore.getState().pinnedTabs).toHaveLength(10);
+  it('sets the conversation id and bumps the write counter and the staleness marker', () => {
+    const before = useWorkspaceStore.getState();
+    before.setConversationId('conv-1');
+
+    const after = useWorkspaceStore.getState();
+    expect(after.conversationId).toBe('conv-1');
+    expect(after.version).toBe(before.version + 1);
+    expect(after.updatedAt).toBeGreaterThanOrEqual(before.updatedAt);
   });
 
-  it('tracks active surface', () => {
+  it('accepts null as a conversation id (an empty conversation is valid)', () => {
     const store = useWorkspaceStore.getState();
+    store.setConversationId('conv-2');
+    store.setConversationId(null);
+
+    expect(useWorkspaceStore.getState().conversationId).toBeNull();
+  });
+
+  it('sets the workspace id and the active surface', () => {
+    const store = useWorkspaceStore.getState();
+    store.setWorkspaceId('ws-canonical');
     store.setActiveSurface('standalone');
-    expect(useWorkspaceStore.getState().activeSurface).toBe('standalone');
+
+    const state = useWorkspaceStore.getState();
+    expect(state.workspaceId).toBe('ws-canonical');
+    expect(state.activeSurface).toBe('standalone');
+    expect(state.version).toBe(2);
   });
 
-  it('bumps version', () => {
+  it('records the opened Standalone tab id and can clear it', () => {
     const store = useWorkspaceStore.getState();
-    store.bumpVersion();
-    expect(useWorkspaceStore.getState().version).toBe(1);
+    store.setOpenedStandaloneTabId(77);
+    expect(useWorkspaceStore.getState().openedStandaloneTabId).toBe(77);
+
+    store.setOpenedStandaloneTabId(null);
+    expect(useWorkspaceStore.getState().openedStandaloneTabId).toBeNull();
   });
 
-  it('resets to initial state', () => {
+  it('resets to a fresh canonical state', () => {
     const store = useWorkspaceStore.getState();
     store.setConversationId('conv-test');
-    store.pinTab({ tabId: 1, title: 'Test', url: 'https://test.com', pinned: true });
+    store.setWorkspaceId('ws-test');
     store.reset();
-    const newState = useWorkspaceStore.getState();
-    expect(newState.conversationId).toBeNull();
-    expect(newState.pinnedTabs).toEqual([]);
-    expect(newState.version).toBe(0);
+
+    const state = useWorkspaceStore.getState();
+    expect(state.conversationId).toBeNull();
+    expect(state.workspaceId).not.toBe('ws-test');
+    expect(state.version).toBe(0);
+    expect(parseWorkspaceState(toWorkspaceState(state as unknown as Record<string, unknown>)).ok).toBe(true);
+  });
+
+  it('writes nothing to chrome.storage when state changes', () => {
+    const local = (globalThis as unknown as { __chromeStorageLocal: { set: { mock: { calls: unknown[] } } } })
+      .__chromeStorageLocal;
+    const writesBefore = local.set.mock.calls.length;
+
+    const store = useWorkspaceStore.getState();
+    store.setWorkspaceId('ws-no-write');
+    store.setConversationId('conv-no-write');
+    store.setActiveSurface('standalone');
+    store.setOpenedStandaloneTabId(5);
+    store.reset();
+
+    expect(local.set.mock.calls.length).toBe(writesBefore);
+  });
+
+  it('has no persist middleware and no storage key of its own', () => {
+    const store = useWorkspaceStore as unknown as { persist?: unknown };
+
+    expect(store.persist).toBeUndefined();
+
+    const source = fs.readFileSync(
+      path.resolve(process.cwd(), 'src/core/workspace/WorkspaceStore.ts'),
+      'utf8',
+    );
+    expect(source).not.toMatch(/persist\s*\(/);
+    for (const line of source.split('\n')) {
+      if (line.includes(LEGACY_WORKSPACE_STORAGE_KEY)) {
+        expect(line).toMatch(/LEGACY/);
+      }
+    }
+  });
+
+  it('source scan: no Phase-1 module names a workspace storage key for writing', () => {
+    const violations: string[] = [];
+
+    for (const { file, text } of sourceFiles(path.resolve(process.cwd(), 'src'))) {
+      text.split('\n').forEach((line, index) => {
+        if (!line.includes('np_workspace')) return;
+        const isChannelConstant = line.includes("np_workspace'");
+        const isLegacyRemoval = /legacy/i.test(line);
+        if (!isChannelConstant && !isLegacyRemoval) {
+          violations.push(`${path.relative(process.cwd(), file)}:${index + 1}`);
+        }
+      });
+    }
+
+    expect(violations).toEqual([]);
+  });
+
+  it('deletes the stale prototype workspace blob on startup', async () => {
+    const map = (globalThis as unknown as { __chromeStorageMap: Map<string, string> }).__chromeStorageMap;
+    map.set(LEGACY_WORKSPACE_STORAGE_KEY, '{"state":{"workspaceId":"stale"}}');
+
+    await deleteLegacyWorkspaceBlob();
+
+    expect(map.has(LEGACY_WORKSPACE_STORAGE_KEY)).toBe(false);
   });
 });
 
-describe('isPrimaryWriter() predicate (D-16, REQ-R05)', () => {
-  // Phase 1 contract: always returns true. Phase 2 will swap in real
-  // election semantics — see WorkspaceStore.ts swap-point comment.
-
-  it('returns true when called with no arguments', () => {
+describe('WorkspaceStore — Phase-1 writer adapter and mirror contract (D-12)', () => {
+  it('reports the surface writable without claiming an election', () => {
+    expect(PHASE1_WRITER_STATE).toBe('primary');
+    expect(isPrimaryWriter()).toBe(true);
     expect(isPrimaryWriter()).toBe(true);
   });
 
-  it('returns true on a second call (proves the stub is not stateful)', () => {
-    expect(isPrimaryWriter()).toBe(true);
-    expect(isPrimaryWriter()).toBe(true);
+  it('freezes the canonical writer vocabulary and stays out of every mirror state', () => {
+    expect(WORKSPACE_WRITER_STATES).toEqual([
+      'primary',
+      'mirror',
+      'election-pending',
+      'handoff-pending',
+      'handoff-failed',
+      'writer-unavailable',
+    ]);
+
+    for (const state of WORKSPACE_WRITER_STATES) {
+      expect(isMirrorState(state)).toBe(state !== 'primary');
+    }
+    expect(isMirrorState(PHASE1_WRITER_STATE)).toBe(false);
   });
 });
 
@@ -97,12 +247,6 @@ describe('ActiveSurface union (D-07 canonicalization)', () => {
   it("rejects 'full-app' at the type level (canonical rename)", () => {
     // @ts-expect-error 'full-app' is no longer a member of ActiveSurface — canonicalized to 'standalone' (D-07).
     const surface: ActiveSurface = 'full-app';
-    // Runtime belt-and-braces: if 'full-app' ever re-joined the union, the
-    // ts-expect-error directive just above would itself error and this
-    // file would fail to compile. The runtime assertion below confirms
-    // the literal did reach the assignment (proves the directive was
-    // exercised).
     expect(surface).toBe('full-app');
   });
 });
-

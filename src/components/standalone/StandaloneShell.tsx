@@ -74,12 +74,12 @@ export const StandaloneShell: React.FC<StandaloneShellProps> = ({ onOpenOptions 
   );
   const viewportWidth = useViewportWidth();
 
-  // Hydrate the workspace store from this tab's query string
-  // (`?workspaceId=&conversationId=&page=`). openStandalone produces this URL
-  // shape; hydrateFromURL routes through setWorkspaceId/setConversationId so
-  // subscribers fire. Empty/missing params are handled inside it.
+  // Hydrate the workspace store from this tab's query string and become the
+  // handoff target (D-13): the bootstrap is validated before use, readiness is
+  // announced, and the returned disposer unsubscribes on unmount. A direct
+  // open with no handoff bootstrap is a no-op.
   useEffect(() => {
-    hydrateFromURL(new URLSearchParams(window.location.search));
+    return hydrateFromURL(typeof window === 'undefined' ? '' : window.location.search);
   }, []);
 
   const navItemStyle = (isActive: boolean): React.CSSProperties => ({

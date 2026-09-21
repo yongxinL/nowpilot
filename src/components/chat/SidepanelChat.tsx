@@ -14,8 +14,6 @@ import { useChatStreaming } from './useChatStreaming';
 import { MirrorBanner } from '../common/MirrorBanner';
 
 import { useExtensionStore } from '../../store/useExtensionStore';
-import { useWorkspaceStore } from '../../core/workspace/WorkspaceStore';
-import { onWorkspaceSync } from '../../core/workspace/WorkspaceSync';
 import { PromptItem } from '../../types';
 
 interface SidepanelChatProps {
@@ -200,21 +198,11 @@ export const SidepanelChat: React.FC<SidepanelChatProps> = ({
     // next Side Panel mount.
   };
 
-  // D-05 / REQ-F05: subscribe to WORKSPACE_HANDOFF so the Side Panel can
-  // demote to a read-only mirror when the Standalone view takes primary
-  // authorship. Only matches when the broadcast carries the same
-  // workspaceId — a stale handoff for a different workspace must NOT
-  // invoke mirror mode here.
-  useEffect(() => {
-    const unsubscribe = onWorkspaceSync((msg) => {
-      if (msg.type !== 'WORKSPACE_HANDOFF') return;
-      const localWsId = useWorkspaceStore.getState().workspaceId;
-      if (msg.workspaceId === localWsId) {
-        setMirrored(true);
-      }
-    });
-    return unsubscribe;
-  }, []);
+  // D-12: Phase 1 never demotes the Side Panel to a read-only mirror. The
+  // prototype subscribed to the workspace broadcast here and mounted
+  // `MirrorBanner`; the handoff protocol (D-13) claims no demotion and the
+  // banner stays an unmounted presentation component until Phase 2's
+  // authoritative election state exists. This host is removed in `01-11`.
 
   useEffect(() => {
     if (!activeSession) {

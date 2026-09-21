@@ -1,95 +1,166 @@
-import { publish } from '../runtime/BroadcastBus';
+import { debugLog } from '../log/debugLog';
 import { useWorkspaceStore } from './WorkspaceStore';
-import { notifyWorkspaceHandoff } from './WorkspaceSync';
+import {
+  buildHandoffUrl,
+  parseHandoffUrl,
+  type HandoffResult,
+} from './handoff/protocol';
+import {
+  createWorkspaceHandoffSource,
+  createWorkspaceHandoffTarget,
+} from './handoff/useWorkspaceHandoff';
 
-const WORKSPACE_CHANNEL = 'np_workspace';
+export interface WorkspaceNavigationResult {
+  ok: true;
+}
+
+export interface WorkspaceNavigationFailure {
+  ok: false;
+  error: string;
+}
+
+export interface OpenStandaloneOptions {
+  onSettled?: (result: HandoffResult) => void;
+  /**
+   * The ephemeral composer draft. It travels through the validated handoff
+   * projection only — never through the URL and never through storage.
+   */
+  composerDraft?: string;
+}
 
 /**
- * D-04 / D-07: open the Standalone view in a new tab — or focus the
- * existing one if it's already open (REQ-F05 cross-surface handoff).
+ * Resolve the Standalone tab: focus it when it exists, create exactly one when
+ * it does not. Callback-style to match the file's established convention, with
+ * every `chrome.runtime.lastError` branch preserved (01-PATTERNS.md); the
+ * cross-window focus case covers re-opening from another browser window.
  *
- * The real surface is `entrypoints/standalone/index.html`, which WXT
- * outputs as `standalone.html`. The query string shape
- * (`workspaceId=&conversationId=&page=`) is what `hydrateFromURL` reads on
- * Standalone mount (H2 — the hydration stays in `WorkspaceRouter.ts`).
+ * The URL carries only the approved bootstrap identifiers, built by
+ * `buildHandoffUrl` — never a draft, a credential or the workspace state.
+ */
+function focusOrCreateStandaloneTab(args: {
+  requestId: string;
+  workspaceId: string;
+  conversationId: string | null;
+  page: string | null;
+}): Promise<void> {
+  const url = chrome.runtime.getURL(
+    buildHandoffUrl({
+      workspaceId: args.workspaceId,
+      requestId: args.requestId,
+      conversationId: args.conversationId,
+      route: args.page,
+      sourceSurface: 'sidepanel',
+      targetSurface: 'standalone',
+    }),
+  );
+
+  return new Promise<void>((resolve, reject) => {
+    chrome.tabs.query({ url: chrome.runtime.getURL('standalone.html*') }, (tabs) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(String(chrome.runtime.lastError.message)));
+        return;
+      }
+      if (tabs.length > 0 && tabs[0].id) {
+        const tabId = tabs[0].id;
+        const windowId = tabs[0].windowId;
+        chrome.tabs.update(tabId, { active: true }, () => {
+          if (chrome.runtime.lastError) {
+            reject(new Error(String(chrome.runtime.lastError.message)));
+            return;
+          }
+          useWorkspaceStore.getState().setOpenedStandaloneTabId(tabId);
+          if (windowId !== undefined) {
+            chrome.windows.update(windowId, { focused: true }, () => {
+              resolve();
+            });
+          } else {
+            resolve();
+          }
+        });
+      } else {
+        chrome.tabs.create({ url }, (tab) => {
+          if (chrome.runtime.lastError) {
+            reject(new Error(String(chrome.runtime.lastError.message)));
+            return;
+          }
+          if (tab.id) {
+            useWorkspaceStore.getState().setOpenedStandaloneTabId(tab.id);
+          }
+          resolve();
+        });
+      }
+    });
+  });
+}
+
+/**
+ * D-13 / D-12: hand the workspace to the Standalone surface.
  *
- * Tab dedup is callback-style to match the file's established convention
- * (01-PATTERNS.md). The cross-window focus case (`chrome.windows.update`)
- * covers re-opening from a different browser window.
+ * Success is claimed **only** after a validated `HANDOFF_ACK` correlated on the
+ * request id — never when `tabs.create` returns. On a missing ready or a
+ * missing acknowledgement the Side Panel stays writable, the local draft is
+ * untouched, and the caller receives a typed recoverable failure
+ * (`WORKSPACE_HANDOFF_FAILED` / `STANDALONE_OPEN_FAILED`) that the UI turns into
+ * the pinned `standalone.openFailed` copy plus `Retry`. No `MirrorBanner` is
+ * displayed and no election, epoch, identity or demotion is claimed.
  */
 export function openStandalone(
   workspaceId: string,
   conversationId?: string,
   page?: string,
-  opts?: { onSettled?: (result: { ok: true } | { ok: false; error: string }) => void },
+  opts?: OpenStandaloneOptions,
 ): void {
-  const params = new URLSearchParams();
-  params.set('workspaceId', workspaceId);
-  if (conversationId) params.set('conversationId', conversationId);
-  if (page) params.set('page', page);
-
-  const url = chrome.runtime.getURL(`standalone.html?${params.toString()}`);
-
-  publish(WORKSPACE_CHANNEL, {
-    type: 'STANDALONE_OPEN',
-    workspaceId,
-    conversationId,
-    page,
+  const source = createWorkspaceHandoffSource({
+    openTarget: ({ requestId, workspaceId: targetWorkspaceId, page: targetPage }) =>
+      focusOrCreateStandaloneTab({
+        requestId,
+        workspaceId: targetWorkspaceId,
+        // The bootstrap identifier only — never the draft, which travels
+        // through the validated ephemeral projection instead.
+        conversationId: conversationId ?? null,
+        page: targetPage,
+      }),
+    sourceSurface: 'sidepanel',
+    targetSurface: 'standalone',
   });
 
-  chrome.tabs.query({ url: chrome.runtime.getURL('standalone.html*') }, (tabs) => {
-    if (chrome.runtime.lastError) {
-      opts?.onSettled?.({ ok: false, error: String(chrome.runtime.lastError.message) });
-      return;
-    }
-    if (tabs.length > 0 && tabs[0].id) {
-      const tabId = tabs[0].id;
-      const windowId = tabs[0].windowId;
-      chrome.tabs.update(tabId, { active: true }, () => {
-        if (chrome.runtime.lastError) {
-          opts?.onSettled?.({ ok: false, error: String(chrome.runtime.lastError.message) });
-          return;
-        }
-        if (windowId !== undefined) {
-          chrome.windows.update(windowId, { focused: true }, () => {
-            opts?.onSettled?.({ ok: true });
-          });
-        } else {
-          opts?.onSettled?.({ ok: true });
-        }
-      });
-      useWorkspaceStore.getState().setOpenedStandaloneTabId(tabId);
-    } else {
-      chrome.tabs.create({ url }, (tab) => {
-        if (chrome.runtime.lastError) {
-          opts?.onSettled?.({ ok: false, error: String(chrome.runtime.lastError.message) });
-          return;
-        }
-        if (tab.id) {
-          useWorkspaceStore.getState().setOpenedStandaloneTabId(tab.id);
-        }
-        opts?.onSettled?.({ ok: true });
-      });
-    }
-  });
+  void source
+    .start({
+      workspaceId,
+      conversationId: conversationId ?? null,
+      page: page ?? null,
+      composerDraft: opts?.composerDraft ?? '',
+    })
+    .then(
+      (result) => {
+        opts?.onSettled?.(result);
+        source.dispose();
+      },
+      (error: unknown) => {
+        opts?.onSettled?.({
+          ok: false,
+          code: 'WORKSPACE_HANDOFF_FAILED',
+          error: error instanceof Error && error.message ? error.message : String(error),
+        });
+        source.dispose();
+      },
+    );
 }
 
 /**
- * Open the Options page in a new tab — or focus the existing one
- * (Plan 01-07 — D-08 command-set wiring).
+ * Open the Options workspace — or focus the existing one.
  *
- * Mirrors `openStandalone`'s callback-style + dedup shape so the Side
- * Panel / Standalone entrypoints don't roll their own `chrome.tabs.query({})`
- * + `.find()` dedup implementations. The dedup queries
- * `chrome.runtime.getURL('options.html*')` so the same tab is matched
- * regardless of any future query-string variant.
+ * The prototype's `options.html` page no longer exists: §5.4 / §8.6 route
+ * Options inside the Standalone shell at `?page=options`, so the URL target and
+ * the dedupe match both use that route. Mirrors `openStandalone`'s
+ * callback-style + dedupe shape.
  */
 export function openOptions(
-  opts?: { onSettled?: (result: { ok: true } | { ok: false; error: string }) => void },
+  opts?: { onSettled?: (result: WorkspaceNavigationResult | WorkspaceNavigationFailure) => void },
 ): void {
-  const url = chrome.runtime.getURL('options.html');
+  const url = chrome.runtime.getURL('standalone.html?page=options');
 
-  chrome.tabs.query({ url: chrome.runtime.getURL('options.html*') }, (tabs) => {
+  chrome.tabs.query({ url: chrome.runtime.getURL('standalone.html?page=options*') }, (tabs) => {
     if (chrome.runtime.lastError) {
       opts?.onSettled?.({ ok: false, error: String(chrome.runtime.lastError.message) });
       return;
@@ -123,37 +194,43 @@ export function openOptions(
 }
 
 /**
- * H2: hydrate the WorkspaceStore from the Standalone view's `?workspaceId&`
- * `&conversationId&` query string (which `openStandalone` produced above).
+ * Read this surface's URL bootstrap and become the handoff **target** (D-13).
  *
- * Both branches now route through zustand's `set()` (via the named store
- * actions), so persistence and subscriber notifications fire. The previous
- * `Object.assign(store, { workspaceId })` bypassed `set()` and silently
- * failed to trigger persist/subscribers — fixed in Plan 01-06.
+ * The bootstrap is normalised and validated by `parseHandoffUrl` before any
+ * value is used; a rejected URL applies nothing at all and is logged by code
+ * only. A validated bootstrap hydrates the canonical store fields and, when it
+ * carries a request id, starts the target controller — which announces
+ * readiness, applies at most one correlated projection and acknowledges it.
  *
- * Plan 01-07: when `workspaceId` is present, also publishes a
- * `WORKSPACE_HANDOFF` message on the `np_workspace` BroadcastChannel so
- * the Side Panel can demote to a read-only mirror (REQ-F05). A no-op call
- * (empty params) does NOT broadcast — that path is taken on direct
- * Standalone opens (not the cross-surface handoff).
- *
- * Empty/missing params set empty string / null respectively; downstream
- * empty-state UIs handle it.
+ * Returns the disposer so the surface can unsubscribe on unmount; a rejected or
+ * bootstrap-free URL returns a no-op disposer.
  */
-export function hydrateFromURL(searchParams: URLSearchParams): void {
-  const wsId = searchParams.get('workspaceId');
-  const convId = searchParams.get('conversationId');
+export function hydrateFromURL(search: URLSearchParams | string): () => void {
+  const parsed = parseHandoffUrl(search);
+  if (!parsed.ok) {
+    // Names and values are never logged — only the canonical rejection code.
+    debugLog('WORKSPACE_HANDOFF_URL_REJECTED', 'Workspace handoff URL rejected', { code: parsed.code });
+    return () => {};
+  }
+
+  const bootstrap = parsed.value;
+  if (!bootstrap) return () => {};
 
   const store = useWorkspaceStore.getState();
+  store.setWorkspaceId(bootstrap.workspaceId);
+  if (bootstrap.conversationId) store.setConversationId(bootstrap.conversationId);
+  store.setActiveSurface('standalone');
 
-  if (wsId) {
-    store.setWorkspaceId(wsId);
-  }
-  if (convId) {
-    store.setConversationId(convId);
-  }
+  const target = createWorkspaceHandoffTarget({
+    bootstrap,
+    apply: (projection) => {
+      const state = useWorkspaceStore.getState();
+      state.setWorkspaceId(projection.workspaceId);
+      state.setConversationId(projection.conversationId);
+      state.setActiveSurface('standalone');
+    },
+  });
 
-  if (wsId) {
-    notifyWorkspaceHandoff(wsId, convId ?? '');
-  }
+  target.start();
+  return () => target.dispose();
 }
