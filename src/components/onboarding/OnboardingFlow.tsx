@@ -405,7 +405,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
         data-np-backing="fixture"
         data-testid="onboarding-fixture-notice"
         aria-label={t('deferred.reasonFixture')}
-        message={t('deferred.reasonFixture')}
+        title={t('deferred.reasonFixture')}
       />
 
       {status === 'idle' && (
