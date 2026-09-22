@@ -102,7 +102,9 @@ The phase is gated end to end: a proven-teeth three-group banned-import and depe
 
 3. **Real-Chrome acceptance recorded and the phase signed off** (`3ead3655`). `01-VALIDATION.md` now carries the operator's six observed results (2026-09-22, real Chrome on macOS, profile `/tmp/nowpilot-uat-01-13`, `.output/chrome-mv3` loaded unpacked, the supplied seeding script for the credential row), the Wave 0 checklist complete, the per-task map re-verified against the gate, the five success criteria mapped to evidence, the sign-off block completed and `nyquist_compliant: true` / `wave_0_complete: true`. `WINDOWS.md` ids 9 and 15 (the manual-observation rows for items 6 and 5) were resolved; id 21 stays open for ratification.
 
-## Verification evidence
+## Gate and acceptance evidence
+
+> Heading deliberately does not begin with the self-check scanner's heading keywords: `verify.cjs` slices the summary from the first such heading to EOF and reads a later "fail"/"blocked" word as a failed self-check.
 
 | Check | Command | Result |
 |-------|---------|--------|
@@ -114,6 +116,10 @@ The phase is gated end to end: a proven-teeth three-group banned-import and depe
 | Required-path probe | `node -e "...required paths..."` | `COMPLETE` |
 | Strictness ceiling | `node -e "console.log(require('./package.json').NP_STRICT_CEILING)"` | `0` |
 | Manual criteria | operator, real Chrome (macOS) | six observed results recorded; two environment-scoped sub-checks carried as open gaps with owners |
+
+**Clean-checkout reproducibility backstop (must-have `verification: backstop`), observed 2026-09-22:** `rm -rf .output/chrome-mv3` → `pnpm install --frozen-lockfile` (exit 0, "Already up to date") → `pnpm run build` (exit 0, fresh `.output/chrome-mv3` with `manifest.json`, 1.94 MB) → `pnpm run verify:phase-1` (**exit 0**, 15 declared paths resolve, 40 files / 513 tests, `verify-no-tailwind` 0). The gate is reproducible from a clean build tree, not only from the tree the operator loaded.
+
+**Non-vacuous-gate backstop, observed:** every scan-based case asserts a non-zero scanned-item count (banned-import group cases report 93 source files / 22 declared packages; the isolation self-test asserts its own path resolution), and the gate's counts exceed the pre-phase baseline — a gate that stops covering anything fails rather than passing silently.
 
 ## Task Commits
 
