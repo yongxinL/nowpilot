@@ -171,16 +171,35 @@ describe('StandaloneShell — minimum viewport', () => {
 });
 
 describe('StandaloneShell — marking discipline', () => {
+  it('disables and marks the inert top-bar back chevron (hard rule 1)', () => {
+    renderShell();
+
+    const back = screen.getByTestId('np-topbar-back') as HTMLButtonElement;
+    expect(back.getAttribute('aria-label')).toBe(t('common.back'));
+    // Phase 1 has no in-app history: the control is present because the 56 px
+    // top bar composition pins it, so it must be disabled and marked rather
+    // than appear enabled and functional.
+    expect(back.disabled).toBe(true);
+    expect(back.getAttribute('data-np-backing')).toBe('deferred');
+  });
+
   it('marks the disabled global search field and the routed page root, and no live shell region', () => {
     const { container } = renderShell();
 
     const marked = Array.from(container.querySelectorAll('[data-np-backing]'));
 
-    // Two marked regions: the shell's own disabled global search field, and the
-    // deferred page shell the router renders into the content area.
+    // Three marked regions: the shell's own inert back chevron and disabled
+    // global search field, and the deferred page shell the router renders into
+    // the content area.
     expect(marked.map((el) => el.getAttribute('data-np-backing'))).toEqual([
       'deferred',
       'deferred',
+      'deferred',
+    ]);
+    expect(marked.map((el) => el.getAttribute('data-testid'))).toEqual([
+      'np-topbar-back',
+      'np-global-search',
+      'np-page-chat',
     ]);
 
     const search = screen.getByTestId('np-global-search');

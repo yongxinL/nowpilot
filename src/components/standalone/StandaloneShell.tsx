@@ -251,12 +251,23 @@ export const StandaloneShell: React.FC<StandaloneShellProps> = ({ onOpenOptions 
             />
           </Tooltip>
 
-          <Button
-            type="text"
-            aria-label={t('common.back')}
-            icon={<LeftOutlined />}
-            style={{ color: token.colorTextSecondary }}
-          />
+          {/* WR-05: the back chevron is part of the pinned 56 px top bar
+              composition, but Phase 1 has no in-app history to return to. An
+              enabled control that does nothing is forbidden (marking
+              convention hard rule 1), so it is disabled and marked exactly like
+              the global search field beside it, with the same pinned deferred
+              disclosure copy. */}
+          <Tooltip title={t('deferred.reasonDeferred')}>
+            <Button
+              type="text"
+              data-testid="np-topbar-back"
+              data-np-backing="deferred"
+              disabled
+              aria-label={t('common.back')}
+              icon={<LeftOutlined />}
+              style={{ color: token.colorTextSecondary }}
+            />
+          </Tooltip>
 
           <span
             aria-hidden="true"
