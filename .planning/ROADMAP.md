@@ -13,7 +13,7 @@ NowPilot v0.2 ships as a Chrome MV3 extension built in 19 phases. The sequence i
 - Integer phases (1, 2, 3): Planned milestone work
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
-- [ ] **Phase 1: MV3/WXT Runtime + AntD Shells + Workspace** - Extension boots: both surfaces, shared workspace handoff, theme, messaging and shell contracts.
+- [x] **Phase 1: MV3/WXT Runtime + AntD Shells + Workspace** - Extension boots: both surfaces, shared workspace handoff, theme, messaging and shell contracts. (completed 2026-09-23)
 - [ ] **Phase 2: Storage, Security, WriteJournal, Workspace Persistence** - Durable encrypted storage with journaled writes, migrations and workspace persistence.
 - [ ] **Phase 3: Cost-Effective AI Runtime (+ Persona seed)** - Planner → Executor → Renderer pipeline on four providers, with tiering, caching, routing and persona injection.
 - [ ] **Phase 4: Agent Reliability and Evidence** - Trajectory states, completion evidence and deterministic terminal policy; no false completion.
@@ -353,7 +353,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. MV3/WXT Runtime + AntD Shells + Workspace | 13/13 | In Progress|  |
+| 1. MV3/WXT Runtime + AntD Shells + Workspace | 13/13 | Complete    | 2026-09-23 |
 | 2. Storage, Security, WriteJournal, Workspace Persistence | 0/TBD | Not started | - |
 | 3. Cost-Effective AI Runtime (+ Persona seed) | 0/TBD | Not started | - |
 | 4. Agent Reliability and Evidence | 0/TBD | Not started | - |
