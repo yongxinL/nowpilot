@@ -11,8 +11,10 @@ import {
   validateHandoffEnvelope,
   createHandoffInitiator,
   createHandoffTarget,
+  handoffTransport,
   type HandoffEnvelope,
   type HandoffInitiatorRequest,
+  type HandoffTransport,
 } from '../../../src/core/workspace/handoff/protocol';
 
 /**
@@ -662,5 +664,99 @@ describe('handoff target — readiness, idempotent apply and acknowledgement (D-
     target.start();
 
     expect(publishedOf(publishSpy, 'HANDOFF_READY')).toHaveLength(0);
+  });
+});
+
+describe('handoff transport — the real BroadcastBus publish → validate path (CR-02)', () => {
+  const controllers: { dispose: () => void }[] = [];
+
+  afterEach(() => {
+    controllers.forEach((controller) => controller.dispose());
+    controllers.length = 0;
+    vi.restoreAllMocks();
+  });
+
+  it('completes ready → transfer → acknowledgement through the real bus, with no transport field reaching validation', async () => {
+    // `BroadcastChannel` never delivers a message back to the channel object
+    // that posted it, so a round trip is only observable across two bus
+    // instances — exactly how the two extension documents are wired. The
+    // source side therefore gets a second, independent module instance of
+    // `BroadcastBus` + `protocol` (tests/setup.ts already models the
+    // cross-instance delivery).
+    vi.resetModules();
+    const sourceSide = await import('../../../src/core/workspace/handoff/protocol');
+
+    // Real delivery is a queued task; the jsdom mock delivers synchronously.
+    // Deferring the target's posts by a microtask keeps the source's
+    // acknowledgement window open the way the real bus does — the transport
+    // implementation is still the real one (`handoffTransport.publish`).
+    // `received` records exactly what the real bus handed to the target's
+    // listener, so the transport decoration is observable.
+    const received: unknown[] = [];
+    const observingTargetTransport: HandoffTransport = {
+      publish: (envelope) => {
+        queueMicrotask(() => handoffTransport.publish(envelope));
+      },
+      subscribe: (listener) =>
+        handoffTransport.subscribe((value) => {
+          received.push(value);
+          listener(value);
+        }),
+    };
+
+    const apply = vi.fn();
+    const target = createHandoffTarget({
+      bootstrap: {
+        workspaceId: 'ws-1',
+        conversationId: 'conv-1',
+        page: 'write',
+        requestId: 'req-real-bus',
+        schemaVersion: HANDOFF_SCHEMA_VERSION,
+        sourceSurface: 'sidepanel',
+        targetSurface: 'standalone',
+      },
+      apply,
+      transport: observingTargetTransport,
+    });
+    controllers.push(target);
+
+    const source = createHandoffInitiator({
+      openTarget: async () => {},
+      requestId: 'req-real-bus',
+      transport: sourceSide.handoffTransport,
+      timeoutMs: 1000,
+    });
+    controllers.push(source);
+
+    const started = source.start({
+      workspaceId: 'ws-1',
+      conversationId: 'conv-1',
+      page: 'write',
+      composerDraft: 'a handed-over draft',
+      sourceSurface: 'sidepanel',
+      targetSurface: 'standalone',
+    });
+
+    target.start();
+
+    await expect(started).resolves.toEqual({ ok: true });
+
+    // The projection crossed the real publish path and was applied.
+    expect(apply).toHaveBeenCalledTimes(1);
+    expect(apply).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workspaceId: 'ws-1',
+        conversationId: 'conv-1',
+        composerDraft: 'a handed-over draft',
+      }),
+    );
+
+    // What the receiving listener saw is the app-owned envelope: the strict
+    // handoff schema accepts it, and the transport's echo-suppression field is
+    // not part of it (the CR-02 defect: `_sender` used to reach the `.strict()`
+    // schemas and reject every inbound message).
+    expect(received).toHaveLength(1);
+    expect(validateHandoffEnvelope(received[0]).ok).toBe(true);
+    expect(Object.keys(received[0] as Record<string, unknown>)).not.toContain('_sender');
   });
 });
