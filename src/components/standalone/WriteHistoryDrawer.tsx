@@ -310,7 +310,7 @@ export const WriteHistoryDrawer: React.FC<WriteHistoryDrawerProps> = ({
             flexDirection: 'column',
             gap: 8,
             position: 'relative',
-          }} className="group"
+          }}
             >
               {/* Top Row: Type Tag, Model & Date */}
               <div style={{

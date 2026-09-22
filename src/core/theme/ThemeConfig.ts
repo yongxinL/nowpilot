@@ -27,7 +27,9 @@ export const COLOR_THEMES: ColorThemeOption[] = [
     name: 'System',
     primary: '#cc6b49',
     darkPrimary: '#da7756',
-    previewGradient: 'from-[#cc6b49] to-[#da7756]',
+    // A plain CSS gradient value: the preview swatch is styled by the consumer
+    // and never by a Tailwind utility class string (spec §0.2).
+    previewGradient: 'linear-gradient(135deg, #cc6b49 0%, #da7756 100%)',
     description: 'Default system theme with warm terracotta accent',
   },
 ];

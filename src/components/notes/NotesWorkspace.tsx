@@ -1036,12 +1036,12 @@ export const NotesWorkspace: React.FC = () => {
             color: 'var(--muted-foreground)',
           }}>
               {[
-                { name: 'ServiceNow', count: 36, color: 'text-emerald-500' },
-                { name: 'Incident', count: 22, color: 'text-blue-500' },
-                { name: 'Script', count: 18, color: 'text-red-500' },
-                { name: 'API', count: 14, color: 'text-sky-500' },
-                { name: 'Performance', count: 12, color: 'text-indigo-500' },
-                { name: 'Automation', count: 10, color: 'text-cyan-500' },
+                { name: 'ServiceNow', count: 36, color: '#10b981' },
+                { name: 'Incident', count: 22, color: '#3b82f6' },
+                { name: 'Script', count: 18, color: '#ef4444' },
+                { name: 'API', count: 14, color: '#0ea5e9' },
+                { name: 'Performance', count: 12, color: '#6366f1' },
+                { name: 'Automation', count: 10, color: '#06b6d4' },
               ].map(tag => (
                 <div
                   key={tag.name}
@@ -1066,7 +1066,10 @@ export const NotesWorkspace: React.FC = () => {
             alignItems: 'center',
             gap: 8,
           }}>
-                    <TagOutlined className={tag.color} />
+                    {/* The tag swatch is an inline colour, never a class string:
+                        a Tailwind utility held in a variable is still a
+                        Tailwind utility (spec §0.2). */}
+                    <TagOutlined style={{ color: tag.color }} />
                     <span>{tag.name}</span>
                   </span>
                   <span style={{
@@ -2232,9 +2235,9 @@ export const NotesWorkspace: React.FC = () => {
             gap: 12,
           }}>
                   {[
-                    { title: 'Workflow Design Best Practices', date: 'Updated 2024-01-14', color: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600' },
-                    { title: 'INC Auto-Assignment Rules', date: 'Updated 2024-01-13', color: 'bg-blue-50 dark:bg-blue-950/40 text-blue-600' },
-                    { title: 'ServiceNow Script Debugging Tips', date: 'Updated 2024-01-12', color: 'bg-purple-50 dark:bg-purple-950/40 text-purple-600' },
+                    { title: 'Workflow Design Best Practices', date: 'Updated 2024-01-14', iconBg: '#ecfdf5', iconColor: '#059669' },
+                    { title: 'INC Auto-Assignment Rules', date: 'Updated 2024-01-13', iconBg: '#eff6ff', iconColor: '#2563eb' },
+                    { title: 'ServiceNow Script Debugging Tips', date: 'Updated 2024-01-12', iconBg: '#faf5ff', iconColor: '#9333ea' },
                   ].map((rel, i) => (
                     <div
                       key={i}
@@ -2253,12 +2256,13 @@ export const NotesWorkspace: React.FC = () => {
           }}
                     >
                       <div
-                        className={rel.color}
                         style={{
                           padding: 8,
                           borderRadius: 8,
                           flexShrink: 0,
                           fontSize: 14,
+                          background: rel.iconBg,
+                          color: rel.iconColor,
                         }}
                       >
                         <FileTextOutlined />
