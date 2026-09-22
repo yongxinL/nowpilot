@@ -153,6 +153,7 @@ None yet.
 - [Phase 2] D-07 consequence: users must re-enter provider credentials once KeyVault ships; the cleanup notice is shown once and its shown-state lives on `np_onboarding` schema v2.
 - [Phase 15/17] Residual non-blocking review findings: three fabricated-signal anti-patterns on fixture pages (two toasts, one timestamp), a production `console.log` in the background entrypoint, unused store bindings, and `pack` living under two sync keys (`np_theme.state.pack` + `np_theme_pack`; APPR-06 owns it in Phase 15).
 - [Phase 15] Environment-scoped open gaps from the 01-13 acceptance: Windows/Linux control chord unobserved (owner 01-08 follow-up); 01-12's async-vs-marker backstop truth is unfalsifiable until a real async page operation lands.
+- [Phase 15] UI review (01-UI-REVIEW.md, 13/24, advisory) blockers: Color 1/4 — the shipped Default theme seed is the Claude-warm prototype blob, not DESIGN_SYSTEM §6.2 (re-seed `semanticTokens.ts` and pin derived `colorPrimary`); Typography 1/4 — antd derivation yields Standalone 13 px (contract 14) and compact 8 px `fontSizeSM` (12 px floor violated at `SidePanelShell.tsx:288`). Plus Experience Design 2/4 (handoff pending copy, Retry label, message config, composer outline, ErrorBoundary reload semantics). None block Phase 1; Phase 15 owns design-system conformance.
 - One phase per response; later phases depend on earlier contracts (§18). Do not start Phase N+1 before Phase N is green.
 
 ## Deferred Items
