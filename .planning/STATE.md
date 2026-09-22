@@ -21,10 +21,10 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-09-20)
+See: .planning/PROJECT.md (updated 2026-09-23)
 
 **Core value:** Turn the page you are on into trustworthy, cited, reusable knowledge — through a copilot whose routing is automatic, cost-governed, and safe by construction.
-**Current focus:** Phase 1 — MV3/WXT Runtime + AntD Shells + Workspace
+**Current focus:** Phase 2 — Storage, Security, WriteJournal, Workspace Persistence
 
 ## Current Position
 
@@ -148,8 +148,11 @@ None yet.
 
 ### Blockers/Concerns
 
-- `package.json` carries a pre-§18 `verify:phase-N` numbering (incl. `phase-4a`/`phase-5a`); §24's mapping is authoritative — realign scripts per phase as each phase lands (Phase 1 owns `verify:phase-1`).
-- Existing `src/` + `entrypoints/` is a UI-seed prototype; convert it per the spec's "UI Seed and Workflow Routing Authority" — do not extend it as production architecture.
+- [Phase 1] `verify:phase-1` is realigned to §24 and composes the phase's suites (41 files / 569 tests + isolation gates); later phases' `verify:phase-N` scripts still carry the pre-§18 numbering until their phase lands.
+- [Phase 1] Prototype conversion is complete (D-04 inventory frozen; WXT is the single dev/build runtime; dev shell retired). Surviving fixture pages are D-16-marked and owned by Phases 8/15/17/18 — do not enable their controls before their owning phase.
+- [Phase 2] D-07 consequence: users must re-enter provider credentials once KeyVault ships; the cleanup notice is shown once and its shown-state lives on `np_onboarding` schema v2.
+- [Phase 15/17] Residual non-blocking review findings: three fabricated-signal anti-patterns on fixture pages (two toasts, one timestamp), a production `console.log` in the background entrypoint, unused store bindings, and `pack` living under two sync keys (`np_theme.state.pack` + `np_theme_pack`; APPR-06 owns it in Phase 15).
+- [Phase 15] Environment-scoped open gaps from the 01-13 acceptance: Windows/Linux control chord unobserved (owner 01-08 follow-up); 01-12's async-vs-marker backstop truth is unfalsifiable until a real async page operation lands.
 - One phase per response; later phases depend on earlier contracts (§18). Do not start Phase N+1 before Phase N is green.
 
 ## Deferred Items
@@ -165,6 +168,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-22T10:42:34.271Z
+Last session: 2026-09-22T22:51:18Z
 Stopped at: Phase 1 complete, ready to plan Phase 2
 Resume file: None

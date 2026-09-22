@@ -4,7 +4,7 @@
 
 NowPilot v0.2 is a Chrome MV3 extension that puts a governed AI copilot one click away: a Chat-only Side Panel for daily work and a Standalone workspace for deep work (Chat · Agent · Note · Write · Tools · Settings). Built with WXT, React 19, TypeScript (strict), Ant Design v6 and Ant Design X 2.x, every request flows through a Planner → Executor → Renderer pipeline with workflow-based selection (no raw model selector), layered page extraction, durable memory + notes with OKF-compatible filesystem sync, and an agent harness that is reliable, trust-aware, governed, evaluated and human-verified.
 
-The repository currently contains an early UI-seed prototype (WXT entrypoints, `src/`, `tests/`) and a generated codebase map. The v0.2 build follows the spec's §18 phase sequence and treats the prototype as a seed to convert, not as delivered architecture.
+Phase 1 converted the UI-seed prototype into the canonical WXT layout: the D-04 file-level migration inventory is frozen (140 rows), `srcDir: 'src'` is live, the Vite dev shell is retired (WXT is the single dev/build/zip runtime), and the surviving prototype pages are fixture-backed and D-16-marked for their owning later phases. The v0.2 build follows the spec's §18 phase sequence; later phases build on the Phase-1 contracts.
 
 ## Core Value
 
@@ -14,7 +14,7 @@ Turn the page you are on into trustworthy, cited, reusable knowledge — through
 
 ### Validated
 
-(None yet — pre-implementation baseline; nothing has shipped against PRODUCT_SPEC v0.2)
+- ✓ **Phase 1 — MV3/WXT Runtime + AntD Shells + Workspace** (2026-09-23) — CORE-01 · SP-02 · SP-08 · SP-09 · SA-08 · SA-09 · SA-10 · APPR-03 · APPR-04 · APPR-05 · FLOW-8 · FLOW-9 · FLOW-10 · FLOW-11: extension boots on MV3/WXT with both surfaces (Chat-only Side Panel; Standalone workspace), request-correlated workspace handoff, single-writer theme, envelope-validated messaging with sender guard, and shell contracts. 13/13 plans; `verify:phase-1` = 41 files / 569 tests + isolation gates.
 
 ### Active
 
@@ -76,6 +76,9 @@ Locked entries are operator-authoritative (2026-09-20). Proposed entries are emb
 | DEC-SPEC-10 — §27.8 D-01…D-08 (LLM-Wiki / notes decisions) | §27.8 | Proposed |
 | DEC-SPEC-11 — RICH reconciliations R1 (no host-page write-back; Insert = clipboard-only) and R2 (persona is user config in PreferenceMemoryStore) | §17.7.5 (mandatory) | Proposed |
 | DEC-HTML-01 — Workflow selector, not a raw model selector; TierResolver picks provider/model | UI-seed decision, corroborated by spec + design system | Proposed |
+| DEC-OP-07 — Phase-1 content script is excluded from the build (staged `src/entrypoints/content/core.content.ts`, no `content_scripts` manifest key, matches narrowed to the authorised ServiceNow hosts); Phase 6 restores it as `index.ts` with a widened scope in one change | Operator decision 01-03 Option C: least-privilege manifest for a phase that runs no extraction; the temporary exclusion is recorded with owner + removal condition | **Locked (operator, 2026-09-22)** |
+| DEC-OP-08 — Legacy plaintext provider credentials are destroyed in place on install/startup (field names-only report, non-secret metadata preserved, one neutral notice); affected users re-enter credentials once Phase 2 ships KeyVault | Operator decision 01-10 Option A (record D-01-10-1), rated one-way: the values exist only client-side and D-07 requires stripping now; the highest-severity CONCERNS finding is closed | **Locked (operator, 2026-09-22)** |
+| DEC-OP-09 — Preserved-page prototype copy may stay inline through Phase 1; the canonical string map covers all Phase-1-authored copy and the sweep is owned by Phase 15 (Options/Notes) and Phase 17 (Write) via review item IN-05 | Operator-accepted override of 01-04's strict "no inline literal" clause, recorded in `01-VERIFICATION.md` frontmatter `overrides:` | **Accepted (operator, 2026-09-22)** |
 
 ## Evolution
 
@@ -83,4 +86,4 @@ Locked entries are operator-authoritative (2026-09-20). Proposed entries are emb
 - **After each milestone:** full review; Core Value check; Out of Scope audit; Context updated with current state (users, feedback, metrics).
 
 ---
-*Last updated: 2026-09-20 after document-ingest bootstrap (PRODUCT_SPEC v0.2 + DESIGN_SYSTEM v0.2 + UI-seed guide; W1–W6 operator resolutions applied)*
+*Last updated: 2026-09-23 after Phase 1 (MV3/WXT Runtime + AntD Shells + Workspace)*
