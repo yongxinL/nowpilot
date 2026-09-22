@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App as AntdApp } from 'antd';
 import { XProvider } from '@ant-design/x';
@@ -43,6 +43,10 @@ const onboardingValidationPort = createFixtureValidationPort('success');
 const SidePanelSurface: React.FC = () => {
   const { message: antMessage } = AntdApp.useApp();
   const [paletteOpen, setPaletteOpen] = useState(false);
+  // WR-07 / D-13: the composer draft the handoff carries. The shell owns the
+  // textarea state and reports every change here; the ref keeps the value out
+  // of the render path and never persists it.
+  const composerDraftRef = useRef('');
   // D-06: the completion record gates the flow; the dismissal flag only closes
   // this surface's presentation (nothing persisted).
   const onboardingGate = useOnboardingGate();
@@ -71,6 +75,9 @@ const SidePanelSurface: React.FC = () => {
 
     const { workspaceId, conversationId } = useWorkspaceStore.getState();
     openStandalone(workspaceId, conversationId ?? undefined, undefined, {
+      // The live composer draft rides the validated handoff projection: it is
+      // never placed in the URL and never persisted (D-13 / hard rule 4).
+      composerDraft: composerDraftRef.current,
       onSettled: (result) => {
         if (result.ok) {
           antMessage.destroy('open-standalone');
@@ -128,6 +135,9 @@ const SidePanelSurface: React.FC = () => {
       <SidePanelRouter
         onOpenStandalone={openStandaloneWithToasts}
         onOpenOptions={handleOpenOptions}
+        onDraftChange={(draft) => {
+          composerDraftRef.current = draft;
+        }}
       />
       {/* The shared flow presents in the surface the user actually opened
           (D-06) — the Side Panel is never redirected, and no surface is opened

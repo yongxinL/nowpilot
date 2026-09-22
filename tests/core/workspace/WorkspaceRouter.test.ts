@@ -37,6 +37,7 @@ import {
   openOptions,
   hydrateFromURL,
 } from '../../../src/core/workspace/WorkspaceRouter';
+import { useHandoffComposerDraftStore } from '../../../src/core/workspace/handoff/composerDraft';
 
 const broadcast = (payload: unknown): void => {
   (globalThis as unknown as { __broadcast: (channel: string, data: unknown) => void }).__broadcast(
@@ -147,6 +148,8 @@ describe('WorkspaceRouter', () => {
     vi.clearAllMocks();
     chromeApi.runtime.lastError = undefined;
     useWorkspaceStore.getState().reset();
+    // The handoff draft slot is process-global: leave no draft behind.
+    useHandoffComposerDraftStore.getState().setDraft('');
     vi.useFakeTimers();
     publishSpy = vi.spyOn(BroadcastBus, 'publish');
   });
@@ -230,6 +233,24 @@ describe('WorkspaceRouter', () => {
       expect(onSettled).toHaveBeenCalledTimes(1);
       expect(onSettled.mock.calls[0]?.[0]).toEqual({ ok: true });
       expect(chromeApi.tabs.create).not.toHaveBeenCalled();
+    });
+
+    it('carries the caller composer draft into the handoff projection (WR-07)', async () => {
+      stubExistingTab();
+
+      openStandalone('ws1', 'c1', 'write', { composerDraft: 'a handoff draft' });
+      await flush();
+
+      const requestId = plannedRequestId(chromeApi.tabs.update.mock.calls[0]?.[1]?.url as string);
+      broadcast(ready(requestId));
+      await flush();
+
+      const transfers = publishedOf('WORKSPACE_HANDOFF');
+      expect(transfers).toHaveLength(1);
+      expect(
+        (transfers[0] as Extract<HandoffEnvelope, { type: 'WORKSPACE_HANDOFF' }>).projection
+          .composerDraft,
+      ).toBe('a handoff draft');
     });
 
     it('reports STANDALONE_OPEN_FAILED when tabs.update surfaces chrome.runtime.lastError', async () => {
@@ -533,6 +554,9 @@ describe('WorkspaceRouter', () => {
       broadcast(transfer('req-hydrate', 'ws-1'));
       expect(useWorkspaceStore.getState().conversationId).toBe('conv-9');
       expect(publishedOf('HANDOFF_ACK')).toHaveLength(1);
+      // WR-07: the projection's draft reaches the composer slot instead of
+      // being dropped by the apply adapter.
+      expect(useHandoffComposerDraftStore.getState().draft).toBe('a private draft');
 
       broadcast(transfer('req-hydrate', 'ws-1'));
       expect(publishedOf('HANDOFF_ACK')).toHaveLength(2);

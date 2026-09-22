@@ -24,6 +24,7 @@ const renderShell = (props?: Partial<React.ComponentProps<typeof SidePanelShell>
     <SidePanelShell
       onOpenStandalone={props?.onOpenStandalone ?? vi.fn()}
       onOpenOptions={props?.onOpenOptions ?? vi.fn()}
+      onDraftChange={props?.onDraftChange}
     />,
   );
 
@@ -132,6 +133,19 @@ describe('SidePanelShell — composer contract', () => {
 
     fireEvent.keyDown(input, { key: 'Enter', shiftKey: true });
     expect(input.value).toBe('a handoff draft');
+  });
+
+  it('reports the live composer draft to the surface root for the handoff (WR-07)', () => {
+    const onDraftChange = vi.fn();
+    renderShell({ onDraftChange });
+
+    const input = screen.getByTestId('np-composer-input') as HTMLTextAreaElement;
+    fireEvent.change(input, { target: { value: 'a handoff draft' } });
+
+    // The draft travels to `openStandalone` through this callback only — never
+    // through the URL, storage or a log (D-13 / hard rule 4).
+    expect(onDraftChange).toHaveBeenCalledTimes(1);
+    expect(onDraftChange).toHaveBeenCalledWith('a handoff draft');
   });
 });
 

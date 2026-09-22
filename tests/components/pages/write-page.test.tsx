@@ -1,10 +1,11 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { App, ConfigProvider } from 'antd';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { StandaloneWritePage } from '@/components/standalone/StandaloneWritePage';
+import { useHandoffComposerDraftStore } from '@/core/workspace/handoff/composerDraft';
 import { format, t } from '@/core/i18n/strings';
 
 /**
@@ -93,5 +94,47 @@ describe('StandaloneWritePage — fixture-preview (D-16)', () => {
     const { container } = renderWithAntd(<StandaloneWritePage />);
 
     expect((container.textContent ?? '').length).toBeGreaterThan(400);
+  });
+});
+
+describe('StandaloneWritePage — handoff composer draft (WR-07 / D-13)', () => {
+  const composerPlaceholder = 'Enter the topic you want to write about...';
+
+  afterEach(() => {
+    // The draft slot is process-global and this suite's afterEach runs before
+    // RTL's auto-cleanup unmounts the tree, so the reset is wrapped in `act`
+    // to keep the still-mounted subscription update inside React's boundary.
+    act(() => {
+      useHandoffComposerDraftStore.getState().setDraft('');
+    });
+  });
+
+  it('renders the draft the workspace handoff carried into the composer', async () => {
+    // The handoff resolves after the surface is mounted, so the draft arrives
+    // as a store write — exactly the production sequence.
+    renderWithAntd(<StandaloneWritePage />);
+
+    await act(async () => {
+      useHandoffComposerDraftStore.getState().setDraft('A draft typed in the Side Panel');
+    });
+
+    const composer = screen.getByPlaceholderText(composerPlaceholder);
+    expect((composer as HTMLTextAreaElement).value).toBe('A draft typed in the Side Panel');
+  });
+
+  it('seeds the composer when the draft is already in the slot at mount', async () => {
+    useHandoffComposerDraftStore.getState().setDraft('A draft typed in the Side Panel');
+    renderWithAntd(<StandaloneWritePage />);
+
+    const composer = await screen.findByPlaceholderText(composerPlaceholder);
+    expect((composer as HTMLTextAreaElement).value).toBe('A draft typed in the Side Panel');
+  });
+
+  it('leaves the composer content untouched when the handoff carried no draft', async () => {
+    renderWithAntd(<StandaloneWritePage />);
+
+    const composer = await screen.findByPlaceholderText(composerPlaceholder);
+    expect((composer as HTMLTextAreaElement).value).not.toBe('');
+    expect((composer as HTMLTextAreaElement).value).not.toBe('A draft typed in the Side Panel');
   });
 });

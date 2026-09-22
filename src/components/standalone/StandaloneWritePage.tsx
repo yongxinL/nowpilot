@@ -7,6 +7,7 @@ import { WriteOutputPanel } from './WriteOutputPanel';
 import { WritePromptModal } from './WritePromptModal';
 import { WriteHistoryItem, PromptItem } from '../../types';
 import { DeferredNotice } from '../common/DeferredNotice';
+import { useHandoffComposerDraftStore } from '../../core/workspace/handoff/composerDraft';
 import { t } from '../../core/i18n/strings';
 
 /** The canonical non-interactive workflow display (UI-SPEC § Composer control). */
@@ -75,9 +76,21 @@ export const StandaloneWritePage: React.FC<StandaloneWritePageProps> = ({ onOpen
   const [language, setLanguage] = useState<string>('English');
 
   // Inputs
-  const [writeInput, setWriteInput] = useState<string>('This is wrong page');
+  // WR-07 / D-13: the composer the workspace handoff carries a draft into. The
+  // target's `apply` adapter writes the projection's `composerDraft` to the
+  // in-memory slot, and the composer consumes it here — the field used to be
+  // validated and then dropped. A handoff with no draft (the Phase-1 Side Panel
+  // has no composer to type into) leaves this page's own content untouched.
+  const handoffDraft = useHandoffComposerDraftStore((state) => state.draft);
+  const [writeInput, setWriteInput] = useState<string>(() => handoffDraft || 'This is wrong page');
   const [replyOriginalText, setReplyOriginalText] = useState<string>('');
   const [replyIdeaText, setReplyIdeaText] = useState<string>('');
+
+  // A handoff that resolves after this surface mounted still reaches the
+  // composer; the user's own edits are never overwritten by an empty draft.
+  useEffect(() => {
+    if (handoffDraft) setWriteInput(handoffDraft);
+  }, [handoffDraft]);
 
   // Output & Versions
   const [outputVersions, setOutputVersions] = useState<string[]>([INITIAL_WRITE_OUTPUT]);

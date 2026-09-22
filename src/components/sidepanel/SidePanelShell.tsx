@@ -29,6 +29,13 @@ const INPUT_MAX_HEIGHT = 160;
 export interface SidePanelShellProps {
   onOpenStandalone: () => void;
   onOpenOptions: () => void;
+  /**
+   * WR-07 / D-13: reports the live composer draft to the surface root, which
+   * hands it to `openStandalone`. The draft travels through the validated
+   * handoff projection only — never the URL, never storage. The shell keeps
+   * owning the textarea state; this is a notification, not a lift.
+   */
+  onDraftChange?: (draft: string) => void;
 }
 
 /**
@@ -42,6 +49,7 @@ export interface SidePanelShellProps {
 export const SidePanelShell: React.FC<SidePanelShellProps> = ({
   onOpenStandalone,
   onOpenOptions,
+  onDraftChange,
 }) => {
   const { token } = theme.useToken();
   const [draft, setDraft] = useState('');
@@ -217,7 +225,10 @@ export const SidePanelShell: React.FC<SidePanelShellProps> = ({
             aria-label={t('chat.composerPlaceholder')}
             placeholder={t('chat.composerPlaceholder')}
             value={draft}
-            onChange={(event) => setDraft(event.target.value)}
+            onChange={(event) => {
+              setDraft(event.target.value);
+              onDraftChange?.(event.target.value);
+            }}
             onKeyDown={(event) => {
               // Enter must not send in Phase 1 (the send path is disabled);
               // Shift+Enter keeps its newline.

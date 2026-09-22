@@ -4,8 +4,10 @@ import {
   buildHandoffUrl,
   createHandoffRequestId,
   parseHandoffUrl,
+  HANDOFF_DRAFT_MAX_CHARS,
   type HandoffResult,
 } from './handoff/protocol';
+import { useHandoffComposerDraftStore } from './handoff/composerDraft';
 import {
   createWorkspaceHandoffSource,
   createWorkspaceHandoffTarget,
@@ -297,6 +299,13 @@ export function hydrateFromURL(search: URLSearchParams | string): () => void {
       state.setWorkspaceId(projection.workspaceId);
       state.setConversationId(projection.conversationId);
       state.setActiveSurface('standalone');
+      // WR-07: the projection's draft is consumed by the Standalone composer
+      // instead of being dropped on the floor. The bound is re-applied here at
+      // the consumption boundary; the strict projection schema already rejects
+      // an over-long draft on receipt.
+      useHandoffComposerDraftStore
+        .getState()
+        .setDraft(projection.composerDraft.slice(0, HANDOFF_DRAFT_MAX_CHARS));
     },
   });
 
