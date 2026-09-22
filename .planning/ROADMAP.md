@@ -48,7 +48,7 @@ NowPilot v0.2 ships as a Chrome MV3 extension built in 19 phases. The sequence i
   4. Background router registers listeners synchronously; RuntimeEnvelope fixtures parse; EventBus/WorkspaceStore/WorkspaceRouter/ThemeStore suites pass.
   5. `pnpm run verify:phase-1` passes and banned-import greps are zero (`innerHTML`/`dangerouslySetInnerHTML`; `tailwind`/`shadcn`/`@radix-ui`; `framer-motion`).
 
-**Plans**: 12/13 plans executed
+**Plans**: 13/13 plans executed
 Plans:
 **Wave 1**
 
@@ -79,7 +79,7 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 01-13-PLAN.md — Banned-import gate, `verify:phase-1` composition, real-Chrome evidence
+- [x] 01-13-PLAN.md — Banned-import gate, `verify:phase-1` composition, real-Chrome evidence
 
 **UI hint**: yes
 
@@ -353,7 +353,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. MV3/WXT Runtime + AntD Shells + Workspace | 12/13 | In Progress|  |
+| 1. MV3/WXT Runtime + AntD Shells + Workspace | 13/13 | In Progress|  |
 | 2. Storage, Security, WriteJournal, Workspace Persistence | 0/TBD | Not started | - |
 | 3. Cost-Effective AI Runtime (+ Persona seed) | 0/TBD | Not started | - |
 | 4. Agent Reliability and Evidence | 0/TBD | Not started | - |

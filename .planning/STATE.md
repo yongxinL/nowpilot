@@ -3,17 +3,17 @@ gsd_state_version: "1.0"
 milestone: v0.2
 current_phase: 1
 current_phase_name: MV3/WXT Runtime + AntD Shells + Workspace
-status: executing
-stopped_at: "01-13 Tasks 1-2 complete (three-group banned-import gate; verify:phase-1 composition); Task 3 real-Chrome checkpoint reached — six operator observations pending"
-last_updated: "2026-09-21T23:25:30.546Z"
+status: verifying
+stopped_at: Completed 01-13-PLAN.md — Phase 1 gate green (40 files / 513 tests) and accepted; six real-Chrome observations recorded; phase ready for verification
+last_updated: "2026-09-22T10:42:34.300Z"
 last_activity: 2026-09-21
 last_activity_desc: Phase 1 execution started
-state_head: c3f835280cbe02cf6313eda4ef3b42865653d2fe
+state_head: 3ead36551138cb4e53aa113bf9a3cfeefb942fc4
 progress:
   total_phases: 19
   completed_phases: 0
   total_plans: 13
-  completed_plans: 12
+  completed_plans: 13
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 
 Phase: 1 (MV3/WXT Runtime + AntD Shells + Workspace) — EXECUTING
 Plan: 13 of 13
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-21 — Phase 1 execution started
 
 Progress: [░░░░░░░░░░] 0%
@@ -70,6 +70,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P08 | 21 | 3 tasks | 12 files |
 | Phase 01 P10 | 11min | 3 tasks | 10 files |
 | Phase 01 P11 | 32 | 3 tasks | 32 files |
+| Phase 01 P13 | 21min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -135,6 +136,10 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 1]: 01-11: D-03 steps 5-8 were discharged against 01-12's recorded step-4 parity artifact (cited, no divergence) with both shell suites green first; a clean build emits only background.js/sidepanel.html/standalone.html and the manifest inspection prints permissions [sidePanel,storage,tabs], no options page and no options key.
 - [Phase 1]: 01-13: the banned-import gate is one suite with three group cases (unsafe HTML injection; tailwind/shadcn/@radix-ui; framer-motion) plus a non-match case asserting the approved motion v12 package is never matched (PATTERNS A9); groups 2-3 also inspect package.json so a declared-but-unimported banned package fails with no source import; every scan case asserts a non-zero scanned-file count and comments are stripped before matching.
 - [Phase 1]: 01-13: verify:phase-1 is an explicit path list (the §24 minimum, the named core-tree suites, the retained tests/core tests/background tests/components tests/isolation directories, and the new tests/services) plus a self-derived path-resolution preflight, because vitest silently ignores an unmatched filter whenever another filter matches (observed: exit 0) — without the preflight a path that stops resolving would leave the gate green.
+- [Phase 1]: 01-13: the fixture failure-state half of manual item 1 is recorded as an environment-scoped open gap (owner 01-09 / Phase 3), not as observed — the shipped .output/chrome-mv3 wires createFixtureValidationPort('success') in both surface roots, so the non-success validation states are not reachable in the artifact the operator loaded; the five failure/cancel selectors stay unit-covered by tests/services/providerValidationFixtures.test.ts.
+- [Phase 1]: 01-13: the Windows/Linux control-chord half of manual item 2 is an environment-scoped open gap (owner Phase 15 / 01-08 follow-up) — observed on macOS only; the shared code path is unit-covered by KeymapRegistry.test.ts's control-key case.
+- [Phase 1]: 01-13: WINDOWS ids 9 and 15 (the manual-observation rows for items 6 and 5) were resolved with the CLI's only resolution verb (windows fixed) because the ledger validator accepts open|waived|fixed; the observations themselves are recorded in 01-VALIDATION.md § Manual-Only Verifications, and id 21 stays open for phase-acceptance ratification.
+- [Phase 1]: 01-13: 01-VALIDATION.md is complete and truthful at phase close — six operator-observed real-Chrome results (2026-09-22, macOS, fresh profile /tmp/nowpilot-uat-01-13), the Wave 0 checklist complete, the per-task map re-verified against the gate, the five phase success criteria mapped to evidence, sign-off completed, and nyquist_compliant/wave_0_complete set.
 
 ### Pending Todos
 
@@ -159,6 +164,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-21T23:25:30.515Z
-Stopped at: 01-13 Tasks 1-2 complete (three-group banned-import gate; verify:phase-1 composition); Task 3 real-Chrome checkpoint reached — six operator observations pending
-Resume file: .planning/phases/01-mv3-wxt-runtime-antd-shells-workspace/01-13-PLAN.md
+Last session: 2026-09-22T10:42:34.271Z
+Stopped at: Completed 01-13-PLAN.md — Phase 1 gate green (40 files / 513 tests) and accepted; six real-Chrome observations recorded; phase ready for verification
+Resume file: None
