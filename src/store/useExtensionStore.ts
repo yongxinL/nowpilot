@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import { chromeStorageAdapter } from '../core/theme/chromeStorageAdapter';
+import { debugLog } from '../core/log/debugLog';
 import { DEFAULT_PROMPTS_LIST } from '../components/options/defaultPromptsData';
 import type {
   ChatSession,
@@ -99,6 +100,17 @@ const INITIAL_NOTES: NoteItem[] = [];
 
 function computeActiveSession(sessions: ChatSession[], activeSessionId: string): ChatSession | null {
   return sessions.find(s => s.id === activeSessionId) || sessions[0] || null;
+}
+
+/** A list field is only a list: a number, a string or an object is not one. */
+function asArray<T>(value: unknown): T[] {
+  return Array.isArray(value) ? (value as T[]) : [];
+}
+
+/** A record field is only a record: an array or a primitive is not one. */
+function asRecord(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  return value as Record<string, unknown>;
 }
 
 interface ExtensionState {
@@ -542,13 +554,32 @@ export const useExtensionStore = create<ExtensionState>()(
       migrate: npStoreMigrate,
       merge: (persisted, current) => {
         const merged = { ...current, ...(persisted as Partial<ExtensionState>) };
+        // WR-02: normalise every collection/identifier the merge and the UI
+        // trust. `migrate` runs only when the stored version differs from the
+        // configured one, so a corrupt blob at the *current* version reaches
+        // this point with, e.g., a number where a list belongs —
+        // `computeActiveSession` then threw inside `hydrate()`, where zustand
+        // swallows it: the store stayed at the module defaults and `partialize`
+        // overwrote the (partly recoverable) blob with them.
+        merged.sessions = asArray<ChatSession>(merged.sessions);
+        merged.prompts = asArray<PromptItem>(merged.prompts);
+        merged.writeHistory = asArray<WriteHistoryItem>(merged.writeHistory);
+        merged.notes = asArray<NoteItem>(merged.notes);
+        merged.activeSessionId =
+          typeof merged.activeSessionId === 'string' ? merged.activeSessionId : '';
         // Merge the persisted config over the in-memory defaults so a field
         // the projection omits can never leave a typed field undefined.
-        merged.config = { ...current.config, ...merged.config };
+        merged.config = { ...current.config, ...asRecord(merged.config) };
         merged.activeSession = computeActiveSession(merged.sessions, merged.activeSessionId);
         merged.activeAttachments = [];
         merged.availableTabs = [];
         return merged;
+      },
+      // WR-02: a future shape regression must be visible. Without this, a merge
+      // failure is swallowed by `hydrate()` and the store silently stays at the
+      // module defaults — and `partialize` then overwrites the blob with them.
+      onRehydrateStorage: () => (_state, error) => {
+        if (error) debugLog('NP_STORE_REHYDRATE_FAILED', String(error));
       },
     },
   ),

@@ -5,6 +5,7 @@ import {
   useExtensionStore,
 } from '../../../src/store/useExtensionStore';
 import { useThemeStore } from '../../../src/core/theme/ThemeStore';
+import { flushPendingWrites } from '../../../src/core/theme/chromeStorageAdapter';
 
 /**
  * `np_store` persist suite — plan `01-11` adds the credential assertions the
@@ -209,5 +210,68 @@ describe('useExtensionStore persisted projection — credential-free, no theme s
 
     setModeSpy.mockRestore();
     syncSetSpy.mockRestore();
+  });
+});
+
+describe('useExtensionStore hydration — a malformed np_store blob (WR-02)', () => {
+  it('normalises the shapes instead of silently discarding the whole blob', async () => {
+    const storageMap = (globalThis as unknown as { __chromeStorageMap: Map<string, string> })
+      .__chromeStorageMap;
+    const previous = storageMap.get('np_store');
+
+    // Settle any debounced write left by an earlier case: while a write is
+    // pending, the storage adapter returns the pending value instead of the
+    // stored one, and the seeded blob below would never be read.
+    await flushPendingWrites();
+
+    // `version` matches the configured schema version, so zustand does NOT run
+    // `migrate` — this is the path the review's probe took: `sessions` is a
+    // number, `prompts` a string, `notes` an object, `activeSessionId` a number
+    // and `config.providers` a string.
+    storageMap.set(
+      'np_store',
+      JSON.stringify({
+        state: {
+          config: { openAiBaseUrl: 'https://probe.example/v1', providers: 'nope' },
+          sessions: 5,
+          prompts: 'nope',
+          writeHistory: null,
+          notes: { a: 1 },
+          activeSessionId: 7,
+        },
+        version: NP_STORE_SCHEMA_VERSION,
+      }),
+    );
+
+    const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+
+    try {
+      await useExtensionStore.persist.rehydrate();
+
+      const state = useExtensionStore.getState();
+
+      // Every collection the merge and the UI trust is a real array again.
+      expect(Array.isArray(state.sessions)).toBe(true);
+      expect(Array.isArray(state.prompts)).toBe(true);
+      expect(Array.isArray(state.writeHistory)).toBe(true);
+      expect(Array.isArray(state.notes)).toBe(true);
+      expect(state.activeSessionId).toBe('');
+      expect(state.activeSession).toBeNull();
+      expect(Array.isArray(state.config.providers ? Object.values(state.config.providers) : [])).toBe(
+        true,
+      );
+
+      // The valid part of the blob survives: a whole-blob discard would leave
+      // the module default ('http://localhost:12380/v1').
+      expect(state.config.openAiBaseUrl).toBe('https://probe.example/v1');
+
+      // And the failure net did not have to fire: the merge is total.
+      const logged = debugSpy.mock.calls.map((call) => String(call[0])).join('\n');
+      expect(logged).not.toContain('NP_STORE_REHYDRATE_FAILED');
+    } finally {
+      debugSpy.mockRestore();
+      if (previous === undefined) storageMap.delete('np_store');
+      else storageMap.set('np_store', previous);
+    }
   });
 });
