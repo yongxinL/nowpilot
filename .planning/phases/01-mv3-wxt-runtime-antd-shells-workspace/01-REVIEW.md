@@ -1,8 +1,8 @@
 ---
 phase: 01-mv3-wxt-runtime-antd-shells-workspace
-reviewed: 2026-09-22T11:00:31Z
+reviewed: 2026-09-22T13:00:56Z
 depth: standard
-files_reviewed: 96
+files_reviewed: 100
 files_reviewed_list:
   - .gitignore
   - .output/.gitkeep
@@ -39,6 +39,7 @@ files_reviewed_list:
   - src/core/messaging/MessageBus.ts
   - src/core/onboarding/onboardingStateStore.ts
   - src/core/onboarding/useOnboardingGate.ts
+  - src/core/runtime/BroadcastBus.ts
   - src/core/runtime/OperationId.ts
   - src/core/runtime/RuntimeEnvelope.ts
   - src/core/runtime/RuntimeEnvelopeValidation.ts
@@ -50,6 +51,7 @@ files_reviewed_list:
   - src/core/workspace/WorkspaceRouter.ts
   - src/core/workspace/WorkspaceState.ts
   - src/core/workspace/WorkspaceStore.ts
+  - src/core/workspace/handoff/composerDraft.ts
   - src/core/workspace/handoff/protocol.ts
   - src/core/workspace/handoff/useWorkspaceHandoff.ts
   - src/core/workspace/legacyWorkspaceBlob.ts
@@ -97,331 +99,148 @@ files_reviewed_list:
   - tests/isolation/banned-imports.test.ts
   - tests/isolation/cross-entrypoint-imports.test.ts
   - tests/isolation/generated-manifest.test.ts
+  - tests/isolation/no-tailwind-gate.test.ts
   - tests/services/providerValidationFixtures.test.ts
   - tsconfig.json
   - vitest.config.ts
   - wxt.config.ts
 findings:
-  critical: 3
-  warning: 7
+  critical: 0
+  warning: 1
   info: 5
-  total: 15
-  blocker: 3
+  total: 6
+  blocker: 0
 status: issues_found
 ---
 
-# Phase 1: Code Review Report
+# Phase 1: Code Review Report (final re-review, iteration 3)
 
-**Reviewed:** 2026-09-22T11:00:31Z
+**Reviewed:** 2026-09-22T13:00:56Z
 **Depth:** standard
-**Files Reviewed:** 96
+**Files Reviewed:** 100
 **Status:** issues_found
 
 ## Summary
 
-Phase 1 (MV3/WXT runtime, AntD shells, workspace handoff, legacy-data cleanup) was reviewed at standard depth against the 96 files in scope, with targeted probes against the real modules for every high-severity claim. Baseline state: `tsc --noEmit` exits 0 and the full suite passes (40 files / 513 tests). Three critical defects were found; all three are invisible to the current suite, and each has a named test-gap that explains why (below).
+Final re-review of Phase 1 after the iteration-2 fix pass (`4408ce37`, `22b71a6f`, `f620285d`). Scope is the phase file list plus the three files the earlier fix passes added (`src/core/runtime/BroadcastBus.ts`, `src/core/workspace/handoff/composerDraft.ts`, `tests/isolation/no-tailwind-gate.test.ts`). The review re-opened and re-read every fix site, re-probed the behaviour-changing ones against the real modules, and re-ran the phase gate rather than trusting the fix report.
 
-What held up under adversarial reading (checked, not assumed): the `sender.id === chrome.runtime.id` guard on the message listener with fail-closed, no-response branches; the legacy credential cleanup's field-name-only report and logs (no value, length, prefix or digest is ever produced or logged) with an in-place, version-stamped, throw-free migration; the content-script exclusion (the built `.output/chrome-mv3/manifest.json` carries no `content_scripts` key and the declared match set equals the authorised host set); the onboarding credential held in component state only and cleared on every terminal path; and the hand-written manifest/CSP/permission assertions.
+**Both iteration-2 fixes hold, and the two iteration-2 findings are genuinely closed:**
 
-The critical findings are: (1) a prototype-chain key passed as an envelope `type` crashes `validateEnvelope` with an uncaught `TypeError` inside the service-worker message listener; (2) the workspace handoff protocol — the phase's central D-13 deliverable — can never complete, because `BroadcastBus.publish` decorates every payload with `_sender` and the new strict handoff schemas reject the extra field on the receiving side (proven with a probe against the real transport); (3) the Notes page crashes to the ErrorBoundary when the user deletes the last note. Seven warnings and five info items follow.
+- **WR-08** — the rebuilt gate now fails the exact iteration-2 probe fixture (`EXIT=1`, 9 occurrences), `src` still passes (`EXIT=0`), the self-test has grown 4 → 31 cases, and the exemptions are per-occurrence, not line-wide: `{ display: 'flex', x: 'hidden', y: 'absolute' }` reports `'hidden'` and `'absolute'` while dropping only the exempt `'flex'`. No vocabulary or guard was removed. One residual false-negative class survives and is raised as **WR-10**: a class list made *only* of Tier-2 bare keywords inside a ternary (or a backtick literal) is exempt as a whole, so `done ? 'hidden' : ''` and `className={active ? 'flex' : 'hidden'}` still pass.
+- **WR-09** — the slot is now consume-once (`consumeDraft` reads and clears in one step, `composerDraft.ts:34-38`) and the page consumes at its single choke point (`StandaloneWritePage.tsx:96-100`). The suite's `afterEach` slot reset was deleted, and the new case drives the real `StandaloneShell` Sider round trip and asserts the remounted composer shows its own fixture default — a non-vacuous assertion, since a resurrected slot would seed the handoff draft and fail it. All 12 cases pass.
+
+**All previously verified fixes still hold** (CR-01…03, WR-01…07; evidence per item in the table below). No gate was weakened: `NP_STRICT_CEILING` is still `0`, the iteration-2 commits touched only the three declared files, no dependency or lockfile changed, and the banned-import / generated-manifest / strict-ceiling / credential-cleanup invariants are intact. `npx tsc --noEmit` exits 0, the full suite is green at 41 files / 560 tests, and `pnpm run verify:phase-1` completes with `✓ verify-no-tailwind: 0 Tailwind utility strings in src`.
+
+WR-10 is a narrow, latent detection gap in a heuristic gate, not a live leak: no Tailwind string is hiding in `src` today, and it is not a regression (bare keywords were invisible everywhere before the WR-08 fix). It is raised because the iteration-2 verification explicitly asked whether the Tier-2 exemptions are a bypass, and the canonical conditional-class idiom demonstrably is one.
+
+## Fix-pass verification (iterations 1–2)
+
+| Prior finding | Verified in source | Evidence |
+|---|---|---|
+| WR-08 widened families | **Holds** — Tier-1 gains layout/typography/interaction/size families, Tier-2 adds bare keywords; no family removed, missing-root guard and Tier-1/Tier-2 scans intact (`scripts/verify-no-tailwind.sh:119-128,141-158`) | Exact iteration-2 fixture (`'flex items-center justify-between'`, `'hidden'`, `'absolute inset-0'`, `'grid grid-cols-3'`, `'truncate whitespace-nowrap'`, `'leading-tight tracking-wide'`) → `EXIT=1`, 9 occurrences (5 Tier-1 + `'hidden'` + `'flex'`/`'absolute'`/`'grid'` bare); `src` → `EXIT=0`; self-test 31/31 |
+| WR-08 per-occurrence exemptions | **Holds** — context is matched by `grep -o` and filtered per match (`:163-167`), not per line | `{ display: 'flex', x: 'hidden', y: 'absolute' }` → `EXIT=1` reporting `'hidden'` and `'absolute'`, `'flex'` exempt; a Tier-1-bearing class string in a ternary (`cond ? 'flex items-center' : 'hidden'`) → `EXIT=1` |
+| WR-08 Tier-2 residual | **Does not fully hold → WR-10** | `done ? 'line-through' : ''`, `done ? 'hidden' : ''`, `className={active ? 'flex' : 'hidden'}` → `EXIT=0` (bare-keyword-only class lists in a ternary/backtick are invisible) |
+| WR-09 consume-once draft | **Holds** — `consumeDraft` reads-and-clears (`composerDraft.ts:34-38`); page effect sets then consumes (`StandaloneWritePage.tsx:96-100`); `afterEach` reset deleted (`write-page.test.tsx:105-110`) | `write-page.test.tsx` 12/12; round trip through the real shell asserts `revisited.value === 'This is wrong page'` after edit → Chat → Write (a resurrected slot would fail it); slot asserted `''` immediately after consumption (`:124,133`); no other consumer exists (grep: only `WorkspaceRouter.ts:306-308` writes) |
+| CR-01 prototype-chain `type` | **Holds** — `hasOwn` own-property checks, total `schemaForType`, `isKnownEnvelopeType` gate (`RuntimeEnvelopeValidation.ts:184-202,221`) | Suite green incl. `RuntimeEnvelope.test.ts`, `message-bus-cold-start.test.ts` |
+| CR-02 `_sender` broke handoffs | **Holds** — echo check first, then `withoutTransportMetadata` strips before listeners (`BroadcastBus.ts:27-41,51-64`); `publish` still decorates (`:82-89`) | Suite green incl. `WorkspaceHandoff.test.ts` real cross-instance publish round trip |
+| CR-03 Notes crash on last delete | **Holds** — nullable selection (`NotesWorkspace.tsx:235`), guarded menu handler (`:307`), explicit empty state (`:1459-1461`) | `notes-page.test.tsx` delete-all case |
+| WR-01 gate blind to `className={variable}` | **Holds** — value scan on every quoted literal; the three live leaks are gone | Gate on `src` → exit 0; self-test `text-emerald-500`-in-variable and bare `group` cases |
+| WR-02 malformed `np_store` | **Holds** — collections/`activeSessionId` normalised, non-record `providers` falls back to the default catalogue, `onRehydrateStorage` reports (`useExtensionStore.ts:568-593`) | `useExtensionStore.test.ts` corrupt-blob cases |
+| WR-03 `themeMigrate` cast | **Holds** — `isThemeMode`/`typeof string` narrowing (`ThemeStore.ts:56-62`) | `ThemeStore.test.ts` corrupt-blob cases |
+| WR-04 false credential claim | **Holds** — pinned fixture disclosure renders (`OptionsPage.tsx:655`); old sentence survives only as a comment | `options-page.test.tsx:87-90` |
+| WR-05 inert Back chevron | **Holds** — disabled + `data-np-backing="deferred"` + tooltip + aria-label (`StandaloneShell.tsx:260-270`) | `StandaloneShell.test.tsx:174-223` |
+| WR-06 `openOptions` query-in-pattern | **Holds** — queries `standalone.html*`, compares `searchParams.get('page') === 'options'` in the callback (`WorkspaceRouter.ts:224-237`) | `WorkspaceRouter.test.ts:446-487` |
+| WR-07 dead `composerDraft` | **Holds** — producer `SidePanelShell.tsx:228-231` → `main.tsx:138-140` → `openStandalone(…, composerDraft)` → projection → target `apply` (`WorkspaceRouter.ts:306-308`) → composer consumes (`StandaloneWritePage.tsx:89-100`) | `WorkspaceRouter.test.ts:238-254,559`, `SidePanelShell.test.tsx:138-149`, `write-page.test.tsx:112-142` |
+
+Gate and invariant checks (all on the current committed tree):
+
+| Check | Result |
+|---|---|
+| `npx tsc --noEmit` | exit 0 |
+| `npx vitest run` | 41 files / 560 tests passed |
+| `pnpm run verify:phase-1` | exit 0 — path preflight, `tsc`, phase test set, `bash scripts/verify-no-tailwind.sh` (`✓ 0 … in src`) |
+| `NP_STRICT_CEILING` (`package.json:7`) | still `0`; strict-ceiling suite green |
+| Iteration-2 commit scope | `4408ce37` = script + self-test; `22b71a6f` = script header only; `f620285d` = 3 declared files — no test path narrowed or deleted, no assertion relaxed |
+| Dependencies / lockfile | unchanged by the iteration-2 commits; no package added (`package.json` diff vs the phase base is the earlier WXT migration only) |
+| Isolation / credential gates | banned-imports (5 cases), cross-entrypoint-imports (24), generated-manifest (10), credential-cleanup (17) all green; `legacy-credential-cleanup-wiring` (4) green |
+
+Record-level notes for the acceptance re-run (not findings):
+- `01-VALIDATION.md:112` still needs the re-observation the fix report flags. The shipped sequence calls `openStandalone(workspaceId, conversationId, undefined, …)` with no `page` (`src/entrypoints/sidepanel/main.tsx:77`), so the target lands on the Chat route and the draft becomes visible when the user opens Write. Re-observe in real Chrome and, per WR-09, additionally leave the Write route and return to confirm the draft does **not** reappear.
+- The Windows/Linux control-chord gap (`01-VALIDATION.md:122`) is unchanged and correctly recorded as an environment-scoped open gap.
 
 ## Narrative Findings (AI reviewer)
 
-All findings below are narrative findings from direct code review; no structural pre-pass was provided for this review.
+All findings below are narrative findings from direct code review; no structural pre-pass was provided for this review. WR-10 is new (a residual left by the iteration-2 WR-08 fix); the Info items are carried over from the prior reviews and were outside the `critical_warning` fix scope.
 
 ## Critical Issues
 
-### CR-01: A prototype-chain key as `type` throws inside envelope validation (uncaught in the message listener)
-
-**File:** `src/core/runtime/RuntimeEnvelopeValidation.ts:177-187` (manifesting at `:230`)
-**Issue:** `isKnownEnvelopeType` and `schemaForType` use the `in` operator against object literals:
-
-```ts
-function schemaForType(type: EnvelopeType): z.ZodType {
-  if (type in payloadSchemas) return payloadSchemas[type as MessageTypeValue];   // :178
-  return scaffoldPayloadSchemas[type as ScaffoldMessageTypeValue];
-}
-function isKnownEnvelopeType(type: unknown): type is EnvelopeType {
-  return typeof type === 'string' &&
-    (type in payloadSchemas || type in scaffoldPayloadSchemas);                   // :185
-}
-```
-
-`in` walks the prototype chain, and `Object.prototype` contributes `toString`, `constructor`, `valueOf`, `hasOwnProperty`, `__defineGetter__`, … So a message whose `type` is `'toString'` (or `'constructor'`, `'valueOf'`, …) passes `isKnownEnvelopeType`, and `schemaForType('toString')` returns `Object.prototype.toString` — then `:230` calls `.safeParse(...)` on a function and throws `TypeError: payloadSchemas.toString.safeParse is not a function`.
-
-That throw escapes `validateEnvelope` and then escapes the `chrome.runtime.onMessage` listener in `MessageBus.init()` (`src/core/messaging/MessageBus.ts:86-114`), which has no try/catch around the guard/validation calls — so it surfaces as an uncaught error in the MV3 service worker (and rejects `MessageBus.dispatch()` for programmatic callers). Reachable from any same-extension context that can `sendMessage` (an extension page, or the content script relaying page-controlled data) — the `sender.id` guard admits those contexts; this is a validation defect, not an authorisation bypass.
-
-Proven:
-
-```
-$ node -e "…payloadSchemas['toString'].safeParse({})…"
-toString in payloadSchemas: true
-typeof payloadSchemas['toString']: function
-THROWS: TypeError payloadSchemas.toString.safeParse is not a function
-```
-
-Test gap: `tests/core/runtime/RuntimeEnvelope.test.ts:114-118` covers only `'NOT_A_TYPE'`, not a prototype key.
-
-**Fix:** Use own-property checks (and make the lookup total):
-
-```ts
-const hasOwn = (o: object, k: string): boolean => Object.prototype.hasOwnProperty.call(o, k);
-
-function schemaForType(type: EnvelopeType): z.ZodType {
-  if (hasOwn(payloadSchemas, type)) return payloadSchemas[type as MessageTypeValue];
-  if (hasOwn(scaffoldPayloadSchemas, type)) return scaffoldPayloadSchemas[type as ScaffoldMessageTypeValue];
-  throw new Error('ENVELOPE_UNKNOWN_TYPE'); // unreachable: callers check first
-}
-function isKnownEnvelopeType(type: unknown): type is EnvelopeType {
-  return typeof type === 'string' &&
-    (hasOwn(payloadSchemas, type) || hasOwn(scaffoldPayloadSchemas, type));
-}
-```
-
-Add a regression case to `RuntimeEnvelope.test.ts` asserting `validateEnvelope({ type: 'toString', … })` returns `{ ok: false, error: 'ENVELOPE_UNKNOWN_TYPE' }` instead of throwing (same for `'constructor'`), and a `MessageBus` case asserting the listener does not throw for such a message.
-
-### CR-02: The workspace handoff can never complete — `BroadcastBus` adds `_sender` and the strict handoff schemas reject it
-
-**File:** `src/core/runtime/BroadcastBus.ts:55-62` (publish) with `src/core/workspace/handoff/protocol.ts:122-173` (strict schemas), `:225-232` (transport), `:509-538` and `:672-709` (listeners)
-**Issue:** `BroadcastBus.publish` decorates every object payload with its own echo-suppression field, and the receiving side validates the decorated object:
-
-```ts
-// BroadcastBus.ts:57-61
-const envelope = payload && typeof payload === 'object' ? { ...payload, _sender: INSTANCE_ID } : payload;
-entry.bc.postMessage(envelope);
-```
-
-`handoffTransport.subscribe` hands the raw `event.data` to the protocol's listener (`protocol.ts:229-231`), and every handoff schema is `.strict()` (`readySchema`/`transferSchema`/`ackSchema`). `_sender` is an unrecognised key, so `validateHandoffEnvelope` returns `{ ok: false, code: 'invalid_shape' }` and the listener returns without acting (`protocol.ts:510-511`, `:673-674`).
-
-Consequence in the real extension (source and target are separate documents, so the instance filter never suppresses a peer message): the target's `HANDOFF_READY` is discarded by the source, the source's 3 s ready wait expires, and every handoff resolves `WORKSPACE_HANDOFF_FAILED` — the Side Panel shows `standalone.openFailed` + Retry, and no projection is ever applied on the standalone side. The READY/ACK/transfer path is dead in production.
-
-Proven against the real transport (not the test double):
-
-```
-received: [{"type":"HANDOFF_READY",…,"supportedSchemaVersion":1,"_sender":"dc6f93d3-…"}]
-target-side validation: {"ok":false,"code":"invalid_shape"}
-```
-
-Test gap (this is why the phase is green): every inbound handoff message in `tests/core/workspace/WorkspaceHandoff.test.ts` and `tests/core/workspace/WorkspaceRouter.test.ts` is injected with the `__broadcast` helper (`tests/setup.ts`), which posts the payload *without* the `_sender` decoration. Nothing in the suite ever validates what `BroadcastBus.publish` actually emits, and the harness's `BroadcastChannel` mock never self-delivers, so an in-process source→target round trip through the real bus is impossible as written.
-
-Note for the acceptance record: `01-VALIDATION.md`'s "Standalone handoff … the composer draft typed in the panel arrived in Standalone" is not reproducible from the code (see WR-07: the caller never passes a draft and the target's `apply` never consumes one), so that manual row should be re-observed after this fix rather than treated as evidence that the handshake completes.
-
-**Fix:** Keep transport metadata out of the validated envelope, e.g. strip it in the handoff transport adapter:
-
-```ts
-export const handoffTransport: HandoffTransport = {
-  publish(envelope) { publish(HANDOFF_CHANNEL, envelope); },
-  subscribe(listener) {
-    return subscribe(HANDOFF_CHANNEL, (payload) => {
-      if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
-        const { _sender: _transportField, ...envelope } = payload as Record<string, unknown>;
-        listener(envelope);
-        return;
-      }
-      listener(payload);
-    });
-  },
-};
-```
-
-Longer term, move the echo suppression out of the payload (a `Symbol`-keyed field, a wrapper, or `bc.postMessage` plus an explicit sender id in a separate channel), so a payload the app owns is never mutated by the transport. Add a regression test that drives `handoffTransport.publish` (real implementation, no spy) into a second subscription and asserts the projection is applied and acknowledged.
-
-### CR-03: The Notes page crashes when the last note is deleted
-
-**File:** `src/components/notes/NotesWorkspace.tsx:230` (dereferenced at `:1515`, `:1517`, `:2077`, `:2346`, `:2411`, …; delete paths at `:207` / `:290-310` / `:1314-1318`)
-**Issue:** The selected note is resolved with an unguarded array fallback:
-
-```ts
-const selectedNote = notes.find(n => n.id === selectedNoteId) || notes[0];   // :230
-```
-
-Both delete paths (`deleteNote` from the card hover `Popconfirm` and from the more-menu's `Delete Note`) can empty the five-note fixture list. When `notes` is `[]`, `selectedNote` is `undefined` and the main panel dereferences it during render (`selectedNote.title`, `selectedNote.isFavorite`, `selectedNote.content.sections.map`, `selectedNote.wordCount.toLocaleString()`), throwing a `TypeError` that unmounts the page to the `ErrorBoundary` fallback (`shell.errorTitle`) with no way back except a reload. The Notes route is reachable from the Standalone Sider, so this is user-reachable.
-
-Test gap: `tests/components/pages/notes-page.test.tsx` never deletes a note (it only asserts the populated fixture state), so the empty-list branch is untested.
-
-**Fix:** Make the selection nullable and render an explicit empty state:
-
-```tsx
-const selectedNote = notes.find((n) => n.id === selectedNoteId) ?? notes[0] ?? null;
-// …main panel:
-{selectedNote === null ? (
-  <div data-testid="np-page-notes-empty" style={{ padding: token.paddingLG }}>
-    <Typography.Text type="secondary">No notes yet — create one to get started.</Typography.Text>
-  </div>
-) : (
-  /* existing header / sub-meta / sections / inspector, all reading selectedNote */
-)}
-```
-
-Keep the `moreMenuProps` handler guarded too (`if (!selectedNote) return;`), and add a test that deletes every note and asserts the empty state renders instead of the error fallback.
+None. The three prior Critical findings remain resolved and verified (table above).
 
 ## Warnings
 
-### WR-01: `verify-no-tailwind.sh` is blind to `className={variable}` and bare utilities; three live Tailwind class strings ship in `src/`
+### WR-10: A class list made only of Tier-2 bare keywords is invisible inside a ternary (or a backtick literal)
 
-**File:** `scripts/verify-no-tailwind.sh:25-29`; leaks at `src/components/notes/NotesWorkspace.tsx:1030,1060,2214,2235` and `src/components/standalone/WriteHistoryDrawer.tsx:313`; Tailwind-shaped data at `src/core/theme/ThemeConfig.ts:30`
-**Issue:** Both grep patterns require the utility token to appear *inside* the `className="…"` literal or immediately after `className={` on the same line. Class strings held in variables therefore pass, and the gate reports success while three Tailwind utility strings are rendered:
-
-- `NotesWorkspace.tsx:1030` → `{ name: 'ServiceNow', color: 'text-emerald-500' }` rendered at `:1060` as `className={tag.color}` (also `text-blue-500`, `text-red-500`, `text-sky-500`, `text-indigo-500`, `text-cyan-500`)
-- `NotesWorkspace.tsx:2214` → `color: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600'` rendered at `:2235` as `className={rel.color}`
-- `WriteHistoryDrawer.tsx:313` → `className="group"` (bare utility, absent from the token list)
-- `ThemeConfig.ts:30` → `previewGradient: 'from-[#cc6b49] to-[#da7756]'` (Tailwind-shaped value, currently unconsumed)
-
-Spec §0.2 forbids Tailwind, and the phase's own gate claims total coverage. The classes are inert (no Tailwind CSS is loaded), so the visible effect is unstyled elements plus a false green gate. Reproduced: `bash scripts/verify-no-tailwind.sh` → `✓ verify-no-tailwind: 0 Tailwind className strings in src/`.
-
-**Fix:** Either move these strings to AntD tokens (the surrounding code already has `token.colorSuccess` etc. available) and delete the `className` usage, or make the gate match values rather than attribute syntax — scan every string literal in `src/**/*.{ts,tsx}` for the utility vocabulary (`(^|\s)(text|bg|border|shadow|rounded|flex|grid|w|h|p|m|gap)-`, plus bare `group`/`peer`), with a self-test case that fails on `className={variable}` whose value is a Tailwind token.
-
-### WR-02: A malformed `np_store` blob is silently discarded during hydration and then overwritten with defaults
-
-**File:** `src/store/useExtensionStore.ts:543-552` (merge) and `:632-658` (`npStoreMigrate`)
-**Issue:** `npStoreMigrate` copies the allowlisted fields *without type validation*, and `merge` then trusts their shapes:
-
-```ts
-const merged = { ...current, ...(persisted as Partial<ExtensionState>) };
-merged.config = { ...current.config, ...merged.config };
-merged.activeSession = computeActiveSession(merged.sessions, merged.activeSessionId);   // :548
-```
-
-With `sessions` not an array, `computeActiveSession` calls `sessions.find(...)` and throws; zustand's persist catches it inside `hydrate()` and reports it only through `onRehydrateStorage`, which this config does not define. The store therefore stays at module defaults and the failure is completely silent — and because `partialize` writes the state back on the next mutation, the corrupt-but-possibly-recoverable blob is replaced by defaults.
-
-Proven (probe with `np_store = {state: {sessions: 5, prompts: 'nope', notes: {a: 1}, config: {providers: 'nope'}}, version: 2}`):
+**File:** `scripts/verify-no-tailwind.sh:150` (`NON_CLASS_CONTEXT` ternary/comparison alternatives), `:158` (`KEYWORD_PATTERN`), header contract `:61-88`; pass-case pin `tests/isolation/no-tailwind-gate.test.ts:185-209`
+**Issue:** The WR-08 fix is verified for everything it claims except one residual false-negative class. The exemptions are per-occurrence and do not swallow Tier-1 leaks, but the ternary-alternative alternatives (`\?[[:space:]]*` and `[^A-Za-z0-9_][[:space:]]*:[[:space:]]*`, `:150`) exempt a *whole literal* whose first token is a bare Tier-2 keyword, and Tier 2 does not scan backtick literals at all. The canonical Tailwind conditional-class idiom therefore still reports a clean pass:
 
 ```
-sessions after hydration => []
-prompts  after hydration => [ …the default fixture prompt list… ]
-console.error calls => []
-console.warn  calls => []
+$ cat Bypass3.tsx
+export const a = done ? 'line-through' : '';
+export const b = done ? 'hidden' : '';
+export const Row = () => <div className={active ? 'flex' : 'hidden'} />;
+$ bash scripts/verify-no-tailwind.sh <fixture>
+✓ verify-no-tailwind: 0 Tailwind utility strings in <fixture> (string-literal scan)
+EXIT=0
 ```
 
-This contradicts the module's documented property ("a malformed blob can never throw during hydration"). Trigger is a corrupt/older blob rather than an attacker (only the extension writes `chrome.storage.local`), hence Warning rather than Critical — but the outcome is silent loss of all persisted sessions/prompts/notes/settings.
+The hole is context-shaped, not vocabulary-shaped — the same strings fail outside a ternary (`const b = 'hidden'` → `EXIT=1`; `className="np-fade-in hidden"` → `EXIT=1`), and any class string carrying a Tier-1 token inside a ternary is still caught (`cond ? 'hidden md:flex' : 'flex'` → `EXIT=1`; `cond ? 'flex items-center' : 'hidden'` → `EXIT=1`). It is not a regression (before the fix bare keywords were invisible everywhere) and no live leak hides in `src` today (the only bare-keyword occurrences are CSS values, domain states such as `useOnboardingGate.ts:9,26`, and non-Tailwind class names). It is raised because the iteration-2 verification explicitly asked whether the Tier-2 exemptions are a bypass, and for the shape a copied Tailwind snippet would actually use (`cond ? 'hidden' : ''`, `className={active ? 'flex' : 'hidden'}`) they are. The gate backs the phase's spec-§0.2 compliance claim, so a silently-undetectable class-toggle shape leaves that claim partly unverified — the same reasoning that made WR-01 and WR-08 warnings.
 
-**Fix:** Normalise types in the migration and report a failure:
+The exemption is load-bearing: removing the ternary/comparison alternatives would false-positive on `setGate(shouldPresentOnboarding(result) ? 'present' : 'hidden')` (`src/core/onboarding/useOnboardingGate.ts:26`) and on the self-test's pinned pass case (`visibility: isHovered ? 'visible' : 'hidden'`), so the fix is a refinement, not a deletion.
 
-```ts
-const asArray = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
-const asRecord = (v: unknown): Record<string, unknown> =>
-  v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
-// blob.sessions = asArray(blob.sessions); blob.prompts = asArray(blob.prompts);
-// blob.writeHistory = asArray(blob.writeHistory); blob.notes = asArray(blob.notes);
-// blob.activeSessionId = typeof blob.activeSessionId === 'string' ? blob.activeSessionId : '';
-```
-and add `onRehydrateStorage: () => (_state, error) => { if (error) debugLog('NP_STORE_REHYDRATE_FAILED', String(error)); }` so a future shape regression is at least visible.
+**Fix:** Tighten the ternary/comparison alternatives so an occurrence is exempt only when a `VALUE_CONTEXT` name appears on the same line **or** the sibling alternative is not a bare keyword; keep the union-type (`|`) alternative unconditional. Every pinned pass case survives:
+- `setGate(cond ? 'present' : 'hidden')` → sibling `'present'` is not a bare keyword → exempt
+- `visibility: isHovered ? 'visible' : 'hidden'` → sibling is a bare keyword, but the line names `visibility` → exempt
+- `data-x={variant === 'block' ? 'inline' : 'block'}` → the line names `variant` → exempt
+- `active ? 'flex' : 'hidden'` / `className={active ? 'flex' : 'hidden'}` → neither clause holds → reported
 
-### WR-03: `themeMigrate` does not validate `mode`/`pack`, so a corrupt `np_theme` blob injects a non-union mode
-
-**File:** `src/core/theme/ThemeStore.ts:42-53` (compare `isThemeMode` at `src/core/theme/ThemeConfig.ts:50`; consumers at `src/core/theme/antdConfig.ts:89` and `src/components/options/OptionsPage.tsx:812-818`)
-**Issue:** `themeMigrate` returns `{ ...defaults, ...(persisted as Partial<ThemePersisted>) }` — an unvalidated cast, in the module whose own guard function exists to prevent exactly that. A corrupt/legacy blob with `mode: 'purple'` (or a number, or `pack: 7`) rehydrates straight into the store: `getAntdConfig` treats any non-`'auto'` value as resolved and falls back to `light`, `applyThemeDom` never matches `'dark'`/`'auto'`, the Options "Display mode" select renders "Auto" while the store holds garbage, and `cycleThemeMode` (`:158-164`) jumps to `auto` because `indexOf` misses. The onChanged reader (`ThemeSync.readThemeValue`) does narrow correctly, so the rehydrate path is the only hole — and it is the path a prototype's blob takes.
-
-**Fix:** Narrow inside the migration instead of casting:
-
-```ts
-const isMode = (v: unknown): v is ThemeMode => v === 'auto' || v === 'light' || v === 'dark';
-const isString = (v: unknown): v is string => typeof v === 'string';
-// …
-return {
-  mode: isMode(p.mode) ? p.mode : defaults.mode,
-  colorTheme: isString(p.colorTheme) ? p.colorTheme : defaults.colorTheme,
-  pack: isString(p.pack) ? p.pack : defaults.pack,
-};
-```
-
-### WR-04: The Options page asserts a false credential-storage claim
-
-**File:** `src/components/options/OptionsPage.tsx:647`
-**Issue:** Under the Custom-API-Key branch the page renders `"Your API key is stored locally in your browser and is never sent elsewhere."` In Phase 1 there is no credential storage at all (D-08: component memory only) and D-07's cleanup destroys the prototype's plaintext keys — so the sentence is false, it contradicts the phase's own `provider.credentialsCleared` copy, and it fabricates a security property on a fixture page (marking convention hard rule 3). A user reading it would believe a key is stored and safe when the release explicitly stores nothing.
-
-**Fix:** Replace it with the marked/neutral copy already pinned for this release (e.g. render the `deferred.reasonFixture` sentence, or `provider.credentialsCleared`), or delete the sentence until Phase 2 ships secure credential storage and can truthfully make a claim.
-
-### WR-05: The Standalone top-bar Back button is enabled, inert and unmarked
-
-**File:** `src/components/standalone/StandaloneShell.tsx:254-259`
-**Issue:**
-
-```tsx
-<Button type="text" aria-label={t('common.back')} icon={<LeftOutlined />} style={{ color: token.colorTextSecondary }} />
-```
-
-No `onClick`, not `disabled`, no `data-np-backing` marker — an enabled control that does nothing, which the phase's own marking convention rule 1 forbids ("No present-but-inert control may appear enabled and functional"). `tests/components/StandaloneShell.test.tsx` asserts the rule for the add-on entries but never for this control, so it slipped through.
-
-**Fix:** Remove the button, or render it `disabled` with `data-np-backing="deferred"` and a tooltip naming the owning phase; add the assertion to the shell suite.
-
-### WR-06: `openOptions` dedupes with a query string inside a match pattern — the focus-existing branch cannot behave as intended
-
-**File:** `src/core/workspace/WorkspaceRouter.ts:215` (compare the correct shape at `:105`)
-**Issue:**
-
-```ts
-chrome.tabs.query({ url: chrome.runtime.getURL('standalone.html?page=options*') }, (tabs) => {
-```
-
-`chrome.tabs.query` URL patterns are matched against the tab URL's *path*; a query string is not part of that comparison. Either the `?page=options*` suffix never matches a real tab URL (the focus branch is dead and every `Open Options` creates a duplicate tab — the exact duplication D-12 forbids), or the query is dropped and the pattern matches *every* Standalone tab, so `Open Options` would focus a Chat/Write tab instead of the Options route. Both outcomes are wrong; `openStandalone`'s `standalone.html*` pattern at `:105` is correctly written without a query.
-
-**Fix:** Query by path and compare the route in the callback:
-
-```ts
-chrome.tabs.query({ url: chrome.runtime.getURL('standalone.html*') }, (tabs) => {
-  if (chrome.runtime.lastError) { /* …unchanged… */ }
-  const existing = tabs.find((tab) => {
-    try { return new URL(tab.url ?? '').searchParams.get('page') === 'options'; }
-    catch { return false; }
-  });
-  // focus `existing` when found, otherwise create
-```
-
-Then cover it in real Chrome during the acceptance re-run (this row was never manually observed for the Options route) and add a unit case whose stubbed tab URL carries `?page=options`.
-
-### WR-07: The handoff's `composerDraft` is transported but never consumed, and the only caller never supplies it
-
-**File:** `src/core/workspace/handoff/protocol.ts:79,129,577`; `src/core/workspace/WorkspaceRouter.ts:29,176,278-283`; caller `src/entrypoints/sidepanel/main.tsx:73`
-**Issue:** `openStandalone` accepts `opts.composerDraft`, and the initiator copies it into the projection (`protocol.ts:577`), but the Side Panel caller passes only `{ onSettled }` — no draft — and the target's `apply` adapter writes only `workspaceId`, `conversationId` and `activeSurface`:
-
-```ts
-apply: (projection) => {
-  const state = useWorkspaceStore.getState();
-  state.setWorkspaceId(projection.workspaceId);
-  state.setConversationId(projection.conversationId);
-  state.setActiveSurface('standalone');
-},   // WorkspaceRouter.ts:278-283 — projection.composerDraft is dropped
-```
-
-So the D-13 draft-carrying element is a validated-but-dead data path: even with CR-02 fixed, no draft could reach the Standalone surface, which also means the acceptance record's draft-arrival observation is not reproducible from the shipped code.
-
-**Fix:** Decide the contract explicitly. Either wire it end to end (pass the shell's draft into `openStandalone`, and route `projection.composerDraft` into the Standalone composer state in `apply`, bounded by `HANDOFF_DRAFT_MAX_CHARS`), or remove `composerDraft` from `HandoffUrlInput`/`HandoffInitiatorRequest`/`Phase1HandoffProjection` and from the acceptance record, so no surface claims a transfer that does not happen.
+The `cond ? 'hidden' : ''` shape stays lexically indistinguishable from a legitimate inline-style toggle (`fontStyle: cond ? 'italic' : ''`). If that residual is accepted, disclose it in the header (the `:61-88` contract currently presents the exemption as cost-free) and pin it with an explicit self-test case, so the instrument's stated coverage matches reality; extend the Tier-2 scan to backtick literals for the same reason.
 
 ## Info
+
+Carried over from the prior reviews; still present in the current source and outside the `critical_warning` fix scope.
 
 ### IN-01: Production `console.log` in the background entrypoint
 
 **File:** `src/entrypoints/background.ts:12`
-**Issue:** `console.log('NowPilot Background Service Worker initialized')` bypasses `debugLog` (the repository's structured, redaction-friendly logger used everywhere else) and ships in the production bundle.
+**Issue:** `console.log('NowPilot Background Service Worker initialized')` bypasses the structured logger used everywhere else and ships in the production bundle.
 **Fix:** Delete it, or `debugLog('BG_INITIALIZED', 'Background service worker initialized')`.
 
 ### IN-02: Fabricated success toasts on fixture pages
 
-**File:** `src/components/options/OptionsPage.tsx:367` (`'Help Center opened'`), `:1095` (`'Opened browser settings'`), `src/components/standalone/StandaloneWritePage.tsx:456` (`'Feedback support channel opened'`)
-**Issue:** Each reports that something happened while nothing does — the marking convention's hard rule 3 ("no fabricated signal") in its plainest form; the Sider tests enforce the rule for controls but these toasts are unasserted.
+**File:** `src/components/options/OptionsPage.tsx:368` (`'Help Center opened'`), `:1103` (`'Opened browser settings'`), `src/components/standalone/StandaloneWritePage.tsx:476` (`'Feedback support channel opened'`)
+**Issue:** Each reports that something happened while nothing does — the marking convention's hard rule 3 ("no fabricated signal"). Still unasserted.
 **Fix:** Replace with the deferred/fixture notice text, or mark the controls `disabled` + `data-np-backing="deferred"` and drop the toast.
 
 ### IN-03: Unused store bindings in the Options page
 
-**File:** `src/components/options/OptionsPage.tsx:106`
-**Issue:** `const { config, updateConfig, prompts, addPrompt, updatePrompt, deletePrompt } = useExtensionStore();` — `prompts` and `deletePrompt` are never used (the page keeps its own fixture list), and the whole-store destructure re-renders the page on every unrelated store change.
-**Fix:** Destructure only `config` and `updateConfig` (or select them individually) and drop the dead bindings.
+**File:** `src/components/options/OptionsPage.tsx:107`
+**Issue:** `prompts` and `deletePrompt` are destructured and never used (only `config`, `updateConfig`, `addPrompt` at `:215`, `updatePrompt` at `:212` are read), and the whole-store destructure re-renders the page on every unrelated store change.
+**Fix:** Destructure only the bindings used (or select them individually) and drop the dead names.
 
 ### IN-04: Fabricated / mismatched timestamps in the history surfaces
 
-**File:** `src/components/history/ChatHistoryModal.tsx:83-87`, `src/components/standalone/WriteHistoryDrawer.tsx:356-361`
-**Issue:** `formatSessionTime` returns a hardcoded `'11:20 AM'` when a session has no timestamp (a synthetic value presented as user data); the write-history drawer renders `createdAt: 0` fixtures through `toLocaleDateString(..., { hour, minute })` — `toLocaleDateString` ignores time options, so the intended time never renders.
-**Fix:** Render an explicit unknown/relative label instead of a fabricated time, and use `toLocaleString` (or a fixed fixture date) where the hour/minute are intended.
+**File:** `src/components/history/ChatHistoryModal.tsx:84` (`if (!timestamp) return '11:20 AM'`), `src/components/standalone/WriteHistoryDrawer.tsx:356` (`toLocaleDateString` with hour/minute options, which it ignores)
+**Issue:** A synthetic time presented as user data, and a formatter call whose time options never render.
+**Fix:** Render an explicit unknown/relative label instead of a fabricated time, and use `toLocaleString` where the hour/minute are intended.
 
 ### IN-05: Hardcoded user-visible strings outside `t()` on preserved pages
 
 **File:** `src/components/standalone/StandaloneShell.tsx:37` (`SIDER_ADDONS_GROUP_LABEL = 'Add-ons'`); the same pattern is pervasive in `src/components/notes/NotesWorkspace.tsx` (`'New Note'`, `'Directory'`, `'Notes'`, `'Inspector'`, `'All Notes'`, …), `src/components/options/OptionsPage.tsx` and `src/components/history/ChatHistoryModal.tsx`
-**Issue:** `src/core/i18n/strings.ts` states every user-visible Phase-1 string resolves through `t()`; these reachable surfaces (plus the add-on group label, which is asserted inside `t('…')`-based suites) bypass the map, so a copy change or a locale would miss them.
-**Fix:** Move the strings that Phase 1 actually renders into `strings.ts` and resolve them through `t()`; for the preserved fixture pages, record the exception explicitly rather than leaving the contract partially enforced.
+**Issue:** `src/core/i18n/strings.ts` states every user-visible Phase-1 string resolves through `t()`; these reachable surfaces bypass the map.
+**Fix:** Move the strings Phase 1 actually renders into `strings.ts`; for the preserved fixture pages, record the exception explicitly rather than leaving the contract partially enforced.
 
 ---
 
-_Reviewed: 2026-09-22T11:00:31Z_
+_Reviewed: 2026-09-22T13:00:56Z_
 _Reviewer: the agent (gsd-code-reviewer)_
 _Depth: standard_
