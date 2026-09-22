@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { theme } from 'antd';
 import { useThemeStore, themeMigrate } from '../../../src/core/theme/ThemeStore';
+import { DEFAULT_COLOR_THEME_ID } from '../../../src/core/theme/ThemeConfig';
 import { chromeStorageAdapter, syncStorageAdapter, flushPendingWrites, __test__ } from '../../../src/core/theme/chromeStorageAdapter';
 import { getAntdConfig } from '../../../src/core/theme/antdConfig';
 import { useExtensionStore } from '../../../src/store/useExtensionStore';
@@ -217,6 +218,25 @@ describe('ThemeStore persist — D-10 storage key + version/migrate', () => {
       mode: 'light',
       colorTheme: 'system',
       pack: 'midnight',
+    });
+  });
+
+  // WR-03: the rehydrate path is the only one a prototype's blob takes, and it
+  // used to cast instead of narrowing — a non-union mode or a numeric pack
+  // landed in the store and every consumer mis-read it.
+  it('migrate narrows a corrupt blob: a non-union mode and a numeric pack fall back to defaults', () => {
+    const corrupt = { mode: 'purple', colorTheme: 'system', pack: 7 };
+    expect(themeMigrate(corrupt, 1)).toEqual({
+      mode: 'auto',
+      colorTheme: 'system',
+      pack: 'default',
+    });
+
+    const numericMode = { mode: 42, colorTheme: 3, pack: 'claude-warm' };
+    expect(themeMigrate(numericMode, 1)).toEqual({
+      mode: 'auto',
+      colorTheme: DEFAULT_COLOR_THEME_ID,
+      pack: 'claude-warm',
     });
   });
 });

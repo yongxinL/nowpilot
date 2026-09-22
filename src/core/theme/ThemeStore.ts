@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import { syncStorageAdapter, flushPendingWrites } from './chromeStorageAdapter';
-import { getColorTheme, DEFAULT_COLOR_THEME_ID, type ThemeMode } from './ThemeConfig';
+import { getColorTheme, isThemeMode, DEFAULT_COLOR_THEME_ID, type ThemeMode } from './ThemeConfig';
 import { applyClaudePlusCssVars } from '../../theme/packs/claudePlus';
 import { debugLog } from '../log/debugLog';
 
@@ -46,7 +46,20 @@ export function themeMigrate(persisted: unknown, version: number): ThemePersiste
     pack: 'default',
   };
   if (persisted && typeof persisted === 'object') {
-    return { ...defaults, ...(persisted as Partial<ThemePersisted>) };
+    // WR-03: narrow instead of casting. This is the one path a prototype's
+    // blob takes into the store, and an unvalidated `mode: 'purple'` (or a
+    // number, or `pack: 7`) rehydrated straight in: `getAntdConfig` treated any
+    // non-'auto' value as resolved, `applyThemeDom` never matched it,
+    // `cycleThemeMode`'s `indexOf` missed and the Options select rendered
+    // "Auto" while the store held garbage. `isThemeMode` is the canonical
+    // guard every other reader already uses.
+    const candidate = persisted as Partial<ThemePersisted>;
+    return {
+      mode: isThemeMode(candidate.mode) ? candidate.mode : defaults.mode,
+      colorTheme:
+        typeof candidate.colorTheme === 'string' ? candidate.colorTheme : defaults.colorTheme,
+      pack: typeof candidate.pack === 'string' ? candidate.pack : defaults.pack,
+    };
   }
   // Unparseable persisted blob — return defaults rather than throwing.
   return defaults;
