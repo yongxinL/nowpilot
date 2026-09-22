@@ -24,6 +24,14 @@ import { join } from 'node:path';
  * string is pinned **in isolation** below, so a family that silently drops out
  * of the vocabulary fails loudly instead of hiding behind its siblings.
  *
+ * WR-10: the ternary alternative of the Tier-2 exemption was unconditional, so a
+ * class list made only of bare keywords inside a ternary was exempt as a whole —
+ * `done ? 'line-through' : ''`, `done ? 'hidden' : ''` and
+ * `className={active ? 'flex' : 'hidden'}` all reported a clean pass, and Tier 2
+ * did not read backtick literals at all. The class-toggle pair is now reported
+ * unless the line names a value context, and backtick literals are scanned (a
+ * comment line stays exempt: JSDoc quotes words in backticks).
+ *
  * Read-only with respect to the repository: the fixtures live in a temp
  * directory, and the script is invoked with the optional scan-root argument.
  */
@@ -200,6 +208,98 @@ describe('verify-no-tailwind.sh — family coverage (WR-08)', () => {
         ');',
         '',
       ].join('\n'),
+    });
+
+    const { status, output } = runGate(root);
+
+    expect(output).toContain('0 Tailwind utility strings');
+    expect(status).toBe(0);
+  });
+});
+
+describe('verify-no-tailwind.sh — class-toggle ternaries and backtick literals (WR-10)', () => {
+  // The three probed false negatives, plus the same idiom with the branches
+  // swapped. Each shape used to be exempt as a whole because the ternary
+  // alternative was unconditional and no pair was ever read.
+  it.each([
+    [
+      'a keyword branch and an empty branch',
+      "export const a = done ? 'line-through' : '';\n",
+    ],
+    ['a keyword branch and an empty branch (display keyword)', "export const b = done ? 'hidden' : '';\n"],
+    [
+      'two keyword branches in a class attribute expression',
+      "export const Row = () => <div className={active ? 'flex' : 'hidden'} />;\n",
+    ],
+    ['the empty branch first', "export const c = done ? '' : 'hidden';\n"],
+    ['a class list ending in a keyword and an empty branch', "export const d = cond ? 'np-fade-in hidden' : '';\n"],
+  ])('fails on a class-toggle ternary with %s', (_shape, source) => {
+    const root = fixtureRoot({ 'Leak.tsx': source });
+
+    const { status, output } = runGate(root);
+
+    expect(status).toBe(1);
+    expect(output).toContain('Leak.tsx');
+  });
+
+  it('fails on a bare keyword held in a backtick literal', () => {
+    const root = fixtureRoot({
+      'Leak.tsx': 'export const Row = () => <div className={`hidden`} />;\n',
+    });
+
+    const { status, output } = runGate(root);
+
+    expect(status).toBe(1);
+    expect(output).toContain('Leak.tsx');
+  });
+
+  it('keeps the exemption per occurrence when one line mixes a value context and bare keywords', () => {
+    // Only `'flex'` is a value context; the other two are reported. A
+    // line-level check would drop all three.
+    const root = fixtureRoot({
+      'Leak.tsx': "const props = { display: 'flex', x: 'hidden', y: 'absolute' };\n",
+    });
+
+    const { status, output } = runGate(root);
+
+    expect(status).toBe(1);
+    expect(output).toContain("'hidden'");
+    expect(output).toContain("'absolute'");
+  });
+
+  it('passes the value contexts a class-toggle-shaped ternary legitimately appears in', () => {
+    const root = fixtureRoot({
+      'Clean.tsx': [
+        // A value-context name on the line quiets the pair: an inline-style
+        // toggle, a CSS property, and a comparison operand.
+        "const style = { fontStyle: cond ? 'italic' : '' };",
+        "  visibility: isHovered ? 'visible' : 'hidden',",
+        "export const Inline = ({ variant = 'inline' }: { variant?: string }) => (",
+        "  <span data-x={variant === 'block' ? 'inline' : 'block'} />",
+        ');',
+        // A value toggle names a non-keyword state; only the branches that are
+        // class-like can be a class toggle.
+        "setGate(shouldPresentOnboarding(result) ? 'present' : 'hidden');",
+        // JSDoc prose quotes words in backticks — a comment line is not a class
+        // list, and a union type's members are values.
+        ' * `inline` → an AntD `Tag`; `block` → an AntD `Alert`.',
+        "export interface Props { variant?: 'inline' | 'block'; }",
+        '',
+      ].join('\n'),
+    });
+
+    const { status, output } = runGate(root);
+
+    expect(output).toContain('0 Tailwind utility strings');
+    expect(status).toBe(0);
+  });
+
+  it('documents the limit: a class toggle split across lines is not caught', () => {
+    // The pair scan reads one line, so `cond` on its own line, `? 'hidden'` on
+    // the next and `: ''` on the third stays exempt. The header states this
+    // limit; the case pins it so the suite and the contract cannot drift apart.
+    const root = fixtureRoot({
+      'Limit.tsx': "export const style = cond\n  ? 'hidden'\n  : '';\n",
     });
 
     const { status, output } = runGate(root);

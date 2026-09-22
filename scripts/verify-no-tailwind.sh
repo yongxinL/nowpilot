@@ -73,7 +73,7 @@
 #   CSS value / prop value   display: 'flex'   overflow: 'hidden'
 #                            variant="block"   variant = 'inline'
 #   comparison operand       gate === 'hidden'
-#   union / ternary choice   'a' | 'hidden'    cond ? 'a' : 'hidden'
+#   union alternative        'a' | 'hidden'
 #
 # The context check is per occurrence, not per line: `{ display: 'flex', x:
 # 'hidden' }` still reports the `'hidden'`. It runs on `grep -o` matches, whose
@@ -83,9 +83,23 @@
 # quote followed by object syntax (`'var(--card)', border: '1px …'`) cannot be
 # mistaken for a literal that contains a keyword.
 #
-# Tier 2 scans quoted literals only: JSDoc prose quotes identifiers in backticks
-# (`variant` → an AntD `Tag`), and a template literal that holds a real class
-# list carries an unambiguous Tier-1 token.
+# The ternary alternative is the one context that is not cost-free. Branches
+# alone cannot separate the canonical Tailwind conditional-class idiom
+# (`done ? 'hidden' : ''`, `className={active ? 'flex' : 'hidden'}`) from a
+# legitimate value toggle, so a **class-toggle** scan reports a same-line `?`/`:`
+# pair whose branches are both class-like — a keyword literal (a quoted or
+# backticked literal holding a bare keyword as a whitespace-separated token) or
+# the empty literal, at least one of them a keyword literal — unless the line
+# names a value context (`data-x={variant === 'block' ? 'inline' : 'block'}`,
+# `visibility: isHovered ? 'visible' : 'hidden'`). The union (`|`) and
+# comparison alternatives stay unconditional. Limits of that scan: only the
+# same-line pair is read, so a ternary split across lines is not caught, and a
+# value-context *name* anywhere on the line quiets the pair.
+#
+# Tier 2 reads `'…'`, `"…"` and `` `…` `` literals. JSDoc prose quotes words in
+# backticks (`inline`/`block` → an AntD `Tag`), so a keyword on a comment line
+# (the line starts with `*`, `//` or `/*`) is prose, not a class list, and is
+# exempt; a backtick literal on a code line is read like any other literal.
 #
 # Legitimate non-Tailwind class names (`np-fade-in`, `np-scale-up`,
 # `message-font-small`, `chat-history-drawer`, `custom-scrollbar`, …) are not
@@ -146,16 +160,34 @@ BARE_KEYWORD='(flex|grid|block|hidden|absolute|relative|fixed|sticky|static|inli
 VALUE_CONTEXT='(display|position|overflow|overflowX|overflowY|visibility|whiteSpace|textTransform|textDecoration|fontStyle|textAlign|alignItems|alignContent|alignSelf|justifyContent|flexDirection|flexWrap|flexGrow|flexShrink|flexBasis|cursor|pointerEvents|userSelect|resize|objectFit|objectPosition|listStyle|listStyleType|float|clear|verticalAlign|boxSizing|isolation|mixBlendMode|wordBreak|textOverflow|outlineStyle|borderStyle|borderWidth|borderRadius|gridTemplateColumns|gridTemplateRows|gridAutoFlow|columnGap|rowGap|aspectRatio|transitionProperty|tableLayout|writingMode|fontSmoothing|direction|unicodeBidi|appearance|variant|backing|placement|orientation|side|shape|theme|layout|trigger|arrow|state|phase|mode|kind|status|role|type|as|size|align|justify|wrap|fit|target|method)'
 
 # A bare keyword is not a class signal when it is the value of one of those
-# names, an operand of a comparison, or an alternative of a union/ternary.
+# names, an operand of a comparison, or an alternative of a union or a ternary.
+# (The ternary case has one exception — the class-toggle pair, see CLASS_TOGGLE.)
 NON_CLASS_CONTEXT="(${VALUE_CONTEXT})[[:space:]]*[=:][[:space:]]*\{?[[:space:]]*|(===|!==|==|!=)[[:space:]]*|\|[[:space:]]*|\?[[:space:]]*|[^A-Za-z0-9_][[:space:]]*:[[:space:]]*"
 
 # Class-name characters only: a class list cannot contain `,`, `;`, `=`, `(` or
 # a quote, so object syntax between two quotes never looks like a class string.
 CLASS_CHARS='[A-Za-z0-9_:./!-]'
 
+# One branch of a class-toggle ternary: a quoted or backticked literal whose body
+# is made of class-name characters and holds a bare keyword as a
+# whitespace-separated token, or the empty literal.
+KEYWORD_LITERAL="['\`\"](${CLASS_CHARS}|[[:space:]])*(${BARE_KEYWORD})(${BOUNDARY}(${CLASS_CHARS}|[[:space:]])*)?['\`\"]"
+EMPTY_LITERAL="['\`\"]['\`\"]"
+
+# `done ? 'hidden' : ''` and `active ? 'flex' : 'hidden'` are the canonical
+# conditional-class idiom; the pair is reported as a whole because its branches,
+# read alone, cannot be told apart from a value toggle. Both branches must be a
+# keyword literal or the empty literal, and at least one a keyword literal.
+CLASS_TOGGLE="[?:][[:space:]]*(${KEYWORD_LITERAL})[[:space:]]*:[[:space:]]*(${KEYWORD_LITERAL}|${EMPTY_LITERAL})|[?:][[:space:]]*(${EMPTY_LITERAL})[[:space:]]*:[[:space:]]*(${KEYWORD_LITERAL})"
+
 # The match carries the context it was found in, so the exempt occurrence can be
 # dropped without dropping a sibling leak on the same line.
-KEYWORD_PATTERN="(${NON_CLASS_CONTEXT})?['\"](${CLASS_CHARS}*[[:space:]])?(${BARE_KEYWORD})${BOUNDARY}"
+KEYWORD_PATTERN="(${NON_CLASS_CONTEXT})?['\"](${CLASS_CHARS}*[[:space:]])?(${BARE_KEYWORD})${BOUNDARY}|\`(${CLASS_CHARS}*[[:space:]])?(${BARE_KEYWORD})\`|\`(${CLASS_CHARS}*[[:space:]])?(${BARE_KEYWORD})${BOUNDARY}"
+
+# `file:line:` keys of the comment lines: JSDoc prose quotes words in backticks,
+# and a keyword inside a comment is prose, not a class list. Code lines never
+# begin with a comment marker, so the exemption cannot hide a live leak.
+COMMENT_KEYS=$(grep -rEn "^[[:space:]]*([*]|//|/\*)" --include="*.ts" --include="*.tsx" "$SCAN_ROOT" | sed -E 's/^([^:]+:[0-9]+):.*/\1:/' || true)
 
 UTILITY_LINES=$(grep -rEn "$UTILITY_PATTERN" --include="*.ts" --include="*.tsx" "$SCAN_ROOT" || true)
 BARE_LINES=$(grep -rEn "$BARE_PATTERN" --include="*.ts" --include="*.tsx" "$SCAN_ROOT" || true)
@@ -164,10 +196,23 @@ KEYWORD_MATCHES=$(grep -rEon "$KEYWORD_PATTERN" --include="*.ts" --include="*.ts
 KEYWORD_LINES=''
 if [ -n "$KEYWORD_MATCHES" ]; then
   KEYWORD_LINES=$(printf '%s\n' "$KEYWORD_MATCHES" | grep -vE "^[^:]+:[0-9]+:(${NON_CLASS_CONTEXT})" || true)
+  if [ -n "$KEYWORD_LINES" ] && [ -n "$COMMENT_KEYS" ]; then
+    KEYWORD_LINES=$(printf '%s\n' "$KEYWORD_LINES" | grep -vFf <(printf '%s\n' "$COMMENT_KEYS") || true)
+  fi
+fi
+
+# The class-toggle pair is exempt when the line names a value context or is a
+# comment line; every other same-line pair is reported.
+TOGGLE_LINES=$(grep -rEn "$CLASS_TOGGLE" --include="*.ts" --include="*.tsx" "$SCAN_ROOT" || true)
+if [ -n "$TOGGLE_LINES" ]; then
+  TOGGLE_LINES=$(printf '%s\n' "$TOGGLE_LINES" | grep -vE "(${VALUE_CONTEXT})[[:space:]]*[=:]" || true)
+  if [ -n "$TOGGLE_LINES" ] && [ -n "$COMMENT_KEYS" ]; then
+    TOGGLE_LINES=$(printf '%s\n' "$TOGGLE_LINES" | grep -vFf <(printf '%s\n' "$COMMENT_KEYS") || true)
+  fi
 fi
 
 TOTAL=0
-for LINES in "$UTILITY_LINES" "$BARE_LINES" "$KEYWORD_LINES"; do
+for LINES in "$UTILITY_LINES" "$BARE_LINES" "$KEYWORD_LINES" "$TOGGLE_LINES"; do
   if [ -n "$LINES" ]; then
     TOTAL=$((TOTAL + $(printf '%s\n' "$LINES" | grep -c .)))
   fi
@@ -184,6 +229,11 @@ if [ "$TOTAL" -gt 0 ]; then
   if [ -n "$KEYWORD_LINES" ]; then
     echo "=== Bare class keywords inside string literals ==="
     printf '%s\n' "$KEYWORD_LINES"
+    echo ""
+  fi
+  if [ -n "$TOGGLE_LINES" ]; then
+    echo "=== Bare class keywords in a class-toggle ternary ==="
+    printf '%s\n' "$TOGGLE_LINES"
     echo ""
   fi
   if [ -n "$BARE_LINES" ]; then
