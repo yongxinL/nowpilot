@@ -79,8 +79,13 @@ export const StandaloneWritePage: React.FC<StandaloneWritePageProps> = ({ onOpen
   // WR-07 / D-13: the composer the workspace handoff carries a draft into. The
   // target's `apply` adapter writes the projection's `composerDraft` to the
   // in-memory slot, and the composer consumes it here — the field used to be
-  // validated and then dropped. A handoff with no draft (the Phase-1 Side Panel
-  // has no composer to type into) leaves this page's own content untouched.
+  // validated and then dropped. A handoff with no draft (the Side Panel
+  // composer can be left empty) leaves this page's own content untouched.
+  //
+  // WR-09: the slot is consume-once. The seed reads it for the first paint and
+  // the effect below consumes it, so the draft is taken exactly once — at mount
+  // when it is already there, or when it arrives — and cannot be resurrected by
+  // a later mount: the shell remounts this page on every Sider route switch.
   const handoffDraft = useHandoffComposerDraftStore((state) => state.draft);
   const [writeInput, setWriteInput] = useState<string>(() => handoffDraft || 'This is wrong page');
   const [replyOriginalText, setReplyOriginalText] = useState<string>('');
@@ -89,7 +94,9 @@ export const StandaloneWritePage: React.FC<StandaloneWritePageProps> = ({ onOpen
   // A handoff that resolves after this surface mounted still reaches the
   // composer; the user's own edits are never overwritten by an empty draft.
   useEffect(() => {
-    if (handoffDraft) setWriteInput(handoffDraft);
+    if (!handoffDraft) return;
+    setWriteInput(handoffDraft);
+    useHandoffComposerDraftStore.getState().consumeDraft();
   }, [handoffDraft]);
 
   // Output & Versions

@@ -1,10 +1,11 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import React from 'react';
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { App, ConfigProvider } from 'antd';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { StandaloneWritePage } from '@/components/standalone/StandaloneWritePage';
+import { StandaloneShell } from '@/components/standalone/StandaloneShell';
 import { useHandoffComposerDraftStore } from '@/core/workspace/handoff/composerDraft';
 import { format, t } from '@/core/i18n/strings';
 
@@ -97,17 +98,16 @@ describe('StandaloneWritePage — fixture-preview (D-16)', () => {
   });
 });
 
-describe('StandaloneWritePage — handoff composer draft (WR-07 / D-13)', () => {
+describe('StandaloneWritePage — handoff composer draft (WR-07 / D-13 / WR-09)', () => {
   const composerPlaceholder = 'Enter the topic you want to write about...';
+  const HANDOFF_DRAFT = 'A draft typed in the Side Panel';
 
-  afterEach(() => {
-    // The draft slot is process-global and this suite's afterEach runs before
-    // RTL's auto-cleanup unmounts the tree, so the reset is wrapped in `act`
-    // to keep the still-mounted subscription update inside React's boundary.
-    act(() => {
-      useHandoffComposerDraftStore.getState().setDraft('');
-    });
-  });
+  /**
+   * There is deliberately **no** `afterEach` slot reset in this suite (WR-09).
+   * The slot is consume-once, so a draft left behind by one case can only be
+   * observed as a failure of the next one — which is the invariant being
+   * pinned, not test hygiene to work around.
+   */
 
   it('renders the draft the workspace handoff carried into the composer', async () => {
     // The handoff resolves after the surface is mounted, so the draft arrives
@@ -115,19 +115,22 @@ describe('StandaloneWritePage — handoff composer draft (WR-07 / D-13)', () => 
     renderWithAntd(<StandaloneWritePage />);
 
     await act(async () => {
-      useHandoffComposerDraftStore.getState().setDraft('A draft typed in the Side Panel');
+      useHandoffComposerDraftStore.getState().setDraft(HANDOFF_DRAFT);
     });
 
     const composer = screen.getByPlaceholderText(composerPlaceholder);
-    expect((composer as HTMLTextAreaElement).value).toBe('A draft typed in the Side Panel');
+    expect((composer as HTMLTextAreaElement).value).toBe(HANDOFF_DRAFT);
+    // Consumed, not merely copied: the slot is empty once the composer has it.
+    expect(useHandoffComposerDraftStore.getState().draft).toBe('');
   });
 
   it('seeds the composer when the draft is already in the slot at mount', async () => {
-    useHandoffComposerDraftStore.getState().setDraft('A draft typed in the Side Panel');
+    useHandoffComposerDraftStore.getState().setDraft(HANDOFF_DRAFT);
     renderWithAntd(<StandaloneWritePage />);
 
     const composer = await screen.findByPlaceholderText(composerPlaceholder);
-    expect((composer as HTMLTextAreaElement).value).toBe('A draft typed in the Side Panel');
+    expect((composer as HTMLTextAreaElement).value).toBe(HANDOFF_DRAFT);
+    expect(useHandoffComposerDraftStore.getState().draft).toBe('');
   });
 
   it('leaves the composer content untouched when the handoff carried no draft', async () => {
@@ -135,6 +138,36 @@ describe('StandaloneWritePage — handoff composer draft (WR-07 / D-13)', () => 
 
     const composer = await screen.findByPlaceholderText(composerPlaceholder);
     expect((composer as HTMLTextAreaElement).value).not.toBe('');
-    expect((composer as HTMLTextAreaElement).value).not.toBe('A draft typed in the Side Panel');
+    expect((composer as HTMLTextAreaElement).value).not.toBe(HANDOFF_DRAFT);
+  });
+
+  it('does not resurrect a consumed draft across a real Sider route round trip', async () => {
+    // The production sequence: the Side Panel composer's draft rides the
+    // handoff while the Standalone tab shows the Chat route, the user opens
+    // Write (the draft appears), edits it, leaves the route and comes back.
+    // The shell unmounts and remounts the page on every Sider switch, so a slot
+    // that outlived its delivery would restore the handoff draft over the
+    // user's own content. No `afterEach` reset is involved.
+    renderWithAntd(<StandaloneShell onOpenOptions={vi.fn()} />);
+
+    await act(async () => {
+      useHandoffComposerDraftStore.getState().setDraft(HANDOFF_DRAFT);
+    });
+
+    fireEvent.click(screen.getByTestId('np-sider-item-Write'));
+    const seeded = (await screen.findByPlaceholderText(composerPlaceholder)) as HTMLTextAreaElement;
+    expect(seeded.value).toBe(HANDOFF_DRAFT);
+
+    fireEvent.change(seeded, { target: { value: 'My own edit' } });
+    expect(seeded.value).toBe('My own edit');
+
+    fireEvent.click(screen.getByTestId('np-sider-item-Chat'));
+    fireEvent.click(screen.getByTestId('np-sider-item-Write'));
+
+    const revisited = (await screen.findByPlaceholderText(
+      composerPlaceholder,
+    )) as HTMLTextAreaElement;
+    expect(revisited.value).not.toBe(HANDOFF_DRAFT);
+    expect(revisited.value).toBe('This is wrong page');
   });
 });
