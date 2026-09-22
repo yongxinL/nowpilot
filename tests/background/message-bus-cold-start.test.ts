@@ -260,6 +260,35 @@ describe('MessageBus cold-start contract', () => {
     await vi.waitFor(() => expect(sendResponse).toHaveBeenCalledWith({ ok: true }));
   });
 
+  it('the listener does not throw when the message type is a prototype-chain key (CR-01)', async () => {
+    const bus = await freshMessageBus();
+    const handler = vi.fn();
+    bus.register(MessageType.OPEN_SIDE_PANEL, handler);
+    bus.init();
+    const listener = capturedListener();
+    const sendResponse = vi.fn();
+
+    let handled: boolean | undefined;
+    expect(() => {
+      handled = listener(
+        {
+          type: 'toString',
+          operationId: 'op-1',
+          timestamp: 1,
+          source: 'standalone',
+          payload: {},
+        },
+        ownSender(),
+        sendResponse,
+      );
+    }).not.toThrow();
+
+    expect(handled).toBe(false);
+    await flushAsync();
+    expect(handler).not.toHaveBeenCalled();
+    expect(sendResponse).not.toHaveBeenCalled();
+  });
+
   it('the listener rejects a message from a foreign extension id and runs no handler', async () => {
     const bus = await freshMessageBus();
     const handler = vi.fn();

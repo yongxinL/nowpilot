@@ -117,6 +117,19 @@ describe('RuntimeEnvelope', () => {
     ).toBe(false);
   });
 
+  it('rejects a prototype-chain key as the message type without throwing (CR-01)', () => {
+    // `Object.prototype` contributes `toString`, `constructor`, `valueOf`, …
+    // A membership test using `in` would accept them and the schema lookup
+    // would return the inherited function, so `.safeParse` would throw a
+    // TypeError inside the service-worker message listener.
+    for (const type of ['toString', 'constructor', 'valueOf', 'hasOwnProperty', '__proto__']) {
+      const candidate = { type, operationId: 'x', timestamp: 1, source: 'sidepanel', payload: {} };
+      expect(() => validateEnvelope(candidate)).not.toThrow();
+      expect(validateEnvelope(candidate)).toEqual({ ok: false, error: 'ENVELOPE_UNKNOWN_TYPE' });
+      expect(isEnvelope(candidate)).toBe(false);
+    }
+  });
+
   it('rejects an envelope with an unknown extra structural field', () => {
     expect(
       isEnvelope({

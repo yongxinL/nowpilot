@@ -174,15 +174,30 @@ export type RuntimeEnvelopeValidation =
   | { ok: true; envelope: RuntimeEnvelope }
   | { ok: false; error: string };
 
+/**
+ * Own-property lookup. `in` walks the prototype chain, so `'toString'`,
+ * `'constructor'`, `'valueOf'`, … would pass a naive membership test and the
+ * schema lookup would return `Object.prototype.toString` — a function, not a
+ * schema — and `.safeParse` would throw a `TypeError` inside the message
+ * listener (CR-01). Only a key the registry itself declares is a known type.
+ */
+function hasOwn(record: object, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(record, key);
+}
+
 function schemaForType(type: EnvelopeType): z.ZodType {
-  if (type in payloadSchemas) return payloadSchemas[type as MessageTypeValue];
-  return scaffoldPayloadSchemas[type as ScaffoldMessageTypeValue];
+  if (hasOwn(payloadSchemas, type)) return payloadSchemas[type as MessageTypeValue];
+  if (hasOwn(scaffoldPayloadSchemas, type)) {
+    return scaffoldPayloadSchemas[type as ScaffoldMessageTypeValue];
+  }
+  // Unreachable: `validateEnvelope` rejects an unknown type before this lookup.
+  throw new Error('ENVELOPE_UNKNOWN_TYPE');
 }
 
 function isKnownEnvelopeType(type: unknown): type is EnvelopeType {
   return (
     typeof type === 'string' &&
-    (type in payloadSchemas || type in scaffoldPayloadSchemas)
+    (hasOwn(payloadSchemas, type) || hasOwn(scaffoldPayloadSchemas, type))
   );
 }
 
