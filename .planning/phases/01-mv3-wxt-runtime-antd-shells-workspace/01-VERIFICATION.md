@@ -12,8 +12,6 @@ overrides:
     accepted_at: "2026-09-22T22:51:18Z"
 covered_files:
   - ".gitignore"
-  - ".planning/REQUIREMENTS.md"
-  - ".planning/ROADMAP.md"
   - ".planning/phases/01-mv3-wxt-runtime-antd-shells-workspace/01-01-PLAN.md"
   - ".planning/phases/01-mv3-wxt-runtime-antd-shells-workspace/01-01-SUMMARY.md"
   - ".planning/phases/01-mv3-wxt-runtime-antd-shells-workspace/01-02-PLAN.md"
@@ -40,7 +38,6 @@ covered_files:
   - ".planning/phases/01-mv3-wxt-runtime-antd-shells-workspace/01-12-SUMMARY.md"
   - ".planning/phases/01-mv3-wxt-runtime-antd-shells-workspace/01-13-PLAN.md"
   - ".planning/phases/01-mv3-wxt-runtime-antd-shells-workspace/01-13-SUMMARY.md"
-  - ".planning/phases/01-mv3-wxt-runtime-antd-shells-workspace/01-VALIDATION.md"
   - "package.json"
   - "scripts/verify-no-tailwind.sh"
   - "src/components/common/CommandPalette.tsx"
@@ -140,7 +137,7 @@ covered_files:
   - "tsconfig.json"
   - "vitest.config.ts"
   - "wxt.config.ts"
-covered_digest: "v1:sha256:f7c19539032cdc0beb4c76f7eb7f65f2e0f7a9ad7d2ec5a8aa81017d03910825"
+covered_digest: "v1:sha256:313a7f02706d8e30d8b53dab96227d1fe15fbb5b07f7c56fe6b4e6d09d2d619e"
 behavior_unverified: 0
 overrides_applied: 0
 deferred:
@@ -390,6 +387,8 @@ All trackable CONTEXT.md decisions are honored by shipped artifacts — `{ total
 #### Digest reconciliation (2026-09-23)
 
 `covered_digest` was refreshed after the phase-completion transition updated `.planning/ROADMAP.md` — the only covered input that changed (the phase checkbox/progress write performed by `phase.complete`). No source, test, plan or summary input changed after verification; the drift was a false-positive `stale` produced by the completion flow itself. The refresh keeps the #4155 fingerprint truthful for the current covered inputs.
+
+**Rescope (same date):** `covered_files` was narrowed to exclude the three close-out-flow-owned documents — `.planning/ROADMAP.md` and `.planning/REQUIREMENTS.md` (rewritten by `phase.complete`) and `01-VALIDATION.md` (audit-trail appended by the validate-phase hook). Keeping them made the fingerprint self-invalidating: every completion/close-out write re-staled a report whose substantive evidence (source, tests, plans, summaries) had not changed. 126 covered inputs remain; the digest above reflects that scope.
 
 ### Gaps Summary
 
