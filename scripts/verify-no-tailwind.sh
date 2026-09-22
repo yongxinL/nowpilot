@@ -34,7 +34,7 @@
 #                   left-* indent-* columns-* aspect-* duration-* delay-*
 #                   translate-x-* translate-y-* scale-* rotate-* skew-*-
 #                   line-clamp-* tab-*
-#                   → auto|full|screen|px|`[...]`|digit
+#                   → auto|full|screen|px|min|max|fit|none|xs…7xl|`[...]`|digit
 #   layout          items-* justify-* content-* self-* place-* grid-cols-*
 #                   grid-rows-* col-span-* col-start-* col-end-* row-span-*
 #                   row-start-* row-end-* overflow-* overscroll-* object-*
@@ -60,9 +60,10 @@
 #
 # Tier 2 — bare keywords that are also legitimate CSS values, domain words or
 # component props (`flex`, `grid`, `block`, `hidden`, `absolute`, `relative`,
-# `fixed`, `sticky`, `inline`, `inline-block`, `inline-flex`, `contents`,
-# `visible`, `invisible`, `italic`, `underline`, `uppercase`, `lowercase`,
-# `capitalize`, `transition`, `shadow`, `ring`, `border`, `isolate`). A bare
+# `fixed`, `sticky`, `static`, `inline`, `inline-block`, `inline-flex`,
+# `inline-grid`, `contents`, `visible`, `invisible`, `italic`, `underline`,
+# `overline`, `line-through`, `uppercase`, `lowercase`, `capitalize`,
+# `transition`, `shadow`, `ring`, `border`, `isolate`). A bare
 # keyword is a class signal only when the literal contains it as a
 # whitespace-separated token and it is **not** in one of the non-class contexts
 # below (the value-context names are an explicit allow-list; `table` is
