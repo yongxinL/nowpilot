@@ -23,6 +23,7 @@ import { useExtensionStore } from '../../store/useExtensionStore';
 import { useThemeStore, type ThemeMode } from '../../core/theme/ThemeStore';
 import { COLOR_THEMES } from '../../core/theme/ThemeConfig';
 import { DeferredNotice } from '../common/DeferredNotice';
+import { t } from '../../core/i18n/strings';
 import { NowPilotAvatar } from '../common/NowPilotAvatar';
 import { UserAvatar } from '../common/UserAvatar';
 import { PromptsOptionsTab } from './PromptsOptionsTab';
@@ -644,7 +645,14 @@ export const OptionsPage: React.FC = () => {
             color: 'var(--muted-foreground)',
             lineHeight: 1.625,
           }}>
-                      Your API key is stored locally in your browser and is never sent elsewhere.
+                      {/* WR-04: this used to claim "Your API key is stored
+                          locally in your browser and is never sent elsewhere."
+                          Phase 1 stores no credential at all (D-08: component
+                          memory only) and D-07's cleanup destroys the
+                          prototype's plaintext keys, so the sentence fabricated
+                          a security property on a fixture page (hard rule 3).
+                          The pinned fixture disclosure is rendered instead. */}
+                      {t('deferred.reasonFixture')}
                     </div>
 
                     {/* 4 Providers Grid */}

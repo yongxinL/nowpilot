@@ -78,6 +78,18 @@ describe('options/OptionsPage — fixture-preview (D-16)', () => {
     expect(save.disabled).toBe(true);
   });
 
+  it('makes no credential-storage claim while Phase 1 stores no credential (WR-04)', () => {
+    const { container } = renderWithAntd(<OptionsPage />);
+    const text = container.textContent ?? '';
+
+    // D-08: the credential lives in component memory only, and D-07's cleanup
+    // destroys the prototype's plaintext keys — so any "your key is stored
+    // locally / never sent elsewhere" sentence is a fabricated security
+    // property (marking convention hard rule 3).
+    expect(text).not.toMatch(/stored locally in your browser/i);
+    expect(text).not.toMatch(/never sent elsewhere/i);
+  });
+
   it('renders no fabricated health signal and no invented model list', () => {
     const { container } = renderWithAntd(<OptionsPage />);
     const text = container.textContent ?? '';
