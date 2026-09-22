@@ -257,9 +257,12 @@ describe('useExtensionStore hydration — a malformed np_store blob (WR-02)', ()
       expect(Array.isArray(state.notes)).toBe(true);
       expect(state.activeSessionId).toBe('');
       expect(state.activeSession).toBeNull();
-      expect(Array.isArray(state.config.providers ? Object.values(state.config.providers) : [])).toBe(
-        true,
-      );
+      // The provider map keeps the record shape it is typed for: the corrupt
+      // string is not adopted as the map, and the default catalogue is not
+      // emptied.
+      expect(typeof state.config.providers).toBe('object');
+      expect(Array.isArray(state.config.providers)).toBe(false);
+      expect(Object.keys(state.config.providers).length).toBeGreaterThan(0);
 
       // The valid part of the blob survives: a whole-blob discard would leave
       // the module default ('http://localhost:12380/v1').

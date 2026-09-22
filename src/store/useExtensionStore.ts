@@ -107,10 +107,14 @@ function asArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : [];
 }
 
+/** True when the value is a non-array object — the shape a record field needs. */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
 /** A record field is only a record: an array or a primitive is not one. */
 function asRecord(value: unknown): Record<string, unknown> {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
-  return value as Record<string, unknown>;
+  return isRecord(value) ? value : {};
 }
 
 interface ExtensionState {
@@ -570,6 +574,12 @@ export const useExtensionStore = create<ExtensionState>()(
         // Merge the persisted config over the in-memory defaults so a field
         // the projection omits can never leave a typed field undefined.
         merged.config = { ...current.config, ...asRecord(merged.config) };
+        if (!isRecord(merged.config.providers)) {
+          // A provider map that is not a map is replaced by the default
+          // catalogue (not by an empty one), so the Options grid and the model
+          // lookups keep the record shape they are typed for.
+          merged.config.providers = current.config.providers;
+        }
         merged.activeSession = computeActiveSession(merged.sessions, merged.activeSessionId);
         merged.activeAttachments = [];
         merged.availableTabs = [];
