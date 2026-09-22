@@ -140,7 +140,7 @@ covered_files:
   - "tsconfig.json"
   - "vitest.config.ts"
   - "wxt.config.ts"
-covered_digest: "v1:sha256:2c439621383ce2382790d327022c79ecbebbf3537d55354afaf057345d1ff989"
+covered_digest: "v1:sha256:f7c19539032cdc0beb4c76f7eb7f65f2e0f7a9ad7d2ec5a8aa81017d03910825"
 behavior_unverified: 0
 overrides_applied: 0
 deferred:
@@ -386,6 +386,10 @@ All trackable CONTEXT.md decisions are honored by shipped artifacts — `{ total
 - **Item 2 — OPERATOR VALIDATED.** The operator ruled the rebuilt post-fix `.output/chrome-mv3` manual set (handoff open-once/focus-existing, draft arrival and non-resurrection, Options dedupe, Back-chevron marking, theme propagation, credential notice, deferred/fixture panels) as passing on 2026-09-22. Recorded as an operator attestation; no per-item observation log was captured in this session.
 - **Item 3 — DEFERRED (environment-scoped).** Windows/Linux control chord not observable on the macOS host; owner Phase 15 / 01-08 follow-up.
 - **Item 4 — DEFERRED (insufficient_spec).** Unfalsifiable in Phase 1 (no real async page-level operation ships); revisit with the first async page operation.
+
+#### Digest reconciliation (2026-09-23)
+
+`covered_digest` was refreshed after the phase-completion transition updated `.planning/ROADMAP.md` — the only covered input that changed (the phase checkbox/progress write performed by `phase.complete`). No source, test, plan or summary input changed after verification; the drift was a false-positive `stale` produced by the completion flow itself. The refresh keeps the #4155 fingerprint truthful for the current covered inputs.
 
 ### Gaps Summary
 
