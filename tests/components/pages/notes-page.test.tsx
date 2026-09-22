@@ -1,10 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { App, ConfigProvider } from 'antd';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { NotesWorkspace } from '@/components/notes/NotesWorkspace';
+import { ErrorBoundary } from '@/core/components/ErrorBoundary';
 import { format, t } from '@/core/i18n/strings';
 
 /**
@@ -104,5 +105,44 @@ describe('NotesWorkspace — fixture-preview (D-16)', () => {
 
     expect(text).not.toMatch(/Connected|Healthy|API key valid/i);
     expect(container.querySelector('.ant-badge-status-success')).toBeNull();
+  });
+});
+
+describe('NotesWorkspace — deleting the last note (CR-03)', () => {
+  it('renders the explicit empty state instead of the shell error fallback', async () => {
+    renderWithAntd(
+      <ErrorBoundary>
+        <NotesWorkspace />
+      </ErrorBoundary>,
+    );
+
+    const cards = (): HTMLElement[] =>
+      Array.from(document.querySelectorAll('[data-testid^="np-note-card-"]')) as HTMLElement[];
+
+    // The five-note fixture is the populated state.
+    expect(cards().length).toBe(5);
+
+    // Delete every note through the card hover `Popconfirm` (the delete
+    // affordance is hover-only, and the confirmation is required).
+    for (let guard = 0; guard < 10 && cards().length > 0; guard += 1) {
+      const card = cards()[0];
+      const before = cards().length;
+
+      fireEvent.mouseOver(card);
+      const deleteButton = card.querySelector('.anticon-delete')?.closest('button');
+      expect(deleteButton, 'the hover delete affordance is not rendered').not.toBeNull();
+      fireEvent.click(deleteButton as HTMLButtonElement);
+
+      const popover = Array.from(document.querySelectorAll('.ant-popover')).pop();
+      expect(popover, 'the delete confirmation did not open').toBeDefined();
+      fireEvent.click(within(popover as HTMLElement).getByText('Delete'));
+
+      await waitFor(() => expect(cards().length).toBe(before - 1));
+    }
+
+    // The empty list renders the explicit empty state — never the boundary.
+    expect(cards().length).toBe(0);
+    expect(screen.getByTestId('np-page-notes-empty')).toBeTruthy();
+    expect(screen.queryByText(t('shell.errorTitle'))).toBeNull();
   });
 });

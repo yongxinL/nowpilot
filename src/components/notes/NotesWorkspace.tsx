@@ -227,7 +227,12 @@ export const NotesWorkspace: React.FC = () => {
     typeof window !== 'undefined' ? window.innerWidth >= 1280 : true
   );
 
-  const selectedNote = notes.find(n => n.id === selectedNoteId) || notes[0];
+  // Nullable by design: both delete paths (`deleteNote` from the card hover
+  // `Popconfirm` and from the more-menu) can empty the fixture list, and an
+  // unguarded `notes[0]` fallback dereferenced `undefined` during render —
+  // crashing the page to the ErrorBoundary with no way back (CR-03). The main
+  // panel renders an explicit empty state instead.
+  const selectedNote = notes.find(n => n.id === selectedNoteId) ?? notes[0] ?? null;
 
   // Filter notes
   const filteredNotes = notes.filter(n => {
@@ -296,6 +301,10 @@ export const NotesWorkspace: React.FC = () => {
       { key: 'delete', label: 'Delete Note', danger: true },
     ],
     onClick: ({ key }) => {
+      // The list can be empty (every note deleted): the menu is rendered from
+      // the main panel, so this is defensive, but it never dereferences
+      // `null` (CR-03).
+      if (!selectedNote) return;
       if (key === 'copy') {
         navigator.clipboard.writeText(selectedNote.title + '\n\n' + selectedNote.content.summary);
         antMessage.success('Copied to clipboard');
@@ -1204,6 +1213,7 @@ export const NotesWorkspace: React.FC = () => {
               return (
                 <div
                   key={note.id}
+                  data-testid={`np-note-card-${note.id}`}
                   onClick={() => setSelectedNoteId(note.id)}
                   onMouseEnter={() => setHoveredNoteId(note.id)}
                   onMouseLeave={() => setHoveredNoteId(null)}
@@ -1443,6 +1453,17 @@ export const NotesWorkspace: React.FC = () => {
             padding: 16,
             gap: 16,
           }}>
+          {selectedNote === null ? (
+            <div
+              data-testid="np-page-notes-empty"
+              style={{ padding: token.paddingLG }}
+            >
+              <Typography.Text type="secondary">
+                No notes yet — create one to get started.
+              </Typography.Text>
+            </div>
+          ) : (
+            <>
           {/* Main Note Canvas Panel */}
           <div style={{
             flex: 1,
@@ -2599,6 +2620,8 @@ export const NotesWorkspace: React.FC = () => {
             </div>
           </div>
         )}
+            </>
+          )}
       </div>
     </div>
   </div>
