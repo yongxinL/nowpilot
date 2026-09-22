@@ -417,6 +417,53 @@ describe('WorkspaceRouter', () => {
       expect(createdUrl()).toContain('standalone.html?page=options');
       expect(createdUrl()).not.toContain('options.html');
     });
+
+    // WR-06: `chrome.tabs.query` matches the tab URL's path, so a pattern
+    // carrying `?page=options` can never match. The route has to be compared in
+    // the callback, or `Open Options` duplicates the tab (D-12) or focuses the
+    // wrong route.
+    it('focuses the existing Options-route tab without creating a second one (D-12)', () => {
+      stubExistingTab({
+        id: 321,
+        windowId: 5,
+        url: 'chrome-extension://test-id/standalone.html?page=options',
+      } as chrome.tabs.Tab);
+      const settled = vi.fn();
+
+      openOptions({ onSettled: settled });
+
+      const queryArg = chromeApi.tabs.query.mock.calls[0]?.[0] as { url?: string };
+      expect(queryArg.url).toContain('standalone.html');
+      expect(queryArg.url).not.toContain('page=options');
+
+      expect(chromeApi.tabs.create).not.toHaveBeenCalled();
+      expect(chromeApi.tabs.update).toHaveBeenCalledWith(321, { active: true }, expect.any(Function));
+      expect(settled).toHaveBeenCalledWith({ ok: true });
+    });
+
+    it('does not focus a Standalone tab sitting on another route', () => {
+      chromeApi.tabs.query.mockImplementation(
+        (_q: unknown, cb: (tabs: chrome.tabs.Tab[]) => void) =>
+          cb([
+            {
+              id: 124,
+              windowId: 5,
+              url: 'chrome-extension://test-id/standalone.html?page=chat',
+            } as chrome.tabs.Tab,
+          ]),
+      );
+      chromeApi.tabs.create.mockImplementation(
+        (_opts: chrome.tabs.CreateProperties, cb: (tab: chrome.tabs.Tab) => void) =>
+          cb({ id: 99 } as chrome.tabs.Tab),
+      );
+      const settled = vi.fn();
+
+      openOptions({ onSettled: settled });
+
+      expect(chromeApi.tabs.update).not.toHaveBeenCalled();
+      expect(chromeApi.tabs.create).toHaveBeenCalledTimes(1);
+      expect(settled).toHaveBeenCalledWith({ ok: true });
+    });
   });
 
   describe('WorkspaceRouter source — one validated URL path', () => {

@@ -212,14 +212,31 @@ export function openOptions(
 ): void {
   const url = chrome.runtime.getURL('standalone.html?page=options');
 
-  chrome.tabs.query({ url: chrome.runtime.getURL('standalone.html?page=options*') }, (tabs) => {
+  // WR-06: a `chrome.tabs.query` URL pattern is matched against the tab URL's
+  // *path*, so the query string is not part of the comparison. The old pattern
+  // (`standalone.html?page=options*`) either never matched a real tab — the
+  // focus branch was dead and every `Open Options` created a duplicate tab,
+  // which D-12 forbids — or, with the query dropped, matched *every* Standalone
+  // tab and would focus a Chat/Write tab instead. Query by path (exactly as
+  // `planStandaloneTarget` does) and compare the route in the callback.
+  chrome.tabs.query({ url: chrome.runtime.getURL('standalone.html*') }, (tabs) => {
     if (chrome.runtime.lastError) {
       opts?.onSettled?.({ ok: false, error: String(chrome.runtime.lastError.message) });
       return;
     }
-    if (tabs.length > 0 && tabs[0].id) {
-      const tabId = tabs[0].id;
-      const windowId = tabs[0].windowId;
+
+    const existing = tabs.find((tab) => {
+      if (!tab.url) return false;
+      try {
+        return new URL(tab.url).searchParams.get('page') === 'options';
+      } catch {
+        return false;
+      }
+    });
+
+    if (existing?.id) {
+      const tabId = existing.id;
+      const windowId = existing.windowId;
       chrome.tabs.update(tabId, { active: true }, () => {
         if (chrome.runtime.lastError) {
           opts?.onSettled?.({ ok: false, error: String(chrome.runtime.lastError.message) });
