@@ -4,16 +4,16 @@ milestone: v0.2
 current_phase: 2
 current_phase_name: Storage, Security, WriteJournal, Workspace Persistence
 status: executing
-stopped_at: Completed 02-03-PLAN.md
-last_updated: "2026-09-23T23:24:23.598Z"
+stopped_at: Completed 02-04-PLAN.md
+last_updated: "2026-09-23T23:51:13.468Z"
 last_activity: 2026-09-24
 last_activity_desc: Phase 2 execution started
-state_head: 57b6f1db81ee17ade531a221ea2da2a0672c9f21
+state_head: b72024ed7420d9434fd7588f662e90fbece86f11
 progress:
   total_phases: 19
   completed_phases: 1
   total_plans: 26
-  completed_plans: 16
+  completed_plans: 17
 ---
 
 # Project State
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-09-23)
 ## Current Position
 
 Phase: 2 (Storage, Security, WriteJournal, Workspace Persistence) — EXECUTING
-Plan: 4 of 13
+Plan: 5 of 13
 Status: Ready to execute
 Last activity: 2026-09-24 — Phase 2 execution started
 
@@ -74,6 +74,7 @@ Progress: [█░░░░░░░░░] 5%
 | Phase 02 P01 | 7 min | 3 tasks | 7 files |
 | Phase 02 P02 | 10 min | 3 tasks | 8 files |
 | Phase 02 P03 | 6 min | 3 tasks | 6 files |
+| Phase 02 P04 | 20 min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -158,6 +159,12 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 2]: 02-03: the credential key is np_credential_<validated ProviderId> from one CREDENTIAL_KEY_PREFIX constant; §15.1 names no standalone credential key, so it is recorded as a naming follow-up in the KeyVault module comment (D2-29 pattern) with PRODUCT_SPEC.md unedited.
 - [Phase 2]: 02-03: redactErrorContext reads an error name structurally with an identifier-shape guard (DOMException is not instanceof Error here — the 02-02 defect) so every crypto failure logs OperationError rather than 'object', and a secret cannot ride the name field.
 - [Phase 2]: 02-03: redactSensitive is the single field-name redaction choke point (one frozen SENSITIVE_FIELD_NAMES list, substring match on a normalised key, placeholder at any depth, total/cycle-safe/deterministic); it is deliberately not a free-text scanner — §4.4 value-shape patterns stay Phase 11's TraceRedactor.
+- [Phase 2]: 02-04: the port owns its own failure vocabulary (CredentialStoreErrorCode) and translates the vault's codes through one table; an unknown code degrades to CREDENTIAL_STORE_FAILED, so no caller reads the vault's internals and a future vault code cannot leak.
+- [Phase 2]: 02-04: createCredentialStorePort takes a CredentialVaultLike parameter, never an import — the port stays importable without the crypto graph, and a src/components/** import-specifier scan (seeds plus transitive re-exporters) proves the presentation boundary, observed red on a synthetic KeyVault import in NowPilotAvatar.tsx.
+- [Phase 2]: 02-04: CREDENTIAL_MAX_LENGTH = 4096 is the one input bound; blank, whitespace-only, non-string and over-long credentials are rejected before any vault call with CREDENTIAL_STORE_INVALID_CREDENTIAL and persist nothing (T-02-19).
+- [Phase 2]: 02-04: np_install_secret is lazy create-on-first-use with the re-read INSIDE the per-key serialised write section; that re-read is what makes concurrent first use one durable value (mutation-proved: removing it turns the concurrent case red), and a read-back mismatch reports SETTING_INSTALL_SECRET_UNVERIFIED rather than adopting the divergent value.
+- [Phase 2]: 02-04: Setting.ts ships with its real consumer — readInstallSecret is passed straight into createKeyVault with no adapter module, and the composed case in Setting.test.ts round-trips a synthetic credential and fails the vault closed when the secret is unreadable (closes 02-03's D5 human-judgment item).
+- [Phase 2]: 02-04: Setting.ts's canonical-base64 helpers stay local rather than importing EncryptedStorage, because the envelope codec would drag zod and the crypto graph into the storage module's import graph; the fail-closed rule (canonical base64 of exactly 32 bytes, never regenerated over) is restated there.
 
 ### Pending Todos
 
@@ -239,6 +246,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-23T23:24:23.544Z
-Stopped at: Completed 02-03-PLAN.md
+Last session: 2026-09-23T23:51:13.350Z
+Stopped at: Completed 02-04-PLAN.md
 Resume file: None
