@@ -4,16 +4,16 @@ milestone: v0.2
 current_phase: 2
 current_phase_name: Storage, Security, WriteJournal, Workspace Persistence
 status: executing
-stopped_at: Completed 02-02-PLAN.md
-last_updated: "2026-09-23T23:11:51.955Z"
+stopped_at: Completed 02-03-PLAN.md
+last_updated: "2026-09-23T23:24:23.598Z"
 last_activity: 2026-09-24
 last_activity_desc: Phase 2 execution started
-state_head: bc3b11ff28e15475e7ad8d3d2a8a3978266d8866
+state_head: 57b6f1db81ee17ade531a221ea2da2a0672c9f21
 progress:
   total_phases: 19
   completed_phases: 1
   total_plans: 26
-  completed_plans: 15
+  completed_plans: 16
 ---
 
 # Project State
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-09-23)
 ## Current Position
 
 Phase: 2 (Storage, Security, WriteJournal, Workspace Persistence) — EXECUTING
-Plan: 3 of 13
+Plan: 4 of 13
 Status: Ready to execute
 Last activity: 2026-09-24 — Phase 2 execution started
 
@@ -73,6 +73,7 @@ Progress: [█░░░░░░░░░] 5%
 | Phase 01 P13 | 21min | 3 tasks | 5 files |
 | Phase 02 P01 | 7 min | 3 tasks | 7 files |
 | Phase 02 P02 | 10 min | 3 tasks | 8 files |
+| Phase 02 P03 | 6 min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -152,6 +153,11 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 2]: WriteJournalOperation gains 'migrate-legacy-conversations' additively (OQ-2, spec follow-up); MIGRATION_STAGE_NAMES is the single declaration of the seven D2-09 stage names for 02-05 to re-export.
 - [Phase 2]: Journal stages are pre-seeded as pending at creation and flipped to completed per step — the deliberate divergence from Appendix O.11 that D2-09 restart-safety and D2-12's retained destination-verified stage require.
 - [Phase 2]: compactJournal is a pure function returning { keep, removed }; the production call site is owned by no Phase 2 plan and is logged in .planning/WINDOWS.md.
+- [Phase 2]: 02-03: store is create-only (typed KEY_VAULT_ALREADY_CONFIGURED, never a silent rotation) and replace is the explicit supersede (KEY_VAULT_NOT_CONFIGURED when absent) — the caller flows isConfigured ? replace : store; isConfigured reports presence, not validity, so corruption recovery goes through replace/delete and never a silent store.
+- [Phase 2]: 02-03: the §15.2 derivation concatenation is pinned as installSecretBase64 + KDF_CONCATENATION_SEPARATOR + extensionId with the separator deliberately the empty string (A11), asserted by a golden byte test — changing it would orphan every stored envelope.
+- [Phase 2]: 02-03: the credential key is np_credential_<validated ProviderId> from one CREDENTIAL_KEY_PREFIX constant; §15.1 names no standalone credential key, so it is recorded as a naming follow-up in the KeyVault module comment (D2-29 pattern) with PRODUCT_SPEC.md unedited.
+- [Phase 2]: 02-03: redactErrorContext reads an error name structurally with an identifier-shape guard (DOMException is not instanceof Error here — the 02-02 defect) so every crypto failure logs OperationError rather than 'object', and a secret cannot ride the name field.
+- [Phase 2]: 02-03: redactSensitive is the single field-name redaction choke point (one frozen SENSITIVE_FIELD_NAMES list, substring match on a normalised key, placeholder at any depth, total/cycle-safe/deterministic); it is deliberately not a free-text scanner — §4.4 value-shape patterns stay Phase 11's TraceRedactor.
 
 ### Pending Todos
 
@@ -233,6 +239,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-23T23:11:51.905Z
-Stopped at: Completed 02-02-PLAN.md
+Last session: 2026-09-23T23:24:23.544Z
+Stopped at: Completed 02-03-PLAN.md
 Resume file: None
