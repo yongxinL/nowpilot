@@ -157,3 +157,42 @@ Phase 1's five success criteria (`.planning/ROADMAP.md`), each with the evidence
 | Escalated | 0 |
 
 State A audit at phase close: all twelve Wave 0 entries exist and run inside `verify:phase-1` (41 files / 569 tests + `verify-no-tailwind`, exit 0); the verifier's Requirements Coverage marks every Phase-1 requirement SATISFIED. No MISSING or PARTIAL entries; `nyquist_compliant: true` confirmed.
+
+---
+
+## Phase-2 Entry Gate — Pending Two-Surface Observations (WINDOWS #5, #8)
+
+> **Status: NOT YET OBSERVED — this section is a run sheet, not evidence.** Phase 2 discussion/planning is gated on the two observations below completing and being recorded here. #13 was resolved 2026-09-23 from the SA-10 row above (`windows fixed 13`). #7 is formally deferred to Phase 15 — see `.planning/STATE.md` § Verification Deferrals (stays `open` in the ledger).
+
+**Artifact:** `.output/chrome-mv3` (built 2026-09-23 07:36, after the last `src/` commit `f620285d`), loaded unpacked.
+**Profile:** a **fresh** profile directory (e.g. `/tmp/nowpilot-uat-02gate`) — #8 requires first-run onboarding, so `/tmp/nowpilot-uat-01-13` must not be reused.
+**Recording rule:** screenshot plus a written observed-result record per item; a screenshot alone is not evidence (`nowpilot-phase-verification`).
+
+### WINDOWS #5 — Cross-surface handoff (cold Standalone, ready-before-publish)
+
+1. Fresh profile; load unpacked; complete or Skip onboarding so both surfaces are usable.
+2. Open Standalone first and leave it cold on screen — from `chrome://extensions`, copy the extension id and open `chrome-extension://<id>/standalone.html` in a tab (do not open the Side Panel first).
+3. From the Side Panel, run `Open Standalone view` (header button or ⌘K palette).
+4. Expected: a pending toast appears (shipped copy is the inline literal `Opening standalone view…` — `src/entrypoints/sidepanel/main.tsx:74`; the pinned `workspace.handoffPending`/`workspace.handoffComplete` keys render nowhere — known advisory finding `01-UI-REVIEW.md` WARNING 1, owner Phase 15 — **record the copy actually shown**); the existing Standalone tab is focused, no second tab; the toast clears on success; no error toast; no `MirrorBanner`/read-only banner in either surface; the Side Panel stays writable. A cold-tab ready-before-publish failure would instead surface the pinned `Failed to open Standalone view` copy (clicking the toast re-attempts; the visible `Retry` label is a known Phase-15 gap — record what is actually shown).
+5. Optional failure path: re-run the open and close the new tab before the acknowledgement — expect the pinned failure copy.
+
+| Check | Observed result |
+|-------|-----------------|
+| Pending toast appears, then clears on success (record exact copy) | |
+| Existing tab focused, no duplicate tab | |
+| No failure toast, no MirrorBanner/read-only banner, Side Panel writable | |
+
+### WINDOWS #8 — Two-live-surface onboarding (Standalone first)
+
+1. Fresh profile; load unpacked; do **not** open the Side Panel yet.
+2. Open Standalone first via `chrome-extension://<id>/standalone.html`. Expected: the onboarding flow presents in Standalone; no redirection to the Side Panel; Standalone stays the active surface.
+3. Open the Side Panel while Standalone's flow is still open. Expected: no competing onboarding flow starts in the panel; the first surface remains active.
+4. Complete (or Skip) onboarding in one surface. Expected: the other surface's flow closes without a reload (propagates through `chrome.storage.onChanged`); a Skip leaves the explicit incomplete state and the flow re-presents on the next open.
+
+| Check | Observed result |
+|-------|-----------------|
+| Standalone presents the flow when opened first; no redirection to the Side Panel | |
+| Second surface starts no competing flow; first surface stays active | |
+| Completion in one surface closes the other's flow without reload (Skip → explicit incomplete) | |
+
+**On completion:** record the observed results above (operator name + date), then `gsd-tools windows fixed 5` and `gsd-tools windows fixed 8`; Phase 2 discussion/planning is unblocked once both are `fixed`.

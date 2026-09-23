@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 15
+open_count: 14
 waived_count: 0
-fixed_count: 6
+fixed_count: 7
 total_count: 21
-last_updated: 2026-09-22T10:39:51.407Z
+last_updated: 2026-09-23T10:29:37.313Z
 ---
 
 # Broken Windows Ledger
@@ -27,7 +27,7 @@ last_updated: 2026-09-22T10:39:51.407Z
 | 10 | 01 | deviation | src/components/standalone/WorkspaceSidebar.tsx |  | Inventory change-control C-01-12-A: WorkspaceSidebar.tsx changed ADAPT -> REMOVE. Plan 01-02 had already shipped the canonical Sider inside StandaloneShell.tsx, so the file had zero importers and remounting it would have created the parallel implementation D-02 forbids. Recorded with all six change-control fields in 01-MIGRATION-INVENTORY.md; the phase acceptance review should confirm the deletion rather than a remount. | open |  | 2026-09-21T15:05:54.819Z |  |
 | 11 | 01 | deviation | src/components/common/ModelSelector.tsx |  | Inventory change-control C-01-12-B: ModelSelector removal timing corrected. The Write-page import site is replaced (read-only Auto workflow display) but the file itself cannot be deleted in 01-12 - its last importer is src/components/chat/ChatComposer.tsx, a 01-11 REMOVE row, so the deletion must land with that file's removal or the typecheck breaks. 01-11's teardown must take grep -rn 'ModelSelector' src/ to zero. | fixed |  | 2026-09-21T15:06:01.545Z | 2026-09-21T23:08:30.875Z |
 | 12 | 01 | deviation | src/components/options/OptionsPage.tsx |  | Declared hand-off for phase acceptance: 01-12 removed the connection test and its provider-service import and disabled every store-writing control (Save, provider Switch), but the preserved Options page still reads useExtensionStore for its non-secret display state and still renders credential input fields. Plan 01-11 Task 1 owns the credential-field strip, the store REPLACE and the model paths on this file; the verifier must confirm that an unreachable disabled control, not a live path, is what remains. | fixed |  | 2026-09-21T15:06:14.006Z | 2026-09-21T23:08:31.024Z |
-| 13 | 01 | unrun-verify | src/entrypoints/standalone/main.tsx |  | SA-10 real Chrome gesture evidence not yet run: the suite proves the open call is issued synchronously from the chrome.tabs.query callback with no awaited boundary before it, but chrome.sidePanel.open's gesture semantics are runtime-only (jsdom mocks the API). In a real Chrome MV3 build, open Standalone and run Focus Side Panel from the palette, then record the observed result; owned by the phase acceptance plan (01-VALIDATION manual row for SA-10). | open |  | 2026-09-21T21:18:51.278Z |  |
+| 13 | 01 | unrun-verify | src/entrypoints/standalone/main.tsx |  | SA-10 real Chrome gesture evidence not yet run: the suite proves the open call is issued synchronously from the chrome.tabs.query callback with no awaited boundary before it, but chrome.sidePanel.open's gesture semantics are runtime-only (jsdom mocks the API). In a real Chrome MV3 build, open Standalone and run Focus Side Panel from the palette, then record the observed result; owned by the phase acceptance plan (01-VALIDATION manual row for SA-10). | fixed |  | 2026-09-21T21:18:51.278Z | 2026-09-23T10:29:37.313Z |
 | 14 | 01 | deviation | src/core/i18n/strings.ts |  | New canonical key added by 01-08: sidepanel.openFailed ('Failed to open the side panel'). The UI-SPEC Copywriting Contract pins no copy for the Focus Side Panel failure path, but the task requires a typed, logged, user-visible failure rather than a silent one. The key is additive, resolves through t(), and is pinned in tests/core/i18n/strings.test.ts; the phase acceptance review should ratify the wording. | open |  | 2026-09-21T21:19:00.150Z |  |
 | 15 | 01 | unrun-verify | src/components/common/LegacyCredentialCleanupNotice.tsx |  | D-07 neutral notice not yet observed in a real Chrome session: the suite proves the pinned copy, the pinned Dismiss label as the only exit and the shown-once behaviour in jsdom, but whether the notice actually presents once in the built extension is operator evidence. Seed a legacy apiKey into chrome.storage.local.np_store, reload the extension, confirm the neutral notice appears once and is dismissible, the field is gone and no second reload shows it; owned by the 01-VALIDATION manual row for D-07 (plan 01-13 item 5). | fixed |  | 2026-09-21T22:28:40.648Z | 2026-09-22T10:39:51.407Z |
 | 16 | 01 | deviation | src/core/onboarding/onboardingStateStore.ts |  | 01-10 scope addition (Rule 2): the plan's Task 3 acceptance criteria require the neutral notice to render and its shown-state to live on the onboarding record, but neither the record field, the notice component, nor the two surface-root mounts appear in the plan's files_modified list. Added: legacyCleanupNoticeShown on the onboarding record (schema v2 with a v1 upgrader so a defaulted field never re-presents a completed flow), src/components/common/LegacyCredentialCleanupNotice.tsx, and the mounts in both surface roots. The phase acceptance review should ratify the scope and the record-shape change. | open |  | 2026-09-21T22:28:48.126Z |  |
@@ -202,10 +202,10 @@ last_updated: 2026-09-22T10:39:51.407Z
     "file": "src/entrypoints/standalone/main.tsx",
     "line": null,
     "description": "SA-10 real Chrome gesture evidence not yet run: the suite proves the open call is issued synchronously from the chrome.tabs.query callback with no awaited boundary before it, but chrome.sidePanel.open's gesture semantics are runtime-only (jsdom mocks the API). In a real Chrome MV3 build, open Standalone and run Focus Side Panel from the palette, then record the observed result; owned by the phase acceptance plan (01-VALIDATION manual row for SA-10).",
-    "status": "open",
+    "status": "fixed",
     "reason": "",
     "recorded_at": "2026-09-21T21:18:51.278Z",
-    "resolved_at": null,
+    "resolved_at": "2026-09-23T10:29:37.313Z",
     "milestone": "v0.2"
   },
   {

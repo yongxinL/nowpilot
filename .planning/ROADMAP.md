@@ -283,6 +283,7 @@ Plans:
   4. RICH P0 (17) and P1 (22) complete; P2 (21) complete except deferred RICH-H-07; persona header, welcome/quick-action/clarification/follow-up chips (max 2 rounds, graceful timeout), stage indicators and code-block Copy/Save-as-macro (Insert = clipboard-only) verified.
   5. `pnpm run verify:phase-15` passes.
 
+**Deferred verification (WINDOWS #7)**: onboarding 400 px responsive backstop carried from Phase 01 — Real-Chrome observation at a 400 px Side Panel width (no horizontal overflow, clipping, unreachable controls, or invisible keyboard focus; screenshot + observed-result record). Must close before the v0.2 release gate (Phase 19). See `.planning/STATE.md` § Verification Deferrals.
 **Plans**: TBD
 **UI hint**: yes
 
@@ -344,6 +345,7 @@ Plans:
   4. Regression gates block release: prompt-injection, secret-leakage, false-completion, permission and memory-isolation suites.
   5. Release records include evaluation-suite and rubric versions; multimodal privacy fixtures and evolution activation/rollback drills pass.
 
+**Release gate — open verification deferrals**: WINDOWS #7 (onboarding 400 px responsive backstop, owner Phase 15) must close with screenshot + observed-result evidence before this gate; the release record must name its closure. See `.planning/STATE.md` § Verification Deferrals. (`workflow.windows_enforce` is `false` in this project, so this line — not the ledger counter — is the explicit release-gate block.)
 **Plans**: TBD
 
 ## Progress

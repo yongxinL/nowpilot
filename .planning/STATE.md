@@ -155,6 +155,27 @@ None yet.
 - [Phase 15] Environment-scoped open gaps from the 01-13 acceptance: Windows/Linux control chord unobserved (owner 01-08 follow-up); 01-12's async-vs-marker backstop truth is unfalsifiable until a real async page operation lands.
 - [Phase 15] UI review (01-UI-REVIEW.md, 13/24, advisory) blockers: Color 1/4 — the shipped Default theme seed is the Claude-warm prototype blob, not DESIGN_SYSTEM §6.2 (re-seed `semanticTokens.ts` and pin derived `colorPrimary`); Typography 1/4 — antd derivation yields Standalone 13 px (contract 14) and compact 8 px `fontSizeSM` (12 px floor violated at `SidePanelShell.tsx:288`). Plus Experience Design 2/4 (handoff pending copy, Retry label, message config, composer outline, ErrorBoundary reload semantics). None block Phase 1; Phase 15 owns design-system conformance.
 - One phase per response; later phases depend on earlier contracts (§18). Do not start Phase N+1 before Phase N is green.
+- [Phase 2 entry gate] Real-Chrome two-surface observations for WINDOWS #5 (cross-surface handoff) and #8 (two-live-surface onboarding) are pending before Phase 2 discussion/planning may start — run sheet in `01-VALIDATION.md` § Phase-2 Entry Gate. #13 was resolved 2026-09-23 from the 2026-09-22 SA-10 observation.
+
+## Verification Deferrals
+
+Named verification debt carried past a phase boundary — distinct from `## Deferred Items` (milestone-close scope decisions). Each entry must close before the first milestone release gate.
+
+### WINDOWS #7 — Onboarding 400 px responsive backstop (Phase 01)
+
+| Field | Value |
+|-------|-------|
+| Ledger entry | `.planning/WINDOWS.md` id 7 — stays `open`: not marked `fixed` (never observed) and not waived |
+| Requirement | FLOW-9 / SA-08 — onboarding-responsive backstops pinned in `01-UI-SPEC.md` (§ Overflow: "Onboarding modal content at 400 px"; § Long-text: "Onboarding step copy at 400 px") and in the `01-09-PLAN.md` must-haves |
+| Owner | Phase 15 — Workspace Experience (UI/UX) + RICH — the next roadmap phase that modifies or formally accepts onboarding UI |
+| Reason | Visual/responsive evidence only — not a Phase 2 storage or security prerequisite |
+| Closure condition | Real-Chrome observation at a 400 px Side Panel width confirming no horizontal overflow, clipping, unreachable controls, or invisible keyboard focus |
+| Evidence required | Screenshot plus a written observed-result record (`nowpilot-phase-verification`) |
+| Risk | Low, provided the onboarding flow remains fixture-only and no production credential behaviour depends on the layout |
+| Expiry | Must close before the first milestone release gate (Phase 19) |
+| Recorded | 2026-09-23 — operator directive |
+
+**Do not** mark #7 `fixed` until the observation exists; **do not** waive it as non-applicable. Phase 15's plan must carry this deferral, and the Phase 19 release record must name its closure.
 
 ## Deferred Items
 
