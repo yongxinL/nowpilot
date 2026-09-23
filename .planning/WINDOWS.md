@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 15
+open_count: 16
 waived_count: 0
 fixed_count: 7
-total_count: 22
-last_updated: 2026-09-23T10:38:45.085Z
+total_count: 23
+last_updated: 2026-09-23T23:10:06.769Z
 ---
 
 # Broken Windows Ledger
@@ -37,6 +37,7 @@ last_updated: 2026-09-23T10:38:45.085Z
 | 20 | 01 | deviation | src/main.tsx |  | 01-11 instrument/blocking fixes required by the plan's own gates: (a) the doomed dev shell's SidepanelChat import was replaced by the canonical SidePanelShell in Task 2 so npx tsc --noEmit stayed clean while the prototype hosts were deleted; (b) tests/components/pages/options-page.test.tsx and tests/components/LegacyCredentialCleanupNotice.test.tsx had to stop naming the removed export and the deleted suite, because the plan's teardown grep over src/ and tests/ reads those literal names and would otherwise fail on the suites that prove the teardown. | open |  | 2026-09-21T23:08:30.704Z |  |
 | 21 | 01 | deviation | package.json |  | 01-13 gate defect (Rule 1): the plan expected a deliberately misspelled path in verify:phase-1 to fail loudly, but vitest silently ignores an unmatched filter whenever another filter matches (observed: npx vitest run tests/core/runtime tests/does-not-exist-xyz -> 2 files passed, exit 0). A self-derived path-resolution preflight was added to the gate (it extracts every tests/... and scripts/... token from the command and exits 1 naming any that does not resolve), observed to fail on tests/servicez and green after restore. Ratify the extra gate step at phase acceptance. | open |  | 2026-09-21T23:26:23.316Z |  |
 | 22 | 01 | unrun-verify |  |  | VERIFICATION DEFERRAL (operator decision 2026-09-23): WINDOWS #5, #7 and #8 are formally deferred — not passed, not fixed, not waived; they stay open and must be re-checked at the Phase 19 release gate. #5/#8: Phase 2 owns automated contract/integration coverage (handoff persistence, cold-target readiness, ready/transfer/ack protocol, writer election, idempotency, duplicate-tab prevention, stale-writer rejection, failure recovery, draft preservation, safe handoff projection; onboarding single active controller, non-secret completion persistence, cross-surface completion sync, no API-key broadcast, no API-key persistence outside KeyVault, duplicate-event prevention, schema migration and recovery); Phase 15 owns final Real-Chrome UI acceptance and closure. #7: Phase 15 owns the 400 px onboarding observation (unchanged). Rationale: the Phase-1 frontend is fixture-backed, deferred and incomplete, so detailed frontend acceptance now would be obsolete once storage, workspace, provider, Notes and Options functionality lands; the consolidated Real-Chrome review runs after the backend/integration phases. This entry stays open until #5, #7 and #8 close. | open |  | 2026-09-23T10:38:45.085Z |  |
+| 23 | 2 | deviation | src/core/storage/WriteJournal.ts |  | compactJournal() and recoverJournal() are implemented and unit-proved in 02-02 but no Phase 2 plan names their production call site: 02-08 hydrates and 'resumes the legacy migration' without naming a recovery call, and nothing calls compactJournal. The journal's bounded/replay contract therefore has no wired owner yet. | open |  | 2026-09-23T23:10:06.769Z |  |
 
 ````json
 [
@@ -323,6 +324,19 @@ last_updated: 2026-09-23T10:38:45.085Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-09-23T10:38:45.085Z",
+    "resolved_at": null,
+    "milestone": "v0.2"
+  },
+  {
+    "id": 23,
+    "kind": "deviation",
+    "phase": "2",
+    "file": "src/core/storage/WriteJournal.ts",
+    "line": null,
+    "description": "compactJournal() and recoverJournal() are implemented and unit-proved in 02-02 but no Phase 2 plan names their production call site: 02-08 hydrates and 'resumes the legacy migration' without naming a recovery call, and nothing calls compactJournal. The journal's bounded/replay contract therefore has no wired owner yet.",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-09-23T23:10:06.769Z",
     "resolved_at": null,
     "milestone": "v0.2"
   }
