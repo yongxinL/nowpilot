@@ -90,8 +90,17 @@ function asVersionChangeTransaction(tx: IDBPTransaction): IDBTransaction {
   return unwrap(tx);
 }
 
+/**
+ * The redacted reason string for a caught error. IndexedDB rejects with a
+ * `DOMException`, which is not `instanceof Error` in every environment, so the
+ * name is read structurally — never the message, which can carry a value.
+ */
 function errorName(error: unknown): string {
-  return error instanceof Error ? error.name : typeof error;
+  if (typeof error === 'object' && error !== null) {
+    const name = (error as { name?: unknown }).name;
+    if (typeof name === 'string' && name.length > 0) return name;
+  }
+  return typeof error;
 }
 
 /**
@@ -231,7 +240,7 @@ export async function runMigrations<DBTypes extends DBSchema | unknown = unknown
  * unexpected open failure.
  */
 export function classifyOpenError(error: unknown): IndexedDBOpenFailureCode {
-  const name = error instanceof Error ? error.name : '';
+  const name = errorName(error);
   if (name === 'VersionError') return UNSUPPORTED_VERSION_CODE;
   if (name === 'AbortError') return MIGRATION_FAILED_CODE;
   return OPEN_FAILED_CODE;

@@ -118,8 +118,17 @@ let terminatedConnections = 0;
 
 const blockedOpenListeners: Array<(signal: BlockedOpenSignal) => void> = [];
 
+/**
+ * The redacted reason string for a caught error. IndexedDB rejects with a
+ * `DOMException`, which is not `instanceof Error` in every environment, so the
+ * name is read structurally — never the message, which can carry a value.
+ */
 function errorName(error: unknown): string {
-  return error instanceof Error ? error.name : typeof error;
+  if (typeof error === 'object' && error !== null) {
+    const name = (error as { name?: unknown }).name;
+    if (typeof name === 'string' && name.length > 0) return name;
+  }
+  return typeof error;
 }
 
 function openNowPilotDb(version: number): Promise<IDBPDatabase<NowPilotDB>> {

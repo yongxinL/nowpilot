@@ -128,8 +128,17 @@ export const writeJournalEntrySchema = z
   })
   .strict();
 
+/**
+ * The redacted reason string for a caught error. A thrown `DOMException` is not
+ * `instanceof Error` in every environment, so the name is read structurally —
+ * never the message, which can carry a body or a secret.
+ */
 function errorName(error: unknown): string {
-  return error instanceof Error ? error.name : typeof error;
+  if (typeof error === 'object' && error !== null) {
+    const name = (error as { name?: unknown }).name;
+    if (typeof name === 'string' && name.length > 0) return name;
+  }
+  return typeof error;
 }
 
 /** Validate a candidate entry at the write boundary. */
