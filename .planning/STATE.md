@@ -155,11 +155,25 @@ None yet.
 - [Phase 15] Environment-scoped open gaps from the 01-13 acceptance: Windows/Linux control chord unobserved (owner 01-08 follow-up); 01-12's async-vs-marker backstop truth is unfalsifiable until a real async page operation lands.
 - [Phase 15] UI review (01-UI-REVIEW.md, 13/24, advisory) blockers: Color 1/4 — the shipped Default theme seed is the Claude-warm prototype blob, not DESIGN_SYSTEM §6.2 (re-seed `semanticTokens.ts` and pin derived `colorPrimary`); Typography 1/4 — antd derivation yields Standalone 13 px (contract 14) and compact 8 px `fontSizeSM` (12 px floor violated at `SidePanelShell.tsx:288`). Plus Experience Design 2/4 (handoff pending copy, Retry label, message config, composer outline, ErrorBoundary reload semantics). None block Phase 1; Phase 15 owns design-system conformance.
 - One phase per response; later phases depend on earlier contracts (§18). Do not start Phase N+1 before Phase N is green.
-- [Phase 2 entry gate] Real-Chrome two-surface observations for WINDOWS #5 (cross-surface handoff) and #8 (two-live-surface onboarding) are pending before Phase 2 discussion/planning may start — run sheet in `01-VALIDATION.md` § Phase-2 Entry Gate. #13 was resolved 2026-09-23 from the 2026-09-22 SA-10 observation.
+- [Phase 2 entry gate] WINDOWS #5 and #8 are formally deferred (operator, 2026-09-23) — Phase 2 may proceed without the Phase 1 Real-Chrome observation, but Phase 2 plans MUST include automated contract coverage for the handoff (#5) and onboarding (#8) contracts; Phase 15 owns consolidated Real-Chrome closure; the Phase 19 release gate must fail while any deferred verification remains open. See `## Verification Deferrals`.
 
 ## Verification Deferrals
 
-Named verification debt carried past a phase boundary — distinct from `## Deferred Items` (milestone-close scope decisions). Each entry must close before the first milestone release gate.
+Named verification debt carried past a phase boundary — distinct from `## Deferred Items` (milestone-close scope decisions). Each entry must close before the first milestone release gate. **WINDOWS #5, #7 and #8 are all deferred to the Phase 15 consolidated Real-Chrome acceptance cycle and must be re-checked at the Phase 19 release gate — do not rely on the window counter alone.**
+
+### WINDOWS #5 — Cross-surface handoff (Phase 01) — verification deferred
+
+| Field | Value |
+|-------|-------|
+| Ledger entry | `.planning/WINDOWS.md` id 5 — stays `open`: not passed, not `fixed`, not waived |
+| Status | Verification deferred (operator decision, 2026-09-23) |
+| Contract owner (Phase 2) | Automated contract/integration verification: workspace persistence; cold-target readiness; ready/transfer/acknowledgement protocol; writer election; handoff idempotency; duplicate-tab prevention; stale-writer rejection; failure recovery; draft preservation; safe handoff projection |
+| UI acceptance owner (Phase 15) | Final Real-Chrome UI and interaction acceptance: pending feedback; focus behaviour; visible handoff completion; error presentation; no unexpected duplicate surface; no incorrect MirrorBanner state; final copy and visual treatment |
+| Entry condition | Phase 2 may proceed without the Phase 1 Real-Chrome observation, but its plans must include automated integration coverage for the underlying handoff contract |
+| Closure condition | Run the complete Real-Chrome cross-surface handoff test against the integrated frontend during Phase 15 |
+| Evidence required | Screenshot plus a written observed-result record (`nowpilot-phase-verification`) |
+| Expiry | Must close before the first milestone release gate (Phase 19) |
+| Rationale | The Phase-1 frontend is fixture-backed, deferred and incomplete; repeating detailed frontend acceptance now would produce temporary evidence that storage, workspace, provider, Notes and Options work will obsolete |
 
 ### WINDOWS #7 — Onboarding 400 px responsive backstop (Phase 01)
 
@@ -176,6 +190,24 @@ Named verification debt carried past a phase boundary — distinct from `## Defe
 | Recorded | 2026-09-23 — operator directive |
 
 **Do not** mark #7 `fixed` until the observation exists; **do not** waive it as non-applicable. Phase 15's plan must carry this deferral, and the Phase 19 release record must name its closure.
+
+### WINDOWS #8 — Two-live-surface onboarding (Phase 01) — verification deferred
+
+| Field | Value |
+|-------|-------|
+| Ledger entry | `.planning/WINDOWS.md` id 8 — stays `open`: not passed, not `fixed`, not waived |
+| Status | Verification deferred (operator decision, 2026-09-23) |
+| Contract owner (Phase 2) | Automated contract and security verification: one active onboarding controller; non-secret completion persistence; cross-surface completion synchronisation; no API-key broadcast; no API-key persistence outside KeyVault; duplicate-event prevention; schema migration and recovery |
+| UI acceptance owner (Phase 15) | Final Real-Chrome UI acceptance: Standalone-first onboarding; Side Panel opened second; no competing visible flows; completion in one surface closing the other; no reload; responsive layout; final copy, focus, and accessibility |
+| Entry condition | Phase 2 may proceed without the Phase 1 Real-Chrome observation, but its plans must include automated contract/security coverage for the onboarding contract |
+| Closure condition | Run the two-live-surface onboarding scenario against the integrated frontend during Phase 15 after secure storage and provider functionality exist |
+| Evidence required | Screenshot plus a written observed-result record (`nowpilot-phase-verification`) |
+| Expiry | Must close before the first milestone release gate (Phase 19) |
+| Rationale | Same as #5 — Phase-1 frontend acceptance now would be obsoleted by the backend and integration phases; the consolidated Real-Chrome review runs after them |
+
+### Phase 15 consolidated Real-Chrome acceptance cycle
+
+Phase 15 must perform one consolidated frontend acceptance cycle covering: onboarding at the 400 px Side Panel width (#7); cross-surface handoff (#5); two-live-surface onboarding (#8); final workflow and command-palette behaviour; responsive surfaces; final error and recovery states; keyboard and focus behaviour; accessibility; theme consistency; final fixture/deferred-state removal or labelling. Closure evidence for each window is a screenshot plus a written observed-result record; Phase 19 must fail while any of #5/#7/#8 remains open.
 
 ## Deferred Items
 

@@ -160,12 +160,14 @@ State A audit at phase close: all twelve Wave 0 entries exist and run inside `ve
 
 ---
 
-## Phase-2 Entry Gate — Pending Two-Surface Observations (WINDOWS #5, #8)
+## Deferred Two-Surface Observations — Phase 15 Run Sheets (WINDOWS #5, #8)
 
-> **Status: NOT YET OBSERVED — this section is a run sheet, not evidence.** Phase 2 discussion/planning is gated on the two observations below completing and being recorded here. #13 was resolved 2026-09-23 from the SA-10 row above (`windows fixed 13`). #7 is formally deferred to Phase 15 — see `.planning/STATE.md` § Verification Deferrals (stays `open` in the ledger).
+> **Status: DEFERRED (operator decision, 2026-09-23) — not observed, not passed, not fixed, not waived.** Phase 2 is NOT blocked by these observations; Phase 2 plans must carry automated contract/integration coverage (#5 handoff contract, #8 onboarding contract/security), and Phase 15 runs the complete Real-Chrome scenarios below against the integrated frontend. #13 was resolved 2026-09-23 from the SA-10 row above (`windows fixed 13`). #7 remains deferred to Phase 15 — see `.planning/STATE.md` § Verification Deferrals (stays `open` in the ledger).
+>
+> **Rationale:** the Phase-1 frontend is fixture-backed, deferred and incomplete; detailed frontend acceptance now would produce temporary evidence that storage, workspace, provider, Notes and Options work will obsolete. The consolidated Real-Chrome review runs after the backend/integration phases (Phase 15), and Phase 19 must fail while #5/#7/#8 remain open.
 
-**Artifact:** `.output/chrome-mv3` (built 2026-09-23 07:36, after the last `src/` commit `f620285d`), loaded unpacked.
-**Profile:** a **fresh** profile directory (e.g. `/tmp/nowpilot-uat-02gate`) — #8 requires first-run onboarding, so `/tmp/nowpilot-uat-01-13` must not be reused.
+**Artifact at deferral time:** `.output/chrome-mv3` (built 2026-09-23 07:36, after the last `src/` commit `f620285d`). Phase 15 must rebuild from the then-current HEAD.
+**Profile:** a **fresh** profile directory — #8 requires first-run onboarding, so `/tmp/nowpilot-uat-01-13` must not be reused.
 **Recording rule:** screenshot plus a written observed-result record per item; a screenshot alone is not evidence (`nowpilot-phase-verification`).
 
 ### WINDOWS #5 — Cross-surface handoff (cold Standalone, ready-before-publish)
@@ -195,4 +197,4 @@ State A audit at phase close: all twelve Wave 0 entries exist and run inside `ve
 | Second surface starts no competing flow; first surface stays active | |
 | Completion in one surface closes the other's flow without reload (Skip → explicit incomplete) | |
 
-**On completion:** record the observed results above (operator name + date), then `gsd-tools windows fixed 5` and `gsd-tools windows fixed 8`; Phase 2 discussion/planning is unblocked once both are `fixed`.
+**On completion (Phase 15):** record the observed results above (operator name + date), then `gsd-tools windows fixed 5` and `gsd-tools windows fixed 8`. Phase 19's release gate must fail while any of WINDOWS #5/#7/#8 remains open.
