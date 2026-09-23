@@ -4,16 +4,16 @@ milestone: v0.2
 current_phase: 2
 current_phase_name: Storage, Security, WriteJournal, Workspace Persistence
 status: executing
-stopped_at: Phase 2 UI-SPEC approved
-last_updated: "2026-09-23T22:35:47.237Z"
-last_activity: 2026-09-23
-last_activity_desc: Phase 1 complete, transitioned to Phase 2
-state_head: bf0ccacbff2be73668bd3f92e198c6fc80d1c542
+stopped_at: Completed 02-01-PLAN.md
+last_updated: "2026-09-23T22:49:45.669Z"
+last_activity: 2026-09-24
+last_activity_desc: Phase 2 execution started
+state_head: d825e8e6f63917cb360dd3a50271181d7f2a71cb
 progress:
   total_phases: 19
   completed_phases: 1
   total_plans: 26
-  completed_plans: 13
+  completed_plans: 14
 ---
 
 # Project State
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-09-23)
 
 ## Current Position
 
-Phase: 2 (Storage, Security, WriteJournal, Workspace Persistence) — READY TO EXECUTE
-Plan: Not started
+Phase: 2 (Storage, Security, WriteJournal, Workspace Persistence) — EXECUTING
+Plan: 2 of 13
 Status: Ready to execute
-Last activity: 2026-09-23 — Phase 1 complete, transitioned to Phase 2
+Last activity: 2026-09-24 — Phase 2 execution started
 
 Progress: [█░░░░░░░░░] 5%
 
@@ -71,6 +71,7 @@ Progress: [█░░░░░░░░░] 5%
 | Phase 01 P10 | 11min | 3 tasks | 10 files |
 | Phase 01 P11 | 32 | 3 tasks | 32 files |
 | Phase 01 P13 | 21min | 3 tasks | 5 files |
+| Phase 02 P01 | 7 min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -140,6 +141,10 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 1]: 01-13: the Windows/Linux control-chord half of manual item 2 is an environment-scoped open gap (owner Phase 15 / 01-08 follow-up) — observed on macOS only; the shared code path is unit-covered by KeymapRegistry.test.ts's control-key case.
 - [Phase 1]: 01-13: WINDOWS ids 9 and 15 (the manual-observation rows for items 6 and 5) were resolved with the CLI's only resolution verb (windows fixed) because the ledger validator accepts open|waived|fixed; the observations themselves are recorded in 01-VALIDATION.md § Manual-Only Verifications, and id 21 stays open for phase-acceptance ratification.
 - [Phase 1]: 01-13: 01-VALIDATION.md is complete and truthful at phase close — six operator-observed real-Chrome results (2026-09-22, macOS, fresh profile /tmp/nowpilot-uat-01-13), the Wave 0 checklist complete, the per-task map re-verified against the gate, the five phase success criteria mapped to evidence, sign-off completed, and nyquist_compliant/wave_0_complete set.
+- [Phase 2]: 02-01: the Wave 0 shared chrome.storage.onChanged dispatcher is write-triggered — local/session set/remove/clear emit { oldValue, newValue } after the map update (clear emits one change per removed key) with areaName local/session, synchronously and fail-safe (a throwing listener never stops the rest).
+- [Phase 2]: 02-01: the two Phase 1 suites that synthesise change events (ThemeSync, onboardingStateStore) install their own dispatcher explicitly, because a global chrome.storage.onChanged would shadow their private emit path (5 theme tests failed and 2 onboarding assertions went vacuous before the fix).
+- [Phase 2]: 02-01: unlimitedStorage is the ONE permission Phase 2 adds (section 16.4 / ADR-STACK-02); the D-19a prohibition comment now names it, the gate constant AUTHORISED_PERMISSIONS moved in the same change, and the CSP stays byte-identical at connect-src none (D2-26).
+- [Phase 2]: 02-01: __resetIndexedDB() (a fresh IDBFactory) is the per-test contract for every IndexedDB suite, called from beforeEach alongside the storage-map clear, with handles closed in afterEach — the double keeps state per instance (RESEARCH Pitfall 8).
 
 ### Pending Todos
 
@@ -221,6 +226,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-23T11:50:24.157Z
-Stopped at: Phase 2 UI-SPEC approved
-Resume file: .planning/phases/02-storage-security-writejournal-workspace-persistence/02-UI-SPEC.md
+Last session: 2026-09-23T22:49:38.221Z
+Stopped at: Completed 02-01-PLAN.md
+Resume file: None
