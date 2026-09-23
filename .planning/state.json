@@ -1,0 +1,108 @@
+{
+  "contract": "1.0.0",
+  "flavor": "core",
+  "milestone": "v0.2",
+  "phases": [
+    {
+      "number": "1",
+      "name": "MV3/WXT Runtime + AntD Shells + Workspace",
+      "status": "complete"
+    },
+    {
+      "number": "2",
+      "name": "Storage, Security, WriteJournal, Workspace Persistence",
+      "status": "pending"
+    },
+    {
+      "number": "3",
+      "name": "Cost-Effective AI Runtime (+ Persona seed)",
+      "status": "pending"
+    },
+    {
+      "number": "4",
+      "name": "Agent Reliability and Evidence",
+      "status": "pending"
+    },
+    {
+      "number": "5",
+      "name": "Context-Adaptive Execution",
+      "status": "pending"
+    },
+    {
+      "number": "6",
+      "name": "PageContentService (Knowledge Acquisition)",
+      "status": "pending"
+    },
+    {
+      "number": "7",
+      "name": "Trust-Aware Context and Receipts",
+      "status": "pending"
+    },
+    {
+      "number": "8",
+      "name": "Knowledge Base (Memory + MiniSearch + Notes)",
+      "status": "pending"
+    },
+    {
+      "number": "9",
+      "name": "LLM-Wiki & Filesystem Sync",
+      "status": "pending"
+    },
+    {
+      "number": "10",
+      "name": "Memory Governance and Experience Candidates",
+      "status": "pending"
+    },
+    {
+      "number": "11",
+      "name": "Transaction Logging and Diagnostics",
+      "status": "pending"
+    },
+    {
+      "number": "12",
+      "name": "Agent Evaluation",
+      "status": "pending"
+    },
+    {
+      "number": "13",
+      "name": "Verified Continual Evolution",
+      "status": "pending"
+    },
+    {
+      "number": "14",
+      "name": "Bounded Multi-Role Collaboration",
+      "status": "pending"
+    },
+    {
+      "number": "15",
+      "name": "Workspace Experience (UI/UX) + RICH",
+      "status": "pending"
+    },
+    {
+      "number": "16",
+      "name": "Multimodal Input Foundation",
+      "status": "pending"
+    },
+    {
+      "number": "17",
+      "name": "Add-ons and Content Script Runtime (Extraction-Only)",
+      "status": "pending"
+    },
+    {
+      "number": "18",
+      "name": "Tool Governance and Active Discovery",
+      "status": "pending"
+    },
+    {
+      "number": "19",
+      "name": "Hardening and Release",
+      "status": "pending"
+    }
+  ],
+  "next": {
+    "command": "/gsd:progress --next",
+    "label": "Advance to the next step (plan phase 2)",
+    "reason": "Phase 2 of 19 — needs a plan"
+  },
+  "updated_at": "2026-09-22T22:51:43.746Z"
+}
