@@ -13,7 +13,7 @@ Requirements for the v0.2 release. Each maps to exactly one roadmap phase.
 ### Foundation & Verification Anchors (CORE)
 
 - [x] **CORE-01**: MV3/WXT runtime + two surfaces (Chat-only Side Panel; Standalone workspace) + shared WorkspaceStore handoff + theme store + RuntimeEnvelope/EventBus/registries/shells — §5, §6.2–§6.5, §8.3–§8.4; §18 Phase 1 DONE-when
-- [ ] **CORE-02**: Storage/security foundation — encrypted keys, IndexedDB stores, WriteJournal, idempotent migrations, workspace persistence — §15, §16, §20; §18 Phase 2 DONE-when
+- [x] **CORE-02**: Storage/security foundation — encrypted keys, IndexedDB stores, WriteJournal, idempotent migrations, workspace persistence — §15, §16, §20; §18 Phase 2 DONE-when
 - [ ] **CORE-03**: Cost-effective runtime AI — Planner→Executor→Renderer, TierResolver (Appendix D), ProviderRouter fallback/circuit breaker, prompt caching, structured output one-repair, persona seed — §1, §10, §23
 - [ ] **CORE-04**: Context-adaptive execution — model tiers, token budgets, ContextOptimizer, degradation order, minimal mode, ContextProvenanceManifest — §2
 - [ ] **CORE-05**: PageContentService — layered extraction (Defuddle → Readability → AX/DOM), ephemeral per-tab MiniSearch, privacy (passwords never captured, no third-party fetch), content bundle <50 KB — §26, §22
@@ -302,7 +302,7 @@ Which phases cover which requirements. Each requirement maps to exactly one phas
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | CORE-01 | Phase 1 | Complete |
-| CORE-02 | Phase 2 | Pending |
+| CORE-02 | Phase 2 | Complete |
 | CORE-03 | Phase 3 | Pending |
 | CORE-04 | Phase 5 | Pending |
 | CORE-05 | Phase 6 | Pending |

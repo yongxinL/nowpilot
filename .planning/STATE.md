@@ -4,16 +4,16 @@ milestone: v0.2
 current_phase: 2
 current_phase_name: Storage, Security, WriteJournal, Workspace Persistence
 status: executing
-stopped_at: Completed 02-01-PLAN.md
-last_updated: "2026-09-23T22:49:45.669Z"
+stopped_at: Completed 02-02-PLAN.md
+last_updated: "2026-09-23T23:11:51.955Z"
 last_activity: 2026-09-24
 last_activity_desc: Phase 2 execution started
-state_head: d825e8e6f63917cb360dd3a50271181d7f2a71cb
+state_head: bc3b11ff28e15475e7ad8d3d2a8a3978266d8866
 progress:
   total_phases: 19
   completed_phases: 1
   total_plans: 26
-  completed_plans: 14
+  completed_plans: 15
 ---
 
 # Project State
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-09-23)
 ## Current Position
 
 Phase: 2 (Storage, Security, WriteJournal, Workspace Persistence) — EXECUTING
-Plan: 2 of 13
+Plan: 3 of 13
 Status: Ready to execute
 Last activity: 2026-09-24 — Phase 2 execution started
 
@@ -72,6 +72,7 @@ Progress: [█░░░░░░░░░] 5%
 | Phase 01 P11 | 32 | 3 tasks | 32 files |
 | Phase 01 P13 | 21min | 3 tasks | 5 files |
 | Phase 02 P01 | 7 min | 3 tasks | 7 files |
+| Phase 02 P02 | 10 min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -145,6 +146,12 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 2]: 02-01: the two Phase 1 suites that synthesise change events (ThemeSync, onboardingStateStore) install their own dispatcher explicitly, because a global chrome.storage.onChanged would shadow their private emit path (5 theme tests failed and 2 onboarding assertions went vacuous before the fix).
 - [Phase 2]: 02-01: unlimitedStorage is the ONE permission Phase 2 adds (section 16.4 / ADR-STACK-02); the D-19a prohibition comment now names it, the gate constant AUTHORISED_PERMISSIONS moved in the same change, and the CSP stays byte-identical at connect-src none (D2-26).
 - [Phase 2]: 02-01: __resetIndexedDB() (a fresh IDBFactory) is the per-test contract for every IndexedDB suite, called from beforeEach alongside the storage-map clear, with handles closed in afterEach — the double keeps state per instance (RESEARCH Pitfall 8).
+- [Phase 2]: Topology locked (D2-24/OQ-1): ONE physical database np_db at DB_VERSION 1 holding sessions, messages, entries, errors; v2/v3 reserved for Phase 8 Memory, v4 for §20.4's notes_backup_config. The weaker failure isolation is accepted and mitigated by debugLog + the caller's notice + in-memory operation (§19.10).
+- [Phase 2]: np_db and the four store names are locked in NowPilotDB.ts because PRODUCT_SPEC names no database anywhere; recorded as a documentation follow-up (D2-29 pattern) with the spec deliberately unedited.
+- [Phase 2]: Migration failure is a deliberate abort: runMigrations records the redacted result and rethrows; the upgrade listener is synchronous, marks tx.done handled and calls tx.abort(). idb does not await an async upgrade callback, and both a bare throw and a bare tx.abort() emit an unhandled rejection.
+- [Phase 2]: WriteJournalOperation gains 'migrate-legacy-conversations' additively (OQ-2, spec follow-up); MIGRATION_STAGE_NAMES is the single declaration of the seven D2-09 stage names for 02-05 to re-export.
+- [Phase 2]: Journal stages are pre-seeded as pending at creation and flipped to completed per step — the deliberate divergence from Appendix O.11 that D2-09 restart-safety and D2-12's retained destination-verified stage require.
+- [Phase 2]: compactJournal is a pure function returning { keep, removed }; the production call site is owned by no Phase 2 plan and is logged in .planning/WINDOWS.md.
 
 ### Pending Todos
 
@@ -226,6 +233,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-23T22:49:38.221Z
-Stopped at: Completed 02-01-PLAN.md
+Last session: 2026-09-23T23:11:51.905Z
+Stopped at: Completed 02-02-PLAN.md
 Resume file: None
