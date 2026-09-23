@@ -11,7 +11,8 @@ import { join } from 'node:path';
  * `wxt.config.ts`, and the content script matched no WXT entrypoint glob and was
  * never built at all. Every source-level suite passes without this file — only
  * the built artifact reveals both — so this suite reads
- * `.output/chrome-mv3/manifest.json` and asserts the authorised Phase-1 shape.
+ * `.output/chrome-mv3/manifest.json` and asserts the authorised shape (the
+ * Phase-1 set plus Phase 2's `unlimitedStorage`, §16.4 / ADR-STACK-02).
  *
  * Read-only by construction: it never runs a build, never writes to `.output`
  * and never mutates the artifact, so two concurrent inspections of one build
@@ -36,12 +37,12 @@ const MANIFEST_RELATIVE_PATH = join('.output', 'chrome-mv3', 'manifest.json');
 const MANIFEST_ABSOLUTE_PATH = join(process.cwd(), MANIFEST_RELATIVE_PATH);
 
 /**
- * The authorised Phase-1 manifest values. Each constant mirrors a declaration in
+ * The authorised manifest values. Each constant mirrors a declaration in
  * `wxt.config.ts` (or the decision record it cites) rather than a value observed
  * once: drift on either side is meant to be a red test, so the two must move
  * together, deliberately, in one change.
  */
-const AUTHORISED_PERMISSIONS = ['sidePanel', 'storage', 'tabs']; // wxt.config.ts `permissions` (least privilege, D-19a)
+const AUTHORISED_PERMISSIONS = ['sidePanel', 'storage', 'tabs', 'unlimitedStorage']; // wxt.config.ts `permissions` — `unlimitedStorage` is the authorised Phase 2 addition (§16.4 / ADR-STACK-02), moved with this constant in the same change (RESEARCH Pitfall 9)
 const AUTHORISED_HOST_PERMISSIONS = [
   '*://*.service-now.com/*',
   '*://support.servicenow.com/*',
