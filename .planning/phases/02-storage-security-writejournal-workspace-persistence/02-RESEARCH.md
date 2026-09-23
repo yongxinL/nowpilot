@@ -820,41 +820,50 @@ const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additional
 | A10 | `chrome.storage.session` is readable/writable from Side Panel, Standalone and the SW with no `setAccessLevel` call | Pattern 6 | Low — documented default `TRUSTED_CONTEXTS` covers extension pages and the SW |
 | A11 | The exact §15.2 concatenation is `utf8(installSecretBase64 + extensionId)` used as PBKDF2 base key material | Pattern 4 | Medium — any other byte reading (e.g. raw-byte concat of a decoded secret) is equally valid; it must be **pinned once** in the module and asserted by a golden test, because changing it later orphans every stored envelope |
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+Each question below carries a `Resolution:` line naming the Phase 2 plan and task that implements it; no question is left open for the executor to re-derive.
 
 1. **OQ-1 — IndexedDB topology: one database or three?**
    - What we know: §20.4 speaks of a single `v4 migration` that *adds an object store*; D2-22 says Phase 8 "adds Memory stores in a new version" and Phase 9 "adds Notes stores in a later version"; D2-21/D2-25 call the units "stores". This reads as one versioned schema.
    - What's unclear: the spec never names a database, and §15.1's flat list puts `ErrorStore`, `WriteJournalDB`, `AITransactionLogDB` and `notes_backup_config` at the same level as the `*DB` entries.
    - Recommendation: **lock one physical database** (`np_db`, `DB_VERSION = 1`, stores `sessions`/`messages`/`entries`/`errors`) and record the failure-isolation trade-off (ErrorStore unavailable when the DB cannot open ⇒ `debugLog` + notice + in-memory degrade per §19.10). If the operator prefers isolation, the fallback is a separate `ErrorStore` database — record it as an explicit extension with its own version axis.
+   - Resolution: **one physical database locked** — implemented by `02-02-PLAN.md` Task 1 (`DB_NAME = 'np_db'`, `DB_VERSION = 1`, the four stores) and asserted by Task 3 (`NowPilotDB.test.ts` / `IndexedDBMigrator.test.ts`), with the `np_db` naming recorded as a documentation follow-up in the module comment.
 
 2. **OQ-2 — No canonical `WriteJournalOperation` member for the legacy migration.**
    - What we know: §20.3's union is closed and contains no migration operation; D2-09/D2-10 require the migration to be journaled with seven stages; D2-21 says journal records carry "operation identity/type".
    - What's unclear: whether to extend the canonical union or to give the migration its own operation identity outside it.
    - Recommendation: **add `'migrate-legacy-conversations'` to the union** (additive, no rename) and record it as a spec follow-up with an owner in the same pattern as D2-29. Do not silently edit `PRODUCT_SPEC.md`.
+   - Resolution: **additive union member adopted** — `02-02-PLAN.md` Task 1 adds it to `WriteJournalOperation` and records the spec follow-up in the module comment; `02-05-PLAN.md` Task 2 (`MIGRATION_OPERATION`) consumes the same member for the legacy migration.
 
 3. **OQ-3 — Is `src/core/storage/Setting.ts` in Phase 2 scope?**
    - What we know: it is on §18's Phase 2 Create list; no D2 decision defers it (D2-26 defers only Requester/RateLimiter); §13 requires serialized settings writes.
    - What's unclear: whether it has a real Phase 2 consumer, given D2-26's rule of thumb against placeholder files.
    - Recommendation: **implement it with a real consumer** — `np_install_secret` creation is exactly the serialized-write problem §13 describes (two surfaces can race on first install). If the planner cannot name a consumer, record an explicit deferral instead of shipping an unused module.
+   - Resolution: **implemented with a real consumer** — `02-04-PLAN.md` Task 2 ships `Setting.ts` (`np_install_secret` create-on-first-use, serialised writes), with `KeyVault`'s injected `readInstallSecret` as the consumer.
 
 4. **OQ-4 — What implements WINDOWS #8's "exactly one authoritative onboarding attempt"?**
    - What we know: Phase 1's gate is per-surface; `np_onboarding` + `chrome.storage.onChanged` handle completion propagation but not presentation coordination.
    - What's unclear: the mechanism (writer-state gating vs a dedicated onboarding lock record).
    - Recommendation: gate on authoritative writer state (only `primary`/`solo` presents) so there is one coordination mechanism rather than two; the Suite B tests must name the clause.
+   - Resolution: **writer-state gating adopted** — `02-07-PLAN.md` Task 3 adds `shouldPresentOnboardingForWriter` and updates `useOnboardingGate`; `02-12-PLAN.md` Task 1 proves the clause in Suite B by counting presentations across both surfaces.
 
 5. **OQ-5 — `np_conversation_meta` ownership and LRU.**
    - What we know: §15.1 assigns the conversation index there with "LRU 10 active + 100 archived"; §15.3 puts LRU eviction in MemoryEngine (Phase 8); D2-08 requires the index and forbids it living in `np_store`.
    - What's unclear: whether Phase 2 writes the LRU fields (`status`, `lastAccessed`) and enforces the caps, or only the index.
    - Recommendation: Phase 2 writes `ConversationMeta` records with `status: 'active'` and maintains `lastAccessed`/`messageCount`; **eviction** (the 10/100 caps and `evict-conversation` journaling) stays Phase 8's, per §15.3. Record the boundary so Phase 8 does not re-derive it.
+   - Resolution: **index-only, eviction deferred** — `02-05-PLAN.md` Task 2 writes the canonical `ConversationMeta` records to `np_conversation_meta` and explicitly leaves the LRU caps and `evict-conversation` to Phase 8.
 
 6. **OQ-6 — Where is the install secret generated?**
    - What we know: it must exist before the first credential write; two surfaces can start simultaneously; the background SW may use `chrome.storage.local` and `crypto` (only IndexedDB/AI/EventSource are banned there).
    - What's unclear: SW install-time generation vs lazy create-on-first-use with read-back verification.
    - Recommendation: **lazy create-on-first-use with read-back verification** (mirroring the election's CAS shape) inside `Setting.ts`, so the vault works identically in every context and in tests; the SW may additionally seed it on install for a faster first write, but the vault must not depend on that.
+   - Resolution: **lazy create-on-first-use adopted** — `02-04-PLAN.md` Task 2 implements `readInstallSecret()` with serialised writes and read-back verification, and its suite proves the concurrent-first-use race resolves to one durable value.
 
 7. **OQ-7 — Does the corrected `verify:phase-2` include `tests/isolation`?**
    - What we know: the manifest changes (`unlimitedStorage`), the new `src/core/security/**` modules must respect surface isolation, and `banned-imports.test.ts` scans `package.json` (neither new package is banned).
    - Recommendation: **yes** — include `tests/isolation` so the manifest gate and the isolation gates run in the Phase 2 gate; that also forces the `AUTHORISED_PERMISSIONS` update to happen in the same change rather than being discovered later.
+   - Resolution: **included** — `02-13-PLAN.md` Task 1 enumerates `tests/isolation` in the corrected `verify:phase-2` and Task 2 runs the full gate after `pnpm run build:ext`.
 
 ## Environment Availability
 
