@@ -96,7 +96,46 @@ Plans:
   4. Workspace state persists across page reload and cross-surface handoff; `pnpm run verify:phase-2` passes.
 
 **Deferred verification (WINDOWS #5, #8)**: the Phase-1 Real-Chrome frontend observations are formally deferred (operator, 2026-09-23) — Phase 2 may proceed, but Phase 2 plans MUST include automated contract/integration coverage for the handoff contract (#5) and the onboarding contract/security invariants (#8). Final Real-Chrome closure belongs to the Phase 15 consolidated acceptance cycle; the Phase 19 release gate must fail while any deferred verification remains open. See `.planning/STATE.md` § Verification Deferrals.
-**Plans**: TBD
+**Plans**: 13 plans
+Plans:
+**Wave 1**
+
+- [ ] 02-01-PLAN.md — Wave 0: `idb` + `fake-indexeddb`, test-setup seams (IndexedDB reset, session area, onChanged), `unlimitedStorage` with its manifest gate
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 02-02-PLAN.md — Storage spine (TRACER): `np_db` + migrator + `ChatHistoryDB` + `WriteJournal` in one journaled write/read-back path
+- [ ] 02-03-PLAN.md — Credential vault crypto core: `EncryptedStorage`, `KeyVault`, `redactSensitive`
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 02-04-PLAN.md — `CredentialStorePort` contract + `Setting.ts` install secret (read-back-verified)
+- [ ] 02-05-PLAN.md — `ErrorStore` + legacy chat migration (7 stages, sanitisation, D2-15 case table)
+- [ ] 02-06-PLAN.md — `WorkspacePersistence` + `WriterElection` (CAS, heartbeat, stale-writer rejection)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 02-07-PLAN.md — Election-backed writer state, `MirrorBanner` activation, onboarding single controller, string map
+- [ ] 02-08-PLAN.md — `np_store` v3 cutover + asynchronous hydration (one-way, D2-17, operator-locked)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 02-09-PLAN.md — Hydration states in the conversation region + `MirrorBanner` mount and refocus path
+
+**Wave 6** *(blocked on Wave 5 / Wave 3 completion)*
+
+- [ ] 02-10-PLAN.md — Surface wiring: startup sequence, pinned AntD notice config, three persistent notices, capability notice
+- [ ] 02-11-PLAN.md — Two-surface harness + Suite A (WINDOWS #5 handoff contract)
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
+- [ ] 02-12-PLAN.md — Suite B (WINDOWS #8 onboarding contract) + D2-35 traceability records (windows stay open)
+
+**Wave 8** *(blocked on Wave 7 completion)*
+
+- [ ] 02-13-PLAN.md — Corrected `verify:phase-2` (explicit suites + path preflight) and the full phase gate evidence
+
+**UI hint**: yes
 
 ### Phase 3: Cost-Effective AI Runtime (+ Persona seed)
 
