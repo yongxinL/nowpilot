@@ -1,6 +1,7 @@
 {
   "workflow": {
     "_auto_chain_active": false,
-    "build_command": "pnpm run build:ext"
+    "build_command": "pnpm run build:ext",
+    "use_worktrees": false
   }
 }
