@@ -136,13 +136,13 @@ Carried forward from `01-UI-SPEC.md` § Color **verbatim** — token-first, 60/3
 | Accent (10%) | `#3B82F6` light / `#5B9BFF` dark (`colorPrimary`) | The closed reserved-for list below — nothing else |
 | Destructive | `#EF4444` light / `#F87171` dark (`colorError`) | Error text, error icons and error-toned notifications only |
 
-**Accent reserved for (closed list, unchanged from `01-UI-SPEC.md`).** Phase 2 **adds nothing** to this list:
+**Accent reserved for (closed list, carried forward from `01-UI-SPEC.md`).** Phase 2 introduces **no new accent category** — its two new controls are instances of category 5, not additions to the list:
 
 1. Primary buttons and their hover/active states.
 2. The 2px focus ring on every interactive element.
 3. Standalone Sider active item (`colorPrimaryBg` pill + `colorPrimary` icon/text).
 4. Command palette selected row background.
-5. Inline text links and secondary actions: `Retry sync`, `Edit key`, `Retry`, `Back`, `Skip`, `Switch to Full setup`, `Dismiss`, `Set up`, `Configure` — **plus the two Phase-2 additions**: the `MirrorBanner` action (`Refocus here`) and the hydration-failure `Retry` action.
+5. Inline text links and secondary actions: `Retry sync`, `Edit key`, `Retry`, `Back`, `Skip`, `Switch to Full setup`, `Dismiss`, `Set up`, `Configure`. **The only Phase-2 instances are the `MirrorBanner` action (`Refocus here`) and the hydration-failure `Retry` action.**
 6. The "N" app mark gradient and the optional two-wordmark lockup.
 7. Composer send button when the draft is non-empty (still disabled in Phase 2).
 8. Active `Segmented` selection (Phase 15).
@@ -378,7 +378,7 @@ Phase 2 is the first phase to use the acknowledgement-requiring notification pat
 | `nowpilot-ant-design` skill | AntD-first, X presentation-only, one provider per surface, token discipline, no hard-coded colours, mandatory loading/disabled/validation/empty/error/recovery states |
 | Installed packages (enumerated) | `antd@6.5.2` (71 components), `@ant-design/x@2.9.0` (17), `@ant-design/x-markdown@2.9.0` (4 exports), `@ant-design/icons@6.3.2` (847 icons) |
 | AntD v6 API docs (Context7) | `notification({ title, description, actions, duration })` — v6 prop names and the `actions` action group |
-| Researcher discretion resolved | Notice vehicle and tone (capability notice = informational `Alert`, not a `DeferredNotice` marker) · `MirrorBanner` activation table for all six writer states · hydration-status → presentation mapping · the three new string keys and one reused key · `MirrorBanner` `height` → `min-height` at 400 px |
+| Researcher discretion resolved | Notice vehicle and tone (capability notice = informational `Alert`, not a `DeferredNotice` marker) · `MirrorBanner` activation table for all six writer states · hydration-status → presentation mapping · the **6 new Phase-2 string keys** (`workspace.mirrorRefocus`, `workspace.mirrorRefocusA11y`, `common.retry`, `storage.degraded`, `storage.migrationFailed`, `storage.credentialCapability`), the **2 canonical `STR` values newly added to the map** (`workspace.mirroringNotice`, `workspace.electionFailed`) and the **1 reused key** (`shell.errorReload`) · `MirrorBanner` `height` → `min-height` at 400 px |
 | User input | 0 — every design-contract category was already answered by the upstream artifacts above. No question was asked; each default is recorded with its source or marked as a Phase-2 string |
 
 **Open items handed to the planner (not design decisions):** the exact `MirrorBanner` refocus request/acknowledgement protocol and its timeout (D2-34 clause coverage) · the IndexedDB topology and DB_VERSION integers (D2-24, discretion) · the `np_store` schema-version bump and surviving-field list (discretion) · the concrete Phase-2 test-suite paths and the corrected `verify:phase-2` composition (D2-28, D2-35) · which surface root hosts the `message.config` / `notification.config` wiring · the `PRODUCT_SPEC` §18 Create-list documentation follow-up owner (D2-29).
