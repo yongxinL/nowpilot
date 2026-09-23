@@ -58,16 +58,17 @@ const storedRecord = () => storageMap().get(ONBOARDING_STORAGE_KEY) as Record<st
 beforeEach(() => {
   storageMap().clear();
   onChangedListeners = [];
-  if (!chrome.storage.onChanged) {
-    (chrome.storage as unknown as Record<string, unknown>).onChanged = {
-      addListener: (callback: OnChangedListener) => {
-        onChangedListeners.push(callback);
-      },
-      removeListener: (callback: OnChangedListener) => {
-        onChangedListeners = onChangedListeners.filter((listener) => listener !== callback);
-      },
-    };
-  }
+  // This suite drives synthetic change events directly, so it installs its own
+  // dispatcher over the shared one from `tests/setup.ts` (plan 02-01) and keeps
+  // `emitStorageChange` below as the single emit path.
+  (chrome.storage as unknown as Record<string, unknown>).onChanged = {
+    addListener: (callback: OnChangedListener) => {
+      onChangedListeners.push(callback);
+    },
+    removeListener: (callback: OnChangedListener) => {
+      onChangedListeners = onChangedListeners.filter((listener) => listener !== callback);
+    },
+  };
 });
 
 afterEach(() => {

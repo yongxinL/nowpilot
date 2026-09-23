@@ -52,17 +52,18 @@ beforeEach(() => {
   if (map) map.clear();
   __test__.resetPendingState();
 
-  if (!chrome.storage.onChanged) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (chrome.storage as any).onChanged = {
-      addListener: (cb: OnChangedListener) => {
-        onChangedListeners.push(cb);
-      },
-      removeListener: (cb: OnChangedListener) => {
-        onChangedListeners = onChangedListeners.filter((l) => l !== cb);
-      },
-    };
-  }
+  // This suite drives synthetic change events directly, so it installs its own
+  // dispatcher over the shared one from `tests/setup.ts` (plan 02-01) and keeps
+  // `emitChange` below as the single emit path.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (chrome.storage as any).onChanged = {
+    addListener: (cb: OnChangedListener) => {
+      onChangedListeners.push(cb);
+    },
+    removeListener: (cb: OnChangedListener) => {
+      onChangedListeners = onChangedListeners.filter((l) => l !== cb);
+    },
+  };
 });
 
 /**
