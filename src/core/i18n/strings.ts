@@ -1,5 +1,5 @@
 /**
- * Canonical Phase-1 string map.
+ * Canonical string map.
  *
  * Every user-visible string reachable in Phase 1 resolves through `t('key')`
  * from this module. The values are pinned verbatim by
@@ -7,6 +7,13 @@
  * Appendix B where a canonical `STR.*` value exists); `§0.2` forbids
  * paraphrasing them. Where the prototype diverged from Appendix B, the
  * canonical value replaced the prototype spelling rather than sitting beside it.
+ *
+ * Phase 2 adds the keys its own surfaces render — pinned verbatim by
+ * `02-UI-SPEC.md` § Phase 2 canonical string map, in the same map and the same
+ * gate: the four `workspace.*` mirror keys, the four `storage.*` keys and
+ * `common.retry`. The Phase-2 map reuses `shell.errorReload` rather than
+ * declaring a second reload key, and `onboarding.retry` stays onboarding-scoped
+ * (it is deliberately **not** the hydration-failure action).
  *
  * The module is **pure data**: no side effects, no Chrome access, no `fetch`,
  * no storage read and no environment read. `strings` is frozen, so importing
@@ -30,6 +37,26 @@ export const strings: Readonly<Record<string, string>> = Object.freeze({
   'chat.composerPlaceholder': 'Ask anything, choose a workflow, or use / prompts',
   'workspace.handoffPending': 'Opening workspace in standalone view...',
   'workspace.handoffComplete': 'Workspace opened in standalone view.',
+  // ── Cross-surface writer state (Phase 2, D-12 carry-forward) ─────────────
+  // The mirror vocabulary the election drives. `workspace.mirroringNotice` and
+  // `workspace.electionFailed` are the two canonical `STR.*` values the Phase-1
+  // map reserved for Phase 2; the rest promote shipped literals or add keys the
+  // Phase-2 surfaces render. The election failure action is `shell.errorReload`
+  // (reused above) — never a second reload key.
+  'workspace.mirroringNotice': 'Standalone view is now the primary surface for this workspace.',
+  'workspace.mirrorRefocus': 'Refocus here',
+  'workspace.mirrorRefocusA11y': 'Refocus here and return to primary mode',
+  'workspace.electionFailed': 'Could not coordinate between surfaces. Reload to retry.',
+  // ── Storage states (Phase 2) ─────────────────────────────────────────────
+  // Each states the problem AND the local outcome, and names no content, id,
+  // code or storage key (T-02-39). `storage.hydrationFailed` is the PRODUCT_SPEC
+  // §12 state-matrix value; `common.retry` below is its action.
+  'storage.hydrationFailed': 'Failed to load history',
+  'storage.degraded': 'Storage is unavailable — this session will not be saved.',
+  'storage.migrationFailed':
+    'Some saved history could not be moved to secure storage — the original data has been kept.',
+  'storage.credentialCapability':
+    'Secure credential storage is installed. Provider credential setup and validation will be enabled in the provider integration phase.',
   'standalone.openFailed': 'Failed to open Standalone view',
   // SA-10: the `Focus Side Panel` command's failure path (plan 01-08). The
   // side-panel API is gesture-gated; when it is unavailable or refuses the
@@ -127,6 +154,9 @@ export const strings: Readonly<Record<string, string>> = Object.freeze({
   // ── Common ───────────────────────────────────────────────────────────────
   'common.continue': 'Continue',
   'common.notNow': 'Not now',
+  // The hydration-failure action (Phase 2). `onboarding.retry` stays
+  // onboarding-scoped: the same word is two different affordances.
+  'common.retry': 'Retry',
 
   // ── Destructive confirmation (dev-only reload command, D-10) ─────────────
   'command.reloadExtension.confirm':

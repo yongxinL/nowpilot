@@ -1,28 +1,41 @@
 import React from 'react';
 import { Typography, theme } from 'antd';
+import { t } from '../../core/i18n/strings';
 
 interface MirrorBannerProps {
   onRefocus: () => void;
 }
 
 /**
- * D-05 / REQ-F05: the post-handoff Side Panel status banner.
+ * D-05 / REQ-F05: the post-election Side Panel status banner.
  *
- * Shows when the Side Panel has been demoted to a read-only mirror after
- * a WORKSPACE_HANDOFF broadcast (the Standalone view took primary
- * authorship of the workspace). The disabled composer in ChatComposer
- * communicates the same state — this banner makes the cause explicit and
- * offers a one-click "Refocus here" path back to primary mode.
+ * The **single** surface that reports cross-surface writer state (D-12
+ * carry-forward). Its activation is a pure function of authoritative election
+ * state — the parent renders it only while the store reports `mirror` — never
+ * because the Standalone view merely opened. Every other writer state
+ * (`primary`, `election-pending`, `handoff-pending`, `handoff-failed`,
+ * `writer-unavailable`) renders no banner, and an election or storage failure
+ * uses the notification path instead: the banner never renders an error state,
+ * which would be a second, competing error surface.
+ *
+ * Copy is canonical and resolved through `t()` — no inline user-visible literal
+ * survives here (02-UI-SPEC § Copywriting Contract):
+ *   - caption `workspace.mirroringNotice`
+ *   - action label `workspace.mirrorRefocus`, accessible name
+ *     `workspace.mirrorRefocusA11y`
  *
  * Visual contract (UI-SPEC Visual Anchors):
- *   - 32px tall, full-width
+ *   - `min-height: 32px`, full-width, and it **grows** rather than clipping:
+ *     the canonical caption wraps at 400 px instead of being cut off
  *   - background: colorPrimaryBg (NOT warning/error — informational)
  *   - hairline colorBorder top + bottom
- *   - left caption "Switched to Standalone." (12px, colorTextBase)
- *   - right action "Refocus here" (12px, colorPrimary, underlined)
+ *   - caption 12px colorTextBase, action 12px colorPrimary underlined
  *
- * No remount on refocus — parent clears `mirrored` state, banner
- * unmounts. No `window.location.reload`.
+ * No optimistic state change: the action changes nothing on its own, the
+ * banner stays mounted until authoritative election state reports `primary`,
+ * and it never hides on click or claims a promotion the election has not
+ * acknowledged. No remount on refocus — the parent clears its state and the
+ * banner unmounts. No `window.location.reload`.
  */
 export const MirrorBanner: React.FC<MirrorBannerProps> = ({ onRefocus }) => {
   const { token } = theme.useToken();
@@ -33,7 +46,7 @@ export const MirrorBanner: React.FC<MirrorBannerProps> = ({ onRefocus }) => {
       aria-live="polite"
       data-testid="mirror-banner"
       style={{
-        height: 32,
+        minHeight: 32,
         width: '100%',
         display: 'flex',
         alignItems: 'center',
@@ -53,10 +66,22 @@ export const MirrorBanner: React.FC<MirrorBannerProps> = ({ onRefocus }) => {
           lineHeight: '32px',
         }}
       >
-        Switched to Standalone.
+        {t('workspace.mirroringNotice')}
       </Typography.Text>
       <Typography.Link
         onClick={onRefocus}
+        // The action returns this surface to primary mode — it performs an
+        // action, it does not navigate, so it is announced as a button and
+        // carries the keyboard affordances an `<a>` without `href` lacks
+        // (02-UI-SPEC § Phase 2 UI Surface Contracts item 2: "a real control
+        // ... keyboard-reachable").
+        role="button"
+        tabIndex={0}
+        onKeyDown={(event) => {
+          if (event.key !== 'Enter' && event.key !== ' ') return;
+          event.preventDefault();
+          onRefocus();
+        }}
         style={{
           fontSize: 12,
           color: token.colorPrimary,
@@ -64,9 +89,9 @@ export const MirrorBanner: React.FC<MirrorBannerProps> = ({ onRefocus }) => {
           lineHeight: '32px',
           cursor: 'pointer',
         }}
-        aria-label="Refocus here and return to primary chat mode"
+        aria-label={t('workspace.mirrorRefocusA11y')}
       >
-        Refocus here
+        {t('workspace.mirrorRefocus')}
       </Typography.Link>
     </div>
   );

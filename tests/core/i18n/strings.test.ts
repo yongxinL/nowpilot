@@ -38,6 +38,16 @@ const CANONICAL_STRINGS: Record<string, string> = {
   'chat.composerPlaceholder': 'Ask anything, choose a workflow, or use / prompts',
   'workspace.handoffPending': 'Opening workspace in standalone view...',
   'workspace.handoffComplete': 'Workspace opened in standalone view.',
+  'workspace.mirroringNotice': 'Standalone view is now the primary surface for this workspace.',
+  'workspace.mirrorRefocus': 'Refocus here',
+  'workspace.mirrorRefocusA11y': 'Refocus here and return to primary mode',
+  'workspace.electionFailed': 'Could not coordinate between surfaces. Reload to retry.',
+  'storage.hydrationFailed': 'Failed to load history',
+  'storage.degraded': 'Storage is unavailable — this session will not be saved.',
+  'storage.migrationFailed':
+    'Some saved history could not be moved to secure storage — the original data has been kept.',
+  'storage.credentialCapability':
+    'Secure credential storage is installed. Provider credential setup and validation will be enabled in the provider integration phase.',
   'standalone.openFailed': 'Failed to open Standalone view',
   'sidepanel.openFailed': 'Failed to open the side panel',
   'standalone.minWidth':
@@ -124,6 +134,7 @@ const CANONICAL_STRINGS: Record<string, string> = {
   // Common
   'common.continue': 'Continue',
   'common.notNow': 'Not now',
+  'common.retry': 'Retry',
 
   // Destructive confirmation
   'command.reloadExtension.confirm':
@@ -206,6 +217,49 @@ describe('strings — value exactness', () => {
     expect(t('chat.error')).toBe('Provider error. [Retry] [Switch Provider]');
     expect(t('chat.error')).toContain('[Retry]');
     expect(t('chat.error')).toContain('[Switch Provider]');
+  });
+
+  it('pins the Phase-2 canonical map verbatim (02-UI-SPEC § Phase 2 canonical string map)', () => {
+    // The nine Phase-2 keys: four `workspace.*`, four `storage.*`, one
+    // `common.*`. The reload action reuses `shell.errorReload` and the
+    // hydration action is `common.retry` — never `onboarding.retry`.
+    const phase2 = [
+      'workspace.mirroringNotice',
+      'workspace.mirrorRefocus',
+      'workspace.mirrorRefocusA11y',
+      'workspace.electionFailed',
+      'storage.hydrationFailed',
+      'storage.degraded',
+      'storage.migrationFailed',
+      'storage.credentialCapability',
+      'common.retry',
+    ];
+    for (const key of phase2) {
+      expect(t(key), `t('${key}')`).toBe(CANONICAL_STRINGS[key]);
+      expect(t(key), `t('${key}') must be an explicit entry`).not.toBe(key);
+    }
+
+    // The two actions the Phase-2 failure paths render.
+    expect(t('shell.errorReload')).toBe('Reload');
+    expect(t('common.retry')).toBe('Retry');
+    expect(t('onboarding.retry')).toBe('Retry');
+    expect(t('shell.errorReload')).not.toBe(t('common.retry'));
+
+    // No Phase-2 notice may claim an outcome the phase cannot verify: the
+    // forbidden success claims exist in no value (D2-02, § Copywriting).
+    const FORBIDDEN_CLAIMS = [
+      'Credential stored',
+      'Provider connected',
+      'Provider validated',
+      'Provider ready',
+      'migrated successfully',
+      'history restored',
+    ];
+    for (const [key, value] of Object.entries(strings)) {
+      for (const claim of FORBIDDEN_CLAIMS) {
+        expect(value.includes(claim), `t('${key}') must not claim "${claim}"`).toBe(false);
+      }
+    }
   });
 
   it('carries the copy hygiene rules: no exclamation mark, three ASCII periods', () => {
