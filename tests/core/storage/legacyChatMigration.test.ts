@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { closeDb, getDb, __test__ } from '../../../src/core/storage/NowPilotDB';
 import { __test__ as migratorTest } from '../../../src/core/storage/IndexedDBMigrator';
 import {
+  CONVERSATION_META_STORAGE_KEY,
   LEGACY_CHAT_SOURCE_KEY,
   MIGRATION_ENTRY_ID,
   MIGRATION_STAGE_NAMES,
@@ -832,6 +833,47 @@ describe('legacyChatMigration — restart between every journal stage', () => {
       expect(storedSource(harness).version).toBe(NP_STORE_V3_SCHEMA_VERSION);
     });
   }
+});
+
+// ---------------------------------------------------------------------------
+// The production defaults
+// ---------------------------------------------------------------------------
+
+describe('legacyChatMigration — the production seams', () => {
+  it('runs end to end through chrome.storage.local, np_conversation_meta and the np_db journal', async () => {
+    const storageMap = (globalThis as unknown as { __chromeStorageMap: Map<string, unknown> })
+      .__chromeStorageMap;
+    storageMap.set(LEGACY_CHAT_SOURCE_KEY, legacyBlob(threeConversations()));
+
+    // No injected storage, index or journal: every default seam runs.
+    const result = await runLegacyChatMigration();
+
+    expect(result).toEqual({ ok: true, conversations: 3, sanitised: true });
+
+    // The source key is rewritten in place, at v3, with no body left in it.
+    const stored = String(storageMap.get(LEGACY_CHAT_SOURCE_KEY));
+    expect(JSON.parse(stored).version).toBe(NP_STORE_V3_SCHEMA_VERSION);
+    expect(stored).not.toContain(SENTINEL);
+    expect(stored).not.toContain('preview');
+
+    // The conversation index lands under its canonical key, body-free.
+    const index = storageMap.get(CONVERSATION_META_STORAGE_KEY) as ConversationMeta[];
+    expect(index.map((record) => record.id).sort()).toEqual(['s_1', 's_2', 's_3']);
+    expect(index.find((record) => record.id === 's_1')?.messageCount).toBe(2);
+    expect(JSON.stringify(index)).not.toContain(SENTINEL);
+
+    // The journal entry lives in the real `entries` store of np_db.
+    const entry = await (await getDb()).get('entries', MIGRATION_ENTRY_ID);
+    expect(entry?.status).toBe('completed');
+    expect(entry?.steps.map((step) => step.status)).toEqual(
+      MIGRATION_STAGE_NAMES.map(() => 'completed'),
+    );
+
+    // And the destination is what a normal read uses.
+    expect(await destinationCounts()).toEqual({ sessions: 3, messages: 3 });
+    const read = await readConversation('s_1');
+    expect(read.ok).toBe(true);
+  });
 });
 
 // ---------------------------------------------------------------------------
