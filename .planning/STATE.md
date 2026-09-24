@@ -4,16 +4,16 @@ milestone: v0.2
 current_phase: 2
 current_phase_name: Storage, Security, WriteJournal, Workspace Persistence
 status: executing
-stopped_at: Completed 02-07-PLAN.md
-last_updated: "2026-09-24T00:53:50.830Z"
+stopped_at: Completed 02-08-PLAN.md
+last_updated: "2026-09-24T01:19:54.792Z"
 last_activity: 2026-09-24
 last_activity_desc: Phase 2 execution started
-state_head: 7f500d68e71ae1962e4f9f3069f538d58a4fef2e
+state_head: 8dd19580fddf9314101833345576a1b50c357439
 progress:
   total_phases: 19
   completed_phases: 1
   total_plans: 26
-  completed_plans: 20
+  completed_plans: 21
 ---
 
 # Project State
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-09-23)
 ## Current Position
 
 Phase: 2 (Storage, Security, WriteJournal, Workspace Persistence) — EXECUTING
-Plan: 8 of 13
+Plan: 9 of 13
 Status: Ready to execute
 Last activity: 2026-09-24 — Phase 2 execution started
 
@@ -78,6 +78,7 @@ Progress: [█░░░░░░░░░] 5%
 | Phase 02 P05 | 14 min | 3 tasks | 5 files |
 | Phase 02 P06 | 8 min | 2 tasks | 5 files |
 | Phase 2 P07 | 15 min | 3 tasks | 11 files |
+| Phase 02 P08 | 24 min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -181,6 +182,11 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 2]: 02-07: MirrorBanner renders canonical copy only (workspace.mirroringNotice/mirrorRefocus/mirrorRefocusA11y) on a minHeight:32 bar that grows at 400 px, and its action became a real keyboard-reachable control (role=button, tabIndex 0, Enter/Space) because the shipped <a> without href was not focusable and the 02-UI-SPEC interaction contract requires it. The nine Phase-2 keys are pinned verbatim in tests/core/i18n/strings.test.ts, and shell.errorReload is reused rather than duplicated.
 - [Phase 2]: 02-07: one onboarding controller — shouldPresentOnboardingForWriter(result, writerState) is pure and total (only 'primary' presents; every mirror-side state hides whatever the record says) and useOnboardingGate resolves 'hidden' for a non-writer BEFORE the record read, so a mirror never waits on a competing flow. The writer-state import is type-only, keeping zustand/immer out of the background worker's graph.
 - [Phase 2]: 02-07: the composition point is 02-10's — until a surface applies an election signal to the store (applyElectionOutcome(election.coordinationState()) on each elect/heartbeat), writerState stays election-pending, so onboarding presents nowhere and MirrorBanner never renders. Recorded as coverage D6 for the verifier.
+- [Phase 2]: 02-08: `PERSISTED_BLOB_FIELDS` is the imported `NP_STORE_V3_FIELDS` alias (never a second declaration), and both `partialize` and `npStoreMigrate` delegate to `projectNpStoreV3` — the source projection and the store projection cannot drift.
+- [Phase 2]: 02-08: `merge` refuses the persisted conversation collection and the persisted active-conversation id (D2-17 step 7) and forces the hydration status back to its runtime value, so a corrupt v3 blob can neither seed conversations nor publish a hydration result.
+- [Phase 2]: 02-08: hydration publishes `empty` only from a successful read that found nothing; a migration failure resolves `recovery required` (02-05 always leaves the journal entry non-terminal) while an open/list/read failure resolves `failed` with the typed redacted code.
+- [Phase 2]: 02-08: `readAllConversations()` gained `invalidIds` (additive) so D2-20's partial-failure policy holds — a malformed record is excluded and reported by safe id while the rest hydrate; the store may not enumerate records itself.
+- [Phase 2]: 02-08: `hydrateChatHistory()` is `recoverJournal`'s production call site (WINDOWS #23 half-closed); `compactJournal` still has no caller.
 
 ### Pending Todos
 
@@ -262,6 +268,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-24T00:53:50.777Z
-Stopped at: Completed 02-07-PLAN.md
+Last session: 2026-09-24T01:19:37.649Z
+Stopped at: Completed 02-08-PLAN.md
 Resume file: None
