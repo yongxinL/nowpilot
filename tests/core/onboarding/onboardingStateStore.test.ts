@@ -498,6 +498,6 @@ describe('onboarding single controller — presentation gated on authoritative w
     expect(hook).toContain('shouldPresentOnboardingForWriter');
     // A non-writer resolves `hidden` immediately — never `reading` — so a
     // mirror never waits on a competing flow (T-02-40).
-    expect(hook).toMatch(/writerState !== 'primary'\)\s*return 'hidden'/);
+    expect(hook).toContain("writerState === 'primary' ? 'reading' : 'hidden'");
   });
 });

@@ -47,8 +47,10 @@ export function useOnboardingGate(): OnboardingGate {
     };
   }, []);
 
-  // A non-writer claims nothing at all — not even `reading`.
-  if (writerState !== 'primary') return 'hidden';
-  if (record === null) return 'reading';
+  // A non-writer claims nothing at all — not even `reading` — so a mirror never
+  // waits on, and never shows, a competing flow (T-02-38, T-02-40).
+  const pending: OnboardingGate = writerState === 'primary' ? 'reading' : 'hidden';
+  if (record === null) return pending;
+
   return shouldPresentOnboardingForWriter(record, writerState) ? 'present' : 'hidden';
 }
