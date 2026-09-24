@@ -246,6 +246,41 @@ describe('workspaceRuntime — authorised mutations persist behind the gate', ()
     expect(entries[1]?.operation).toBe('update-workspace');
   });
 
+  it('degrades without an unhandled rejection when IndexedDB cannot open, then recovers (WR-06, §19.10)', async () => {
+    await electPrimary();
+    const before = useWorkspaceStore.getState().version;
+
+    // The database cannot open: a fresh factory plus the migrator's own failure
+    // seam aborts the upgrade — the real §19.10 blocked/unavailable path, not a
+    // stubbed one.
+    dbTest.reset();
+    (globalThis as unknown as { __resetIndexedDB: () => void }).__resetIndexedDB();
+    dbTest.setMigrationFailure(() => {
+      throw new Error('synthetic-injected-migration-failure');
+    });
+
+    useWorkspaceStore.getState().setConversationId('conv-degraded');
+    await settle();
+
+    // The failure reached the typed path: no rejection escaped the
+    // fire-and-forget call site.
+    await vi.waitFor(() => {
+      expect(getRecentLogs().some((entry) => entry.code === 'WORKSPACE_JOURNAL_FAILED')).toBe(true);
+    });
+    const degraded = await readDurable();
+    expect(degraded?.version).toBe(before);
+    expect(degraded?.conversationId).not.toBe('conv-degraded');
+
+    // The establishment path is equally total: it resolves rather than rejecting.
+    await expect(establishWorkspaceIdentity()).resolves.toBeUndefined();
+
+    // Once the database opens again, the next mutation persists.
+    dbTest.setMigrationFailure(null);
+    useWorkspaceStore.getState().setConversationId('conv-recovered');
+    const recovered = await waitForDurable({ conversationId: 'conv-recovered' });
+    expect(recovered.version).toBeGreaterThan(before);
+  });
+
   it('holds every mutation when this surface is not the authoritative writer', async () => {
     // Registered but secondary: another surface holds a fresh record.
     sessionMap().set('np_workspace_primary', {

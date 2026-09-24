@@ -311,6 +311,28 @@ describe('WorkspacePersistence — journaled, version-ordered writes (§20.3, M.
     expect(entry.steps[1]).toMatchObject({ name: 'emit-workspace-updated', status: 'pending' });
   });
 
+  it('resolves a typed failure when the journal store rejects — the IndexedDB-blocked path (WR-06)', async () => {
+    const { area, map } = memoryStorage();
+    const blocked: JournalEntryStore = {
+      load: async () => {
+        // What `defaultJournalStore.load` does when `getDb()` rejects in the
+        // §19.10 blocked/unavailable state.
+        throw new DOMException('blocked', 'InvalidStateError');
+      },
+      persist: async () => {},
+    };
+
+    const result = await writeWorkspaceState(state({ version: 1 }), {
+      storage: area,
+      journal: blocked,
+    });
+
+    expect(result).toEqual({ ok: false, code: 'WORKSPACE_JOURNAL_FAILED' });
+    // Nothing reached the key: the write never started.
+    expect(map.size).toBe(0);
+    expect(getRecentLogs().some((entry) => entry.code === 'WORKSPACE_JOURNAL_FAILED')).toBe(true);
+  });
+
   it('a non-schema-valid state is rejected at the boundary and nothing is written', async () => {
     const { area, map } = memoryStorage();
     const journal = memoryJournal();

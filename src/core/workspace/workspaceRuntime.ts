@@ -64,7 +64,10 @@ import type { WorkspaceState } from './WorkspaceState';
  * The runtime writes nothing but the workspace key (through the repository), never
  * publishes a state object (the repository's signal is two identifiers), and
  * holds no durable state of its own: the module-level flags below are per
- * document and reset with the document. `startWorkspaceRuntime` is idempotent
+ * document and reset with the document. Every write resolves a typed result
+ * rather than rejecting: a journal/IndexedDB failure in the §19.10
+ * blocked/unavailable state is logged with its redacted code and the mutation
+ * stays in memory, ready to persist once storage returns (WR-06). `startWorkspaceRuntime` is idempotent
  * for the document (React's double-invoked mount joins the same runtime), and it
  * deliberately has no teardown: the subscriptions are document-lifetime, exactly
  * like the store and the runtime they serve.
@@ -79,6 +82,15 @@ let persistScheduled = false;
 let durableVersion = -1;
 let unsubscribeChanges: (() => void) | null = null;
 let unsubscribeStore: (() => void) | null = null;
+
+/** The redacted reason string for a caught error — never the message. */
+function errorName(error: unknown): string {
+  if (typeof error === 'object' && error !== null) {
+    const name = (error as { name?: unknown }).name;
+    if (typeof name === 'string' && name.length > 0) return name;
+  }
+  return typeof error;
+}
 
 /** The projection fields `WorkspaceState` owns — never the actions or the writer axis. */
 function snapshot(): WorkspaceState {
@@ -191,7 +203,14 @@ function schedulePersist(): void {
   persistScheduled = true;
   queueMicrotask(() => {
     persistScheduled = false;
-    void persistCurrentState();
+    // Defence (WR-06): `writeWorkspaceState` resolves typed failures, so this
+    // catch is unreachable for the expected paths — it exists so an unexpected
+    // rejection can never surface as an unhandled one from a microtask.
+    void persistCurrentState().catch((error) => {
+      debugLog('WORKSPACE_WRITE_FAILED', 'The scheduled workspace write rejected unexpectedly', {
+        reason: errorName(error),
+      });
+    });
   });
 }
 
@@ -220,7 +239,13 @@ export async function startWorkspaceRuntime(): Promise<void> {
     }
     // A promotion to authority makes this projection the durable one.
     if (state.writerState === 'primary' && previous.writerState !== 'primary') {
-      void establishWorkspaceIdentity();
+      // Defence (WR-06): the establishment write resolves typed failures; the
+      // catch only keeps an unexpected rejection from going unhandled.
+      void establishWorkspaceIdentity().catch((error) => {
+        debugLog('WORKSPACE_WRITE_FAILED', 'The establishment write rejected unexpectedly', {
+          reason: errorName(error),
+        });
+      });
     }
   });
 }

@@ -63,7 +63,9 @@ import {
  *
  * Every value is validated at the boundary (`parseWorkspaceState` for the
  * state, the strict signal schema for the payload) and every failure resolves
- * a typed result — this module never throws for an expected runtime failure.
+ * a typed result — including a journal store that reaches an unavailable
+ * IndexedDB, which resolves `WORKSPACE_JOURNAL_FAILED` (WR-06). This module
+ * never throws for an expected runtime failure.
  * Logging is `SCREAMING_SNAKE` codes only, with safe identifiers in context.
  */
 
@@ -255,7 +257,10 @@ export async function readWorkspaceState(
  *
  * Rejected, with the stored value untouched: a state that fails the strict
  * schema, an unreadable store (never write blind), and any write whose
- * `version` is not strictly greater than the stored `version`.
+ * `version` is not strictly greater than the stored `version`. A journal store
+ * that cannot be read or persisted — the §19.10 IndexedDB-blocked state —
+ * resolves `WORKSPACE_JOURNAL_FAILED`; this function never rejects for an
+ * expected runtime failure (WR-06).
  *
  * A failed step leaves the journal entry **non-terminal** (`applying`) with the
  * failing stage visible — `runJournaled`'s terminal `rolled-back` is
@@ -294,19 +299,31 @@ export async function writeWorkspaceState(
     return { ok: false, code: 'WORKSPACE_VERSION_REJECTED' };
   }
 
-  const created = await createJournalEntry(
-    {
-      id: workspaceJournalId(candidate),
+  let created: Awaited<ReturnType<typeof createJournalEntry>>;
+  try {
+    created = await createJournalEntry(
+      {
+        id: workspaceJournalId(candidate),
+        operation: 'update-workspace',
+        // Safe identifiers only (D2-21): the workspace id and the write counter a
+        // later `replayUpdateWorkspace` needs to decide whether the key write
+        // landed. Never part of the state itself.
+        targetIds: { workspaceId: candidate.workspaceId, version: String(candidate.version) },
+        stageNames: WORKSPACE_WRITE_STAGE_NAMES,
+        now: now(),
+      },
+      journal,
+    );
+  } catch (error) {
+    // WR-06: the journal store reaches IndexedDB, whose open rejects in the
+    // §19.10 blocked/unavailable state. The failure path stays total — a typed
+    // result for the fire-and-forget callers, never a rejection.
+    debugLog('WORKSPACE_JOURNAL_FAILED', 'The update-workspace journal entry could not be created', {
       operation: 'update-workspace',
-      // Safe identifiers only (D2-21): the workspace id and the write counter a
-      // later `replayUpdateWorkspace` needs to decide whether the key write
-      // landed. Never part of the state itself.
-      targetIds: { workspaceId: candidate.workspaceId, version: String(candidate.version) },
-      stageNames: WORKSPACE_WRITE_STAGE_NAMES,
-      now: now(),
-    },
-    journal,
-  );
+      reason: errorName(error),
+    });
+    return { ok: false, code: 'WORKSPACE_JOURNAL_FAILED' };
+  }
   if (!created.ok) {
     debugLog('WORKSPACE_JOURNAL_FAILED', 'The update-workspace journal entry could not be created', {
       operation: 'update-workspace',
