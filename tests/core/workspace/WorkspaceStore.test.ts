@@ -188,9 +188,13 @@ describe('WorkspaceStore — canonical shape, no persistence (D-11, D-14)', () =
     for (const { file, text } of sourceFiles(path.resolve(process.cwd(), 'src'))) {
       text.split('\n').forEach((line, index) => {
         if (!line.includes('np_workspace')) return;
-        const isChannelConstant = line.includes("np_workspace'");
+        // Phase 2 adds the two canonical §15.1 key constants — the workspace
+        // key's channel literal and the session-storage election record key.
+        // A canonical literal is always quoted; an unquoted, ad-hoc or
+        // misspelled key name is still a violation.
+        const isCanonicalKeyConstant = /['"]np_workspace(_primary)?['"]/.test(line);
         const isLegacyRemoval = /legacy/i.test(line);
-        if (!isChannelConstant && !isLegacyRemoval) {
+        if (!isCanonicalKeyConstant && !isLegacyRemoval) {
           violations.push(`${path.relative(process.cwd(), file)}:${index + 1}`);
         }
       });
