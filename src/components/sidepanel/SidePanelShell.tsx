@@ -11,7 +11,10 @@ import {
   MailOutlined,
 } from '@ant-design/icons';
 import { NowPilotAvatar } from '../common/NowPilotAvatar';
+import { MirrorBanner } from '../common/MirrorBanner';
 import { t } from '../../core/i18n/strings';
+import { useWorkspaceStore } from '../../core/workspace/WorkspaceStore';
+import { requestRefocus } from '../../core/workspace/WriterElection';
 import { useExtensionStore, type HydrationStatus } from '../../store/useExtensionStore';
 
 /**
@@ -129,6 +132,10 @@ export const SidePanelShell: React.FC<SidePanelShellProps> = ({
   // IndexedDB, a transaction, the journal or the legacy blob (D2-20).
   const hydrationStatus = useExtensionStore((state) => state.hydrationStatus);
   const retryHydration = useExtensionStore((state) => state.retryHydration);
+  // D-12 / D2-34: the banner's visibility is a pure function of the store's
+  // writer state. The shell derives no mirror decision, holds no local flag and
+  // is never told by an event — a surface that merely *opened* is not a mirror.
+  const writerState = useWorkspaceStore((state) => state.writerState);
 
   const iconButtonStyle: React.CSSProperties = {
     color: token.colorTextSecondary,
@@ -222,6 +229,21 @@ export const SidePanelShell: React.FC<SidePanelShellProps> = ({
           </Tooltip>
         </div>
       </header>
+
+      {/* The single cross-surface status banner (D-12 carry-forward, D2-34),
+          immediately above the conversation region and mounted for exactly one
+          writer state. Its action asks the registered election to promote this
+          surface and changes nothing locally: a promotion unmounts the banner
+          through authoritative state, and a refocus that does not reach
+          primary reports through the election-failure channel. No optimistic
+          hide, no success message, no reload. */}
+      {writerState === 'mirror' && (
+        <MirrorBanner
+          onRefocus={() => {
+            void requestRefocus();
+          }}
+        />
+      )}
 
       {/* Conversation — fills and scrolls. The region varies only with the
           store's hydration status (D2-18); the header, composer, toolbar and

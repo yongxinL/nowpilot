@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { act, render, screen, fireEvent } from '@testing-library/react';
 import { ConfigProvider } from 'antd';
 import {
   StandaloneShell,
@@ -9,6 +9,17 @@ import {
 import { ErrorBoundary } from '../../src/core/components/ErrorBoundary';
 import { AddonRegistry } from '../../src/core/registry/Registry';
 import { t } from '../../src/core/i18n/strings';
+import {
+  useWorkspaceStore,
+  WORKSPACE_WRITER_STATES,
+  type WorkspaceWriterState,
+} from '../../src/core/workspace/WorkspaceStore';
+import {
+  setActiveWriterElection,
+  subscribeToElectionFailure,
+  type ElectionOutcome,
+  type WriterElection,
+} from '../../src/core/workspace/WriterElection';
 
 /**
  * Standalone shell suite (plan `01-02`, Task 2).
@@ -31,11 +42,36 @@ const renderShell = (props?: Partial<StandaloneShellProps>) =>
 
 const originalInnerWidth = window.innerWidth;
 
+/**
+ * A structurally-real election whose promotion path is a spy: this file pins
+ * the shell-to-registry wiring, not the election mechanism.
+ */
+function fakeElection(elect: () => Promise<ElectionOutcome>): WriterElection {
+  return {
+    surface: 'standalone',
+    tabId: 11,
+    elect,
+    startHeartbeat: vi.fn(),
+    stop: vi.fn(),
+    assertStillPrimary: async () => ({ ok: true }),
+    coordinationState: () => ({ state: 'election-in-progress', startedAt: 0 }),
+  };
+}
+
+function setWriterState(state: WorkspaceWriterState): void {
+  act(() => {
+    useWorkspaceStore.setState({ writerState: state });
+  });
+}
+
 beforeEach(() => {
   window.innerWidth = 1024;
+  setWriterState('election-pending');
 });
 
 afterEach(() => {
+  setActiveWriterElection(null);
+  setWriterState('election-pending');
   window.innerWidth = originalInnerWidth;
   // The add-on registry is process-global: leave no fixture registration behind.
   for (const addon of AddonRegistry.getAll()) AddonRegistry.unregister(addon.id);
@@ -228,6 +264,77 @@ describe('StandaloneShell — marking discipline', () => {
     expect(screen.queryByTestId('np-sider-addons-group')).toBeNull();
     expect(screen.queryByTestId('np-sider-addons-separator')).toBeNull();
     expect(screen.queryByText(/user account/i)).toBeNull();
+  });
+});
+
+describe('StandaloneShell — MirrorBanner activation and the refocus path (D-12, D2-34)', () => {
+  it('mounts the banner for `mirror` only, exactly once per surface', () => {
+    for (const state of WORKSPACE_WRITER_STATES) {
+      setWriterState(state);
+      const view = renderShell();
+
+      const banners = view.container.querySelectorAll('[data-testid="mirror-banner"]');
+      expect(banners.length, `${state}: banner count`).toBe(state === 'mirror' ? 1 : 0);
+
+      view.unmount();
+    }
+  });
+
+  it('renders the banner inside the content region, above the routed content', () => {
+    setWriterState('mirror');
+    renderShell();
+
+    const banner = screen.getByTestId('mirror-banner');
+    expect(banner.parentElement).toBe(screen.getByTestId('np-standalone-content'));
+
+    const routedContent = screen.getByTestId('np-page-chat');
+    expect(
+      banner.compareDocumentPosition(routedContent) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it('asks the registry to refocus and leaves the banner mounted, claiming nothing', async () => {
+    const elect = vi.fn(async (): Promise<ElectionOutcome> => ({ kind: 'primary', epoch: 1 }));
+    setActiveWriterElection(fakeElection(elect));
+    setWriterState('mirror');
+
+    renderShell();
+
+    await act(async () => {
+      fireEvent.click(screen.getByText(t('workspace.mirrorRefocus')));
+    });
+
+    expect(elect).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('mirror-banner')).toBeTruthy();
+    expect(screen.getByText(t('workspace.mirroringNotice'))).toBeTruthy();
+    expect(useWorkspaceStore.getState().writerState).toBe('mirror');
+  });
+
+  it('keeps the banner mounted and reports through the channel when the refocus fails', async () => {
+    const elect = vi.fn(
+      async (): Promise<ElectionOutcome> => ({
+        kind: 'error',
+        code: 'STORAGE_UNAVAILABLE',
+        message: 'probe',
+      }),
+    );
+    setActiveWriterElection(fakeElection(elect));
+    const failures: string[] = [];
+    const unsubscribe = subscribeToElectionFailure((code) => failures.push(code));
+    setWriterState('mirror');
+
+    renderShell();
+    await act(async () => {
+      fireEvent.click(screen.getByText(t('workspace.mirrorRefocus')));
+    });
+
+    expect(failures).toEqual(['STORAGE_UNAVAILABLE']);
+    // No optimistic hide and no second error surface on the banner.
+    const banner = screen.getByTestId('mirror-banner');
+    expect(banner).toBeTruthy();
+    expect(banner.querySelector('[role="alert"]')).toBeNull();
+
+    unsubscribe();
   });
 });
 

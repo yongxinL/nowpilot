@@ -19,6 +19,9 @@ import {
   type StandaloneRoute,
 } from './StandaloneRouter';
 import { hydrateFromURL } from '../../core/workspace/WorkspaceRouter';
+import { useWorkspaceStore } from '../../core/workspace/WorkspaceStore';
+import { requestRefocus } from '../../core/workspace/WriterElection';
+import { MirrorBanner } from '../common/MirrorBanner';
 import { AddonRegistry } from '../../core/registry/Registry';
 import { t } from '../../core/i18n/strings';
 
@@ -91,6 +94,10 @@ export const StandaloneShell: React.FC<StandaloneShellProps> = ({ onOpenOptions 
   // `tests/components/StandaloneShell.test.tsx` registers one add-on to prove the
   // absence assertion is not vacuous.
   const registeredAddons = AddonRegistry.getAll();
+  // D-12 / D2-34: the banner's visibility is a pure function of the store's
+  // writer state — never of the fact that this surface opened. A mirroring
+  // Standalone reports it once, above the routed content.
+  const writerState = useWorkspaceStore((state) => state.writerState);
 
   // Hydrate the workspace store from this tab's query string and become the
   // handoff target (D-13): the bootstrap is validated before use, readiness is
@@ -321,6 +328,20 @@ export const StandaloneShell: React.FC<StandaloneShellProps> = ({ onOpenOptions 
               showIcon
               message={t('standalone.minWidth')}
               style={{ margin: token.paddingSM }}
+            />
+          )}
+          {/* The single cross-surface status banner (D-12 carry-forward,
+              D2-34), immediately above the routed content and mounted for
+              exactly one writer state. Its action asks the registered election
+              to promote this surface and changes nothing locally: a promotion
+              unmounts the banner through authoritative state, and a refocus
+              that does not reach primary reports through the election-failure
+              channel. No optimistic hide, no success message, no reload. */}
+          {writerState === 'mirror' && (
+            <MirrorBanner
+              onRefocus={() => {
+                void requestRefocus();
+              }}
             />
           )}
           <div style={{ flex: 1, minHeight: 0 }}>

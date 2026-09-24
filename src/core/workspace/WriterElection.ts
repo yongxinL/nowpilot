@@ -447,3 +447,121 @@ export function createWriterElection(deps: WriterElectionDeps): WriterElection {
     },
   };
 }
+
+// ---------------------------------------------------------------------------
+// The active-instance registry (plan `02-09`)
+// ---------------------------------------------------------------------------
+//
+// A surface owns exactly one election instance, and the surface root registers
+// it here (02-10) so that any component that needs to ask "let this surface
+// take over" — the `MirrorBanner` action — can reach it without a prop chain
+// through the shell. The registry follows `MessageBus`'s module-registry shape:
+// a module-level set of subscribers, an unregister function as the return
+// value, and nothing that pretends to be durable state.
+//
+// It holds a **reference** to the current instance and nothing else: no
+// election state, no outcome, no epoch and no writer projection is mirrored
+// here. Authority is still established only by `elect()`'s verified read-back;
+// a refocus request is a request, and the outcome it returns is the election's
+// own report. The banner's visibility never comes from this module — it comes
+// from the store's `writerState`, which the surface applies from an
+// authoritative coordination projection.
+
+/**
+ * A refocus failure, in the canonical §20.11 payload vocabulary — the same two
+ * literals `WorkspaceCoordinationState`'s error variant carries. The §C.2
+ * `WORKSPACE_ELECTION_TIMEOUT` / `WORKSPACE_STORAGE_UNAVAILABLE` identifiers
+ * are the one-way mapping to log codes on this path, never a second payload
+ * vocabulary: the code reported here is the code the caller receives.
+ */
+export type ElectionFailureCode = WorkspaceElectionErrorCode;
+
+type ElectionFailureListener = (code: ElectionFailureCode) => void;
+
+let activeWriterElection: WriterElection | null = null;
+const electionFailureListeners = new Set<ElectionFailureListener>();
+
+/**
+ * Register (or clear, with `null`) this surface's election instance. The
+ * surface root calls it after `createWriterElection` and clears it on
+ * teardown, so a closed surface can never be the target of a refocus request.
+ */
+export function setActiveWriterElection(instance: WriterElection | null): void {
+  activeWriterElection = instance;
+}
+
+/** True while a surface election is registered and reachable. */
+export function isWriterElectionRegistered(): boolean {
+  return activeWriterElection !== null;
+}
+
+/**
+ * Subscribe to refocus failures. The listener receives one canonical code per
+ * failure; the returned function unsubscribes. Repeated failures each report —
+ * the caller decides whether that is one notice or several.
+ */
+export function subscribeToElectionFailure(listener: ElectionFailureListener): () => void {
+  electionFailureListeners.add(listener);
+  return () => {
+    electionFailureListeners.delete(listener);
+  };
+}
+
+function reportElectionFailure(code: ElectionFailureCode): void {
+  for (const listener of [...electionFailureListeners]) {
+    try {
+      listener(code);
+    } catch (error) {
+      // A subscriber must never break the refocus path it observes.
+      debugLog('WORKSPACE_ELECTION_TIMEOUT', 'An election failure listener threw', {
+        reason: errorName(error),
+      });
+    }
+  }
+}
+
+/**
+ * Ask the active election to promote this surface, and report the outcome
+ * through the failure channel when it does not reach primary.
+ *
+ * Non-optimistic by construction: this function changes no local state and
+ * returns the election's own outcome. A promotion becomes visible only when
+ * authoritative state says `primary` — the caller re-renders from the store,
+ * never from this call's resolution.
+ *
+ *   - no instance registered → `{ kind: 'error', code: 'STORAGE_UNAVAILABLE' }`,
+ *     never a fabricated success
+ *   - election error        → reported with the election's own canonical code
+ *   - secondary outcome     → reported as `ELECTION_TIMEOUT`: the record is
+ *     still held by a live surface, so this refocus did not reach primary and
+ *     must not pass unnoticed. `ELECTION_TIMEOUT` is the only non-storage
+ *     member of the canonical code set, and the §C.2 log code carries the
+ *     same meaning the election's own unverified-CAS path records
+ *   - primary outcome       → reported as nothing at all: success needs no
+ *     notice, and the banner unmounts through state
+ */
+export async function requestRefocus(): Promise<ElectionOutcome> {
+  const election = activeWriterElection;
+  if (election === null) {
+    debugLog('WORKSPACE_STORAGE_UNAVAILABLE', 'A refocus request found no registered election');
+    const unavailable: ElectionOutcome = {
+      kind: 'error',
+      code: 'STORAGE_UNAVAILABLE',
+      message: 'No writer election is registered for this surface',
+    };
+    reportElectionFailure(unavailable.code);
+    return unavailable;
+  }
+
+  const outcome = await election.elect();
+  if (outcome.kind === 'error') {
+    reportElectionFailure(outcome.code);
+  } else if (outcome.kind === 'secondary') {
+    debugLog('WORKSPACE_ELECTION_TIMEOUT', 'A refocus request did not reach primary', {
+      surface: election.surface,
+      tabId: election.tabId,
+    });
+    reportElectionFailure('ELECTION_TIMEOUT');
+  }
+  return outcome;
+}

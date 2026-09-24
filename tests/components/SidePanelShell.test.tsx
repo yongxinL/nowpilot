@@ -8,6 +8,18 @@ import { SidePanelShell } from '../../src/components/sidepanel/SidePanelShell';
 import { ErrorBoundary } from '../../src/core/components/ErrorBoundary';
 import { t } from '../../src/core/i18n/strings';
 import {
+  useWorkspaceStore,
+  WORKSPACE_WRITER_STATES,
+} from '../../src/core/workspace/WorkspaceStore';
+import {
+  isWriterElectionRegistered,
+  requestRefocus,
+  setActiveWriterElection,
+  subscribeToElectionFailure,
+  type ElectionOutcome,
+  type WriterElection,
+} from '../../src/core/workspace/WriterElection';
+import {
   useExtensionStore,
   type HydrationStatus,
 } from '../../src/store/useExtensionStore';
@@ -65,6 +77,30 @@ function renderShellAt(status: HydrationStatus) {
  */
 const INITIAL_RETRY_HYDRATION = useExtensionStore.getState().retryHydration;
 
+/**
+ * A structurally-real election whose one interesting method — `elect()`, the
+ * promotion path a refocus request delegates to — is a spy. `createWriterElection`
+ * is exercised by its own suite; what this file pins is the shell-to-registry
+ * wiring.
+ */
+function fakeElection(elect: () => Promise<ElectionOutcome>): WriterElection {
+  return {
+    surface: 'sidepanel',
+    tabId: 7,
+    elect,
+    startHeartbeat: vi.fn(),
+    stop: vi.fn(),
+    assertStillPrimary: async () => ({ ok: true }),
+    coordinationState: () => ({ state: 'election-in-progress', startedAt: 0 }),
+  };
+}
+
+function setWriterState(state: (typeof WORKSPACE_WRITER_STATES)[number]): void {
+  act(() => {
+    useWorkspaceStore.setState({ writerState: state });
+  });
+}
+
 afterEach(() => {
   act(() => {
     useExtensionStore.setState({
@@ -72,7 +108,9 @@ afterEach(() => {
       hydrationError: null,
       retryHydration: INITIAL_RETRY_HYDRATION,
     });
+    useWorkspaceStore.setState({ writerState: 'election-pending' });
   });
+  setActiveWriterElection(null);
 });
 
 describe('SidePanelShell — geometry and contract (UI-SPEC § Side Panel)', () => {
@@ -225,8 +263,17 @@ describe('SidePanelShell — conversation-region hydration states (D2-18)', () =
       act(() => {
         useExtensionStore.setState({ retryHydration: retry });
       });
-      const view = renderShellAt(status);
+      // The typed error is present in the store and must never reach the DOM:
+      // no record id, storage key, journal stage or error code is rendered.
+      act(() => {
+        useExtensionStore.setState({
+          hydrationStatus: status,
+          hydrationError: { code: 'IDB_MIGRATION_FAILED' },
+        });
+      });
+      const view = renderShell();
 
+      const region = screen.getByTestId('np-sidepanel-conversation');
       expect(
         screen.getByRole('heading', { level: 4, name: t('storage.hydrationFailed') }),
         `${status}: the pinned failure line`,
@@ -236,6 +283,11 @@ describe('SidePanelShell — conversation-region hydration states (D2-18)', () =
       expect(screen.queryByText(t('chat.empty'))).toBeNull();
       expect(screen.queryByText(t('chat.emptyBody'))).toBeNull();
       expect(view.container.querySelectorAll('.ant-skeleton').length).toBe(0);
+
+      // The region is exactly the problem line and its action — nothing else.
+      expect(region.textContent).toBe(`${t('storage.hydrationFailed')}${t('common.retry')}`);
+      expect(useExtensionStore.getState().hydrationError?.code).toBe('IDB_MIGRATION_FAILED');
+      expect(view.container.textContent ?? '').not.toContain('IDB_MIGRATION_FAILED');
 
       // The action re-drives the store's own retry — the shell holds no
       // recovery logic of its own.
@@ -265,6 +317,157 @@ describe('SidePanelShell — conversation-region hydration states (D2-18)', () =
       expect(shape.header, `${shape.status}: header`).toBe(shapes[0].header);
       expect(shape.composer, `${shape.status}: composer block`).toBe(shapes[0].composer);
     }
+  });
+});
+
+describe('SidePanelShell — MirrorBanner activation and the refocus path (D-12, D2-34)', () => {
+  it('mounts the banner for `mirror` only, exactly once per surface', () => {
+    for (const state of WORKSPACE_WRITER_STATES) {
+      setWriterState(state);
+      const view = renderShellAt('ready');
+
+      const banners = view.container.querySelectorAll('[data-testid="mirror-banner"]');
+      expect(banners.length, `${state}: banner count`).toBe(state === 'mirror' ? 1 : 0);
+
+      view.unmount();
+    }
+  });
+
+  it('renders the banner immediately above the conversation region', () => {
+    setWriterState('mirror');
+    renderShellAt('ready');
+
+    const banner = screen.getByTestId('mirror-banner');
+    const region = screen.getByTestId('np-sidepanel-conversation');
+    expect(banner.parentElement).toBe(screen.getByTestId('np-sidepanel-shell'));
+    expect(region.previousElementSibling).toBe(banner);
+  });
+
+  it('asks the registry to refocus and leaves the banner mounted, claiming nothing', async () => {
+    const elect = vi.fn(async (): Promise<ElectionOutcome> => ({ kind: 'primary', epoch: 1 }));
+    setActiveWriterElection(fakeElection(elect));
+    setWriterState('mirror');
+
+    const view = renderShellAt('ready');
+    expect(screen.getByTestId('mirror-banner')).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.click(screen.getByText(t('workspace.mirrorRefocus')));
+    });
+
+    // The click reached the election's own promotion path...
+    expect(elect).toHaveBeenCalledTimes(1);
+    // ...and changed nothing locally: the banner is still mounted, its caption
+    // unchanged, the store still reports `mirror`, and no promotion or success
+    // is claimed anywhere on the surface.
+    expect(screen.getByTestId('mirror-banner')).toBeTruthy();
+    expect(screen.getByText(t('workspace.mirroringNotice'))).toBeTruthy();
+    expect(useWorkspaceStore.getState().writerState).toBe('mirror');
+    expect(view.container.textContent ?? '').not.toMatch(/success|now primary|promoted/i);
+  });
+
+  it('keeps the banner mounted and reports through the channel when the refocus fails', async () => {
+    const elect = vi.fn(
+      async (): Promise<ElectionOutcome> => ({
+        kind: 'error',
+        code: 'STORAGE_UNAVAILABLE',
+        message: 'probe',
+      }),
+    );
+    setActiveWriterElection(fakeElection(elect));
+    const failures: string[] = [];
+    const unsubscribe = subscribeToElectionFailure((code) => failures.push(code));
+    setWriterState('mirror');
+
+    renderShellAt('ready');
+    await act(async () => {
+      fireEvent.click(screen.getByText(t('workspace.mirrorRefocus')));
+    });
+
+    expect(elect).toHaveBeenCalledTimes(1);
+    expect(failures).toEqual(['STORAGE_UNAVAILABLE']);
+    // A failed refocus is not an optimistic hide, and the banner never becomes
+    // a second error surface.
+    const banner = screen.getByTestId('mirror-banner');
+    expect(banner).toBeTruthy();
+    expect(banner.querySelector('[role="alert"]')).toBeNull();
+
+    unsubscribe();
+  });
+
+  it('reports ELECTION_TIMEOUT when the refocus settles as secondary', async () => {
+    const elect = vi.fn(
+      async (): Promise<ElectionOutcome> => ({
+        kind: 'secondary',
+        current: { tabId: 1, surface: 'standalone', electedAt: 1 },
+      }),
+    );
+    setActiveWriterElection(fakeElection(elect));
+    const failures: string[] = [];
+    const unsubscribe = subscribeToElectionFailure((code) => failures.push(code));
+    setWriterState('mirror');
+
+    renderShellAt('ready');
+    await act(async () => {
+      fireEvent.click(screen.getByText(t('workspace.mirrorRefocus')));
+    });
+
+    // A refocus that does not reach primary is reported, never silently
+    // swallowed, and the banner stays mounted.
+    expect(failures).toEqual(['ELECTION_TIMEOUT']);
+    expect(screen.getByTestId('mirror-banner')).toBeTruthy();
+
+    unsubscribe();
+  });
+
+  it('resolves a typed unavailable outcome when no election is registered', async () => {
+    setActiveWriterElection(null);
+    expect(isWriterElectionRegistered()).toBe(false);
+
+    const failures: string[] = [];
+    const unsubscribe = subscribeToElectionFailure((code) => failures.push(code));
+
+    const outcome = await requestRefocus();
+
+    // Never a fabricated success.
+    expect(outcome.kind).toBe('error');
+    expect(outcome.kind === 'error' && outcome.code).toBe('STORAGE_UNAVAILABLE');
+    expect(failures).toEqual(['STORAGE_UNAVAILABLE']);
+
+    unsubscribe();
+    expect(isWriterElectionRegistered()).toBe(false);
+  });
+
+  it('makes the banner action keyboard-reachable with its canonical accessible name', async () => {
+    const elect = vi.fn(async (): Promise<ElectionOutcome> => ({ kind: 'primary', epoch: 1 }));
+    setActiveWriterElection(fakeElection(elect));
+    setWriterState('mirror');
+    renderShellAt('ready');
+
+    const action = screen.getByLabelText(t('workspace.mirrorRefocusA11y'));
+    expect(action.getAttribute('role')).toBe('button');
+    expect(action.getAttribute('tabindex')).toBe('0');
+
+    action.focus();
+    expect(document.activeElement).toBe(action);
+
+    await act(async () => {
+      fireEvent.keyDown(action, { key: 'Enter' });
+    });
+    expect(elect).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders the full canonical caption as text content, never as a title-only affordance', () => {
+    setWriterState('mirror');
+    renderShellAt('ready');
+
+    const caption = screen.getByText(t('workspace.mirroringNotice'));
+    expect(caption.textContent).toBe(t('workspace.mirroringNotice'));
+    // The full sentence is the element's text; no truncating `title` stand-in
+    // carries it instead.
+    expect(caption.hasAttribute('title')).toBe(false);
+    expect(screen.getByTestId('mirror-banner').getAttribute('role')).toBe('status');
+    expect(screen.getByTestId('mirror-banner').getAttribute('aria-live')).toBe('polite');
   });
 });
 
