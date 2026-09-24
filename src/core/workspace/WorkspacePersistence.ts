@@ -292,7 +292,10 @@ export async function writeWorkspaceState(
     {
       id: workspaceJournalId(candidate),
       operation: 'update-workspace',
-      targetIds: { workspaceId: candidate.workspaceId },
+      // Safe identifiers only (D2-21): the workspace id and the write counter a
+      // later `replayUpdateWorkspace` needs to decide whether the key write
+      // landed. Never part of the state itself.
+      targetIds: { workspaceId: candidate.workspaceId, version: String(candidate.version) },
       stageNames: WORKSPACE_WRITE_STAGE_NAMES,
       now: now(),
     },
@@ -355,6 +358,92 @@ export async function writeWorkspaceState(
   }
 
   return { ok: true, value: candidate };
+}
+
+/**
+ * Replay one interrupted `update-workspace` entry (WR-01) — the
+ * `recoverJournal` callback for the workspace write the startup pass used to
+ * ignore silently.
+ *
+ * The journal carries the operation's safe identifiers — the workspace id and
+ * the write counter — never the payload (D2-21), so a replay re-reads the
+ * durable copy and finishes the step the interrupted run owed:
+ *
+ *   - **The key write landed** (the stored copy is for the same workspace with a
+ *     version at least the entry's): emit the narrow two-identifier update
+ *     signal, then mark the entry terminal `completed`. The steps are
+ *     idempotent by contract, so re-emitting a signal that may already have
+ *     crossed is safe — a subscriber re-reads and applies last-write-wins.
+ *   - **The key write never landed**: the payload is not recoverable from the
+ *     journal, so the entry is marked terminal `failed` with a redacted code (a
+ *     non-terminal entry is never removed by compaction and would be pinned in
+ *     `entries` forever), and a typed failure is returned so `recoverJournal`'s
+ *     `failed` count means what it says.
+ *
+ * Total and throw-free apart from the journal persist, which the caller's
+ * replay failure handling already covers.
+ */
+export async function replayUpdateWorkspace(
+  entry: WriteJournalEntry,
+  deps: WorkspacePersistenceDeps = {},
+): Promise<{ ok: true } | { ok: false; code: WorkspacePersistenceErrorCode }> {
+  const storage = deps.storage ?? chromeStorageAdapter;
+  const journal = deps.journal ?? defaultJournalStore;
+  const now = deps.now ?? Date.now;
+  const publishUpdate =
+    deps.publishUpdate ?? ((signal: WorkspaceUpdateSignal) => publish(WORKSPACE_CHANNEL, signal));
+
+  const workspaceId = entry.targetIds.workspaceId ?? '';
+  const entryVersion = workspaceEntryVersion(entry, workspaceId);
+
+  const stored = await readStoredState(storage);
+  if (!stored.ok) return { ok: false, code: stored.code };
+
+  const storedState = stored.value;
+  if (
+    workspaceId.length > 0 &&
+    storedState !== null &&
+    storedState.workspaceId === workspaceId &&
+    (entryVersion === null || storedState.version >= entryVersion)
+  ) {
+    // The key write landed (or a newer write superseded it): finish the signal
+    // step the interrupted run owed and make the entry terminal.
+    publishUpdate({
+      workspaceId: storedState.workspaceId,
+      conversationId: storedState.conversationId,
+    });
+    entry.status = 'completed';
+    entry.updatedAt = now();
+    for (const step of entry.steps) step.status = 'completed';
+    await journal.persist(entry);
+    return { ok: true };
+  }
+
+  entry.status = 'failed';
+  entry.updatedAt = now();
+  const failingStep = entry.steps.find((step) => step.name === WORKSPACE_WRITE_STAGE_NAMES[0]);
+  if (failingStep) {
+    failingStep.status = 'failed';
+    failingStep.error = 'WORKSPACE_WRITE_FAILED';
+  }
+  await journal.persist(entry);
+
+  debugLog('WORKSPACE_WRITE_FAILED', 'An interrupted workspace write could not be replayed', {
+    workspaceId,
+    version: entryVersion ?? -1,
+  });
+  return { ok: false, code: 'WORKSPACE_WRITE_FAILED' };
+}
+
+/** The entry's write counter: the declared targetId, else the id suffix. */
+function workspaceEntryVersion(entry: WriteJournalEntry, workspaceId: string): number | null {
+  const declared = entry.targetIds.version;
+  if (declared !== undefined && /^\d+$/.test(declared)) return Number(declared);
+
+  const prefix = `${workspaceId}:`;
+  if (workspaceId.length === 0 || !entry.id.startsWith(prefix)) return null;
+  const suffix = entry.id.slice(prefix.length);
+  return /^\d+$/.test(suffix) ? Number(suffix) : null;
 }
 
 /**

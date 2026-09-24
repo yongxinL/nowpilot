@@ -9,7 +9,7 @@ import {
 import { useThemeStore } from '../../../src/core/theme/ThemeStore';
 import { flushPendingWrites } from '../../../src/core/theme/chromeStorageAdapter';
 import { clearLogs, getRecentLogs } from '../../../src/core/log/debugLog';
-import { closeDb, __test__ as dbTest } from '../../../src/core/storage/NowPilotDB';
+import { closeDb, getDb, __test__ as dbTest } from '../../../src/core/storage/NowPilotDB';
 import {
   readAllConversations,
   readConversation,
@@ -776,6 +776,55 @@ describe('useExtensionStore — the asynchronous hydration contract (D2-17/D2-18
       await flushPendingWrites();
       if (previous === undefined) storageMap().delete('np_store');
       else storageMap().set('np_store', previous);
+    }
+  });
+
+  // WR-01: an interrupted `update-workspace` entry is replayed at startup — it
+  // reaches a terminal state instead of being pinned in `entries` forever, and
+  // the signal the interrupted run owed is emitted.
+  it('replays an interrupted update-workspace entry during journal recovery (WR-01)', async () => {
+    const durable = {
+      schemaVersion: 1,
+      workspaceId: 'ws-replay',
+      conversationId: null,
+      activeProvider: null,
+      selectedModel: null,
+      pinnedTabs: [],
+      currentPageContext: null,
+      selectedNotes: [],
+      activeAddonContext: null,
+      activeSkillRun: null,
+      activeSurface: 'sidepanel',
+      openedStandaloneTabId: null,
+      version: 3,
+      updatedAt: 1,
+    };
+    storageMap().set('np_workspace', JSON.stringify(durable));
+
+    const db = await getDb();
+    await db.put('entries', {
+      id: 'ws-replay:3',
+      operation: 'update-workspace',
+      status: 'applying',
+      createdAt: 1,
+      updatedAt: 1,
+      attempts: 1,
+      targetIds: { workspaceId: 'ws-replay' },
+      steps: [
+        { name: 'write-np-workspace', status: 'completed' },
+        { name: 'emit-workspace-updated', status: 'pending' },
+      ],
+    });
+
+    try {
+      const status = await useExtensionStore.getState().hydrateChatHistory();
+      expect(status).toBe('empty');
+
+      const entry = await db.get('entries', 'ws-replay:3');
+      expect(entry?.status).toBe('completed');
+      expect(entry?.steps.map((step) => step.status)).toEqual(['completed', 'completed']);
+    } finally {
+      storageMap().delete('np_workspace');
     }
   });
 

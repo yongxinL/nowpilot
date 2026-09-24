@@ -12,6 +12,7 @@ import {
   type LegacyChatMigrationResult,
 } from '../core/storage/legacyChatMigration';
 import { getDb } from '../core/storage/NowPilotDB';
+import { replayUpdateWorkspace } from '../core/workspace/WorkspacePersistence';
 import {
   readAllConversations,
   readConversation,
@@ -189,9 +190,20 @@ export interface ChatHydrationDeps {
 
 /**
  * `recoverJournal`'s production call site (02-02's journal recovery, D2-17
- * step 2): the migration entry is the only known operation, and its replay is
- * `runLegacyChatMigration`, which resumes from the stages that completed. A
- * migration that still fails leaves the entry non-terminal and resumable.
+ * step 2). Two operations exist in Phase 2, and neither is silently skipped
+ * (WR-01):
+ *
+ *   - `migrate-legacy-conversations` replays through `runLegacyChatMigration`,
+ *     which resumes from the stages that completed; a migration that still
+ *     fails leaves the entry non-terminal and resumable.
+ *   - `update-workspace` replays through `replayUpdateWorkspace`, which decides
+ *     from the durable copy whether the key write landed and leaves the entry
+ *     terminal either way — completed when the signal is all that was owed,
+ *     failed (with a redacted code) when the payload is unrecoverable.
+ *
+ * An operation this build does not know how to replay is a typed failure, never
+ * a no-op: `recoverJournal` counts it as `failed`, which is what makes its
+ * `replayed`/`failed` counts mean what they say.
  */
 async function defaultRecoverJournal(): Promise<{ replayed: number; failed: number }> {
   return recoverJournal(
@@ -200,9 +212,17 @@ async function defaultRecoverJournal(): Promise<{ replayed: number; failed: numb
       return db.getAll('entries');
     },
     async (entry) => {
-      if (entry.operation !== MIGRATION_OPERATION) return;
-      const result = await runLegacyChatMigration();
-      if (!result.ok) throw new Error(result.code);
+      if (entry.operation === MIGRATION_OPERATION) {
+        const result = await runLegacyChatMigration();
+        if (!result.ok) throw new Error(result.code);
+        return;
+      }
+      if (entry.operation === 'update-workspace') {
+        const replayed = await replayUpdateWorkspace(entry);
+        if (!replayed.ok) throw new Error(replayed.code);
+        return;
+      }
+      throw new Error('WRITE_JOURNAL_UNSUPPORTED_OPERATION');
     },
   );
 }

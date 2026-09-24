@@ -5,13 +5,18 @@ import {
   __test__ as adapterTest,
 } from '../../../src/core/theme/chromeStorageAdapter';
 import { closeDb, getDb, __test__ as dbTest } from '../../../src/core/storage/NowPilotDB';
-import type { JournalEntryStore, WriteJournalEntry } from '../../../src/core/storage/WriteJournal';
+import {
+  recoverJournal,
+  type JournalEntryStore,
+  type WriteJournalEntry,
+} from '../../../src/core/storage/WriteJournal';
 import { clearLogs, getRecentLogs } from '../../../src/core/log/debugLog';
 import {
   WORKSPACE_CHANNEL,
   WORKSPACE_STORAGE_KEY,
   WORKSPACE_WRITE_STAGE_NAMES,
   readWorkspaceState,
+  replayUpdateWorkspace,
   subscribeToWorkspaceChanges,
   writeWorkspaceState,
   type WorkspaceStorageArea,
@@ -278,7 +283,7 @@ describe('WorkspacePersistence — journaled, version-ordered writes (§20.3, M.
     if (!entry) return;
     expect(entry.operation).toBe('update-workspace');
     expect(entry.status).toBe('completed');
-    expect(entry.targetIds).toEqual({ workspaceId: written.workspaceId });
+    expect(entry.targetIds).toEqual({ workspaceId: written.workspaceId, version: '7' });
     expect(entry.steps.map((step) => [step.name, step.status])).toEqual([
       ['write-np-workspace', 'completed'],
       ['emit-workspace-updated', 'completed'],
@@ -433,5 +438,157 @@ describe('WorkspacePersistence — cross-surface signal (D2-31)', () => {
       true,
     );
     unsubscribe();
+  });
+});
+
+describe('WorkspacePersistence — startup replay of an interrupted update-workspace (WR-01)', () => {
+  /** An entry left mid-flight by a crash: the key write ran, the signal did not. */
+  function interruptedEntry(overrides: Partial<WriteJournalEntry> = {}): WriteJournalEntry {
+    return {
+      id: 'ws-interrupted:5',
+      operation: 'update-workspace',
+      status: 'applying',
+      createdAt: FIXED_NOW,
+      updatedAt: FIXED_NOW,
+      attempts: 1,
+      targetIds: { workspaceId: 'ws-interrupted', version: '5' },
+      steps: [
+        { name: WORKSPACE_WRITE_STAGE_NAMES[0], status: 'completed' },
+        { name: WORKSPACE_WRITE_STAGE_NAMES[1], status: 'pending' },
+      ],
+      ...overrides,
+    };
+  }
+
+  it('finishes the missing signal step and completes the entry when the key write landed', async () => {
+    const { area, map } = memoryStorage();
+    const journal = memoryJournal();
+    expect(
+      (
+        await writeWorkspaceState(
+          state({ workspaceId: 'ws-interrupted', version: 5, conversationId: 'conv-landed' }),
+          { storage: area, journal: journal.store },
+        )
+      ).ok,
+    ).toBe(true);
+    const storedBefore = map.get(WORKSPACE_STORAGE_KEY);
+
+    const signals: WorkspaceUpdateSignal[] = [];
+    const entry = interruptedEntry();
+    const result = await replayUpdateWorkspace(entry, {
+      storage: area,
+      journal: journal.store,
+      now: () => FIXED_NOW,
+      publishUpdate: (signal) => signals.push(signal),
+    });
+
+    expect(result).toEqual({ ok: true });
+    // The narrow two-identifier signal, exactly once, carrying no state object.
+    expect(signals).toEqual([{ workspaceId: 'ws-interrupted', conversationId: 'conv-landed' }]);
+    expect(Object.keys(signals[0]).sort()).toEqual(['conversationId', 'workspaceId']);
+
+    const persisted = journal.entries.get('ws-interrupted:5');
+    expect(persisted?.status).toBe('completed');
+    expect(persisted?.steps.map((step) => step.status)).toEqual(['completed', 'completed']);
+    // The replay never rewrites the stored key: it only owes the signal.
+    expect(map.get(WORKSPACE_STORAGE_KEY)).toBe(storedBefore);
+  });
+
+  it('completes and signals when a newer write already superseded the entry', async () => {
+    const { area } = memoryStorage();
+    const journal = memoryJournal();
+    await writeWorkspaceState(
+      state({ workspaceId: 'ws-interrupted', version: 9, conversationId: 'conv-newer' }),
+      { storage: area, journal: journal.store },
+    );
+
+    const signals: WorkspaceUpdateSignal[] = [];
+    const entry = interruptedEntry();
+    const result = await replayUpdateWorkspace(entry, {
+      storage: area,
+      journal: journal.store,
+      publishUpdate: (signal) => signals.push(signal),
+    });
+
+    expect(result).toEqual({ ok: true });
+    expect(signals).toEqual([{ workspaceId: 'ws-interrupted', conversationId: 'conv-newer' }]);
+    expect(journal.entries.get('ws-interrupted:5')?.status).toBe('completed');
+  });
+
+  it('marks the entry terminal failed when the key write never landed', async () => {
+    const { area, map } = memoryStorage();
+    const journal = memoryJournal();
+    const entry = interruptedEntry();
+
+    const result = await replayUpdateWorkspace(entry, {
+      storage: area,
+      journal: journal.store,
+      now: () => FIXED_NOW,
+      // Positive control: the unrecoverable path must publish nothing at all.
+      publishUpdate: () => {
+        throw new Error('the replay must not signal an unlanded write');
+      },
+    });
+
+    expect(result).toEqual({ ok: false, code: 'WORKSPACE_WRITE_FAILED' });
+    const persisted = journal.entries.get('ws-interrupted:5');
+    expect(persisted?.status).toBe('failed');
+    expect(persisted?.steps[0]).toMatchObject({
+      name: WORKSPACE_WRITE_STAGE_NAMES[0],
+      status: 'failed',
+      error: 'WORKSPACE_WRITE_FAILED',
+    });
+    // Nothing was written over the (absent) stored copy.
+    expect(map.size).toBe(0);
+  });
+
+  it('fails the entry when the stored copy is older than the interrupted write', async () => {
+    const { area } = memoryStorage();
+    const journal = memoryJournal();
+    await writeWorkspaceState(state({ workspaceId: 'ws-interrupted', version: 4 }), {
+      storage: area,
+      journal: journal.store,
+    });
+
+    const result = await replayUpdateWorkspace(interruptedEntry(), {
+      storage: area,
+      journal: journal.store,
+    });
+
+    expect(result).toEqual({ ok: false, code: 'WORKSPACE_WRITE_FAILED' });
+    expect(journal.entries.get('ws-interrupted:5')?.status).toBe('failed');
+  });
+
+  it('makes recoverJournal count a landed replay as replayed and an unrecoverable one as failed', async () => {
+    const { area } = memoryStorage();
+    const journal = memoryJournal();
+    await writeWorkspaceState(state({ workspaceId: 'ws-interrupted', version: 5 }), {
+      storage: area,
+      journal: journal.store,
+    });
+
+    const landed = interruptedEntry();
+    const unlanded = interruptedEntry({
+      id: 'ws-lost:9',
+      targetIds: { workspaceId: 'ws-lost', version: '9' },
+      steps: [
+        { name: WORKSPACE_WRITE_STAGE_NAMES[0], status: 'pending' },
+        { name: WORKSPACE_WRITE_STAGE_NAMES[1], status: 'pending' },
+      ],
+    });
+    await journal.store.persist(landed);
+    await journal.store.persist(unlanded);
+
+    const counts = await recoverJournal(
+      async () => [...journal.entries.values()],
+      async (entry) => {
+        const replayed = await replayUpdateWorkspace(entry, { storage: area, journal: journal.store });
+        if (!replayed.ok) throw new Error(replayed.code);
+      },
+    );
+
+    expect(counts).toEqual({ replayed: 1, failed: 1 });
+    expect(journal.entries.get('ws-interrupted:5')?.status).toBe('completed');
+    expect(journal.entries.get('ws-lost:9')?.status).toBe('failed');
   });
 });
