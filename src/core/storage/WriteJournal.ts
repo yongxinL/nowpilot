@@ -216,7 +216,18 @@ export async function createJournalEntry(
   return { ok: true, entry: parsed.entry, created: true };
 }
 
-/** The Appendix O.11 step contract. `apply` MUST be idempotent (upsert by key). */
+/**
+ * The Appendix O.11 step contract.
+ *
+ * Two invariants `runJournaled` relies on:
+ *   - `apply` MUST be idempotent (upsert by key), so a replay after a crash is
+ *     a no-op rather than a duplicate (D2-14);
+ *   - `apply` MUST be atomic, or idempotent enough that a partial application
+ *     needs no rollback: `runJournaled` rolls back only the steps whose
+ *     `apply` **returned**, and deliberately does not call the failing step's
+ *     own `rollback` (a step that threw cannot report how far it got). Every
+ *     current step is a single idempotent upsert, which satisfies this.
+ */
 export interface JournalStep {
   name: string;
   apply(): Promise<void>;

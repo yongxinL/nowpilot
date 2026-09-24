@@ -26,7 +26,13 @@ import { redactErrorContext, redactSensitive } from './redactSensitive';
  * - **`store` is create-only.** Storing over an existing value returns the
  *   typed conflict `KEY_VAULT_ALREADY_CONFIGURED` instead of silently
  *   rotating a working credential; `replace` is the explicit way to supersede
- *   one. A caller flows `isConfigured ? replace : store`.
+ *   one. A caller flows `isConfigured ? replace : store`. The guarantee is
+ *   **best-effort, not atomic**: `chrome.storage` offers no compare-and-set, so
+ *   two concurrent `store` calls for the same provider can both observe
+ *   "absent", both return `{ ok: true }`, and the later envelope silently
+ *   supersedes the earlier one. Only `CredentialStorePort` (Phase 3) calls it,
+ *   so the practical risk is low; a caller that needs the strict guarantee must
+ *   serialise its own calls.
  * - **`replace` requires an existing credential** and returns
  *   `KEY_VAULT_NOT_CONFIGURED` otherwise — it never doubles as a first store.
  * - **`isConfigured` reports presence**, not validity: a corrupt stored value
@@ -274,6 +280,9 @@ export function createKeyVault(deps: KeyVaultDeps): KeyVault {
     if (extensionId === null || storage === null) return unavailable();
 
     const key = credentialStorageKey(provider);
+    // Best-effort create-only (see the module semantics): read-then-write with
+    // no CAS, so a concurrent `store` can race this check. Serialise callers if
+    // the strict guarantee is ever needed.
     const existing = await readStoredValue(storage, key);
     if (!existing.ok) return existing;
     if (existing.value !== null) {
