@@ -19,6 +19,9 @@ import { dirname, join, resolve } from 'node:path';
  * `tests/isolation/banned-imports.test.ts` and `cross-entrypoint-imports.test.ts`
  * use. Relative specifiers that do not resolve are reported and asserted empty
  * for the real graph, so a new import form cannot silently escape the gate.
+ * The `@/` and `~/` aliases (tsconfig `paths` / `vitest.config.ts`) resolve
+ * into `src/` here too (IN-07): an aliased storage import compiles, resolves
+ * under the project aliases, and would otherwise evade the path check.
  *
  * Read-only by construction: it scans and asserts; it writes nothing.
  */
@@ -86,14 +89,30 @@ export function importSpecifiers(source: string): string[] {
   return [...specs];
 }
 
+/** The project aliases that resolve into `src/` (tsconfig `paths`, vitest alias). */
+const SRC_ALIASES = ['@/', '~/'] as const;
+
+/** A specifier the gate is expected to resolve: relative or a `src/` alias. */
+function isProjectSpecifier(spec: string): boolean {
+  return spec.startsWith('.') || SRC_ALIASES.some((prefix) => spec.startsWith(prefix));
+}
+
+/** The candidate base path for a relative or aliased specifier, else null. */
+function resolveBase(fromFile: string, spec: string): string | null {
+  const alias = SRC_ALIASES.find((prefix) => spec.startsWith(prefix));
+  if (alias) return join(SRC_ROOT, spec.slice(alias.length));
+  if (spec.startsWith('.')) return resolve(dirname(fromFile), spec);
+  return null;
+}
+
 /** Resolve one specifier against the importing file, or null when it is external. */
 export function resolveSpecifier(
   fromFile: string,
   spec: string,
   exists: (path: string) => boolean,
 ): string | null {
-  if (!spec.startsWith('.')) return null;
-  const base = resolve(dirname(fromFile), spec);
+  const base = resolveBase(fromFile, spec);
+  if (base === null) return null;
   if (exists(base)) return base;
   for (const suffix of RESOLUTION_SUFFIXES) {
     if (exists(`${base}${suffix}`)) return `${base}${suffix}`;
@@ -123,7 +142,7 @@ export function resolveImportGraph(
       const edge: ImportEdge = { from: file, spec, resolved };
       edges.push(edge);
       if (resolved === null) {
-        if (spec.startsWith('.')) unresolved.push(edge);
+        if (isProjectSpecifier(spec)) unresolved.push(edge);
         continue;
       }
       if (!files.has(resolved)) queue.push(resolved);
@@ -224,6 +243,27 @@ describe('background SW IndexedDB isolation — the resolver and the predicate (
     ]);
   });
 
+  it('resolves the @/ and ~/ aliases into src and still flags a storage import (IN-07)', () => {
+    const files = new Map<string, string>([
+      [
+        `${SRC_ROOT}/entry.ts`,
+        `import { getDb } from '@/core/storage/NowPilotDB';\nexport { x } from '~/core/storage/WriteJournal';`,
+      ],
+      [`${SRC_ROOT}/core/storage/NowPilotDB.ts`, `import { openDB } from 'idb';`],
+      [`${SRC_ROOT}/core/storage/WriteJournal.ts`, `export const x = 1;`],
+    ]);
+    const read = (path: string): string | null => files.get(path) ?? null;
+
+    const graph = resolveImportGraph(`${SRC_ROOT}/entry.ts`, read);
+
+    expect(graph.unresolved).toEqual([]);
+    expect(indexedDbViolations(graph, read)).toEqual([
+      expect.stringContaining('src/entry.ts: imports src/core/storage/NowPilotDB.ts'),
+      expect.stringContaining('src/entry.ts: imports src/core/storage/WriteJournal.ts'),
+      expect.stringContaining("imports 'idb'"),
+    ]);
+  });
+
   it('fails the gate on a direct IndexedDB global and passes a clean graph', () => {
     const dirty = new Map<string, string>([
       [`${SRC_ROOT}/entry.ts`, `const request = indexedDB.open('np_db', 1);`],
@@ -244,15 +284,18 @@ describe('background SW IndexedDB isolation — the resolver and the predicate (
     ).toEqual([]);
   });
 
-  it('reports a relative specifier that does not resolve, rather than ignoring it', () => {
+  it('reports a project specifier that does not resolve, rather than ignoring it', () => {
     const files = new Map<string, string>([
-      [`${SRC_ROOT}/entry.ts`, `import './missing/module';`],
+      [`${SRC_ROOT}/entry.ts`, `import './missing/module';\nimport '@/missing/alias';`],
     ]);
     const read = (path: string): string | null => files.get(path) ?? null;
 
     const graph = resolveImportGraph(`${SRC_ROOT}/entry.ts`, read);
 
-    expect(graph.unresolved.map((edge) => edge.spec)).toEqual(['./missing/module']);
+    expect(graph.unresolved.map((edge) => edge.spec)).toEqual([
+      './missing/module',
+      '@/missing/alias',
+    ]);
   });
 });
 
