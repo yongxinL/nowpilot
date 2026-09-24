@@ -1,5 +1,9 @@
 import { PROVIDER_IDS, type ProviderId } from '../../types';
 import { debugLog } from '../log/debugLog';
+// Type-only: the single-controller gate reads the writer-state vocabulary
+// without giving this module a runtime dependency on the workspace store (and
+// therefore without dragging zustand/immer into the background worker's graph).
+import type { WorkspaceWriterState } from '../workspace/WorkspaceStore';
 
 /**
  * The onboarding completion record (D-06 / D-07).
@@ -97,6 +101,28 @@ export type OnboardingReadResult =
  */
 export function shouldPresentOnboarding(result: OnboardingReadResult): boolean {
   return !(result.status === 'ok' && result.state.uiComplete);
+}
+
+/**
+ * The single-controller gate (D2-32, RESEARCH Pitfall 10, OQ-4).
+ *
+ * Two live surfaces may both decide to present the onboarding flow; exactly one
+ * may. Presentation therefore requires the **authoritative writer state**: only
+ * `'primary'` presents, and every mirror-side state — `mirror`,
+ * `election-pending`, `handoff-pending`, `handoff-failed`,
+ * `writer-unavailable` — resolves hidden no matter what the record says, so a
+ * mirror renders the mirrored completion state instead of a competing flow.
+ *
+ * Pure and total: every combination of the four read outcomes and the six
+ * writer states returns a boolean and nothing throws. `'primary'` is compared
+ * inline rather than through a store helper, because importing the store here
+ * would make this module a runtime dependency of the workspace graph.
+ */
+export function shouldPresentOnboardingForWriter(
+  result: OnboardingReadResult,
+  writerState: WorkspaceWriterState,
+): boolean {
+  return writerState === 'primary' && shouldPresentOnboarding(result);
 }
 
 function isProviderId(value: unknown): value is ProviderId {

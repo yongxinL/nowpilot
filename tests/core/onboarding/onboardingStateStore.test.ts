@@ -9,9 +9,13 @@ import {
   migrateOnboardingState,
   readOnboardingState,
   shouldPresentOnboarding,
+  shouldPresentOnboardingForWriter,
   subscribeToOnboardingState,
   writeOnboardingState,
+  type OnboardingReadResult,
+  type OnboardingState,
 } from '../../../src/core/onboarding/onboardingStateStore';
+import { WORKSPACE_WRITER_STATES } from '../../../src/core/workspace/WorkspaceStore';
 
 /**
  * Onboarding completion-record suite (plan `01-09`, Task 3 — D-06 / D-07).
@@ -34,6 +38,14 @@ import {
  */
 
 const REPO_ROOT = process.cwd();
+
+/**
+ * Strip `//` and block comments before scanning, so a provenance note naming a
+ * removed path or a quoted literal cannot trip a source gate (the same
+ * instrument correction plans `01-04`/`01-06` recorded).
+ */
+const stripComments = (source: string): string =>
+  source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
 
 /** The chrome.storage.local mock's backing map (see `tests/setup.ts`). */
 const storageMap = () => (globalThis as any).__chromeStorageMap as Map<string, unknown>;
@@ -315,14 +327,6 @@ describe('onboarding completion record — cross-surface propagation', () => {
 });
 
 describe('onboarding completion record — no second source of truth', () => {
-  /**
-   * Strip `//` and block comments before scanning, so a provenance note naming
-   * the removed path cannot trip the gate (the same instrument correction plans
-   * `01-04`/`01-06` recorded).
-   */
-  const stripComments = (source: string): string =>
-    source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
-
   const sourceFiles = (): { file: string; code: string }[] => {
     const files: { file: string; code: string }[] = [];
     const walk = (dir: string) => {
@@ -396,5 +400,104 @@ describe('onboarding completion record — no second source of truth', () => {
       .map(({ file }) => file);
 
     expect(offenders).toEqual([]);
+  });
+});
+
+describe('onboarding single controller — presentation gated on authoritative writer state', () => {
+  const COMPLETE_STATE: OnboardingState = {
+    uiComplete: true,
+    persona: null,
+    providerId: 'openai',
+    schemaVersion: ONBOARDING_SCHEMA_VERSION,
+    validationBacking: 'fixture',
+    legacyCleanupNoticeShown: false,
+  };
+  const INCOMPLETE_STATE: OnboardingState = { ...COMPLETE_STATE, uiComplete: false };
+
+  /** Every read outcome the record reader can produce. */
+  const READ_RESULTS: Array<[string, OnboardingReadResult]> = [
+    ['ok + complete', { status: 'ok', state: COMPLETE_STATE }],
+    ['ok + incomplete', { status: 'ok', state: INCOMPLETE_STATE }],
+    ['unknown + missing', { status: 'unknown', reason: 'missing' }],
+    ['unknown + incompatible', { status: 'unknown', reason: 'incompatible' }],
+    ['unknown + unreadable', { status: 'unknown', reason: 'unreadable' }],
+  ];
+
+  it('presents the flow only for the authoritative writer with an incomplete record', () => {
+    expect(
+      shouldPresentOnboardingForWriter({ status: 'ok', state: INCOMPLETE_STATE }, 'primary'),
+    ).toBe(true);
+    // ...and the record still decides: a completed flow never re-presents.
+    expect(
+      shouldPresentOnboardingForWriter({ status: 'ok', state: COMPLETE_STATE }, 'primary'),
+    ).toBe(false);
+  });
+
+  it('is total: every read outcome crossed with every writer state returns a boolean', () => {
+    for (const [name, result] of READ_RESULTS) {
+      for (const writerState of WORKSPACE_WRITER_STATES) {
+        const decision = shouldPresentOnboardingForWriter(result, writerState);
+        expect(typeof decision, `${name} on ${writerState}`).toBe('boolean');
+        expect(decision, `${name} on ${writerState}`).toBe(
+          writerState === 'primary' && shouldPresentOnboarding(result),
+        );
+      }
+    }
+  });
+
+  it('hides every non-authoritative writer state, whatever the record says', () => {
+    const nonWriters = WORKSPACE_WRITER_STATES.filter((state) => state !== 'primary');
+
+    // The mirror-side vocabulary, named, so a new state cannot slip past.
+    expect(nonWriters).toEqual([
+      'mirror',
+      'election-pending',
+      'handoff-pending',
+      'handoff-failed',
+      'writer-unavailable',
+    ]);
+
+    for (const [name, result] of READ_RESULTS) {
+      for (const writerState of nonWriters) {
+        expect(
+          shouldPresentOnboardingForWriter(result, writerState),
+          `${name} on ${writerState}`,
+        ).toBe(false);
+      }
+    }
+  });
+
+  it('imports the writer state as a type only — no runtime cycle with the store', () => {
+    const source = fs.readFileSync(
+      path.join(REPO_ROOT, 'src', 'core', 'onboarding', 'onboardingStateStore.ts'),
+      'utf8',
+    );
+
+    expect(source).toMatch(
+      /import\s+type\s*\{[^}]*\}\s*from\s*'\.\.\/workspace\/WorkspaceStore'/,
+    );
+
+    // Remove that one declaration: no other reference to the workspace store
+    // may remain, so the module cannot pull zustand/immer into its graph (the
+    // background worker imports this module).
+    const withoutTypeImport = source.replace(
+      /import\s+type\s*\{[^}]*\}\s*from\s*'\.\.\/workspace\/WorkspaceStore';?/g,
+      '',
+    );
+    expect(withoutTypeImport).not.toContain("'../workspace/WorkspaceStore'");
+    expect(stripComments(withoutTypeImport)).not.toContain('useWorkspaceStore');
+  });
+
+  it('gates the shared surface hook on the same predicate and the writer state', () => {
+    const hook = stripComments(
+      fs.readFileSync(path.join(REPO_ROOT, 'src', 'core', 'onboarding', 'useOnboardingGate.ts'), 'utf8'),
+    );
+
+    expect(hook).toContain('useWorkspaceStore');
+    expect(hook).toContain('state.writerState');
+    expect(hook).toContain('shouldPresentOnboardingForWriter');
+    // A non-writer resolves `hidden` immediately — never `reading` — so a
+    // mirror never waits on a competing flow (T-02-40).
+    expect(hook).toMatch(/writerState !== 'primary'\)\s*return 'hidden'/);
   });
 });
