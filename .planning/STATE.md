@@ -4,11 +4,11 @@ milestone: v0.2
 current_phase: 2
 current_phase_name: Storage, Security, WriteJournal, Workspace Persistence
 status: executing
-stopped_at: Completed 02-04-PLAN.md
-last_updated: "2026-09-23T23:51:13.468Z"
+stopped_at: Completed 02-05-PLAN.md
+last_updated: "2026-09-24T00:09:30.014Z"
 last_activity: 2026-09-24
 last_activity_desc: Phase 2 execution started
-state_head: b72024ed7420d9434fd7588f662e90fbece86f11
+state_head: 605b60ce3a60316fd64f9abd49349f0eb8d7a4d3
 progress:
   total_phases: 19
   completed_phases: 1
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-09-23)
 ## Current Position
 
 Phase: 2 (Storage, Security, WriteJournal, Workspace Persistence) — EXECUTING
-Plan: 5 of 13
+Plan: 6 of 13
 Status: Ready to execute
 Last activity: 2026-09-24 — Phase 2 execution started
 
@@ -75,6 +75,7 @@ Progress: [█░░░░░░░░░] 5%
 | Phase 02 P02 | 10 min | 3 tasks | 8 files |
 | Phase 02 P03 | 6 min | 3 tasks | 6 files |
 | Phase 02 P04 | 20 min | 2 tasks | 4 files |
+| Phase 02 P05 | 14 min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -165,6 +166,10 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 2]: 02-04: np_install_secret is lazy create-on-first-use with the re-read INSIDE the per-key serialised write section; that re-read is what makes concurrent first use one durable value (mutation-proved: removing it turns the concurrent case red), and a read-back mismatch reports SETTING_INSTALL_SECRET_UNVERIFIED rather than adopting the divergent value.
 - [Phase 2]: 02-04: Setting.ts ships with its real consumer — readInstallSecret is passed straight into createKeyVault with no adapter module, and the composed case in Setting.test.ts round-trips a synthetic credential and fails the vault closed when the secret is unreadable (closes 02-03's D5 human-judgment item).
 - [Phase 2]: 02-04: Setting.ts's canonical-base64 helpers stay local rather than importing EncryptedStorage, because the envelope codec would drag zod and the crypto graph into the storage module's import graph; the fail-closed rule (canonical base64 of exactly 32 bytes, never regenerated over) is restated there.
+- [Phase 2]: ErrorStore owns the canonical ErrorRecord shape (id/code/occurredAt/attempts/resolved/resolution/context) and NowPilotDB imports it type-only — the DB schema and the record schema cannot drift; the FIFO bound is enforced inside the insert transaction, not by a later sweep.
+- [Phase 2]: The legacy migration is forward-only and resumable: runJournaled's terminal rolled-back is deliberately overridden to applying so the next start resumes from the completed stages; every step's rollback is a no-op because a partial destination is repaired by replaying idempotent upserts, never by deleting destination records.
+- [Phase 2]: A quarantined legacy record blocks source sanitisation: the valid conversations still migrate, the run fails at source-sanitised with destination-verified retained, and the source stays byte-identical — discarding unrecoverable data needs the operator checkpoint D2-13 names and Phase 2 does not take it.
+- [Phase 2]: projectNpStoreV3 + NP_STORE_V3_FIELDS own the surviving np_store field set (config/prompts/writeHistory/notes) so 02-08's npStoreMigrate imports it instead of restating the list; the conversation index is written to np_conversation_meta with status active and the LRU caps stay Phase 8's (OQ-5).
 
 ### Pending Todos
 
@@ -246,6 +251,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-23T23:51:13.350Z
-Stopped at: Completed 02-04-PLAN.md
+Last session: 2026-09-24T00:09:29.959Z
+Stopped at: Completed 02-05-PLAN.md
 Resume file: None
