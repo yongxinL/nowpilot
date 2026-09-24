@@ -2,16 +2,18 @@
 phase: "2"
 slug: "storage-security-writejournal-workspace-persistence"
 # status lifecycle: draft (seeded by plan-phase) → validated (set by validate-phase §6).
-# Observed state at 02-13 (2026-09-24): the map was green at 02-13 execution time, but
-# the `verify:phase-1` row was later observed red on re-run — the over-broad Phase-1
-# substring gate counted the doc comment at src/core/security/KeyVault.ts:33 as a call
-# site (02-VERIFICATION.md gap 1). `nyquist_compliant` is therefore honestly `false`
-# until plan 02-14 Task 3 re-runs both phase gates from one code state and restores it
-# to `true`. `status` stays `draft` because the declared lifecycle reserves `validated`
-# for validate-phase §6; the Manual-Only 400 px backstop row remains outstanding
+# Fresh observation (plan 02-14 Task 3, 2026-09-24): both phase gates were re-run from one
+# code state at evidence SHA 23db27a3 — `pnpm run verify:phase-1` exit 0 (15 declared paths
+# resolve; 59 files / 886 tests) and `pnpm run verify:phase-2` exit 0 (24 declared paths
+# resolve; 29 files / 490 tests after `pnpm run build:ext`) — so `nyquist_compliant` is
+# restored to `true`. The 02-13 row's `verify:phase-1` claim was corrected by this plan: the
+# over-broad Phase-1 substring gate was replaced by the scope-aware credential-boundary gate
+# (`tests/isolation/credential-boundary.test.ts`), and the superseding observation is in
+# `02-14-SUMMARY.md`. `status` stays `draft` because the declared lifecycle reserves
+# `validated` for validate-phase §6; the Manual-Only 400 px backstop row remains outstanding
 # (routed to the Phase 15 consolidated Real-Chrome cycle), and no window changes status.
 status: draft
-nyquist_compliant: false
+nyquist_compliant: true
 wave_0_complete: true
 created: "2026-09-23"
 executed: "2026-09-24"
@@ -64,7 +66,8 @@ No coverage provider is installed; no snapshot tests exist; no jest-dom matchers
 | 02-06 T2 | 02-06 | 3 | CORE-02 / SC-4 | T-02-35…37 | Writer election: initial assignment; epoch generation; CAS success; CAS conflict; stale-writer rejection; heartbeat renewal; heartbeat expiry; one-surface closure; failed handoff retains the writer; successful handoff changes authority only after persistence+ack; mirror-state activation | unit + integration | `npx vitest run tests/core/workspace/WriterElection.test.ts` | ✅ | ✅ green — 22 passed (observed 2026-09-24) |
 | 02-11 T1, 02-11 T2 | 02-11 | 6 | CORE-02 / D2-31 | T-02-57…62 | Suite A — WINDOWS #5 handoff contract: 22 named clauses over the shared harness | integration | `npx vitest run tests/integration/workspaceHandoff.integration.test.ts` | ✅ | ✅ green — 23 passed (22 clause cases + the D2-33 chat-identity case; observed 2026-09-24) |
 | 02-12 T1 | 02-12 | 7 | CORE-02 / D2-32 | T-02-63…67 | Suite B — WINDOWS #8 onboarding contract: 22 named clauses incl. all secret-absence assertions | integration | `npx vitest run tests/integration/onboardingTwoSurface.integration.test.ts` | ✅ | ✅ green — 24 passed (22 clause cases + traceability + the D2-33 vault-boundary case; observed 2026-09-24) |
-| 02-13 T1, 02-13 T2 | 02-13 | 8 | CORE-02 / D2-28 | T-02-68…70 | Gate composition + self-derived path preflight; manifest carries `unlimitedStorage`; no Phase-1 gate regression | gate | `pnpm run verify:phase-2` | ✅ | ❌ superseded — observed green at 02-13 execution (2026-09-24T03:08Z): 22 declared paths resolve, 25 files / 441 tests after `pnpm run build:ext`, `verify:phase-1` 55 files / 835 tests in the same run, preflight teeth observed (misspelled path → exit 1 naming it, restore → green); the row's "no Phase-1 gate regression" clause was later observed FALSE on re-run (`verify:phase-1` exit 1 — `02-VERIFICATION.md` gap 1). Resolution: plan 02-14 replaced the over-broad Phase-1 substring rule with the credential-boundary gate; the fresh re-run lives in `02-14-SUMMARY.md` |
+| 02-13 T1, 02-13 T2 | 02-13 | 8 | CORE-02 / D2-28 | T-02-68…70 | Gate composition + self-derived path preflight; manifest carries `unlimitedStorage`; no Phase-1 gate regression | gate | `pnpm run verify:phase-2` | ✅ | ❌ superseded — observed green at 02-13 execution (2026-09-24T03:08Z): 22 declared paths resolve, 25 files / 441 tests after `pnpm run build:ext`, `verify:phase-1` 55 files / 835 tests in the same run, preflight teeth observed (misspelled path → exit 1 naming it, restore → green); the row's "no Phase-1 gate regression" clause was later observed FALSE on re-run (`verify:phase-1` exit 1 — `02-VERIFICATION.md` gap 1). Resolution: plan 02-14 replaced the over-broad Phase-1 substring rule with the credential-boundary gate; the superseding observation (both gates green from one code state, evidence SHA `23db27a3`) is recorded in `02-14-SUMMARY.md` |
+| 02-14 T1, 02-14 T2, 02-14 T3 | 02-14 | 9 | CORE-02 | T-02-71…76 | Credential-boundary gate: a scope-aware, comment-stripped, import-resolution predicate over `src/` — prohibited scopes cannot reach `CredentialStorePort`/`KeyVault`/`EncryptedStorage`, no `src/` file imports the port outside its declaration module, no persisted shape declares a credential-named field, no credential-named value enters a persistence call from a prohibited scope; 8 negative and 5 positive controls plus the real-tree assertion; the superseded Phase-1 substring case restated | gate + isolation | `pnpm run verify:phase-1` and `pnpm run verify:phase-2` | ✅ | ✅ green — `tests/isolation/credential-boundary.test.ts` (18 cases) is collected by both gates through the `tests/isolation` token; `verify:phase-1` exit 0 (15 declared paths resolve; 59 files / 886 tests) and `verify:phase-2` exit 0 (24 declared paths resolve; 29 files / 490 tests after `pnpm run build:ext`) from one code state at evidence SHA `23db27a3`; two real-tree red observations recorded and reverted (control (a) onboarding import → exit 1; control (f) misspelled path → exit 1); observed 2026-09-24 |
 | 02-01 T3 | 02-01 | 1 | CORE-02 / §16.4 | T-02-01…04 | Manifest: exactly the authorised permission set including `unlimitedStorage`; CSP unchanged; no `content_scripts` key | build-inspection | `npx vitest run tests/isolation/generated-manifest.test.ts` (after `pnpm run build:ext`) | ✅ | ✅ green — 10 passed (observed 2026-09-24) |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
@@ -181,6 +184,6 @@ The suite's traceability case (`D2-32.23 traceability — the suite declares exa
 - [x] Wave 0 covers all MISSING references
 - [x] No watch-mode flags
 - [x] Feedback latency < 30s
-- [ ] `nyquist_compliant` set `false` in frontmatter pending plan 02-14 Task 3's fresh re-runs; restored to `true` by that task (see the frontmatter comment)
+- [x] `nyquist_compliant: true` set in frontmatter
 
 **Approval:** Phase close observed 2026-09-24 (plan 02-13) — `pnpm run build:ext` then `pnpm run verify:phase-2` green (25 files / 441 tests), `pnpm run verify:phase-1` green (55 files / 835 tests), `scripts/verify-no-tailwind.sh` clean and the built manifest carrying exactly the four authorised permissions with `connect-src 'none'`. **Correction (plan 02-14, 2026-09-24):** the `verify:phase-1` green claim was valid at 02-13 execution but was observed stale on re-run — the Phase-1 case was a comment-blind substring scan and the review-fix doc comment at `src/core/security/KeyVault.ts:33` counted as a call site (`02-VERIFICATION.md` gap 1); it is replaced by the fresh observations in `02-14-SUMMARY.md`. The Manual-Only 400 px backstop row stays outstanding (Phase 15 cycle); `status: validated` remains with `/gsd-validate-phase` per the declared lifecycle; WINDOWS #5, #7 and #8 stay `open`.
