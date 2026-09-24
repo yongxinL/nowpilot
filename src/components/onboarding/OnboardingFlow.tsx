@@ -389,6 +389,18 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
           }
         />
       </div>
+      {/* D2-02 / 02-UI-SPEC § Phase 2 UI Surface Contracts item 3: the
+          capability statement. It is a statement, not an affordance — no
+          action, no link, no dismiss control — and deliberately not a
+          `DeferredNotice`: it carries no marker attribute and reuses no
+          `deferred.*` copy. It never reflects the field's value, its length,
+          whether it is populated, or whether anything was stored. */}
+      <Alert
+        type="info"
+        showIcon
+        data-testid="onboarding-credential-capability"
+        title={t('storage.credentialCapability')}
+      />
       {stepFooter({ back: 2, next: 4, nextDisabled: credential.trim().length === 0 })}
     </>
   );

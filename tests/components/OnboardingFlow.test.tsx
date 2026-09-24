@@ -478,6 +478,101 @@ describe('OnboardingFlow — exits', () => {
   });
 });
 
+describe('OnboardingFlow — credential capability notice (D2-02, plan 02-10)', () => {
+  const capability = () => screen.queryByTestId('onboarding-credential-capability');
+
+  it('renders the capability statement on step 3 and on no other step', async () => {
+    renderWithAntd(<OnboardingFlow {...baseProps()} />);
+
+    expect(capability()).toBeNull();
+
+    fireEvent.click(screen.getByTestId('onboarding-continue'));
+    expect(capability()).toBeNull();
+
+    await selectProvider(t('provider.name.openai'));
+    fireEvent.click(screen.getByTestId('onboarding-continue'));
+    expect(capability()).not.toBeNull();
+
+    fireEvent.change(credentialInput(), { target: { value: SENTINEL } });
+    fireEvent.click(screen.getByTestId('onboarding-continue'));
+    expect(capability()).toBeNull();
+  });
+
+  it('renders the approved sentence verbatim — no paraphrase, no second sentence', async () => {
+    renderWithAntd(<OnboardingFlow {...baseProps()} />);
+    await advanceTo(3);
+
+    expect(capability()!.textContent).toBe(t('storage.credentialCapability'));
+  });
+
+  it('is a statement, not an affordance: no action, link or dismiss control', async () => {
+    renderWithAntd(<OnboardingFlow {...baseProps()} />);
+    await advanceTo(3);
+
+    const notice = capability()!;
+    expect(notice.querySelector('button')).toBeNull();
+    expect(notice.querySelector('a')).toBeNull();
+    expect(notice.querySelector('[role="button"]')).toBeNull();
+    expect(notice.querySelector('.ant-alert-close-icon')).toBeNull();
+    expect(notice.querySelector('.ant-alert-action')).toBeNull();
+  });
+
+  it('is not a DeferredNotice: no marker attribute and no deferred copy', async () => {
+    renderWithAntd(<OnboardingFlow {...baseProps()} />);
+    await advanceTo(3);
+
+    const notice = capability()!;
+    expect(notice.getAttribute('data-np-backing')).toBeNull();
+    expect(notice.querySelector('[data-np-backing]')).toBeNull();
+    expect(notice.textContent).not.toContain(t('deferred.reasonDeferred'));
+    expect(notice.textContent).not.toContain(t('deferred.reasonFixture'));
+    expect(notice.textContent).not.toContain(t('deferred.tag'));
+  });
+
+  it('never reflects the credential field: a sentinel changes nothing in the notice', async () => {
+    renderWithAntd(<OnboardingFlow {...baseProps()} />);
+    await advanceTo(3);
+
+    const before = capability()!.outerHTML;
+    fireEvent.change(credentialInput(), { target: { value: SENTINEL } });
+
+    expect(capability()!.outerHTML).toBe(before);
+    expect(capability()!.textContent).not.toContain(SENTINEL);
+    // Neither the length nor a masked fragment of the value.
+    expect(capability()!.textContent).not.toContain(String(SENTINEL.length));
+  });
+
+  it('never renders a forbidden success claim at any step', async () => {
+    const forbidden = [
+      'Credential stored',
+      'Provider connected',
+      'Provider validated',
+      'Provider ready',
+    ];
+    const assertClean = (label: string) => {
+      const rendered = document.body.textContent ?? '';
+      for (const claim of forbidden) {
+        expect(rendered, `${label}: ${claim}`).not.toContain(claim);
+      }
+    };
+
+    renderWithAntd(<OnboardingFlow {...baseProps()} />);
+
+    assertClean('step 1');
+    fireEvent.click(screen.getByTestId('onboarding-continue'));
+    assertClean('step 2');
+    await selectProvider(t('provider.name.openai'));
+    fireEvent.click(screen.getByTestId('onboarding-continue'));
+    assertClean('step 3');
+    fireEvent.change(credentialInput(), { target: { value: SENTINEL } });
+    fireEvent.click(screen.getByTestId('onboarding-continue'));
+    assertClean('step 4 (idle)');
+    fireEvent.click(screen.getByTestId('onboarding-validate'));
+    await screen.findByTestId('onboarding-success');
+    assertClean('step 4 (success fixture)');
+  });
+});
+
 describe('OnboardingFlow — focus management', () => {
   it('lands focus on the step’s first control on every step change', async () => {
     renderWithAntd(<OnboardingFlow {...baseProps()} />);
