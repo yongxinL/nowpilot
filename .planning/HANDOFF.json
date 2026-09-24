@@ -1,0 +1,53 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-09-24T11:58:22.878Z",
+  "phase": "2",
+  "phase_name": "Storage, Security, WriteJournal, Workspace Persistence",
+  "phase_dir": ".planning/phases/02-storage-security-writejournal-workspace-persistence",
+  "plan": 14,
+  "task": 4,
+  "total_tasks": 4,
+  "status": "phase_complete_between_phases",
+  "completed_tasks": [
+    {"id": "02-01", "name": "Wave 0: idb/fake-indexeddb, test seams, unlimitedStorage + manifest gate", "status": "done", "commit": "6a34ab8f"},
+    {"id": "02-02", "name": "Storage spine: np_db + migrator + ChatHistoryDB + WriteJournal (TRACER)", "status": "done", "commit": "1d6a3550"},
+    {"id": "02-03", "name": "Credential vault crypto core: EncryptedStorage + KeyVault + redactSensitive", "status": "done", "commit": "dbde9e23"},
+    {"id": "02-04", "name": "CredentialStorePort contract + Setting/install secret", "status": "done", "commit": "789be55b"},
+    {"id": "02-05", "name": "ErrorStore + legacy np_store → ChatHistoryDB migration", "status": "done", "commit": "35d25458"},
+    {"id": "02-06", "name": "Workspace persistence + writer election (CAS/heartbeat/stale rejection)", "status": "done", "commit": "53a160bc"},
+    {"id": "02-07", "name": "Election-backed writer state + MirrorBanner + onboarding controller + strings", "status": "done", "commit": "39edf9ad"},
+    {"id": "02-08", "name": "np_store v3 cutover + async hydration states", "status": "done", "commit": "7d9a57d7"},
+    {"id": "02-09", "name": "Hydration states in shells + MirrorBanner mount/refocus", "status": "done", "commit": "279d915c"},
+    {"id": "02-10", "name": "Surface startup (election applied, recoverJournal wired) + notices + capability notice", "status": "done", "commit": "8b102ede"},
+    {"id": "02-11", "name": "Two-surface harness + Suite A (WINDOWS #5)", "status": "done", "commit": "043c8d12"},
+    {"id": "02-12", "name": "Suite B (WINDOWS #8) + D2-35 traceability", "status": "done", "commit": "8d34b67d"},
+    {"id": "02-13", "name": "Corrected verify:phase-2 + final gate evidence + D2-29/D2-05 records", "status": "done", "commit": "417454fe"},
+    {"id": "02-14", "name": "Gap closure: credential-boundary gate, stale-claim correction, fresh gates, CR-01/CR-02 disposition", "status": "done", "commit": "76038e4d"},
+    {"id": "review-fix-1", "name": "Code review fixes: CR-01 write guard, CR-02 workspace runtime, WR-01..03", "status": "done", "commit": "76d7bd7f"},
+    {"id": "review-fix-2", "name": "Residual fixes: WR-04 signal-after-flush, WR-05 gate wiring, WR-06 total failure path, IN-07/08", "status": "done", "commit": "71b78c89"},
+    {"id": "phase-complete", "name": "Phase 2 marked complete (14/14 plans, verification passed, fingerprint refreshed)", "status": "done", "commit": "5cd2b413"}
+  ],
+  "remaining_tasks": [
+    {"id": "phase-3", "name": "Phase 3 — Cost-Effective AI Runtime (+ Persona seed): discuss → plan → execute", "status": "not_started"},
+    {"id": "phase-4..19", "name": "Remaining milestone v0.2 phases in §18 order", "status": "not_started"}
+  ],
+  "blockers": [],
+  "async_jobs": [],
+  "human_actions_pending": [
+    {"action": "Phase 15 consolidated Real-Chrome acceptance cycle (WINDOWS #5, #7, #8, #27: handoff, onboarding 400px, two-live-surface, MirrorBanner/notice 400px)", "context": "Operator-deferred frontend observations; recorded in .planning/STATE.md § Verification Deferrals", "blocking": false},
+    {"action": "Phase 19 release gate must fail while WINDOWS #5/#7/#8/#25/#26/#27 remain open", "context": "Release-readiness gate; #26 (CR-01 metadata re-persist) has owner Phase 19 release-hardening", "blocking": false}
+  ],
+  "decisions": [
+    {"decision": "Worktree isolation disabled for this project: workflow.use_worktrees=false", "rationale": "opencode resolves orchestrator-worktree but provides no headless exec descriptor; sequential execution on the main tree is the supported safe path (committed in 59474ebd)", "phase": "2"},
+    {"decision": "Credential vault wiring is API-only in Phase 2; Phase 3 owns the production re-entry flow (validation-before-persistence)", "rationale": "D2-01/D2-04/D2-05: a fixture-backed success must never store a real credential", "phase": "2"},
+    {"decision": "Requester + RateLimiter deferred to Phase 3; verify:phase-2 corrected to live suites", "rationale": "D2-26/D2-28/D2-29: no production network in Phase 2; the §18 Create-list entry is a stale trace", "phase": "2"},
+    {"decision": "CR-02 accepted as designed under D2-34 (single-writer promotion semantics; not a defect, not waived)", "rationale": "Operator disposition at the 02-14 blocking-human checkpoint", "phase": "2"},
+    {"decision": "CR-01 acknowledged and scheduled as WINDOWS #26 (re-persist non-chat metadata projection after source-sanitised)", "rationale": "Operator disposition; 10 acceptance criteria recorded; owner Phase 19 release-hardening; not fixed, not waived", "phase": "2"},
+    {"decision": "The two 400px UI backstops deferred to Phase 15 as WINDOWS #27", "rationale": "jsdom cannot observe layout; Phase 2 evidence is deterministic-only (D2-20)", "phase": "2"}
+  ],
+  "uncommitted_files": [
+    "?? .gsd/"
+  ],
+  "next_action": "Run /gsd-autonomous --from 3 (or /gsd-discuss-phase 3). Phase 3 is 'Cost-Effective AI Runtime (+ Persona seed)' and inherits the recorded Phase 3 constraints: Requester/RateLimiter (D2-26/D2-27), the D2-29 documentation follow-up (owner: Phase 3 planner), and D2-05 credential re-entry with validation-before-persistence. Read .planning/phases/02-.../02-CONTEXT.md D2-01…D2-35 before planning.",
+  "context_notes": "Phase 2 completed end-to-end in one autonomous --only 2 run: interactive discuss (35 locked decisions), UI-SPEC (approved 7/7), research + pattern map + VALIDATION, 13 plans (2 planner-revision rounds + traceability citations), all 8 waves executed sequentially, code review (2 Critical + 3 Warning) fixed over two iterations with red/green evidence, verification (119/122, 0 failed), one gap-closure plan (02-14) that corrected an over-broad Phase-1 substring gate into an import/usage-based credential-boundary gate with 8 negative + 5 positive controls, and final phase completion with the fingerprint refreshed after completion bookkeeping. Authoritative records: ROADMAP shows Phases 1–2 [x]; STATE.md current_phase 3, progress 2/19 (11%), 27/27 plans. WINDOWS ledger: 20 open / 0 waived / 7 fixed / 27 total. Note: the manager projection currently reports completed_count 1 and p1_complete false — a cosmetic projection quirk; ROADMAP + STATE are correct (2 completed)."
+}
