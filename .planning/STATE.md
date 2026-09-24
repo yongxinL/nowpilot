@@ -4,16 +4,16 @@ milestone: v0.2
 current_phase: 2
 current_phase_name: Storage, Security, WriteJournal, Workspace Persistence
 status: executing
-stopped_at: Completed 02-11-PLAN.md
-last_updated: "2026-09-24T01:57:55.446Z"
+stopped_at: Completed 02-10-PLAN.md
+last_updated: "2026-09-24T02:27:40.174Z"
 last_activity: 2026-09-24
 last_activity_desc: Phase 2 execution started
-state_head: a60e313580d0d683d02ea54f3025b947ecd045df
+state_head: 5b6573184d3fe48625036dbf917b97d1f5079518
 progress:
   total_phases: 19
   completed_phases: 1
   total_plans: 26
-  completed_plans: 23
+  completed_plans: 24
 ---
 
 # Project State
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-09-23)
 ## Current Position
 
 Phase: 2 (Storage, Security, WriteJournal, Workspace Persistence) — EXECUTING
-Plan: 11 of 13
+Plan: 12 of 13
 Status: Ready to execute
 Last activity: 2026-09-24 — Phase 2 execution started
 
@@ -81,6 +81,7 @@ Progress: [█░░░░░░░░░] 5%
 | Phase 02 P08 | 24 min | 2 tasks | 3 files |
 | Phase 02 P09 | 10 min | 2 tasks | 5 files |
 | Phase 02 P11 | 11 min | 2 tasks | 2 files |
+| Phase 2 P10 | 18 min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -197,6 +198,7 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 2]: 02-11: the harness navigation adapter reproduces planStandaloneTarget's query→focus/re-point vs create interaction because openStandalone binds the shipped transport with no injection point; the real buildHandoffUrl/parseHandoffUrl are used, and the tabs registry's first tab carries the Standalone surface identity so the document's tab id and the election tabId agree.
 - [Phase 2]: 02-11: restartSurface is a graceful reload (the election instance is stopped and recreated with the same identity); the non-graceful path — a record left behind to go stale — is clause 21's takeover by not heartbeating and advancing three intervals.
 - [Phase 2]: 02-11: crashDuring is a dropped message (dropNext now takes a count), not a thrown exception — the only shape in which 'crash between handoff stages' is observable without breaking the controller's own error contract; Suite A clause 12 scans six surfaces for the synthetic sentinel with the stand-in still holding it as the positive control.
+- [Phase 2]: 02-10: the surface startup sequence applies the election's own coordinationState() to the writer projection on every election (heartbeat and refocus), so the banner and the onboarding gate finally react to authoritative state; the heartbeat is the surface's interval because the election module's internal timer reports no outcome.
 
 ### Pending Todos
 
@@ -278,6 +280,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-24T01:57:55.393Z
-Stopped at: Completed 02-11-PLAN.md
+Last session: 2026-09-24T02:27:40.116Z
+Stopped at: Completed 02-10-PLAN.md
 Resume file: None

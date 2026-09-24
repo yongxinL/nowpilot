@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 17
+open_count: 18
 waived_count: 0
 fixed_count: 7
-total_count: 24
-last_updated: 2026-09-24T00:29:53.210Z
+total_count: 25
+last_updated: 2026-09-24T02:22:06.387Z
 ---
 
 # Broken Windows Ledger
@@ -39,6 +39,7 @@ last_updated: 2026-09-24T00:29:53.210Z
 | 22 | 01 | unrun-verify |  |  | VERIFICATION DEFERRAL (operator decision 2026-09-23): WINDOWS #5, #7 and #8 are formally deferred — not passed, not fixed, not waived; they stay open and must be re-checked at the Phase 19 release gate. #5/#8: Phase 2 owns automated contract/integration coverage (handoff persistence, cold-target readiness, ready/transfer/ack protocol, writer election, idempotency, duplicate-tab prevention, stale-writer rejection, failure recovery, draft preservation, safe handoff projection; onboarding single active controller, non-secret completion persistence, cross-surface completion sync, no API-key broadcast, no API-key persistence outside KeyVault, duplicate-event prevention, schema migration and recovery); Phase 15 owns final Real-Chrome UI acceptance and closure. #7: Phase 15 owns the 400 px onboarding observation (unchanged). Rationale: the Phase-1 frontend is fixture-backed, deferred and incomplete, so detailed frontend acceptance now would be obsolete once storage, workspace, provider, Notes and Options functionality lands; the consolidated Real-Chrome review runs after the backend/integration phases. This entry stays open until #5, #7 and #8 close. | open |  | 2026-09-23T10:38:45.085Z |  |
 | 23 | 2 | deviation | src/core/storage/WriteJournal.ts |  | compactJournal() and recoverJournal() are implemented and unit-proved in 02-02 but no Phase 2 plan names their production call site: 02-08 hydrates and 'resumes the legacy migration' without naming a recovery call, and nothing calls compactJournal. The journal's bounded/replay contract therefore has no wired owner yet. | open |  | 2026-09-23T23:10:06.769Z |  |
 | 24 | 02 | deviation | tests/core/workspace/WorkspaceStore.test.ts |  | 02-06 Rule 3 deviation: the Phase-1 source-scan guard in WorkspaceStore.test.ts ("no Phase-1 module names a workspace storage key for writing") allowed only lines containing np_workspace followed by a quote, so the plan-mandated Phase 2 constant PRIMARY_RECORD_KEY = 'np_workspace_primary' in src/core/workspace/WriterElection.ts tripped it. The guard now admits the two canonical §15.1 key literals ('np_workspace', 'np_workspace_primary') while still failing an unquoted, ad-hoc or misspelled key name. The phase acceptance review should ratify the loosened Phase-1 gate. | open |  | 2026-09-24T00:29:53.210Z |  |
+| 25 | 2 | deviation | src/entrypoints/sidepanel/main.tsx |  | 02-10 scope record for WINDOWS #23: recoverJournal() now has a production call site reachable from both surface roots — the startup sequence calls useExtensionStore.hydrateChatHistory(), whose 02-08 entry point runs defaultRecoverJournal() (D2-17 step 2), and both entrypoints now run that sequence. compactJournal() still has no production caller: journal compaction is a service-level operation with no Phase-2 UI affordance (02-UI-SPEC § Destructive confirmation), so the row stays open for the plan that owns journal retention. | open |  | 2026-09-24T02:22:06.387Z |  |
 
 ````json
 [
@@ -351,6 +352,19 @@ last_updated: 2026-09-24T00:29:53.210Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-09-24T00:29:53.210Z",
+    "resolved_at": null,
+    "milestone": "v0.2"
+  },
+  {
+    "id": 25,
+    "kind": "deviation",
+    "phase": "2",
+    "file": "src/entrypoints/sidepanel/main.tsx",
+    "line": null,
+    "description": "02-10 scope record for WINDOWS #23: recoverJournal() now has a production call site reachable from both surface roots — the startup sequence calls useExtensionStore.hydrateChatHistory(), whose 02-08 entry point runs defaultRecoverJournal() (D2-17 step 2), and both entrypoints now run that sequence. compactJournal() still has no production caller: journal compaction is a service-level operation with no Phase-2 UI affordance (02-UI-SPEC § Destructive confirmation), so the row stays open for the plan that owns journal retention.",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-09-24T02:22:06.387Z",
     "resolved_at": null,
     "milestone": "v0.2"
   }
