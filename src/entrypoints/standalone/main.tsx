@@ -25,6 +25,14 @@ import { KeymapRegistry } from '../../core/input/KeymapRegistry';
 import { t } from '../../core/i18n/strings';
 import { debugLog } from '../../core/log/debugLog';
 import { openOptions } from '../../core/workspace/WorkspaceRouter';
+import { useWorkspaceStore } from '../../core/workspace/WorkspaceStore';
+import {
+  HEARTBEAT_MS,
+  createWriterElection,
+  setActiveWriterElection,
+  type WriterElection,
+} from '../../core/workspace/WriterElection';
+import { useExtensionStore } from '../../store/useExtensionStore';
 import '../../index.css';
 
 const handleOpenOptions = () => {
@@ -36,6 +44,112 @@ const handleOpenOptions = () => {
  * 3 swaps this one argument for the real implementation.
  */
 const onboardingValidationPort = createFixtureValidationPort('success');
+
+/**
+ * The pinned AntD imperative-API configuration (01-UI-SPEC § Toast /
+ * notification configuration; wired by plan `02-10`).
+ *
+ * antd v6 exposes no `config` method on the `App.useApp()` instances, so the
+ * pinned values are applied through the `App` config props — which configure
+ * exactly those instances — instead of the forbidden static `message.*` /
+ * `notification.*` imports. Module constants, not inline literals: a fresh
+ * object on every render would rebuild the app-scoped API on every render.
+ */
+const ANT_MESSAGE_CONFIG = { maxCount: 3, duration: 5 };
+const ANT_NOTIFICATION_CONFIG = { duration: 0 };
+
+/** This surface's identity in the election record (§15.1). */
+const SURFACE = 'standalone' as const;
+
+/** The tab id the election falls back to when the platform cannot answer. */
+const UNKNOWN_TAB_ID = -1;
+
+/**
+ * This document's own tab id: the Standalone view **is** a tab, so its identity
+ * is the tab id the browser assigned it (the same call the focus-existing-tab
+ * path above already issues).
+ */
+function resolveSelfTabId(): Promise<number> {
+  return new Promise((resolve) => {
+    const tabs = chrome?.tabs;
+    if (!tabs?.getCurrent) {
+      resolve(UNKNOWN_TAB_ID);
+      return;
+    }
+    tabs.getCurrent((tab) => resolve(tab?.id ?? UNKNOWN_TAB_ID));
+  });
+}
+
+/**
+ * This surface's writer election, with every authoritative outcome published to
+ * the writer projection.
+ *
+ * Both paths that elect — the `MirrorBanner` refocus action (through the
+ * registry) and this surface's heartbeat — must reach `useWorkspaceStore`, or
+ * the banner and the onboarding gate would never react to a promotion the
+ * election actually granted (02-07's D6 carry-forward). `coordinationState()`
+ * is the election's own canonical projection, so nothing here re-derives an
+ * outcome.
+ */
+function createSurfaceElection(tabId: number): WriterElection {
+  const election = createWriterElection({ surface: SURFACE, tabId });
+  return {
+    ...election,
+    elect: async () => {
+      const outcome = await election.elect();
+      useWorkspaceStore.getState().applyElectionOutcome(election.coordinationState());
+      return outcome;
+    },
+  };
+}
+
+/** The D2-17 read path, the writer election and its heartbeat, once per mount. */
+function usePhase2Startup(): void {
+  useEffect(() => {
+    let disposed = false;
+    let heartbeat: ReturnType<typeof setInterval> | null = null;
+    let election: WriterElection | null = null;
+
+    const start = async (): Promise<void> => {
+      // 1. Hydrate (02-08 runs the whole D2-17 order: initialise the database,
+      //    recover the journal, run or resume the migration, read the
+      //    conversations). The store's in-flight guard joins a double-invoked
+      //    mount instead of starting a second read.
+      await useExtensionStore.getState().hydrateChatHistory();
+      if (disposed) return;
+
+      // 2. Elect this surface's writer and register it, so a refocus request
+      //    from the shell can reach it with no prop chain.
+      election = createSurfaceElection(await resolveSelfTabId());
+      if (disposed) {
+        election.stop();
+        election = null;
+        return;
+      }
+      setActiveWriterElection(election);
+
+      // 3. The first election, applied before the heartbeat starts.
+      await election.elect();
+      if (disposed) return;
+
+      // 4. The heartbeat is also the promotion path: a secondary keeps probing
+      //    and promotes itself once the record goes stale. It runs at the
+      //    election's own interval so both paths report through one projection.
+      heartbeat = setInterval(() => {
+        void election?.elect();
+      }, HEARTBEAT_MS);
+    };
+
+    void start();
+
+    return () => {
+      disposed = true;
+      if (heartbeat !== null) clearInterval(heartbeat);
+      setActiveWriterElection(null);
+      election?.stop();
+    };
+  }, []);
+}
 
 export type SidePanelOpenFailureCode =
   | 'SIDE_PANEL_UNAVAILABLE'
@@ -123,6 +237,9 @@ const focusStandaloneSurface = (): void => {
 const StandaloneSurface: React.FC = () => {
   const { message: antMessage } = AntdApp.useApp();
   const [paletteOpen, setPaletteOpen] = useState(false);
+  // 02-10: the phase's runtime — hydration, the writer election and its
+  // heartbeat — runs once per surface mount and is torn down with it.
+  usePhase2Startup();
   // D-06: the Standalone surface presents the same flow when it is the surface
   // the user opened — it is never redirected to the Side Panel.
   const onboardingGate = useOnboardingGate();
@@ -227,7 +344,12 @@ const StandaloneRoot: React.FC = () => {
 
   return (
     <XProvider {...config}>
-      <AntdApp style={{ height: '100vh', width: '100vw', overflow: 'hidden' }}>
+      <AntdApp
+        // 02-10: the pinned configuration Phase 1 declared but never applied.
+        message={ANT_MESSAGE_CONFIG}
+        notification={ANT_NOTIFICATION_CONFIG}
+        style={{ height: '100vh', width: '100vw', overflow: 'hidden' }}
+      >
         <ErrorBoundary>
           <StandaloneSurface />
         </ErrorBoundary>
