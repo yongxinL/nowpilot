@@ -378,9 +378,12 @@ describe('useExtensionStore — the np_store v3 projection is body-free (D2-08)'
     expect(PERSISTED_BLOB_FIELDS).toEqual(['config', 'prompts', 'writeHistory', 'notes']);
   });
 
-  // T-02-41: the body leaves `chrome.storage.local` at the migration boundary.
-  // The stored blob is read from the storage map, not from the store's memory.
-  it('a synthetic body in the stored v2 blob does not survive the v3 migration', async () => {
+  // T-02-41 / CR-01: the body leaves `chrome.storage.local` at the migration
+  // boundary — never earlier. The store's hydration takes the `migrate` branch
+  // and computes the body-free v3 projection, but replacing the stored source
+  // with it would destroy bodies the migration has not read yet, so the guarded
+  // storage holds that write back (`npStoreWriteGuard.ts`).
+  it('the v3 projection is never written over an un-migrated legacy source (CR-01)', async () => {
     await flushPendingWrites();
     const previous = storageMap().get('np_store');
     const legacyBlob = JSON.stringify({
@@ -401,28 +404,24 @@ describe('useExtensionStore — the np_store v3 projection is body-free (D2-08)'
       },
       version: 2,
     });
-    expect(legacyBlob).toContain(BODY);
     storageMap().set('np_store', legacyBlob);
 
     try {
       await useExtensionStore.persist.rehydrate();
       await flushPendingWrites();
 
-      const stored = storageMap().get('np_store') ?? '';
+      // The in-memory projection really is body-free (non-vacuity: the migrate
+      // branch ran and `partialize` cannot carry the body).
+      const partialize = useExtensionStore.persist.getOptions().partialize;
+      const projected = JSON.stringify(partialize?.(useExtensionStore.getState()) ?? {});
       for (const fragment of BODY_FRAGMENTS) {
-        expect(stored, `stored blob must not carry "${fragment}"`).not.toContain(fragment);
+        expect(projected).not.toContain(fragment);
       }
-      expect(stored).not.toContain('sessions');
-      expect(stored).not.toContain('preview');
 
-      const persisted = JSON.parse(stored) as { state: Record<string, unknown>; version: number };
-      expect(persisted.version).toBe(3);
-      expect(Object.keys(persisted.state).sort()).toEqual([
-        'config',
-        'notes',
-        'prompts',
-        'writeHistory',
-      ]);
+      // The stored source is byte-identical: the write-back was held back, so
+      // the migration can still discover the legacy bodies.
+      expect(storageMap().get('np_store')).toBe(legacyBlob);
+      expect(storageMap().get('np_store')).toContain(BODY);
     } finally {
       if (previous === undefined) storageMap().delete('np_store');
       else storageMap().set('np_store', previous);
@@ -711,6 +710,72 @@ describe('useExtensionStore — the asynchronous hydration contract (D2-17/D2-18
     expect(logged).toContain('s-broken');
     for (const fragment of BODY_FRAGMENTS) {
       expect(logged, `logs must not carry "${fragment}"`).not.toContain(fragment);
+    }
+  });
+
+  // CR-01 regression: the *real* startup order. The store hydrates first (its
+  // `migrate` branch computes the body-free v3 projection and would write it
+  // back), then `hydrateChatHistory()` runs the D2-17 read path. The legacy body
+  // must reach ChatHistoryDB and only then leave `np_store`.
+  it('the real startup order migrates the legacy body into ChatHistoryDB before np_store is sanitised', async () => {
+    await flushPendingWrites();
+    const previous = storageMap().get('np_store');
+    const legacyBlob = JSON.stringify({
+      state: {
+        config: { language: 'English' },
+        sessions: [
+          {
+            id: 's1',
+            title: 'Legacy conversation',
+            preview: BODY.slice(0, 20),
+            messages: [{ id: 'm1', role: 'user', content: BODY, timestamp: 1 }],
+          },
+        ],
+        activeSessionId: 's1',
+        prompts: [],
+        writeHistory: [],
+        notes: [],
+      },
+      version: 2,
+    });
+    expect(legacyBlob).toContain(BODY);
+    storageMap().set('np_store', legacyBlob);
+
+    try {
+      // 1. The store's hydration: the migrate branch ran, but the guarded write
+      //    was held back, so the migration's source read is still safe.
+      await useExtensionStore.persist.rehydrate();
+      await flushPendingWrites();
+      expect(storageMap().get('np_store')).toContain(BODY);
+      expect((JSON.parse(storageMap().get('np_store') as string) as { version: number }).version).toBe(2);
+
+      // 2. The production read path, in order: database, journal, migration,
+      //    destination read (the real seams, no stubs).
+      const status = await useExtensionStore.getState().hydrateChatHistory();
+
+      expect(status).toBe('ready');
+      const state = useExtensionStore.getState();
+      expect(state.sessions.map((session) => session.id)).toEqual(['s1']);
+      expect(state.sessions[0].messages.map((message) => message.content)).toEqual([BODY]);
+
+      // 3. The body is durably in ChatHistoryDB...
+      const readBack = await readConversation('s1');
+      expect(readBack.ok).toBe(true);
+      if (!readBack.ok) return;
+      expect(readBack.messages.map((message) => message.content)).toEqual([BODY]);
+
+      // 4. ...and only then gone from `np_store`, which is the verified v3 blob.
+      const stored = storageMap().get('np_store') ?? '';
+      for (const fragment of BODY_FRAGMENTS) {
+        expect(stored, `sanitised blob must not carry "${fragment}"`).not.toContain(fragment);
+      }
+      expect(stored).not.toContain('sessions');
+      expect(stored).not.toContain('preview');
+      expect((JSON.parse(stored) as { version: number }).version).toBe(NP_STORE_SCHEMA_VERSION);
+    } finally {
+      await flushPendingWrites();
+      if (previous === undefined) storageMap().delete('np_store');
+      else storageMap().set('np_store', previous);
     }
   });
 

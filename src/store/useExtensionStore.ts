@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import { chromeStorageAdapter } from '../core/theme/chromeStorageAdapter';
+import { npStoreStorage } from '../core/storage/npStoreWriteGuard';
 import { debugLog } from '../core/log/debugLog';
 import { DEFAULT_PROMPTS_LIST } from '../components/options/defaultPromptsData';
 import {
@@ -838,7 +838,12 @@ export const useExtensionStore = create<ExtensionState>()(
     }),
     {
       name: 'np_store',
-      storage: createJSONStorage(() => chromeStorageAdapter),
+      // CR-01 / D2-07/D2-12: the guarded adapter, never the raw one. The
+      // store's projection is body-free, so a write that replaced a pre-v3
+      // legacy blob would destroy bodies the migration has not read yet. The
+      // guard holds that write until the migration's `source-sanitised` stage
+      // has written the verified v3 blob (`npStoreWriteGuard.ts`).
+      storage: createJSONStorage(() => npStoreStorage),
       partialize: (state) => {
         // APPR-03 / D-15 (plan `01-11`): `np_theme` is the single theme source
         // and the config carries no theme mode, no credential field and no
