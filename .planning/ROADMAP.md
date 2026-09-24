@@ -393,6 +393,7 @@ Plans:
   5. Release records include evaluation-suite and rubric versions; multimodal privacy fixtures and evolution activation/rollback drills pass.
 
 **Release gate — open verification deferrals**: WINDOWS #5, #7 and #8 (Phase 15 owns final Real-Chrome closure; Phase 2 owns automated contract coverage for #5/#8) must close with screenshot + observed-result evidence before this gate. **This gate must FAIL while any deferred verification remains open** and the release record must name each closure. See `.planning/STATE.md` § Verification Deferrals. (`workflow.windows_enforce` is `false` in this project, so this line — not the ledger counter — is the explicit release-gate block.)
+**Release gate — CR-01 follow-up (WINDOWS #26)**: the CR-01 metadata re-persist follow-up (operator disposition 2026-09-24, plan 02-14) is owned by this release-hardening phase, or by any earlier approved gap-closure or storage-hardening plan that may modify the store write guard. **This gate must FAIL while WINDOWS #26 remains unimplemented or lacks an explicit later operator decision**, and the release record must name its closure. See `.planning/WINDOWS.md` #26 and `.planning/phases/02-storage-security-writejournal-workspace-persistence/02-14-SUMMARY.md` § Operator acknowledgement.
 **Plans**: TBD
 
 ## Progress

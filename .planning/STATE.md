@@ -4,11 +4,11 @@ milestone: v0.2
 current_phase: 2
 current_phase_name: Storage, Security, WriteJournal, Workspace Persistence
 status: verifying
-stopped_at: "Paused at the 02-14 blocking-human checkpoint (CR-01/CR-02 operator disposition pending) — Tasks 1-3 complete; 02-13's stale verify:phase-1 claim was corrected by 02-14 and both phase gates re-ran green from one code state at evidence SHA 23db27a3 (verify:phase-1 59 files / 886 tests; verify:phase-2 29 files / 490 tests; verify:all 61 files / 933 tests); the credential-boundary gate is live; WINDOWS #5/#7/#8/#25 stay open"
-last_updated: "2026-09-24T06:13:27.888Z"
+stopped_at: "Plan 02-14 complete (4/4 tasks) — operator disposition recorded at the final blocking-human checkpoint (option schedule-cr01-followup, 2026-09-24): CR-02 accepted as designed under D2-34 (status accepted; severity low; no follow-up; not waived and not a defect) and CR-01 acknowledged and scheduled as WINDOWS #26 'Re-persist non-chat metadata projection after source sanitisation' (severity Medium; owner = the earliest approved gap-closure or storage-hardening plan that may modify the store write guard, defaulting to the Phase 19 release-hardening plan; expiry before v0.2 release acceptance; the Phase 19 release gate must fail while it remains unimplemented; CR-01 is not fixed and not waived); both phase gates were re-run green from one code state at evidence SHA 23db27a3 (verify:phase-1 59 files / 886 tests; verify:phase-2 29 files / 490 tests; verify:all 61 files / 933 tests); WINDOWS #5/#7/#8/#25/#26 stay open; the two 400 px UI backstops stay deferred to Phase 15; Phase 2 is ready for acceptance — do not proceed to Phase 3, do not run /gsd-ship, do not push"
+last_updated: "2026-09-24T08:24:17.000Z"
 last_activity: 2026-09-24
-last_activity_desc: Phase 2 execution started
-state_head: 1ec8062c6fcab02468a377f58f3388897baa7a77
+last_activity_desc: Phase 2 plan 02-14 complete — CR-01/CR-02 operator disposition recorded (WINDOWS #26 scheduled)
+state_head: c6af76380b78ad0268b4c75f8dc061c49df51fcd
 progress:
   total_phases: 19
   completed_phases: 1
@@ -28,9 +28,9 @@ See: .planning/PROJECT.md (updated 2026-09-23)
 ## Current Position
 
 Phase: 2 (Storage, Security, WriteJournal, Workspace Persistence) — EXECUTING
-Plan: 13 of 13
-Status: Phase complete — ready for verification
-Last activity: 2026-09-24 — Phase 2 gate green after build; phase record updated
+Plan: 14 of 14 (13 phase plans + the 02-14 gap-closure plan)
+Status: Plan 02-14 complete (4/4) — operator disposition recorded (CR-02 accepted under D2-34; CR-01 scheduled as WINDOWS #26); Phase 2 ready for acceptance
+Last activity: 2026-09-24 — 02-14 operator checkpoint answered; WINDOWS #26 appended; validation/state records updated
 
 Progress: [█░░░░░░░░░] 5%
 
@@ -84,7 +84,7 @@ Progress: [█░░░░░░░░░] 5%
 | Phase 2 P10 | 18 min | 3 tasks | 6 files |
 | Phase 02 P12 | 26 min | 2 tasks | 3 files |
 | Phase 02 P13 | 6 min | 2 tasks | 4 files |
-| Phase 02 P14 | 18 | 3 tasks | 7 files |
+| Phase 02 P14 | 18 min + Task 4 continuation | 4 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -213,6 +213,8 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 2]: 02-14: the stale verify:phase-1 claims are marked superseded rather than erased (coverage.D2 -> fail; a dated correction block naming commit 18d206c6; nyquist_compliant honestly false before the fresh runs restored it), and both phase gates were re-run from one code state at evidence SHA 23db27a3 — verify:phase-1 exit 0 (59 files / 886 tests), verify:phase-2 exit 0 (29 files / 490 tests), verify:all exit 0 (61 files / 933 tests).
 - [Phase 2]: 02-14: WINDOWS #25 stays open with the eight-field journal-retention contract (implemented-but-unwired; owner = the future journal-retention plan; activation = an owned production lifecycle point, not a UI affordance; threshold = JOURNAL_TERMINAL_ENTRY_LIMIT 50 terminal entries with non-terminal entries always retained; crash-safety and replay-safety requirements; three required tests; Phase 19 release-gate treatment); compactJournal() is deliberately not wired.
 - [Phase 2]: 02-14: the two 400 px UI backstops stay deferred to the Phase 15 consolidated Real-Chrome cycle and the CR-01 (metadata-hold trade) / CR-02 (mirror-persists-on-promotion) residuals are presented at a blocking-human checkpoint — no automatic waiver, no inferred consent, and the plan pauses there.
+- [Phase 2]: CR-02 (mirror-persists-on-promotion reading) accepted as designed (operator disposition 2026-09-24, plan 02-14, option `schedule-cr01-followup`): status accepted; severity low; rationale expected single-writer promotion semantics; governing decision D2-34; follow-up none; verification via writer-election, stale-writer rejection, promotion and post-promotion persistence tests. Not waived and not a defect.
+- [Phase 2]: CR-01 (metadata-hold trade) acknowledged and scheduled (operator disposition 2026-09-24, plan 02-14) as WINDOWS #26 "Re-persist non-chat metadata projection after source sanitisation": severity Medium; activation immediately after the journal reaches `source-sanitised` and before final migration completion; owner the earliest approved gap-closure or storage-hardening plan that may modify the store write guard (default Phase 19 release-hardening; any earlier approved plan may claim it first; not Phase 15); expiry before v0.2 release acceptance; the Phase 19 release gate must fail while it remains unimplemented or lacks an explicit later operator decision. Not fixed, not waived; Plan 02-14 does not implement it.
 
 ### Pending Todos
 
@@ -228,6 +230,7 @@ None yet.
 - [Phase 15] UI review (01-UI-REVIEW.md, 13/24, advisory) blockers: Color 1/4 — the shipped Default theme seed is the Claude-warm prototype blob, not DESIGN_SYSTEM §6.2 (re-seed `semanticTokens.ts` and pin derived `colorPrimary`); Typography 1/4 — antd derivation yields Standalone 13 px (contract 14) and compact 8 px `fontSizeSM` (12 px floor violated at `SidePanelShell.tsx:288`). Plus Experience Design 2/4 (handoff pending copy, Retry label, message config, composer outline, ErrorBoundary reload semantics). None block Phase 1; Phase 15 owns design-system conformance.
 - One phase per response; later phases depend on earlier contracts (§18). Do not start Phase N+1 before Phase N is green.
 - [Phase 2 entry gate] WINDOWS #5 and #8 are formally deferred (operator, 2026-09-23) — Phase 2 may proceed without the Phase 1 Real-Chrome observation, but Phase 2 plans MUST include automated contract coverage for the handoff (#5) and onboarding (#8) contracts; Phase 15 owns consolidated Real-Chrome closure; the Phase 19 release gate must fail while any deferred verification remains open. See `## Verification Deferrals`.
+- [Phase 2 / Phase 19] CR-01 follow-up open as WINDOWS #26 (scheduled by operator disposition 2026-09-24, plan 02-14): re-persist the latest authorised non-chat metadata projection after the journal reaches `source-sanitised` and before final migration completion; owner the earliest approved gap-closure or storage-hardening plan that may modify the store write guard, defaulting to the Phase 19 release-hardening plan; expiry before v0.2 release acceptance; the Phase 19 release gate must fail while it remains unimplemented or lacks an explicit later operator decision. CR-01 is not fixed and not waived; Plan 02-14 does not implement it.
 
 ## Verification Deferrals
 
@@ -296,6 +299,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-24T06:13:27.822Z
-Stopped at: Paused at the 02-14 blocking-human checkpoint (CR-01/CR-02 operator disposition pending) — Tasks 1-3 complete; 02-13's stale verify:phase-1 claim was corrected by 02-14 and both phase gates re-ran green from one code state at evidence SHA 23db27a3 (verify:phase-1 59 files / 886 tests; verify:phase-2 29 files / 490 tests; verify:all 61 files / 933 tests); the credential-boundary gate is live; WINDOWS #5/#7/#8/#25 stay open
+Last session: 2026-09-24T08:24:17.000Z
+Stopped at: Plan 02-14 complete (4/4 tasks) — operator disposition recorded at the final blocking-human checkpoint (option schedule-cr01-followup, 2026-09-24): CR-02 accepted as designed under D2-34 (status accepted; severity low; no follow-up; not waived and not a defect) and CR-01 acknowledged and scheduled as WINDOWS #26 'Re-persist non-chat metadata projection after source sanitisation' (severity Medium; owner = the earliest approved gap-closure or storage-hardening plan that may modify the store write guard, defaulting to the Phase 19 release-hardening plan; expiry before v0.2 release acceptance; the Phase 19 release gate must fail while it remains unimplemented; CR-01 is not fixed and not waived); both phase gates were re-run green from one code state at evidence SHA 23db27a3 (verify:phase-1 59 files / 886 tests; verify:phase-2 29 files / 490 tests; verify:all 61 files / 933 tests); WINDOWS #5/#7/#8/#25/#26 stay open; the two 400 px UI backstops stay deferred to Phase 15; Phase 2 is ready for acceptance — do not proceed to Phase 3, do not run /gsd-ship, do not push
 Resume file: None
