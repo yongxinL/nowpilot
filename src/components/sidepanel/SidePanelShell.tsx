@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button, Tooltip, Typography, theme } from 'antd';
+import { Button, Skeleton, Tooltip, Typography, theme } from 'antd';
 import {
   SettingOutlined,
   ExpandAltOutlined,
@@ -12,6 +12,7 @@ import {
 } from '@ant-design/icons';
 import { NowPilotAvatar } from '../common/NowPilotAvatar';
 import { t } from '../../core/i18n/strings';
+import { useExtensionStore, type HydrationStatus } from '../../store/useExtensionStore';
 
 /**
  * The Phase-1 workflow display label. The workflow registry is Phase 15
@@ -26,6 +27,70 @@ const STATUS_BAR_HEIGHT = 28;
 const INPUT_MIN_HEIGHT = 60;
 const INPUT_MAX_HEIGHT = 160;
 
+/**
+ * The conversation region's presentation for one D2-18 hydration status
+ * (02-UI-SPEC § Phase 2 UI Surface Contracts item 1). One status, one
+ * treatment — no status falls through to another's presentation:
+ *
+ *   `idle`              — nothing at all: before a read is attempted the
+ *                         region makes no hydration-dependent claim, so it
+ *                         renders neither the empty presentation nor a ready
+ *                         one
+ *   `hydrating`         — an AntD `Skeleton` filling the region. Content areas
+ *                         use skeletons; an inline spinner is reserved for
+ *                         inline and in-button use, so it never appears here
+ *   `ready`             — the hydrated projection. Phase 2 ships no
+ *                         conversation renderer (D2-18: do not redesign the
+ *                         Chat interface), so the projection stays reachable
+ *                         through the store contract and the conversation list
+ *                         itself is Phase 15's. The region is deliberately
+ *                         blank in this state, not blank by omission
+ *   `empty`             — the approved empty presentation, reachable **only**
+ *                         from a successful read that found nothing
+ *   `failed`            — the pinned failure line plus the retry action
+ *   `recovery required` — the same presentation; retry re-drives recovery
+ *                         without discarding the recoverable journal state
+ *
+ * The typed hydration error is deliberately never rendered: the region names
+ * no record id, storage key, journal stage or error code (D2-11/D2-13/D2-16).
+ */
+function conversationRegionContent(status: HydrationStatus, retry: () => void): React.ReactNode {
+  switch (status) {
+    case 'idle':
+    case 'ready':
+      return null;
+
+    case 'hydrating':
+      return <Skeleton active style={{ width: '100%' }} />;
+
+    case 'empty':
+      return (
+        <>
+          <NowPilotAvatar size={64} />
+          <Typography.Title level={4} style={{ margin: 0 }}>
+            {t('chat.empty')}
+          </Typography.Title>
+          <Typography.Paragraph type="secondary" style={{ margin: 0 }}>
+            {t('chat.emptyBody')}
+          </Typography.Paragraph>
+        </>
+      );
+
+    case 'failed':
+    case 'recovery required':
+      return (
+        <>
+          <Typography.Title level={4} type="danger" style={{ margin: 0 }}>
+            {t('storage.hydrationFailed')}
+          </Typography.Title>
+          <Button type="link" onClick={retry}>
+            {t('common.retry')}
+          </Button>
+        </>
+      );
+  }
+}
+
 export interface SidePanelShellProps {
   onOpenStandalone: () => void;
   onOpenOptions: () => void;
@@ -39,12 +104,17 @@ export interface SidePanelShellProps {
 }
 
 /**
- * Side Panel — Chat only (UI-SPEC § Phase 1 Surface Contracts).
+ * Side Panel — Chat only (UI-SPEC § Phase 1 Surface Contracts, extended by
+ * the Phase-2 hydration contract below).
  *
  * Compact density, no `Layout`, no navigation rail, exactly two trailing
  * header controls. Everything that is not live in Phase 1 is either a live
  * control (the composer draft) or `disabled` + `data-np-backing="deferred"`
  * with a tooltip — never an enabled control whose behaviour does not exist.
+ *
+ * Phase 2 makes the conversation region live: it renders the store's six
+ * hydration states (D2-18) and nothing else changes with them. The region is
+ * live behaviour, so it is never marked deferred.
  */
 export const SidePanelShell: React.FC<SidePanelShellProps> = ({
   onOpenStandalone,
@@ -53,6 +123,12 @@ export const SidePanelShell: React.FC<SidePanelShellProps> = ({
 }) => {
   const { token } = theme.useToken();
   const [draft, setDraft] = useState('');
+  // D2-18: the conversation region is driven by the store's hydration status
+  // and nothing else. The read path lives in the store (it hydrates, recovers
+  // the journal, migrates and validates) — this shell never touches
+  // IndexedDB, a transaction, the journal or the legacy blob (D2-20).
+  const hydrationStatus = useExtensionStore((state) => state.hydrationStatus);
+  const retryHydration = useExtensionStore((state) => state.retryHydration);
 
   const iconButtonStyle: React.CSSProperties = {
     color: token.colorTextSecondary,
@@ -147,8 +223,11 @@ export const SidePanelShell: React.FC<SidePanelShellProps> = ({
         </div>
       </header>
 
-      {/* Conversation — fills and scrolls. Phase 1 renders the empty state
-          only; no fabricated messages, no skeleton. */}
+      {/* Conversation — fills and scrolls. The region varies only with the
+          store's hydration status (D2-18); the header, composer, toolbar and
+          status bar are unchanged by it. The region is live behaviour, so it
+          carries no `data-np-backing` marker — a marker here would declare a
+          capability this surface actually has. */}
       <main
         data-testid="np-sidepanel-conversation"
         style={{
@@ -165,13 +244,9 @@ export const SidePanelShell: React.FC<SidePanelShellProps> = ({
           textAlign: 'center',
         }}
       >
-        <NowPilotAvatar size={64} />
-        <Typography.Title level={4} style={{ margin: 0 }}>
-          {t('chat.empty')}
-        </Typography.Title>
-        <Typography.Paragraph type="secondary" style={{ margin: 0 }}>
-          {t('chat.emptyBody')}
-        </Typography.Paragraph>
+        {conversationRegionContent(hydrationStatus, () => {
+          void retryHydration();
+        })}
       </main>
 
       {/* Composer block — toolbar (44px) → input (min 60px) → status bar (28px). */}

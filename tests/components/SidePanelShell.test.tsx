@@ -1,13 +1,20 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ConfigProvider } from 'antd';
 import { SidePanelShell } from '../../src/components/sidepanel/SidePanelShell';
 import { ErrorBoundary } from '../../src/core/components/ErrorBoundary';
 import { t } from '../../src/core/i18n/strings';
+import {
+  useExtensionStore,
+  type HydrationStatus,
+} from '../../src/store/useExtensionStore';
 
 /**
- * Side Panel shell suite (plan `01-02`, Task 2).
+ * Side Panel shell suite (plan `01-02`, Task 2; the Phase-2 hydration contract
+ * added by plan `02-09`, Task 1).
  *
  * Pins **wiring and structure**, not copy: every expected string is resolved
  * through `t('…')`, so the suite is correct whether or not the canonical
@@ -27,6 +34,46 @@ const renderShell = (props?: Partial<React.ComponentProps<typeof SidePanelShell>
       onDraftChange={props?.onDraftChange}
     />,
   );
+
+/** The six frozen D2-18 states, in their canonical order. */
+const HYDRATION_STATUSES: HydrationStatus[] = [
+  'idle',
+  'hydrating',
+  'ready',
+  'empty',
+  'failed',
+  'recovery required',
+];
+
+function setHydrationStatus(status: HydrationStatus): void {
+  // A store update that a mounted shell observes must be wrapped, exactly like
+  // a user-driven change would be.
+  act(() => {
+    useExtensionStore.setState({ hydrationStatus: status, hydrationError: null });
+  });
+}
+
+/** Render the shell with the store's hydration status pinned to `status`. */
+function renderShellAt(status: HydrationStatus) {
+  setHydrationStatus(status);
+  return renderShell();
+}
+
+/**
+ * The store's own retry action, captured once so a case that replaces it with
+ * a spy cannot leak into the next case.
+ */
+const INITIAL_RETRY_HYDRATION = useExtensionStore.getState().retryHydration;
+
+afterEach(() => {
+  act(() => {
+    useExtensionStore.setState({
+      hydrationStatus: 'idle',
+      hydrationError: null,
+      retryHydration: INITIAL_RETRY_HYDRATION,
+    });
+  });
+});
 
 describe('SidePanelShell — geometry and contract (UI-SPEC § Side Panel)', () => {
   it('has no Layout and no navigation rail', () => {
@@ -66,13 +113,158 @@ describe('SidePanelShell — geometry and contract (UI-SPEC § Side Panel)', () 
   });
 
   it('renders the empty conversation state with zero fabricated messages', () => {
-    renderShell();
+    // D2-18: the empty presentation is reachable only from a successful read
+    // that found nothing — never before hydration completes.
+    renderShellAt('empty');
 
     expect(screen.getByText(t('chat.empty'))).toBeTruthy();
     expect(screen.getByText(t('chat.emptyBody'))).toBeTruthy();
-    // No message bubble / no streaming skeleton in Phase 1.
+    // No message bubble / no loading placeholder in the empty state.
     expect(document.querySelectorAll('.ant-bubble').length).toBe(0);
     expect(document.querySelectorAll('.ant-skeleton').length).toBe(0);
+  });
+});
+
+describe('SidePanelShell — conversation-region hydration states (D2-18)', () => {
+  /**
+   * What each frozen status may render. `emptyCopy` is the approved empty
+   * presentation, `skeleton` the content-area loading state and `retry` the
+   * failure action; anything not in the row must be absent.
+   */
+  const TREATMENTS: Record<
+    HydrationStatus,
+    { emptyCopy: boolean; skeleton: boolean; retry: boolean }
+  > = {
+    idle: { emptyCopy: false, skeleton: false, retry: false },
+    hydrating: { emptyCopy: false, skeleton: true, retry: false },
+    ready: { emptyCopy: false, skeleton: false, retry: false },
+    empty: { emptyCopy: true, skeleton: false, retry: false },
+    failed: { emptyCopy: false, skeleton: false, retry: true },
+    'recovery required': { emptyCopy: false, skeleton: false, retry: true },
+  };
+
+  it('renders exactly its own treatment for each of the six statuses', () => {
+    for (const status of HYDRATION_STATUSES) {
+      const expected = TREATMENTS[status];
+      const view = renderShellAt(status);
+
+      // The region itself is always present and always live.
+      const region = view.container.querySelector('[data-testid="np-sidepanel-conversation"]');
+      expect(region, `${status}: the conversation region is always present`).not.toBeNull();
+
+      expect(
+        screen.queryAllByText(t('chat.empty')).length > 0,
+        `${status}: chat.empty`,
+      ).toBe(expected.emptyCopy);
+      expect(
+        screen.queryAllByText(t('chat.emptyBody')).length > 0,
+        `${status}: chat.emptyBody`,
+      ).toBe(expected.emptyCopy);
+      expect(
+        view.container.querySelectorAll('.ant-skeleton').length > 0,
+        `${status}: skeleton`,
+      ).toBe(expected.skeleton);
+      expect(
+        screen.queryAllByRole('button', { name: t('common.retry') }).length > 0,
+        `${status}: retry action`,
+      ).toBe(expected.retry);
+
+      // The region is live behaviour: a marker here would declare a deferred
+      // capability this surface actually has (Phase-1 hard rule 5).
+      expect(
+        (region as HTMLElement).hasAttribute('data-np-backing'),
+        `${status}: the region carries no marker`,
+      ).toBe(false);
+
+      view.unmount();
+    }
+  });
+
+  it('claims nothing about stored history while `idle` or `hydrating`', () => {
+    for (const status of ['idle', 'hydrating'] as const) {
+      const view = renderShellAt(status);
+      const region = screen.getByTestId('np-sidepanel-conversation');
+
+      // No empty presentation, no ready claim: the region renders no text at
+      // all, so it cannot assert a history it has not read.
+      expect(region.textContent, `${status} must claim nothing`).toBe('');
+      expect(screen.queryByText(t('chat.empty'))).toBeNull();
+      expect(screen.queryByText(t('chat.emptyBody'))).toBeNull();
+      expect(region.textContent ?? '').not.toMatch(/ready|loaded|restored/i);
+
+      view.unmount();
+    }
+  });
+
+  it('uses the AntD Skeleton for `hydrating`, never an inline spinner', () => {
+    const view = renderShellAt('hydrating');
+
+    // The skeleton fills the conversation region and carries no fabricated
+    // content (it is shapes, not words).
+    const skeletons = view.container.querySelectorAll('.ant-skeleton');
+    expect(skeletons.length).toBe(1);
+    expect(screen.getByTestId('np-sidepanel-conversation').textContent).toBe('');
+    expect(view.container.querySelectorAll('.ant-spin').length).toBe(0);
+
+    // The component's own source is the durable pin: the content-area loading
+    // component is imported, and the inline spinner the design system reserves
+    // for in-button use appears nowhere. Comments are stripped first, so the
+    // provenance notes cannot trip the scan.
+    const raw = fs.readFileSync(
+      path.resolve(process.cwd(), 'src/components/sidepanel/SidePanelShell.tsx'),
+      'utf8',
+    );
+    const source = raw.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+    expect(source).toContain('Skeleton');
+    expect(source).not.toMatch(/\bSpin\b/);
+  });
+
+  it('renders the pinned failure presentation and retries through the store', () => {
+    for (const status of ['failed', 'recovery required'] as const) {
+      const retry = vi.fn();
+      act(() => {
+        useExtensionStore.setState({ retryHydration: retry });
+      });
+      const view = renderShellAt(status);
+
+      expect(
+        screen.getByRole('heading', { level: 4, name: t('storage.hydrationFailed') }),
+        `${status}: the pinned failure line`,
+      ).toBeTruthy();
+      // A failure never presents as an empty history and never shows a load
+      // placeholder: no legacy fallback, no silent empty.
+      expect(screen.queryByText(t('chat.empty'))).toBeNull();
+      expect(screen.queryByText(t('chat.emptyBody'))).toBeNull();
+      expect(view.container.querySelectorAll('.ant-skeleton').length).toBe(0);
+
+      // The action re-drives the store's own retry — the shell holds no
+      // recovery logic of its own.
+      fireEvent.click(screen.getByRole('button', { name: t('common.retry') }));
+      expect(retry, `${status}: retry action`).toHaveBeenCalledTimes(1);
+
+      view.unmount();
+      act(() => {
+        useExtensionStore.setState({ retryHydration: INITIAL_RETRY_HYDRATION });
+      });
+    }
+  });
+
+  it('leaves the header, composer, toolbar and status bar unchanged across every status', () => {
+    const shapes = HYDRATION_STATUSES.map((status) => {
+      const view = renderShellAt(status);
+      const header = view.container.querySelector('header')?.outerHTML ?? '';
+      const composer =
+        view.container
+          .querySelector('[data-testid="np-composer-toolbar"]')
+          ?.closest('section')?.outerHTML ?? '';
+      view.unmount();
+      return { status, header, composer };
+    });
+
+    for (const shape of shapes.slice(1)) {
+      expect(shape.header, `${shape.status}: header`).toBe(shapes[0].header);
+      expect(shape.composer, `${shape.status}: composer block`).toBe(shapes[0].composer);
+    }
   });
 });
 
