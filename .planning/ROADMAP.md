@@ -96,7 +96,7 @@ Plans:
   4. Workspace state persists across page reload and cross-surface handoff; `pnpm run verify:phase-2` passes.
 
 **Deferred verification (WINDOWS #5, #8)**: the Phase-1 Real-Chrome frontend observations are formally deferred (operator, 2026-09-23) — Phase 2 may proceed, but Phase 2 plans MUST include automated contract/integration coverage for the handoff contract (#5) and the onboarding contract/security invariants (#8). Final Real-Chrome closure belongs to the Phase 15 consolidated acceptance cycle; the Phase 19 release gate must fail while any deferred verification remains open. See `.planning/STATE.md` § Verification Deferrals.
-**Plans**: 13/13 plans executed
+**Plans**: 13/13 plans executed + 1 gap-closure plan (02-14)
 Plans:
 **Wave 1**
 
@@ -134,6 +134,10 @@ Plans:
 **Wave 8** *(blocked on Wave 7 completion)*
 
 - [x] 02-13-PLAN.md — Corrected `verify:phase-2` (explicit suites + path preflight) and the full phase gate evidence
+
+**Wave 9** *(gap closure — blocked on Wave 8 completion)*
+
+- [ ] 02-14-PLAN.md — Gap closure: replace the over-broad Phase-1 substring rule with the credential-boundary gate, correct the stale verification claims, keep WINDOWS #25 open, and re-run both phase gates from one code state
 
 **UI hint**: yes
 
