@@ -14,6 +14,7 @@ import {
 } from '../../core/onboarding/onboardingStateStore';
 import { useOnboardingGate } from '../../core/onboarding/useOnboardingGate';
 import { LegacyCredentialCleanupNotice } from '../../components/common/LegacyCredentialCleanupNotice';
+import { Phase2Notices } from '../../components/common/Phase2Notices';
 import { CommandPalette } from '../../components/common/CommandPalette';
 import { ErrorBoundary } from '../../core/components/ErrorBoundary';
 import { CommandRegistry } from '../../core/commands/CommandRegistry';
@@ -250,6 +251,11 @@ const SidePanelSurface: React.FC = () => {
 
   return (
     <>
+      {/* 02-10: the phase's three persistent failure notices (storage
+          unavailable, migration failure, election failure). Headless — it
+          renders no markup and issues through this surface's `App.useApp()`
+          notification instance. */}
+      <Phase2Notices />
       <SidePanelRouter
         onOpenStandalone={openStandaloneWithToasts}
         onOpenOptions={handleOpenOptions}
