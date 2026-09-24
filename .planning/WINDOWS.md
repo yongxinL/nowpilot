@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 19
+open_count: 20
 waived_count: 0
 fixed_count: 7
-total_count: 26
-last_updated: 2026-09-24T08:23:24.351Z
+total_count: 27
+last_updated: 2026-09-24T11:37:12.954Z
 ---
 
 # Broken Windows Ledger
@@ -41,6 +41,7 @@ last_updated: 2026-09-24T08:23:24.351Z
 | 24 | 02 | deviation | tests/core/workspace/WorkspaceStore.test.ts |  | 02-06 Rule 3 deviation: the Phase-1 source-scan guard in WorkspaceStore.test.ts ("no Phase-1 module names a workspace storage key for writing") allowed only lines containing np_workspace followed by a quote, so the plan-mandated Phase 2 constant PRIMARY_RECORD_KEY = 'np_workspace_primary' in src/core/workspace/WriterElection.ts tripped it. The guard now admits the two canonical §15.1 key literals ('np_workspace', 'np_workspace_primary') while still failing an unquoted, ad-hoc or misspelled key name. The phase acceptance review should ratify the loosened Phase-1 gate. | open |  | 2026-09-24T00:29:53.210Z |  |
 | 25 | 2 | deviation | src/entrypoints/sidepanel/main.tsx |  | 02-10 scope record for WINDOWS #23: recoverJournal() now has a production call site reachable from both surface roots — the startup sequence calls useExtensionStore.hydrateChatHistory(), whose 02-08 entry point runs defaultRecoverJournal() (D2-17 step 2), and both entrypoints now run that sequence. compactJournal() still has no production caller: journal compaction is a service-level operation with no Phase-2 UI affordance (02-UI-SPEC § Destructive confirmation), so the row stays open for the plan that owns journal retention. RETENTION CONTRACT (enriched 2026-09-24 by plan 02-14): (1) status is implemented-but-unwired — compactJournal() exists at src/core/storage/WriteJournal.ts and is unit-proved, but has no production caller; (2) the owning plan is the future journal-retention plan, and this gap-closure plan (02-14) explicitly does not wire it; (3) the activation condition is a production lifecycle point that owns journal retention (a startup or shutdown compaction step reached from both surface roots, or an equivalent owned service-level trigger) — not a UI affordance, since 02-UI-SPEC records no destructive-confirmation surface for it; (4) the retention threshold is JOURNAL_TERMINAL_ENTRY_LIMIT (50 terminal entries, newest retained) with every non-terminal entry retained unconditionally; (5) the crash-safety requirement is that compaction must not remove a non-terminal entry and must be safe to interrupt, because recoverJournal replays non-terminal entries on the next start; (6) the replay-safety requirement is that compaction must not disturb the replay contract — a compacted terminal entry must never be needed to reach a consistent state; (7) the tests required before activation are a compaction call-site test proving the production trigger runs, plus a retention test proving a non-terminal entry survives compaction at the boundary, plus a restart test proving an interrupted compaction replays cleanly; (8) the release-gate treatment is that the row stays open and must be re-checked at the Phase 19 release gate, and it must never be marked production-active, fixed or waived until those tests exist and pass. | open |  | 2026-09-24T02:22:06.387Z |  |
 | 26 | 2 | deviation | src/core/storage/legacyChatMigration.ts |  | CR-01 FOLLOW-UP — operator disposition 2026-09-24 (plan 02-14, checkpoint option schedule-cr01-followup). Title: Re-persist non-chat metadata projection after source sanitisation. Source: Phase 2 review residual CR-01. Severity: Medium. Risk: Recoverable non-chat metadata edits may remain unpersisted while a legacy source is held or quarantined. Governing contracts: WriteJournal state machine; legacy message migration; source-sanitisation boundary; target storage split; single-writer workspace persistence. Activation point: immediately after the journal reaches source-sanitised and before final migration completion, using the exact canonical journal stage names. Implementation owner: the earliest approved gap-closure or storage-hardening plan that may modify the store write guard; the default named owner is the Phase 19 release-hardening plan, and any earlier approved gap-closure or storage-hardening plan may claim it first. Not assigned to Phase 15 (storage/migration correctness, not frontend). Expiry: before milestone v0.2 release acceptance. Release treatment: the Phase 19 release gate must fail if this item remains unimplemented or lacks an explicit later operator decision. Closure condition: the ten acceptance criteria recorded verbatim in 02-14-SUMMARY.md (section Operator acknowledgement CR-01 / CR-02) all hold, with deterministic failure injection around destination verified, source sanitised, metadata projection write started, metadata projection write completed, and migration completed. Invariants that must be preserved: legacy message bodies are never deleted before a successful destination write and authoritative read-back; held or quarantined source records are never overwritten in a way that can destroy the only recoverable message-body copy; message bodies never return to np_store; non-chat metadata edits made during the hold are not silently lost; the re-persist operation is idempotent; replay after reload or crash does not duplicate writes; stale metadata cannot overwrite a newer projection; credential or message-body data cannot enter the metadata projection; migration completion is not recorded until the required sanitisation and projection persistence succeed. Status: acknowledged and scheduled — not fixed, not waived; Plan 02-14 does not implement it (the store write guard is outside its scope fence). | open |  | 2026-09-24T08:23:24.351Z |  |
+| 27 | 2 | unrun-verify | src/components/common/MirrorBanner.tsx |  | Phase 2 400 px UI backstops (operator decision 2026-09-24 at re-verification): (1) MirrorBanner at 400 px — the bar must grow from min-height 32px, the caption wraps to at most 2 lines then ellipsizes, and the action never wraps or clips; (2) the credential capability Alert and the three storage failure notifications at 400 px must wrap with no horizontal scroll and no mid-glyph clipping. Both are 02-UI-SPEC.md backstop rows (insufficient_spec) recorded as flat-scalar { statement, verification: backstop } truths in plans 02-09/02-10. jsdom cannot observe layout and Phase 2 evidence is deterministic/in-process only (D2-20). Owner: Phase 15 consolidated Real-Chrome acceptance cycle. Closure condition: Real-Chrome observation at a 400 px Side Panel width confirming both contracts, evidenced by a screenshot plus a written observed-result record. Expiry: must close before the first milestone release gate (Phase 19). Do not mark fixed until observed; do not waive. | open |  | 2026-09-24T11:37:12.954Z |  |
 
 ````json
 [
@@ -379,6 +380,19 @@ last_updated: 2026-09-24T08:23:24.351Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-09-24T08:23:24.351Z",
+    "resolved_at": null,
+    "milestone": "v0.2"
+  },
+  {
+    "id": 27,
+    "kind": "unrun-verify",
+    "phase": "2",
+    "file": "src/components/common/MirrorBanner.tsx",
+    "line": null,
+    "description": "Phase 2 400 px UI backstops (operator decision 2026-09-24 at re-verification): (1) MirrorBanner at 400 px — the bar must grow from min-height 32px, the caption wraps to at most 2 lines then ellipsizes, and the action never wraps or clips; (2) the credential capability Alert and the three storage failure notifications at 400 px must wrap with no horizontal scroll and no mid-glyph clipping. Both are 02-UI-SPEC.md backstop rows (insufficient_spec) recorded as flat-scalar { statement, verification: backstop } truths in plans 02-09/02-10. jsdom cannot observe layout and Phase 2 evidence is deterministic/in-process only (D2-20). Owner: Phase 15 consolidated Real-Chrome acceptance cycle. Closure condition: Real-Chrome observation at a 400 px Side Panel width confirming both contracts, evidenced by a screenshot plus a written observed-result record. Expiry: must close before the first milestone release gate (Phase 19). Do not mark fixed until observed; do not waive.",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-09-24T11:37:12.954Z",
     "resolved_at": null,
     "milestone": "v0.2"
   }

@@ -286,6 +286,22 @@ Named verification debt carried past a phase boundary — distinct from `## Defe
 
 Phase 15 must perform one consolidated frontend acceptance cycle covering: onboarding at the 400 px Side Panel width (#7); cross-surface handoff (#5); two-live-surface onboarding (#8); final workflow and command-palette behaviour; responsive surfaces; final error and recovery states; keyboard and focus behaviour; accessibility; theme consistency; final fixture/deferred-state removal or labelling. Closure evidence for each window is a screenshot plus a written observed-result record; Phase 19 must fail while any of #5/#7/#8 remains open.
 
+### WINDOWS #27 — Phase 2 400 px UI backstops (Phase 02) — verification deferred
+
+| Field | Value |
+|-------|-------|
+| Ledger entry | `.planning/WINDOWS.md` id 27 — the two 02-UI-SPEC.md backstop rows: (1) `MirrorBanner` at 400 px (bar grows from `min-height: 32px`; caption wraps to at most 2 lines then ellipsizes; action never wraps or clips); (2) capability `Alert` + storage notifications at 400 px (wrap with no horizontal scroll and no mid-glyph clipping) |
+| Status | Verification deferred (operator decision, 2026-09-24) |
+| Owner | Phase 15 — Workspace Experience (UI/UX) + RICH — the consolidated Real-Chrome acceptance cycle |
+| Requirement | 02-UI-SPEC.md § UI Considerations (2 backstop rows, `insufficient_spec`); recorded as flat-scalar `{ statement, verification: backstop }` truths in plans 02-09/02-10 |
+| Reason | Visual/responsive evidence only — jsdom cannot observe layout and Phase 2 evidence is deterministic/in-process only (D2-20); not a Phase 2 storage or security blocker |
+| Closure condition | Real-Chrome observation at a 400 px Side Panel width confirming the two contracts above |
+| Evidence required | Screenshot plus a written observed-result record (`nowpilot-phase-verification`) |
+| Expiry | Must close before the first milestone release gate (Phase 19) |
+| Recorded | 2026-09-24 — operator decision at Phase 2 re-verification (verifier status `human_needed`, 119/122; 0 failed) |
+
+**Do not** mark either backstop `fixed` until the observation exists; **do not** waive them. Phase 15's plan must carry this deferral, and the Phase 19 release record must name its closure.
+
 ## Deferred Items
 
 Items acknowledged and deferred at milestone close, most recent first:
