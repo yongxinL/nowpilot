@@ -31,7 +31,8 @@ export default defineBackground({
     // results only from an approved user action.
     //
     // What this file does NOT yet register (later-phase TODOs):
-    //   - Phase 2+:  WorkspaceStore.isPrimaryWriter() election (CAS + heartbeat).
+    //   - Phase 2:   the writer election is surface-owned and is deliberately
+    //                never registered here: the worker is not a participant.
     //   - Phase 2+:  LifecycleManager / KeepAliveManager (when streaming lands).
     //   - Phase 17:  ContextMenuHost.
     //   - Phase 17:  ServiceNow MCP permissions (scripting / declarativeNetRequest).

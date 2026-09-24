@@ -3,14 +3,17 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {
   LEGACY_WORKSPACE_STORAGE_KEY,
-  PHASE1_WRITER_STATE,
   WORKSPACE_WRITER_STATES,
+  createInitialWriterProjection,
   deleteLegacyWorkspaceBlob,
   isMirrorState,
-  isPrimaryWriter,
+  projectWriterSignal,
   useWorkspaceStore,
   type ActiveSurface,
+  type WorkspaceWriterState,
+  type WriterElectionSignal,
 } from '../../../src/core/workspace/WorkspaceStore';
+import type { WorkspaceCoordinationState } from '../../../src/core/workspace/WriterElection';
 import {
   WORKSPACE_STATE_SCHEMA_VERSION,
   parseWorkspaceState,
@@ -76,6 +79,12 @@ describe('WorkspaceStore — canonical shape, no persistence (D-11, D-14)', () =
     expect(state.openedStandaloneTabId).toBeNull();
     expect(state.version).toBe(0);
     expect(typeof state.updatedAt).toBe('number');
+    // The writer projection is a separate axis with its own honest default:
+    // nothing reports writability before an election resolves (T-02-36).
+    expect(state.writerState).toBe('election-pending');
+    expect(state.writerEpoch).toBeNull();
+    expect(state.primarySurface).toBeNull();
+    expect(state.isAuthoritativeWriter()).toBe(false);
   });
 
   it('satisfies the strict schema at the store boundary', () => {
@@ -84,13 +93,15 @@ describe('WorkspaceStore — canonical shape, no persistence (D-11, D-14)', () =
     expect(parsed.ok).toBe(true);
   });
 
-  it('exposes only the authorised Phase-1 mutators', () => {
+  it('exposes only the authorised mutators', () => {
     const state = useWorkspaceStore.getState() as unknown as Record<string, unknown>;
     const actions = Object.keys(state)
       .filter((key) => typeof state[key] === 'function')
       .sort();
 
     expect(actions).toEqual([
+      'applyElectionOutcome',
+      'isAuthoritativeWriter',
       'reset',
       'setActiveSurface',
       'setConversationId',
@@ -147,6 +158,9 @@ describe('WorkspaceStore — canonical shape, no persistence (D-11, D-14)', () =
     expect(state.conversationId).toBeNull();
     expect(state.workspaceId).not.toBe('ws-test');
     expect(state.version).toBe(0);
+    expect(state.writerState).toBe('election-pending');
+    expect(state.writerEpoch).toBeNull();
+    expect(state.primarySurface).toBeNull();
     expect(parseWorkspaceState(toWorkspaceState(state as unknown as Record<string, unknown>)).ok).toBe(true);
   });
 
@@ -213,11 +227,9 @@ describe('WorkspaceStore — canonical shape, no persistence (D-11, D-14)', () =
   });
 });
 
-describe('WorkspaceStore — Phase-1 writer adapter and mirror contract (D-12)', () => {
-  it('reports the surface writable without claiming an election', () => {
-    expect(PHASE1_WRITER_STATE).toBe('primary');
-    expect(isPrimaryWriter()).toBe(true);
-    expect(isPrimaryWriter()).toBe(true);
+describe('WorkspaceStore — election-backed writer state (D-12 carry-forward)', () => {
+  beforeEach(() => {
+    useWorkspaceStore.getState().reset();
   });
 
   it('freezes the canonical writer vocabulary and stays out of every mirror state', () => {
@@ -233,7 +245,179 @@ describe('WorkspaceStore — Phase-1 writer adapter and mirror contract (D-12)',
     for (const state of WORKSPACE_WRITER_STATES) {
       expect(isMirrorState(state)).toBe(state !== 'primary');
     }
-    expect(isMirrorState(PHASE1_WRITER_STATE)).toBe(false);
+    expect(isMirrorState(useWorkspaceStore.getState().writerState)).toBe(true);
+  });
+
+  it('defaults to `election-pending` so nothing reports authority before an election', () => {
+    const state = useWorkspaceStore.getState();
+
+    expect(state.writerState).toBe('election-pending');
+    expect(state.writerEpoch).toBeNull();
+    expect(state.primarySurface).toBeNull();
+    expect(state.isAuthoritativeWriter()).toBe(false);
+  });
+
+  it('reports authority only after an applied election outcome', () => {
+    const store = useWorkspaceStore.getState();
+    expect(store.isAuthoritativeWriter()).toBe(false);
+
+    store.applyElectionOutcome({ kind: 'primary', epoch: 42 });
+
+    const state = useWorkspaceStore.getState();
+    expect(state.writerState).toBe('primary');
+    expect(state.writerEpoch).toBe(42);
+    expect(state.isAuthoritativeWriter()).toBe(true);
+  });
+
+  it('maps every canonical coordination outcome onto exactly one frozen state', () => {
+    const cases: Array<[WorkspaceCoordinationState, WorkspaceWriterState]> = [
+      [{ state: 'solo', primarySurface: 'standalone' }, 'primary'],
+      [{ state: 'primary', surface: 'standalone', secondaries: ['sidepanel'] }, 'primary'],
+      [{ state: 'secondary', primarySurface: 'standalone', isMirroring: true }, 'mirror'],
+      // A secondary that is not yet mirroring has settled into no role yet: the
+      // honest projection is the pre-election state, never a claim.
+      [{ state: 'secondary', primarySurface: 'standalone', isMirroring: false }, 'election-pending'],
+      [{ state: 'election-in-progress', startedAt: 1 }, 'election-pending'],
+      [{ state: 'error', code: 'ELECTION_TIMEOUT', message: 'unverifiable' }, 'writer-unavailable'],
+      [{ state: 'error', code: 'STORAGE_UNAVAILABLE', message: 'no area' }, 'writer-unavailable'],
+    ];
+
+    for (const [signal, expected] of cases) {
+      useWorkspaceStore.getState().reset();
+      useWorkspaceStore.getState().applyElectionOutcome(signal);
+
+      const state = useWorkspaceStore.getState();
+      expect(state.writerState, JSON.stringify(signal)).toBe(expected);
+      expect(WORKSPACE_WRITER_STATES).toContain(state.writerState);
+      expect(state.isAuthoritativeWriter(), JSON.stringify(signal)).toBe(expected === 'primary');
+    }
+  });
+
+  it('maps the election outcome itself and records the epoch and the primary surface', () => {
+    const store = useWorkspaceStore.getState();
+
+    store.applyElectionOutcome({ kind: 'primary', epoch: 7 });
+    expect(useWorkspaceStore.getState().writerEpoch).toBe(7);
+    expect(useWorkspaceStore.getState().isAuthoritativeWriter()).toBe(true);
+
+    // The coordination projection carries the surface identity the outcome
+    // cannot; applying it keeps the epoch this surface verified.
+    store.applyElectionOutcome({ state: 'primary', surface: 'standalone', secondaries: [] });
+    expect(useWorkspaceStore.getState().primarySurface).toBe('standalone');
+    expect(useWorkspaceStore.getState().writerEpoch).toBe(7);
+
+    // A losing race reports the incumbent as the primary surface.
+    store.applyElectionOutcome({
+      kind: 'secondary',
+      current: { tabId: 9, surface: 'sidepanel', electedAt: 7 },
+    });
+    const state = useWorkspaceStore.getState();
+    expect(state.writerState).toBe('mirror');
+    expect(state.primarySurface).toBe('sidepanel');
+    expect(state.writerEpoch).toBe(7);
+  });
+
+  it('keeps the last authoritative epoch and surface when an error outcome arrives', () => {
+    const store = useWorkspaceStore.getState();
+    store.applyElectionOutcome({ kind: 'primary', epoch: 11 });
+    store.applyElectionOutcome({ state: 'primary', surface: 'standalone', secondaries: [] });
+
+    store.applyElectionOutcome({ state: 'error', code: 'ELECTION_TIMEOUT', message: 'unverifiable' });
+
+    const state = useWorkspaceStore.getState();
+    expect(state.writerState).toBe('writer-unavailable');
+    expect(state.writerEpoch).toBe(11);
+    expect(state.primarySurface).toBe('standalone');
+    expect(state.isAuthoritativeWriter()).toBe(false);
+  });
+
+  it('clears the epoch and the primary surface when the election restarts', () => {
+    const store = useWorkspaceStore.getState();
+    store.applyElectionOutcome({ kind: 'primary', epoch: 11 });
+    store.applyElectionOutcome({ state: 'primary', surface: 'standalone', secondaries: [] });
+
+    store.applyElectionOutcome({ state: 'election-in-progress', startedAt: 99 });
+
+    const state = useWorkspaceStore.getState();
+    expect(state.writerState).toBe('election-pending');
+    expect(state.writerEpoch).toBeNull();
+    expect(state.primarySurface).toBeNull();
+  });
+
+  it('never produces the handoff transitions: they belong to the handoff controllers', () => {
+    const signals: WriterElectionSignal[] = [
+      { state: 'solo', primarySurface: 'standalone' },
+      { state: 'primary', surface: 'sidepanel', secondaries: ['standalone'] },
+      { state: 'secondary', primarySurface: 'standalone', isMirroring: true },
+      { state: 'secondary', primarySurface: 'standalone', isMirroring: false },
+      { state: 'election-in-progress', startedAt: 1 },
+      { state: 'error', code: 'ELECTION_TIMEOUT', message: 'unverifiable' },
+      { kind: 'primary', epoch: 1 },
+      { kind: 'secondary', current: { tabId: 1, surface: 'sidepanel', electedAt: 1 } },
+      { kind: 'error', code: 'STORAGE_UNAVAILABLE', message: 'no area' },
+    ];
+
+    const reachable = new Set<WorkspaceWriterState>();
+    for (const signal of signals) {
+      reachable.add(
+        projectWriterSignal(signal, { writerEpoch: null, primarySurface: null }).writerState,
+      );
+    }
+
+    expect(reachable.has('handoff-pending')).toBe(false);
+    expect(reachable.has('handoff-failed')).toBe(false);
+    expect([...reachable].sort()).toEqual([
+      'election-pending',
+      'mirror',
+      'primary',
+      'writer-unavailable',
+    ]);
+  });
+
+  it('reports authority for `primary` only, across the whole frozen vocabulary', () => {
+    for (const writerState of WORKSPACE_WRITER_STATES) {
+      useWorkspaceStore.setState({ writerState });
+      expect(useWorkspaceStore.getState().isAuthoritativeWriter(), writerState).toBe(
+        writerState === 'primary',
+      );
+    }
+  });
+
+  it('does not touch the workspace write counter or the staleness marker', () => {
+    const before = useWorkspaceStore.getState();
+    const version = before.version;
+    const updatedAt = before.updatedAt;
+
+    useWorkspaceStore.getState().applyElectionOutcome({ kind: 'primary', epoch: 3 });
+    useWorkspaceStore.getState().applyElectionOutcome({ state: 'error', code: 'STORAGE_UNAVAILABLE', message: 'no area' });
+
+    const after = useWorkspaceStore.getState();
+    expect(after.version).toBe(version);
+    expect(after.updatedAt).toBe(updatedAt);
+    // ...and the writer projection stays outside the persisted canonical shape.
+    expect(parseWorkspaceState(toWorkspaceState(after as unknown as Record<string, unknown>)).ok).toBe(true);
+  });
+
+  it('starts from the honest pre-election projection helper', () => {
+    expect(createInitialWriterProjection()).toEqual({
+      writerState: 'election-pending',
+      writerEpoch: null,
+      primarySurface: null,
+    });
+  });
+
+  it('leaves no Phase-1 writability shortcut anywhere in src/', () => {
+    const offenders: string[] = [];
+
+    for (const { file, text } of sourceFiles(path.resolve(process.cwd(), 'src'))) {
+      text.split('\n').forEach((line, index) => {
+        if (/PHASE1_WRITER_STATE|isPrimaryWriter/.test(line)) {
+          offenders.push(`${path.relative(process.cwd(), file)}:${index + 1}`);
+        }
+      });
+    }
+
+    expect(offenders).toEqual([]);
   });
 });
 

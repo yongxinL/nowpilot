@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { useWorkspaceStore } from '../../../src/core/workspace/WorkspaceStore';
-import { isPrimaryWriter } from '../../../src/core/workspace/WorkspaceStore';
 import * as BroadcastBus from '../../../src/core/runtime/BroadcastBus';
 import {
   HANDOFF_CHANNEL,
@@ -403,7 +402,9 @@ describe('WorkspaceRouter', () => {
       expect(result.code).toBe('WORKSPACE_HANDOFF_FAILED');
       // No success claim, no store mutation, no fabricated demotion.
       expect(useWorkspaceStore.getState().conversationId).toBe('draft-conversation');
-      expect(isPrimaryWriter()).toBe(true);
+      // A failed handoff writes no writer state: the projection stays at its
+      // pre-election default and never becomes `mirror` (D-12 carry-forward).
+      expect(useWorkspaceStore.getState().writerState).toBe('election-pending');
       expect(publishedOf('WORKSPACE_HANDOFF')).toHaveLength(0);
     });
 
