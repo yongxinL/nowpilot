@@ -192,17 +192,14 @@ describe('WorkspacePersistence — read path', () => {
 });
 
 describe('WorkspacePersistence — journaled, version-ordered writes (§20.3, M.3)', () => {
-  it('a write/read round trip survives a flush through the debounced adapter', async () => {
+  it('a write/read round trip lands through the real adapter and survives a reload', async () => {
     const written = state({ version: 3, conversationId: 'conv-round-trip' });
 
     const result = await writeWorkspaceState(written);
     expect(result.ok).toBe(true);
 
-    // The debounced adapter is in play: pending, not yet landed.
-    expect(adapterTest.getPendingSize()).toBe(1);
-    expect(localMap().has(WORKSPACE_STORAGE_KEY)).toBe(false);
-
-    await flushPendingWrites();
+    // WR-04: the write is landed before the call resolves — the signal follows
+    // a durable key write, never a merely queued one.
     expect(adapterTest.getPendingSize()).toBe(0);
     expect(localMap().has(WORKSPACE_STORAGE_KEY)).toBe(true);
 
@@ -410,6 +407,30 @@ describe('WorkspacePersistence — cross-surface signal (D2-31)', () => {
     await flushMicrotasks();
 
     expect(delivered.map((entry) => entry.version)).toEqual([5, 6]);
+    unsubscribe();
+  });
+
+  it('lands the key before the signal, so a receiver without the sender pending map adopts the write (WR-04)', async () => {
+    // The receiver is a different document: it reads only what landed in
+    // `chrome.storage.local`, never the sender's in-memory pending map.
+    const receiverArea: WorkspaceStorageArea = {
+      getItem: async (name: string) => (localMap().get(name) as string | undefined) ?? null,
+      setItem: async () => {},
+    };
+    const delivered: WorkspaceState[] = [];
+    const unsubscribe = subscribeToWorkspaceChanges((next) => delivered.push(next), {
+      storage: receiverArea,
+    });
+
+    const written = state({ version: 5, conversationId: 'conv-debounce' });
+    // The real debounced adapter, and no manual flush before the signal.
+    expect((await writeWorkspaceState(written)).ok).toBe(true);
+
+    broadcast({ workspaceId: written.workspaceId, conversationId: written.conversationId });
+    await flushMicrotasks();
+
+    expect(delivered.map((entry) => entry.version)).toEqual([5]);
+    expect(delivered[0]?.conversationId).toBe('conv-debounce');
     unsubscribe();
   });
 

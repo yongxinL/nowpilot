@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   chromeStorageAdapter,
   syncStorageAdapter,
+  flushPendingWrite,
   flushPendingWrites,
   __test__,
   STORAGE_DEBOUNCE_MS,
@@ -82,6 +83,33 @@ describe('chromeStorageAdapter — D-22 trailing debounce', () => {
     expect(syncSetSpy).toHaveBeenCalledTimes(1);
     const syncArg = syncSetSpy.mock.calls[0]?.[0] as Record<string, string>;
     expect(syncArg.np_theme).toBe('"sync-data"');
+  });
+
+  it('flushPendingWrite lands only the named key and leaves the rest debounced (WR-04)', async () => {
+    const setSpy = vi.spyOn(chrome.storage.local, 'set');
+
+    await chromeStorageAdapter.setItem('key_a', '"a"');
+    await chromeStorageAdapter.setItem('np_workspace', '"ws"');
+
+    await flushPendingWrite('np_workspace');
+
+    expect(setSpy).toHaveBeenCalledTimes(1);
+    expect(setSpy).toHaveBeenCalledWith({ np_workspace: '"ws"' });
+    expect(__test__.getPendingSize()).toBe(1);
+    expect((globalThis as any).__chromeStorageMap.get('np_workspace')).toBe('"ws"');
+
+    // The remaining key still lands through the normal flush — once.
+    await flushPendingWrites();
+    expect(setSpy).toHaveBeenCalledTimes(2);
+    expect(setSpy).toHaveBeenLastCalledWith({ key_a: '"a"' });
+  });
+
+  it('flushPendingWrite is a no-op for a key with nothing pending', async () => {
+    const setSpy = vi.spyOn(chrome.storage.local, 'set');
+
+    await flushPendingWrite('np_workspace');
+
+    expect(setSpy).not.toHaveBeenCalled();
   });
 
   it('flush is a no-op when pendingWrites is empty', async () => {

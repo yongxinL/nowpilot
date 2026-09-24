@@ -102,6 +102,34 @@ export function flushPendingWrites(): Promise<void> {
   return performFlush();
 }
 
+/**
+ * Land one key's pending debounced write immediately, without waiting for the
+ * shared timer (WR-04). The workspace write path awaits this before it emits
+ * its `WORKSPACE_UPDATED` signal: a signal that followed a merely *queued*
+ * write would reach a receiving surface before the value was visible there,
+ * and that surface's immediate re-read would observe the previous version and
+ * drop the update until the next mutation.
+ *
+ * Only the named key is landed — every other pending write keeps its debounce
+ * window. The entry is removed from the pending map synchronously before the
+ * write is issued, so the timer's later flush cannot land a stale duplicate.
+ */
+export function flushPendingWrite(name: string): Promise<void> {
+  const pending = pendingWrites.get(name);
+  if (!pending) return Promise.resolve();
+  pendingWrites.delete(name);
+
+  if (pending.target === 'sync') {
+    if (hasChromeStorageSync) return chrome.storage.sync.set({ [name]: pending.value });
+    localStorage.setItem(name, pending.value);
+    return Promise.resolve();
+  }
+
+  if (hasChromeStorageLocal) return chrome.storage.local.set({ [name]: pending.value });
+  localStorage.setItem(name, pending.value);
+  return Promise.resolve();
+}
+
 // --- One-time lifecycle wiring -------------------------------------------------
 // Guarded by `typeof window !== 'undefined'` so the adapter is still
 // import-safe from the background service worker (no `document` there).

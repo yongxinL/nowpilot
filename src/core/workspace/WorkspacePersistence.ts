@@ -9,7 +9,7 @@ import {
   type JournalStep,
   type WriteJournalEntry,
 } from '../storage/WriteJournal';
-import { chromeStorageAdapter } from '../theme/chromeStorageAdapter';
+import { chromeStorageAdapter, flushPendingWrite } from '../theme/chromeStorageAdapter';
 import {
   CONVERSATION_ID_MAX_CHARS,
   WORKSPACE_ID_MAX_CHARS,
@@ -25,19 +25,25 @@ import {
  * ## The key and the channel
  *
  * The state lives under `WORKSPACE_STORAGE_KEY` (§15.1) and every write goes
- * through the existing debounced `chromeStorageAdapter` — the correct choice
- * for this key (RESEARCH Pattern 6 / Pitfall 1: only the *election* record must
- * bypass the debounce). The adapter's read-through pending map is what makes a
- * rapid sequence of writes order correctly, and `flushPendingWrites()` is the
- * lifecycle hook that lands the final ≤300 ms on tab close.
+ * through the existing `chromeStorageAdapter` — with one deliberate difference
+ * from a plain debounced write: the key write is **landed**
+ * (`flushPendingWrite`) before the step completes (WR-04). The adapter queues
+ * by default; a signal that followed a merely queued write would reach a
+ * receiving surface before the value was visible there, and that surface's
+ * immediate re-read would observe the previous version and drop the update
+ * until the next mutation. The workspace key is written once per mutation
+ * burst (the runtime microtask-coalesces), so landing it eagerly costs nothing
+ * the debounce was protecting. `flushPendingWrites()` remains the lifecycle
+ * hook that lands the final ≤300 ms on tab close.
  *
  * ## §20.3's order, journaled
  *
  * `writeWorkspaceState` follows the pinned order exactly: create the journal
  * entry (`'update-workspace'`, idempotency key `workspaceId + version`) → write
- * the key → emit the update signal → mark the entry `completed`. The journal
- * entry is persisted through `np_db`'s `entries` store, so a crash mid-write
- * leaves a resumable record rather than an invisible half-write.
+ * the key **and land it** → emit the update signal → mark the entry
+ * `completed`. The journal entry is persisted through `np_db`'s `entries`
+ * store, so a crash mid-write leaves a resumable record rather than an
+ * invisible half-write.
  *
  * ## Last-write-wins by integer version (Appendix M.3)
  *
@@ -320,6 +326,11 @@ export async function writeWorkspaceState(
       // Idempotent by contract: re-writing the same state is the same state.
       apply: async () => {
         await storage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(candidate));
+        // WR-04: land the debounced write before this step completes, so the
+        // signal (step 2) follows a durable key write and a receiving surface's
+        // immediate re-read sees the new value. A no-op for an injected
+        // synchronous area (nothing was queued) and when no write is pending.
+        await flushPendingWrite(WORKSPACE_STORAGE_KEY);
       },
       // Forward-only: never delete a stored state on a later step's failure.
       rollback: async () => {},
