@@ -18,8 +18,14 @@ import type { ProviderValidationResult } from '../../src/services/ports/provider
  *      all, so no caller can read it as success or as failure;
  *   4. the adapter performs no network request and imports no provider SDK —
  *      proven by a zero-call global `fetch` spy and a source scan;
- *   5. `CredentialStorePort` is a declaration with no implementation and no
- *      call site anywhere in `src/`;
+ *   5. `CredentialStorePort` is declared in its canonical Phase 2 module
+ *      (`src/services/ports/credentialStorePort.ts`); Phase 1 ships no
+ *      implementation and no call site, and no Phase-1 surface (fixtures,
+ *      onboarding store, onboarding flow, options page) imports or names it.
+ *      The original Phase-1 premise — "no implementation anywhere in `src/`" —
+ *      was legitimately superseded by Phase 2's charter (D2-03/D2-04: Phase 2
+ *      implements the port, Phase 3 wires it). The repository-wide credential
+ *      boundary is enforced by `tests/isolation/credential-boundary.test.ts`;
  *   6. the persisted provider type carries no credential-bearing field and the
  *      transient credential input is referenced by no persisted-store type.
  *
@@ -30,6 +36,24 @@ import type { ProviderValidationResult } from '../../src/services/ports/provider
 const REPO_ROOT = process.cwd();
 const SERVICES_ROOT = path.join(REPO_ROOT, 'src', 'services');
 const NEW_SERVICE_DIRS = ['ports', 'fixtures'].map((dir) => path.join(SERVICES_ROOT, dir));
+
+/**
+ * The four Phase-1 surfaces the credential port must never reach (D-05). The
+ * post-Phase-2 invariant is scope-aware: the port is implemented in Phase 2, so
+ * the honest assertion is that no Phase-1 presentation, onboarding or fixture
+ * module imports or names it — not that the identifier is absent from `src/`.
+ */
+const PHASE_1_CREDENTIAL_SURFACES = [
+  'services/fixtures',
+  'core/onboarding',
+  'components/onboarding',
+  'components/options',
+].map((dir) => path.join(REPO_ROOT, 'src', dir));
+
+/** Strip comments before matching: prose that *names* the port is not an import. */
+function stripComments(source: string): string {
+  return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+}
 
 /** The repository's synthetic-sentinel idiom — never a real credential. */
 const SENTINEL = 'sk-secret-DO-NOT-LEAK-XYZ123';
@@ -248,28 +272,37 @@ describe('services — no provider SDK is imported anywhere under src/services',
   });
 });
 
-describe('typed ports — declarations only, no Phase-1 implementation', () => {
-  it('exports CredentialStorePort as a type with no implementation and no call site', () => {
+describe('typed ports — the credential port stays out of the Phase-1 surface', () => {
+  it('declares CredentialStorePort in its canonical module and imports it from no Phase-1 surface', () => {
     const portFile = path.join(SERVICES_ROOT, 'ports', 'credentialStorePort.ts');
-    const callSites: string[] = [];
-
-    const walk = (dir: string) => {
-      if (!fs.existsSync(dir)) return;
-      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-        const full = path.join(dir, entry.name);
-        if (entry.isDirectory()) {
-          walk(full);
-        } else if (/\.tsx?$/.test(entry.name) && full !== portFile) {
-          if (fs.readFileSync(full, 'utf8').includes('CredentialStorePort')) {
-            callSites.push(path.relative(REPO_ROOT, full));
-          }
-        }
-      }
-    };
-    walk(path.join(REPO_ROOT, 'src'));
 
     expect(fs.existsSync(portFile)).toBe(true);
-    expect(callSites).toEqual([]);
+
+    // Provenance: this case replaces the Phase-1 "declarations only, no
+    // implementation" substring rule. Review-fix commit `18d206c6` (IN-05/IN-06)
+    // added a doc comment at `src/core/security/KeyVault.ts:33` that merely names
+    // the literal `CredentialStorePort`; the old comment-blind substring scan over
+    // `src/**` counted that prose as a call site, so a documentation-only commit
+    // turned `verify:phase-1` red. Phase 2's charter (D2-03/D2-04) legitimately
+    // superseded the "no implementation anywhere" premise — Phase 2 implements
+    // the port, Phase 3 wires it — so the invariant is restated scope-aware here.
+    // The repository-wide boundary is owned by
+    // `tests/isolation/credential-boundary.test.ts`.
+    const offenders: string[] = [];
+    let scanned = 0;
+
+    for (const dir of PHASE_1_CREDENTIAL_SURFACES) {
+      for (const { file, text } of sourceFiles(dir)) {
+        scanned += 1;
+        if (stripComments(text).includes('CredentialStorePort')) {
+          offenders.push(path.relative(REPO_ROOT, file));
+        }
+      }
+    }
+
+    // Non-vacuity: a renamed directory cannot make this case pass silently.
+    expect(scanned).toBeGreaterThan(0);
+    expect(offenders).toEqual([]);
   });
 
   it('declares the PortValidationResult union over the four canonical codes plus cancellation', async () => {
