@@ -71,9 +71,6 @@ function injectedArea(options: { seed?: PrimaryRecord; lostWrites?: boolean } = 
       if (options.lostWrites) return;
       for (const [key, value] of Object.entries(items)) map.set(key, value);
     },
-    remove: async (keys: string | string[]) => {
-      for (const key of Array.isArray(keys) ? keys : [keys]) map.delete(key);
-    },
   };
 
   return { area, map, reads: () => reads };
@@ -393,7 +390,7 @@ describe('WriterElection — deterministic conflict resolution (D2-34)', () => {
 });
 
 describe('WriterElection — surface lifecycle and handoff (D2-34)', () => {
-  it('one-surface closure promotes the survivor', async () => {
+  it('one-surface closure promotes the survivor after the closed record goes stale', async () => {
     const source = track(createWriterElection({ surface: 'standalone', tabId: 1 }));
     const survivor = track(createWriterElection({ surface: 'sidepanel', tabId: 2 }));
     expect(await source.elect()).toMatchObject({ kind: 'primary' });
@@ -402,10 +399,22 @@ describe('WriterElection — surface lifecycle and handoff (D2-34)', () => {
     source.stop();
     await flushMicrotasks();
 
-    // The closed surface released the record; the survivor promotes itself.
-    expect(record()).toBeUndefined();
-    expect(await survivor.elect()).toEqual({ kind: 'primary', epoch: T0 });
-    expect(record()).toEqual({ tabId: 2, surface: 'sidepanel', electedAt: T0 });
+    // WR-02: the closed surface's record is deliberately NOT removed — a
+    // read-then-remove could delete a record a concurrent winner had just
+    // written. It stays the source's identity until staleness releases it, so
+    // the survivor cannot claim while it is still fresh.
+    expect(record()).toEqual({ tabId: 1, surface: 'standalone', electedAt: T0 });
+    expect(await survivor.elect()).toMatchObject({ kind: 'secondary' });
+
+    // Past two heartbeat intervals the record is stale and the survivor takes
+    // authority — the pinned release mechanism.
+    await vi.advanceTimersByTimeAsync(STALE_AFTER_MS + 1);
+    expect(await survivor.elect()).toEqual({ kind: 'primary', epoch: T0 + STALE_AFTER_MS + 1 });
+    expect(record()).toEqual({
+      tabId: 2,
+      surface: 'sidepanel',
+      electedAt: T0 + STALE_AFTER_MS + 1,
+    });
     expect(survivor.coordinationState()).toEqual({ state: 'solo', primarySurface: 'sidepanel' });
   });
 
@@ -441,12 +450,21 @@ describe('WriterElection — surface lifecycle and handoff (D2-34)', () => {
       code: 'WORKSPACE_WRITER_REJECTED',
     });
 
-    // (2) Acknowledgement: the source releases authority.
+    // (2) Acknowledgement: the source stops heartbeating. Its record is left
+    // untouched (WR-02), so authority has not moved yet — the target still
+    // reports secondary against the fresh record.
     writer.stop();
     await flushMicrotasks();
+    expect(await target.elect()).toMatchObject({ kind: 'secondary' });
+    expect(record()?.surface).toBe('sidepanel');
 
-    // (3) Only now does authority move — and only to the acknowledged target.
-    expect(await target.elect()).toEqual({ kind: 'primary', epoch: T0 + HEARTBEAT_MS });
+    // (3) Only once the source's record has gone stale does authority move —
+    // and only to the acknowledged target.
+    await vi.advanceTimersByTimeAsync(STALE_AFTER_MS + 1);
+    expect(await target.elect()).toEqual({
+      kind: 'primary',
+      epoch: T0 + HEARTBEAT_MS + STALE_AFTER_MS + 1,
+    });
     expect(record()?.surface).toBe('standalone');
   });
 });

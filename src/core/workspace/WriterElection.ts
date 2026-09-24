@@ -31,8 +31,14 @@ import type { ActiveSurface } from './WorkspaceState';
  * is simultaneously the election epoch and the liveness timestamp — no extra
  * field, so §15.1's pinned record shape is preserved. A record older than
  * `STALE_AFTER_MS` (two heartbeat intervals) is stale and any surface may
- * elect; that is how a closed surface's primacy is released with no explicit
- * teardown message (the background service worker is **not** a participant).
+ * elect; that is the **only** release mechanism. `stop()` clears the heartbeat
+ * and never removes the record (WR-02): `chrome.storage` offers no atomic
+ * compare-and-remove, so a read-then-remove can delete a record a concurrent
+ * winner wrote in the window between the read and the removal — demoting that
+ * winner for a heartbeat and reporting a spurious `ELECTION_TIMEOUT`. A record
+ * a closed surface leaves behind goes stale on its own and is re-adopted by the
+ * same identity when it returns. The background service worker is **not** a
+ * participant.
  *
  * ## Stale-writer rejection and deterministic conflict resolution
  *
@@ -114,7 +120,6 @@ export type StillPrimaryResult = { ok: true } | { ok: false; code: WriterRejecti
 export interface PrimaryRecordStorageArea {
   get(keys: string): Promise<Record<string, unknown>>;
   set(items: Record<string, unknown>): Promise<void>;
-  remove?(keys: string | string[]): Promise<void>;
 }
 
 export interface WriterElectionDeps {
@@ -136,7 +141,11 @@ export interface WriterElection {
   elect(): Promise<ElectionOutcome>;
   /** Refresh the record every `HEARTBEAT_MS`; also the promotion path. */
   startHeartbeat(): void;
-  /** Stop heartbeating and release the record when this identity still owns it. */
+  /**
+   * Stop heartbeating. Release is implicit: the record is never removed
+   * (staleness is the release mechanism), so `stop()` can never delete a
+   * concurrent winner's record.
+   */
   stop(): void;
   /** The pre-write authority gate (T-02-31). Never throws. */
   assertStillPrimary(): Promise<StillPrimaryResult>;
@@ -349,22 +358,6 @@ export function createWriterElection(deps: WriterElectionDeps): WriterElection {
     return fail('ELECTION_TIMEOUT', 'The election record could not be verified after the write');
   }
 
-  async function removeIfOwned(): Promise<void> {
-    const current = await readRecord(area);
-    if (!current.ok || current.value === null || !isSelf(current.value)) return;
-    if (!area?.remove) return;
-
-    try {
-      await area.remove(PRIMARY_RECORD_KEY);
-      lastRefresh = -1;
-    } catch (error) {
-      debugLog('WORKSPACE_STORAGE_UNAVAILABLE', 'The election record could not be released on stop', {
-        key: PRIMARY_RECORD_KEY,
-        reason: errorName(error),
-      });
-    }
-  }
-
   return {
     surface,
     tabId,
@@ -386,9 +379,14 @@ export function createWriterElection(deps: WriterElectionDeps): WriterElection {
         clearIntervalFn(heartbeat);
         heartbeat = null;
       }
-      // A closing surface simply stops heartbeating and releases the record
-      // when it still owns it; the other surface promotes itself.
-      void removeIfOwned();
+      // Release is implicit (WR-02): the record is deliberately left in place
+      // and goes stale after `STALE_AFTER_MS` without a heartbeat, at which
+      // point any surface may elect. Never remove it here: a read-then-remove
+      // can delete a record a concurrent winner wrote in the window between the
+      // read and the removal (the record would then vanish for that winner's
+      // own read-back and it would report a spurious `ELECTION_TIMEOUT`). A
+      // record this identity leaves behind is re-adopted by the next election
+      // of the same `{tabId, surface}`.
     },
 
     async assertStillPrimary(): Promise<StillPrimaryResult> {
