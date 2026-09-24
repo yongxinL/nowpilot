@@ -1,22 +1,49 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   NP_STORE_SCHEMA_VERSION,
+  PERSISTED_BLOB_FIELDS,
   npStoreMigrate,
   useExtensionStore,
+  type ChatHydrationDeps,
 } from '../../../src/store/useExtensionStore';
 import { useThemeStore } from '../../../src/core/theme/ThemeStore';
 import { flushPendingWrites } from '../../../src/core/theme/chromeStorageAdapter';
+import { clearLogs, getRecentLogs } from '../../../src/core/log/debugLog';
+import { closeDb, __test__ as dbTest } from '../../../src/core/storage/NowPilotDB';
+import {
+  readAllConversations,
+  readConversation,
+  writeConversationWithMessages,
+  type ChatSessionRecord,
+  type MessageRecord,
+} from '../../../src/core/storage/ChatHistoryDB';
 
 /**
  * `np_store` persist suite — plan `01-11` adds the credential assertions the
  * inventory row requires (D-07 / D-08 / D-15) on top of plan `01-05`'s
- * theme-source assertions.
+ * theme-source assertions. Plan `02-08` adds the v3 body-free projection, the
+ * D2-18 hydration contract and the no-legacy-fallback rule.
  *
  * The removed-field names are written here, in the suite, on purpose: the
  * source scan in Task 1's verify reads `src/types`, `src/store` and
  * `src/services`, so the *production* modules must not restate them while the
  * test that proves their absence must.
  */
+
+/** A synthetic body — the sentinel the body-absence assertions look for. */
+const BODY = 'synthetic-body-DO-NOT-LEAK-9c41f7';
+/** No substring of the body may survive a projection: the full value, its
+ *  excerpt-length prefix and its distinctive fragments are all asserted. */
+const BODY_FRAGMENTS = [
+  BODY,
+  BODY.slice(0, 20),
+  ...BODY.split('-').filter((fragment) => fragment.length > 3),
+];
+/** A synthetic fixture body — never allowed to reach the store or the database. */
+const FIXTURE_BODY = 'synthetic-fixture-body-DO-NOT-LEAK-2b8e10';
+
+const storageMap = () =>
+  (globalThis as unknown as { __chromeStorageMap: Map<string, string> }).__chromeStorageMap;
 
 /** Every field plan `01-11` removed from the persisted schema. */
 const REMOVED_FIELDS = [
@@ -286,5 +313,488 @@ describe('useExtensionStore hydration — a malformed np_store blob (WR-02)', ()
       if (previous === undefined) storageMap.delete('np_store');
       else storageMap.set('np_store', previous);
     }
+  });
+
+  // WR-02 / plan `02-08`: the rehydrate failure net still records. A storage
+  // read that rejects is the path `onRehydrateStorage` exists for.
+  it('a rehydrate failure still records NP_STORE_REHYDRATE_FAILED', async () => {
+    clearLogs();
+    const getSpy = vi
+      .spyOn(chrome.storage.local, 'get')
+      .mockRejectedValueOnce(new Error('synthetic-storage-read-failure'));
+
+    try {
+      await useExtensionStore.persist.rehydrate();
+    } finally {
+      getSpy.mockRestore();
+    }
+
+    const logged = getRecentLogs().map((entry) => `${entry.code} ${entry.message}`).join('\n');
+    expect(logged).toContain('NP_STORE_REHYDRATE_FAILED');
+  });
+});
+
+describe('useExtensionStore — the np_store v3 projection is body-free (D2-08)', () => {
+  // D2-08 / D2-11: v3 is the body-free schema. A v2 blob's conversation
+  // collection, active-conversation id and body-derived excerpt are dropped by
+  // the allow-list rebuild rather than carried forward.
+  it('migrate(v2Blob, 2) keeps the surviving fields only: no conversations, no active id, no excerpt', () => {
+    const v2 = {
+      config: { language: 'English', themeMode: 'Auto' },
+      sessions: [
+        {
+          id: 's1',
+          title: 'Legacy conversation',
+          preview: BODY.slice(0, 20),
+          createdAt: 1,
+          updatedAt: 2,
+          isStarred: false,
+          group: 'Today',
+          messages: [{ id: 'm1', role: 'user', content: BODY, timestamp: 1 }],
+        },
+      ],
+      activeSessionId: 's1',
+      prompts: [],
+      writeHistory: [],
+      notes: [],
+    };
+
+    // Non-vacuity: the sentinel body and the excerpt really are in the input.
+    expect(JSON.stringify(v2)).toContain(BODY);
+
+    const migrated = npStoreMigrate(v2, 2) as Record<string, unknown>;
+    const serialised = JSON.stringify(migrated);
+
+    expect(Object.keys(migrated).sort()).toEqual(['config', 'notes', 'prompts', 'writeHistory']);
+    expect(serialised).not.toContain('sessions');
+    expect(serialised).not.toContain('activeSessionId');
+    expect(serialised).not.toContain('preview');
+    for (const fragment of BODY_FRAGMENTS) {
+      expect(serialised, `migrated blob must not carry "${fragment}"`).not.toContain(fragment);
+    }
+
+    // The declared allow-list itself is body-free — the suite fails if a
+    // conversation, the active-conversation id or an excerpt is ever added.
+    expect(PERSISTED_BLOB_FIELDS).toEqual(['config', 'prompts', 'writeHistory', 'notes']);
+  });
+
+  // T-02-41: the body leaves `chrome.storage.local` at the migration boundary.
+  // The stored blob is read from the storage map, not from the store's memory.
+  it('a synthetic body in the stored v2 blob does not survive the v3 migration', async () => {
+    await flushPendingWrites();
+    const previous = storageMap().get('np_store');
+    const legacyBlob = JSON.stringify({
+      state: {
+        config: { language: 'English' },
+        sessions: [
+          {
+            id: 's1',
+            title: 'Legacy conversation',
+            preview: BODY.slice(0, 20),
+            messages: [{ id: 'm1', role: 'user', content: BODY, timestamp: 1 }],
+          },
+        ],
+        activeSessionId: 's1',
+        prompts: [],
+        writeHistory: [],
+        notes: [],
+      },
+      version: 2,
+    });
+    expect(legacyBlob).toContain(BODY);
+    storageMap().set('np_store', legacyBlob);
+
+    try {
+      await useExtensionStore.persist.rehydrate();
+      await flushPendingWrites();
+
+      const stored = storageMap().get('np_store') ?? '';
+      for (const fragment of BODY_FRAGMENTS) {
+        expect(stored, `stored blob must not carry "${fragment}"`).not.toContain(fragment);
+      }
+      expect(stored).not.toContain('sessions');
+      expect(stored).not.toContain('preview');
+
+      const persisted = JSON.parse(stored) as { state: Record<string, unknown>; version: number };
+      expect(persisted.version).toBe(3);
+      expect(Object.keys(persisted.state).sort()).toEqual([
+        'config',
+        'notes',
+        'prompts',
+        'writeHistory',
+      ]);
+    } finally {
+      if (previous === undefined) storageMap().delete('np_store');
+      else storageMap().set('np_store', previous);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The D2-17 read path and D2-18's states (plan `02-08` Task 2)
+// ---------------------------------------------------------------------------
+
+function sessionRecord(id: string, updated: number): ChatSessionRecord {
+  return { id, title: `Conversation ${id}`, created: updated - 10, updated, starred: false };
+}
+
+function messageRecord(sessionId: string, seq: number, content = 'synthetic message'): MessageRecord {
+  return {
+    sessionId,
+    seq,
+    id: `${sessionId}:${seq}`,
+    role: 'user',
+    content,
+    timestamp: 1_700_000_000_000 + seq,
+  };
+}
+
+/** The explicit test adapter D2-20 sanctions: every seam is injectable. */
+function stubPort(overrides: Partial<ChatHydrationDeps> = {}): ChatHydrationDeps {
+  return {
+    ensureDatabase: async () => undefined,
+    recoverJournal: async () => ({ replayed: 0, failed: 0 }),
+    runMigration: async () => ({ ok: true, conversations: 0, sanitised: true }),
+    listConversations: async () => ({ ok: true, sessions: [], invalidIds: [] }),
+    readConversation: async () => ({ ok: false, code: 'CHAT_HISTORY_NOT_FOUND' }),
+    ...overrides,
+  };
+}
+
+/** Put the store back to its pre-hydration runtime state. */
+function resetStore(): void {
+  useExtensionStore.setState({
+    sessions: [],
+    activeSessionId: '',
+    activeSession: null,
+    hydrationStatus: 'idle',
+    hydrationError: null,
+  });
+}
+
+const loggedText = () =>
+  getRecentLogs()
+    .map((entry) => `${entry.code} ${entry.message} ${JSON.stringify(entry.context ?? {})}`)
+    .join('\n');
+
+describe('useExtensionStore — the asynchronous hydration contract (D2-17/D2-18)', () => {
+  beforeEach(async () => {
+    (globalThis as unknown as { __resetIndexedDB: () => void }).__resetIndexedDB();
+    closeDb();
+    dbTest.reset();
+    clearLogs();
+    await flushPendingWrites();
+    resetStore();
+  });
+
+  afterEach(() => {
+    closeDb();
+    dbTest.reset();
+  });
+
+  it('runs the D2-17 order and publishes idle → hydrating → ready', async () => {
+    const observed: Array<{ step: string; status: string }> = [];
+    const record = (step: string) => {
+      observed.push({ step, status: useExtensionStore.getState().hydrationStatus });
+    };
+
+    expect(useExtensionStore.getState().hydrationStatus).toBe('idle');
+
+    const port = stubPort({
+      ensureDatabase: async () => {
+        record('ensureDatabase');
+      },
+      recoverJournal: async () => {
+        record('recoverJournal');
+        return { replayed: 0, failed: 0 };
+      },
+      runMigration: async () => {
+        record('runMigration');
+        return { ok: true, conversations: 1, sanitised: true };
+      },
+      listConversations: async () => {
+        record('listConversations');
+        return { ok: true, sessions: [sessionRecord('s1', 200)], invalidIds: [] };
+      },
+      readConversation: async (id) => {
+        record(`readConversation:${id}`);
+        return {
+          ok: true,
+          session: sessionRecord(id, 200),
+          messages: [messageRecord(id, 0, BODY)],
+        };
+      },
+    });
+
+    const status = await useExtensionStore.getState().hydrateChatHistory(port);
+
+    expect(status).toBe('ready');
+    // The seams run in the D2-17 order, and every one of them observes
+    // `hydrating` — the status is published before the work, not after it.
+    expect(observed).toEqual([
+      { step: 'ensureDatabase', status: 'hydrating' },
+      { step: 'recoverJournal', status: 'hydrating' },
+      { step: 'runMigration', status: 'hydrating' },
+      { step: 'listConversations', status: 'hydrating' },
+      { step: 'readConversation:s1', status: 'hydrating' },
+    ]);
+
+    const state = useExtensionStore.getState();
+    expect(state.hydrationStatus).toBe('ready');
+    expect(state.hydrationError).toBeNull();
+    expect(state.sessions.map((session) => session.id)).toEqual(['s1']);
+    expect(state.sessions[0].messages.map((message) => message.content)).toEqual([BODY]);
+    expect(state.activeSession?.id).toBe('s1');
+  });
+
+  it('resolves empty only from a successful read that found nothing', async () => {
+    const status = await useExtensionStore.getState().hydrateChatHistory(stubPort());
+
+    expect(status).toBe('empty');
+    const state = useExtensionStore.getState();
+    expect(state.hydrationStatus).toBe('empty');
+    expect(state.hydrationError).toBeNull();
+    expect(state.sessions).toEqual([]);
+    expect(state.activeSession).toBeNull();
+  });
+
+  // T-02-42 / D2-18: a database error is never presented as empty history.
+  it('a database failure resolves failed with the typed code and never empty', async () => {
+    const status = await useExtensionStore.getState().hydrateChatHistory(
+      stubPort({
+        ensureDatabase: async () => {
+          throw new Error('synthetic-database-unavailable');
+        },
+      }),
+    );
+
+    expect(status).toBe('failed');
+    const state = useExtensionStore.getState();
+    expect(state.hydrationStatus).toBe('failed');
+    expect(state.hydrationStatus).not.toBe('empty');
+    expect(state.hydrationError).toEqual({ code: 'IDB_OPEN_FAILED' });
+    expect(state.sessions).toEqual([]);
+  });
+
+  it('a conversation-list read failure resolves a typed failure and never empty', async () => {
+    const status = await useExtensionStore.getState().hydrateChatHistory(
+      stubPort({
+        listConversations: async () => ({ ok: false, code: 'CHAT_HISTORY_UNAVAILABLE' }),
+      }),
+    );
+
+    expect(status).toBe('failed');
+    expect(useExtensionStore.getState().hydrationStatus).not.toBe('empty');
+    expect(useExtensionStore.getState().hydrationError).toEqual({
+      code: 'CHAT_HISTORY_UNAVAILABLE',
+    });
+  });
+
+  // T-02-42 / D2-17 step 7: no legacy fallback. With the database unavailable
+  // and a legacy body in `chrome.storage.local`, the body never reaches the
+  // in-memory session collection — and the failure is not presented as empty.
+  it('no legacy fallback: an unavailable database leaves the legacy body out of the session collection', async () => {
+    await flushPendingWrites();
+    const previous = storageMap().get('np_store');
+    const legacyBlob = JSON.stringify({
+      state: {
+        config: {},
+        sessions: [
+          {
+            id: 's-legacy',
+            title: 'Legacy conversation',
+            preview: BODY.slice(0, 20),
+            messages: [{ id: 'm1', role: 'user', content: BODY, timestamp: 1 }],
+          },
+        ],
+        activeSessionId: 's-legacy',
+      },
+      version: 2,
+    });
+    storageMap().set('np_store', legacyBlob);
+
+    // The database cannot open: the migrator's own failure seam aborts a fresh
+    // open (a real path, not a stubbed one).
+    dbTest.setMigrationFailure(() => {
+      throw new Error('synthetic-injected-migration-failure');
+    });
+
+    try {
+      // Non-vacuity: the legacy body really is in the storage map.
+      expect(storageMap().get('np_store')).toContain(BODY);
+
+      const status = await useExtensionStore.getState().hydrateChatHistory();
+
+      expect(status).toBe('failed');
+      const state = useExtensionStore.getState();
+      expect(state.hydrationStatus).toBe('failed');
+      expect(state.hydrationError?.code).toBe('IDB_MIGRATION_FAILED');
+      expect(state.sessions).toEqual([]);
+
+      const partialize = useExtensionStore.persist.getOptions().partialize;
+      for (const fragment of BODY_FRAGMENTS) {
+        expect(JSON.stringify(partialize?.(state) ?? {})).not.toContain(fragment);
+        expect(loggedText(), `logs must not carry "${fragment}"`).not.toContain(fragment);
+      }
+    } finally {
+      dbTest.setMigrationFailure(null);
+      closeDb();
+      if (previous === undefined) storageMap().delete('np_store');
+      else storageMap().set('np_store', previous);
+    }
+  });
+
+  // D2-20's partial-failure policy: the verified conversations hydrate and the
+  // status stays a non-empty error state — never the empty presentation.
+  it('a partially migrated installation hydrates the verified conversations and reports the error state', async () => {
+    const status = await useExtensionStore.getState().hydrateChatHistory(
+      stubPort({
+        runMigration: async () => ({
+          ok: false,
+          code: 'LEGACY_CHAT_MIGRATION_DESTINATION_VERIFY_FAILED',
+          stage: 'destination-verified',
+        }),
+        listConversations: async () => ({
+          ok: true,
+          sessions: [sessionRecord('s-verified', 300)],
+          invalidIds: [],
+        }),
+        readConversation: async (id) => ({
+          ok: true,
+          session: sessionRecord(id, 300),
+          messages: [messageRecord(id, 0)],
+        }),
+      }),
+    );
+
+    // The migration leaves its journal entry non-terminal and resumable, so
+    // the typed error state is `recovery required`.
+    expect(status).toBe('recovery required');
+    const state = useExtensionStore.getState();
+    expect(state.hydrationStatus).toBe('recovery required');
+    expect(state.hydrationStatus).not.toBe('empty');
+    expect(state.hydrationError).toEqual({
+      code: 'LEGACY_CHAT_MIGRATION_DESTINATION_VERIFY_FAILED',
+    });
+    expect(state.sessions.map((session) => session.id)).toEqual(['s-verified']);
+  });
+
+  // T-02-44: one malformed conversation is identified by safe id only, the
+  // remaining conversations still hydrate, and nothing logs body text.
+  it('one malformed conversation is excluded by safe id and the rest still hydrate', async () => {
+    const status = await useExtensionStore.getState().hydrateChatHistory(
+      stubPort({
+        listConversations: async () => ({
+          ok: true,
+          sessions: [sessionRecord('s-good', 400), sessionRecord('s-bad', 300)],
+          invalidIds: ['s-broken'],
+        }),
+        readConversation: async (id) => {
+          if (id === 's-bad') return { ok: false, code: 'CHAT_HISTORY_INVALID_RECORD' };
+          return {
+            ok: true,
+            session: sessionRecord(id, 400),
+            messages: [messageRecord(id, 0, BODY)],
+          };
+        },
+      }),
+    );
+
+    expect(status).toBe('failed');
+    const state = useExtensionStore.getState();
+    expect(state.sessions.map((session) => session.id)).toEqual(['s-good']);
+    expect(state.hydrationStatus).not.toBe('empty');
+    expect(state.hydrationError).toEqual({ code: 'CHAT_HISTORY_INVALID_RECORD' });
+
+    const logged = loggedText();
+    expect(logged).toContain('s-bad');
+    expect(logged).toContain('s-broken');
+    for (const fragment of BODY_FRAGMENTS) {
+      expect(logged, `logs must not carry "${fragment}"`).not.toContain(fragment);
+    }
+  });
+
+  // T-02-45: a failed hydration can be re-driven, and the retry runs the real
+  // production read path against `np_db`.
+  it('retryHydration re-drives a failed hydration to ready', async () => {
+    await flushPendingWrites();
+    storageMap().delete('np_store');
+
+    expect(
+      (await writeConversationWithMessages(sessionRecord('s-real', 500), [
+        messageRecord('s-real', 0),
+      ])).ok,
+    ).toBe(true);
+
+    const first = await useExtensionStore.getState().hydrateChatHistory(
+      stubPort({
+        ensureDatabase: async () => {
+          throw new Error('synthetic-database-unavailable');
+        },
+      }),
+    );
+    expect(first).toBe('failed');
+    expect(useExtensionStore.getState().sessions).toEqual([]);
+
+    // The retry uses the production defaults: the real database, the real
+    // journal recovery and the real migration.
+    const second = await useExtensionStore.getState().retryHydration();
+
+    expect(second).toBe('ready');
+    const state = useExtensionStore.getState();
+    expect(state.hydrationError).toBeNull();
+    expect(state.sessions.map((session) => session.id)).toEqual(['s-real']);
+  });
+
+  // D2-20 fixtures clause: fixture chat states are separated from production
+  // hydration — never written into the database automatically, never marking
+  // hydration successful, never overriding a persisted conversation.
+  it('fixture chat states stay separated from production hydration', async () => {
+    const fixture = {
+      id: 's-fixture',
+      title: 'Fixture conversation',
+      preview: FIXTURE_BODY.slice(0, 20),
+      createdAt: 1,
+      updatedAt: 1,
+      isStarred: false,
+      group: 'Today',
+      messages: [
+        { id: 'm-fixture', role: 'user' as const, content: FIXTURE_BODY, timestamp: 1 },
+      ],
+    };
+
+    // The explicit test adapter carries the fixture in a field the read path
+    // never consults; the seams below are the production repository reads.
+    const adapter: ChatHydrationDeps & { fixtures: unknown[] } = {
+      ensureDatabase: async () => undefined,
+      recoverJournal: async () => ({ replayed: 0, failed: 0 }),
+      runMigration: async () => ({ ok: true, conversations: 0, sanitised: true }),
+      listConversations: () => readAllConversations(),
+      readConversation: (sessionId) => readConversation(sessionId),
+      fixtures: [fixture],
+    };
+
+    // (1) An empty database with a fixture present resolves `empty`: a fixture
+    //     never marks hydration successful and is never written to the database.
+    const emptyStatus = await useExtensionStore.getState().hydrateChatHistory(adapter);
+    expect(emptyStatus).toBe('empty');
+    expect(useExtensionStore.getState().sessions).toEqual([]);
+
+    const stored = await readAllConversations();
+    expect(stored.ok && stored.sessions.some((session) => session.id === 's-fixture')).toBe(false);
+    const fixtureRead = await readConversation('s-fixture');
+    expect(fixtureRead.ok).toBe(false);
+    if (!fixtureRead.ok) expect(fixtureRead.code).toBe('CHAT_HISTORY_NOT_FOUND');
+
+    // (2) A persisted conversation is never overridden by a fixture.
+    expect(
+      (await writeConversationWithMessages(sessionRecord('s-persisted', 600), [])).ok,
+    ).toBe(true);
+
+    const readyStatus = await useExtensionStore.getState().hydrateChatHistory(adapter);
+    expect(readyStatus).toBe('ready');
+    const state = useExtensionStore.getState();
+    expect(state.sessions.map((session) => session.id)).toEqual(['s-persisted']);
+    expect(JSON.stringify(state.sessions)).not.toContain(FIXTURE_BODY);
   });
 });
