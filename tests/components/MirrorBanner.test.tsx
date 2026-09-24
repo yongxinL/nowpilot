@@ -88,6 +88,30 @@ describe('MirrorBanner (Plan 01-07 / 02-07 — D-05, D-12, REQ-F05)', () => {
     expect(bar.style.height).toBe('');
   });
 
+  it('enforces the pinned overflow backstop: the action never wraps and the caption clamps to two lines', () => {
+    renderWithAntd(<MirrorBanner onRefocus={vi.fn()} />);
+
+    const action = screen.getByText(t('workspace.mirrorRefocus'));
+    expect(action.style.flexShrink).toBe('0');
+    expect(action.style.whiteSpace).toBe('nowrap');
+
+    const caption = screen.getByText(t('workspace.mirroringNotice'));
+    expect(caption.style.display).toBe('-webkit-box');
+    expect(caption.style.minWidth).toBe('0');
+    expect(caption.style.overflow).toBe('hidden');
+    expect(caption.style.textOverflow).toBe('ellipsis');
+
+    // jsdom's CSSStyleDeclaration drops `-webkit-line-clamp` (it is outside its
+    // supported property list), so the two-line clamp is pinned at the source —
+    // without it the caption could grow past two lines unnoticed.
+    const source = fs.readFileSync(
+      path.resolve(process.cwd(), 'src/components/common/MirrorBanner.tsx'),
+      'utf8',
+    );
+    expect(source).toMatch(/WebkitLineClamp:\s*2/);
+    expect(source).not.toMatch(/lineHeight:\s*'32px'/);
+  });
+
   it('renders exactly the caption and the action — no state-dependent text', () => {
     renderWithAntd(<MirrorBanner onRefocus={vi.fn()} />);
 

@@ -62,8 +62,18 @@ export const MirrorBanner: React.FC<MirrorBannerProps> = ({ onRefocus }) => {
       <Typography.Text
         style={{
           fontSize: 12,
+          // The pinned body/label line-height role (02-UI-SPEC § Typography):
+          // never a literal pixel height that fights the wrap.
+          lineHeight: 1.5,
           color: token.colorTextBase,
-          lineHeight: '32px',
+          // The overflow backstop (02-UI-SPEC § UI Considerations): the caption
+          // wraps to at most two lines, then ellipsizes.
+          minWidth: 0,
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
         }}
       >
         {t('workspace.mirroringNotice')}
@@ -84,9 +94,13 @@ export const MirrorBanner: React.FC<MirrorBannerProps> = ({ onRefocus }) => {
         }}
         style={{
           fontSize: 12,
+          // Same pinned line-height role as the caption, and the action never
+          // wraps, shrinks or clips (02-UI-SPEC § UI Considerations).
+          lineHeight: 1.5,
           color: token.colorPrimary,
           textDecoration: 'underline',
-          lineHeight: '32px',
+          flexShrink: 0,
+          whiteSpace: 'nowrap',
           cursor: 'pointer',
         }}
         aria-label={t('workspace.mirrorRefocusA11y')}
