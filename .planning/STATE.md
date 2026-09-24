@@ -4,16 +4,16 @@ milestone: v0.2
 current_phase: 2
 current_phase_name: Storage, Security, WriteJournal, Workspace Persistence
 status: executing
-stopped_at: Completed 02-09-PLAN.md
-last_updated: "2026-09-24T01:38:04.254Z"
+stopped_at: Completed 02-11-PLAN.md
+last_updated: "2026-09-24T01:57:55.446Z"
 last_activity: 2026-09-24
 last_activity_desc: Phase 2 execution started
-state_head: a0dccb19ad5644fe946b038348beff016ab29b4c
+state_head: a60e313580d0d683d02ea54f3025b947ecd045df
 progress:
   total_phases: 19
   completed_phases: 1
   total_plans: 26
-  completed_plans: 22
+  completed_plans: 23
 ---
 
 # Project State
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-09-23)
 ## Current Position
 
 Phase: 2 (Storage, Security, WriteJournal, Workspace Persistence) — EXECUTING
-Plan: 10 of 13
+Plan: 11 of 13
 Status: Ready to execute
 Last activity: 2026-09-24 — Phase 2 execution started
 
@@ -80,6 +80,7 @@ Progress: [█░░░░░░░░░] 5%
 | Phase 2 P07 | 15 min | 3 tasks | 11 files |
 | Phase 02 P08 | 24 min | 2 tasks | 3 files |
 | Phase 02 P09 | 10 min | 2 tasks | 5 files |
+| Phase 02 P11 | 11 min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -191,6 +192,11 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 2]: 02-09: MirrorBanner activation is `writerState === 'mirror'` in both shells and the refocus path is non-optimistic by construction — the click only asks `requestRefocus()`, changes no local state, and reports every non-primary outcome (typed election error with its own code, a `secondary` outcome as `ELECTION_TIMEOUT`, an unregistered instance as `STORAGE_UNAVAILABLE`) through `subscribeToElectionFailure`; the registry holds an instance reference and no authority.
 - [Phase 2]: 02-09: the conversation region is a total switch over the six frozen hydration states — `idle`/`ready` render nothing (no claim before a read, no renderer in Phase 2), `hydrating` is an AntD Skeleton, `empty` is the only state rendering the empty copy, `failed`/`recovery required` render the pinned line plus the store's own retry — and no status alters the header/composer/toolbar/status bar or adds a marker to the live region.
 - [Phase 2]: 02-09: the shell never reads the typed `hydrationError` — its only possible use (rendering the code) is forbidden by T-02-49, so the suite seeds a real code into the store and asserts it never reaches the DOM instead.
+- [Phase 2]: 02-11: the loopback transport delivers on a queued microtask, never synchronously — the initiator publishes the transfer before it opens its acknowledgement window, so a synchronous delivery drops every ack (the real BroadcastChannel delivers on a queued task; observed as a 5s timeout in the first smoke run).
+- [Phase 2]: 02-11: each simulated surface owns an in-memory workspace/writer projection updated through the real pure projectWriterSignal while chrome.storage and np_db stay shared — two documents, two projections, one durable store; the module-level zustand singleton is deliberately not faked into two module instances.
+- [Phase 2]: 02-11: the harness navigation adapter reproduces planStandaloneTarget's query→focus/re-point vs create interaction because openStandalone binds the shipped transport with no injection point; the real buildHandoffUrl/parseHandoffUrl are used, and the tabs registry's first tab carries the Standalone surface identity so the document's tab id and the election tabId agree.
+- [Phase 2]: 02-11: restartSurface is a graceful reload (the election instance is stopped and recreated with the same identity); the non-graceful path — a record left behind to go stale — is clause 21's takeover by not heartbeating and advancing three intervals.
+- [Phase 2]: 02-11: crashDuring is a dropped message (dropNext now takes a count), not a thrown exception — the only shape in which 'crash between handoff stages' is observable without breaking the controller's own error contract; Suite A clause 12 scans six surfaces for the synthetic sentinel with the stand-in still holding it as the positive control.
 
 ### Pending Todos
 
@@ -272,6 +278,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-24T01:38:04.196Z
-Stopped at: Completed 02-09-PLAN.md
+Last session: 2026-09-24T01:57:55.393Z
+Stopped at: Completed 02-11-PLAN.md
 Resume file: None
