@@ -162,9 +162,10 @@ type WorkspaceStore = WorkspaceState & WriterProjection & WorkspaceActions;
  * The workspace store (D-11, D-14, D-20).
  *
  * **The projection, not a database.** This store holds no persist middleware, no
- * storage key and no durable copy: the workspace key is written by
- * `WorkspacePersistence` (02-06) under the journal, and this module stays a pure
- * in-memory projection of the workspace state plus the writer election. Only the
+ * storage key and no durable copy: the workspace key is written by the workspace
+ * runtime (`workspaceRuntime.ts`, CR-02) through `WorkspacePersistence` (02-06)
+ * under the journal, and this module stays a pure in-memory projection of the
+ * workspace state plus the writer election. Only the
  * authorised producers are exposed as mutators — `workspaceId`, `conversationId`,
  * `activeSurface` and `openedStandaloneTabId` (plus the shape version and the
  * write counter those writes bump). The later-phase fields

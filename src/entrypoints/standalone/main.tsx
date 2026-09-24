@@ -27,6 +27,7 @@ import { t } from '../../core/i18n/strings';
 import { debugLog } from '../../core/log/debugLog';
 import { openOptions } from '../../core/workspace/WorkspaceRouter';
 import { useWorkspaceStore } from '../../core/workspace/WorkspaceStore';
+import { startWorkspaceRuntime } from '../../core/workspace/workspaceRuntime';
 import {
   HEARTBEAT_MS,
   createWriterElection,
@@ -104,7 +105,10 @@ function createSurfaceElection(tabId: number): WriterElection {
   };
 }
 
-/** The D2-17 read path, the writer election and its heartbeat, once per mount. */
+/**
+ * The D2-17 read path, the workspace runtime (durable hydrate + persistence),
+ * the writer election and its heartbeat, once per mount.
+ */
 function usePhase2Startup(): void {
   useEffect(() => {
     let disposed = false;
@@ -119,7 +123,15 @@ function usePhase2Startup(): void {
       await useExtensionStore.getState().hydrateChatHistory();
       if (disposed) return;
 
-      // 2. Elect this surface's writer and register it, so a refocus request
+      // 2. Hydrate the durable workspace state and start the workspace runtime
+      //    (CR-02): the persisted identity and write counter are
+      //    installed before this surface elects, and every authorised mutation
+      //    from here on persists through the journaled path behind the
+      //    election gate.
+      await startWorkspaceRuntime();
+      if (disposed) return;
+
+      // 3. Elect this surface's writer and register it, so a refocus request
       //    from the shell can reach it with no prop chain.
       election = createSurfaceElection(await resolveSelfTabId());
       if (disposed) {
@@ -129,11 +141,13 @@ function usePhase2Startup(): void {
       }
       setActiveWriterElection(election);
 
-      // 3. The first election, applied before the heartbeat starts.
+      // 4. The first election, applied before the heartbeat starts. The
+      //    transition to `primary` is also the runtime's identity-establishing
+      //    write, so this surface's workspace copy becomes durable.
       await election.elect();
       if (disposed) return;
 
-      // 4. The heartbeat is also the promotion path: a secondary keeps probing
+      // 5. The heartbeat is also the promotion path: a secondary keeps probing
       //    and promotes itself once the record goes stale. It runs at the
       //    election's own interval so both paths report through one projection.
       heartbeat = setInterval(() => {

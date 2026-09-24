@@ -521,6 +521,23 @@ function reportElectionFailure(code: ElectionFailureCode): void {
 }
 
 /**
+ * The pre-write authority gate against this surface's registered election
+ * (02-06's `assertStillPrimary`, reachable without a prop chain the way
+ * `requestRefocus` is — the runtime calls it from the workspace write path).
+ *
+ * A write is never authorised without an authoritative election: no registered
+ * instance resolves the typed `STORAGE_UNAVAILABLE` rejection rather than
+ * granting a write.
+ */
+export async function assertActiveWriterStillPrimary(): Promise<StillPrimaryResult> {
+  const election = activeWriterElection;
+  if (election === null) {
+    return { ok: false, code: 'WORKSPACE_STORAGE_UNAVAILABLE' };
+  }
+  return election.assertStillPrimary();
+}
+
+/**
  * Ask the active election to promote this surface, and report the outcome
  * through the failure channel when it does not reach primary.
  *
