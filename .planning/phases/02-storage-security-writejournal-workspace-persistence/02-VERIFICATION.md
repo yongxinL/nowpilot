@@ -1,6 +1,6 @@
 ---
 phase: 02-storage-security-writejournal-workspace-persistence
-verified: 2026-09-24T11:52:00Z
+verified: 2026-09-24T11:55:56Z
 status: passed
 score: 119/122 must-haves verified
 covered_files:
@@ -102,7 +102,7 @@ covered_files:
   - "tests/isolation/generated-manifest.test.ts"
   - "tests/setup.ts"
   - "wxt.config.ts"
-covered_digest: "v1:sha256:73d9ba7eeef7e5c48008484dabc1789575c1e5bebc8e129616401f6a10cceb34"
+covered_digest: "v1:sha256:646d7581d8c4480d223a93dbba307c839afadf0acd875456c32c1f0681c9da8f"
 behavior_unverified: 2
 overrides_applied: 0
 re_verification:
@@ -136,9 +136,17 @@ behavior_unverified_items:
 # Phase 2: Storage, Security, WriteJournal, Workspace Persistence Verification Report
 
 **Phase Goal:** Durable, encrypted, crash-safe storage foundation — keys encrypted, message bodies only in IndexedDB, migrations idempotent, writes journaled, workspace persistent across reloads and surfaces.
-**Verified:** 2026-09-24T11:52:00Z
+**Verified:** 2026-09-24T11:55:56Z
 **Status:** passed
 **Re-verification:** Yes — final re-verification after the operator UAT disposition (2026-09-24). No production or test code changed since the previous verification (`76038e4d`).
+
+## Fingerprint refresh (2026-09-24T11:55:56Z) — post phase-completion bookkeeping
+
+The phase was marked complete after this report's `passed` verdict was committed (`phase complete 2` → `roadmap_updated: true`, `state_updated: true`, `plans_executed: 14/14`), which wrote `.planning/ROADMAP.md`, `.planning/STATE.md` and `.planning/state.json` after the fingerprint was last computed. This refresh re-affirms the report: the digest is recomputed over the identical 98-path covered-input set, and no conclusion, score, artifact row, key link or deferral below is altered.
+
+- **Covered-file delta since `a1f36046` is completion bookkeeping only.** `git diff --name-only a1f36046..HEAD` = `.planning/ROADMAP.md` (Phase 2 checkbox `[x]`, completion table 14/14 Complete 2026-09-24), `.planning/STATE.md` (`current_phase` 2→3, `status: planning`, `completed_phases` 2, `percent` 11) and `.planning/state.json` (machine-index sync). `git diff --name-only a1f36046..HEAD -- src/ tests/` is empty; of the 98 declared covered inputs only `.planning/STATE.md` changed in the range — which is why the previous digest `v1:sha256:73d9ba7e…` read `stale`.
+- **Gate re-observed at HEAD `271e1d23` (clean tracked tree):** `pnpm run verify:phase-2` exit **0** — preflight `24 declared path(s) resolve`, Test Files **29 passed (29)**, Tests **490 passed (490)** (identical counts to the substantive pass; the only range change is the bookkeeping above).
+- **Fingerprint recomputed over the same 98-path covered set:** `v1:sha256:646d7581d8c4480d223a93dbba307c839afadf0acd875456c32c1f0681c9da8f` replaces the stale `v1:sha256:73d9ba7e…`; `verification.status` resolves `passed` on this rewrite.
 
 ## What changed since the last verification (2026-09-24T11:18:03Z)
 
@@ -343,5 +351,5 @@ Both remain listed in `behavior_unverified_items:` (the verifier abstains on the
 
 ---
 
-_Verified: 2026-09-24T11:52:00Z_
+_Verified: 2026-09-24T11:55:56Z_
 _Verifier: the agent (gsd-verifier)_
