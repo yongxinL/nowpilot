@@ -96,7 +96,7 @@ Plans:
   4. Workspace state persists across page reload and cross-surface handoff; `pnpm run verify:phase-2` passes.
 
 **Deferred verification (WINDOWS #5, #8)**: the Phase-1 Real-Chrome frontend observations are formally deferred (operator, 2026-09-23) — Phase 2 may proceed, but Phase 2 plans MUST include automated contract/integration coverage for the handoff contract (#5) and the onboarding contract/security invariants (#8). Final Real-Chrome closure belongs to the Phase 15 consolidated acceptance cycle; the Phase 19 release gate must fail while any deferred verification remains open. See `.planning/STATE.md` § Verification Deferrals.
-**Plans**: 6/13 plans executed
+**Plans**: 7/13 plans executed
 Plans:
 **Wave 1**
 
@@ -115,7 +115,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 02-07-PLAN.md — Election-backed writer state, `MirrorBanner` activation, onboarding single controller, string map
+- [x] 02-07-PLAN.md — Election-backed writer state, `MirrorBanner` activation, onboarding single controller, string map
 - [ ] 02-08-PLAN.md — `np_store` v3 cutover + asynchronous hydration (one-way, D2-17, operator-locked)
 
 **Wave 5** *(blocked on Wave 4 completion)*
@@ -396,7 +396,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. MV3/WXT Runtime + AntD Shells + Workspace | 13/13 | Complete    | 2026-09-23 |
-| 2. Storage, Security, WriteJournal, Workspace Persistence | 6/13 | In Progress|  |
+| 2. Storage, Security, WriteJournal, Workspace Persistence | 7/13 | In Progress|  |
 | 3. Cost-Effective AI Runtime (+ Persona seed) | 0/TBD | Not started | - |
 | 4. Agent Reliability and Evidence | 0/TBD | Not started | - |
 | 5. Context-Adaptive Execution | 0/TBD | Not started | - |

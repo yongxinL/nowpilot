@@ -4,16 +4,16 @@ milestone: v0.2
 current_phase: 2
 current_phase_name: Storage, Security, WriteJournal, Workspace Persistence
 status: executing
-stopped_at: Completed 02-06-PLAN.md
-last_updated: "2026-09-24T00:31:51.208Z"
+stopped_at: Completed 02-07-PLAN.md
+last_updated: "2026-09-24T00:53:50.830Z"
 last_activity: 2026-09-24
 last_activity_desc: Phase 2 execution started
-state_head: dcde9a816a412691065cfda6bddfb6d43a466209
+state_head: 7f500d68e71ae1962e4f9f3069f538d58a4fef2e
 progress:
   total_phases: 19
   completed_phases: 1
   total_plans: 26
-  completed_plans: 19
+  completed_plans: 20
 ---
 
 # Project State
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-09-23)
 ## Current Position
 
 Phase: 2 (Storage, Security, WriteJournal, Workspace Persistence) — EXECUTING
-Plan: 7 of 13
+Plan: 8 of 13
 Status: Ready to execute
 Last activity: 2026-09-24 — Phase 2 execution started
 
@@ -77,6 +77,7 @@ Progress: [█░░░░░░░░░] 5%
 | Phase 02 P04 | 20 min | 2 tasks | 4 files |
 | Phase 02 P05 | 14 min | 3 tasks | 5 files |
 | Phase 02 P06 | 8 min | 2 tasks | 5 files |
+| Phase 2 P07 | 15 min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -175,6 +176,11 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 2]: 02-06: the update-workspace journal entry uses the id ${workspaceId}:${version} and, on a failed step, stays non-terminal (applying) with the failing stage visible — runJournaled's terminal rolled-back is deliberately overridden and both rollbacks are no-ops so a retry resumes rather than deleting a newer stored state.
 - [Phase 2]: 02-06: WriterElection claims primary only after a read-back-verified CAS written directly to chrome.storage.session (never the debounced adapter); electedAt doubles as the epoch, staleness is `now - electedAt > 2 * 3000` (strictly), and equal-epoch conflicts resolve by (electedAt, Standalone-over-SidePanel, lower tabId).
 - [Phase 2]: 02-06: assertStillPrimary() re-reads immediately before an authoritative write and rejects on an absent record, another identity, or a strictly newer electedAt, demoting to the mirror state; the §20.11 projection reports the surfaces it has observed live as secondaries (the pinned record shape has no roster), and the §C.2 WORKSPACE_ELECTION_TIMEOUT/WORKSPACE_STORAGE_UNAVAILABLE identifiers are log codes only.
+- [Phase 2]: 02-07: applyElectionOutcome accepts WriterElectionSignal (ElectionOutcome | WorkspaceCoordinationState) — the plan names ElectionOutcome but mandates the solo/election-in-progress rows, which exist only on the 02-06 coordination projection; the outcome carries the epoch the projection does not, so both shapes are discriminated structurally ('state' in signal).
+- [Phase 2]: 02-07: the store's writer projection (writerState/writerEpoch/primarySurface) is a separate axis from WorkspaceState — no persist middleware, no storage key, no version/updatedAt bump; the default is election-pending, so no code path reports writability without an applied election outcome (T-02-36). A non-mirroring secondary projects to election-pending (the plan's row is 'secondary with mirroring → mirror'), and an error keeps the last epoch/surface rather than erasing an unacknowledged promotion.
+- [Phase 2]: 02-07: MirrorBanner renders canonical copy only (workspace.mirroringNotice/mirrorRefocus/mirrorRefocusA11y) on a minHeight:32 bar that grows at 400 px, and its action became a real keyboard-reachable control (role=button, tabIndex 0, Enter/Space) because the shipped <a> without href was not focusable and the 02-UI-SPEC interaction contract requires it. The nine Phase-2 keys are pinned verbatim in tests/core/i18n/strings.test.ts, and shell.errorReload is reused rather than duplicated.
+- [Phase 2]: 02-07: one onboarding controller — shouldPresentOnboardingForWriter(result, writerState) is pure and total (only 'primary' presents; every mirror-side state hides whatever the record says) and useOnboardingGate resolves 'hidden' for a non-writer BEFORE the record read, so a mirror never waits on a competing flow. The writer-state import is type-only, keeping zustand/immer out of the background worker's graph.
+- [Phase 2]: 02-07: the composition point is 02-10's — until a surface applies an election signal to the store (applyElectionOutcome(election.coordinationState()) on each elect/heartbeat), writerState stays election-pending, so onboarding presents nowhere and MirrorBanner never renders. Recorded as coverage D6 for the verifier.
 
 ### Pending Todos
 
@@ -256,6 +262,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-24T00:31:51.137Z
-Stopped at: Completed 02-06-PLAN.md
+Last session: 2026-09-24T00:53:50.777Z
+Stopped at: Completed 02-07-PLAN.md
 Resume file: None
