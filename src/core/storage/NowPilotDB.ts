@@ -41,7 +41,11 @@ import type { ErrorRecord } from './ErrorStore';
  *
  * **The background service worker must never import this module** (§0.2 —
  * IndexedDB is a surface-only capability; the SW is not a database or election
- * participant). The import boundary is asserted by the phase's isolation gate.
+ * participant). The import boundary is asserted by
+ * `tests/isolation/background-no-indexeddb.test.ts`, which resolves the SW's
+ * transitive import graph from `src/entrypoints/background.ts` and fails on any
+ * `src/core/storage/**` module (outside its documented IndexedDB-free
+ * exception), the `idb` package or an IndexedDB global.
  */
 
 /** The single Phase 2 database (see the topology note above). */
