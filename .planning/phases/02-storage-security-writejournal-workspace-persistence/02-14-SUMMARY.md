@@ -255,11 +255,10 @@ None — this plan ships no source code, adds no placeholder, and wires nothing 
 
 None — no new network endpoint, auth path, file-access pattern or trust-boundary surface is introduced. The plan's changed files are two test files and planning records; `src/` is byte-unchanged.
 
-## Self-Check
+## Self-Check: PASSED
 
-- Files exist: `tests/isolation/credential-boundary.test.ts`, `tests/services/providerValidationFixtures.test.ts` (both committed in `e94a0508`); the four corrected planning records (committed in `23db27a3`).
-- Commits exist: `e94a0508`, `23db27a3` — both on `aurora`; no `src/` path in either.
-- **PASSED**
+- Files exist: `tests/isolation/credential-boundary.test.ts`, `tests/services/providerValidationFixtures.test.ts` (both committed in `e94a0508`); the four corrected planning records (committed in `23db27a3`); `02-14-SUMMARY.md` (committed in `1ec8062c`, metadata commit `5aef2dd5`).
+- Commits exist: `e94a0508`, `23db27a3`, `1ec8062c`, `5aef2dd5` — all on `aurora`; no `src/` path in any of them.
 
 ## Next Phase Readiness
 
