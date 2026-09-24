@@ -202,7 +202,7 @@ describe('workspaceRuntime — the establishment write on authority (D2-34)', ()
     expect(useWorkspaceStore.getState().version).toBe(1);
     await establishWorkspaceIdentity();
     await settle();
-    expect((await getDb()).getAll('entries')).resolves.toHaveLength(1);
+    await expect((await getDb()).getAll('entries')).resolves.toHaveLength(1);
   });
 
   it('holds the establishment while no authoritative election is registered', async () => {
