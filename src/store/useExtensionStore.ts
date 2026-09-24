@@ -367,8 +367,17 @@ export const useExtensionStore = create<ExtensionState>()(
         });
 
         try {
-          // 1. Initialise the database. A typed open failure is `failed`.
-          await port.ensureDatabase();
+          // 1. Initialise the database. A database that cannot open is a typed
+          //    failure — never `empty`, and never a fallback to the legacy
+          //    source (D2-17 step 7).
+          try {
+            await port.ensureDatabase();
+          } catch (error) {
+            debugLog('IDB_OPEN_FAILED', 'The chat database could not be opened; hydration failed', {
+              reason: errorCode(error, 'unknown'),
+            });
+            return publish('failed', errorCode(error, 'IDB_OPEN_FAILED'));
+          }
 
           // 2. Replay resumable journal state. Entries that still fail replay
           //    leave recoverable state behind (D2-12/D2-14).
