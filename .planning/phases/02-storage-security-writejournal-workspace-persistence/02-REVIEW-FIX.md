@@ -1,144 +1,101 @@
 ---
 phase: 02-storage-security-writejournal-workspace-persistence
-fixed_at: 2026-09-24T13:55:00Z
+fixed_at: 2026-09-24T14:25:27Z
 review_path: .planning/phases/02-storage-security-writejournal-workspace-persistence/02-REVIEW.md
-iteration: 1
-findings_in_scope: 5
-fixed: 5
+iteration: 2
+findings_in_scope: 3
+fixed: 3
 skipped: 0
-info_fixed: 3
+info_fixed: 2
 status: all_fixed
 ---
 
-# Phase 2: Code Review Fix Report
+# Phase 2: Code Review Fix Report (iteration 2)
 
-**Fixed at:** 2026-09-24T13:55:00Z
-**Source review:** `.planning/phases/02-storage-security-writejournal-workspace-persistence/02-REVIEW.md`
-**Iteration:** 1
-**Branch:** `aurora` (7 atomic `fix(02)…` commits)
+**Fixed at:** 2026-09-24T14:25:27Z
+**Source review:** `.planning/phases/02-storage-security-writejournal-workspace-persistence/02-REVIEW.md` (iteration 2, `status: findings`)
+**Iteration:** 2
+**Branch:** `aurora` (5 atomic `fix(02)…` commits)
 **Isolation:** `workflow.use_worktrees` is `false` in `.planning/config.json`, so the fixes were applied and committed **in the main checkout** (no worktree was created, per the flag). All verification below ran in the main checkout.
+**Iteration-1 record:** this file now reports iteration 2; the iteration-1 fix report is preserved in commit `38cd8a10` and its resolutions are verified in `02-REVIEW.md`'s "Resolved findings" section.
 
 **Summary:**
 
-- In-scope findings (CR-01, CR-02, WR-01…WR-03): **5 fixed, 0 skipped**
-- Trivial Info findings also fixed: **3** (IN-02, IN-05, IN-06)
-- Info findings deliberately left open: **3** (IN-01, IN-03, IN-04 — reasons below)
-- Gate: `pnpm run verify:phase-2` → **PASS** — `tsc --noEmit` + path preflight + **26 test files / 455 tests**, including every suite the fix scope named (store + migration + workspace persistence + writer election + isolation).
+- In-scope findings (WR-04, WR-05, WR-06): **3 fixed, 0 skipped**
+- Trivial Info findings also fixed: **2** (IN-07, IN-08)
+- Gate: `pnpm run verify:phase-2` → **PASS** — `tsc --noEmit` + path preflight (24 declared paths) + **28 test files / 472 tests** (was 26 / 455; the two previously-uncounted regression suites are now in the gate, plus 4 new tests from this pass)
 
 ## Fixed Issues
 
-### CR-01: The `np_store` v3 write-back can destroy un-migrated legacy message bodies before the migration reads them
+### WR-04: The cross-surface update signal was published before its debounced key write landed
 
-**Files modified:** `src/core/storage/npStoreWriteGuard.ts` (new), `src/store/useExtensionStore.ts`, `tests/core/storage/npStoreWriteGuard.test.ts` (new), `tests/core/store/useExtensionStore.test.ts`
-**Commit:** `76d7bd7f`
-**Commit status:** `fixed: requires human verification` (state-ordering logic — see the note)
-**Applied fix:** The store's persist config now writes through a dedicated guarded `StateStorage` (`npStoreStorage`) instead of the raw debounced adapter. Before every `setItem`, the guard re-reads the **raw stored blob** and, while that blob is a pre-v3 legacy envelope (or an unreadable one), **refuses the write**: `source-sanitised` in the migration remains the sole writer of the verified v3 blob. Once the stored blob is absent or at `NP_STORE_V3_SCHEMA_VERSION`, writes pass through unchanged. The guard is stateless and re-evaluated per write, so the hydration write-back, the 300 ms debounce, `flushPendingWrites()` and any later store `set` are all covered — and a suppressed write is never queued, so nothing can land after sanitisation. D2-07/D2-12/D2-14 are strengthened, not weakened: nothing is deleted before destination verification, and no preserved body can be resurrected into a sanitised blob.
+**Files modified:** `src/core/theme/chromeStorageAdapter.ts` (new `flushPendingWrite`), `src/core/workspace/WorkspacePersistence.ts` (step 1 lands the key before step 2 signals), `tests/core/storage/chromeStorageAdapter.test.ts`, `tests/core/workspace/WorkspacePersistence.test.ts`
+**Commit:** `71b78c89`
+**Commit status:** `fixed`
+**Applied fix:** The §20.3 write step now **lands** the key before it completes: after `storage.setItem`, it awaits a new targeted adapter hook `flushPendingWrite(WORKSPACE_STORAGE_KEY)`, which writes that one key immediately instead of leaving it in the debounce map. The update signal (step 2) therefore follows a durable key write, and a receiving surface's immediate re-read sees the new version instead of the previous one. Only the named key is landed — every other pending write keeps its debounce window — and the pending entry is removed synchronously, so a later flush cannot land a stale duplicate. The signal payload is unchanged: `{workspaceId, conversationId}` exactly (D2-31), and the strict-schema / exact-key-set tests still pass. The module doc now states the landing rule and why it costs nothing the debounce protected (the runtime microtask-coalesces to one write per mutation burst).
 
 **Evidence:**
-- New unit suite `tests/core/storage/npStoreWriteGuard.test.ts`: predicate matrix (v1/v2/unversioned/unparseable → held; absent/v3 → transparent) and the held-write behaviour with the real adapter (`getPendingSize() === 0`, byte-identical stored blob after a flush); positive controls for both pass-through directions.
-- Rewritten store test *"the v3 projection is never written over an un-migrated legacy source (CR-01)"*: asserts the migrate branch ran and the in-memory projection is body-free **while the stored source stays byte-identical** (this is the assertion that fails pre-fix).
-- New regression test *"the real startup order migrates the legacy body into ChatHistoryDB before np_store is sanitised"*: seeds a v2 blob with a synthetic body, drives `useExtensionStore.persist.rehydrate()` → `hydrateChatHistory()` (the real seams), and asserts `ready`, the body present in ChatHistoryDB (`readConversation`), and only then absent from `np_store` at v3.
+- New regression *"lands the key before the signal, so a receiver without the sender pending map adopts the write (WR-04)"*: the writer uses the real debounced adapter (`writeWorkspaceState` with default deps, **no manual flush**), and the subscriber reads a raw view of `chrome.storage.local` — the receiver's true view, which excludes the sender's in-memory pending map. It asserts the receiver adopts version 5 and `conv-debounce`.
+- **Red before the fix / green after:** with the flush line temporarily removed, the test failed with `AssertionError: expected [] to deeply equal [ 5 ]` — the exact drop described in the finding. Restored, it passes.
+- The round-trip test was updated to the landed semantics: after `writeWorkspaceState` resolves, `getPendingSize() === 0` and the key is present in the storage map, then the reload still reads it back.
+- Adapter unit coverage for the new hook: `flushPendingWrite` lands only the named key (the other key stays pending and lands once through the normal flush) and is a no-op for a key with nothing pending.
 
-**Human-verification note:** the fix changes a data-lifecycle ordering; the automated suites cover the ordering and both regression paths, but a reviewer should confirm the deliberate trade: while a migration is unfinished (e.g. a quarantined record blocks sanitisation, D2-13), non-chat metadata edits from that document are **not persisted across a reload** — a recoverable cost against an unrecoverable body loss. Documented in the guard's module note.
+### WR-05: The two new regression suites were not part of `verify:phase-2`
 
-### CR-02: `WorkspacePersistence` has no production call site
-
-**Files modified:** `src/core/workspace/workspaceRuntime.ts` (new), `src/core/workspace/WriterElection.ts` (registry gate), `src/core/workspace/WorkspaceStore.ts` (doc reconciliation), `src/entrypoints/sidepanel/main.tsx`, `src/entrypoints/standalone/main.tsx`, `tests/core/workspace/workspaceRuntime.test.ts` (new)
-**Commit:** `ed773d05`
-**Commit status:** `fixed: requires human verification` (new runtime composition)
-**Applied fix:** New `workspaceRuntime` module owns the production call sites of the repository and both entrypoints run it in `usePhase2Startup`, before the first election:
-1. **Hydrate** — `readWorkspaceState()` is read and installed into `useWorkspaceStore` (via `setState`, no counter bump) before the surface elects; a durable copy is only installed when it is **newer** than the projection, so a URL bootstrap a handoff target already applied is never rolled back.
-2. **Persist** — a store subscription writes every authorised mutation through `writeWorkspaceState` (journal entry → key → narrow `{workspaceId, conversationId}` signal → completed, §20.3 unchanged), microtask-coalesced.
-3. **Gate** — every write passes `assertActiveWriterStillPrimary()` (new registry helper, same path as `requestRefocus`): a superseded/mirroring surface cannot overwrite the durable copy.
-4. **Adopt** — `subscribeToWorkspaceChanges` installs an opposite-surface update only when it is strictly newer; on a monotonic rejection the stored copy is adopted.
-5. **Establish on authority** — the transition to `primary` (first election **and** any later promotion/handoff) writes the current projection when the stored copy is behind it and installs the persisted counter, so a handoff target's applied projection survives its own reload (D2-34's ordering).
-`WorkspaceStore.ts`'s doc comment now names the runtime that writes the key through `WorkspacePersistence`, so code and comment agree.
+**Files modified:** `package.json`
+**Commit:** `074c062e`
+**Commit status:** `fixed`
+**Applied fix:** Added `tests/core/storage/npStoreWriteGuard.test.ts` and `tests/core/workspace/workspaceRuntime.test.ts` to the `verify:phase-2` suite list. No existing declared suite was removed; the self-derived path-resolution preflight still scans the script string and fails on a missing/misspelled path; the corrected gate still declares no `tests/core/utils` (the stale Phase-2 expectation D2-28 removed).
 
 **Evidence:**
-- New suite `tests/core/workspace/workspaceRuntime.test.ts` (8 cases): durable hydrate-before-election incl. idempotent start; no rollback of a newer bootstrap; establishment on promotion with the completed §20.3 entry and no-op afterwards; held establishment with no registered election; a persisted mutation with a strictly greater counter and its journaled entry; held mutation while secondary; newer cross-surface install (and no write-back); stale-signal rejection.
-- `tests/integration/workspaceHandoff.integration.test.ts` (D2-31.17 persistence/read-back, D2-31.19 reload, D2-31.21 stale-writer) and `tests/core/workspace/WorkspacePersistence.test.ts` still pass unchanged — the narrow broadcast and the journaled order are intact.
-- `tests/core/workspace/WorkspaceStore.test.ts`'s source scan ("no module names a workspace storage key for writing") passes: the runtime refers to the constant, never an ad-hoc literal.
+- Preflight run standalone: `verify:phase-2: 24 declared path(s) resolve` (was 22), including both new paths.
+- Both suites pass standalone: 2 files / 13 tests (the CR-01 guard suite + the CR-02 runtime suite).
+- Full gate re-run: **28 test files / 472 tests passed** — the two suites are now inside the acceptance artifact, so a future regression of CR-01/CR-02 fails `verify:phase-2` instead of staying green.
 
-**Human-verification note:** confirm the intended reading of the gate — a mirror's bootstrap mutations are persisted on promotion (by the establish step), not while it mirrors. That preserves D2-34's single-writer rule; the alternative (persisting from a mirror) would contradict `assertStillPrimary()`.
+### WR-06: `writeWorkspaceState` could reject on a journal/IndexedDB failure from fire-and-forget call sites
 
-### WR-01: Startup recovery silently ignored non-migration journal entries
-
-**Files modified:** `src/core/workspace/WorkspacePersistence.ts`, `src/store/useExtensionStore.ts`, `tests/core/workspace/WorkspacePersistence.test.ts`, `tests/core/store/useExtensionStore.test.ts`
-**Commit:** `0f4e1f6e`
+**Files modified:** `src/core/workspace/WorkspacePersistence.ts` (wrap `createJournalEntry`), `src/core/workspace/workspaceRuntime.ts` (defence `.catch` at both fire-and-forget sites), `tests/core/workspace/WorkspacePersistence.test.ts`, `tests/core/workspace/workspaceRuntime.test.ts`
+**Commit:** `dd8208b2`
 **Commit status:** `fixed`
-**Applied fix:** `writeWorkspaceState` now records `version` in `targetIds` (safe identifier only, D2-21). New `replayUpdateWorkspace(entry)` re-reads the durable copy and finishes the interrupted write: when the key write landed (same workspace, stored version ≥ the entry's) it emits the owed narrow signal and marks the entry terminal `completed`; when it never landed it marks the entry terminal `failed` with a redacted step error and returns a typed failure. `defaultRecoverJournal` now branches on `update-workspace` (throwing on the typed failure so `recoverJournal`'s `failed` count is truthful) and treats any unknown operation as a typed failure instead of a no-op.
+**Applied fix:** `createJournalEntry` is now wrapped in the same try/catch shape as `runJournaled` and resolves the typed `WORKSPACE_JOURNAL_FAILED` — the write path is total for the §19.10 IndexedDB-blocked/degraded state (the store's `getDb()` rejection no longer escapes). As defence, both fire-and-forget call sites (`void persistCurrentState()` in the persist microtask and `void establishWorkspaceIdentity()` on promotion) gained a `.catch` that logs `WORKSPACE_WRITE_FAILED` with a redacted reason, so an unexpected rejection can never surface as an unhandled one. Module docs in both files now state the total failure path.
 
 **Evidence:**
-- 5 new cases in `WorkspacePersistence.test.ts`: landed → signal emitted exactly once with the two identifiers and the stored value untouched; superseded → completed with the newer signal; unlanded → terminal `failed` with `WORKSPACE_WRITE_FAILED` on the failing step and **no** signal (throwing publisher as positive control); older stored version → failed; `recoverJournal` counts `{replayed: 1, failed: 1}`.
-- Store-level integration test: a seeded `applying` entry is replayed by the real `hydrateChatHistory()` and reaches `completed`.
+- New persistence case *"resolves a typed failure when the journal store rejects — the IndexedDB-blocked path (WR-06)"*: a rejecting `JournalEntryStore` (what `defaultJournalStore.load` does when `getDb()` rejects) resolves `{ok: false, code: 'WORKSPACE_JOURNAL_FAILED'}`, writes nothing to the key, and logs the typed code.
+- New runtime case *"degrades without an unhandled rejection when IndexedDB cannot open, then recovers (WR-06, §19.10)"*: drives the real path — a fresh IndexedDB factory plus the migrator's `setMigrationFailure` seam makes `getDb()` reject `IDB_MIGRATION_FAILED` — then asserts the typed `WORKSPACE_JOURNAL_FAILED` log appears, the durable copy is unchanged (the mutation stays in memory), `establishWorkspaceIdentity()` **resolves** rather than rejecting, and after the database opens again the next mutation persists (`waitForDurable`).
+- **Red before the fix / green after:** with the wrap temporarily changed to rethrow, the persistence case failed with `AssertionError: promise rejected "NowPilotDbOpenError …" instead of resolving`, and the runtime case never saw the typed code (the defensive catch logged `WORKSPACE_WRITE_FAILED` instead — which is exactly the pre-fix loss the finding describes). Restored, both pass.
 
-### WR-02: `WriterElection.stop()` could delete another surface's freshly won record
+## Trivial Info fixes (optional scope)
 
-**Files modified:** `src/core/workspace/WriterElection.ts`, `tests/core/workspace/WriterElection.test.ts`
-**Commit:** `8fa6fe28`
+### IN-07: The isolation gate did not resolve `@/` / `~/` alias specifiers
+
+**Files modified:** `tests/isolation/background-no-indexeddb.test.ts`
+**Commit:** `3a8fc1c2`
 **Commit status:** `fixed`
-**Applied fix:** Removed the read-then-remove release (`removeIfOwned`) entirely — `chrome.storage` has no compare-and-remove, so it could always delete a concurrent winner's record. `stop()` now only clears the heartbeat; release is the documented **implicit staleness** mechanism (`STALE_AFTER_MS` = two missed intervals), so the option is now unreachable. The unused `remove?` member left the injected storage-area contract and the module/surface docs state the single release mechanism.
+**Applied fix:** `resolveSpecifier` now resolves `@/` and `~/` into `src/` (matching tsconfig `paths` and the vitest alias) instead of returning `null`, and an unresolved alias specifier is reported as a blind spot like an unresolved relative one. A future background edit written as `import { getDb } from '@/core/storage/NowPilotDB'` now fails the gate.
+**Evidence:** new self-test proves both aliases resolve and that an aliased storage import is flagged (two storage violations + the `idb` import); the unresolved-specifier self-test now covers an alias (`@/missing/alias`); the real graph still reports 0 violations and 0 unresolved specifiers (no `src/` file uses the aliases today).
 
-**Evidence:** the two lifecycle cases were updated to the pinned semantics: a closed surface's record is asserted **untouched** and still fresh (`survivor.elect()` → `secondary`), then the survivor takes authority exactly past two intervals (`epoch = T0 + STALE_AFTER_MS + 1`); the successful-handoff case asserts authority does not move while the record is fresh and moves only after staleness. All 22 WriterElection cases and both integration suites pass.
+### IN-08: Un-awaited assertion in the runtime suite
 
-### WR-03: The background-SW "no IndexedDB" hard rule had no gate
-
-**Files modified:** `src/core/storage/NowPilotDB.ts` (claim corrected to name the real gate), `tests/isolation/background-no-indexeddb.test.ts` (new)
-**Commit:** `b8d9a4f4`
+**Files modified:** `tests/core/workspace/workspaceRuntime.test.ts`
+**Commit:** `e26637cf`
 **Commit status:** `fixed`
-**Applied fix:** New isolation suite resolves `src/entrypoints/background.ts`'s **transitive relative import graph** (static, re-export, side-effect and dynamic specifiers) and fails on: any `src/core/storage/**` module (outside one documented, per-module exception), the `idb` package, or an IndexedDB global in any reachable file. Unresolved relative specifiers are reported and asserted empty for the real graph, so a new import form cannot silently escape. `verify:phase-2` runs `tests/isolation`, and the suite asserts that wiring.
-
-**Evidence:** 4 in-memory self-tests prove the resolver and predicate are non-vacuous (transitive walk; a synthetic storage import + `idb` fail; a synthetic `indexedDB.open` fails while a clean graph passes; an unresolvable specifier is reported); the real-graph case asserts non-vacuity (entry + `debugLog` reached, > 3 files) and zero violations. Only `legacyCredentialCleanup.ts` is allow-listed and it is still covered by the capability scan.
-
-### IN-02: `MirrorBanner`'s pinned 400 px behaviour was not implemented
-
-**Files modified:** `src/components/common/MirrorBanner.tsx`, `tests/components/MirrorBanner.test.tsx`
-**Commit:** `c43c07aa`
-**Commit status:** `fixed`
-**Applied fix:** the literal `lineHeight: '32px'` on the caption and the action is replaced by the pinned 12 px/1.5 body/label role; the action gains `flexShrink: 0` + `whiteSpace: 'nowrap'` (it never wraps or clips); the caption gains the two-line clamp/ellipsis backstop. New test pins the mechanism (jsdom cannot represent `-webkit-line-clamp`, so the declaration is additionally pinned at the source).
-
-### IN-05: `runJournaled` does not roll back the failing step
-
-**Files modified:** `src/core/storage/WriteJournal.ts`
-**Commit:** `18d206c6`
-**Commit status:** `fixed`
-**Applied fix:** documented (not code-changed) — the `JournalStep` contract now states both invariants `runJournaled` relies on: `apply` MUST be idempotent, and MUST be atomic/idempotent enough that a partial application needs no rollback, because only steps whose `apply` **returned** are rolled back (the failing step's own rollback cannot know how far it got). Every current step is a single idempotent upsert.
-
-### IN-06: `KeyVault.store`'s create-only guarantee is best-effort
-
-**Files modified:** `src/core/security/KeyVault.ts`
-**Commit:** `18d206c6`
-**Commit status:** `fixed`
-**Applied fix:** documented — the module semantics now say "best-effort, not atomic" (no CAS in `chrome.storage`; two concurrent `store` calls can both observe absent and both succeed), with the serialise-your-own-calls guidance, and the `store` implementation carries the same note.
+**Applied fix:** `expect(...).resolves.toHaveLength(1)` → `await expect(...).resolves.toHaveLength(1)`.
+**Evidence:** the runtime suite passes (9 tests) with no Vitest hanging-assertion warning.
 
 ## Skipped / Open Issues
 
-### IN-01: `compactJournal()` has no production call site
-
-**File:** `src/core/storage/WriteJournal.ts:369-390`
-**Reason:** not trivial/safe — wiring bounded cleanup is a retention decision already recorded as WINDOWS #25 (open). Changed by this pass only in the sense that WR-01 now stops non-terminal workspace entries from accumulating forever; the terminal-entry bound is still the ledger item.
-**Original issue:** the journal grows one terminal entry per workspace version and nothing invokes compaction.
-
-### IN-03: `toChatSession` projects a `tool` record as a `system` message
-
-**File:** `src/store/useExtensionStore.ts:259-266`
-**Reason:** a Phase 15 renderer-contract decision (extend the component `Message` union), already recorded by the in-code comment; no mechanical fix belongs in Phase 2.
-**Original issue:** the projection loses the tool/system distinction the contract preserves.
-
-### IN-04: A single malformed conversation forces hydration to `failed` / `recovery required`
-
-**File:** `src/store/useExtensionStore.ts:415-453`
-**Reason:** the review asks for an explicit product decision (add a partial presentation/status vs. record the deviation against the 02-UI-SPEC `partial` row and make Retry honest). That is a UI-SPEC/behaviour decision, not a trivial safe fix — left for the operator/Phase 15; the current behaviour is deliberate and asserted.
-**Original issue:** the conversation region shows "Failed to load history" even though the valid records did hydrate.
+None. Every in-scope finding and both optional Info items were fixed. The iteration-2 Info items already recorded as open by the review (IN-01 `compactJournal` call site, IN-03 `tool` → `system` projection, IN-04 malformed-conversation hydration) were **not** in this fix scope and remain open as recorded.
 
 ## Verification
 
-- **Commands:** `pnpm run verify:phase-2` (tsc --noEmit + path-resolution preflight + the explicit Phase 2 suite list + `tests/isolation`) → **26 files / 455 tests passed**; plus targeted runs after each fix (`tests/core/store/useExtensionStore.test.ts`, `tests/core/storage/legacyChatMigration.test.ts`, `tests/core/storage/npStoreWriteGuard.test.ts`, `tests/core/workspace/*`, `tests/integration/*`, `tests/isolation`, `tests/components/MirrorBanner.test.tsx`).
+- **Per-fix targeted suites:** `tests/core/storage/chromeStorageAdapter.test.ts` + `tests/core/workspace/WorkspacePersistence.test.ts` (31 tests) after WR-04; the two gate-added suites (13 tests) after WR-05; `tests/core/workspace/*` (32 tests) after WR-06; `tests/isolation/background-no-indexeddb.test.ts` (7 tests) after IN-07; the runtime suite after IN-08.
+- **Type check:** `npx tsc --noEmit` clean after each source-touching fix.
+- **Phase gate:** `pnpm run verify:phase-2` → `tsc --noEmit` + preflight (24 declared paths) + **28 test files / 472 tests passed**.
 - **Where:** main checkout (`workflow.use_worktrees=false`), branch `aurora`.
-- **Not re-verified here:** Phase 15 Real-Chrome observations (WINDOWS #5/#8 stay open, unchanged) and IN-01/IN-03/IN-04's product decisions.
+- **Not re-verified here:** Phase 15 Real-Chrome observations (WINDOWS #5/#8 stay open, unchanged); the two residuals flagged for human verification in iteration 1 (CR-01's metadata-hold trade, CR-02's mirror-persists-on-promotion reading) are unchanged by this pass.
 
 ---
 
-_Fixed: 2026-09-24T13:55:00Z_
+_Fixed: 2026-09-24T14:25:27Z_
 _Fixer: the agent (gsd-code-fixer)_
-_Iteration: 1_
+_Iteration: 2_
