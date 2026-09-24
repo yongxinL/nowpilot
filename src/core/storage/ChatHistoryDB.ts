@@ -24,7 +24,10 @@ import { debugLog } from '../log/debugLog';
  * **Boundary validation.** Every record read out of the database is re-validated
  * by the strict schema below, so a malformed or tampered record is a typed
  * failure rather than silently accepted data. A malformed record is identified
- * by its safe id only — never by its content (D2-13).
+ * by its safe id only — never by its content (D2-13). The conversation-list
+ * read applies D2-20's partial-failure policy: a malformed record is excluded
+ * and reported in `invalidIds` (safe id only) while the remaining conversations
+ * still hydrate; a database-level failure stays the typed whole-read failure.
  *
  * **`preview` is deliberately absent.** The prototype derived
  * `sessions[].preview` from message content (`msg.content.slice(0, 50)`), which
@@ -92,8 +95,14 @@ export type ReadConversationResult =
   | { ok: true; session: ChatSessionRecord; messages: MessageRecord[] }
   | { ok: false; code: ChatHistoryFailureCode };
 
+/**
+ * The conversation-list read. A malformed record never enters `sessions` and is
+ * never silently dropped: it is excluded and identified by safe id only in
+ * `invalidIds` (D2-20's partial-failure policy), so the remaining conversations
+ * still hydrate.
+ */
 export type ReadAllConversationsResult =
-  | { ok: true; sessions: ChatSessionRecord[] }
+  | { ok: true; sessions: ChatSessionRecord[]; invalidIds: string[] }
   | { ok: false; code: ChatHistoryFailureCode };
 
 const INVALID_RECORD_CODE: ChatHistoryFailureCode = 'CHAT_HISTORY_INVALID_RECORD';
@@ -303,7 +312,23 @@ export async function readConversation(sessionId: string): Promise<ReadConversat
   }
 }
 
-/** Read every conversation, newest `updated` first, via the `by-updated` index. */
+/** A safe id for a record that failed validation: never a body, never a title. */
+function safeRecordId(candidate: unknown, index: number): string {
+  if (typeof candidate === 'object' && candidate !== null && !Array.isArray(candidate)) {
+    const id = (candidate as { id?: unknown }).id;
+    if (typeof id === 'string' && id.length > 0) return id;
+  }
+  return `session:${index}`;
+}
+
+/**
+ * Read every conversation, newest `updated` first, via the `by-updated` index.
+ *
+ * A record that fails validation is excluded from the list, identified by safe
+ * id only and reported in `invalidIds` — never returned, never silently
+ * deleted, and never allowed to fail the whole read (D2-20 partial-failure
+ * policy). A database-level failure is still the typed whole-read failure.
+ */
 export async function readAllConversations(): Promise<ReadAllConversationsResult> {
   let db;
   try {
@@ -318,14 +343,23 @@ export async function readAllConversations(): Promise<ReadAllConversationsResult
     await tx.done;
 
     const sessions: ChatSessionRecord[] = [];
-    for (const candidate of raw) {
+    const invalidIds: string[] = [];
+    raw.forEach((candidate, index) => {
       const session = validateReadRecord(candidate, chatSessionRecordSchema, 'session');
-      if (!session.ok) return session;
+      if (!session.ok) {
+        const id = safeRecordId(candidate, index);
+        invalidIds.push(id);
+        debugLog(INVALID_RECORD_CODE, 'ChatHistoryDB excluded a malformed conversation record', {
+          kind: 'session',
+          conversationId: id,
+        });
+        return;
+      }
       sessions.push(session.value);
-    }
+    });
 
     // The index yields ascending `updated`; the list is newest-first.
-    return { ok: true, sessions: sessions.reverse() };
+    return { ok: true, sessions: sessions.reverse(), invalidIds };
   } catch (error) {
     debugLog('CHAT_HISTORY_READ_FAILED', 'ChatHistoryDB conversation list read failed', {
       reason: errorName(error),

@@ -61,8 +61,12 @@ describe('useExtensionStore persist — D-22 version/migrate scaffold', () => {
 
     const result = npStoreMigrate(v1, 1) as Record<string, unknown>;
 
-    // Authorised non-secret metadata survives.
-    expect(result.sessions).toEqual([{ id: 's1', messages: [] }]);
+    // v3 (D2-08): the conversation collection and the active-conversation id
+    // are dropped — a v2 blob's bodies cannot be carried forward.
+    expect('sessions' in result).toBe(false);
+    expect('activeSessionId' in result).toBe(false);
+
+    // Authorised non-secret, non-chat metadata survives.
     expect(result.notes).toEqual([]);
     expect(result.writeHistory).toEqual([]);
     expect((result.config as Record<string, unknown>).language).toBe('English');
@@ -93,7 +97,8 @@ describe('useExtensionStore persist — D-22 version/migrate scaffold', () => {
       result = npStoreMigrate(legacy, 0);
     }).not.toThrow();
     const r = result as Record<string, unknown>;
-    expect(r.sessions).toEqual([{ id: 's1', messages: [] }]);
+    expect('sessions' in r).toBe(false);
+    expect('activeSessionId' in r).toBe(false);
     expect(r.notes).toEqual([]);
     expect(r.writeHistory).toEqual([]);
     expect(r.config).toEqual({ language: 'English' });
@@ -126,7 +131,10 @@ describe('useExtensionStore persist — D-22 version/migrate scaffold', () => {
   // conflating the two counters when Phase 9 reaches IndexedDB v4.
   // (A `DB_VERSION` literal is allowed in a documentation/comment context to
   // name the axis; we only forbid the import/use of the constant as a value.)
-  it('source module does not import IndexedDB DB_VERSION (A5)', async () => {
+  // Plan `02-08` keeps the constant-level guard but drops the module-path
+  // guard: the store now legitimately imports the storage repositories for the
+  // D2-17 read path (`NowPilotDB.getDb`, `ChatHistoryDB`, `WriteJournal`).
+  it('source module does not import the IndexedDB DB_VERSION constant (A5)', async () => {
     const fs = await import('node:fs/promises');
     const path = await import('node:path');
     const src = await fs.readFile(
@@ -135,7 +143,9 @@ describe('useExtensionStore persist — D-22 version/migrate scaffold', () => {
     );
     // Reject any import statement that brings DB_VERSION into scope.
     expect(src).not.toMatch(/import[^;]*\bDB_VERSION\b/);
-    expect(src).not.toMatch(/from\s+['"][^'"]*db[^'"]*['"]/i);
+    // The store reads the repositories, but never the version constant: the
+    // two counters stay separate axes.
+    expect(src).not.toMatch(/\bDB_VERSION\b\s*[,}]/);
     // And reject any reference to a runtime constant `DB_VERSION` outside
     // of string-literal/comment contexts.
     const codeOnly = src
