@@ -4,16 +4,16 @@ milestone: v0.2
 current_phase: 2
 current_phase_name: Storage, Security, WriteJournal, Workspace Persistence
 status: executing
-stopped_at: Completed 02-05-PLAN.md
-last_updated: "2026-09-24T00:09:30.014Z"
+stopped_at: Completed 02-06-PLAN.md
+last_updated: "2026-09-24T00:31:51.208Z"
 last_activity: 2026-09-24
 last_activity_desc: Phase 2 execution started
-state_head: 605b60ce3a60316fd64f9abd49349f0eb8d7a4d3
+state_head: dcde9a816a412691065cfda6bddfb6d43a466209
 progress:
   total_phases: 19
   completed_phases: 1
   total_plans: 26
-  completed_plans: 17
+  completed_plans: 19
 ---
 
 # Project State
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-09-23)
 ## Current Position
 
 Phase: 2 (Storage, Security, WriteJournal, Workspace Persistence) — EXECUTING
-Plan: 6 of 13
+Plan: 7 of 13
 Status: Ready to execute
 Last activity: 2026-09-24 — Phase 2 execution started
 
@@ -76,6 +76,7 @@ Progress: [█░░░░░░░░░] 5%
 | Phase 02 P03 | 6 min | 3 tasks | 6 files |
 | Phase 02 P04 | 20 min | 2 tasks | 4 files |
 | Phase 02 P05 | 14 min | 3 tasks | 5 files |
+| Phase 02 P06 | 8 min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -170,6 +171,10 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 2]: The legacy migration is forward-only and resumable: runJournaled's terminal rolled-back is deliberately overridden to applying so the next start resumes from the completed stages; every step's rollback is a no-op because a partial destination is repaired by replaying idempotent upserts, never by deleting destination records.
 - [Phase 2]: A quarantined legacy record blocks source sanitisation: the valid conversations still migrate, the run fails at source-sanitised with destination-verified retained, and the source stays byte-identical — discarding unrecoverable data needs the operator checkpoint D2-13 names and Phase 2 does not take it.
 - [Phase 2]: projectNpStoreV3 + NP_STORE_V3_FIELDS own the surviving np_store field set (config/prompts/writeHistory/notes) so 02-08's npStoreMigrate imports it instead of restating the list; the conversation index is written to np_conversation_meta with status active and the LRU caps stay Phase 8's (OQ-5).
+- [Phase 2]: 02-06: np_workspace is written as a bare JSON state through the debounced chromeStorageAdapter and read back through migrateWorkspaceState then parseWorkspaceState (throw-free migration, typed failure only for an unreadable store); version ordering is strictly greater, so every rejection leaves the stored value byte-identical.
+- [Phase 2]: 02-06: the update-workspace journal entry uses the id ${workspaceId}:${version} and, on a failed step, stays non-terminal (applying) with the failing stage visible — runJournaled's terminal rolled-back is deliberately overridden and both rollbacks are no-ops so a retry resumes rather than deleting a newer stored state.
+- [Phase 2]: 02-06: WriterElection claims primary only after a read-back-verified CAS written directly to chrome.storage.session (never the debounced adapter); electedAt doubles as the epoch, staleness is `now - electedAt > 2 * 3000` (strictly), and equal-epoch conflicts resolve by (electedAt, Standalone-over-SidePanel, lower tabId).
+- [Phase 2]: 02-06: assertStillPrimary() re-reads immediately before an authoritative write and rejects on an absent record, another identity, or a strictly newer electedAt, demoting to the mirror state; the §20.11 projection reports the surfaces it has observed live as secondaries (the pinned record shape has no roster), and the §C.2 WORKSPACE_ELECTION_TIMEOUT/WORKSPACE_STORAGE_UNAVAILABLE identifiers are log codes only.
 
 ### Pending Todos
 
@@ -251,6 +256,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-24T00:09:29.959Z
-Stopped at: Completed 02-05-PLAN.md
+Last session: 2026-09-24T00:31:51.137Z
+Stopped at: Completed 02-06-PLAN.md
 Resume file: None
