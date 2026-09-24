@@ -142,8 +142,8 @@ export interface LoopbackTransport extends HandoffTransport {
   published(): readonly HandoffEnvelope[];
   /** Forget the outbox and any armed crash. */
   reset(): void;
-  /** Drop the next envelope of `type` — a crash between handoff stages. */
-  dropNext(type: HandoffEnvelope['type']): void;
+  /** Drop the next `count` envelopes of `type` — a crash between handoff stages. */
+  dropNext(type: HandoffEnvelope['type'], count?: number): void;
   /** Disarm every pending drop. */
   clearDrops(): void;
   subscriberCount(): number;
@@ -160,13 +160,16 @@ export interface LoopbackTransport extends HandoffTransport {
 export function createLoopbackTransport(): LoopbackTransport {
   const listeners = new Set<(value: unknown) => void>();
   const outbox: HandoffEnvelope[] = [];
-  const dropped = new Set<HandoffEnvelope['type']>();
+  const dropped = new Map<HandoffEnvelope['type'], number>();
 
   return {
     publish(envelope) {
-      if (dropped.has(envelope.type)) {
-        dropped.delete(envelope.type);
-        return; // the publishing document died before the message left it
+      const remaining = dropped.get(envelope.type) ?? 0;
+      if (remaining > 0) {
+        // The publishing document died before the message left it.
+        if (remaining === 1) dropped.delete(envelope.type);
+        else dropped.set(envelope.type, remaining - 1);
+        return;
       }
       outbox.push(structuredClone(envelope));
       const delivered = structuredClone(envelope);
@@ -185,8 +188,8 @@ export function createLoopbackTransport(): LoopbackTransport {
       outbox.length = 0;
       dropped.clear();
     },
-    dropNext: (type) => {
-      dropped.add(type);
+    dropNext: (type, count = 1) => {
+      dropped.set(type, (dropped.get(type) ?? 0) + count);
     },
     clearDrops: () => {
       dropped.clear();
