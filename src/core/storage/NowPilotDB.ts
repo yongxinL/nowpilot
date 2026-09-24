@@ -10,6 +10,7 @@ import {
 import { debugLog } from '../log/debugLog';
 import type { ChatSessionRecord, MessageRecord } from './ChatHistoryDB';
 import type { WriteJournalEntry } from './WriteJournal';
+import type { ErrorRecord } from './ErrorStore';
 
 /**
  * NowPilotDB — the single physical IndexedDB handle for the extension origin
@@ -51,16 +52,13 @@ export const DB_VERSION = 1;
 
 /**
  * The `errors` store record (ErrorStore). The store is created here because the
- * Phase 2 store set is locked by D2-24/D2-21; its repository, retention policy
- * and resolution flow belong to the ErrorStore plan.
+ * Phase 2 store set is locked by D2-24/D2-21; its record shape, strict schema,
+ * retention policy and resolution flow belong to `ErrorStore.ts`, which owns
+ * the repository. The type is imported from there rather than restated here —
+ * the same reason `ChatSessionRecord`/`MessageRecord` come from
+ * `ChatHistoryDB` — so the DB schema and the record schema cannot drift.
  */
-export interface ErrorRecord {
-  id: string;
-  code: string;
-  message: string;
-  occurredAt: number;
-  context?: Record<string, unknown>;
-}
+export type { ErrorRecord };
 
 /** The Phase 2 schema. Every record crossing this boundary is Zod-validated. */
 export interface NowPilotDB extends DBSchema {
