@@ -4,7 +4,7 @@ milestone: v0.2
 current_phase: 2
 current_phase_name: Storage, Security, WriteJournal, Workspace Persistence
 status: verifying
-stopped_at: "Completed 02-13-PLAN.md — Phase 2 gate green after build (verify:phase-2 25 files / 441 tests; verify:phase-1 55 files / 835 tests, exit 0); WINDOWS #5/#7/#8 stay open; phase ready for verification"
+stopped_at: "Completed 02-13-PLAN.md — 02-13 completed and its cross-phase claim was later corrected by 02-14: the 02-13 run was green at execution time (verify:phase-2 25 files / 441 tests; verify:phase-1 55 files / 835 tests — both gates exit 0), but a later documentation-only review-fix commit (18d206c6, IN-05/IN-06) exposed an over-broad Phase-1 substring gate that counted the doc comment at src/core/security/KeyVault.ts:33 as a call site, so verify:phase-1 was observed red on re-run (02-VERIFICATION.md gap 1). Plan 02-14 replaced it with the credential-boundary gate (tests/isolation/credential-boundary.test.ts) and re-ran verify:phase-1 and verify:phase-2 green from one code state; WINDOWS #5/#7/#8 and #25 stay open"
 last_updated: "2026-09-24T03:08:51.253Z"
 last_activity: 2026-09-24
 last_activity_desc: Phase 2 execution started
@@ -291,5 +291,5 @@ Items acknowledged and deferred at milestone close, most recent first:
 ## Session Continuity
 
 Last session: 2026-09-24T03:08:51.175Z
-Stopped at: Completed 02-13-PLAN.md — Phase 2 gate green after build (verify:phase-2 25 files / 441 tests; verify:phase-1 55 files / 835 tests, exit 0); WINDOWS #5/#7/#8 stay open; phase ready for verification
+Stopped at: Completed 02-13-PLAN.md — 02-13 completed and its cross-phase claim was later corrected by 02-14: the 02-13 run was green at execution time (verify:phase-2 25 files / 441 tests; verify:phase-1 55 files / 835 tests — both gates exit 0), but a later documentation-only review-fix commit (18d206c6, IN-05/IN-06) exposed an over-broad Phase-1 substring gate that counted the doc comment at src/core/security/KeyVault.ts:33 as a call site, so verify:phase-1 was observed red on re-run (02-VERIFICATION.md gap 1). Plan 02-14 replaced it with the credential-boundary gate (tests/isolation/credential-boundary.test.ts) and re-ran verify:phase-1 and verify:phase-2 green from one code state; WINDOWS #5/#7/#8 and #25 stay open
 Resume file: None
