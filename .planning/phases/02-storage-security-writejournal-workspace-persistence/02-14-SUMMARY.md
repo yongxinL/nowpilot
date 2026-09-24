@@ -240,6 +240,8 @@ Each task was committed atomically:
 **Total deviations:** 4 auto-fixed (1 blocking signature correction, 3 instrument/record bugs) — none weakened a production boundary, none changed a `src/` file, and none added scope.
 **Impact on plan:** All four were necessary for the gate to be correct or for the plan's own checks to be satisfiable; the credential invariant, the allowlist and the record corrections are exactly as the plan specifies.
 
+**Note (bookkeeping, not a deviation):** the plan's scope fence says `.planning/ROADMAP.md` must not be modified, and the workflow also mandates `roadmap update-plan-progress 02` at plan close. That verb's only deltas are flipping the `02-14-PLAN.md` completion checkbox, the plans-count line (`14/14 plans executed + 1 gap-closure plan (02-14)`) and the progress table row (`14/14`, status `In Progress`); no plan entry was reworded, removed or added. The phase remains `In Progress` — re-verification and the operator checkpoint are still outstanding.
+
 ## Issues Encountered
 
 - `npx vitest run … | grep` masks the vitest exit code (grep's status wins), so both red observations were re-run with output redirected to a file and `$?` captured directly before recording `exit 1`. Recorded here so the SUMMARY's exit codes are the real ones.

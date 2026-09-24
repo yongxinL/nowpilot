@@ -4,16 +4,16 @@ milestone: v0.2
 current_phase: 2
 current_phase_name: Storage, Security, WriteJournal, Workspace Persistence
 status: verifying
-stopped_at: "Completed 02-13-PLAN.md — 02-13 completed and its cross-phase claim was later corrected by 02-14: the 02-13 run was green at execution time (verify:phase-2 25 files / 441 tests; verify:phase-1 55 files / 835 tests — both gates exit 0), but a later documentation-only review-fix commit (18d206c6, IN-05/IN-06) exposed an over-broad Phase-1 substring gate that counted the doc comment at src/core/security/KeyVault.ts:33 as a call site, so verify:phase-1 was observed red on re-run (02-VERIFICATION.md gap 1). Plan 02-14 replaced it with the credential-boundary gate (tests/isolation/credential-boundary.test.ts) and re-ran verify:phase-1 and verify:phase-2 green from one code state; WINDOWS #5/#7/#8 and #25 stay open"
-last_updated: "2026-09-24T03:08:51.253Z"
+stopped_at: "Paused at the 02-14 blocking-human checkpoint (CR-01/CR-02 operator disposition pending) — Tasks 1-3 complete; 02-13's stale verify:phase-1 claim was corrected by 02-14 and both phase gates re-ran green from one code state at evidence SHA 23db27a3 (verify:phase-1 59 files / 886 tests; verify:phase-2 29 files / 490 tests; verify:all 61 files / 933 tests); the credential-boundary gate is live; WINDOWS #5/#7/#8/#25 stay open"
+last_updated: "2026-09-24T06:13:27.888Z"
 last_activity: 2026-09-24
 last_activity_desc: Phase 2 execution started
-state_head: fe3ca351af85bdbd37152067a83f7affedda98e9
+state_head: 1ec8062c6fcab02468a377f58f3388897baa7a77
 progress:
   total_phases: 19
   completed_phases: 1
-  total_plans: 26
-  completed_plans: 26
+  total_plans: 27
+  completed_plans: 27
 ---
 
 # Project State
@@ -84,6 +84,7 @@ Progress: [█░░░░░░░░░] 5%
 | Phase 2 P10 | 18 min | 3 tasks | 6 files |
 | Phase 02 P12 | 26 min | 2 tasks | 3 files |
 | Phase 02 P13 | 6 min | 2 tasks | 4 files |
+| Phase 02 P14 | 18 | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -207,6 +208,11 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 2]: 02-12: 02-VALIDATION.md now carries the D2-35 clause-to-evidence tables for WINDOW #5 and #8, the filled Per-Task Verification Map with observed results and wave_0_complete: true, while status stays draft (validate-phase owns validated) and nyquist_compliant stays false because the D2-28 gate row is still pending for 02-13; STATE.md WINDOW #5/#8 rows carry the automated-coverage PASS note and stay deferred.
 - [Phase 2]: D2-29 source conflict recorded, not silently patched: PRODUCT_SPEC §18's Phase 2 Create list names `src/core/http/Requester.ts` and `src/core/utils/RateLimiter.ts`, while the Phase 2 ROADMAP goal and completion criteria require no outbound HTTP and the first production consumers belong to Phase 3 — both modules are deferred to Phase 3 under `CORE-03` per D2-26/D2-27, the corrected `verify:phase-2` (D2-28) carries no `tests/core/utils` expectation, and no RateLimiter suite exists. The canonical Product Specification is deliberately left unedited in Phase 2 (asserted by content, not by an empty diff); the documentation follow-up owner is named verbatim as `Phase 3 planner`.
 - [Phase 2]: D2-05 Phase 3 credential-entry inheritance recorded alongside D2-26/D2-29: Phase 3 wires both approved credential-entry surfaces (onboarding and Options provider configuration) with transient input → real provider validation through the approved Requester and ProviderRouter → validation success → storage through the Phase 2 `CredentialStorePort` → transient input cleared → provider metadata records configured/validated state without the secret; on validation failure the credential is not persisted, a redacted canonical error is returned and the provider is not marked ready. The same inheritance is recorded on the ROADMAP Phase 3 entry so the note is accurate and non-vacuous.
+- [Phase 2]: 02-14: the credential-boundary gate lives in tests/isolation/ (both phase scripts already enumerate the directory, so no package.json change) and enforces the real invariant — scope-aware, comment-stripped, import-resolution with a transitive re-export taint set and an exact-pair APPROVED_VAULT_EDGES allowlist whose single entry is the live KeyVault -> EncryptedStorage edge; Phase 3's composition root must add its KeyVault edge deliberately, in the commit that wires it.
+- [Phase 2]: 02-14: the Phase-1 'declarations only' substring case was restated, not silenced — the KeyVault.ts:33 doc comment stays (grep count 1), the corrected case scans only the four Phase-1 surfaces with comment stripping and a non-vacuity assertion, and the repo-wide boundary is owned by the new gate.
+- [Phase 2]: 02-14: the stale verify:phase-1 claims are marked superseded rather than erased (coverage.D2 -> fail; a dated correction block naming commit 18d206c6; nyquist_compliant honestly false before the fresh runs restored it), and both phase gates were re-run from one code state at evidence SHA 23db27a3 — verify:phase-1 exit 0 (59 files / 886 tests), verify:phase-2 exit 0 (29 files / 490 tests), verify:all exit 0 (61 files / 933 tests).
+- [Phase 2]: 02-14: WINDOWS #25 stays open with the eight-field journal-retention contract (implemented-but-unwired; owner = the future journal-retention plan; activation = an owned production lifecycle point, not a UI affordance; threshold = JOURNAL_TERMINAL_ENTRY_LIMIT 50 terminal entries with non-terminal entries always retained; crash-safety and replay-safety requirements; three required tests; Phase 19 release-gate treatment); compactJournal() is deliberately not wired.
+- [Phase 2]: 02-14: the two 400 px UI backstops stay deferred to the Phase 15 consolidated Real-Chrome cycle and the CR-01 (metadata-hold trade) / CR-02 (mirror-persists-on-promotion) residuals are presented at a blocking-human checkpoint — no automatic waiver, no inferred consent, and the plan pauses there.
 
 ### Pending Todos
 
@@ -290,6 +296,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-24T03:08:51.175Z
-Stopped at: Completed 02-13-PLAN.md — 02-13 completed and its cross-phase claim was later corrected by 02-14: the 02-13 run was green at execution time (verify:phase-2 25 files / 441 tests; verify:phase-1 55 files / 835 tests — both gates exit 0), but a later documentation-only review-fix commit (18d206c6, IN-05/IN-06) exposed an over-broad Phase-1 substring gate that counted the doc comment at src/core/security/KeyVault.ts:33 as a call site, so verify:phase-1 was observed red on re-run (02-VERIFICATION.md gap 1). Plan 02-14 replaced it with the credential-boundary gate (tests/isolation/credential-boundary.test.ts) and re-ran verify:phase-1 and verify:phase-2 green from one code state; WINDOWS #5/#7/#8 and #25 stay open
+Last session: 2026-09-24T06:13:27.822Z
+Stopped at: Paused at the 02-14 blocking-human checkpoint (CR-01/CR-02 operator disposition pending) — Tasks 1-3 complete; 02-13's stale verify:phase-1 claim was corrected by 02-14 and both phase gates re-ran green from one code state at evidence SHA 23db27a3 (verify:phase-1 59 files / 886 tests; verify:phase-2 29 files / 490 tests; verify:all 61 files / 933 tests); the credential-boundary gate is live; WINDOWS #5/#7/#8/#25 stay open
 Resume file: None
