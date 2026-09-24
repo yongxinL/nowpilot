@@ -150,6 +150,9 @@ Plans:
   4. Structured-output one-shot repair works; the streaming path produces a first token in fixture tests.
   5. PersonaInjector prepends a byte-stable persona block inside the cached `[SYSTEM]` section for Planner/Executor/Renderer/MemoryExtractor; `personaOverrides` apply without a code change; `pnpm run verify:phase-3` passes.
 
+**Inherited constraints (from Phase 2 D2-26/D2-29)**: `src/core/http/Requester.ts` and `src/core/utils/RateLimiter.ts` are Phase 3-owned under requirement `CORE-03`; the Phase 3 requirement/plan/task mapping must carry them together with D2-27's constraints (AbortController-based cancellation and timeout, no generic retries, per-provider limiter, no module-level mutable singleton). PRODUCT_SPEC §18's Phase 2 Create list is stale pending the documentation follow-up owned by `Phase 3 planner` — the canonical Product Specification is not edited in Phase 2.
+**Inherited constraints (from Phase 2 D2-05)**: Phase 3 wires both approved credential-entry surfaces (onboarding and Options provider configuration) with this contract — transient credential input → real provider validation through the approved `Requester` and `ProviderRouter` → validation success → storage through the Phase 2 `CredentialStorePort` → transient input cleared → provider metadata records configured/validated state without the secret. On validation failure the credential is not persisted, a redacted canonical error is returned, and the provider is not marked ready.
+
 **Plans**: TBD
 
 ### Phase 4: Agent Reliability and Evidence

@@ -2,11 +2,13 @@
 phase: "2"
 slug: "storage-security-writejournal-workspace-persistence"
 # status lifecycle: draft (seeded by plan-phase) → validated (set by validate-phase §6).
-# Observed state at 02-12 (2026-09-24): every map row is green except the D2-28
-# gate row, which 02-13 owns — so the file stays `draft` for validate-phase to
-# reconcile, and `nyquist_compliant` stays false (not every row is green).
+# Observed state at 02-13 (2026-09-24): every map row is green — the D2-28 gate row
+# included — so `nyquist_compliant` flips true (every sampled row passed). `status`
+# stays `draft` because the declared lifecycle reserves `validated` for validate-phase
+# §6; the Manual-Only 400 px backstop row remains outstanding (routed to the Phase 15
+# consolidated Real-Chrome cycle), and no window changes status.
 status: draft
-nyquist_compliant: false
+nyquist_compliant: true
 wave_0_complete: true
 created: "2026-09-23"
 executed: "2026-09-24"
@@ -15,6 +17,7 @@ executed: "2026-09-24"
 # Phase 2 — Validation Strategy
 
 > Per-phase validation contract for feedback sampling during execution.
+> **Phase close (plan 02-13 Task 2, 2026-09-24):** `pnpm run build:ext` then `pnpm run verify:phase-2` is green (25 files / 441 tests) and `pnpm run verify:phase-1` is green in the same run (55 files / 835 tests); the preflight was observed red on a misspelled suite path and green after restore; the Manual-Only 400 px backstop row stays outstanding with the Phase 15 cycle.
 
 ---
 
@@ -57,7 +60,7 @@ No coverage provider is installed; no snapshot tests exist; no jest-dom matchers
 | 02-06 T2 | 02-06 | 3 | CORE-02 / SC-4 | T-02-35…37 | Writer election: initial assignment; epoch generation; CAS success; CAS conflict; stale-writer rejection; heartbeat renewal; heartbeat expiry; one-surface closure; failed handoff retains the writer; successful handoff changes authority only after persistence+ack; mirror-state activation | unit + integration | `npx vitest run tests/core/workspace/WriterElection.test.ts` | ✅ | ✅ green — 22 passed (observed 2026-09-24) |
 | 02-11 T1, 02-11 T2 | 02-11 | 6 | CORE-02 / D2-31 | T-02-57…62 | Suite A — WINDOWS #5 handoff contract: 22 named clauses over the shared harness | integration | `npx vitest run tests/integration/workspaceHandoff.integration.test.ts` | ✅ | ✅ green — 23 passed (22 clause cases + the D2-33 chat-identity case; observed 2026-09-24) |
 | 02-12 T1 | 02-12 | 7 | CORE-02 / D2-32 | T-02-63…67 | Suite B — WINDOWS #8 onboarding contract: 22 named clauses incl. all secret-absence assertions | integration | `npx vitest run tests/integration/onboardingTwoSurface.integration.test.ts` | ✅ | ✅ green — 24 passed (22 clause cases + traceability + the D2-33 vault-boundary case; observed 2026-09-24) |
-| 02-13 T1, 02-13 T2 | 02-13 | 8 | CORE-02 / D2-28 | T-02-68…70 | Gate composition + self-derived path preflight; manifest carries `unlimitedStorage`; no Phase-1 gate regression | gate | `pnpm run verify:phase-2` | ⚠️ | ⬜ pending — the script is still the pre-D2-28 form (it names `tests/core/utils`, which does not exist); 02-13 owns the rewrite |
+| 02-13 T1, 02-13 T2 | 02-13 | 8 | CORE-02 / D2-28 | T-02-68…70 | Gate composition + self-derived path preflight; manifest carries `unlimitedStorage`; no Phase-1 gate regression | gate | `pnpm run verify:phase-2` | ✅ | ✅ green — 22 declared paths resolve, 25 files / 441 tests after `pnpm run build:ext`; `verify:phase-1` 55 files / 835 tests green in the same run; preflight teeth observed (misspelled path → exit 1 naming it, restore → green); observed 2026-09-24 |
 | 02-01 T3 | 02-01 | 1 | CORE-02 / §16.4 | T-02-01…04 | Manifest: exactly the authorised permission set including `unlimitedStorage`; CSP unchanged; no `content_scripts` key | build-inspection | `npx vitest run tests/isolation/generated-manifest.test.ts` (after `pnpm run build:ext`) | ✅ | ✅ green — 10 passed (observed 2026-09-24) |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
@@ -77,7 +80,7 @@ Test infrastructure that must exist **before** any implementation task can be ve
 - [x] `tests/core/storage/` — add `NowPilotDB.test.ts`, `IndexedDBMigrator.test.ts`, `ChatHistoryDB.test.ts`, `WriteJournal.test.ts`, `ErrorStore.test.ts`, `legacyChatMigration.test.ts` — all six exist and are green
 - [x] `tests/core/workspace/` — add `WorkspacePersistence.test.ts` (referenced by the stale gate but missing) and `WriterElection.test.ts` — both exist and are green (02-06)
 - [x] `tests/integration/` — new directory: `workspaceHandoff.integration.test.ts`, `onboardingTwoSurface.integration.test.ts` — both exist; 2 files / 47 passed (observed 2026-09-24)
-- [ ] `package.json` `verify:phase-2` — rewrite with an explicit path list **plus** the self-derived preflight copied from `verify:phase-1` (`node -e` path-resolution check over the script's own declared paths, exiting 1 with the missing paths named) — **pending: 02-13 owns this rewrite**; the current script is still the pre-D2-28 form and names `tests/core/utils`, which does not exist
+- [x] `package.json` `verify:phase-2` — rewrite with an explicit path list **plus** the self-derived preflight copied from `verify:phase-1` (`node -e` path-resolution check over the script's own declared paths, exiting 1 with the missing paths named) — landed by 02-13 T1 (commit `417454fe`): 22 declared paths resolve, the stale `tests/core/utils` token is gone, and the misspelling observation exited 1 naming the path (2026-09-24)
 - [x] `tests/isolation/generated-manifest.test.ts` — update `AUTHORISED_PERMISSIONS` to include `unlimitedStorage` in the same change as `wxt.config.ts` — landed by 02-01 T3 (10 passed, observed 2026-09-24)
 - [x] `tests/core/store/useExtensionStore.test.ts` — extend for the v3 projection (`sessions`/`activeSessionId` gone, `preview` gone, bodies absent) and the async-hydration contract — landed by 02-08
 
@@ -169,11 +172,11 @@ The suite's traceability case (`D2-32.23 traceability — the suite declares exa
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 30s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 30s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** Phase close observed 2026-09-24 (plan 02-13) — `pnpm run build:ext` then `pnpm run verify:phase-2` green (25 files / 441 tests), `pnpm run verify:phase-1` green (55 files / 835 tests), `scripts/verify-no-tailwind.sh` clean and the built manifest carrying exactly the four authorised permissions with `connect-src 'none'`. The Manual-Only 400 px backstop row stays outstanding (Phase 15 cycle); `status: validated` remains with `/gsd-validate-phase` per the declared lifecycle; WINDOWS #5, #7 and #8 stay `open`.

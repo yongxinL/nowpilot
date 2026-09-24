@@ -3,8 +3,8 @@ gsd_state_version: "1.0"
 milestone: v0.2
 current_phase: 2
 current_phase_name: Storage, Security, WriteJournal, Workspace Persistence
-status: executing
-stopped_at: Completed 02-12-PLAN.md
+status: verifying
+stopped_at: "Completed 02-13-PLAN.md — Phase 2 gate green after build (verify:phase-2 25 files / 441 tests; verify:phase-1 55 files / 835 tests, exit 0); WINDOWS #5/#7/#8 stay open; phase ready for verification"
 last_updated: "2026-09-24T02:56:01.133Z"
 last_activity: 2026-09-24
 last_activity_desc: Phase 2 execution started
@@ -13,7 +13,7 @@ progress:
   total_phases: 19
   completed_phases: 1
   total_plans: 26
-  completed_plans: 25
+  completed_plans: 26
 ---
 
 # Project State
@@ -29,8 +29,8 @@ See: .planning/PROJECT.md (updated 2026-09-23)
 
 Phase: 2 (Storage, Security, WriteJournal, Workspace Persistence) — EXECUTING
 Plan: 13 of 13
-Status: Ready to execute
-Last activity: 2026-09-24 — Phase 2 execution started
+Status: Phase complete — ready for verification
+Last activity: 2026-09-24 — Phase 2 gate green after build; phase record updated
 
 Progress: [█░░░░░░░░░] 5%
 
@@ -83,6 +83,7 @@ Progress: [█░░░░░░░░░] 5%
 | Phase 02 P11 | 11 min | 2 tasks | 2 files |
 | Phase 2 P10 | 18 min | 3 tasks | 6 files |
 | Phase 02 P12 | 26 min | 2 tasks | 3 files |
+| Phase 02 P13 | 5 min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -204,6 +205,8 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 2]: 02-12: the real OnboardingFlow is driven under the harness clock with fireEvent + act and no RTL async helpers (fake timers freeze setTimeout and Date); step 2 resumes the provider selection through the flow real readOnboardingState adapter, avoiding the one non-deterministic rc-select interaction.
 - [Phase 2]: 02-12: every secret-absence clause scans all seven exposed surfaces (both workspace projections, the bus, the journal, both storage areas, the log ring buffer, the error records) with positive controls; the vault boundary is a separate case — the real credential port over the real KeyVault with an authorised adapter over the harness storage map — and the onboarding flow stores no credential key.
 - [Phase 2]: 02-12: 02-VALIDATION.md now carries the D2-35 clause-to-evidence tables for WINDOW #5 and #8, the filled Per-Task Verification Map with observed results and wave_0_complete: true, while status stays draft (validate-phase owns validated) and nyquist_compliant stays false because the D2-28 gate row is still pending for 02-13; STATE.md WINDOW #5/#8 rows carry the automated-coverage PASS note and stay deferred.
+- [Phase 2]: D2-29 source conflict recorded, not silently patched: PRODUCT_SPEC §18's Phase 2 Create list names `src/core/http/Requester.ts` and `src/core/utils/RateLimiter.ts`, while the Phase 2 ROADMAP goal and completion criteria require no outbound HTTP and the first production consumers belong to Phase 3 — both modules are deferred to Phase 3 under `CORE-03` per D2-26/D2-27, the corrected `verify:phase-2` (D2-28) carries no `tests/core/utils` expectation, and no RateLimiter suite exists. The canonical Product Specification is deliberately left unedited in Phase 2 (asserted by content, not by an empty diff); the documentation follow-up owner is named verbatim as `Phase 3 planner`.
+- [Phase 2]: D2-05 Phase 3 credential-entry inheritance recorded alongside D2-26/D2-29: Phase 3 wires both approved credential-entry surfaces (onboarding and Options provider configuration) with transient input → real provider validation through the approved Requester and ProviderRouter → validation success → storage through the Phase 2 `CredentialStorePort` → transient input cleared → provider metadata records configured/validated state without the secret; on validation failure the credential is not persisted, a redacted canonical error is returned and the provider is not marked ready. The same inheritance is recorded on the ROADMAP Phase 3 entry so the note is accurate and non-vacuous.
 
 ### Pending Todos
 
