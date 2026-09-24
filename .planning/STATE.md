@@ -232,6 +232,7 @@ Named verification debt carried past a phase boundary — distinct from `## Defe
 | Evidence required | Screenshot plus a written observed-result record (`nowpilot-phase-verification`) |
 | Expiry | Must close before the first milestone release gate (Phase 19) |
 | Rationale | The Phase-1 frontend is fixture-backed, deferred and incomplete; repeating detailed frontend acceptance now would produce temporary evidence that storage, workspace, provider, Notes and Options work will obsolete |
+| Automated coverage outcome (recorded 2026-09-24, plan 02-12) | **Phase 2 automated contract coverage = PASS** — `tests/integration/workspaceHandoff.integration.test.ts` (23 passed; `02-11-SUMMARY.md`) and `tests/integration/onboardingTwoSurface.integration.test.ts` (24 passed; `02-12-SUMMARY.md`), both over the shared harness and both green together (2 files / 47 passed); the clause-by-clause D2-35 mapping lives in `02-VALIDATION.md` § Traceability and names production contract, requirement `CORE-02` and evidence per row. **Phase 15 Real-Chrome acceptance = still deferred.** The Phase 19 release gate must fail while the human observation remains open. The window stays `open` — not passed, not fixed, not waived. |
 
 ### WINDOWS #7 — Onboarding 400 px responsive backstop (Phase 01)
 
@@ -262,6 +263,7 @@ Named verification debt carried past a phase boundary — distinct from `## Defe
 | Evidence required | Screenshot plus a written observed-result record (`nowpilot-phase-verification`) |
 | Expiry | Must close before the first milestone release gate (Phase 19) |
 | Rationale | Same as #5 — Phase-1 frontend acceptance now would be obsoleted by the backend and integration phases; the consolidated Real-Chrome review runs after them |
+| Automated coverage outcome (recorded 2026-09-24, plan 02-12) | **Phase 2 automated contract coverage = PASS** — `tests/integration/onboardingTwoSurface.integration.test.ts` (24 passed: 22 D2-32 clause cases + traceability + the D2-33 vault-boundary case; `02-12-SUMMARY.md`) and `tests/integration/workspaceHandoff.integration.test.ts` (23 passed; `02-11-SUMMARY.md`), both over the shared harness; the clause-by-clause D2-35 mapping lives in `02-VALIDATION.md` § Traceability and names production contract, requirement `CORE-02` and evidence per row. **Phase 15 Real-Chrome acceptance = still deferred.** The Phase 19 release gate must fail while the human observation remains open. The window stays `open` — not passed, not fixed, not waived. |
 
 ### Phase 15 consolidated Real-Chrome acceptance cycle
 
