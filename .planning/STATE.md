@@ -4,16 +4,16 @@ milestone: v0.2
 current_phase: 2
 current_phase_name: Storage, Security, WriteJournal, Workspace Persistence
 status: executing
-stopped_at: Completed 02-10-PLAN.md
-last_updated: "2026-09-24T02:27:40.174Z"
+stopped_at: Completed 02-12-PLAN.md
+last_updated: "2026-09-24T02:56:01.133Z"
 last_activity: 2026-09-24
 last_activity_desc: Phase 2 execution started
-state_head: 5b6573184d3fe48625036dbf917b97d1f5079518
+state_head: 7dfe6b3fccf9cb7e6ecc75ebe3a1d8cc3685d4ca
 progress:
   total_phases: 19
   completed_phases: 1
   total_plans: 26
-  completed_plans: 24
+  completed_plans: 25
 ---
 
 # Project State
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-09-23)
 ## Current Position
 
 Phase: 2 (Storage, Security, WriteJournal, Workspace Persistence) — EXECUTING
-Plan: 12 of 13
+Plan: 13 of 13
 Status: Ready to execute
 Last activity: 2026-09-24 — Phase 2 execution started
 
@@ -82,6 +82,7 @@ Progress: [█░░░░░░░░░] 5%
 | Phase 02 P09 | 10 min | 2 tasks | 5 files |
 | Phase 02 P11 | 11 min | 2 tasks | 2 files |
 | Phase 2 P10 | 18 min | 3 tasks | 6 files |
+| Phase 02 P12 | 26 min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -199,6 +200,10 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 2]: 02-11: restartSurface is a graceful reload (the election instance is stopped and recreated with the same identity); the non-graceful path — a record left behind to go stale — is clause 21's takeover by not heartbeating and advancing three intervals.
 - [Phase 2]: 02-11: crashDuring is a dropped message (dropNext now takes a count), not a thrown exception — the only shape in which 'crash between handoff stages' is observable without breaking the controller's own error contract; Suite A clause 12 scans six surfaces for the synthetic sentinel with the stand-in still holding it as the positive control.
 - [Phase 2]: 02-10: the surface startup sequence applies the election's own coordinationState() to the writer projection on every election (heartbeat and refocus), so the banner and the onboarding gate finally react to authoritative state; the heartbeat is the surface's interval because the election module's internal timer reports no outcome.
+- [Phase 2]: 02-12: the per-surface presentation controller mirrors useOnboardingGate (real store read + real change subscription + the real shouldPresentOnboardingForWriter against that surface own writer projection) because two hook instances would share the one module-level store and collapse the two-document distinction; presentations are counted on the transition into present, so the suite asserts exactly one flow across both surfaces rather than only that completion propagated (Pitfall 10).
+- [Phase 2]: 02-12: the real OnboardingFlow is driven under the harness clock with fireEvent + act and no RTL async helpers (fake timers freeze setTimeout and Date); step 2 resumes the provider selection through the flow real readOnboardingState adapter, avoiding the one non-deterministic rc-select interaction.
+- [Phase 2]: 02-12: every secret-absence clause scans all seven exposed surfaces (both workspace projections, the bus, the journal, both storage areas, the log ring buffer, the error records) with positive controls; the vault boundary is a separate case — the real credential port over the real KeyVault with an authorised adapter over the harness storage map — and the onboarding flow stores no credential key.
+- [Phase 2]: 02-12: 02-VALIDATION.md now carries the D2-35 clause-to-evidence tables for WINDOW #5 and #8, the filled Per-Task Verification Map with observed results and wave_0_complete: true, while status stays draft (validate-phase owns validated) and nyquist_compliant stays false because the D2-28 gate row is still pending for 02-13; STATE.md WINDOW #5/#8 rows carry the automated-coverage PASS note and stay deferred.
 
 ### Pending Todos
 
@@ -282,6 +287,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-24T02:27:40.116Z
-Stopped at: Completed 02-10-PLAN.md
+Last session: 2026-09-24T02:55:44.649Z
+Stopped at: Completed 02-12-PLAN.md
 Resume file: None
